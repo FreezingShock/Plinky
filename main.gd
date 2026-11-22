@@ -80,6 +80,7 @@ func _ready() -> void:
 
 	# 4. HUD above everything.
 	hud = Hud.new()
+	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
 	add_child(hud)
 	hud.setup(sim)
 	_wire_relics()
@@ -226,7 +227,7 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 func _wire_relics() -> void:
 	var inv: RelicInventory = GameState.relics
 	var bar := RelicBar.new()
-	bar.position = Vector2(200, 4)
+	bar.position = Vector2(8, 76)  # below the stats panel
 	hud.add_child(bar)
 	bar.bind(inv)
 	var toast := RelicToast.new()

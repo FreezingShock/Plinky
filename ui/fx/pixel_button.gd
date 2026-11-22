@@ -9,6 +9,12 @@ var _rest_set := false
 
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.BUTTON, 8.0, 4.0))
+	add_theme_stylebox_override("hover", AsciiBox.make(AsciiBox.Kind.HOVER, 8.0, 4.0))
+	add_theme_stylebox_override("pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, 8.0, 4.0))
+	add_theme_stylebox_override("disabled", AsciiBox.make(AsciiBox.Kind.DISABLED, 8.0, 4.0))
+	add_theme_color_override("font_disabled_color", RelicStyle.ink.lerp(RelicStyle.edge, 0.5))
+	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	mouse_entered.connect(_hover.bind(true))
 	mouse_exited.connect(_hover.bind(false))
 	button_down.connect(_press.bind(true))
@@ -27,3 +33,11 @@ func _hover(on: bool) -> void:
 func _press(down: bool) -> void:
 	if disabled: return
 	position.y = _rest() + (1.0 if down else 0.0)
+
+
+func _process(_d: float) -> void:
+	if is_hovered() and not disabled:
+		var ph: int = int(Time.get_ticks_msec() / 110)
+		if ph != AsciiBox.phase:
+			AsciiBox.phase = ph
+			queue_redraw()
