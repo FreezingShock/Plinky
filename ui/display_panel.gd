@@ -15,6 +15,7 @@ var _win: Window
 var _tab: String = "Audio"
 var _tab_buttons: Dictionary = {}     # tab name -> PixelButton
 var _body: VBoxContainer
+var _scroll: ScrollContainer
 var _hint: Label
 var _close_btn: PixelButton
 var _refreshers: Array[Callable] = []
@@ -48,7 +49,8 @@ func bind(win: Window) -> void:
 		tab_row.add_child(b)
 		_tab_buttons[t] = b
 
-	var scroll := ScrollContainer.new()
+	_scroll = ScrollContainer.new()
+	var scroll: ScrollContainer = _scroll
 	scroll.custom_minimum_size = Vector2(TAB_WIDTH, BODY_HEIGHT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.follow_focus = true   # stick or arrows can reach rows below the fold
@@ -106,10 +108,33 @@ func show_tab(tab: String) -> void:
 	_refreshers.clear()
 	for def in SettingsRegistry.entries(tab):
 		_body.add_child(_make_row(def))
+	_wire_focus()
 	_hint.text = ""
 	for t: String in _tab_buttons:
 		(_tab_buttons[t] as PixelButton).text = _tag(t == tab, t)
 	refresh()
+
+
+## Pad and keyboard focus: Down from any tab enters the first row, Up from the first row returns to the tab,
+## and every row control scrolls itself into view when focused.
+func _wire_focus() -> void:
+	var rows: Array[Control] = []
+	_collect_focusable(_body, rows)
+	for c: Control in rows:
+		c.focus_entered.connect(_scroll.ensure_control_visible.bind(c))
+	var tab_btn: PixelButton = _tab_buttons[_tab]
+	for t: String in _tab_buttons:
+		var b: PixelButton = _tab_buttons[t]
+		b.focus_neighbor_bottom = b.get_path_to(rows[0]) if not rows.is_empty() else NodePath()
+	if not rows.is_empty():
+		rows[0].focus_neighbor_top = rows[0].get_path_to(tab_btn)
+
+
+func _collect_focusable(n: Node, out: Array[Control]) -> void:
+	for ch: Node in n.get_children():
+		if ch is Control and (ch as Control).focus_mode == Control.FOCUS_ALL and not (ch is BaseButton and (ch as BaseButton).disabled):
+			out.append(ch)
+		_collect_focusable(ch, out)
 
 
 ## Re-read every value in the open tab.
@@ -268,6 +293,13 @@ func _build_key(row: HBoxContainer, def: Dictionary) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if visible and _capture != &"" and (event is InputEventJoypadButton or event is InputEventJoypadMotion):
+		# Rebinding waits for a keyboard key. The pad is ignored, except B, which cancels.
+		if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B:
+			_capture = &""
+			refresh()
+		get_viewport().set_input_as_handled()
+		return
 	if visible and _capture == &"":
 		# Pad shoulders flip tabs. Focus stays on a tab button so the pad never gets stranded.
 		var dir: int = int(event.is_action_pressed(&"plinky_tab_next")) - int(event.is_action_pressed(&"plinky_tab_prev"))
