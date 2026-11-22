@@ -543,6 +543,7 @@ def render_scene(keep):
     last = np.r_[op_s[1:] != op_s[:-1], True]
     win = idx_s[last]
     px = sx[win]; py = sy[win]
+    global LAST_WIN; LAST_WIN = (win, px, py)
     img_id = np.full((H, W), -1, np.int64); img_id[py, px] = allp['id'][win]
     img_mat = np.full((H, W), -1, np.int64); img_mat[py, px] = mat_[win]
     img_l = np.zeros((H, W)); img_l[py, px] = light[win]
@@ -636,6 +637,49 @@ for t in TALL:
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(HERE, fn))
     fx, fy = OXS0 + (t['u'] - t['v']), OYS0 + (t['u'] + t['v']) / 2 - t['z']
     sprites.append(dict(file=fn, kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
+
+# ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
+nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0)
+wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK)
+for t in TALL:
+    r_ = BLOCK_R.get(t['kind'], 4.0)
+    wk &= np.hypot(FU - t['u'], FV - t['v']) > r_
+keep_t = np.zeros(len(u_), bool); keep_t[:nT] = True
+render_scene(keep_t)
+_win, _px, _py = LAST_WIN
+wimg = np.full((H, W), -1, np.int8); tm = _win < nT
+wimg[_py[tm], _px[tm]] = wk[_win[tm]].astype(np.int8)
+for _ in range(3):
+    unk = wimg == -1; vals = []
+    nsum = np.zeros((H, W), int); ncnt = np.zeros((H, W), int)
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            r_ = np.roll(np.roll(wimg, dx, 1), dy, 0); ncnt += (r_ >= 0); nsum += (r_ == 1)
+    fill = unk & (ncnt >= 3); wimg[fill] = (nsum[fill] * 2 > ncnt[fill]).astype(np.int8)
+wimg[wimg < 0] = 0
+# connected component from the spawn
+sp = [a for a in anchors if a['kind'] == 'player_spawn'][0]
+def _near(x, y):
+    x = int(round(x)) + BLX; y = int(round(y)) + BLY
+    for r_ in range(0, 40):
+        ys0, ys1, xs0, xs1 = max(0, y - r_), min(H, y + r_ + 1), max(0, x - r_), min(W, x + r_ + 1)
+        sub = wimg[ys0:ys1, xs0:xs1]
+        if sub.any():
+            yy, xx = np.nonzero(sub); i = np.argmin((yy + ys0 - y) ** 2 + (xx + xs0 - x) ** 2); return int(xx[i] + xs0), int(yy[i] + ys0)
+    return None
+st = _near(sp['sx'], sp['sy']); comp = np.zeros((H, W), bool)
+from collections import deque
+dq = deque([st]); comp[st[1], st[0]] = True
+while dq:
+    cx, cy = dq.popleft()
+    for ddx, ddy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nx_, ny_ = cx + ddx, cy + ddy
+        if 0 <= nx_ < W and 0 <= ny_ < H and wimg[ny_, nx_] and not comp[ny_, nx_]: comp[ny_, nx_] = True; dq.append((nx_, ny_))
+for _a in anchors:
+    if _a['kind'] in ('pad', 'gate'):
+        q = _near(_a['sx'], _a['sy']); log('walk reach %s %s: %s' % (_a['kind'], (_a['sx'], _a['sy']), bool(q and comp[q[1], q[0]])))
+wm = np.zeros((H, W, 4), np.uint8); wm[..., 3] = 255; wm[comp, :3] = 255
+Image.fromarray(wm).save(os.path.join(HERE, 'walkable.png')); log('walkable fraction %.3f' % comp.mean())
 im.save(os.path.join(HERE, 'meadow3d-1x.png')); im.resize((W * 3, H * 3), Image.NEAREST).save(os.path.join(HERE, 'meadow3d.png'))
 im.crop((BLX, BLY, BLX + 640, BLY + 360)).resize((1920, 1080), Image.NEAREST).save(os.path.join(HERE, 'meadow3d-frame.png'))
 for _name, _sm in (('lake', LAKE_S), ('pond', POND_S)):
