@@ -241,7 +241,9 @@ class TitleBar extends Control:
 				Hit.MAX:
 					_toggle_max()
 				Hit.CLOSE:
-					Save.save_game()
+					var saver: Node = get_tree().root.get_node_or_null("Save")
+					if saver != null:
+						saver.call("save_game")
 					get_tree().quit()
 				Hit.TITLE:
 					if mb.double_click:
