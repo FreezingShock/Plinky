@@ -61,6 +61,15 @@ func _stages(t: Object, cfg: OnboardingConfig) -> void:
 	ob.update()
 	t.ok(ob.is_unlocked(Onboarding.F_RELICS), "first relic shows the Relics button")
 
+	var done: Array = []
+	ob.completed.connect(func() -> void: done.append(true))
+	t.ok(not ob.is_complete(), "not complete before the gate opens")
+	sim.gates_open[&"zone1"] = true
+	ob.update()
+	ob.update()
+	t.ok(ob.is_complete() and done.size() == 1, "gate opening completes onboarding once")
+	sim.gates_open.clear()
+
 	# urgent tips: a critter jumps the queue (after the urgent gap)
 	sim.step(cfg.urgent_gap_seconds + 0.1)
 	for id: StringName in [&"first_press", &"rebirth_button", &"upgrades", &"relic", &"rebirth_row", &"walk", &"streak", &"welcome"]:

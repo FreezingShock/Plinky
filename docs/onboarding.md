@@ -36,6 +36,9 @@ Active play (momentum, streaks, critters) reaches each step 10 to 20% sooner. A 
 - **Old saves** (no `ui_flags`) get no tips, and every system they have earned is visible at once.
 - **Tuning knobs** (all in `content/config/onboarding.tres`): `rebirth_reveal_mult`, `streak_tip_presses`, `walk_tip_seconds`, `first_tip_delay`, `tip_gap_seconds`, `urgent_gap_seconds`, `tip_lifetime`.
 
+## Hand-off to the main meadow
+The small meadow is the onboarding area. Its gate opening completes the tutorial: `Onboarding.completed` fires once per save (latched as `ui_flags.complete`, so it survives saving) and `GameState` forwards it as `EventBus.onboarding_complete()`. The main meadow work should listen to that signal, or read `GameState.onboarding.is_complete()`, to open or load the way on. The existing `gate_opened` and `zone_entered` signals are unchanged.
+
 ## Not in this pass
 - No pointer arrow or highlight on the world pad (the card is docked bottom right, away from pads). A pad highlight is a good next step once the PC run shows where players look.
 - No tip for relic slots or attribute choices; add after the quarry work settles those.

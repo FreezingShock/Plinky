@@ -17,6 +17,7 @@ func _ready() -> void:
 	sim.new_game()
 	relics = sim.relics
 	onboarding = Onboarding.new(sim, Onboarding.load_config())
+	onboarding.completed.connect(func() -> void: get_node("/root/EventBus").onboarding_complete.emit())
 	var bus: Node = get_node("/root/EventBus")
 	sim.stat_changed.connect(func(id: StringName, v: BigNum) -> void: bus.stat_changed.emit(id, v))
 	sim.button_pressed.connect(func(id: StringName, p: Vector3, g: BigNum, c: bool) -> void: bus.button_pressed.emit(id, p, g, c))

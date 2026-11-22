@@ -5,6 +5,8 @@ extends RefCounted
 ## Thresholds are in content/config/onboarding.tres. Pacing notes are in docs/onboarding.md.
 
 signal feature_unlocked(feature: StringName)
+## Fires once per save, when the onboarding gate opens: the tutorial is done and the way on is open.
+signal completed
 
 const F_MULT: StringName = &"mult"                      ## Multiplier row and the Pads list
 const F_REBIRTH_ROW: StringName = &"rebirth_row"        ## Rebirths row and the gate panel
@@ -84,8 +86,16 @@ func _condition(feature: StringName) -> bool:
 	return false
 
 
+## True once the onboarding gate has opened. Latched in the save.
+func is_complete() -> bool:
+	return bool(sim.ui_flags.get("complete", false))
+
+
 ## Latch any system whose condition now holds. Cheap; call a few times a second.
 func update() -> void:
+	if not is_complete() and not sim.gates_open.is_empty():
+		sim.ui_flags["complete"] = true
+		completed.emit()
 	if not sim.ui_flags.has("seen"):
 		# A save from before onboarding: the player knows the game, so no tips for them. A new game that
 		# pressed a pad before its first update has only seconds of play, so it still gets its tips.
