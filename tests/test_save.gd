@@ -39,6 +39,7 @@ func run(t: Object) -> void:
 	var path: String = "user://test_save.json"
 	t.ok(SaveCodec.write_file(path, text), "write")
 	t.ok(SaveCodec.write_file(path, text), "write twice makes a .bak")
+	t.ok(not FileAccess.file_exists(path + ".tmp"), "atomic write leaves no .tmp behind")
 	var f: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	f.store_string("corrupt")
 	f.close()

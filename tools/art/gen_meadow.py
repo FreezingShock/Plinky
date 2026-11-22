@@ -268,6 +268,9 @@ for (y, kind, x, yy) in sorted(decals):
             if t.i[ty, tx] >= 0:
                 X, Y = x + tx - 20, yy + ty - 30
                 if 0 <= X < W and 0 <= Y < H and c.o[Y, X] == 1: c.put(X, Y, int(t.i[ty, tx]), 1)
+owner = np.full((H, W), -1, dtype=int)   # which placed sprite finally owns each pixel
+for (_, k, X, Y, v, id) in sorted(layer_body, key=lambda t: (t[0], t[1])):
+    owner[Y, X] = k
 blit(layer_body)
 c.outline()
 
@@ -275,6 +278,27 @@ c.outline()
 im = c.image('meadow', None)
 bg = tuple(int(G.PAL['meadow'][0][k:k + 2], 16) for k in (1, 3, 5))
 im.save(os.path.join(HERE, 'meadow-scene-1x.png'))
+
+# ---------- occluders: tall props re-exported as their own sprites so the live player can walk behind them ----------
+OCCLUDERS = ('oak', 'oak_small', 'pine', 'pine_small', 'pine_tall', 'rock_big')
+rgb = np.array(im.convert('RGB'))
+occ = np.zeros((H, W, 4), dtype=np.uint8)
+occ_list = []
+for k, pl in enumerate(placed, start=1):
+    if pl['name'] not in OCCLUDERS:
+        continue
+    mask = owner == k
+    grow = np.zeros_like(mask)           # 1px outline ring around the prop, ink-coloured, not owned by another prop
+    grow[1:, :] |= mask[:-1, :]; grow[:-1, :] |= mask[1:, :]; grow[:, 1:] |= mask[:, :-1]; grow[:, :-1] |= mask[:, 1:]
+    ink = (rgb == np.array(bg)).all(axis=2)
+    mask = mask | (grow & ink & (owner < 0))
+    ys, xs = np.nonzero(mask)
+    if len(xs) == 0:
+        continue
+    occ[mask, :3] = rgb[mask]; occ[mask, 3] = 255
+    occ_list.append(dict(name=pl['name'], foot=[pl['x'], pl['y']], rect=[int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)]))
+G.Image.fromarray(occ, 'RGBA').save(os.path.join(HERE, 'meadow-occluders-1x.png'))
+json.dump(dict(size=[W, H], occluders=occ_list), open(os.path.join(HERE, 'occluders.json'), 'w'), indent=1)
 im.resize((W * 3, H * 3), G.Image.NEAREST).save(os.path.join(HERE, 'meadow-scene.png'))
 json.dump(dict(size=[W, H], pads=[dict(x=p[0], y=p[1], state=p[2]) for p in PADS], props=placed), open(os.path.join(HERE, 'placements.json'), 'w'), indent=1)
 print('ok', len(placed), 'sprites', len(decals), 'decals')

@@ -21,11 +21,14 @@ var transitions: Transitions
 var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
+var display_panel: DisplayPanel
 var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
+	DisplaySettings.apply(get_window())
+	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -48,6 +51,7 @@ func _ready() -> void:
 	add_child(world)
 	meadow = (load(MEADOW_PATH) as PackedScene).instantiate()
 	world.add_child(meadow)
+	meadow.call("spawn_occluders", world)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
 	var anchors: Node = meadow.get_node("Anchors")
@@ -67,6 +71,7 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
 
 	# 3. Juice (autoload) gets its targets.
 	Juice.shake = shake
@@ -75,9 +80,11 @@ func _ready() -> void:
 
 	# 4. HUD above everything.
 	hud = Hud.new()
+	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
 	add_child(hud)
 	hud.setup(sim)
 	_wire_relics()
+	_wire_display()
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 
@@ -92,6 +99,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	_layout_frame()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
 	_update_tooltip()
 
@@ -111,12 +119,41 @@ func _update_tooltip() -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-		var any: bool = relic_panel.visible or hud.upgrades_open()
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	if event.keycode == KEY_F11:
+		DisplaySettings.toggle_fullscreen(get_window())
+		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_ESCAPE:
+		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible
 		relic_panel.hide()
+		display_panel.close()
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
+
+
+## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
+## or smaller if the window is smaller. It is centred in the visible area, and the rest stays black.
+func _layout_frame() -> void:
+	var visible: Vector2 = get_viewport_rect().size
+	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
+	var frame: Vector2 = Vector2(minf(visible.x, bleed.x), minf(visible.y, bleed.y)).floor()
+	var origin: Vector2 = ((visible - frame) * 0.5).floor()
+	if frame == size and origin == position:
+		return
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	position = origin
+	size = frame
+	camera.frame = frame
+	camera.frame_origin = origin
+	camera.bounds = Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+	hud.frame = frame
+
+
+## Window resize: re-pick integer or fit scaling for the new window size.
+func _on_window_resized() -> void:
+	DisplaySettings.apply(get_window())
 
 
 ## The Walker anchor sits on the pad path. Slide the start away from every pad (>= SPAWN_CLEARANCE texels,
@@ -191,7 +228,7 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 func _wire_relics() -> void:
 	var inv: RelicInventory = GameState.relics
 	var bar := RelicBar.new()
-	bar.position = Vector2(200, 4)
+	bar.position = Vector2(8, 76)  # below the stats panel
 	hud.add_child(bar)
 	bar.bind(inv)
 	var toast := RelicToast.new()
@@ -207,3 +244,15 @@ func _wire_relics() -> void:
 	hud.relic_panel_toggled.connect(func(_open: bool) -> void: panel.visible = not panel.visible)
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
 		Juice.relic_drop(pad_glow, inv.rarity_of(id)))
+
+
+## Settings panel (F10 or the bottom-bar button). Centred over the view, closes with F10 or Esc.
+func _wire_display() -> void:
+	display_panel = DisplayPanel.new()
+	hud.add_child(display_panel)
+	display_panel.bind(get_window())
+	hud.settings_toggled.connect(func(_open: bool) -> void:
+		if display_panel.visible:
+			display_panel.close()
+		else:
+			display_panel.open())

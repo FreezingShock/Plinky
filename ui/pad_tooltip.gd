@@ -13,6 +13,7 @@ func _init() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 200
+	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 8.0, 6.0))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 1)
 	add_child(v)
@@ -48,8 +49,9 @@ func show_for(sim: Sim, button_id: StringName, at: Vector2) -> void:
 	visible = true
 	reset_size()
 	var p: Vector2 = at + Vector2(10.0, 12.0)
-	p.x = clampf(p.x, 2.0, 640.0 - size.x - 2.0)
-	if p.y + size.y > 358.0:
+	var area: Vector2 = get_parent_area_size()  # the frame, 640x360 or the bleed size
+	p.x = clampf(p.x, 2.0, area.x - size.x - 2.0)
+	if p.y + size.y > area.y - 2.0:
 		p.y = at.y - size.y - 8.0
 	position = p.round()
 

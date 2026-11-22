@@ -30,3 +30,13 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Press pitch climbs the C major pentatonic ladder when presses land within 650 ms of each other.
 - Loop flags are set in code, because .import files are gitignored.
 - No loading screen exists yet: Audio.start_loading() and stop_loading() are ready for it.
+| 2026-11-22 | Keep whole-number scale with letterbox as the default (Pixel perfect), and add Fit window for fractional scale | Spec section 5 says whole-number, letterboxed. Fit covers windows where integer scale would be 1x, and it fills any size. |
+| 2026-11-22 | Pixel perfect falls back to Fit below 2x | At 1x the 640x360 view is a small island in a bigger window, which is worse than a slightly uneven texel. |
+| 2026-11-22 | Do not extend the view on ultrawide or tall windows (no expand aspect) | The meadow backdrop is baked at 640x360, so extra area would show empty space until the art is extended. Ask Nathan before doing that art. |
+| 2026-11-22 | No separate UI scale slider; Window scale is the UI scale | The whole game sits on one texel grid. A fractional UI scale would blur the bitmap fonts. Fit already scales the UI on large windows. |
+| 2026-11-22 | Settings panel (F10 or bottom bar), F11 for fullscreen, saved in user://settings.cfg | Spec section 10 asks for a settings menu with window scale. Only display settings for now. |
+| 2026-11-22 | HUD Settings button goes in the bottom bar, not a new layer | Keeps the bottom bar as the one place for panel buttons. |
+| 2026-11-22 | World life lives in two layers: LifeGround (under walker and pads) and LifeAir (z 10, over everything) | Sway must repaint only its own texels, so it sits on the backdrop. Glow, sparkles and moving things are overlays that redraw each step, with no state to restore. |
+| 2026-11-22 | Sway anchors and glow points come from the baked backdrop via tools/art/gen_life_anchors.py into world/meadow_life.json | The backdrop uses exactly 8 palette colours, so tips are exact palette-4 texels. Rerun the script when the backdrop changes. |
+| 2026-11-22 | Life steps at 12 fps (sway at 6 fps), palette indices only, Bayer dither for every glow, no alpha | Art bible sections 2 and 4. Stepped motion reads as pixel art and keeps the redraw cheap. |
+| 2026-11-22 | Reduce motion (MeadowLife.reduce_motion) freezes sway, pollen, butterflies and firefly drift; blinks, glows and twinkles stay | Blinks change in place, not in travel. The M4 settings screen sets the flag. |

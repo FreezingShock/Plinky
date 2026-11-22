@@ -5,6 +5,9 @@ extends Node
 const SAVE_PATH: String = "user://save.json"
 
 var _since_save: float = 0.0
+## Offline report from the load in _ready(). That runs before any UI exists, so the signal is missed;
+## the HUD reads this once when it is built (see take_offline_report()).
+var _offline_report: Dictionary = {}
 
 
 func _ready() -> void:
@@ -23,7 +26,7 @@ func _process(delta: float) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
 		save_game()
 
 
@@ -45,6 +48,17 @@ func load_game() -> bool:
 		return false
 	sim.from_dict(data["game"])
 	var elapsed: float = Time.get_unix_time_from_system() - float(data.get("saved_at", 0.0))
+	var bus: Node = get_node("/root/EventBus")
+	var capture := func(secs: float, gains: Dictionary) -> void: _offline_report = {"seconds": secs, "gains": gains}
+	sim.offline_gained.connect(capture)
 	sim.apply_offline(elapsed)
-	get_node("/root/EventBus").game_loaded.emit()
+	sim.offline_gained.disconnect(capture)
+	bus.game_loaded.emit()
 	return true
+
+
+## The offline report from startup, once; {} if there is none or it was already taken.
+func take_offline_report() -> Dictionary:
+	var r: Dictionary = _offline_report
+	_offline_report = {}
+	return r

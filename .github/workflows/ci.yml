@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7-stable"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Install Godot
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot/godot
+          chmod +x ~/godot/godot
+
+      - name: Import project
+        run: ~/godot/godot --headless --path . --import
+
+      - name: Unit tests (tests/run.gd)
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --script tests/run.gd 2>&1 | tee /tmp/tests.log
+          # A script that fails to parse can still exit 0, so also fail on engine script errors.
+          ! grep -E "SCRIPT ERROR|Parse Error" /tmp/tests.log
+
+      - name: Balance sim (tools/sim.gd)
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --script tools/sim.gd 2>&1 | tee /tmp/sim.log
+          ! grep -E "SCRIPT ERROR|Parse Error|NOT reached" /tmp/sim.log
