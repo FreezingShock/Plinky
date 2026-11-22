@@ -47,6 +47,8 @@ var _streak_ready_at: float = 0.0
 var _last_roll_at: float = -1000.0   # play_seconds of the last drop roll
 var _last_drop_at: float = 0.0       # play_seconds of the last drop (0 = none yet)
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Dev console only (core/dev_commands.gd). Presses cost nothing. Never saved.
+var god_mode: bool = false
 
 var _dirty: Dictionary = {}
 
@@ -153,6 +155,8 @@ func can_afford(button_id: StringName) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null:
 		return false
+	if god_mode:
+		return true
 	return get_stat(b.cost_stat).gte(Formulas.button_cost(b))
 
 
@@ -244,7 +248,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 		if allow_pulse:
 			button_denied.emit(button_id)
 		return false
-	_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
+	if not god_mode:
+		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
 	var chance: float = crit_chance()
 	var crit: bool = chance > 0.0 and rng.randf() < chance
 	var crit_mult: float = 1.0
@@ -372,6 +377,30 @@ func step(dt: float) -> void:
 			_set_stat(s.id, get_stat(s.id).add(income_per_second(s.id).mul(dtb)))
 	_check_gates()
 	_flush()
+
+
+## Dev console: set a stat outright, then settle gates and signals like any other change.
+func dev_set_stat(stat_id: StringName, value: BigNum) -> bool:
+	if not stat_defs.has(stat_id):
+		return false
+	_set_stat(stat_id, value.max_zero())
+	_check_gates()
+	_flush()
+	return true
+
+
+## Dev console: move to a zone whether or not it is unlocked. Opens the gate that leads there so the move sticks.
+func dev_force_zone(z_id: StringName) -> bool:
+	if not zone_defs.has(z_id):
+		return false
+	if z_id == zone_id:
+		return true
+	for z: ZoneDef in zone_defs.values():
+		if z.next_zone == z_id:
+			gates_open[z.id] = true
+	zone_id = z_id
+	zone_entered.emit(z_id)
+	return true
 
 
 func can_rebirth() -> bool:
