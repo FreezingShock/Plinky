@@ -5,11 +5,14 @@ extends Node
 ## texel stays a whole number of screen texels (pixel snap at every zoom). Pan: hold right or
 ## middle mouse and drag, or push the mouse to a window edge. The pan drifts back to the walker
 ## after a short idle (sooner while the walker moves). C or Home snaps back at once.
-## Polish layers, all off under Reduce motion (DisplaySettings.reduce_motion), all whole-texel at the end:
+## Polish layers, all off under Calm camera (WorldCamera.calm), all whole-texel at the end:
 ## look-ahead leans the view a few texels in the walk direction, a punch kicks it on a crit, and a slow
 ## drift sways it after a long stillness. None of them touch pan, so follow, zoom and pan behave as before.
 
 signal zoom_changed(level: int)
+
+## Set by the Access setting "Calm camera". True turns off look-ahead, punch and drift.
+static var calm: bool = false
 
 const VIEW: Vector2 = Vector2(640.0, 360.0)
 const WORLD: Rect2 = Rect2(0.0, 0.0, 640.0, 360.0)
@@ -86,7 +89,7 @@ func _process(delta: float) -> void:
 	_apply()
 
 
-## Look-ahead lean, punch decay and stillness clock. Reduce motion zeroes all of it.
+## Look-ahead lean, punch decay and stillness clock. Calm camera zeroes all of it.
 func _update_polish(delta: float, manual: bool) -> void:
 	_clock += delta
 	var step: Vector2 = Vector2.ZERO
@@ -94,7 +97,7 @@ func _update_polish(delta: float, manual: bool) -> void:
 		step = target.position - _last_target
 		_last_target = target.position
 	var moving: bool = target != null and "moving" in target and bool(target.get("moving"))
-	if DisplaySettings.reduce_motion:
+	if calm:
 		_look = Vector2.ZERO
 		_punch = Vector2.ZERO
 		_still = 0.0
@@ -106,12 +109,12 @@ func _update_polish(delta: float, manual: bool) -> void:
 
 
 func _on_pressed(_id: StringName, _pos: Vector3, _gain: BigNum, crit: bool) -> void:
-	if crit and not DisplaySettings.reduce_motion:
+	if crit and not calm:
 		_punch = Vector2(0.0, PUNCH_TEXELS)   # a downward thump, the same weight as the pad sinking
 
 
 func _drift() -> Vector2:
-	if DisplaySettings.reduce_motion:
+	if calm:
 		return Vector2.ZERO
 	return drift_offset(_clock, clampf((_still - DRIFT_DELAY) / DRIFT_FADE, 0.0, 1.0))
 
@@ -149,8 +152,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				zoom_step(1, frame * 0.5)
 			KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN:
 				zoom_step(-1, frame * 0.5)
-			KEY_C, KEY_HOME:
+			KEY_HOME:
 				recenter()
+			_:
+				if Keybinds.matches(&"recenter", event):
+					recenter()
 
 
 ## Zoom one level in (+1) or out (-1), keeping the world point under `screen_pos` in place.

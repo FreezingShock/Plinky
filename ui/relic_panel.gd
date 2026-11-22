@@ -17,13 +17,13 @@ var _tip: RelicTooltip
 var _swap_from: StringName = &""   ## inventory relic waiting for a slot to swap into
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
+	v.add_theme_constant_override("separation", 4)
 	add_child(v)
 	var title := Label.new()
+	title.theme_type_variation = &"TitleLabel"
 	title.text = "Relics"
-	title.add_theme_color_override("font_color", RelicStyle.good)
 	v.add_child(title)
 	_slots_row = HBoxContainer.new()
 	_slots_row.add_theme_constant_override("separation", GAP)
