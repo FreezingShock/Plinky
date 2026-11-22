@@ -22,3 +22,9 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-22 | Main scene uses the baked 2D meadow with texel-space walker/pads, renderer view bound but empty | Fastest playable path. 3D scene content comes later. |
 | 2026-11-22 | ZoneDef.pad_buttons maps scene pad anchors to button ids | Keeps scenes number-free and data driven. |
 | 2026-11-22 | Relic effects in Sim: PRESS_RATE and CRIT_DAMAGE are multipliers (1 + total); double press doubles the reward (cost paid once); pulse presses same-row neighbours; slots unlock on rebirth actions, not the reb stat | PR #5 left these open. Revisit in balance. |
+| 2026-11-22 | Keep whole-number scale with letterbox as the default (Pixel perfect), and add Fit window for fractional scale | Spec section 5 says whole-number, letterboxed. Fit covers windows where integer scale would be 1x, and it fills any size. |
+| 2026-11-22 | Pixel perfect falls back to Fit below 2x | At 1x the 640x360 view is a small island in a bigger window, which is worse than a slightly uneven texel. |
+| 2026-11-22 | Do not extend the view on ultrawide or tall windows (no expand aspect) | The meadow backdrop is baked at 640x360, so extra area would show empty space until the art is extended. Ask Nathan before doing that art. |
+| 2026-11-22 | No separate UI scale slider; Window scale is the UI scale | The whole game sits on one texel grid. A fractional UI scale would blur the bitmap fonts. Fit already scales the UI on large windows. |
+| 2026-11-22 | Settings panel (F10 or bottom bar), F11 for fullscreen, saved in user://settings.cfg | Spec section 10 asks for a settings menu with window scale. Only display settings for now. |
+| 2026-11-22 | HUD Settings button goes in the bottom bar, not a new layer | Keeps the bottom bar as the one place for panel buttons. |
