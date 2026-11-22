@@ -4,19 +4,18 @@ extends SceneTree
 ## Run: godot --path . --import (once, to refresh the class cache), then
 ##      godot --path . --script tools/size_shots.gd
 
-## [width, height, scale mode (0 Pixel perfect, 1 Fit, 2 Wide view), bleed preview (0 off, 1 on)]
+## [width, height, scale mode (0 Pixel perfect, 1 Fit, 2 Wide view), bleed flag (0 off, 1 on)]
 const CASES: Array = [
-	[1280, 720, 0, 0],
-	[1024, 768, 0, 0],
-	[1366, 768, 0, 0],
-	[1024, 768, 1, 0],
-	[1920, 1080, 0, 0],
+	[1280, 720, 1, 0],
 	[1920, 1080, 1, 0],
+	[2560, 1440, 1, 0],
 	[1600, 1000, 1, 0],
-	[2560, 1080, 2, 0],
+	[800, 600, 1, 0],
+	[1024, 768, 0, 0],
+	[1920, 1080, 0, 0],
 	[2560, 1080, 2, 1],
 	[1920, 1080, 2, 1],
-	[800, 600, 2, 0],
+	[2560, 1440, 2, 1],
 ]
 const MODE_NAMES: Array = ["pixel", "fit", "wide"]
 const SETTLE_FRAMES: int = 12
