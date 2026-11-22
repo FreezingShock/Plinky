@@ -15,6 +15,7 @@ const REFRESH: float = 0.1
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
+var _stats_panel: Control
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_label: Label
 var _gate_label: Label
@@ -75,8 +76,16 @@ func _panel(pos: Vector2) -> VBoxContainer:
 	return v
 
 
+## Bottom edge of the stats panel in HUD coordinates, so panels below it (relic bar) follow its height.
+func stats_bottom() -> float:
+	if _stats_panel == null:
+		return 4.0
+	return _stats_panel.position.y + _stats_panel.get_combined_minimum_size().y
+
+
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
+	_stats_panel = v.get_parent() as Control
 	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:

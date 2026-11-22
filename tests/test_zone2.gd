@@ -108,4 +108,41 @@ func run(t: Object) -> void:
 	t.ok(not WalkMask.walkable(Vector2(-90, -50)), "outside the quarry is blocked")
 	for s: Variant in data.get("sprites", []):
 		t.ok(ResourceLoader.exists(DIR + str((s as Dictionary).get("file", ""))), "sprite %s exists" % str((s as Dictionary).get("file", "")))
+	# the walker can get from the spawn to every pad, vent and the gate (flood fill over the mask)
+	if im != null:
+		var targets: Array[Vector2] = []
+		var start: Vector2 = Vector2.ZERO
+		for a: Variant in data.get("anchors", []):
+			var d: Dictionary = a as Dictionary
+			var p := Vector2(float(d.get("sx", 0)), float(d.get("sy", 0)))
+			if str(d.get("kind", "")) == "player_spawn":
+				start = WalkMask.nearest(p, 28)
+			elif str(d.get("kind", "")) in ["pad", "vent", "gate"]:
+				targets.append(WalkMask.nearest(p, 14))
+		var reached: Dictionary = _flood(im, start)
+		for tp: Vector2 in targets:
+			var px: Vector2i = Vector2i(int(floorf(tp.x)) + WalkMask.OFFSET.x, int(floorf(tp.y)) + WalkMask.OFFSET.y)
+			t.ok(reached.has(px), "spawn connects to %s" % str(tp))
 	WalkMask.use("")   # back to the meadow mask for any later suite
+
+
+## Pixels of the mask reachable from `start` (a texel in the 640x360 frame) by 4-neighbour steps.
+func _flood(im: Image, start: Vector2) -> Dictionary:
+	var seen: Dictionary = {}
+	var first: Vector2i = Vector2i(int(floorf(start.x)) + WalkMask.OFFSET.x, int(floorf(start.y)) + WalkMask.OFFSET.y)
+	var queue: Array[Vector2i] = [first]
+	seen[first] = true
+	var head: int = 0
+	var w: int = im.get_width()
+	var h: int = im.get_height()
+	while head < queue.size():
+		var c: Vector2i = queue[head]
+		head += 1
+		for off: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + off
+			if n.x < 0 or n.y < 0 or n.x >= w or n.y >= h or seen.has(n):
+				continue
+			if im.get_pixel(n.x, n.y).r > 0.5:
+				seen[n] = true
+				queue.append(n)
+	return seen

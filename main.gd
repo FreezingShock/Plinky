@@ -11,6 +11,7 @@ var pv: PixelViewport
 var world: Node2D
 var meadow: Node2D   ## the current zone scene (Anchors, spawn_occluders); named for zone 1, swapped on zone entry
 var heat_vents: HeatVents
+var relic_bar: RelicBar
 var _scene_path: String = ""
 var _clear_spawn_pending: bool = false
 var walker: TexelWalker
@@ -107,6 +108,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_layout_frame()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	if relic_bar != null:
+		relic_bar.position.y = ceilf(hud.stats_bottom()) + 4.0
 	_update_tooltip()
 
 
@@ -309,7 +312,8 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 func _wire_relics() -> void:
 	var inv: RelicInventory = GameState.relics
 	var bar := RelicBar.new()
-	bar.position = Vector2(8, 76)  # below the stats panel
+	relic_bar = bar
+	bar.position = Vector2(8, 76)  # follows the stats panel bottom (see _process)
 	hud.add_child(bar)
 	bar.bind(inv)
 	var toast := RelicToast.new()
