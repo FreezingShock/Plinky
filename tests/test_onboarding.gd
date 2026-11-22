@@ -31,7 +31,8 @@ func _stages(t: Object, cfg: OnboardingConfig) -> void:
 	ob.update()
 	t.ok(ob.is_unlocked(Onboarding.F_MULT), "first press shows the Multiplier row")
 	t.ok(not ob.is_unlocked(Onboarding.F_REBIRTH_ROW), "rebirth row still hidden")
-	t.eq(fired, [Onboarding.F_MULT], "feature_unlocked fired once")
+	t.eq(fired.count(Onboarding.F_MULT), 1, "feature_unlocked fired once for the Multiplier row")
+	t.ok(not fired.has(Onboarding.F_REBIRTH_ROW), "no other core system fired yet")
 	t.eq(ob.next_tip(), &"", "an urgent tip still waits out the urgent gap")
 	sim.step(cfg.urgent_gap_seconds + 0.1)
 	t.eq(ob.next_tip(), &"first_press", "first press tip follows")
@@ -56,10 +57,14 @@ func _stages(t: Object, cfg: OnboardingConfig) -> void:
 	ob.update()
 	t.ok(ob.is_unlocked(Onboarding.F_UPGRADES), "first rebirth shows Prestige and Upgrades")
 
-	t.ok(not ob.is_unlocked(Onboarding.F_RELICS), "relics hidden before a drop")
-	sim.relics.add_relic(&"r_rate")
-	ob.update()
-	t.ok(ob.is_unlocked(Onboarding.F_RELICS), "first relic shows the Relics button")
+	# Relics: a press may already have dropped one, so test the rule on a fresh game.
+	var rsim: Sim = t.make_sim()
+	var rob := Onboarding.new(rsim, cfg)
+	rob.update()
+	t.ok(not rob.is_unlocked(Onboarding.F_RELICS), "relics hidden before a drop")
+	rsim.relics.add_relic(&"r_rate")
+	rob.update()
+	t.ok(rob.is_unlocked(Onboarding.F_RELICS), "first relic shows the Relics button")
 
 	var done: Array = []
 	ob.completed.connect(func() -> void: done.append(true))
