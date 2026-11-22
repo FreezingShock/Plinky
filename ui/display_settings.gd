@@ -12,6 +12,7 @@ enum Scale { PIXEL, FIT, WIDE }
 
 const PATH: String = "user://settings.cfg"
 const SECTION: String = "display"
+const SETTINGS_VERSION: int = 2  # 2: Fit is the default, and older Pixel defaults are reset once
 const BASE: Vector2i = Vector2i(640, 360)
 const BLEED_ART: Vector2i = Vector2i(840, 480)  # meadow backdrop bleed, placements3d.json "bleed" (PR #4)
 const MIN_PIXEL_SCALE: int = 2
@@ -32,10 +33,16 @@ static func load_settings() -> void:
 		return
 	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.FIT)), Scale.PIXEL, Scale.WIDE)
 	fullscreen = bool(cfg.get_value(SECTION, "fullscreen", false))
+	# Saves before version 2 stored Pixel perfect, which was the old default. Reset that once to Fit, so a stale
+	# Pixel setting can't leave the view stepping in whole multiples. Pixel perfect is still there in the panel.
+	if int(cfg.get_value(SECTION, "version", 1)) < SETTINGS_VERSION:
+		scale_mode = Scale.FIT
+		save_settings()
 
 
 static func save_settings() -> void:
 	var cfg := ConfigFile.new()
+	cfg.set_value(SECTION, "version", SETTINGS_VERSION)
 	cfg.set_value(SECTION, "scale", scale_mode)
 	cfg.set_value(SECTION, "fullscreen", fullscreen)
 	cfg.save(PATH)
