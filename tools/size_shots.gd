@@ -91,15 +91,32 @@ func _key(code: Key, down: bool) -> InputEventKey:
 	return ev
 
 
-## Crop the window's pixels out of the screen grab. Falls back to the root texture if the grab is empty.
+## Crop the window's pixels out of the screen grab. On some machines the grab comes back non-null but
+## fully transparent, so a blank grab is treated as missing. The fallback is the root viewport at its
+## 640x360 base, which cannot show the window's real size; the log line says so.
 func _save(path: String) -> void:
 	await RenderingServer.frame_post_draw
-	var screen: Image = DisplayServer.screen_get_image()
 	var win_pos: Vector2i = DisplayServer.window_get_position()
 	var win_size: Vector2i = DisplayServer.window_get_size()
-	var img: Image
-	if screen != null and not screen.is_empty():
+	var img: Image = null
+	var screen: Image = DisplayServer.screen_get_image()
+	if screen != null and not screen.is_empty() and not _is_blank(screen):
 		img = screen.get_region(Rect2i(win_pos, win_size))
-	else:
+	if img == null:
 		img = root.get_texture().get_image()
+		print("WARN ", path, " screen grab blank; saved the 640x360 base canvas instead of the window")
 	print("save ", path, " size=", img.get_size(), " err=", img.save_png(path))
+
+
+## True when every sampled pixel is fully transparent or the image has no size.
+func _is_blank(img: Image) -> bool:
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	if w == 0 or h == 0:
+		return true
+	for gy in 16:
+		for gx in 16:
+			var px: Color = img.get_pixel(clampi(w * gx / 15, 0, w - 1), clampi(h * gy / 15, 0, h - 1))
+			if px.a > 0.0:
+				return false
+	return true
