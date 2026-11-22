@@ -182,6 +182,8 @@ func _process(delta: float) -> void:
 
 ## Right-hug the gate panel and bottom-hug the bottom bar, so a wider frame keeps them at its edges.
 func _place() -> void:
+	if size != frame:
+		size = frame
 	if _gate_panel != null:
 		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
 		if _gate_panel.position != gp:

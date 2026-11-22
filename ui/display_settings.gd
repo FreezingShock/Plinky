@@ -41,9 +41,16 @@ static func save_settings() -> void:
 	cfg.save(PATH)
 
 
-## Largest whole-number scale at which the window can show the 640x360 view.
+## The size Godot scales from: 640x360, or the bleed in Wide view. Wide view picks the largest whole-number
+## scale at which the whole bleed fits, so a 1080p window shows 840x480 at 2x rather than 840x360 at 3x.
+static func base_size() -> Vector2i:
+	return bleed_size() if scale_mode == Scale.WIDE else BASE
+
+
+## Largest whole-number scale at which the window can show the base size.
 static func integer_scale(win: Window) -> int:
-	return maxi(1, mini(win.size.x / BASE.x, win.size.y / BASE.y))
+	var base: Vector2i = base_size()
+	return maxi(1, mini(win.size.x / base.x, win.size.y / base.y))
 
 
 ## True when a whole-number scale is in use (Pixel perfect or Wide view, not below MIN_PIXEL_SCALE).
@@ -63,6 +70,9 @@ static func apply(win: Window) -> void:
 	var want: Window.Mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
 	if win.mode != want:
 		win.mode = want
+	var base: Vector2i = base_size()
+	if win.content_scale_size != base:
+		win.content_scale_size = base
 	var aspect: int = Window.CONTENT_SCALE_ASPECT_EXPAND if scale_mode == Scale.WIDE else Window.CONTENT_SCALE_ASPECT_KEEP
 	if win.content_scale_aspect != aspect:
 		win.content_scale_aspect = aspect
