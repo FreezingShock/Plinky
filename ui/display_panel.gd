@@ -15,6 +15,7 @@ var _win: Window
 var _tab: String = "Audio"
 var _tab_buttons: Dictionary = {}     # tab name -> PixelButton
 var _body: VBoxContainer
+var _scroll: ScrollContainer
 var _hint: Label
 var _close_btn: PixelButton
 var _refreshers: Array[Callable] = []
@@ -48,9 +49,11 @@ func bind(win: Window) -> void:
 		tab_row.add_child(b)
 		_tab_buttons[t] = b
 
-	var scroll := ScrollContainer.new()
+	_scroll = ScrollContainer.new()
+	var scroll: ScrollContainer = _scroll
 	scroll.custom_minimum_size = Vector2(TAB_WIDTH, BODY_HEIGHT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true   # stick or arrows can reach rows below the fold
 	v.add_child(scroll)
 	_body = VBoxContainer.new()
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -105,10 +108,47 @@ func show_tab(tab: String) -> void:
 	_refreshers.clear()
 	for def in SettingsRegistry.entries(tab):
 		_body.add_child(_make_row(def))
+	_wire_focus()
 	_hint.text = ""
 	for t: String in _tab_buttons:
 		(_tab_buttons[t] as PixelButton).text = _tag(t == tab, t)
 	refresh()
+
+
+## Pad and keyboard focus. Godot's geometry search stalls inside the scroll area, so Up and Down are wired
+## explicitly: tab -> row 1 -> ... -> last row -> Close, and back. Every control in a row shares its row's links.
+func _wire_focus() -> void:
+	var rows: Array = []   # Array of Array[Control], one per row, in order
+	for row: Node in _body.get_children():
+		var ctl: Array[Control] = []
+		_collect_focusable(row, ctl)
+		if not ctl.is_empty():
+			rows.append(ctl)
+			for c: Control in ctl:
+				c.focus_entered.connect(_scroll.ensure_control_visible.bind(c))
+	for t: String in _tab_buttons:
+		var b: PixelButton = _tab_buttons[t]
+		b.focus_neighbor_bottom = b.get_path_to((rows[0] as Array)[0]) if not rows.is_empty() else b.get_path_to(_close_btn)
+	link_rows(rows, _tab_buttons[_tab], _close_btn)
+	_close_btn.focus_neighbor_top = _close_btn.get_path_to(((rows[rows.size() - 1] as Array)[0] if not rows.is_empty() else _tab_buttons[_tab]) as Control)
+
+
+## Link rows (Array of Array[Control]) top to bottom. `above` is reached from the first row going up and
+## `below` from the last row going down.
+static func link_rows(rows: Array, above: Control, below: Control) -> void:
+	for i in rows.size():
+		var up: Control = above if i == 0 else (rows[i - 1] as Array)[0]
+		var down: Control = below if i == rows.size() - 1 else (rows[i + 1] as Array)[0]
+		for c: Control in rows[i]:
+			c.focus_neighbor_top = c.get_path_to(up)
+			c.focus_neighbor_bottom = c.get_path_to(down)
+
+
+func _collect_focusable(n: Node, out: Array[Control]) -> void:
+	for ch: Node in n.get_children():
+		if ch is Control and (ch as Control).focus_mode == Control.FOCUS_ALL and not (ch is BaseButton and (ch as BaseButton).disabled):
+			out.append(ch)
+		_collect_focusable(ch, out)
 
 
 ## Re-read every value in the open tab.
@@ -267,6 +307,22 @@ func _build_key(row: HBoxContainer, def: Dictionary) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if visible and _capture != &"" and (event is InputEventJoypadButton or event is InputEventJoypadMotion):
+		# Rebinding waits for a keyboard key. The pad is ignored, except B, which cancels.
+		if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B:
+			_capture = &""
+			refresh()
+		get_viewport().set_input_as_handled()
+		return
+	if visible and _capture == &"":
+		# Pad shoulders flip tabs. Focus stays on a tab button so the pad never gets stranded.
+		var dir: int = int(event.is_action_pressed(&"plinky_tab_next")) - int(event.is_action_pressed(&"plinky_tab_prev"))
+		if dir != 0:
+			var names: PackedStringArray = SettingsRegistry.tabs()
+			show_tab(names[posmod(names.find(_tab) + dir, names.size())])
+			(_tab_buttons[_tab] as PixelButton).grab_focus()
+			get_viewport().set_input_as_handled()
+			return
 	if _capture == &"" or not (event is InputEventKey):
 		return
 	var k: InputEventKey = event

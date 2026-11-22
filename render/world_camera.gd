@@ -69,6 +69,10 @@ func _process(delta: float) -> void:
 		return
 	var z: float = float(zoom_level)
 	var manual: bool = _dragging
+	var stick: Vector2 = PadInput.pan_vector()
+	if stick != Vector2.ZERO:
+		pan += stick * EDGE_SPEED / z * delta
+		manual = true
 	if not _dragging and zoom_level > 1:
 		var edge: Vector2 = _edge_push()
 		if edge != Vector2.ZERO:
@@ -150,18 +154,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _dragging:
 		var mm: InputEventMouseMotion = event
 		pan -= mm.relative / float(zoom_level)
-	elif event is InputEventKey and event.is_pressed() and not event.is_echo():
-		var k: InputEventKey = event
-		match k.keycode:
-			KEY_EQUAL, KEY_KP_ADD, KEY_PAGEUP:
-				zoom_step(1, frame * 0.5)
-			KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN:
-				zoom_step(-1, frame * 0.5)
-			KEY_HOME:
-				recenter()
-			_:
-				if Keybinds.matches(&"recenter", event):
-					recenter()
+	elif event.is_action_pressed(&"plinky_zoom_in") and not PadInput.menu_open:
+		zoom_step(1, frame * 0.5)
+	elif event.is_action_pressed(&"plinky_zoom_out") and not PadInput.menu_open:
+		zoom_step(-1, frame * 0.5)
+	elif (event.is_action_pressed(&"plinky_recenter") or Keybinds.matches(&"recenter", event)) and not PadInput.menu_open:
+		recenter()
 
 
 ## Zoom one level in (+1) or out (-1), keeping the world point under `screen_pos` in place.

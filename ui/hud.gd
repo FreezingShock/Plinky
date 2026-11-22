@@ -70,6 +70,10 @@ func upgrades_open() -> bool:
 	return _upgrades_panel.visible
 
 
+func upgrades_panel() -> Control:
+	return _upgrades_panel
+
+
 func close_panels() -> void:
 	_upgrades_panel.visible = false
 
@@ -231,18 +235,23 @@ func _attr_icon(a: AttributeDef) -> String:
 	return String(map.get(a.id, "prestige"))
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if Keybinds.matches(&"upgrades", event):
-			if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
-				_upgrades_panel.visible = not _upgrades_panel.visible
-			get_viewport().set_input_as_handled()
-		elif Keybinds.matches(&"relics", event) and GameState.relics != null:
-			if GameState.onboarding.is_unlocked(Onboarding.F_RELICS):
-				relic_panel_toggled.emit(true)
-		elif Keybinds.matches(&"settings", event):
-			settings_toggled.emit(true)
-			get_viewport().set_input_as_handled()
+func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next would take Tab first
+	if event.is_echo():
+		return
+	var typing: Control = get_viewport().gui_get_focus_owner()
+	if typing is LineEdit or typing is TextEdit:
+		return   # letters like R belong to the text box
+	if event.is_action_pressed(&"plinky_upgrades") or Keybinds.matches(&"upgrades", event):
+		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
+			_upgrades_panel.visible = not _upgrades_panel.visible
+		get_viewport().set_input_as_handled()
+	elif (event.is_action_pressed(&"plinky_relics") or Keybinds.matches(&"relics", event)) and GameState.relics != null:
+		if GameState.onboarding.is_unlocked(Onboarding.F_RELICS):
+			relic_panel_toggled.emit(true)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"plinky_settings") or Keybinds.matches(&"settings", event):
+		settings_toggled.emit(true)
+		get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:

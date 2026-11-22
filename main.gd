@@ -35,6 +35,7 @@ var palette_id: StringName = Palettes.MEADOW
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
+	PadInput.ensure()
 	DisplaySettings.apply(get_window())
 	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
 	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
@@ -122,6 +123,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_layout_frame()
+	_menu_focus()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
 	if relic_bar != null:
 		relic_bar.position.y = ceilf(hud.stats_bottom()) + 4.0
@@ -142,16 +144,14 @@ func _update_tooltip() -> void:
 	tooltip.hide_tip()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
+func _unhandled_input(event: InputEvent) -> void:
 	if Keybinds.matches(&"fullscreen", event):
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_F8:
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F8:
 		_toggle_feedback()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ESCAPE:
+	elif event.is_action_pressed(&"plinky_back"):
 		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
 		relic_panel.hide()
 		display_panel.close()
@@ -159,6 +159,26 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
+
+
+## Menus without a mouse: while a panel is open the walker stands still and focus lands on its first control.
+## Arrows, d-pad or stick move focus, Enter/Space/pad A press, Esc or pad B closes (all via Godot ui_* actions).
+func _menu_focus() -> void:
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, hud.upgrades_panel()]
+	var open: Control = null
+	for p: Control in panels:
+		if p != null and p.visible:
+			open = p
+			break
+	PadInput.menu_open = open != null
+	var owner_ctl: Control = get_viewport().gui_get_focus_owner()
+	if open == null:
+		if owner_ctl != null:
+			owner_ctl.release_focus()
+	elif owner_ctl == null or not open.is_ancestor_of(owner_ctl):
+		var first: Control = PadInput.first_focusable(open)
+		if first != null:
+			first.grab_focus()
 
 
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
