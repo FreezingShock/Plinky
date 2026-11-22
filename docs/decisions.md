@@ -51,6 +51,21 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Pad streaks (m1, m2, m3 in order, 5 s of income, 20 s cooldown) and a golden critter (30 s of income, every 75 to 150 s) | Nathan. Active play opens the gate at about 7.7 min against 10.5 idle. |
 | 2026-11-23 | Keyboard and gamepad: plinky_* actions registered at runtime in ui/pad_input.gd, not in project.godot | Keeps the integrator-only file untouched. Walk = WASD, arrows, d-pad, left stick (analog tilt scales speed). Right stick pans, shoulders zoom, R3 recentres, Y relics, X upgrades, Start settings, B or Esc back. |
 | 2026-11-23 | Open menu stops the walker and auto-focuses its first control; focus draws the hover border | Arrows and stick must move focus, not the walker. Focus draws a marching-dots ring (PadInput.draw_focus_ring) so it reads apart from hover; the Upgrades toggle moved to _input because Godot ui_focus_next consumed Tab. Closing a menu drops focus so Enter/Space never press a hidden button. |
+| 2026-11-23 | Onboarding: HUD systems appear in stages (Multiplier on first press, Rebirths row at Multiplier 200, Rebirth action at 1 Rebirth, Prestige and Upgrades after the first Rebirth, Relics on first drop) | Nathan asked for staged unlocks so a new player meets one system at a time. Thresholds in content/config/onboarding.tres, timeline in docs/onboarding.md. |
+| 2026-11-23 | Tips are one card at a time, bottom right, skippable, each shown once per save | Keeps the pads and walker clear. Seen tips and unlocks ride in the save as Sim.ui_flags. Skip tips and the on/off setting live in user://tips.cfg so a new game does not re-teach a player who skipped. |
+| 2026-11-23 | Skip tips also reveals every system; old saves get no tips | A returning player who skips wants the full HUD. Saves without ui_flags are mid-game players. |
+
+## Day/night and weather (23 Nov)
+| 2026-11-23 | Day/night is a dithered multiply shade (render/shaders/day_night.gdshader) over the 2D meadow, not a smooth tint | The meadow is 2D art drawn straight to the screen, so the post dither does not touch it. A 4x4 Bayer mask in world texels picks which texels get the shade, so it stays pixel art and pins to the world when the camera moves. Tints are blue-grey (night), warm (sunrise, sunset), cool grey (rain). |
+| 2026-11-23 | Shade sits at z 5, rain at z 11, LifeAir stays at z 10 | Fireflies, lantern and shrine glow stay bright at night. The HUD (z 100) is never shaded. |
+| 2026-11-23 | One day is 12 minutes of session time, starting in the morning (phase 0.32). Not tied to the system clock and not saved | A slow loop the player can notice without waiting for it. No save format change. Tunable in content/config/sky.tres. |
+| 2026-11-23 | Rain and wind are pure functions of time (core/sky_model.gd): two sine waves decide rain (about 16% of the time, episodes of 30 to 65 s, capped at 0.6), gusts ride over a steady breeze | Deterministic, testable headless, no state to save. Rain is light on purpose. |
+| 2026-11-23 | Trees and bushes sway by whole-texel row shifts (render/shaders/wind_sway.gdshader), crown moves most, foot stays. Sprites get 4 transparent texels of padding each side so the lean is never clipped. Rocks and crystals stay still | Pixel-stepped lean at 8 fps matches the art. Padding is built once at load. |
+| 2026-11-23 | LifeGround reads MeadowLife.wind, so grass tips lean further in a gust | Grass and trees move together. |
+| 2026-11-23 | Reduce motion: rain streaks and tree sway stop, grass lean follows wind 0, the shade still turns | Matches the existing rule that travelling motion freezes. |
+
+
+
 | 2026-11-23 | HUD stat counters roll (RollValue, BigNum ease, 30 Hz); gains of 15% or more float "+N Stat" beside the counter, except cash | Presses already pop their own number, so cash floats would double up. Whole-number stats roll in whole numbers. Tuned in FxConfig. |
 | 2026-11-23 | Momentum meter (bar and +% bonus, above the bottom bar) behind a Settings toggle, on by default | Nathan has not decided on the meter. Toggle is saved in settings.cfg so he can judge it and turn it off. |
 | 2026-11-23 | Test builds come from .github/workflows/build.yml (manual run or a v* tag), Windows and macOS, uploaded as artifacts and as a prerelease on tags | Nathan wants builds he can hand to friends. One Linux job exports both, so it needs no Windows or Mac runner. |
@@ -91,4 +106,15 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Fullscreen to windowed and back plays a dither wipe: eight stepped frames of a 4x4 Bayer sweep in the zone ink colour cover the screen, the mode switches while it is covered, then it uncovers. Reduce flashing switches at once. DisplaySettings.set_fullscreen calls the registered animator, so F11 and the panel buttons both get it.
 - Spam: SwitchQueue (core/switch_queue.gd) runs one switch at a time and collapses requests made meanwhile to the latest, which runs after only if it differs from the mode reached. A 3 s watchdog uncovers the screen if a switch hangs.
 - Sizes: resize bands are max(5 px x screen scale, one texel of the scaled view) and hit-test in window pixels via the window's final transform, so they hold on 4K, HiDPI and letterboxed windows. The black letterbox on the title row drags the window too. The wipe renders at content resolution, so its cost does not grow with window size. The bar redraws only when width, maximised state or palette change.
+
+| 2026-11-23 | Camera polish: 14-texel look-ahead (eased at 2.2/s), 2-texel downward punch on crits, drift of 4x2.5 texels over 23 s and 31 s after 6 s still | Subtle on purpose, so none of it reads as sway or causes motion sickness. Layered on top of follow, so pan, zoom and PR #31 scaling are untouched. |
+| 2026-11-23 | Camera polish has its own Access row, "Calm camera" (WorldCamera.calm), beside Reduce screen shake and Still meadow | Fits the settings registry. Follow, zoom and pan stay when it is on. |
+
+## Zone 2 blockout (23 Nov)
+- Zone scene, walk mask and heat numbers are data on ZoneDef (`scene_path`, `walk_mask_path`, `heat_*`). main.gd swaps the zone scene on entry. WalkMask has `use(path)` for the active zone.
+- Forge buttons cost Cash, not Rebirths, since Rebirths cannot be earned in zone 2. f1/f2/f3 = 1e4/1e5/1e6 for +1/+8/+64 Slag. Provisional.
+- Slag is a StatDef with `income_factor_per_unit = 0.5`, a generic extra income factor. It does not reset on rebirth. The HUD shows its row only past zone 1.
+- Heat is charged by standing on vents (anchors Vent0..), not by presses. Hot press pays 2x. Heat is not saved. Sim has `feed_heat`, `is_hot`, `heat_hot_changed`; the world node HeatVents feeds it.
+- Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
+- Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
 

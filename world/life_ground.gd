@@ -44,6 +44,7 @@ func _process(delta: float) -> void:
 func _lean(p: Vector2i, t: float) -> int:
 	var phase: float = float(p.x) * WAVE_PER_TEXEL - t * WAVE_SPEED + float(p.y) * 0.011
 	var w: float = sin(phase) + 0.35 * sin(phase * 2.3 + 1.7)
+	w *= 0.7 + 0.9 * MeadowLife.wind   # a gust leans the grass further, a calm spell less (wind 0.2 is the old look)
 	var mag: int = 2 if absf(w) > LEAN_2_AT else (1 if absf(w) > LEAN_1_AT else 0)
 	return mag if w > 0.0 else -mag
 

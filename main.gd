@@ -5,16 +5,20 @@ extends Control
 
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
 const MEADOW_PATH: String = "res://world/meadow3d_scene.tscn"
-const QUARRY_TINT: Color = Color(1.0, 0.78, 0.62)  # stand-in until zone 2 has its own art
 
 var sim: Sim
 var pv: PixelViewport
 var world: Node2D
-var meadow: Node2D
+var meadow: Node2D   ## the current zone scene (Anchors, spawn_occluders); named for zone 1, swapped on zone entry
+var heat_vents: HeatVents
+var relic_bar: RelicBar
+var _scene_path: String = ""
+var _clear_spawn_pending: bool = false
 var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
+var pointer: PadPointer
 var pad_glow: PadGlow
 var shake: ScreenShake
 var camera: WorldCamera
@@ -56,7 +60,9 @@ func _ready() -> void:
 	world.name = "World"
 	world.y_sort_enabled = true
 	add_child(world)
-	meadow = (load(MEADOW_PATH) as PackedScene).instantiate()
+	_scene_path = _zone_scene_path(sim.zone_id)
+	WalkMask.use(_zone_mask_path(sim.zone_id))
+	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
 	meadow.call("spawn_occluders", world)
 	pad_glow = PadGlow.new()
@@ -84,6 +90,11 @@ func _ready() -> void:
 	Juice.shake = shake
 	Juice.transitions = transitions
 	Juice.fx_root = world
+
+	# 3b. Onboarding: tips on or off comes from its own settings file; progress comes from the save.
+	TipsSettings.load_settings()
+	TipsSettings.register_rows()
+	GameState.onboarding.tips_enabled = TipsSettings.enabled
 
 	# 4. HUD above everything.
 	hud = Hud.new()
@@ -114,6 +125,8 @@ func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	if relic_bar != null:
+		relic_bar.position.y = ceilf(hud.stats_bottom()) + 4.0
 	_update_tooltip()
 
 
@@ -236,6 +249,12 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	var first: TexelPad = pads.get(&"m1") as TexelPad
+	if first != null:
+		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
+		pointer = PadPointer.new()
+		pointer.palette = Palettes.colors(palette_id)
+		first.add_child(pointer)
 	if critter == null:
 		critter = TexelCritter.new()
 		world.add_child(critter)
@@ -249,15 +268,71 @@ func _enter_zone_visuals(zone_id: StringName) -> void:
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
 	PlinkyTheme.apply(theme, String(palette_id))
-	world.modulate = QUARRY_TINT if palette_id == Palettes.QUARRY else Color.WHITE
+	_swap_zone_scene(zone_id)
 	var cols: PackedColorArray = Palettes.colors(palette_id)
 	walker.palette = cols
 	gate.palette = cols
 	_build_pads()
+	_build_vents(cols)
+
+
+func _zone_scene_path(zone_id: StringName) -> String:
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	return z.scene_path if z != null and z.scene_path != "" else MEADOW_PATH
+
+
+func _zone_mask_path(zone_id: StringName) -> String:
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	return z.walk_mask_path if z != null else ""
+
+
+## Zones with their own scene (zone 2) replace the meadow: backdrop, tall props, anchors and walk mask.
+## The walker restarts at the new scene's Walker anchor and the gate moves to its Gate anchor.
+func _swap_zone_scene(zone_id: StringName) -> void:
+	var path: String = _zone_scene_path(zone_id)
+	WalkMask.use(_zone_mask_path(zone_id))
+	if path == _scene_path:
+		return
+	_scene_path = path
+	for c: Node in world.get_children():
+		if String(c.name).begins_with("Occ_"):
+			c.queue_free()
+	meadow.queue_free()
+	meadow = (load(path) as PackedScene).instantiate()
+	world.add_child(meadow)
+	meadow.call("spawn_occluders", world)
+	var anchors: Node = meadow.get_node("Anchors")
+	var spawn: Marker2D = anchors.get_node_or_null("Walker") as Marker2D
+	if spawn != null:
+		walker.position = spawn.position
+		walker.stop()
+	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
+	if gate_marker != null:
+		gate.position = gate_marker.position
+	_clear_spawn_pending = true
+
+
+## Zone 2 vents: present only when the zone scene has Vent anchors.
+func _build_vents(cols: PackedColorArray) -> void:
+	if heat_vents != null:
+		heat_vents.queue_free()
+		heat_vents = null
+	var anchors: Node = meadow.get_node("Anchors")
+	if anchors.get_node_or_null("Vent0") == null:
+		return
+	heat_vents = HeatVents.new()
+	heat_vents.name = "HeatVents"
+	heat_vents.walker = walker
+	heat_vents.palette = cols
+	world.add_child(heat_vents)
+	heat_vents.setup(anchors)
 
 
 func _on_zone_entered(zone_id: StringName) -> void:
 	_enter_zone_visuals(zone_id)
+	if _clear_spawn_pending:
+		_clear_spawn_pending = false
+		_clear_spawn()
 	Juice.zone_enter()
 
 
@@ -284,8 +359,10 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 func _wire_relics() -> void:
 	var inv: RelicInventory = GameState.relics
 	var bar := RelicBar.new()
-	bar.position = Vector2(8, 76)  # below the stats panel
+	relic_bar = bar
+	bar.position = Vector2(8, 76)  # follows the stats panel bottom (see _process)
 	hud.add_child(bar)
+	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)

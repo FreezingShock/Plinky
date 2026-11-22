@@ -354,6 +354,11 @@ static func _register_access() -> void:
 		"apply": func(v: Variant) -> void: FxConfig.reduce_shake = bool(v),
 	})
 	_add({
+		"id": &"calm_camera", "tab": "Access", "label": "Calm camera", "kind": Kind.TOGGLE, "default": false,
+		"hint": "No look-ahead, no crit punch, no idle drift. The camera still follows.",
+		"apply": func(v: Variant) -> void: WorldCamera.calm = bool(v),
+	})
+	_add({
 		"id": &"reduce_meadow_motion", "tab": "Access", "label": "Still meadow", "kind": Kind.TOGGLE, "default": false,
 		"hint": "Freezes grass sway, pollen, butterflies and firefly drift.",
 		"apply": func(v: Variant) -> void: MeadowLife.reduce_motion = bool(v),
