@@ -85,26 +85,26 @@ func shadow_length(t: float, noon: float, low: float, moon: float) -> float:
 	return lerpf(day, moon, smoothstep(0.0, 0.2, moon_up))
 
 
-## Shadow darkness 0..1: fades out near the horizon crossing and under rain, a little survives by night.
-func shadow_strength(t: float, moon: float) -> float:
+## Shadow darkness 0..1 (`rain01` is rain intensity 0..1): fades out near the horizon crossing and under rain, a little survives by night.
+func shadow_strength(t: float, moon: float, rain01: float = 0.0) -> float:
 	var s: float = sun_of(phase(t))
-	var sun_part: float = smoothstep(0.0, 0.18, s) * (1.0 - 0.8 * rain(t) / maxf(rain_max, 0.001))
+	var sun_part: float = smoothstep(0.0, 0.18, s) * (1.0 - 0.8 * clampf(rain01, 0.0, 1.0))
 	var moon_part: float = moon * smoothstep(0.1, 0.5, -s)
 	return maxf(sun_part, moon_part)
 
 
 ## God ray strength 0..1: only while the sun is low, and not in rain.
-func rays(t: float) -> float:
-	return low_sun(t) * (1.0 - clampf(rain(t) / maxf(rain_max, 0.001), 0.0, 1.0))
+func rays(t: float, rain01: float = 0.0) -> float:
+	return low_sun(t) * (1.0 - clampf(rain01, 0.0, 1.0))
 
 
 ## Ground mist 0..1: thickest at dawn, thinner through the day, back up after dusk, and extra after rain.
-func mist(t: float) -> float:
+func mist(t: float, rain01: float = 0.0) -> float:
 	var s: float = sun_of(phase(t))
 	var dawn_part: float = exp(-pow((phase(t) - 0.27) / 0.07, 2.0))
 	var dusk_part: float = 0.55 * exp(-pow((phase(t) - 0.74) / 0.07, 2.0))
 	var night_part: float = 0.35 * smoothstep(0.0, -0.8, s)
-	var wet: float = 0.5 * clampf(rain(t) / maxf(rain_max, 0.001), 0.0, 1.0)
+	var wet: float = 0.5 * clampf(rain01, 0.0, 1.0)
 	return clampf(0.18 + dawn_part * 0.7 + dusk_part + night_part + wet, 0.0, 1.0)
 
 

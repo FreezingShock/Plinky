@@ -67,8 +67,12 @@ void fragment() {
 		}
 	}
 	float m = mist * max(water * below * sea, on_pond * 0.8) * smoothstep(0.38, 0.8, n);
-	dens = max(dens, m * 0.75);
-	if (thr < dens) {
+	// mist is the cool, pale part: the haze colour pulled toward grey so a sunset does not paint the water orange
+	vec3 mist_col = mix(vec3(dot(haze_col, vec3(0.299, 0.587, 0.114))), haze_col, 0.3);
+	float mist_d = m * 0.7;
+	if (thr < mist_d && mist_d >= dens) {
+		COLOR = vec4(mist_col, 0.5);
+	} else if (thr < dens) {
 		COLOR = vec4(haze_col, 0.62);   // one fixed step toward the haze colour; the dither does the fade
 	} else {
 		COLOR = vec4(0.0);

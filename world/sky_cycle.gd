@@ -205,7 +205,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	# cast shadows
 	if shadows != null:
 		var len: float = model.shadow_length(mt, _config.shadow_len_noon, _config.shadow_len_low, _config.shadow_len_moon)
-		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon),
+		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon, rain01),
 				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip})
 	# rim light on props: whole-texel direction toward the light, warm when the sun is low, cool under the moon
 	var low: float = model.low_sun(mt)
@@ -221,14 +221,14 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	# haze over the mountains, mist over the water
 	var haze_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
 	_haze_mat.set_shader_parameter("haze_col", haze_col)
-	_haze_mat.set_shader_parameter("haze", _config.haze_strength * (0.55 + 0.45 * model.mist(mt)))
-	_haze_mat.set_shader_parameter("mist", _config.mist_strength * model.mist(mt))
+	_haze_mat.set_shader_parameter("haze", _config.haze_strength * (0.55 + 0.45 * model.mist(mt, rain01)))
+	_haze_mat.set_shader_parameter("mist", _config.mist_strength * model.mist(mt, rain01))
 	var drift: float = 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 860.0)
 	_haze_mat.set_shader_parameter("drift", drift)
 	# god rays: sun point sits above the frame on the side the sun is on
-	var ray_amt: float = _config.ray_strength * model.rays(mt)
+	var ray_amt: float = _config.ray_strength * model.rays(mt, rain01)
 	_rays_mat.set_shader_parameter("amount", ray_amt)
-	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 460.0, -150.0))
+	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 400.0, -120.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
 	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
 	# vignette
