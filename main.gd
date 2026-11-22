@@ -19,6 +19,8 @@ var shake: ScreenShake
 var camera: WorldCamera
 var transitions: Transitions
 var hud: Hud
+var tooltip: PadTooltip
+var relic_panel: RelicPanel
 var palette_id: StringName = Palettes.MEADOW
 
 
@@ -76,6 +78,8 @@ func _ready() -> void:
 	add_child(hud)
 	hud.setup(sim)
 	_wire_relics()
+	tooltip = PadTooltip.new()
+	add_child(tooltip)
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
@@ -87,6 +91,30 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	_update_tooltip()
+
+
+## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
+func _update_tooltip() -> void:
+	var over: Control = get_viewport().gui_get_hovered_control()
+	if over != null and over.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		tooltip.hide_tip()
+		return
+	var m: Vector2 = world.get_local_mouse_position()
+	for pad: TexelPad in pads.values():
+		if pad.hit(m):
+			tooltip.show_for(sim, pad.button_id, get_local_mouse_position())
+			return
+	tooltip.hide_tip()
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		var any: bool = relic_panel.visible or hud.upgrades_open()
+		relic_panel.hide()
+		hud.close_panels()
+		if any:
+			get_viewport().set_input_as_handled()
 
 
 ## Pads come from the zone's pad_buttons, in the order of the scene's Pad0, Pad1, ... anchors.
@@ -148,6 +176,7 @@ func _wire_relics() -> void:
 	hud.add_child(toast)
 	toast.bind(inv)
 	var panel := RelicPanel.new()
+	relic_panel = panel
 	panel.position = Vector2(180, 60)
 	panel.visible = false
 	hud.add_child(panel)

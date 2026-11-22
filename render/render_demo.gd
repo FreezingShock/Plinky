@@ -75,5 +75,5 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_1: fx.set_palette_now(Palettes.MEADOW)
 		KEY_2: fx.set_zone_palette(Palettes.QUARRY); create_tween().tween_method(func(v: float) -> void: m.set_shader_parameter("shift", v), 0.0, 1.0, 1.5)
 		KEY_3: fx.set_palette_now(Palettes.IRIS)
-		KEY_I: m.set_shader_parameter("invert", 1.0 - float(m.get_shader_parameter("invert")))
+		KEY_I: m.set_shader_parameter("invert", 1.0 - float(m.get_shader_parameter("invert") if m.get_shader_parameter("invert") != null else 0.0))
 		KEY_A: m.set_shader_parameter("ascii", 1.0 - float(m.get_shader_parameter("ascii")))

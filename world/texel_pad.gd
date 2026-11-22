@@ -1,7 +1,7 @@
 class_name TexelPad
 extends Node2D
 ## A pressable pad anchored on the baked meadow art. Standing on it presses at the player's press rate.
-## The art already shows the pad; this adds the live ring, the cost label, and the press logic.
+## The art already shows the pad; this adds the live ring and the press logic. Cost and reward show in PadTooltip on hover.
 
 const HALF: Vector2 = Vector2(14.0, 7.0)  # pad half extents in texels (2:1 diamond)
 
@@ -16,8 +16,6 @@ var holding: bool = false
 var hold: HoldPress
 
 var _timer: float = 0.0
-var _label: Label
-var _label_clock: float = 0.0
 
 
 func _ready() -> void:
@@ -25,15 +23,6 @@ func _ready() -> void:
 	add_child(hold)
 	hold.tick.connect(_press)
 	hold.released.connect(func() -> void: holding = false)
-	_label = Label.new()
-	_label.theme_type_variation = &"CaptionLabel"
-	_label.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_label.size = Vector2(80, 10)
-	_label.position = Vector2(-40, -26)
-	add_child(_label)
-	_refresh_label()
 
 
 func _physics_process(delta: float) -> void:
@@ -49,10 +38,6 @@ func _physics_process(delta: float) -> void:
 		if _timer <= 0.0:
 			_press()
 			_timer = sim.press_interval()
-	_label_clock += delta
-	if _label_clock >= 0.2:
-		_label_clock = 0.0
-		_refresh_label()
 	queue_redraw()
 
 
@@ -65,9 +50,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton) or event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event.pressed:
-		var d: Vector2 = to_local(get_global_mouse_position())
-		var h: Vector2 = HALF * 1.3
-		if (d.x * d.x) / (h.x * h.x) + (d.y * d.y) / (h.y * h.y) <= 1.0:
+		if hit((get_parent() as Node2D).get_local_mouse_position()):
 			holding = true
 			hold.begin()
 			_press()
@@ -76,13 +59,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		hold.end()
 
 
-func _refresh_label() -> void:
-	var sim: Sim = GameState.sim
-	var b: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
-	if b == null:
-		return
-	_label.text = "%s > +%s" % [Formulas.button_cost(b).format(), sim.press_gain_preview(button_id).format()]
-	_label.modulate = Color.WHITE if affordable else Color(1, 1, 1, 0.55)
+## True if a point in this pad's parent space is over the pad (slightly generous, for hover and clicks).
+func hit(p: Vector2, slack: float = 1.3) -> bool:
+	var d: Vector2 = p - position
+	var h: Vector2 = HALF * slack
+	return (d.x * d.x) / (h.x * h.x) + (d.y * d.y) / (h.y * h.y) <= 1.0
 
 
 func _diamond(scale: float) -> PackedVector2Array:

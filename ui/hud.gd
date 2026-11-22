@@ -41,6 +41,14 @@ func setup(p_sim: Sim) -> void:
 	_refresh()
 
 
+func upgrades_open() -> bool:
+	return _upgrades_panel.visible
+
+
+func close_panels() -> void:
+	_upgrades_panel.visible = false
+
+
 func _panel(pos: Vector2) -> VBoxContainer:
 	var p := PanelContainer.new()
 	p.position = pos
