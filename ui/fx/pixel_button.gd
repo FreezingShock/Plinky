@@ -9,6 +9,11 @@ var _rest_set := false
 
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.BUTTON, 8.0, 4.0))
+	add_theme_stylebox_override("hover", AsciiBox.make(AsciiBox.Kind.HOVER, 8.0, 4.0))
+	add_theme_stylebox_override("pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, 8.0, 4.0))
+	add_theme_stylebox_override("disabled", AsciiBox.make(AsciiBox.Kind.DISABLED, 8.0, 4.0))
+	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	mouse_entered.connect(_hover.bind(true))
 	mouse_exited.connect(_hover.bind(false))
 	button_down.connect(_press.bind(true))

@@ -17,7 +17,7 @@ var _tip: RelicTooltip
 var _swap_from: StringName = &""   ## inventory relic waiting for a slot to swap into
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", RelicStyle.panel_box())
+	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	add_child(v)

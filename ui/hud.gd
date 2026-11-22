@@ -55,6 +55,7 @@ func close_panels() -> void:
 func _panel(pos: Vector2) -> VBoxContainer:
 	var p := PanelContainer.new()
 	p.position = pos
+	p.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
 	add_child(p)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
@@ -71,13 +72,19 @@ func _build_stats() -> void:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 6)
 		v.add_child(h)
+		var icon := TextureRect.new()
+		icon.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
+		icon.custom_minimum_size = Vector2(16, 16)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(icon)
 		var name_l := Label.new()
 		name_l.text = def.display_name
-		name_l.custom_minimum_size.x = 62
+		name_l.custom_minimum_size.x = 66
 		name_l.modulate = Color(1, 1, 1, 0.7)
 		h.add_child(name_l)
 		var val := Label.new()
-		val.custom_minimum_size.x = 56
+		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		h.add_child(val)
 		var rate := Label.new()
@@ -119,6 +126,7 @@ func _build_bottom() -> void:
 
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
+	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
 	_upgrades_panel.position = Vector2(4, 96)
 	_upgrades_panel.visible = false
 	add_child(_upgrades_panel)
@@ -137,8 +145,14 @@ func _build_upgrades() -> void:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 6)
 		_upgrades_box.add_child(h)
+		var ic := TextureRect.new()
+		ic.texture = load("res://assets/icons/%s.png" % _attr_icon(a)) as Texture2D
+		ic.custom_minimum_size = Vector2(16, 16)
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(ic)
 		var l := Label.new()
-		l.custom_minimum_size.x = 150
+		l.custom_minimum_size.x = 170
 		h.add_child(l)
 		var b := PixelButton.new()
 		b.pressed.connect(func() -> void: GameState.buy_attribute(aid))
@@ -146,6 +160,11 @@ func _build_upgrades() -> void:
 		_attr_rows[aid] = [l, b]
 
 var _prestige_avail: Label
+
+
+func _attr_icon(a: AttributeDef) -> String:
+	var map: Dictionary = {&"walk_speed": "walk", &"press_rate": "rate", &"crit_chance": "crit", &"luck": "luck", &"offline_gain": "offline"}
+	return String(map.get(a.id, "prestige"))
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
