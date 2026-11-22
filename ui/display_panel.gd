@@ -92,7 +92,7 @@ func refresh() -> void:
 	elif mode == DisplaySettings.Scale.WIDE and not DisplaySettings.bleed_ready:
 		_hint.text = "Wide view shows more of the meadow once its wider backdrop is in. Until then it letterboxes."
 	elif mode == DisplaySettings.Scale.WIDE:
-		_hint.text = "Wide view shows more of the meadow on wide and tall windows. F11 toggles fullscreen."
+		_hint.text = "Wide view shows the whole 840x480 meadow, centred, with black beyond it. F11 toggles fullscreen."
 	else:
 		_hint.text = "Pixel perfect keeps every texel the same size. F11 toggles fullscreen."
 

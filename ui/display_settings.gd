@@ -73,7 +73,9 @@ static func apply(win: Window) -> void:
 	var base: Vector2i = base_size()
 	if win.content_scale_size != base:
 		win.content_scale_size = base
-	var aspect: int = Window.CONTENT_SCALE_ASPECT_EXPAND if scale_mode == Scale.WIDE else Window.CONTENT_SCALE_ASPECT_KEEP
+	# Always letterbox the base size. In Wide view the base is the bleed, so the whole bleed is shown,
+	# centred by Godot, with black beyond it. EXPAND gave an off-centre frame on ultrawide.
+	var aspect: int = Window.CONTENT_SCALE_ASPECT_KEEP
 	if win.content_scale_aspect != aspect:
 		win.content_scale_aspect = aspect
 	var stretch: int = Window.CONTENT_SCALE_STRETCH_INTEGER if pixel_active(win) else Window.CONTENT_SCALE_STRETCH_FRACTIONAL
