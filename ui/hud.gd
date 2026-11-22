@@ -21,6 +21,7 @@ var _clock: float = 0.0
 var _attr_rows: Dictionary = {}   # attribute id -> [Label, Button]
 var _zones_key: String = ""
 var _pad_list: PadList
+var _gate_bar: DitherBar
 
 
 func setup(p_sim: Sim) -> void:
@@ -102,6 +103,8 @@ func _build_gate() -> void:
 	_zone_label.theme_type_variation = &"TitleLabel"
 	v.add_child(_zone_label)
 	_gate_label = Label.new()
+	_gate_bar = DitherBar.new(150.0)
+	v.add_child(_gate_bar)
 	v.add_child(_gate_label)
 	_zone_buttons = HBoxContainer.new()
 	v.add_child(_zone_buttons)
@@ -220,14 +223,16 @@ func _refresh() -> void:
 
 func _gate_text(z: ZoneDef) -> String:
 	if z == null or z.gate_stat == &"":
+		_gate_bar.visible = false
 		return "No gate here"
+	_gate_bar.visible = true
 	if sim.is_gate_open(z.id):
+		_gate_bar.value = 1.0
 		return "Gate open! Walk in."
 	var have: float = minf(sim.get_stat(z.gate_stat).to_float(), z.gate_threshold)
-	var cells: int = 10
-	var filled: int = int(have / z.gate_threshold * float(cells))
+	_gate_bar.value = have / z.gate_threshold
 	var name_s: String = (sim.stat_defs[z.gate_stat] as StatDef).display_name
-	return "[%s%s] %d/%d %s" % ["#".repeat(filled), "-".repeat(cells - filled), int(have), int(z.gate_threshold), name_s]
+	return "%d/%d %s" % [int(have), int(z.gate_threshold), name_s]
 
 
 ## Buttons to travel to any unlocked zone other than the current one.
