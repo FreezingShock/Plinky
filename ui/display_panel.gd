@@ -11,6 +11,8 @@ var _window_btn: PixelButton
 var _full_btn: PixelButton
 var _hint: Label
 
+signal feedback_requested
+
 
 func bind(win: Window) -> void:
 	_win = win
@@ -55,6 +57,18 @@ func bind(win: Window) -> void:
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(_hint)
+
+	var fb_btn := PixelButton.new()
+	fb_btn.text = "Send feedback [F8]"
+	fb_btn.pressed.connect(func() -> void:
+		close()
+		feedback_requested.emit())
+	v.add_child(fb_btn)
+
+	var ver := Label.new()
+	ver.text = "Plinky v%s" % BuildInfo.VERSION
+	ver.modulate = Color(1, 1, 1, 0.7)
+	v.add_child(ver)
 
 	var close_btn := PixelButton.new()
 	close_btn.text = "Close [F10]"
