@@ -6,6 +6,26 @@ extends Node
 @export var shake: ScreenShake
 @export var transitions: Transitions
 var fx_root: Node
+var _overlay: CanvasLayer
+
+## Popups go in a screen-space layer: crisp, unscaled by world zoom, always above the grass.
+func _popup_parent() -> Node:
+	if not is_instance_valid(_overlay):
+		_overlay = CanvasLayer.new()
+		_overlay.layer = 5
+		fx_root.get_tree().current_scene.add_child(_overlay)
+	# Borrow the theme from the nearest Control ancestor of the world (Main), once.
+	if PopupNumber.ui_theme == null:
+		var n: Node = fx_root
+		while n != null and not (n is Control and (n as Control).theme != null):
+			n = n.get_parent()
+		if n != null:
+			PopupNumber.ui_theme = (n as Control).theme
+	return _overlay
+
+## World (texel) position -> screen position, including camera zoom and pan. Whole texels.
+func _to_screen(world_pos: Vector2) -> Vector2:
+	return ((fx_root as CanvasItem).get_global_transform_with_canvas() * world_pos).round()
 
 const PARTICLE_COLORS: Array[Color] = [Color("f2e6a0"), Color("c2784e")]
 
@@ -17,7 +37,7 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 	if big:
 		sq.hitstop(FxConfig.HITSTOP_MS * 2)
 	ParticleBurst.spawn(fx_root, pos, PARTICLE_COLORS, randi_range(10, 14) if big else -1)
-	PopupStack.spawn(fx_root, pos + Vector2(-8, -14), amount, big, held)
+	PopupStack.spawn(_popup_parent(), _to_screen(pos) + Vector2(-8, -30), amount, big, held)
 	if shake: shake.add(0.45 if big else 0.1)
 
 func milestone() -> void:
