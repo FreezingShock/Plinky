@@ -5,7 +5,7 @@ extends Node2D
 
 ## Feel values, texels per second. Vertical is halved to match the 2:1 isometric ground.
 const SPEED: float = 70.0
-const BOUNDS: Rect2 = Rect2(24.0, 96.0, 592.0, 240.0)
+const BOUNDS: Rect2 = Rect2(0.0, 0.0, 640.0, 360.0)   # outer clamp only; WalkMask decides where feet may go
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var moving: bool = false
@@ -68,9 +68,10 @@ func _process(delta: float) -> void:
 		var step := Vector2(dir.x, dir.y * 0.5) * speed * delta
 		if _has_target:
 			step = step.limit_length((_target - position).length())
-		position = Vector2(
-			clampf(position.x + step.x, BOUNDS.position.x, BOUNDS.end.x),
-			clampf(position.y + step.y, BOUNDS.position.y, BOUNDS.end.y))
+		var moved: bool = _try_step(step)
+		if not moved and _has_target:
+			_has_target = false   # click target was behind water, a cliff or a trunk: stop at the edge
+		moving = moved
 	if moving:
 		_step_clock += delta
 		if _step_clock >= STEP_INTERVAL:
@@ -86,6 +87,20 @@ func _process(delta: float) -> void:
 			_face = &"front" if dir.y > 0.0 else &"back"
 			_flip = false
 	_animate(delta)
+
+
+## Move by step if the new spot is walkable, else slide along x or y. Returns whether the walker moved.
+func _try_step(step: Vector2) -> bool:
+	for s: Vector2 in [step, Vector2(step.x, 0.0), Vector2(0.0, step.y)]:
+		if s == Vector2.ZERO:
+			continue
+		var q := Vector2(
+			clampf(position.x + s.x, BOUNDS.position.x, BOUNDS.end.x),
+			clampf(position.y + s.y, BOUNDS.position.y, BOUNDS.end.y))
+		if WalkMask.walkable(q):
+			position = q
+			return true
+	return false
 
 
 ## Cells (row, col) in the atlas: row 0 = front, side, back, blink; row 1 = side walk 1-4;
@@ -114,7 +129,7 @@ func _animate(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var p: Vector2 = (get_parent() as Node2D).to_local(get_global_mouse_position())
-		_target = Vector2(clampf(p.x, BOUNDS.position.x, BOUNDS.end.x), clampf(p.y, BOUNDS.position.y, BOUNDS.end.y))
+		_target = WalkMask.nearest(Vector2(clampf(p.x, BOUNDS.position.x, BOUNDS.end.x), clampf(p.y, BOUNDS.position.y, BOUNDS.end.y)))
 		_has_target = true
 
 

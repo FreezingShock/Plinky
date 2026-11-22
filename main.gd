@@ -161,6 +161,7 @@ func _on_window_resized() -> void:
 const SPAWN_CLEARANCE: float = 40.0
 
 func _clear_spawn() -> void:
+	walker.position = WalkMask.nearest(walker.position)
 	for i in 12:
 		var near: bool = false
 		for pad: TexelPad in pads.values():
@@ -173,6 +174,7 @@ func _clear_spawn() -> void:
 		walker.position = Vector2(
 			clampf(walker.position.x, TexelWalker.BOUNDS.position.x, TexelWalker.BOUNDS.end.x),
 			clampf(walker.position.y, TexelWalker.BOUNDS.position.y, TexelWalker.BOUNDS.end.y))
+		walker.position = WalkMask.nearest(walker.position)
 
 
 ## Pads come from the zone's pad_buttons, in the order of the scene's Pad0, Pad1, ... anchors.
