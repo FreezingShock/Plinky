@@ -2,7 +2,7 @@ class_name PixelButton
 extends Button
 ## HUD button with hover / press / disabled states in texel steps.
 ## Colours and borders come from the theme (ink fill, base border; hover accent; pressed accent fill).
-## This script only adds the motion: 1 texel lift on hover, 1 texel sink on press.
+## This script only adds the 1 texel sink on press (theme.md section 4). Hover is theme-only.
 
 var _rest_y := 0.0
 var _rest_set := false
@@ -22,7 +22,7 @@ func _rest() -> float:
 
 func _hover(on: bool) -> void:
 	if disabled: return
-	position.y = _rest() - (1.0 if on else 0.0)
+	pass # accent border and text come from the theme
 
 func _press(down: bool) -> void:
 	if disabled: return
