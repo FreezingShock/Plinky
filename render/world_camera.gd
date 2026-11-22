@@ -54,8 +54,10 @@ func _ready() -> void:
 	if target != null:
 		_center = _clamp_center(target.position + FOCUS_LIFT)
 	_last_target = target.position if target != null else Vector2.ZERO
-	if not EventBus.button_pressed.is_connected(_on_pressed):
-		EventBus.button_pressed.connect(_on_pressed)
+	# Looked up by path, not by the autoload identifier, so this script still compiles under tests/run.gd.
+	var bus: Node = get_node_or_null("/root/EventBus")
+	if bus != null and not bus.is_connected(&"button_pressed", _on_pressed):
+		bus.connect(&"button_pressed", _on_pressed)
 	_apply()
 
 
