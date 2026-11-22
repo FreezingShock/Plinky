@@ -15,6 +15,7 @@ const REFRESH: float = 0.1
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
+var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_label: Label
 var _gate_label: Label
 var _zone_buttons: HBoxContainer
@@ -84,10 +85,17 @@ func _panel(pos: Vector2) -> VBoxContainer:
 	return v
 
 
+## Bottom edge of the stats panel in HUD coordinates, so panels below it (relic bar) follow its height.
+func stats_bottom() -> float:
+	if _stats_panel == null:
+		return 4.0
+	return _stats_panel.position.y + _stats_panel.get_combined_minimum_size().y
+
+
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
-	for sid: StringName in [&"cash", &"mult", &"reb", &"prestige"]:
+	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
 			continue
@@ -114,6 +122,7 @@ func _build_stats() -> void:
 		rate.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
+		_row_boxes[sid] = h
 		match sid:
 			&"mult": gate(h, Onboarding.F_MULT)
 			&"reb": gate(h, Onboarding.F_REBIRTH_ROW)
@@ -268,6 +277,10 @@ func _place() -> void:
 
 
 func _refresh() -> void:
+	var slag_box: Control = _row_boxes.get(&"slag") as Control
+	if slag_box != null:
+		var cz: ZoneDef = sim.current_zone()
+		slag_box.visible = (cz != null and cz.order > 0) or not sim.get_stat(&"slag").is_zero()
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
@@ -304,7 +317,7 @@ func _gate_text(z: ZoneDef) -> String:
 	_gate_bar.visible = true
 	if sim.is_gate_open(z.id):
 		_gate_bar.value = 1.0
-		return "Gate open! Walk in."
+		return "Gate open! Walk in." if z.next_zone != &"" else "Gate open! Nothing past it yet."
 	var have: float = minf(sim.get_stat(z.gate_stat).to_float(), z.gate_threshold)
 	_gate_bar.value = have / z.gate_threshold
 	var name_s: String = (sim.stat_defs[z.gate_stat] as StatDef).display_name

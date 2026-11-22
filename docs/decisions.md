@@ -107,3 +107,12 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 
 | 2026-11-23 | Camera polish: 14-texel look-ahead (eased at 2.2/s), 2-texel downward punch on crits, drift of 4x2.5 texels over 23 s and 31 s after 6 s still | Subtle on purpose, so none of it reads as sway or causes motion sickness. Layered on top of follow, so pan, zoom and PR #31 scaling are untouched. |
 | 2026-11-23 | Camera polish has its own Access row, "Calm camera" (WorldCamera.calm), beside Reduce screen shake and Still meadow | Fits the settings registry. Follow, zoom and pan stay when it is on. |
+
+## Zone 2 blockout (23 Nov)
+- Zone scene, walk mask and heat numbers are data on ZoneDef (`scene_path`, `walk_mask_path`, `heat_*`). main.gd swaps the zone scene on entry. WalkMask has `use(path)` for the active zone.
+- Forge buttons cost Cash, not Rebirths, since Rebirths cannot be earned in zone 2. f1/f2/f3 = 1e4/1e5/1e6 for +1/+8/+64 Slag. Provisional.
+- Slag is a StatDef with `income_factor_per_unit = 0.5`, a generic extra income factor. It does not reset on rebirth. The HUD shows its row only past zone 1.
+- Heat is charged by standing on vents (anchors Vent0..), not by presses. Hot press pays 2x. Heat is not saved. Sim has `feed_heat`, `is_hot`, `heat_hot_changed`; the world node HeatVents feeds it.
+- Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
+- Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
+

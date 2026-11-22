@@ -4,17 +4,28 @@ extends RefCounted
 ## 840x480 frame as ground.png, so texel p in the 640x360 world frame is pixel p + OFFSET).
 ## Grass and path are walkable; water, cliffs, mountains, tree trunks, rocks and crystals are not.
 
-const PATH: String = "res://assets/art/zone1/meadow3d/walkable.png"
+const PATH: String = "res://assets/art/zone1/meadow3d/walkable.png"   # the meadow, used when a zone names no mask
 const OFFSET: Vector2i = Vector2i(100, 60)
 
+static var path: String = PATH
 static var _img: Image = null
 static var _tried: bool = false
+
+
+## Switches to another zone's mask (an empty path means the meadow). The mask loads on first use.
+static func use(mask_path: String) -> void:
+	var p: String = PATH if mask_path == "" else mask_path
+	if p == path:
+		return
+	path = p
+	_img = null
+	_tried = false
 
 
 static func image() -> Image:
 	if not _tried:
 		_tried = true
-		var tex: Texture2D = load(PATH) as Texture2D   # imported resource: works in exports too
+		var tex: Texture2D = load(path) as Texture2D   # imported resource: works in exports too
 		if tex != null:
 			_img = tex.get_image()
 	return _img
