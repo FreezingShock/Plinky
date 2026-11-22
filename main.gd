@@ -4,7 +4,7 @@ extends Control
 ## Owned by the integrator (core thread).
 
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
-const MEADOW_PATH: String = "res://world/meadow_scene.tscn"
+const MEADOW_PATH: String = "res://world/meadow3d_scene.tscn"
 const QUARRY_TINT: Color = Color(1.0, 0.78, 0.62)  # stand-in until zone 2 has its own art
 
 var sim: Sim

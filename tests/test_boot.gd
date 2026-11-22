@@ -6,7 +6,7 @@ func run(t: SceneTree) -> void:
 	# Real files load on the worker threads and reach 1.0.
 	var loader := BootLoader.new()
 	loader.add("res://theme/plinky_theme.tres", 1.0, "theme")
-	loader.add("res://world/meadow_scene.tscn", 3.0, "meadow")
+	loader.add("res://world/meadow3d_scene.tscn", 3.0, "meadow")
 	loader.start()
 	var guard: int = 0
 	while not loader.is_finished() and guard < 5000:
@@ -17,7 +17,7 @@ func run(t: SceneTree) -> void:
 	t.ok(not loader.has_failures(), "real files report no failures")
 	t.near(loader.poll(), 1.0, 0.0001, "progress is 1.0 once everything has loaded")
 	t.ok(loader.resource_for("res://theme/plinky_theme.tres") is Theme, "theme resource is returned")
-	t.ok(loader.resource_for("res://world/meadow_scene.tscn") is PackedScene, "meadow scene is returned")
+	t.ok(loader.resource_for("res://world/meadow3d_scene.tscn") is PackedScene, "meadow scene is returned")
 	t.eq(loader.current_label(), "Ready", "label reads Ready when finished")
 
 	# A missing file is reported as a failure, not hidden behind a full bar.
