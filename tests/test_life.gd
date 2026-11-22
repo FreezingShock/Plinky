@@ -35,7 +35,14 @@ func run(t: Object) -> void:
 		t.ok(same, "butterfly frame rows are the same width")
 	var lights: Array = data.get("lights", []) as Array
 	t.eq(lights.size(), 3, "two lanterns and the shrine are glow points")
-	t.ok(data.get("water", {}).has("rx"), "water cove is in the data")
+	var water: Array = data.get("water", []) as Array
+	t.ok(water.size() >= 1, "at least one water body in the data")
+	var water_ok: bool = true
+	for wb: Variant in water:
+		var d: Dictionary = wb as Dictionary
+		if not (d.has("x") and d.has("y") and float(d.rx) > 0.0 and float(d.ry) > 0.0):
+			water_ok = false
+	t.ok(water_ok, "every water body has a centre and positive radii")
 
 	# Ordered dither: 16 distinct thresholds, all inside (0, 1).
 	var seen: Dictionary = {}

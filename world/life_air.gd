@@ -32,21 +32,23 @@ const BUTTERFLY_CLOSED: Array = ["..k.k..", "...k...", "..aka..", "..eke.."]
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _drift: Rect2 = Rect2()
 var _lights: Array = []
-var _water: Rect2 = Rect2()
+var _water: Array[Dictionary] = []   # water ellipses from the data (bounding ellipses)
+var _img: Image                       # backdrop pixels, to keep sparkles on water texels
+var _origin: Vector2i = Vector2i.ZERO  # where the backdrop's texel (0, 0) sits in the frame
 var _pads: Array[Vector2] = []
 var _t: float = 0.0
 var _step: int = -1
 
 
-func setup(data: Dictionary) -> void:
+func setup(data: Dictionary, backdrop_sprite: Sprite2D) -> void:
 	var dr: Array = data.get("drift", DEFAULT_DRIFT) as Array
 	_drift = Rect2(float(dr[0]), float(dr[1]), float(dr[2]), float(dr[3]))
 	_lights = data.get("lights", []) as Array
-	var w: Dictionary = data.get("water", {}) as Dictionary
-	if not w.is_empty():
-		var cx: float = float(w.x)
-		var cy: float = float(w.y)
-		_water = Rect2(cx - float(w.rx), cy - float(w.ry), float(w.rx) * 2.0, float(w.ry) * 2.0)
+	_water.clear()
+	for wb: Variant in data.get("water", []) as Array:
+		_water.append(wb as Dictionary)
+	_img = backdrop_sprite.texture.get_image() if backdrop_sprite.texture != null else null
+	_origin = Vector2i(roundi(backdrop_sprite.position.x), roundi(backdrop_sprite.position.y))
 	_pads.clear()
 	for p: Variant in data.get("pads", []) as Array:
 		var a: Array = p as Array
@@ -125,9 +127,9 @@ func _draw_lights(tb: float) -> void:
 					_dot(c + Vector2i(dx, dy), IDX_ACCENT)
 
 
-## Sparkles on the cove: each slot lives 0.5 s, then reappears somewhere else in the water.
+## Sparkles on the water: each slot lives 0.5 s, then reappears on another water texel.
 func _draw_water(tb: float) -> void:
-	if _water.size == Vector2.ZERO:
+	if _water.is_empty() or _img == null:
 		return
 	for k: int in WATER_SPARKLES:
 		var cycle: float = 1.6 + MeadowLife.hash01(k * 17) * 1.2
@@ -136,16 +138,43 @@ func _draw_water(tb: float) -> void:
 		var age: float = fposmod(t_k, cycle)
 		if age > 0.5:
 			continue
-		var seed_n: int = k * 97 + n * 13
-		var ang: float = MeadowLife.hash01(seed_n) * TAU
-		var rad: float = sqrt(MeadowLife.hash01(seed_n + 1))
-		var c: Vector2 = _water.get_center() + Vector2(cos(ang) * _water.size.x * 0.5, sin(ang) * _water.size.y * 0.5) * rad
-		var p: Vector2i = Vector2i(roundi(c.x), roundi(c.y))
+		var p: Vector2i = _sparkle_spot(k, n)
+		if p.x < 0:
+			continue
 		_dot(p, IDX_PAPER)
 		if age < 0.3:
 			_dot(p + Vector2i(1, 0), IDX_ACCENT)
 			_dot(p + Vector2i(-1, 0), IDX_ACCENT)
 			_dot(p + Vector2i(0, -1), IDX_ACCENT)
+
+
+## A water texel for sparkle slot k in cycle n, or (-1, -1). Picks a water body by seed, then tries a few
+## spots inside its ellipse (shrunk to 85% so sparkles stay off the shore). A spot counts only if the
+## backdrop shows water there, so bounding-ellipse corners that are grass or sand get no sparkle.
+func _sparkle_spot(k: int, n: int) -> Vector2i:
+	var body: Dictionary = _water[int(MeadowLife.hash01(k * 53 + n * 7) * _water.size()) % _water.size()]
+	var cx: float = float(body.x)
+	var cy: float = float(body.y)
+	var rx: float = float(body.rx) * 0.85
+	var ry: float = float(body.ry) * 0.85
+	for tries: int in 4:
+		var seed_n: int = k * 97 + n * 13 + tries * 1009
+		var ang: float = MeadowLife.hash01(seed_n) * TAU
+		var rad: float = sqrt(MeadowLife.hash01(seed_n + 1))
+		var q: Vector2 = Vector2(cx + cos(ang) * rx * rad, cy + sin(ang) * ry * rad)
+		var p: Vector2i = Vector2i(roundi(q.x), roundi(q.y))
+		if _is_water(p):
+			return p
+	return Vector2i(-1, -1)
+
+
+## True if the backdrop texel under frame point p is one of the two deep water colours (palette 1 or 2).
+func _is_water(p: Vector2i) -> bool:
+	var t: Vector2i = p - _origin
+	if t.x < 0 or t.y < 0 or t.x >= _img.get_width() or t.y >= _img.get_height():
+		return false
+	var c: Color = _img.get_pixel(t.x, t.y)
+	return c.is_equal_approx(palette[1]) or c.is_equal_approx(palette[2])
 
 
 ## A paper dot runs round the diamond of each ready pad, one lap every 2.4 s, staggered per pad.

@@ -61,4 +61,4 @@ func _add_life() -> void:
 	air.name = "LifeAir"
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
 	add_child(air)
-	air.setup(life)
+	air.setup(life, $Backdrop)

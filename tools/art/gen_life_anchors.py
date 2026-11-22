@@ -9,8 +9,9 @@ Two placement formats are read:
 Output (all positions in the 640x360 frame):
   sway     grass tips, palette 4 texels with grass below, that the ground layer flicks in a wind wave
   lights   lantern and shrine glow centres
-  water    the cove ellipse for sparkles. Taken from an anchor of kind water when the placements have one,
-           otherwise the default cove (logged as water_source "default")
+  water    list of water ellipses {name, x, y, rx, ry} for sparkles. Taken from the anchors of kind water when
+           the placements have any, otherwise the default cove (water_source "default"). The radii are
+           bounding ellipses: the runtime keeps only sparkles on water texels.
   pads     ready pad centres (idle shimmer)
   drift    box that pollen, fireflies and butterflies wander in, from the sway tips
   backdrop_origin  where the backdrop's texel (0, 0) sits in the frame, so the runtime reads the right texels
@@ -47,7 +48,7 @@ def nearest_index(rgb):
 
 def load_placements(path):
     d = json.load(open(path))
-    out = {"pads": [], "lights": [], "water": None, "origin": (0, 0), "format": "flat"}
+    out = {"pads": [], "lights": [], "water": [], "origin": (0, 0), "format": "flat"}
     if "anchors" in d:
         out["format"] = "3d"
         bleed = d.get("bleed", {})
@@ -59,7 +60,8 @@ def load_placements(path):
             elif a["kind"] == "shrine":
                 out["lights"].append({"x": a["sx"], "y": a["sy"] - 18, "r": 10, "kind": "shrine"})
             elif a["kind"] == "water":
-                out["water"] = (a["sx"], a["sy"], a["rx"], a["ry"])
+                out["water"].append({"name": a.get("name", "water"), "x": a["sx"], "y": a["sy"],
+                                     "rx": a["rx"], "ry": a["ry"]})
         for s in d.get("sprites", []):
             if s.get("kind") == "lantern":
                 out["lights"].append({"x": s["x"], "y": s["y"] - 12, "r": 9, "kind": "lantern"})
@@ -101,16 +103,20 @@ def main() -> None:
     ox, oy = pl["origin"]
     ready_pads = [(x, y) for x, y, s in pl["pads"] if s == "ready"]
 
-    if pl["water"] is not None:
-        cx, cy, rx, ry = pl["water"]
+    if pl["water"]:
+        water = pl["water"]
         water_source = "anchor"
     else:
-        cx, cy, rx, ry = DEFAULT_COVE
+        water = [{"name": "cove", "x": DEFAULT_COVE[0], "y": DEFAULT_COVE[1],
+                  "rx": DEFAULT_COVE[2], "ry": DEFAULT_COVE[3]}]
         water_source = "default"
         print("note: placements have no water anchor, using the default cove")
 
-    def in_cove(x: int, y: int) -> bool:
-        return ((x - cx) ** 2) / (rx * rx) + ((y - cy) ** 2) / (ry * ry) < 1.2
+    def in_water(x: int, y: int) -> bool:
+        for wb in water:
+            if ((x - wb["x"]) ** 2) / (wb["rx"] ** 2) + ((y - wb["y"]) ** 2) / (wb["ry"] ** 2) < 1.2:
+                return True
+        return False
 
     def near_pad(x: int, y: int) -> bool:
         return any((x - qx) ** 2 + (y - qy) ** 2 < PAD_CLEARANCE ** 2 for qx, qy in ready_pads)
@@ -125,7 +131,7 @@ def main() -> None:
             above = index_at(x - ox, y - 1 - oy)
             if below not in (2, 3) or above not in (2, 3, 4):
                 continue
-            if in_cove(x, y) or near_pad(x, y):
+            if in_water(x, y) or near_pad(x, y):
                 continue
             candidates.append((x, y))
 
@@ -157,7 +163,7 @@ def main() -> None:
         "backdrop_origin": [ox, oy],
         "sway": [[x, y] for x, y in picked],
         "lights": pl["lights"],
-        "water": {"x": cx, "y": cy, "rx": rx, "ry": ry},
+        "water": water,
         "water_source": water_source,
         "pads": [[x, y] for x, y in ready_pads],
         "drift": drift,
@@ -166,7 +172,7 @@ def main() -> None:
         json.dump(data, f, indent=1)
         f.write("\n")
     print(f"wrote {args.out}: {len(picked)} sway tips, {len(pl['lights'])} lights, "
-          f"{len(ready_pads)} ready pads, drift {drift}, water {water_source}")
+          f"{len(ready_pads)} ready pads, {len(water)} water bodies ({water_source}), drift {drift}")
 
 
 if __name__ == "__main__":
