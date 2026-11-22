@@ -193,7 +193,7 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 func _wire_relics() -> void:
 	var inv: RelicInventory = GameState.relics
 	var bar := RelicBar.new()
-	bar.position = Vector2(200, 4)
+	bar.position = Vector2(8, 76)  # below the stats panel
 	hud.add_child(bar)
 	bar.bind(inv)
 	var toast := RelicToast.new()
