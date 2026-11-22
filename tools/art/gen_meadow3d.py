@@ -457,7 +457,7 @@ mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
 mat[rockness > .5] = T_ROCK
 # moss: low and mid rock wears green so the mountain reads as a hillside, bare earth only on high ridges and steep faces
-moss_ = (mat == T_ROCK) & (h < 30) & (slope < 1.7) & (fbm2(FU / 9, FV / 9, 3, 12) + .22 * (1 - h / 30) > .52)
+moss_ = (mat == T_ROCK) & (h < 36) & (slope < 1.9) & (fbm2(FU / 9, FV / 9, 3, 12) + .22 * (1 - h / 36) > .5)
 mat[moss_] = T_MOSS
 mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
@@ -514,7 +514,7 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 2, 6, 6, 6, 5], T_MOSS: [1, 2, 2, 3, 3], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 5, 5, 7], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 2, 6, 6, 6, 6, 6, 5], T_MOSS: [1, 2, 2, 3, 3], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 5, 5, 7], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
