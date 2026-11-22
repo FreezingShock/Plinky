@@ -38,6 +38,9 @@ func setup(p_sim: Sim) -> void:
 	add_child(_offline)
 	var bus: Node = get_node("/root/EventBus")
 	bus.offline_gained.connect(_on_offline)
+	var report: Dictionary = get_node("/root/Save").take_offline_report()
+	if not report.is_empty():
+		_on_offline(report["seconds"], report["gains"])
 	_refresh()
 
 
