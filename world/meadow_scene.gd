@@ -21,6 +21,7 @@ func _ready() -> void:
 			m.name = String(p.name).capitalize()
 			m.position = Vector2(p.x, p.y)
 			anchors.add_child(m)
+	_add_life()
 
 
 @export_file("*.json") var occluders_path := "res://world/meadow_occluders.json"
@@ -45,3 +46,19 @@ func spawn_occluders(parent: Node2D) -> void:
 		sp.position = Vector2(foot[0], foot[1])
 		sp.offset = Vector2(rect[0] - foot[0], rect[1] - foot[1])
 		parent.add_child(sp)
+
+
+## World life (see world/meadow_life.gd): grass sway on the ground, fireflies and friends over everything.
+func _add_life() -> void:
+	var life: Dictionary = MeadowLife.load_data()
+	if life.is_empty():
+		return
+	var ground := LifeGround.new()
+	ground.name = "LifeGround"
+	add_child(ground)  # after Backdrop, so the sway draws over the baked grass
+	ground.setup($Backdrop, life.get("sway", []) as Array)
+	var air := LifeAir.new()
+	air.name = "LifeAir"
+	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
+	add_child(air)
+	air.setup(life, $Backdrop)

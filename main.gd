@@ -77,6 +77,7 @@ func _ready() -> void:
 
 	# 4. HUD above everything.
 	hud = Hud.new()
+	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
 	add_child(hud)
 	hud.setup(sim)
 	_wire_relics()
