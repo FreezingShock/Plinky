@@ -87,6 +87,7 @@ func _ready() -> void:
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
 	_enter_zone_visuals(sim.zone_id)
+	_clear_spawn()
 
 
 func _process(_delta: float) -> void:
@@ -115,6 +116,25 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
+
+
+## The Walker anchor sits on the pad path. Slide the start away from every pad (>= SPAWN_CLEARANCE texels,
+## vertical distance doubled for the 2:1 ground) so nothing auto-presses before the player moves.
+const SPAWN_CLEARANCE: float = 40.0
+
+func _clear_spawn() -> void:
+	for i in 12:
+		var near: bool = false
+		for pad: TexelPad in pads.values():
+			var d: Vector2 = walker.position - pad.position
+			if Vector2(d.x, d.y * 2.0).length() < SPAWN_CLEARANCE:
+				near = true
+		if not near:
+			return
+		walker.position += Vector2(-12.0, 8.0)
+		walker.position = Vector2(
+			clampf(walker.position.x, TexelWalker.BOUNDS.position.x, TexelWalker.BOUNDS.end.x),
+			clampf(walker.position.y, TexelWalker.BOUNDS.position.y, TexelWalker.BOUNDS.end.y))
 
 
 ## Pads come from the zone's pad_buttons, in the order of the scene's Pad0, Pad1, ... anchors.
