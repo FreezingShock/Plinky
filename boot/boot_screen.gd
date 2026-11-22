@@ -81,6 +81,7 @@ func _ready() -> void:
 	_loader.add("res://fonts/PixelifySans.ttf", 0.075, "Setting the type")
 	_loader.add("res://fonts/spleen-6x12.fnt", 0.075, "Setting the type")
 	_loader.start()
+	Audio.start_loading()
 
 	_tip_index = randi() % TIPS.size()
 	_tip_label.text = TIPS[_tip_index]
@@ -242,6 +243,7 @@ func _place_walker(fraction: float) -> void:
 
 func _start_leave() -> void:
 	_phase = Phase.LEAVING
+	Audio.stop_loading()
 	var game: PackedScene = _loader.resource_for(GAME_SCENE) as PackedScene
 	if game == null:
 		_phase = Phase.FAILED

@@ -18,7 +18,7 @@ const PITCH_JITTER: float = 0.03            # +-3% on every one-shot, so repeats
 const COMBO_WINDOW_MS: int = 650            # presses closer than this build the combo
 const COMBO_STEPS: Array[int] = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]   # semitones, C major pentatonic, 2 octaves
 const FADE_S: float = 2.0
-const DEFAULT_VOL: Dictionary = {&"Master": 0.8, &"Music": 0.55, &"SFX": 0.9, &"UI": 0.7, &"Ambience": 0.6}
+const DEFAULT_VOL: Dictionary = {&"Master": 0.8, &"Music": 0.2, &"SFX": 0.9, &"UI": 0.7, &"Ambience": 0.22}
 
 var _pool: Array[AudioStreamPlayer] = []
 var _next: int = 0
@@ -214,7 +214,7 @@ func start_loading() -> void:
 	if s is AudioStreamOggVorbis:
 		(s as AudioStreamOggVorbis).loop = true
 	_loading.stream = s
-	_loading.volume_db = -4.0
+	_loading.volume_db = -8.0
 	_loading.play()
 
 
