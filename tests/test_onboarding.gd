@@ -101,6 +101,7 @@ func _old_save_and_off(t: Object, cfg: OnboardingConfig) -> void:
 	# A save from before onboarding has no ui_flags. The player is not taught, and what they have is visible.
 	var old: Sim = t.make_sim()
 	old.press_count = 80
+	old.play_seconds = 600.0
 	old.rebirth_count = 2
 	old.stats[&"reb"] = BigNum.from_float(3.0)
 	var ob := Onboarding.new(old, cfg)
@@ -112,6 +113,15 @@ func _old_save_and_off(t: Object, cfg: OnboardingConfig) -> void:
 	ob.replay_tips()
 	t.ok(not ob.is_seen(&"first_press"), "replay forgets seen tips")
 	t.ok(ob.tips_enabled, "replay turns tips on")
+
+	# A new game that presses before its first update (0.1 s in) is not an old save.
+	var quick: Sim = t.make_sim()
+	quick.step(0.1)
+	quick.try_press(&"m1")
+	var qob := Onboarding.new(quick, cfg)
+	qob.update()
+	quick.step(cfg.first_tip_delay + cfg.urgent_gap_seconds)
+	t.eq(qob.next_tip(), &"first_press", "an early press still gets its tips")
 
 	# Tips off: nothing is offered and every system shows.
 	var fresh: Sim = t.make_sim()
@@ -140,7 +150,7 @@ func _timeline(t: Object) -> void:
 	var when: Dictionary = {}    # feature -> minutes
 	var tips: Array = []         # [id, seconds]
 	var secs: float = 0.0
-	var next_press: float = 0.0
+	var next_press: float = 3.0  # a real player reads the welcome and walks over first
 	var gate_at: float = -1.0
 	while secs < 20.0 * 60.0 and (gate_at < 0.0 or secs < gate_at + 30.0):
 		sim.step(0.1)

@@ -15,6 +15,7 @@ var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
+var pointer: PadPointer
 var pad_glow: PadGlow
 var shake: ScreenShake
 var camera: WorldCamera
@@ -205,6 +206,13 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	var first: TexelPad = pads.get(&"m1") as TexelPad
+	if first != null:
+		if pointer == null:
+			pointer = PadPointer.new()
+			world.add_child(pointer)
+		pointer.position = first.position
+		pointer.palette = Palettes.colors(palette_id)
 	if critter == null:
 		critter = TexelCritter.new()
 		world.add_child(critter)

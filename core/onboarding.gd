@@ -27,6 +27,9 @@ const TIPS: Array[Dictionary] = [
 	{"id": &"streak", "title": "Streaks", "urgent": false},
 ]
 
+## Play time above which a save with no ui_flags counts as one from before onboarding.
+const OLD_SAVE_SECONDS: float = 20.0
+
 var sim: Sim
 var cfg: OnboardingConfig
 ## Off means no tips and every system visible (the "skip tutorial" state).
@@ -84,8 +87,9 @@ func _condition(feature: StringName) -> bool:
 ## Latch any system whose condition now holds. Cheap; call a few times a second.
 func update() -> void:
 	if not sim.ui_flags.has("seen"):
-		# A save from before onboarding: the player knows the game, so no tips for them.
-		if sim.press_count > 0 or sim.rebirth_count > 0:
+		# A save from before onboarding: the player knows the game, so no tips for them. A new game that
+		# pressed a pad before its first update has only seconds of play, so it still gets its tips.
+		if (sim.press_count > 0 or sim.rebirth_count > 0) and sim.play_seconds >= OLD_SAVE_SECONDS:
 			for t: Dictionary in TIPS:
 				_bag("seen")[String(t["id"])] = true
 		_bag("seen")
