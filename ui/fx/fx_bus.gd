@@ -39,6 +39,7 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 	ParticleBurst.spawn(fx_root, pos, PARTICLE_COLORS, randi_range(10, 14) if big else -1)
 	PopupStack.spawn(_popup_parent(), _to_screen(pos) + Vector2(-8, -30), amount, big, held)
 	if shake: shake.add(0.45 if big else 0.1)
+	Audio.pad_press(big, held)
 
 func milestone() -> void:
 	if transitions: await transitions.invert_flash()
@@ -51,5 +52,6 @@ func zone_enter() -> void:
 ## (the relic system owns that data), e.g.
 ##   EventBus.relic_gained.connect(func(id, _s): Juice.relic_drop(pad_glow, RelicDB.rarity_of(id)))
 func relic_drop(glow: PadGlow, rarity: StringName) -> void:
+	Audio.relic(rarity)
 	if glow.flash_rarity(rarity) and shake and rarity in [&"mythic", &"divine", &"special"]:
 		shake.add(0.2)
