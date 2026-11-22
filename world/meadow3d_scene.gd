@@ -43,6 +43,24 @@ func _ready() -> void:
 			_:
 				continue
 		anchors.add_child(m)
+	_add_life(ground)
+
+
+## World life (world/meadow_life.gd): grass sway on the ground, fireflies and friends over everything.
+## world/meadow_life.json is generated from this backdrop by tools/art/gen_life_anchors.py (see its usage).
+func _add_life(ground: Sprite2D) -> void:
+	var life: Dictionary = MeadowLife.load_data()
+	if life.is_empty():
+		return
+	var lg := LifeGround.new()
+	lg.name = "LifeGround"
+	add_child(lg)  # after Ground, so the sway draws over the grass
+	lg.setup(ground, life.get("sway", []) as Array)
+	var air := LifeAir.new()
+	air.name = "LifeAir"
+	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
+	add_child(air)
+	air.setup(life, ground)
 
 
 ## Adds each tall prop as its own sprite under `parent`, which must have y_sort_enabled. The sprite sits at the
