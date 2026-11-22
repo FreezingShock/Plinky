@@ -1,6 +1,6 @@
 extends Node
-## Autoload "Fx". Gameplay calls one function; this fans out to every effect.
-##   Fx.press(pad, world_pos, amount, big)   Fx.milestone()   Fx.zone_enter()
+## Autoload "Juice" (Fx is the renderer's). Gameplay calls one function; this fans out to every effect.
+##   Juice.press(pad, world_pos, amount, big)   Juice.milestone()   Juice.zone_enter()
 ## Big presses are punchy by design: hitstop + shake (Nathan, 22 Nov).
 
 @export var shake: ScreenShake
