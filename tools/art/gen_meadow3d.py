@@ -10,14 +10,16 @@ FAST = '--fast' in sys.argv
 T0 = time.time()
 def log(*a): print('[%5.1fs]' % (time.time() - T0), *a, flush=True)
 
-W, H = 640, 360
+W, H = 840, 480                           # render with bleed: 640x360 frame + 100 px left/right, 60 px top/bottom
+BLX, BLY = 100, 60
 N = 400                                   # world grid (u,v) in texel units
 CU = CV = 200.0; R = 182.0                # island centre / radius (uv)
-OXS, OYS = 320, 4                        # screen = (OXS + u - v, OYS + (u+v)/2 - h)
+OXS0, OYS0 = 320, 4                       # the 640x360 frame (layout coordinates below use it)
+OXS, OYS = OXS0 + BLX, OYS0 + BLY         # render origin, shifted into the bleed canvas
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
-def s2uv(sx, sy): d = sx - OXS; s = (sy - OYS) * 2; return (s + d) / 2.0, (s - d) / 2.0
+def s2uv(sx, sy): d = sx - OXS0; s = (sy - OYS0) * 2; return (s + d) / 2.0, (s - d) / 2.0
 
 # ---------------- noise ----------------
 def _hash(ix, iy, s):
@@ -594,6 +596,26 @@ def render_scene(keep):
         ink |= (me >= 1) & (nb == -1) & (me < 10)
         ink |= (me >= 10) & (nb == -2)
     out[ink & (img_id >= 0)] = 0
+    # ---- surroundings: layered distant mountains and open water, so wide windows never see the void ----
+    emp = out < 0
+    if emp.any():
+        HOR = 232 + 3 * np.sin(XX * .05)
+        sky = dith([0, 1, 1, 2], .15 + .75 * (YY / 232.0) ** 1.2, emp)
+        res = np.where(YY < HOR, sky, -1)
+        for k, (base, amp, fr, ramp, sd) in enumerate(((236, 62, 70, [1, 2], 5), (240, 44, 48, [2, 2, 3], 6), (244, 28, 34, [2, 3, 3, 4], 7))):
+            rid = 1 - np.abs(2 * fbm2(np.arange(W) / float(fr) + k * 17, np.zeros(W), 4, sd) - 1)
+            top_ = base - amp * rid ** 1.3 - 14
+            below = YY >= top_[None, :]
+            slope_ = np.roll(top_, -2) - np.roll(top_, 2)
+            lit = np.clip(.45 - slope_[None, :] * .09 + (vn2(XX / 5.0, YY / 4.0, sd + 3) - .5) * .35 + (YY - top_[None, :]) * -.004, 0, .99)
+            mt = dith(ramp, lit, emp)
+            res = np.where(below & (YY < HOR + 6), mt, res)
+        wt = np.clip(.52 - (YY - HOR) / 260.0 + (vn2(XX / 9.0, YY / 2.5, 60) - .5) * .30, 0, .99)
+        wat = dith([1, 2, 2, 3], wt, emp)
+        wat = np.where((wat <= 2) & (YY % 4 == 0) & (vn2(XX / 3.0, YY / 1.0, 61) > .86), 3, wat)
+        wat = np.where((vn2(XX / 3.0, YY / 1.2, 62) > .93) & (YY % 3 == 0), 4, wat)
+        res = np.where(YY >= HOR, wat, res)
+        out[emp] = res[emp]
     rgb = np.zeros((H, W, 3), np.uint8); rgb[:] = COLS[0]
     have = out >= 0; rgb[have] = COLS[out[have]]
 
@@ -611,9 +633,10 @@ for t in TALL:
     m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
     spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(HERE, fn))
-    fx, fy = OXS + (t['u'] - t['v']), OYS + (t['u'] + t['v']) / 2 - t['z']
-    sprites.append(dict(file=fn, kind=t['kind'], x=int(x0), y=int(y0), w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
+    fx, fy = OXS0 + (t['u'] - t['v']), OYS0 + (t['u'] + t['v']) / 2 - t['z']
+    sprites.append(dict(file=fn, kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
 im.save(os.path.join(HERE, 'meadow3d-1x.png')); im.resize((W * 3, H * 3), Image.NEAREST).save(os.path.join(HERE, 'meadow3d.png'))
+im.crop((BLX, BLY, BLX + 640, BLY + 360)).resize((1920, 1080), Image.NEAREST).save(os.path.join(HERE, 'meadow3d-frame.png'))
 anchors_out = [dict(a, u=round(a['u'], 1), v=round(a['v'], 1)) for a in anchors]
-json.dump(dict(size=[W, H], projection=dict(ox=OXS, oy=OYS, note='screen = (ox + u - v, oy + (u+v)/2 - h)'), anchors=anchors_out, sprites=sprites), open(os.path.join(HERE, 'placements3d.json'), 'w'), indent=1)
+json.dump(dict(size=[W, H], projection=dict(ox=OXS0, oy=OYS0, note='screen = (ox + u - v, oy + (u+v)/2 - h), in the 640x360 frame'), bleed=dict(left=BLX, right=BLX, top=BLY, bottom=BLY, ground_size=[W, H], ground_offset=[-BLX, -BLY], note='ground.png is 840x480; place it at (-100,-60) so the 640x360 frame lines up with the old origin. All anchors and sprite x/y/foot stay in 640x360-frame coordinates (sprite x/y may be negative).'), anchors=anchors_out, sprites=sprites), open(os.path.join(HERE, 'placements3d.json'), 'w'), indent=1)
 log('done')

@@ -1,12 +1,27 @@
 {
  "size": [
-  640,
-  360
+  840,
+  480
  ],
  "projection": {
   "ox": 320,
   "oy": 4,
-  "note": "screen = (ox + u - v, oy + (u+v)/2 - h)"
+  "note": "screen = (ox + u - v, oy + (u+v)/2 - h), in the 640x360 frame"
+ },
+ "bleed": {
+  "left": 100,
+  "right": 100,
+  "top": 60,
+  "bottom": 60,
+  "ground_size": [
+   840,
+   480
+  ],
+  "ground_offset": [
+   -100,
+   -60
+  ],
+  "note": "ground.png is 840x480; place it at (-100,-60) so the 640x360 frame lines up with the old origin. All anchors and sprite x/y/foot stay in 640x360-frame coordinates (sprite x/y may be negative)."
  },
  "anchors": [
   {
