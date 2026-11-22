@@ -82,8 +82,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				zoom_step(1, frame * 0.5)
 			KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN:
 				zoom_step(-1, frame * 0.5)
-			KEY_C, KEY_HOME:
+			KEY_HOME:
 				recenter()
+			_:
+				if Keybinds.matches(&"recenter", event):
+					recenter()
 
 
 ## Zoom one level in (+1) or out (-1), keeping the world point under `screen_pos` in place.

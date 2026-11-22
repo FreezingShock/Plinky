@@ -23,12 +23,15 @@ var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
+var dev_console: DevConsole
 var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
 	DisplaySettings.apply(get_window())
+	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
+	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
@@ -86,6 +89,7 @@ func _ready() -> void:
 	hud.setup(sim)
 	_wire_relics()
 	_wire_display()
+	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 
@@ -123,7 +127,7 @@ func _update_tooltip() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	if event.keycode == KEY_F11:
+	if Keybinds.matches(&"fullscreen", event):
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE:
