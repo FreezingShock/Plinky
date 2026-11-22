@@ -14,7 +14,7 @@ func _ready() -> void:
 	add_theme_stylebox_override("pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, 8.0, 4.0))
 	add_theme_stylebox_override("disabled", AsciiBox.make(AsciiBox.Kind.DISABLED, 8.0, 4.0))
 	add_theme_color_override("font_disabled_color", RelicStyle.ink.lerp(RelicStyle.edge, 0.5))
-	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	add_theme_stylebox_override("focus", AsciiBox.make(AsciiBox.Kind.HOVER, 8.0, 4.0))   # pad/keyboard focus reads as hover
 	mouse_entered.connect(_hover.bind(true))
 	mouse_exited.connect(_hover.bind(false))
 	button_down.connect(_press.bind(true))

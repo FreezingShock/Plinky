@@ -28,6 +28,7 @@ var palette_id: StringName = Palettes.MEADOW
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
+	PadInput.ensure()
 	DisplaySettings.apply(get_window())
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
@@ -102,6 +103,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_layout_frame()
+	_menu_focus()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
 	_update_tooltip()
 
@@ -120,19 +122,37 @@ func _update_tooltip() -> void:
 	tooltip.hide_tip()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	if event.keycode == KEY_F11:
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ESCAPE:
+	elif event.is_action_pressed(&"plinky_back"):
 		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible
 		relic_panel.hide()
 		display_panel.close()
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
+
+
+## Menus without a mouse: while a panel is open the walker stands still and focus lands on its first control.
+## Arrows, d-pad or stick move focus, Enter/Space/pad A press, Esc or pad B closes (all via Godot ui_* actions).
+func _menu_focus() -> void:
+	var panels: Array[Control] = [display_panel, relic_panel, hud.upgrades_panel()]
+	var open: Control = null
+	for p: Control in panels:
+		if p != null and p.visible:
+			open = p
+			break
+	PadInput.menu_open = open != null
+	var owner_ctl: Control = get_viewport().gui_get_focus_owner()
+	if open == null:
+		if owner_ctl != null:
+			owner_ctl.release_focus()
+	elif owner_ctl == null or not open.is_ancestor_of(owner_ctl):
+		var first: Control = PadInput.first_focusable(open)
+		if first != null:
+			first.grab_focus()
 
 
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),

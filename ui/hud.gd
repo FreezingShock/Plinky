@@ -59,6 +59,10 @@ func upgrades_open() -> bool:
 	return _upgrades_panel.visible
 
 
+func upgrades_panel() -> Control:
+	return _upgrades_panel
+
+
 func close_panels() -> void:
 	_upgrades_panel.visible = false
 
@@ -192,16 +196,18 @@ func _attr_icon(a: AttributeDef) -> String:
 	return String(map.get(a.id, "prestige"))
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_TAB:
-			_upgrades_panel.visible = not _upgrades_panel.visible
-			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_R and GameState.relics != null:
-			relic_panel_toggled.emit(true)
-		elif event.keycode == KEY_F10:
-			settings_toggled.emit(true)
-			get_viewport().set_input_as_handled()
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_echo():
+		return
+	if event.is_action_pressed(&"plinky_upgrades"):
+		_upgrades_panel.visible = not _upgrades_panel.visible
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"plinky_relics") and GameState.relics != null:
+		relic_panel_toggled.emit(true)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"plinky_settings"):
+		settings_toggled.emit(true)
+		get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
