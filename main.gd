@@ -79,6 +79,10 @@ func _ready() -> void:
 	Juice.transitions = transitions
 	Juice.fx_root = world
 
+	# 3b. Onboarding: tips on or off comes from its own settings file; progress comes from the save.
+	TipsSettings.load_settings()
+	GameState.onboarding.tips_enabled = TipsSettings.enabled
+
 	# 4. HUD above everything.
 	hud = Hud.new()
 	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
@@ -251,6 +255,7 @@ func _wire_relics() -> void:
 	var bar := RelicBar.new()
 	bar.position = Vector2(8, 76)  # below the stats panel
 	hud.add_child(bar)
+	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 300)

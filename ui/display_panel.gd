@@ -10,6 +10,8 @@ var _wide_btn: PixelButton
 var _window_btn: PixelButton
 var _full_btn: PixelButton
 var _hint: Label
+var _tips_on_btn: PixelButton
+var _tips_off_btn: PixelButton
 
 
 func bind(win: Window) -> void:
@@ -49,6 +51,21 @@ func bind(win: Window) -> void:
 		DisplaySettings.set_fullscreen(_win, true)
 		refresh())
 
+	v.add_child(_caption("Tips"))
+	var tips_row := HBoxContainer.new()
+	tips_row.add_theme_constant_override("separation", 4)
+	v.add_child(tips_row)
+	_tips_on_btn = _option(tips_row, "Tips on", func() -> void:
+		_set_tips(true)
+		refresh())
+	_tips_off_btn = _option(tips_row, "Tips off", func() -> void:
+		_set_tips(false)
+		refresh())
+	_option(tips_row, "Replay tips", func() -> void:
+		GameState.onboarding.replay_tips()
+		TipsSettings.set_enabled(true)
+		refresh())
+
 	_hint = Label.new()
 	_hint.custom_minimum_size.x = 220
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -85,6 +102,9 @@ func refresh() -> void:
 	_wide_btn.text = _tag(mode == DisplaySettings.Scale.WIDE, "Wide view")
 	_window_btn.text = _tag(not DisplaySettings.fullscreen, "Windowed")
 	_full_btn.text = _tag(DisplaySettings.fullscreen, "Fullscreen")
+	var tips: bool = GameState.onboarding.tips_enabled
+	_tips_on_btn.text = _tag(tips, "Tips on")
+	_tips_off_btn.text = _tag(not tips, "Tips off")
 	if mode == DisplaySettings.Scale.FIT:
 		_hint.text = "Fit fills the window at any size. Texels can differ by one pixel. F11 toggles fullscreen."
 	elif not DisplaySettings.pixel_active(_win):
@@ -95,6 +115,12 @@ func refresh() -> void:
 		_hint.text = "Wide view shows the whole 840x480 meadow, centred, with black beyond it. F11 toggles fullscreen."
 	else:
 		_hint.text = "Pixel perfect keeps every texel the same size. F11 toggles fullscreen."
+
+
+## Tips off also shows every system at once. Turning them back on hides systems the save has not unlocked yet.
+func _set_tips(on: bool) -> void:
+	GameState.onboarding.tips_enabled = on
+	TipsSettings.set_enabled(on)
 
 
 func _on_window_changed() -> void:

@@ -35,6 +35,7 @@ var play_seconds: float = 0.0
 var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 var relic_drops: int = 0     # relics dropped from presses this save
+var ui_flags: Dictionary = {}  # onboarding: {"unlocked": {id: true}, "seen": {id: true}}. Opaque to the sim, saved with it.
 ## 0 to 1. Walking charges it (feed_momentum), time drains it. Not saved.
 var momentum: float = 0.0
 var critter_active: bool = false
@@ -96,6 +97,7 @@ func new_game() -> void:
 	press_count = 0
 	rebirth_count = 0
 	relic_drops = 0
+	ui_flags = {}
 	momentum = 0.0
 	critter_active = false
 	critter_left = 0.0
@@ -523,6 +525,7 @@ func to_dict() -> Dictionary:
 		"rebirth_count": rebirth_count,
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
+		"ui_flags": ui_flags.duplicate(true),
 		"relics": relics.to_dict(),
 	}
 
@@ -560,6 +563,9 @@ func from_dict(d: Dictionary) -> bool:
 	rebirth_count = int(d.get("rebirth_count", 0))
 	relic_drops = int(d.get("relic_drops", 0))
 	_last_drop_at = float(d.get("last_drop_at", play_seconds))
+	var uf: Variant = d.get("ui_flags", {})
+	if uf is Dictionary:
+		ui_flags = (uf as Dictionary).duplicate(true)
 	var rd: Variant = d.get("relics", {})
 	if rd is Dictionary:
 		relics.from_dict(rd)
