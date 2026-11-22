@@ -16,6 +16,8 @@ var _sprite: Sprite2D
 var _face: StringName = &"front"   # front, side, back
 var _flip: bool = false
 var _squash_left: float = 0.0
+var _step_clock: float = 0.0
+const STEP_INTERVAL: float = 0.25   # seconds between footfalls while walking
 
 const ATLAS: Texture2D = preload("res://assets/art/walker/walker_atlas.png")
 const CELL: int = 64
@@ -69,6 +71,13 @@ func _process(delta: float) -> void:
 		position = Vector2(
 			clampf(position.x + step.x, BOUNDS.position.x, BOUNDS.end.x),
 			clampf(position.y + step.y, BOUNDS.position.y, BOUNDS.end.y))
+	if moving:
+		_step_clock += delta
+		if _step_clock >= STEP_INTERVAL:
+			_step_clock = 0.0
+			Audio.footstep()
+	else:
+		_step_clock = STEP_INTERVAL * 0.5
 	if moving:
 		if absf(dir.x) >= absf(dir.y):
 			_face = &"side"

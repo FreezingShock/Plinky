@@ -88,6 +88,7 @@ func _ready() -> void:
 	bus.zone_entered.connect(_on_zone_entered)
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
+	Audio.start(sim.zone_id)
 
 
 func _process(_delta: float) -> void:
