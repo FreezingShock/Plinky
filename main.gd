@@ -48,6 +48,7 @@ func _ready() -> void:
 	add_child(world)
 	meadow = (load(MEADOW_PATH) as PackedScene).instantiate()
 	world.add_child(meadow)
+	meadow.call("spawn_occluders", world)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
 	var anchors: Node = meadow.get_node("Anchors")
