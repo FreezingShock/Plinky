@@ -73,6 +73,17 @@ func run(t: Object) -> void:
 	sim.step(0.1)
 	t.ok(sim.is_gate_open(&"zone2"), "zone 2 gate opens at 9 slag")
 
+	# A save made in zone 2 loads back into zone 2 with its scene, mask and pads resolvable
+	var saved: Dictionary = sim.to_dict()
+	var fresh: Sim = t.make_sim()
+	t.ok(fresh.from_dict(saved), "zone 2 save loads")
+	t.eq(fresh.zone_id, &"zone2", "loaded save is in zone 2")
+	t.ok(fresh.is_gate_open(&"zone2"), "zone 2 gate stays latched across a save")
+	var lz: ZoneDef = fresh.current_zone()
+	t.ok(lz != null and lz.scene_path != "" and lz.pad_buttons.size() == 3, "loaded zone has its scene and Forge pads")
+	fresh.heat = 0.0
+	t.ok(not fresh.is_hot(), "Heat is not saved")
+
 	# Scene, mask and anchors
 	t.ok(ResourceLoader.exists(z2.scene_path), "zone 2 scene exists")
 	WalkMask.use(z2.walk_mask_path)
