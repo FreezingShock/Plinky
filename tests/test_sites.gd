@@ -1,0 +1,28 @@
+extends RefCounted
+## Footstep surfaces and positional ambience lookups (world/meadow_sites.gd).
+
+func run(t: Object) -> void:
+	var c: Dictionary = MeadowSites.counts()
+	t.ok(bool(c["ground"]), "ground.png loads for surface lookups")
+	t.ok(int(c["wood"]) >= 6 and int(c["water"]) >= 2 and int(c["trees"]) >= 10, "pads, gate, water and trees are read from placements")
+	t.eq(MeadowSites.surface_at(Vector2(204.0, 245.5)), MeadowSites.WOOD, "a pad is wood")
+	t.eq(MeadowSites.surface_at(Vector2(330.0, 93.2)), MeadowSites.WOOD, "the gate is wood")
+	t.eq(MeadowSites.surface_at(Vector2(289.0, 209.0)), MeadowSites.SAND, "the path is sand")
+	t.eq(MeadowSites.surface_at(Vector2(175.0, 175.0)), MeadowSites.GRASS, "open meadow is grass")
+	t.ok(MeadowSites.surface_at(Vector2(-500.0, -500.0)) == MeadowSites.GRASS, "off the map falls back to grass")
+	var shore: float = MeadowSites.water_proximity(Vector2(415.0, 300.0))
+	t.ok(shore > 0.6, "at the lake edge the shore is loud (%.2f)" % shore)
+	t.ok(MeadowSites.water_proximity(Vector2(50.0, 60.0)) < 0.05, "far from water the shore is silent")
+	t.ok(MeadowSites.water_proximity(Vector2(415.0, 300.0)) > MeadowSites.water_proximity(Vector2(415.0, 345.0)), "shore fades with distance")
+	t.ok(MeadowSites.tree_proximity(Vector2(191.0, 175.0)) > 0.3, "under the oaks there is birdsong")
+	t.ok(MeadowSites.tree_proximity(Vector2(620.0, 20.0)) < 0.05, "far from trees there is none")
+	for p: Vector2 in [Vector2(10, 10), Vector2(300, 200), Vector2(415, 258), Vector2(600, 340)]:
+		var w: float = MeadowSites.water_proximity(p)
+		var b: float = MeadowSites.tree_proximity(p)
+		t.ok(w >= 0.0 and w <= 1.0 and b >= 0.0 and b <= 1.0, "proximities stay in 0..1 at %s" % str(p))
+	for s: String in ["grass", "sand", "wood"]:
+		for i in 4:
+			t.ok(ResourceLoader.exists("res://assets/audio/sfx/step_%s_%d.ogg" % [s, i]), "step_%s_%d exists" % [s, i])
+	for i in 5:
+		t.ok(ResourceLoader.exists("res://assets/audio/sfx/bird_%d.ogg" % i), "bird_%d exists" % i)
+	t.ok(ResourceLoader.exists("res://assets/audio/amb/shore_amb.ogg"), "shore loop exists")

@@ -3,7 +3,7 @@
 audio, so there is nothing to license. Output: assets/audio/{sfx,music,amb}/*.ogg (Vorbis, via ffmpeg).
 
     python3 tools/audio/gen_audio.py            # all
-    python3 tools/audio/gen_audio.py sfx        # just sfx (also: music, amb)
+    python3 tools/audio/gen_audio.py sfx        # just sfx (also: music, amb, world)
     python3 tools/audio/gen_audio.py --wav      # keep wav next to ogg (for quick listening)
 
 Style: "soft synth" (sines, light harmonics, gentle reverb). Pitches stay on C major pentatonic so
@@ -241,9 +241,63 @@ def amb():
     out = wind[:n - xf].copy(); out[:xf] = out[:xf] * np.linspace(0, 1, xf) + wind[n - xf:] * np.linspace(1, 0, xf)
     write(f"{ROOT}/amb/quarry_amb.ogg", norm(out, 0.2), q=3)
 
+# ---------------------------------------------------------------- WORLD (footsteps by surface, shore, birds)
+# Own RNG so adding or changing these never shifts the bytes of the sounds above.
+wrng = np.random.default_rng(23112026)
+
+def world():
+    d = os.path.join(ROOT, "sfx")
+    for i in range(4):
+        # Grass: soft low swish, a muffled thud underneath. Quietest of the three.
+        t = t_(0.15)
+        sw = fft_filter(wrng.standard_normal(len(t)), lo=260 + 40 * i, hi=1900 + 200 * i) * np.minimum(t / 0.012, 1) * np.exp(-t / 0.045)
+        th = np.sin(2 * np.pi * (78 + 5 * i) * t) * np.exp(-t / 0.04) * 0.5
+        write(f"{d}/step_grass_{i}.ogg", norm(fade(sw + th, 3), 0.3))
+        # Sand: grainy crunch. Bright band noise broken into a few tiny grains, then a soft thud.
+        t = t_(0.18); x = np.zeros(len(t))
+        for k in range(int(wrng.integers(5, 9))):
+            m = int(wrng.uniform(0.004, 0.011) * SR)
+            g = fft_filter(wrng.standard_normal(m), lo=1500, hi=6500) * np.hanning(m)
+            place(x, g * wrng.uniform(0.5, 1.0), wrng.uniform(0, 0.09))
+        x += fft_filter(wrng.standard_normal(len(t)), lo=500, hi=2600) * np.exp(-t / 0.05) * 0.35
+        x += np.sin(2 * np.pi * (88 + 6 * i) * t) * np.exp(-t / 0.035) * 0.45
+        write(f"{d}/step_sand_{i}.ogg", norm(fade(x, 3), 0.32))
+        # Wood: hollow knock, two resonances from the pentatonic set (G3, D4 area) and a tiny tick.
+        t = t_(0.22)
+        f0 = hz(55 + [0, 2, 4, 2][i])
+        k_ = np.sin(2 * np.pi * f0 * t) * np.exp(-t / 0.07) + 0.45 * np.sin(2 * np.pi * f0 * 2.76 * t) * np.exp(-t / 0.035)
+        k_ += 0.3 * fft_filter(wrng.standard_normal(len(t)), lo=1200, hi=4200) * np.exp(-t / 0.008)
+        write(f"{d}/step_wood_{i}.ogg", norm(fade(k_, 3), 0.38))
+    # Birdsong one-shots: soft sine chirps, five different phrases (played sparsely, random pitch).
+    phrases = [  # (base Hz, notes, gap, glide)
+        (3000, 2, 0.12, 0.30), (2500, 4, 0.09, 0.20), (3600, 3, 0.10, -0.25), (2200, 1, 0.0, 0.45), (3300, 6, 0.07, 0.10)]
+    for i, (base, n, gap, gl) in enumerate(phrases):
+        buf = np.zeros(int(1.2 * SR))
+        for k in range(n):
+            tt = t_(0.1); f = base * (1 + 0.04 * k) * (1 + gl * np.sin(np.pi * tt / 0.1))
+            c = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.sin(np.pi * tt / 0.1) ** 2
+            c += 0.2 * np.sin(2 * np.pi * np.cumsum(f * 2) / SR) * np.sin(np.pi * tt / 0.1) ** 2
+            place(buf, c * (1 - 0.08 * k), 0.02 + k * (gap + 0.1))
+        write(f"{d}/bird_{i}.ogg", norm(reverb(buf, 0.7, 0.2), 0.3))
+    # Shore: 20 s seamless loop of water lapping. Slow swells of low-passed noise plus a few soft bubbles.
+    dur = 20.0; n = int(dur * SR); t = np.arange(n) / SR
+    base = fft_filter(wrng.standard_normal(n), lo=180, hi=1500)
+    swell = np.zeros(n)
+    for c0 in np.arange(0.0, dur, 5.0):
+        c = c0 + wrng.uniform(0.0, 1.2)
+        swell += np.exp(-((t - c) / 1.0) ** 2) * wrng.uniform(0.7, 1.0)
+    swell += 0.25
+    wave = base * swell
+    for _ in range(26):
+        tt = t_(0.09); f = wrng.uniform(500, 1300) * (1 + 0.8 * tt / 0.09)
+        place(wave, np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tt / 0.025) * wrng.uniform(0.02, 0.06) * np.max(np.abs(wave)), wrng.uniform(0, dur - 0.2))
+    xf = int(2 * SR); out = wave[:n - xf].copy(); out[:xf] = out[:xf] * np.linspace(0, 1, xf) + wave[n - xf:] * np.linspace(1, 0, xf)
+    write(f"{ROOT}/amb/shore_amb.ogg", norm(out, 0.2), q=3)
+
 if __name__ == "__main__":
-    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb"]
+    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world"]
     if "sfx" in what: sfx()
     if "music" in what: music_all()
     if "amb" in what: amb()
+    if "world" in what: world()
     print("done ->", os.path.normpath(ROOT))
