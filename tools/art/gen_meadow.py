@@ -90,57 +90,175 @@ for k in range(60):
     if x in bottom and c.o[y, x] == pl: c.put(x, y, 7 if k % 3 else 5, pl)
 
 
-# ---------- back cliff wall: terraced rock with grass-capped ledges + crystals (layout idea from reference) ----------
+# ---------- mountain wall: jagged faceted rock, strata, moss, ivy, waterfall ----------
 top = {}
 for x in range(W):
     ys = np.where(mask[:, x])[0]
     if len(ys): top[x] = ys.min()
-cl = c.new(); STEP = 7
-def cliff_h(x):
-    t = (x - 60) / 520.0
-    if t < 0 or t > 1: return 0
-    env = math.sin(t * math.pi) ** .45
-    return (34 + 36 * vnoise(x, 5, 7, 34) + 10 * math.sin(x * .05)) * env
+cl = c.new()
+rr = random.Random(5)
+cps = [(x, 0) for x in range(30, 640, 34)]
+cps = [(x + rr.randint(-8, 8), 0) for x, _ in cps]
+def env(x):
+    t = (x - 50) / 540.0
+    return 0 if (t < 0 or t > 1) else math.sin(t * math.pi) ** .5
+peaks = [(x, (22 + rr.random() * 36) * env(x)) for x, _ in cps]
+def ridge(x):
+    for (x0, h0), (x1, h1) in zip(peaks, peaks[1:]):
+        if x0 <= x <= x1: return h0 + (h1 - h0) * (x - x0) / max(1, x1 - x0)
+    return 0
+WF_X = 470                      # waterfall column
+foot_shadow = []
 for x, yt in top.items():
-    h = int(cliff_h(x) // STEP) * STEP
-    if h <= 0: continue
+    h = int(ridge(x))
+    if h <= 2: continue
+    sl = ridge(x + 2) - ridge(x - 2)
+    lit = sl >= 0
+    band0 = (x >> 4) * 3
     for k in range(1, h + 1):
         y = yt + 2 - k
         if y < 0: break
-        ledge = (k % STEP) >= STEP - 2 and k < h
-        cap = k > h - 3
-        if cap: v = dith([3, 4], .45 + (hsh(x, y, 3) - .5) * .5, x, y)
-        elif ledge: v = dith([2, 3], .4 + (hsh(x, y, 4) - .5) * .5, x, y)
-        else:
-            l = .22 + (.2 if x < CX else 0) + ((k // 3 + (x >> 3)) & 1) * .12 + (hsh(x, y, 5) - .5) * .35 + (vnoise(x, y, 6, 9) - .5) * .2
-            v = dith([1, 2, 6], l, x, y)
+        band = (k + band0 * 2) // 7
+        ledge = (k + band0 * 2) % 7 == 0
+        l = (.62 if lit else .30) + ((band * 37) % 5) * .035 + (hsh(x, y, 5) - .5) * .30 + (vnoise(x, y, 6, 7) - .5) * .25 - (1 - k / h) * .10
+        v = dith([1, 2, 6, 5], l, x, y)
+        if ledge: v = 1 if hsh(x, band, 9) > .25 else v
+        if hsh(x >> 1, band, 11) > .93 and (k + band0 * 2) % 7 in (1, 2, 3): v = 1       # vertical cracks
+        if (k > h - 2) : v = dith([3, 4], .5 + (hsh(x, y, 3) - .5) * .5, x, y) if hsh(x >> 2, 4, 5) > .35 else v   # moss cap
+        if ledge and hsh(x >> 1, band, 12) > .55: v = dith([3, 4], .5 + (hsh(x, y, 13) - .5) * .6, x, y)           # mossy ledge
         c.put(x, y, v, cl)
-# crystals at the cliff foot
-def crystal(cx, base, hgt, w):
-    cid = c.new()
-    c.poly([(cx - w, base), (cx - w // 2, base - hgt * .55), (cx, base - hgt), (cx + w // 2, base - hgt * .6), (cx + w, base)],
-           lambda x, y: dith([2, 4, 5, 7], .25 + (cx - x) * .05 * -1 + (base - y) / hgt * .35 + (hsh(x, y, 8) - .5) * .2, x, y), cid)
-for (cx_, b_, h_, w_) in [(130, 168, 30, 7), (141, 170, 20, 5), (120, 172, 16, 4), (545, 118, 26, 6), (557, 120, 16, 4)]:
-    crystal(cx_, b_, h_, w_)
+    # ivy / moss drips
+    if hsh(x, 14, 3) > .93:
+        for k in range(h - 1, max(1, h - 4 - int(hsh(x, 15) * 14)), -1):
+            y = yt + 2 - k
+            if y >= 0: c.put(x, y, 2 if k % 3 else 3, cl)
+    for k in range(1, 5):      # soft shadow where the wall meets the grass
+        for xx in (x,):
+            y = yt + 2 + k
+            if 0 <= y < H and mask[y, xx] and (bay(xx, y) < .62 - k * .12): foot_shadow.append((xx, y))
+for (x, y) in foot_shadow:
+    if c.o[y, x] == 1 and c.i[y, x] in (3, 4): c.put(x, y, c.i[y, x] - 1, 1)
+# waterfall: bright dithered streaks down the face
+wf_top = None
+for x in range(WF_X - 5, WF_X + 6):
+    if x in top:
+        h = int(ridge(x)); yt = top[x]
+        for k in range(2, h + 1):
+            y = yt + 2 - k
+            if y < 0: break
+            w = 5 - abs(x - WF_X) + (1 if hsh(x, y >> 2, 20) > .6 else 0)
+            if abs(x - WF_X) <= w - 1 or abs(x - WF_X) <= 2:
+                f = ((y * 2 + (x * 3) + (y >> 3) * 5) % 9) / 9.0
+                c.put(x, y, 7 if f > .72 else 4 if f > .35 else 3, cl)
+        for k in range(0, 6):      # splash foam at the foot
+            for dx in range(-7, 8):
+                xx, yy = WF_X + dx, yt + 2 + k // 2
+                if abs(dx) < 7 - k and bay(xx, yy) < .55 and 0 <= yy < H and c.o[yy, xx] == 1: c.put(xx, yy, 7, 1)
 
+# crystals: faceted prisms, 3 visible faces with ink between them
+def crystal(cx, base, hgt, w, lean=0):
+    tx = cx + lean; tipy = base - hgt; sh = base - hgt * .52
+    c.poly([(cx - w, base), (cx - w, sh), (tx, tipy), (tx, base + 1)], lambda x, y: dith([4, 5, 5, 7], .45 + (base - y) / hgt * .25 + (x - cx + w) * -.02 + (hsh(x, y, 8) - .5) * .12, x, y))
+    c.poly([(tx + .5, base + 1), (tx + .5, tipy), (cx + w, sh), (cx + w, base)], lambda x, y: dith([1, 2, 3], .25 + (base - y) / hgt * .35 + (hsh(x, y, 9) - .5) * .12, x, y))
+    for k in range(3): c.px(cx - w + 1, int(sh) + 2 + k * 2, 7)          # glint on the lit face
+CRYSTALS = [(105, 186, 22, 6, -1), (116, 190, 34, 8, 1), (130, 189, 16, 5, 2), (142, 192, 24, 6, -1),
+            (420, 232, 20, 5, 1), (432, 235, 32, 7, -1), (446, 234, 14, 4, 2),
+            (262, 96, 18, 5, 0), (274, 98, 26, 6, 1)]
+for (cx_, b_, h_, w_, l_) in CRYSTALS: crystal(cx_, b_, h_, w_, l_)
+for (cx_, b_, h_, w_, l_) in CRYSTALS:          # tiny sparkles
+    c.px(cx_ + 6, b_ - h_ - 3, 7); c.px(cx_ + 5, b_ - h_ - 2, 5); c.px(cx_ + 7, b_ - h_ - 2, 5)
 
-# ---------- water cove: deep teal with stepped shimmer, sand shore ----------
-wid = c.new()
+# ---------- water: cove (cut from the island), pond, stream, with depth bands, shore, foam, lily pads, reeds ----------
+STREAM = [(WF_X, 112), (484, 134), (468, 160), (486, 192), (470, 222), (478, 250)]
+def stream_d(x, y):
+    best = 1e9
+    for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
+        vx, vy = x1 - x0, (y1 - y0) * 2; wx, wy = x - x0, (y - y0) * 2
+        t = max(0, min(1, (wx * vx + wy * vy) / (vx * vx + vy * vy)))
+        best = min(best, math.hypot(wx - vx * t, wy - vy * t))
+    return best
+POND = lambda x, y: ((x - 196) / 34.0) ** 2 + ((y - 206) / 13.0) ** 2 + (hsh(x >> 1, y >> 1, 77) - .5) * .25 < 1
+STRM = lambda x, y: y > 112 and stream_d(x, y) < 5.5 + math.sin(y * .2) * 1.2 and mask[y, x]
+wm = np.zeros((H, W), bool)
 for y in range(H):
     for x in range(W):
-        if WATER(x, y) and c.i[y, x] < 0 or (WATER(x, y) and c.o[y, x] == 1):
-            l = .30 + (y - 240) / 160 * .15 + (vnoise(x, y, 31, 14) - .5) * .35
-            v = dith([1, 2, 2, 3], l, x, y)
-            if hsh(x >> 1, y, 40) > .97 and (y & 1): v = 4
+        if WATER(x, y) or (mask[y, x] and (POND(x, y) or STRM(x, y))): wm[y, x] = True
+def shift(a, dx, dy):
+    r = np.zeros_like(a)
+    ys, xs = slice(max(dy, 0), H + min(dy, 0)), slice(max(dx, 0), W + min(dx, 0))
+    yd, xd = slice(max(-dy, 0), H + min(-dy, 0)), slice(max(-dx, 0), W + min(-dx, 0))
+    r[ys, xs] = a[yd, xd]; return r
+NB = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+land = mask & ~wm
+# depth into water (erosion count), distance of land from water
+depth = np.zeros((H, W), int); cur = wm.copy()
+for k in range(1, 10):
+    nxt = cur.copy()
+    for dx, dy in NB: nxt &= shift(cur, dx, dy)
+    depth[nxt] = k; cur = nxt
+shoredist = np.full((H, W), 99); cur = wm.copy()
+for k in range(1, 6):
+    nxt = cur.copy()
+    for dx, dy in NB: nxt |= shift(cur, dx, dy)
+    shoredist[nxt & ~cur & land] = k; cur = nxt
+for y in range(H):
+    for x in range(W):
+        if not wm[y, x]: continue
+        d = depth[y, x]
+        l = .38 + (vnoise(x, y, 31, 16) - .5) * .3 + d * .06
+        if d >= 1: l = .50 - min(d, 7) * .045 + (vnoise(x, y, 33, 12) - .5) * .25
+        v = dith([1, 2, 2, 3, 3], max(0, min(.99, 1 - (min(d, 8) / 8.0) * .75 + (vnoise(x, y, 31, 14) - .5) * .3 - .15)), x, y)
+        if d <= 1 and (x + y) % 2 == 0 and hsh(x, y, 61) > .35: v = 7       # foam line
+        elif d == 2 and bay(x, y) < .25: v = 4
+        # ripples / glints, stepped
+        if d >= 2 and y % 3 == 0 and hsh(x >> 2, y, 40) > .94: v = 4
+        if d >= 3 and hsh(x >> 1, y, 41) > .985: v = 7
+        c.put(x, y, v, 1)
+# sandy shoreline band + dark wet edge
+for y in range(H):
+    for x in range(W):
+        sd = shoredist[y, x]
+        if sd <= 4 and land[y, x] and c.o[y, x] in (1, cl) and c.o[y, x] == 1:
+            if sd == 1: v = dith([6, 5], .45 + (hsh(x, y, 42) - .5) * .5, x, y)
+            elif sd == 2: v = dith([6, 5, 5], .55 + (hsh(x, y, 43) - .5) * .6, x, y)
+            elif sd == 3: v = 5 if hsh(x, y, 44) > .62 else c.i[y, x]
+            else: v = 5 if hsh(x, y, 45) > .9 else c.i[y, x]
             c.put(x, y, v, 1)
-for y in range(H):
-    for x in range(W):
-        if mask[y, x] and c.o[y, x] == 1 and any(WATER(x + dx, y + dy) for dx, dy in ((2, 0), (-2, 0), (0, 2), (0, -2), (3, 3), (-3, -3))):
-            c.put(x, y, dith([5, 7], .45 + (hsh(x, y, 41) - .5) * .5, x, y), 1)
-for (lx, ly) in [(448, 262), (500, 280), (520, 258), (470, 288)]:      # lily pads
-    for dx in range(-2, 3):
-        for dy in range(-1, 2):
-            if WATER(lx + dx, ly + dy) and abs(dx) + abs(dy) * 2 < 4: c.put(lx + dx, ly + dy, 3, 1)
+# pebbles on the shore
+for _ in range(120):
+    x, y = rnd.randrange(W), rnd.randrange(H)
+    if 1 <= shoredist[y, x] <= 3 and land[y, x] and c.o[y, x] == 1: c.put(x, y, 7 if hsh(x, y, 46) > .5 else 6, 1); c.put(x + 1, y, 5, 1)
+# lily pads (round pad, notch, highlight) with a few flowers
+def lily(cx, cy, r, flower=False, seed=0):
+    ang = hsh(cx, cy, seed) * 6.283
+    for dy in range(-r, r + 1):
+        for dx in range(-2 * r, 2 * r + 1):
+            if (dx / (2.0 * r)) ** 2 + (dy / float(r)) ** 2 > 1: continue
+            x, y = cx + dx, cy + dy
+            if not (0 <= x < W and 0 <= y < H) or not wm[y, x] or depth[y, x] < 2: continue
+            a = math.atan2(dy * 2, dx)
+            if abs((a - ang + 3.14159) % 6.28318 - 3.14159) < .22 and dx * dx + dy * dy > 1: continue     # notch
+            edge = (dx / (2.0 * r)) ** 2 + (dy / float(r)) ** 2 > .62
+            c.put(x, y, 2 if edge else (4 if (dx + dy * 2) < -r else 3), 1)
+    if flower and 0 <= cx < W:
+        for (dx, dy, v) in ((0, -1, 5), (-1, 0, 5), (1, 0, 5), (0, 1, 5), (0, 0, 7), (-1, -1, 6), (1, -1, 6)):
+            if 0 <= cx + dx < W and 0 <= cy + dy < H and wm[cy + dy, cx + dx]: c.put(cx + dx, cy + dy, v, 1)
+lr = random.Random(21)
+for _ in range(100):
+    x, y = lr.randint(380, 600), lr.randint(225, 330)
+    if wm[y, x] and depth[y, x] >= 3 and len([1 for p in range(0)]) == 0: lily(x, y, lr.choice((2, 2, 3, 3, 4)), lr.random() < .22, lr.randint(1, 9))
+for _ in range(40):
+    x, y = lr.randint(160, 232), lr.randint(194, 218)
+    if wm[y, x] and depth[y, x] >= 2: lily(x, y, lr.choice((2, 2, 3)), lr.random() < .25, lr.randint(1, 9))
+for _ in range(40):
+    x, y = lr.randint(440, 500), lr.randint(128, 250)
+    if wm[y, x] and depth[y, x] >= 2: lily(x, y, 2, lr.random() < .15, lr.randint(1, 9))
+# water rocks and reeds at the bank (reeds drawn after props, see decals)
+reed_spots = []
+for _ in range(900):
+    x, y = rnd.randrange(W), rnd.randrange(H)
+    if shoredist[y, x] == 2 and land[y, x] and not on_path(x, y, 6): reed_spots.append((x, y))
+WATERMASK = wm
 
 # ---------- helpers: sprites (tile ground patched out) ----------
 G.tile_ground = lambda *a, **k: None
@@ -190,7 +308,7 @@ def flower(t, cx, cy, a, b):
     fid = t.new(); t.put(cx, cy + 1, 2, fid); t.put(cx, cy + 2, 2, fid)
     t.put(cx - 1, cy, a, fid); t.put(cx + 1, cy, a, fid); t.put(cx, cy - 1, a, fid); t.put(cx, cy, b, fid)
 COLS = [(5, 6), (7, 5), (6, 5), (5, 7), (7, 6)]
-def clear(x, y, grow=0): return 0 <= x < W and 0 <= y < H and mask[y, x] and not on_path(x, y, grow) and (abs(x - CX) / RX) ** 2 + (abs(y - CY) / RY) ** 2 < .93
+def clear(x, y, grow=0): return 0 <= x < W and 0 <= y < H and mask[y, x] and not WATERMASK[y, x] and shoredist[y, x] > 5 and not on_path(x, y, grow) and (abs(x - CX) / RX) ** 2 + (abs(y - CY) / RY) ** 2 < .93
 
 # ---------- hand-composed layout ----------
 S = []   # (kind, x, y, flip)
@@ -216,7 +334,7 @@ PADS = [(204, 248, 'ready'), (258, 224, 'ready'), (338, 206, 'ready'), (380, 168
 # landmarks
 add('sign', 130, 252); add('lantern', 300, 222); add('lantern', 408, 176)
 add('gate', 330, 100, False)      # far end of the path, centred against the cliff
-add('shrine', 566, 176)
+add('shrine', 568, 190)
 
 kinds = dict(
     oak=G.tree_oak, pine=G.tree_pine, pine_tall=G.tree_pine, pine_small=G.tree_pine, oak_small=G.tree_oak, bush=G.bush, stump=G.stump, sign=G.signpost, lantern=G.lantern,
@@ -246,7 +364,8 @@ for (px, py, _) in PADS: scatter_cluster(px, py, 6, 24, 'tuft'); scatter_cluster
 
 # draw order: shadows (ground-level), decals, pads, then y-sorted bodies
 for (kind, x, y, fl, m) in S:
-    if not (0 <= x < W and 0 <= y < H and mask[y, x]): continue
+    if kind != 'gate' and x in top: y = int(max(y, top[x] + {'oak': 46, 'oak_small': 34, 'pine': 56, 'pine_tall': 70, 'pine_small': 40, 'bush': 18}.get(kind, 20)))      # nothing stands on the mountain wall
+    if not (0 <= x < W and 0 <= y < H and mask[y, x]) or WATERMASK[y, x] or shoredist[y, x] <= 3: continue
     if kind == 'rock_cl':
         for dx, dy, k2 in ((0, 0, 'rock_big'), (-14, 4, 'rock_s'), (11, 5, 'rock_s')): place(k2, kinds[k2], x + dx, y + dy, fl)
     else: place(kind, kinds[kind], x, y, fl)
@@ -266,6 +385,14 @@ for (y, kind, x, yy) in sorted(decals):
                 X, Y = x + tx - 20, yy + ty - 30
                 if 0 <= X < W and 0 <= Y < H and c.o[Y, X] == 1: c.put(X, Y, int(t.i[ty, tx]), 1)
 blit(layer_body)
+rrd = random.Random(8)
+for (x, y) in reed_spots:
+    if rrd.random() > .22 or c.o[y, x] != 1: continue
+    for dx in (-2, 0, 2):
+        h = rrd.randint(5, 10); xx = x + dx
+        for k in range(h):
+            if 0 <= xx < W and 0 <= y - k < H and c.o[y - k, xx] in (1, 0): c.put(xx + (1 if k > h * .7 else 0), y - k, 2 if k < h - 3 else 3, 1)
+        if h > 6: c.put(xx + 1, y - h, 6, 1); c.put(xx + 1, y - h - 1, 6, 1)
 c.outline()
 
 # ---------- vignette-free output ----------

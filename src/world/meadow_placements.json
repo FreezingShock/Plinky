@@ -34,7 +34,7 @@
   {
    "name": "pine_tall",
    "x": 178,
-   "y": 128,
+   "y": 155,
    "flip": false
   },
   {
@@ -76,7 +76,7 @@
   {
    "name": "pine",
    "x": 132,
-   "y": 118,
+   "y": 154,
    "flip": false
   },
   {
@@ -86,21 +86,45 @@
    "flip": false
   },
   {
+   "name": "oak",
+   "x": 520,
+   "y": 164,
+   "flip": false
+  },
+  {
+   "name": "pine",
+   "x": 556,
+   "y": 189,
+   "flip": false
+  },
+  {
    "name": "bush",
    "x": 540,
-   "y": 136,
+   "y": 143,
+   "flip": false
+  },
+  {
+   "name": "pine_tall",
+   "x": 494,
+   "y": 181,
    "flip": false
   },
   {
    "name": "rock_s",
    "x": 566,
-   "y": 154,
+   "y": 159,
    "flip": false
   },
   {
    "name": "oak",
    "x": 420,
-   "y": 104,
+   "y": 135,
+   "flip": false
+  },
+  {
+   "name": "pine_tall",
+   "x": 452,
+   "y": 170,
    "flip": false
   },
   {
@@ -155,12 +179,6 @@
    "name": "bush",
    "x": 524,
    "y": 224,
-   "flip": false
-  },
-  {
-   "name": "rock_s",
-   "x": 508,
-   "y": 236,
    "flip": false
   },
   {
@@ -267,8 +285,8 @@
   },
   {
    "name": "shrine",
-   "x": 566,
-   "y": 176,
+   "x": 568,
+   "y": 190,
    "flip": false
   },
   {
