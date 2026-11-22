@@ -103,7 +103,7 @@ func _update_polish(delta: float, manual: bool) -> void:
 		_still = 0.0
 		return
 	var want: Vector2 = look_ahead_goal(step, delta, moving, LOOK_AHEAD)
-	_look = _look.lerp(want, 1.0 - exp(-LOOK_RATE * delta))
+	_look = lean_step(_look, want, delta)
 	_punch = _punch.lerp(Vector2.ZERO, 1.0 - exp(-PUNCH_DECAY * delta))
 	_still = 0.0 if (moving or manual) else _still + delta
 
@@ -124,6 +124,11 @@ static func look_ahead_goal(step: Vector2, delta: float, moving: bool, reach: fl
 	if not moving or delta <= 0.0 or step.length_squared() < 0.0001:
 		return Vector2.ZERO
 	return step.normalized() * reach
+
+
+## One eased step of the lean toward its goal. Exponential, so it never overshoots.
+static func lean_step(cur: Vector2, want: Vector2, delta: float) -> Vector2:
+	return cur.lerp(want, 1.0 - exp(-LOOK_RATE * delta))
 
 
 ## Slow two-axis sway, `weight` 0..1 fades it in. Zero at weight 0.

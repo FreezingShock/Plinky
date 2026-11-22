@@ -6,6 +6,16 @@ func run(t: Object) -> void:
 	t.eq(WorldCamera.look_ahead_goal(Vector2(2, 0), 0.016, true, reach), Vector2(reach, 0), "lean along the walk direction")
 	t.eq(WorldCamera.look_ahead_goal(Vector2(2, 0), 0.016, false, reach), Vector2.ZERO, "no lean when standing")
 	t.eq(WorldCamera.look_ahead_goal(Vector2.ZERO, 0.016, true, reach), Vector2.ZERO, "no lean without a step")
+	# Lean eases up to its reach without overshooting, and back to zero within 2 s of stopping.
+	var lean: Vector2 = Vector2.ZERO
+	var peak: float = 0.0
+	for i in range(0, 180):
+		lean = WorldCamera.lean_step(lean, Vector2(reach, 0), 1.0 / 60.0)
+		peak = maxf(peak, lean.x)
+	t.ok(peak <= reach + 0.001, "lean never overshoots its reach")
+	for i in range(0, 120):
+		lean = WorldCamera.lean_step(lean, Vector2.ZERO, 1.0 / 60.0)
+	t.ok(lean.length() < 0.5, "lean is back to zero within 2 s of stopping")
 	t.eq(WorldCamera.drift_offset(5.0, 0.0), Vector2.ZERO, "drift is zero before it fades in")
 	var worst: float = 0.0
 	for i in range(0, 600):
