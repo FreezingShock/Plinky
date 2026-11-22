@@ -1,5 +1,5 @@
-extends Node
-## Demo / screenshot scene script. Attach to a Node in an empty scene. Builds a 12x12 zone on a plinth,
+extends Control
+## Demo / screenshot scene script. Attach to a Control (full rect) in an empty scene; PixelViewport sizes itself from its parent. Builds a 12x12 zone on a plinth,
 ## a tree, a pad, and a walker. Space = press ripple, 1/2/3 = zone palettes, I = invert, A = ASCII.
 
 const T := 1.41421356   # world size of a 32x16 iso tile
@@ -10,6 +10,7 @@ var fx: Node
 var _t := 0.0
 
 func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pv = PixelViewport.new()
 	add_child(pv)
 	await get_tree().process_frame

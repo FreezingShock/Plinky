@@ -24,9 +24,11 @@ func _init() -> void:
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE  # world input is read via _unhandled_input; a STOP control here would eat every click
 	var bg := ColorRect.new()
 	bg.color = Color.BLACK
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	viewport = SubViewport.new()
@@ -49,9 +51,11 @@ func _ready() -> void:
 
 	_clip = Control.new()
 	_clip.clip_contents = true
+	_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_clip)
 	post = ColorRect.new()
 	post.size = Vector2(VIEW)
+	post.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	post_material = ShaderMaterial.new()
 	post_material.shader = POST_SHADER
 	post_material.set_shader_parameter("world", viewport.get_texture())

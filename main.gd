@@ -23,6 +23,7 @@ var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
