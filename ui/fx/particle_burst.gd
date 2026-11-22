@@ -10,7 +10,7 @@ static func spawn(parent: Node, pos: Vector2, colors: Array[Color], count := -1)
 	b.position = FxConfig.snap(pos)
 	b.z_index = 90
 	parent.add_child(b)
-	var n := count if count > 0 else randi_range(FxConfig.PARTICLES_MIN, FxConfig.PARTICLES_MAX)
+	var n: int = GraphicsQuality.particle_count(count if count > 0 else randi_range(FxConfig.PARTICLES_MIN, FxConfig.PARTICLES_MAX))
 	for i in n:
 		var a := randf() * TAU
 		var s := randf_range(40.0, 110.0)

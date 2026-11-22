@@ -1,0 +1,101 @@
+extends SceneTree
+## Frame-time benchmark of the real main scene. Per graphics quality level and phase it logs average, p95, p99
+## and worst frame time, fps, draw calls, objects and node count, then writes shots/bench.json.
+##
+## On real hardware (what the target is judged on; a window, vsync off so the numbers are true cost):
+##   godot --path . --import                              (once, to refresh the class cache)
+##   godot --path . --script tools/bench.gd               (all three levels)
+##   godot --path . --script tools/bench.gd -- --quality=low --frames=600
+## Headless (no GPU: draw calls, objects and VRAM read 0, frame time is script and engine overhead only,
+## still useful to catch a script regression):
+##   godot --headless --path . --script tools/bench.gd -- --quality=high
+## Phases: idle (just the world life), presses (a pad press every 6 frames: ripples, popups, particles),
+## zoom4 (idle at 4x zoom, the camera's closest level).
+
+const WARMUP_FRAMES: int = 90
+const DEFAULT_FRAMES: int = 300
+const PRESS_EVERY: int = 6
+
+var frames: int = DEFAULT_FRAMES
+var results: Array[Dictionary] = []
+
+
+func _init() -> void:
+	await process_frame  # autoloads register after the first frame
+	var levels: Array[int] = [GraphicsQuality.Level.LOW, GraphicsQuality.Level.MEDIUM, GraphicsQuality.Level.HIGH]
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("--frames="):
+			frames = maxi(30, int(a.trim_prefix("--frames=")))
+		elif a.begins_with("--quality="):
+			var q: int = GraphicsQuality.parse(a.trim_prefix("--quality="))
+			if q >= 0:
+				levels = [q]
+	# True cost, not a vsync-clamped 16.7 ms.
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+
+	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main  # Juice parents its popup layer to the current scene
+	await _frames(WARMUP_FRAMES)
+
+	for level: int in levels:
+		GraphicsQuality.set_level(level, false)
+		await _frames(30)  # let the level take effect
+		results.append(await _phase(level, "idle", main, false, 2))
+		results.append(await _phase(level, "presses", main, true, 2))
+		results.append(await _phase(level, "zoom4", main, false, 4))
+	_report()
+	quit(0)
+
+
+func _frames(n: int) -> void:
+	for i: int in n:
+		await process_frame
+
+
+func _phase(level: int, phase: String, main: Node, press: bool, zoom: int) -> Dictionary:
+	var cam: WorldCamera = main.get("camera") as WorldCamera
+	if cam != null and cam.zoom_level != zoom:
+		cam.zoom_step(zoom - cam.zoom_level, cam.frame * 0.5)
+	var pad_ids: Array = (main.get("pads") as Dictionary).keys()
+	var stats := PerfStats.new(frames)
+	var draw_calls: int = 0
+	var objects: int = 0
+	var nodes: int = 0
+	var last: int = Time.get_ticks_usec()
+	for i: int in frames:
+		if press and not pad_ids.is_empty() and i % PRESS_EVERY == 0:
+			get_root().get_node("EventBus").button_pressed.emit(pad_ids[(i / PRESS_EVERY) % pad_ids.size()], Vector3.ZERO, BigNum.one(), i % 4 == 0)
+		await process_frame
+		var now: int = Time.get_ticks_usec()
+		stats.push(float(now - last) / 1000.0)
+		last = now
+		var c: Dictionary = PerfStats.counters()
+		draw_calls = maxi(draw_calls, int(c.draw_calls))
+		objects = maxi(objects, int(c.objects))
+		nodes = maxi(nodes, int(c.nodes))
+	var s: Dictionary = stats.summary()
+	s["quality"] = GraphicsQuality.LABELS[level]
+	s["phase"] = phase
+	s["draw_calls_max"] = draw_calls
+	s["objects_max"] = objects
+	s["nodes_max"] = nodes
+	return s
+
+
+func _report() -> void:
+	print("quality  phase    fps    avg ms  p95    p99    max    >16.7ms  draws  objs  nodes")
+	for r: Dictionary in results:
+		print("%-8s %-8s %-6d %-7.2f %-6.2f %-6.2f %-6.2f %-8s %-6d %-5d %d" % [
+			r.quality, r.phase, roundi(float(r.fps)), float(r.avg), float(r.p95), float(r.p99), float(r.max),
+			"%d%%" % roundi(float(r.over_budget) * 100.0), int(r.draw_calls_max), int(r.objects_max), int(r.nodes_max)])
+	var out_dir: String = ProjectSettings.globalize_path("res://shots")
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var f: FileAccess = FileAccess.open(out_dir + "/bench.json", FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify({
+			"date": Time.get_datetime_string_from_system(), "gpu": RenderingServer.get_video_adapter_name(),
+			"window": DisplayServer.window_get_size(), "headless": DisplayServer.get_name() == "headless",
+			"results": results}, "\t"))
+		print("wrote ", out_dir, "/bench.json")

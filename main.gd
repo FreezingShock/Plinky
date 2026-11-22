@@ -73,6 +73,7 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	PerfOverlay.attach(self)  # F3 frame-time overlay (ui/perf_overlay.gd)
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
 
 	# 3. Juice (autoload) gets its targets.
@@ -103,7 +104,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_layout_frame()
-	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	var mult: float = sim.get_stat(&"mult").to_float() + 1.0
+	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
+		pad_glow.multiplier = mult
 	_update_tooltip()
 
 

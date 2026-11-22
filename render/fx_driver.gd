@@ -18,6 +18,9 @@ var _age := PackedFloat32Array()
 var _dur := PackedFloat32Array()
 var _scale := PackedFloat32Array()
 var _t := 0.0
+var _arr := PackedVector4Array()   # reused each frame, so the ripple upload allocates nothing
+var _uploaded_idle := false        # true once an all-zero ripple array is on the GPU side
+var _shimmer_sent := -1.0
 
 func _init() -> void:
 	RenderGlobals.ensure()
@@ -81,16 +84,25 @@ func _process(delta: float) -> void:
 	RenderingServer.global_shader_parameter_set(&"fx_time", _t)
 	if pv == null:
 		return
-	var arr := PackedVector4Array()
+	var active := false
+	if _arr.size() != MAX_RIPPLES:
+		_arr.resize(MAX_RIPPLES)
 	for i in MAX_RIPPLES:
 		if _scale[i] > 0.0:
+			active = true
 			_age[i] += delta
 			if _age[i] >= _dur[i]:
 				_scale[i] = 0.0
 		var p := clampf(_age[i] / _dur[i], 0.0, 1.0)
-		arr.append(Vector4(_pos[i].x, _pos[i].y, p, _scale[i]))
-	pv.post_material.set_shader_parameter("ripples", arr)
-	pv.post_material.set_shader_parameter("shimmer_step", floorf(_t * SHIMMER_FPS))
+		_arr[i] = Vector4(_pos[i].x, _pos[i].y, p, _scale[i])
+	# With no ripple alive the shader ignores the array (w = 0), so upload it once and then leave it alone.
+	if active or not _uploaded_idle:
+		pv.post_material.set_shader_parameter("ripples", _arr)
+		_uploaded_idle = not active
+	var step := floorf(_t * SHIMMER_FPS)
+	if step != _shimmer_sent:
+		_shimmer_sent = step
+		pv.post_material.set_shader_parameter("shimmer_step", step)
 
 func _on_button_pressed(_id: StringName, world_pos: Vector3, _gain: Variant, _crit: bool) -> void:
 	spawn_ripple(world_pos)

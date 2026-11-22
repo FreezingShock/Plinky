@@ -18,6 +18,7 @@ var post: ColorRect
 var post_material: ShaderMaterial
 var scale_factor: int = 1
 var _clip: Control
+var _last_origin: Vector2i = Vector2i(-99999, -99999)
 
 func _init() -> void:
 	RenderGlobals.ensure()
@@ -45,6 +46,10 @@ func _ready() -> void:
 	world_root = Node3D.new()
 	world_root.name = "WorldRoot"
 	viewport.add_child(world_root)
+	# While the 3D world is empty (the meadow is baked 2D art for now) the viewport shows the same blank frame
+	# every time, so render it once. The first 3D child turns per-frame rendering back on.
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	world_root.child_entered_tree.connect(_on_world_child)
 	if camera == null:
 		camera = IsoCamera.new()
 	viewport.add_child(camera)
@@ -65,6 +70,9 @@ func _ready() -> void:
 	_clip.add_child(post)
 	_layout()
 
+func _on_world_child(_n: Node) -> void:
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+
 func _process(_delta: float) -> void:
 	_layout()
 
@@ -83,4 +91,7 @@ func _layout() -> void:
 	var fill: Vector2 = size / Vector2(BASE)
 	post.scale = fill
 	post.position = (camera.frac_shift + shake - Vector2.ONE) * fill
-	post_material.set_shader_parameter("dither_origin", Vector2i(camera.snap_texels.x, -camera.snap_texels.y))
+	var origin := Vector2i(camera.snap_texels.x, -camera.snap_texels.y)
+	if origin != _last_origin:  # only when the camera crossed a texel
+		_last_origin = origin
+		post_material.set_shader_parameter("dither_origin", origin)

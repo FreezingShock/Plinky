@@ -1,0 +1,119 @@
+class_name GraphicsQuality
+extends RefCounted
+## Graphics quality: Low, Medium or High. One static setting that the cost-scaled systems read each time they
+## step (world life density and step rate, particle counts, culling margin). It never touches palettes,
+## dither, outlines or colours, so every level has the same look; the lower ones show fewer and slower
+## ambient details. No autoload references, so it loads in headless tests.
+##
+## Settings thread: call GraphicsQuality.set_level(Level.LOW / MEDIUM / HIGH) and show GraphicsQuality.LABELS.
+## Saved to user://graphics.cfg (its own file, so display settings saves never overwrite it).
+## Launch override for benchmarks: `-- --quality=low` (see from_args and tools/bench.gd).
+
+enum Level { LOW, MEDIUM, HIGH }
+
+const LABELS: Array[String] = ["Low", "Medium", "High"]
+const SECTION: String = "graphics"
+
+## One entry per Level (LOW, MEDIUM, HIGH).
+const LIFE_DENSITY: Array[float] = [0.4, 0.7, 1.0]          # share of fireflies and pollen drawn
+const LIFE_STEP: Array[float] = [1.0 / 8.0, 1.0 / 10.0, 1.0 / 12.0]  # seconds per LifeAir redraw
+const SWAY_STEP: Array[float] = [1.0 / 4.0, 1.0 / 5.0, 1.0 / 6.0]    # seconds per LifeGround redraw
+const SWAY_STRIDE: Array[int] = [2, 1, 1]                   # draw every Nth grass tip
+const PARTICLE_SCALE: Array[float] = [0.5, 0.75, 1.0]       # share of each burst's particles
+const CULL_MARGIN: float = 24.0                             # texels beyond the view still drawn, so edges never pop
+
+static var path: String = "user://graphics.cfg"
+static var level: int = Level.HIGH
+static var _loaded: bool = false
+
+
+## Level for "low", "med", "medium", "high" (any case) or "0", "1", "2". -1 if it is none of those.
+static func parse(text: String) -> int:
+	match text.strip_edges().to_lower():
+		"low", "0":
+			return Level.LOW
+		"med", "medium", "1":
+			return Level.MEDIUM
+		"high", "2":
+			return Level.HIGH
+	return -1
+
+
+static func label() -> String:
+	return LABELS[level]
+
+
+static func load_settings() -> void:
+	if _loaded:
+		return
+	_loaded = true
+	var cfg := ConfigFile.new()
+	if cfg.load(path) != OK:
+		return
+	level = clampi(int(cfg.get_value(SECTION, "level", Level.HIGH)), Level.LOW, Level.HIGH)
+
+
+static func save_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value(SECTION, "level", level)
+	cfg.save(path)
+
+
+## Set and (by default) save the level. Out-of-range values clamp.
+static func set_level(new_level: int, save: bool = true) -> void:
+	_loaded = true
+	level = clampi(new_level, Level.LOW, Level.HIGH)
+	if save:
+		save_settings()
+
+
+## Applies `--quality=low|medium|high` from the arguments, without saving. Returns true if one was found.
+static func from_args(args: PackedStringArray) -> bool:
+	for a: String in args:
+		if a.begins_with("--quality="):
+			var parsed: int = parse(a.trim_prefix("--quality="))
+			if parsed >= 0:
+				set_level(parsed, false)
+				return true
+	return false
+
+
+static func life_density() -> float:
+	load_settings()
+	return LIFE_DENSITY[level]
+
+
+static func life_step() -> float:
+	load_settings()
+	return LIFE_STEP[level]
+
+
+static func sway_step() -> float:
+	load_settings()
+	return SWAY_STEP[level]
+
+
+static func sway_stride() -> int:
+	load_settings()
+	return SWAY_STRIDE[level]
+
+
+## `full` scaled by the level's particle share, never below 2 so a burst still reads as a burst.
+static func particle_count(full: int) -> int:
+	load_settings()
+	return maxi(2, roundi(float(full) * PARTICLE_SCALE[level]))
+
+
+## `full` scaled by the level's life density, never below 1.
+static func life_count(full: int) -> int:
+	load_settings()
+	return maxi(1, roundi(float(full) * LIFE_DENSITY[level]))
+
+
+## The part of `node`'s local space that is on screen, grown by CULL_MARGIN. An empty Rect2 (no culling)
+## when the node is outside the tree. Cheap enough to call once per redraw, not once per element.
+static func visible_local_rect(node: CanvasItem) -> Rect2:
+	if not node.is_inside_tree():
+		return Rect2()
+	var to_local: Transform2D = (node.get_viewport_transform() * node.get_global_transform()).affine_inverse()
+	return (to_local * node.get_viewport().get_visible_rect()).grow(CULL_MARGIN)
