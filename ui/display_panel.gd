@@ -9,6 +9,8 @@ var _fit_btn: PixelButton
 var _wide_btn: PixelButton
 var _window_btn: PixelButton
 var _full_btn: PixelButton
+var _custom_btn: PixelButton
+var _native_btn: PixelButton
 var _hint: Label
 
 
@@ -49,6 +51,17 @@ func bind(win: Window) -> void:
 		DisplaySettings.set_fullscreen(_win, true)
 		refresh())
 
+	v.add_child(_caption("Window frame"))
+	var frame_row := HBoxContainer.new()
+	frame_row.add_theme_constant_override("separation", 4)
+	v.add_child(frame_row)
+	_custom_btn = _option(frame_row, "Plinky frame", func() -> void:
+		DisplaySettings.set_native_frame(_win, false)
+		refresh())
+	_native_btn = _option(frame_row, "System frame", func() -> void:
+		DisplaySettings.set_native_frame(_win, true)
+		refresh())
+
 	_hint = Label.new()
 	_hint.custom_minimum_size.x = 220
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -85,6 +98,8 @@ func refresh() -> void:
 	_wide_btn.text = _tag(mode == DisplaySettings.Scale.WIDE, "Wide view")
 	_window_btn.text = _tag(not DisplaySettings.fullscreen, "Windowed")
 	_full_btn.text = _tag(DisplaySettings.fullscreen, "Fullscreen")
+	_custom_btn.text = _tag(not DisplaySettings.native_frame, "Plinky frame")
+	_native_btn.text = _tag(DisplaySettings.native_frame, "System frame")
 	if mode == DisplaySettings.Scale.FIT:
 		_hint.text = "Fit fills the window at any size. Texels can differ by one pixel. F11 toggles fullscreen."
 	elif not DisplaySettings.pixel_active(_win):

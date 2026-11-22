@@ -23,6 +23,7 @@ var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
+var window_frame: WindowFrame
 var palette_id: StringName = Palettes.MEADOW
 
 
@@ -86,6 +87,9 @@ func _ready() -> void:
 	hud.setup(sim)
 	_wire_relics()
 	_wire_display()
+	window_frame = WindowFrame.new()
+	add_child(window_frame)
+	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 
@@ -138,10 +142,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
 ## or smaller if the window is smaller. It is centred in the visible area, and the rest stays black.
 func _layout_frame() -> void:
-	var visible: Vector2 = get_viewport_rect().size
+	# The custom title bar takes a strip off the top of the view, so it never covers the HUD.
+	var top: float = window_frame.inset() if window_frame != null else 0.0
+	var visible: Vector2 = get_viewport_rect().size - Vector2(0.0, top)
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	var frame: Vector2 = Vector2(minf(visible.x, bleed.x), minf(visible.y, bleed.y)).floor()
-	var origin: Vector2 = ((visible - frame) * 0.5).floor()
+	var origin: Vector2 = ((visible - frame) * 0.5).floor() + Vector2(0.0, top)
 	if frame == size and origin == position:
 		return
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
