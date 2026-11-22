@@ -29,6 +29,7 @@ var _zones_key: String = ""
 var _pad_list: PadList
 var _gate_bar: DitherBar
 var _momentum: MomentumMeter
+var _stats_panel: PanelContainer
 
 
 func setup(p_sim: Sim) -> void:
@@ -80,6 +81,7 @@ func _panel(pos: Vector2) -> VBoxContainer:
 
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
+	_stats_panel = v.get_parent() as PanelContainer
 	for sid: StringName in [&"cash", &"mult", &"reb", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -114,7 +116,8 @@ func _build_stats() -> void:
 func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
 	if sid == &"cash":
 		return
-	var at: Vector2 = val.global_position - global_position + Vector2(val.size.x * 0.5, -6.0)
+	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
+	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
 	PopupNumber.spawn_text(self, at, "+%s %s" % [amount.format(), stat_name], true)
 
 
