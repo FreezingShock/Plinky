@@ -76,6 +76,9 @@ static func apply(win: Window) -> void:
 	if not mode_ok:
 		win.mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
 	var base: Vector2i = base_size()
+	# The base canvas must scale with the window, so the root is never left in the disabled content scale mode.
+	if win.content_scale_mode != Window.CONTENT_SCALE_MODE_VIEWPORT:
+		win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	if win.content_scale_size != base:
 		win.content_scale_size = base
 	# Always letterbox the base size. In Wide view the base is the bleed, so the whole bleed is shown,
