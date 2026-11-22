@@ -69,7 +69,7 @@ static func pan_vector() -> Vector2:
 static func first_focusable(root: Node) -> Control:
 	if root is Control:
 		var c: Control = root
-		if not c.is_visible_in_tree():
+		if not c.visible:
 			return null
 		if c.focus_mode == Control.FOCUS_ALL and not (c is BaseButton and (c as BaseButton).disabled):
 			return c

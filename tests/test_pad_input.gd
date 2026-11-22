@@ -23,7 +23,6 @@ func run(t: Object) -> void:
 	PadInput.menu_open = false
 	Input.action_release(&"plinky_right")
 	var root := Control.new()
-	(Engine.get_main_loop() as SceneTree).root.add_child(root)   # visibility is checked in the tree
 	var dead := Button.new()
 	dead.disabled = true
 	var live := Button.new()
