@@ -181,6 +181,8 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return
+	if pad.standing or pad.holding:
+		walker.squash()
 	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding)
 
 

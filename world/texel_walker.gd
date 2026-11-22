@@ -12,6 +12,37 @@ var moving: bool = false
 var _target: Vector2 = Vector2.ZERO
 var _has_target: bool = false
 var _t: float = 0.0
+var _sprite: Sprite2D
+var _face: StringName = &"front"   # front, side, back
+var _flip: bool = false
+var _squash_left: float = 0.0
+
+const ATLAS: Texture2D = preload("res://assets/art/walker/walker_atlas.png")
+const CELL: int = 64
+## Feet sit 47 texels below the cell top, centred horizontally.
+const FEET: Vector2 = Vector2(32.0, 47.0)
+const SQUASH_TIME: float = 0.18
+
+
+func _ready() -> void:
+	_sprite = Sprite2D.new()
+	_sprite.texture = ATLAS
+	_sprite.centered = false
+	_sprite.offset = -FEET
+	_sprite.region_enabled = true
+	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_child(_sprite)
+	_show(0, 0)
+
+
+## Brief squash frame, called by main when the walker's pad fires.
+func squash() -> void:
+	_squash_left = SQUASH_TIME
+
+
+func _show(row: int, col: int) -> void:
+	_sprite.region_rect = Rect2(col * CELL, row * CELL, CELL, CELL)
+	_sprite.flip_h = _flip
 
 
 func _process(delta: float) -> void:
@@ -38,7 +69,37 @@ func _process(delta: float) -> void:
 		position = Vector2(
 			clampf(position.x + step.x, BOUNDS.position.x, BOUNDS.end.x),
 			clampf(position.y + step.y, BOUNDS.position.y, BOUNDS.end.y))
-	queue_redraw()
+	if moving:
+		if absf(dir.x) >= absf(dir.y):
+			_face = &"side"
+			_flip = dir.x < 0.0
+		else:
+			_face = &"front" if dir.y > 0.0 else &"back"
+			_flip = false
+	_animate(delta)
+
+
+## Cells (row, col) in the atlas: row 0 = front, side, back, blink; row 1 = side walk 1-4;
+## row 2 = front walk 1-2, press squash.
+func _animate(delta: float) -> void:
+	_squash_left = maxf(_squash_left - delta, 0.0)
+	if _squash_left > 0.0:
+		_flip = false
+		_show(2, 2)
+	elif not moving:
+		var blink: bool = fmod(_t, 3.2) < 0.12
+		_flip = false
+		if blink:
+			_show(0, 3)
+		else:
+			_show(0, 0)
+	elif _face == &"side":
+		_show(1, int(_t * 8.0) % 4)
+	elif _face == &"front":
+		_show(2, int(_t * 6.0) % 2)
+	else:
+		_flip = int(_t * 6.0) % 2 == 1   # no back walk frames: alternate mirrored back view
+		_show(0, 2)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -46,17 +107,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		var p: Vector2 = (get_parent() as Node2D).to_local(get_global_mouse_position())
 		_target = Vector2(clampf(p.x, BOUNDS.position.x, BOUNDS.end.x), clampf(p.y, BOUNDS.position.y, BOUNDS.end.y))
 		_has_target = true
-
-
-func _draw() -> void:
-	var bob: float = float(int(_t * 8.0) % 2) if moving else 0.0
-	# shadow: a flat 2:1 diamond
-	draw_colored_polygon(PackedVector2Array([Vector2(-5, 0), Vector2(0, -2), Vector2(5, 0), Vector2(0, 2)]), palette[1])
-	draw_rect(Rect2(-3, -9 - bob, 6, 7), palette[7])   # body
-	draw_rect(Rect2(-3, -9 - bob, 6, 2), palette[5])   # scarf
-	draw_rect(Rect2(-2, -13 - bob, 4, 4), palette[7])   # head
-	draw_rect(Rect2(-2, -12 - bob, 1, 1), palette[0])   # eye
-	draw_rect(Rect2(1, -12 - bob, 1, 1), palette[0])
 
 
 static func _key(code: Key) -> bool:
