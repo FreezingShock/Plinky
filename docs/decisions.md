@@ -53,6 +53,17 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Windows exports a single exe (embedded pck, no console), with icon editing off | Easier to share. Icon editing needs rcedit, which CI does not have; the exe icon is Godot's until that is added. |
 | 2026-11-23 | Builds are unsigned and unnotarized. docs/TESTING.md tells testers how to open them | Signing needs paid certificates and Apple credentials. Ask Nathan before buying any. |
 | 2026-11-23 | Feedback form (F8, or Settings) saves notes to user://feedback.txt with a context line, and copies or opens the folder. No network | Nathan: no external service unless approved. Local file plus clipboard is enough for friends to paste notes back. |
+
+## Day/night and weather (23 Nov)
+| 2026-11-23 | Day/night is a dithered multiply shade (render/shaders/day_night.gdshader) over the 2D meadow, not a smooth tint | The meadow is 2D art drawn straight to the screen, so the post dither does not touch it. A 4x4 Bayer mask in world texels picks which texels get the shade, so it stays pixel art and pins to the world when the camera moves. Tints are blue-grey (night), warm (sunrise, sunset), cool grey (rain). |
+| 2026-11-23 | Shade sits at z 5, rain at z 11, LifeAir stays at z 10 | Fireflies, lantern and shrine glow stay bright at night. The HUD (z 100) is never shaded. |
+| 2026-11-23 | One day is 12 minutes of session time, starting in the morning (phase 0.32). Not tied to the system clock and not saved | A slow loop the player can notice without waiting for it. No save format change. Tunable in content/config/sky.tres. |
+| 2026-11-23 | Rain and wind are pure functions of time (core/sky_model.gd): two sine waves decide rain (about 16% of the time, episodes of 30 to 65 s, capped at 0.6), gusts ride over a steady breeze | Deterministic, testable headless, no state to save. Rain is light on purpose. |
+| 2026-11-23 | Trees and bushes sway by whole-texel row shifts (render/shaders/wind_sway.gdshader), crown moves most, foot stays. Sprites get 4 transparent texels of padding each side so the lean is never clipped. Rocks and crystals stay still | Pixel-stepped lean at 8 fps matches the art. Padding is built once at load. |
+| 2026-11-23 | LifeGround reads MeadowLife.wind, so grass tips lean further in a gust | Grass and trees move together. |
+| 2026-11-23 | Reduce motion: rain streaks and tree sway stop, grass lean follows wind 0, the shade still turns | Matches the existing rule that travelling motion freezes. |
+
+
 | 2026-11-22 | GUI consistency pass: one AsciiBox.panel() frame (8x6 padding, theme.md section 5) for every panel, tooltip, toast and settings; rarity tints the border via edge_override. RelicStyle.panel_box removed | Panels used 8x6, 10x8 and a flat StyleBoxFlat. Spec says 8x6 and one notched dither frame. |
 | 2026-11-22 | All panel titles use TitleLabel (Pixelify). Dim and secondary text uses RelicStyle.dim (palette 3), never modulate alpha. Disabled button text is dim | Relic panel title was body font in green, several labels used alpha 0.7 which breaks palette indexing. |
 | 2026-11-22 | Tooltip line separation 2 on both tooltips (grid steps 2, 4, 8). Focus ring on PixelButton left to the controller-navigation thread | That thread owns focus states; avoids a conflict. |
