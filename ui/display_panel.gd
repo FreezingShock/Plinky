@@ -4,6 +4,9 @@ extends PanelContainer
 ## SettingsRegistry (ui/settings/settings_registry.gd), so a new setting is one register() call, not panel code.
 ## Class name and bind/open/close/refresh are kept from the old display panel so main.gd and the HUD still wire it.
 
+## Emitted by the Data tab's Send feedback row. main.gd opens the feedback panel.
+signal feedback_requested
+
 const TAB_WIDTH: float = 430.0
 const BODY_HEIGHT: float = 196.0
 const LABEL_WIDTH: float = 130.0
@@ -21,6 +24,10 @@ var _armed: StringName = &""          # confirm action pressed once
 
 func bind(win: Window) -> void:
 	_win = win
+	SettingsRegistry.register({
+		"id": &"send_feedback", "tab": "Data", "label": "Send feedback", "kind": SettingsRegistry.Kind.ACTION,
+		"hint": "Opens the feedback form. Notes are saved on this computer.", "run": _request_feedback,
+	})
 	visible = false
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
@@ -62,6 +69,11 @@ func bind(win: Window) -> void:
 
 	_win.size_changed.connect(_on_window_changed)
 	show_tab(_tab)
+
+
+func _request_feedback() -> String:
+	feedback_requested.emit()
+	return ""
 
 
 func open() -> void:

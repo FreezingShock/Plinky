@@ -8,7 +8,7 @@ var _zone: StringName = &""
 
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
