@@ -115,19 +115,33 @@ func show_tab(tab: String) -> void:
 	refresh()
 
 
-## Pad and keyboard focus: Down from any tab enters the first row, Up from the first row returns to the tab,
-## and every row control scrolls itself into view when focused.
+## Pad and keyboard focus. Godot's geometry search stalls inside the scroll area, so Up and Down are wired
+## explicitly: tab -> row 1 -> ... -> last row -> Close, and back. Every control in a row shares its row's links.
 func _wire_focus() -> void:
-	var rows: Array[Control] = []
-	_collect_focusable(_body, rows)
-	for c: Control in rows:
-		c.focus_entered.connect(_scroll.ensure_control_visible.bind(c))
-	var tab_btn: PixelButton = _tab_buttons[_tab]
+	var rows: Array = []   # Array of Array[Control], one per row, in order
+	for row: Node in _body.get_children():
+		var ctl: Array[Control] = []
+		_collect_focusable(row, ctl)
+		if not ctl.is_empty():
+			rows.append(ctl)
+			for c: Control in ctl:
+				c.focus_entered.connect(_scroll.ensure_control_visible.bind(c))
 	for t: String in _tab_buttons:
 		var b: PixelButton = _tab_buttons[t]
-		b.focus_neighbor_bottom = b.get_path_to(rows[0]) if not rows.is_empty() else NodePath()
-	if not rows.is_empty():
-		rows[0].focus_neighbor_top = rows[0].get_path_to(tab_btn)
+		b.focus_neighbor_bottom = b.get_path_to((rows[0] as Array)[0]) if not rows.is_empty() else b.get_path_to(_close_btn)
+	link_rows(rows, _tab_buttons[_tab], _close_btn)
+	_close_btn.focus_neighbor_top = _close_btn.get_path_to(((rows[rows.size() - 1] as Array)[0] if not rows.is_empty() else _tab_buttons[_tab]) as Control)
+
+
+## Link rows (Array of Array[Control]) top to bottom. `above` is reached from the first row going up and
+## `below` from the last row going down.
+static func link_rows(rows: Array, above: Control, below: Control) -> void:
+	for i in rows.size():
+		var up: Control = above if i == 0 else (rows[i - 1] as Array)[0]
+		var down: Control = below if i == rows.size() - 1 else (rows[i + 1] as Array)[0]
+		for c: Control in rows[i]:
+			c.focus_neighbor_top = c.get_path_to(up)
+			c.focus_neighbor_bottom = c.get_path_to(down)
 
 
 func _collect_focusable(n: Node, out: Array[Control]) -> void:
