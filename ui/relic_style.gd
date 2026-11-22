@@ -16,14 +16,3 @@ static func set_palette(colors: PackedColorArray) -> void:
 		return
 	ink = colors[0]; edge = colors[3]; dim = colors[3]
 	good = colors[4]; accent = colors[5]; text = colors[7]
-
-static func panel_box(border: Color = edge) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = ink
-	sb.border_color = border
-	sb.set_border_width_all(1)
-	sb.set_content_margin_all(0)
-	sb.content_margin_left = 8; sb.content_margin_right = 8
-	sb.content_margin_top = 6; sb.content_margin_bottom = 6
-	sb.anti_aliasing = false
-	return sb
