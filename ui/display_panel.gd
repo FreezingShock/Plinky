@@ -6,6 +6,7 @@ extends PanelContainer
 var _win: Window
 var _pixel_btn: PixelButton
 var _fit_btn: PixelButton
+var _wide_btn: PixelButton
 var _window_btn: PixelButton
 var _full_btn: PixelButton
 var _hint: Label
@@ -32,6 +33,9 @@ func bind(win: Window) -> void:
 		refresh())
 	_fit_btn = _option(scale_row, "Fit window", func() -> void:
 		DisplaySettings.set_scale_mode(_win, DisplaySettings.Scale.FIT)
+		refresh())
+	_wide_btn = _option(scale_row, "Wide view", func() -> void:
+		DisplaySettings.set_scale_mode(_win, DisplaySettings.Scale.WIDE)
 		refresh())
 
 	v.add_child(_caption("Window"))
@@ -64,7 +68,8 @@ func open() -> void:
 	visible = true
 	reset_size()
 	await get_tree().process_frame
-	position = ((Vector2(DisplaySettings.BASE) - size) * 0.5).floor()
+	# Centre over the frame, which is the parent (the HUD is the frame's size).
+	position = ((get_parent_area_size() - size) * 0.5).floor()
 
 
 func close() -> void:
@@ -74,17 +79,22 @@ func close() -> void:
 func refresh() -> void:
 	if _win == null:
 		return
-	var is_pixel: bool = DisplaySettings.scale_mode == DisplaySettings.Scale.PIXEL
-	_pixel_btn.text = _tag(is_pixel, "Pixel perfect")
-	_fit_btn.text = _tag(not is_pixel, "Fit window")
+	var mode: int = DisplaySettings.scale_mode
+	_pixel_btn.text = _tag(mode == DisplaySettings.Scale.PIXEL, "Pixel perfect")
+	_fit_btn.text = _tag(mode == DisplaySettings.Scale.FIT, "Fit window")
+	_wide_btn.text = _tag(mode == DisplaySettings.Scale.WIDE, "Wide view")
 	_window_btn.text = _tag(not DisplaySettings.fullscreen, "Windowed")
 	_full_btn.text = _tag(DisplaySettings.fullscreen, "Fullscreen")
-	if is_pixel and not DisplaySettings.pixel_active(_win):
-		_hint.text = "This window is too small for a whole-number scale, so it shows Fit. Make it bigger for Pixel perfect."
-	elif is_pixel:
-		_hint.text = "Pixel perfect keeps every texel the same size. F11 toggles fullscreen."
-	else:
+	if mode == DisplaySettings.Scale.FIT:
 		_hint.text = "Fit fills the window at any size. Texels can differ by one pixel. F11 toggles fullscreen."
+	elif not DisplaySettings.pixel_active(_win):
+		_hint.text = "This window is too small for a whole-number scale, so it shows Fit. Make it bigger for a sharper view."
+	elif mode == DisplaySettings.Scale.WIDE and not DisplaySettings.bleed_ready:
+		_hint.text = "Wide view shows more of the meadow once its wider backdrop is in. Until then it letterboxes."
+	elif mode == DisplaySettings.Scale.WIDE:
+		_hint.text = "Wide view shows more of the meadow on wide and tall windows. F11 toggles fullscreen."
+	else:
+		_hint.text = "Pixel perfect keeps every texel the same size. F11 toggles fullscreen."
 
 
 func _on_window_changed() -> void:

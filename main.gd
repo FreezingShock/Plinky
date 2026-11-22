@@ -97,6 +97,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	_layout_frame()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
 	_update_tooltip()
 
@@ -128,6 +129,24 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
+
+
+## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
+## or smaller if the window is smaller. It is centred in the visible area, and the rest stays black.
+func _layout_frame() -> void:
+	var visible: Vector2 = get_viewport_rect().size
+	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
+	var frame: Vector2 = Vector2(minf(visible.x, bleed.x), minf(visible.y, bleed.y)).floor()
+	var origin: Vector2 = ((visible - frame) * 0.5).floor()
+	if frame == size and origin == position:
+		return
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	position = origin
+	size = frame
+	camera.frame = frame
+	camera.frame_origin = origin
+	camera.bounds = Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+	hud.frame = frame
 
 
 ## Window resize: re-pick integer or fit scaling for the new window size.

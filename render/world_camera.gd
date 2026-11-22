@@ -25,6 +25,9 @@ var shake: ScreenShake
 var zoom_level: int = 2
 var pan: Vector2 = Vector2.ZERO          # offset from the walker, world texels
 var auto_return: bool = true
+var frame: Vector2 = VIEW                 # the visible view in Main texels (640x360, or the bleed size)
+var frame_origin: Vector2 = Vector2.ZERO  # frame top-left in the window, to turn mouse positions into frame texels
+var bounds: Rect2 = WORLD                 # the area the camera centre may move within (the bleed when it is in)
 
 var _center: Vector2 = Vector2.ZERO
 var _idle: float = 0.0
@@ -66,9 +69,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_dragging = mb.pressed
 		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_UP:
-			zoom_step(1, get_viewport().get_mouse_position())
+			zoom_step(1, get_viewport().get_mouse_position() - frame_origin)
 		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			zoom_step(-1, get_viewport().get_mouse_position())
+			zoom_step(-1, get_viewport().get_mouse_position() - frame_origin)
 	elif event is InputEventMouseMotion and _dragging:
 		var mm: InputEventMouseMotion = event
 		pan -= mm.relative / float(zoom_level)
@@ -76,9 +79,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		var k: InputEventKey = event
 		match k.keycode:
 			KEY_EQUAL, KEY_KP_ADD, KEY_PAGEUP:
-				zoom_step(1, VIEW * 0.5)
+				zoom_step(1, frame * 0.5)
 			KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN:
-				zoom_step(-1, VIEW * 0.5)
+				zoom_step(-1, frame * 0.5)
 			KEY_C, KEY_HOME:
 				recenter()
 
@@ -89,9 +92,9 @@ func zoom_step(dir: int, screen_pos: Vector2) -> void:
 	var new_level: int = ZOOM_LEVELS[i]
 	if new_level == zoom_level:
 		return
-	var anchor: Vector2 = _center + (screen_pos - VIEW * 0.5) / float(zoom_level)
+	var anchor: Vector2 = _center + (screen_pos - frame * 0.5) / float(zoom_level)
 	zoom_level = new_level
-	_center = _clamp_center(anchor - (screen_pos - VIEW * 0.5) / float(zoom_level))
+	_center = _clamp_center(anchor - (screen_pos - frame * 0.5) / float(zoom_level))
 	pan = _center - _follow_point()
 	_idle = 0.0
 	zoom_changed.emit(zoom_level)
@@ -104,39 +107,45 @@ func recenter() -> void:
 
 
 func _follow_point() -> Vector2:
-	return (target.position + FOCUS_LIFT) if target != null else VIEW * 0.5
+	return (target.position + FOCUS_LIFT) if target != null else frame * 0.5
 
 
-## Keep the view inside the world. At zoom 1 the whole 640x360 world is visible, so no movement.
-static func clamp_center(center: Vector2, level: int) -> Vector2:
-	var half: Vector2 = VIEW / (2.0 * float(level))
+## Keep the view inside `area`. When the view is as big as the area or bigger on an axis, centre on it.
+static func clamp_center(center: Vector2, level: int, view: Vector2, area: Rect2) -> Vector2:
+	var half: Vector2 = view / (2.0 * float(level))
 	return Vector2(
-		clampf(center.x, WORLD.position.x + half.x, WORLD.end.x - half.x),
-		clampf(center.y, WORLD.position.y + half.y, WORLD.end.y - half.y))
+		_clamp_axis(center.x, area.position.x, area.end.x, half.x),
+		_clamp_axis(center.y, area.position.y, area.end.y, half.y))
+
+
+static func _clamp_axis(v: float, lo: float, hi: float, half: float) -> float:
+	if hi - lo <= 2.0 * half:
+		return (lo + hi) * 0.5
+	return clampf(v, lo + half, hi - half)
 
 
 ## World transform for a camera centre. Whole screen texels at every integer zoom level.
-static func world_position(center: Vector2, level: int) -> Vector2:
-	return (VIEW * 0.5 - center * float(level)).round()
+static func world_position(center: Vector2, level: int, view: Vector2) -> Vector2:
+	return (view * 0.5 - center * float(level)).round()
 
 
 func _clamp_center(c: Vector2) -> Vector2:
-	return clamp_center(c, zoom_level)
+	return clamp_center(c, zoom_level, frame, bounds)
 
 
 func _edge_push() -> Vector2:
 	var vp: Viewport = get_viewport()
-	var m: Vector2 = vp.get_mouse_position()
-	if m.x < 0.0 or m.y < 0.0 or m.x > VIEW.x or m.y > VIEW.y:
+	var m: Vector2 = vp.get_mouse_position() - frame_origin
+	if m.x < 0.0 or m.y < 0.0 or m.x > frame.x or m.y > frame.y:
 		return Vector2.ZERO
 	var out: Vector2 = Vector2.ZERO
 	if m.x < EDGE_ZONE:
 		out.x = -1.0
-	elif m.x > VIEW.x - EDGE_ZONE:
+	elif m.x > frame.x - EDGE_ZONE:
 		out.x = 1.0
 	if m.y < EDGE_ZONE:
 		out.y = -1.0
-	elif m.y > VIEW.y - EDGE_ZONE:
+	elif m.y > frame.y - EDGE_ZONE:
 		out.y = 1.0
 	return out
 
@@ -146,4 +155,4 @@ func _apply() -> void:
 		return
 	world.scale = Vector2(zoom_level, zoom_level)
 	var offset: Vector2 = shake.offset if shake != null else Vector2.ZERO
-	world.position = world_position(_clamp_center(_center), zoom_level) + offset
+	world.position = world_position(_clamp_center(_center), zoom_level, frame) + offset

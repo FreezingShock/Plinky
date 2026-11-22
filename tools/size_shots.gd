@@ -1,20 +1,24 @@
 extends SceneTree
-## Captures the real main scene at several window sizes and both scale modes, then the settings panel.
+## Captures the real main scene at several window sizes and scale modes, then the settings panel.
 ## Writes PNGs to shots/sizes/. Needs a real window (not --headless).
-## Run: godot --path . --script tools/size_shots.gd
+## Run: godot --path . --import (once, to refresh the class cache), then
+##      godot --path . --script tools/size_shots.gd
 
-## [width, height, scale mode (0 = Pixel perfect, 1 = Fit)]
+## [width, height, scale mode (0 Pixel perfect, 1 Fit, 2 Wide view), bleed preview (0 off, 1 on)]
 const CASES: Array = [
-	[1280, 720, 0],
-	[1024, 768, 0],
-	[1366, 768, 0],
-	[1024, 768, 1],
-	[1920, 1080, 0],
-	[1920, 1080, 1],
-	[1600, 1000, 1],
-	[2560, 1080, 1],
-	[800, 600, 1],
+	[1280, 720, 0, 0],
+	[1024, 768, 0, 0],
+	[1366, 768, 0, 0],
+	[1024, 768, 1, 0],
+	[1920, 1080, 0, 0],
+	[1920, 1080, 1, 0],
+	[1600, 1000, 1, 0],
+	[2560, 1080, 2, 0],
+	[2560, 1080, 2, 1],
+	[1920, 1080, 2, 1],
+	[800, 600, 2, 0],
 ]
+const MODE_NAMES: Array = ["pixel", "fit", "wide"]
 const SETTLE_FRAMES: int = 12
 
 
@@ -28,17 +32,21 @@ func _init() -> void:
 	for c: Array in CASES:
 		var w: int = c[0]
 		var h: int = c[1]
-		DisplaySettings.set_scale_mode(root, c[2])
+		var mode: int = c[2]
+		DisplaySettings.bleed_ready = c[3] == 1
+		DisplaySettings.set_scale_mode(root, mode)
 		DisplayServer.window_set_size(Vector2i(w, h))
 		await _settle()
 		DisplaySettings.apply(root)
 		await _settle()
 		var real: Vector2i = DisplayServer.window_get_size()
-		var fname: String = "%dx%d_%s" % [real.x, real.y, "pixel" if c[2] == 0 else "fit"]
-		print("shot ", fname, " scale=", DisplaySettings.integer_scale(root), " stretch=", root.content_scale_stretch)
+		var fname: String = "%dx%d_%s%s" % [real.x, real.y, MODE_NAMES[mode], "_bleed" if c[3] == 1 else ""]
+		print("shot ", fname, " integer=", DisplaySettings.integer_scale(root), " stretch=", root.content_scale_stretch,
+			" aspect=", root.content_scale_aspect, " frame=", main.size, " origin=", main.position)
 		_save(out_dir + "/" + fname + ".png")
 
-	# Settings panel open at 1920x1080 Pixel perfect.
+	# Settings panel open at 1920x1080, Pixel perfect.
+	DisplaySettings.bleed_ready = false
 	DisplaySettings.set_scale_mode(root, DisplaySettings.Scale.PIXEL)
 	DisplayServer.window_set_size(Vector2i(1920, 1080))
 	await _settle()
