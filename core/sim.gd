@@ -18,6 +18,8 @@ var stat_defs: Dictionary = {}       # StringName -> StatDef
 var button_defs: Dictionary = {}     # StringName -> ButtonDef
 var zone_defs: Dictionary = {}       # StringName -> ZoneDef
 var attribute_defs: Dictionary = {}  # StringName -> AttributeDef
+## Owned and equipped relics. Built by ContentLoader. Always non-null after load.
+var relics: RelicInventory
 
 # State
 var stats: Dictionary = {}           # StringName -> BigNum
@@ -27,8 +29,7 @@ var gates_open: Dictionary = {}      # zone id -> true (latched; survives rebirt
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
-## Hook for relics (M4). 1 = no effect.
-var relic_mult: BigNum = BigNum.one()
+var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _dirty: Dictionary = {}
@@ -54,6 +55,10 @@ func validate() -> PackedStringArray:
 			errs.append("zone %s: unknown gate_stat %s" % [z.id, z.gate_stat])
 		if z.next_zone != &"" and not zone_defs.has(z.next_zone):
 			errs.append("zone %s: unknown next_zone %s" % [z.id, z.next_zone])
+	for z: ZoneDef in zone_defs.values():
+		for bid in z.pad_buttons:
+			if not button_defs.has(StringName(bid)):
+				errs.append("zone %s: pad_buttons has unknown button %s" % [z.id, bid])
 	for s: StatDef in stat_defs.values():
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
@@ -73,6 +78,10 @@ func new_game() -> void:
 	attr_levels.clear()
 	play_seconds = 0.0
 	press_count = 0
+	rebirth_count = 0
+	if relics != null:
+		relics.from_dict({})
+		relics.set_rebirths(0)
 	zone_id = _first_zone()
 	_dirty.clear()
 
@@ -109,7 +118,8 @@ func income_per_second(stat_id: StringName) -> BigNum:
 	if d.income_boost_stat != &"":
 		boost = get_stat(d.income_boost_stat).add(BigNum.one())
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
-	return Formulas.income(z.base_cash_per_second, boost, pm, relic_mult)
+	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
+	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
 func can_afford(button_id: StringName) -> bool:
@@ -132,7 +142,15 @@ func press_gain_preview(button_id: StringName) -> BigNum:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null:
 		return BigNum.zero()
-	return Formulas.button_gain(b, _gain_boost(b.reward_stat), relic_mult, 1.0)
+	return Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), 1.0)
+
+
+## MULT_GAIN relics apply to rewards that go into a stat flagged relics_boost_gain.
+func _relic_gain_mult(b: ButtonDef) -> BigNum:
+	var rs: StatDef = stat_defs.get(b.reward_stat) as StatDef
+	if rs == null or not rs.relics_boost_gain or relics == null:
+		return BigNum.one()
+	return BigNum.from_float(relics.multiplier(RelicDef.Effect.MULT_GAIN))
 
 
 func _gain_boost(reward_stat: StringName) -> BigNum:
@@ -156,6 +174,14 @@ func effect_total(effect: StringName) -> float:
 	return total
 
 
+func luck_level() -> int:
+	var n: int = 0
+	for a: AttributeDef in attribute_defs.values():
+		if a.effect == &"luck":
+			n += attr_level(a.id)
+	return n
+
+
 func walk_speed_mult() -> float:
 	return 1.0 + effect_total(&"walk_speed")
 
@@ -168,6 +194,8 @@ func crit_chance() -> float:
 func press_interval() -> float:
 	var z: ZoneDef = current_zone()
 	var rate: float = (z.press_rate if z != null else 1.0) * (1.0 + effect_total(&"press_rate"))
+	if relics != null:
+		rate *= relics.multiplier(RelicDef.Effect.PRESS_RATE)
 	return 1.0 / maxf(rate, 0.001)
 
 
@@ -178,21 +206,42 @@ func offline_cap_seconds() -> float:
 # ---------------------------------------------------------------- actions
 
 func try_press(button_id: StringName, world_pos: Vector3 = Vector3.ZERO) -> bool:
+	return _press(button_id, world_pos, true)
+
+
+func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null or b.zone != zone_id:
 		return false
 	if not can_afford(button_id):
-		button_denied.emit(button_id)
+		if allow_pulse:
+			button_denied.emit(button_id)
 		return false
 	_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
 	var chance: float = crit_chance()
 	var crit: bool = chance > 0.0 and rng.randf() < chance
-	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), relic_mult, config.crit_multiplier if crit else 1.0)
+	var crit_mult: float = 1.0
+	if crit:
+		crit_mult = config.crit_multiplier * relics.multiplier(RelicDef.Effect.CRIT_DAMAGE)
+	var presses: int = 1
+	var dbl: float = relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE)
+	if dbl > 0.0 and rng.randf() < dbl:
+		presses = 2
+	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses)))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
 	_check_gates()
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
+	if allow_pulse:
+		var drop: StringName = relics.roll_drop(rng, luck_level())
+		if drop != &"":
+			relics.add_relic(drop)
+		var pulse: float = relics.total_effect(RelicDef.Effect.PULSE_CHANCE)
+		if pulse > 0.0 and rng.randf() < pulse:
+			for other: ButtonDef in button_defs.values():
+				if other.zone == b.zone and other.row == b.row and absi(other.row_index - b.row_index) == 1:
+					_press(other.id, world_pos, false)
 	return true
 
 
@@ -225,6 +274,8 @@ func try_rebirth() -> bool:
 		if s.resets_on_rebirth:
 			_set_stat(s.id, BigNum.from_float(s.start))
 	_set_stat(config.prestige_stat, get_stat(config.prestige_stat).add(gained))
+	rebirth_count += 1
+	relics.set_rebirths(rebirth_count)
 	_flush()
 	rebirth_done.emit(gained)
 	return true
@@ -341,6 +392,8 @@ func to_dict() -> Dictionary:
 		"attributes": a,
 		"play_seconds": play_seconds,
 		"press_count": press_count,
+		"rebirth_count": rebirth_count,
+		"relics": relics.to_dict(),
 	}
 
 
@@ -374,5 +427,10 @@ func from_dict(d: Dictionary) -> bool:
 				attr_levels[aid] = clampi(int((a as Dictionary)[k]), 0, cap)
 	play_seconds = float(d.get("play_seconds", 0.0))
 	press_count = int(d.get("press_count", 0))
+	rebirth_count = int(d.get("rebirth_count", 0))
+	var rd: Variant = d.get("relics", {})
+	if rd is Dictionary:
+		relics.from_dict(rd)
+	relics.set_rebirths(rebirth_count)
 	_dirty.clear()
 	return true

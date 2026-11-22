@@ -13,3 +13,4 @@ income_boost_stat = &""
 gain_boost_stat = &"reb"
 prestige_boosts_income = false
 resets_on_rebirth = true
+relics_boost_gain = true

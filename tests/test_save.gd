@@ -7,6 +7,9 @@ func run(t: Object) -> void:
 	sim.step(0.1)  # latches gate
 	sim.attr_levels[&"luck"] = 3
 	sim.prestige_spent = BigNum.from_float(4.0)
+	sim.relics.add_relic(&"r_rate", 2)
+	sim.relics.equip(&"r_rate")
+	sim.rebirth_count = 6
 	var text: String = SaveCodec.encode(sim, 1000.0)
 	var d: Dictionary = SaveCodec.decode(text)
 	t.ok(not d.is_empty(), "decode succeeds")
@@ -16,6 +19,9 @@ func run(t: Object) -> void:
 	t.near(sim2.get_stat(&"reb").to_float(), 9.0, 1e-9, "reb survives")
 	t.ok(sim2.is_gate_open(&"zone1"), "gate latch survives")
 	t.eq(sim2.attr_level(&"luck"), 3, "attribute level survives")
+	t.eq(sim2.relics.stacks_of(&"r_rate"), 2, "relic stacks survive")
+	t.ok(sim2.relics.is_equipped(&"r_rate"), "equipped relic survives")
+	t.eq(sim2.rebirth_count, 6, "rebirth count survives")
 	t.near(sim2.prestige_spent.to_float(), 4.0, 1e-9, "prestige_spent survives")
 
 	t.ok(SaveCodec.decode("not json {").is_empty(), "garbage is rejected")

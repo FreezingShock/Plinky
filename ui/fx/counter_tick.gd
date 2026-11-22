@@ -9,6 +9,9 @@ var target := 0.0:
 			_gain_pulse(v - target)
 		target = v
 var shown := 0.0
+
+func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # body font is Spleen 6x12 from the theme
 var _accum := 0.0
 
 func _process(delta: float) -> void:

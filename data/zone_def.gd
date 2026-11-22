@@ -13,3 +13,5 @@ extends Resource
 @export var press_rate: float = 0.5
 ## Palette name for the render thread (art-bible.md).
 @export var palette_id: StringName = &""
+## Button ids in the order of the zone scene's pad anchors (Pad0, Pad1, ...).
+@export var pad_buttons: PackedStringArray = PackedStringArray()

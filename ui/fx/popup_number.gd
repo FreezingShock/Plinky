@@ -7,9 +7,10 @@ static func spawn(parent: Node, pos: Vector2, amount: float, big := false) -> Po
 	p.text = "+" + NumberFormat.short(amount)
 	p.position = FxConfig.snap(pos)
 	p.z_index = 100
-	p.add_theme_color_override("font_color", Color("f2e6a0"))      # palette 5 (Zone 1); theme swaps it
-	p.add_theme_color_override("font_outline_color", Color("14161c")) # palette 0
-	p.add_theme_constant_override("outline_size", 2)
+	# Font, colour and outline come from plinky_theme.tres (PopupLabel = Pixelify Sans 16),
+	# so they re-tint per zone. Nearest filtering keeps glyph edges hard.
+	p.theme_type_variation = &"PopupLabel"
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(p)
 	p._run(big)

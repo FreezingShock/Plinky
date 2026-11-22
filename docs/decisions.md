@@ -18,3 +18,7 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-22 | Name risk: Plinko is a known game show and gambling genre | Players may read Plinky as Plinko. Keep the look and store copy distinct. |
 | 2026-11-22 | Rebirths boost Multiplier gain only; removed (1 + rebirths) from cash_per_second | Nathan confirmed. The spec had both, which counted rebirths twice. |
 | 2026-11-22 | Zone 1 base cash set to 0.25 per second, gate at 9 rebirths, gate lands at about 10.8 minutes | Nathan wants the gate near the 10-minute fun target. At 0.1 per second the gate was at 28 minutes, which was too slow. |
+| 2026-11-22 | Autoload names: `Fx` = renderer (shader uniforms), `Juice` = UI effects | Fx owns shader uniforms per SPEC. Both PRs add their own project.godot line. |
+| 2026-11-22 | Main scene uses the baked 2D meadow with texel-space walker/pads, renderer view bound but empty | Fastest playable path. 3D scene content comes later. |
+| 2026-11-22 | ZoneDef.pad_buttons maps scene pad anchors to button ids | Keeps scenes number-free and data driven. |
+| 2026-11-22 | Relic effects in Sim: PRESS_RATE and CRIT_DAMAGE are multipliers (1 + total); double press doubles the reward (cost paid once); pulse presses same-row neighbours; slots unlock on rebirth actions, not the reb stat | PR #5 left these open. Revisit in balance. |

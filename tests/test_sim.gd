@@ -94,3 +94,17 @@ func run(t: Object) -> void:
 
 	# Content sanity: every button points at real stats and zones
 	t.eq(sim.validate().size(), 0, "content validates")
+
+	# Relics: an equipped cash relic raises income; rebirths unlock slots; save keeps them
+	sim.new_game()
+	sim.relics.add_relic(&"r_cash", 3)
+	t.ok(sim.relics.equip(&"r_cash"), "equip cash relic")
+	var expect: float = 0.25 * (1.0 + sim.relics.total_effect(RelicDef.Effect.CASH_MULT))
+	t.near(sim.income_per_second(&"cash").to_float(), expect, 1e-9, "cash relic multiplies income")
+	t.ok(expect > 0.25, "cash relic actually adds something")
+	sim.relics.unequip(&"r_cash")
+	t.near(sim.income_per_second(&"cash").to_float(), 0.25, 1e-9, "unequipped relic does nothing")
+	sim.stats[&"reb"] = BigNum.from_float(1.0)
+	sim.try_rebirth()
+	t.eq(sim.rebirth_count, 1, "rebirth_count increments")
+	t.eq(sim.relics.rebirths, 1, "relic inventory told about the rebirth")

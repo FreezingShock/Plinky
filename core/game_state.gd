@@ -3,6 +3,7 @@ extends Node
 ## World and UI code call the API below; they never touch Sim internals except through `sim` reads.
 
 var sim: Sim
+var relics: RelicInventory  # same object as sim.relics, for UI binding
 var paused: bool = false
 var _tick: Tick = Tick.new()
 
@@ -12,6 +13,7 @@ func _ready() -> void:
 	if not ContentLoader.load_into(sim):
 		push_error("GameState: content failed to load")
 	sim.new_game()
+	relics = sim.relics
 	var bus: Node = get_node("/root/EventBus")
 	sim.stat_changed.connect(func(id: StringName, v: BigNum) -> void: bus.stat_changed.emit(id, v))
 	sim.button_pressed.connect(func(id: StringName, p: Vector3, g: BigNum, c: bool) -> void: bus.button_pressed.emit(id, p, g, c))
@@ -20,6 +22,9 @@ func _ready() -> void:
 	sim.gate_opened.connect(func(id: StringName) -> void: bus.gate_opened.emit(id))
 	sim.rebirth_done.connect(func(p: BigNum) -> void: bus.rebirth_done.emit(p))
 	sim.attribute_bought.connect(func(id: StringName, lv: int) -> void: bus.attribute_bought.emit(id, lv))
+	relics.relic_gained.connect(func(id: StringName, n: int) -> void: bus.relic_gained.emit(id, n))
+	relics.relic_equipped.connect(func(id: StringName) -> void: bus.relic_equipped.emit(id))
+	relics.relic_unequipped.connect(func(id: StringName) -> void: bus.relic_unequipped.emit(id))
 	sim.offline_gained.connect(func(s: float, g: Dictionary) -> void: bus.offline_gained.emit(s, g))
 
 
