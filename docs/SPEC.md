@@ -113,9 +113,13 @@ Attributes are permanent upgrades bought with Prestige.
 
 ### Relics and buffs
 
-- **Relics** are stacking items, in the spirit of Risk of Rain 2. Each press has a small chance to drop one.
-- There are three rarities: common, rare, and mythic. Stacks add linearly unless the relic says otherwise.
-- The first set has 6 relics: +Cash income, +Multiplier gain, +press rate, +crit damage, chance of a double press, and a pulse that presses adjacent buttons.
+- **Relics** are stacking items, in the spirit of Risk of Rain 2. Each press has a small chance to drop one. Full design in `docs/relics.md`.
+- **Eight rarities**, colours from Minecraft colour codes as Hypixel SkyBlock uses them: Common (white), Uncommon (green), Rare (blue), Epic (dark purple), Legendary (gold), Mythic (light purple), Divine (aqua), Special (red). Divine and Special never drop randomly: they come from rebirths or achievements.
+- **Own and equip.** You own stacks of every relic you find. You equip relic types into a small number of slots (3 at start, one more at 5 and at 20 rebirths). An equipped type applies all its owned stacks; unequipped relics do nothing. Swapping is free and instant.
+- Stacks add linearly unless the relic says otherwise. Chance relics use diminishing stacking and a cap so they stay below 100%.
+- The first set has 6 relics, one each from Common to Mythic: Gold Purse (+cash income), Stopwatch (+press rate), Growth Crystal (+Multiplier gain), Sharp Fang (+crit damage), Twin Pads (chance of a double press), Pulse Ring (chance to press adjacent buttons).
+- **Tooltip** on hover or focus: name and rarity in the tier colour, effect text, stacks owned, next-stack gain, and what a click does.
+- **Epic and above** show a rarity-coloured toast and a pad flash on drop.
 - **Timed buffs** come from shrines in the world. They last 30 to 120 seconds and show a countdown bar on the HUD.
 
 ### Numbers and time
@@ -204,10 +208,10 @@ project.godot
 CLAUDE.md
 docs/        SPEC.md  interfaces.md  decisions.md  art-bible.md
 src/core/    bignum.gd  game_state.gd  formulas.gd  tick.gd  save.gd  event_bus.gd
-src/data/    stat_def.gd  button_def.gd  zone_def.gd  relic_def.gd  attribute_def.gd
+data/        stat_def.gd  button_def.gd  zone_def.gd  relic_def.gd  rarity_def.gd  relic_config.gd  attribute_def.gd
 src/world/   player.gd  button_pad.gd  gate.gd  shrine.gd  zone.gd
 src/render/  pixel_viewport.tscn  iso_camera.gd  fx_driver.gd  shaders/  palettes/
-src/ui/      hud.tscn  stat_panel.gd  popup_number.gd  relic_bar.gd  theme.tres
+src/ui/      hud.tscn  stat_panel.gd  popup_number.gd  relic_bar.gd  relic_panel.gd  relic_slot.gd  relic_tooltip.gd  theme.tres
 content/     stats/  buttons/  zones/  relics/  attributes/     (.tres files)
 assets/      models/  fonts/  audio/
 tests/       run.gd  test_bignum.gd  test_formulas.gd  test_save.gd
@@ -235,6 +239,8 @@ button_denied(button_id: StringName)
 zone_entered(zone_id: StringName)
 gate_opened(gate_id: StringName)
 relic_gained(relic_id: StringName, stacks: int)
+relic_equipped(relic_id: StringName)
+relic_unequipped(relic_id: StringName)
 buff_started(buff_id: StringName, seconds: float)
 rebirth_done(prestige_gained: BigNum)
 

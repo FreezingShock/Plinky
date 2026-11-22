@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RarityDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/rarity_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ui/rarity/frame_6_divine.png" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"divine"
+display_name = "Divine"
+mc_code = "b"
+color = Color(0.333, 1, 1, 1)
+weight = 0.0
+rank = 6
+frame = ExtResource("2")

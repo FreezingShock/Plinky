@@ -18,3 +18,9 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-22 | Name risk: Plinko is a known game show and gambling genre | Players may read Plinky as Plinko. Keep the look and store copy distinct. |
 | 2026-11-22 | Rebirths boost Multiplier gain only; removed (1 + rebirths) from cash_per_second | Nathan confirmed. The spec had both, which counted rebirths twice. |
 | 2026-11-22 | Zone 1 base cash set to 0.25 per second, gate at 9 rebirths, gate lands at about 10.8 minutes | Nathan wants the gate near the 10-minute fun target. At 0.1 per second the gate was at 28 minutes, which was too slow. |
+| 2026-11-22 | Relics: own stacks of every relic, equip relic types into 3 slots (+1 at 5 and 20 rebirths), equipped types apply all stacks | Makes drops a choice, keeps stacking, and gives rebirths a second reward. Swapping is free so it stays quick. |
+| 2026-11-22 | Eight rarities: Common, Uncommon, Rare, Epic, Legendary, Mythic, Divine, Special, with Hypixel SkyBlock colours | Nathan asked. Replaces the 3-tier spec. Special has drop weight 0 (events and achievements only). |
+| 2026-11-22 | Rarity colours are fixed hex, not palette roles | A tier must read the same in every zone. Frames use exact colour; tooltip text lightens Rare and Epic to reach 4.5:1 on ink. |
+| 2026-11-22 | Drop rolls pick a rarity by weight first, then a relic inside it | Divine stays rare however many relics each tier gains. Weights 60, 25, 9, 4, 1.5, 0.4, 0.1, 0. |
+| 2026-11-22 | Equip rules: one slot per relic type, no dupes in slots, tooltip shows next-stack gain | Duplicates are stacks, so a second slot for the same type would add nothing. |
+| 2026-11-22 | Divine and Special never drop randomly (rebirths and achievements only); Epic+ drops get a coloured toast and pad flash; slots stay a rebirth reward | Nathan approved all three. |
