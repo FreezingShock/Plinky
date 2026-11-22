@@ -167,6 +167,8 @@ def sfx():
     write(f"{d}/loading_loop.ogg", norm(loop, 0.5))
 
 # ---------------------------------------------------------------- MUSIC
+SECTION = [0.35, 1.0, 0.6, 1.0]   # melody density per chord group: verse/bridge feel, not a flat wall
+
 def music(name, key, prog, bpm, bars, melody_p, seed):
     """prog: list of (root_midi, chord_intervals) one per 4-bar... per bar group; scale: pentatonic from key."""
     r = np.random.default_rng(seed)
@@ -175,7 +177,7 @@ def music(name, key, prog, bpm, bars, melody_p, seed):
     per = bars // len(prog)
     for gi, (root, ch) in enumerate(prog):
         at = gi * per * bar; span = per * bar
-        for iv in ch: place(buf, pad_tone(root + 12 + iv, span + 2.5, 1.6, 2.2) * 0.55, at)
+        for iv in ch: place(buf, pad_tone(root + 12 + iv, span + 2.5, 1.6, 2.2) * (0.35 + 0.3 * SECTION[gi % 4]), at)
         for b in range(per):  # soft bass: root on 1, fifth on 3
             place(buf, np.sin(2 * np.pi * hz(root - 12) * t_(bar * 0.5)) * env_exp(int(bar * 0.5 * SR), 0.03, 0.9) * 0.55, at + b * bar)
             place(buf, np.sin(2 * np.pi * hz(root - 5) * t_(bar * 0.4)) * env_exp(int(bar * 0.4 * SR), 0.03, 0.7) * 0.35, at + b * bar + 2 * beat)
@@ -190,13 +192,15 @@ def music(name, key, prog, bpm, bars, melody_p, seed):
         scale = [key + o + p for o in (12, 24) for p in PENT]
         for b in range(per):
             for s in range(8):
-                if r.random() < melody_p * (1.0 if s % 2 == 0 else 0.45):
+                if r.random() < melody_p * SECTION[gi % 4] * (1.0 if s % 2 == 0 else 0.45):
                     cur = int(np.clip(cur + r.choice([-2, -1, -1, 0, 1, 1, 2]), 0, len(scale) - 1))
                     place(buf, plink(scale[cur], 1.4, 0.8, 0.42) * 0.34, at + b * bar + s * beat / 2 + r.uniform(0, 0.012))
     buf = reverb(buf, 2.6, 0.38, damp=3000)
     loop = fold(buf, int(dur * SR))  # fold tail => seamless loop
     loop = fft_filter(loop, lo=35, hi=9000)
-    write(f"{ROOT}/music/{name}.ogg", norm(loop, 0.5), q=4)
+    tt = np.arange(len(loop)) / len(loop)
+    loop *= 0.72 + 0.28 * np.cos(2 * np.pi * 2 * tt + 0.6)   # slow breathing swell, periodic so the loop stays seamless
+    write(f"{ROOT}/music/{name}.ogg", norm(loop, 0.5) * 0.7, q=4)
 
 def music_all():
     # Meadow: bright, slow, C major. Am7 / Fmaj7 / Cmaj7 / G6
@@ -223,7 +227,7 @@ def amb():
         place(buf, r_, at)
     # seamless: crossfade end into start
     xf = int(2 * SR); out = buf[:n - xf].copy(); out[:xf] = out[:xf] * np.linspace(0, 1, xf) + buf[n - xf:] * np.linspace(1, 0, xf)
-    write(f"{ROOT}/amb/meadow_amb.ogg", norm(out, 0.35), q=3)
+    write(f"{ROOT}/amb/meadow_amb.ogg", norm(out, 0.2), q=3)
     # Quarry: hollow low wind + sparse drips
     wind = fft_filter(rng.standard_normal(n), lo=60, hi=420) * (0.5 + 0.5 * np.sin(2 * np.pi * t / dur * 2)) * 0.6
     for _ in range(9):
@@ -231,7 +235,7 @@ def amb():
         place(wind, np.sin(2 * np.pi * (rng.uniform(900, 1500)) * tt) * np.exp(-tt / 0.04) * 0.12, at)
     wind = reverb(wind, 1.5, 0.35)[:n]
     out = wind[:n - xf].copy(); out[:xf] = out[:xf] * np.linspace(0, 1, xf) + wind[n - xf:] * np.linspace(1, 0, xf)
-    write(f"{ROOT}/amb/quarry_amb.ogg", norm(out, 0.35), q=3)
+    write(f"{ROOT}/amb/quarry_amb.ogg", norm(out, 0.2), q=3)
 
 if __name__ == "__main__":
     what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb"]
