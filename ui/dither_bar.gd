@@ -13,6 +13,14 @@ var value: float = 0.0:
 			queue_redraw()
 
 
+## Fill colour. Left transparent it falls back to the good role.
+var fill: Color = Color(0, 0, 0, 0):
+	set(v):
+		if v != fill:
+			fill = v
+			queue_redraw()
+
+
 func _init(width: float = 120.0) -> void:
 	custom_minimum_size = Vector2(width, 6)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -26,12 +34,13 @@ func _draw() -> void:
 		for x in w - 2:
 			if BAYER[((y + 1) % 4) * 4 + ((x + 1) % 4)] < 5:
 				draw_rect(Rect2(x + 1, y + 1, 1, 1), track)
+	var fc: Color = fill if fill.a > 0.0 else RelicStyle.good
 	var f: int = int(float(w - 2) * value)
 	if f > 0:
-		draw_rect(Rect2(1, 1, f, 4), RelicStyle.good)
+		draw_rect(Rect2(1, 1, f, 4), fc)
 		for x in range(0, f, 2):
 			draw_rect(Rect2(1 + x, 1, 1, 1), RelicStyle.text)
 		# dithered leading edge
 		for y in 4:
 			if f + 1 < w - 1 and BAYER[((y + 1) % 4) * 4 + ((f + 1) % 4)] < 8:
-				draw_rect(Rect2(1 + f, 1 + y, 1, 1), RelicStyle.good)
+				draw_rect(Rect2(1 + f, 1 + y, 1, 1), fc)

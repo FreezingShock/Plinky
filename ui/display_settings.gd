@@ -21,6 +21,7 @@ const MIN_PIXEL_SCALE: int = 2
 static var bleed_ready: bool = true
 static var scale_mode: int = Scale.FIT
 static var fullscreen: bool = false
+<<<<<<< ours
 ## Window size the player picked in the menu. ZERO means free: the window is whatever size it was dragged to.
 static var resolution: Vector2i = Vector2i.ZERO
 ## Monitor index, or -1 to stay on whichever one the window is on.
@@ -28,6 +29,10 @@ static var screen: int = -1
 static var vsync: bool = true
 ## 0 = unlimited.
 static var fps_cap: int = 0
+=======
+## HUD momentum meter. On by default; Nathan is still deciding whether it stays.
+static var momentum_meter: bool = true
+>>>>>>> theirs
 ## True falls back to the operating system's title bar and border. False (default) uses the game's own frame in windowed mode.
 static var native_frame: bool = false
 ## Set by WindowFrame: a Callable(win: Window, on: bool) that plays the fullscreen wipe and then calls commit_fullscreen.
@@ -53,12 +58,16 @@ static func load_settings() -> void:
 		return
 	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.FIT)), Scale.PIXEL, Scale.WIDE)
 	fullscreen = bool(cfg.get_value(SECTION, "fullscreen", false))
+<<<<<<< ours
 	resolution = Vector2i(int(cfg.get_value(SECTION, "res_w", 0)), int(cfg.get_value(SECTION, "res_h", 0)))
 	if resolution.x < BASE.x or resolution.y < BASE.y:
 		resolution = Vector2i.ZERO
 	screen = int(cfg.get_value(SECTION, "screen", -1))
 	vsync = bool(cfg.get_value(SECTION, "vsync", true))
 	fps_cap = maxi(0, int(cfg.get_value(SECTION, "fps_cap", 0)))
+=======
+	momentum_meter = bool(cfg.get_value(SECTION, "momentum_meter", true))
+>>>>>>> theirs
 	native_frame = bool(cfg.get_value(SECTION, "native_frame", false))
 	# Saves before version 2 stored Pixel perfect, which was the old default. Reset that once to Fit, so a stale
 	# Pixel setting can't leave the view stepping in whole multiples. Pixel perfect is still there in the panel.
@@ -68,11 +77,21 @@ static func load_settings() -> void:
 
 
 static func save_settings() -> void:
+<<<<<<< ours
 	# SettingsFile loads the file first, so the game and keys sections survive this write.
 	SettingsFile.write(SECTION, {
 		"version": SETTINGS_VERSION, "scale": scale_mode, "fullscreen": fullscreen, "native_frame": native_frame,
 		"res_w": resolution.x, "res_h": resolution.y, "screen": screen, "vsync": vsync, "fps_cap": fps_cap,
 	})
+=======
+	var cfg := ConfigFile.new()
+	cfg.set_value(SECTION, "version", SETTINGS_VERSION)
+	cfg.set_value(SECTION, "scale", scale_mode)
+	cfg.set_value(SECTION, "fullscreen", fullscreen)
+	cfg.set_value(SECTION, "momentum_meter", momentum_meter)
+	cfg.set_value(SECTION, "native_frame", native_frame)
+	cfg.save(PATH)
+>>>>>>> theirs
 
 
 ## The size Godot scales from: 640x360, or the bleed in Wide view. Wide view picks the largest whole-number
@@ -178,6 +197,7 @@ static func toggle_fullscreen(win: Window) -> void:
 	set_fullscreen(win, not fullscreen)
 
 
+<<<<<<< ours
 # ---------------------------------------------------------------- resolution, monitor, vsync, fps
 
 static func screen_count() -> int:
@@ -291,3 +311,9 @@ static func apply_startup(win: Window) -> void:
 			resolution = Vector2i.ZERO
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = fps_cap
+=======
+static func set_momentum_meter(on: bool) -> void:
+	load_settings()
+	momentum_meter = on
+	save_settings()
+>>>>>>> theirs

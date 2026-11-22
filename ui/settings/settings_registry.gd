@@ -329,6 +329,12 @@ static func _register_gameplay() -> void:
 		"apply": func(v: Variant) -> void: NumberFormat.style = int(v),
 	})
 	_add({
+		"id": &"momentum_meter", "tab": "Gameplay", "label": "Momentum meter", "kind": Kind.TOGGLE,
+		"hint": "The bar above the bottom bar that shows walking income bonus.",
+		"get": func() -> Variant: return DisplaySettings.momentum_meter,
+		"set": func(v: Variant) -> void: DisplaySettings.set_momentum_meter(bool(v)),
+	})
+	_add({
 		"id": &"autosave", "tab": "Gameplay", "label": "Autosave", "kind": Kind.CHOICE, "default": 0,
 		"hint": "It also saves on rebirth, zone change and quit.",
 		"options": func() -> Array: return [[0, "Default"], [15, "Every 15 s"], [30, "Every 30 s"], [60, "Every minute"], [120, "Every 2 minutes"]],
