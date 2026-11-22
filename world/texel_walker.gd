@@ -69,6 +69,8 @@ func _process(delta: float) -> void:
 		if _has_target:
 			step = step.limit_length((_target - position).length())
 		var moved: bool = _try_step(step)
+		if moved:
+			GameState.sim.feed_momentum(step.length())
 		if not moved and _has_target:
 			_has_target = false   # click target was behind water, a cliff or a trunk: stop at the edge
 		moving = moved

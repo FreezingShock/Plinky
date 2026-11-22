@@ -14,6 +14,7 @@ var meadow: Node2D
 var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
+var critter: TexelCritter
 var pad_glow: PadGlow
 var shake: ScreenShake
 var camera: WorldCamera
@@ -93,6 +94,7 @@ func _ready() -> void:
 	bus.gate_opened.connect(func(_id: StringName) -> void: Juice.milestone())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
+	bus.bonus_gained.connect(_on_bonus_gained)
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
 	Audio.start(sim.zone_id)
@@ -199,6 +201,13 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	if critter == null:
+		critter = TexelCritter.new()
+		world.add_child(critter)
+	critter.palette = Palettes.colors(palette_id)
+	critter.anchors = PackedVector2Array()
+	for pad: TexelPad in pads.values():
+		critter.anchors.append(pad.position)
 
 
 func _enter_zone_visuals(zone_id: StringName) -> void:
@@ -215,6 +224,16 @@ func _enter_zone_visuals(zone_id: StringName) -> void:
 func _on_zone_entered(zone_id: StringName) -> void:
 	_enter_zone_visuals(zone_id)
 	Juice.zone_enter()
+
+
+## Streak and critter payouts float up as a gold popup at the walker or the critter.
+func _on_bonus_gained(kind: StringName, gains: Dictionary) -> void:
+	var g: BigNum = gains.get(&"cash") as BigNum
+	if g == null:
+		return
+	var at: Vector2 = critter.position if (kind == &"critter" and critter != null) else walker.position
+	PopupNumber.spawn(world, at + Vector2(0.0, -14.0), g.to_float(), true)
+	Juice.milestone()
 
 
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:

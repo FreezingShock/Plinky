@@ -89,3 +89,16 @@ Run `python3 docs/balance-sim.py`. Press rate is 1 per second here; the gate tim
 | Relic drops scale with click speed, not time | 2% per press: about 5 drops in 11 min standing, about 50 with hold-to-press | 1.5% per roll, one roll per second, guaranteed first drop at 60 s, pity at 150 s | About 1 relic per 70 s, whatever the click speed |
 | Rebirth loop flattens | Run 1 is 11 min, run 2 is 3.2, then 2.9, 2.8, 2.7, 2.6 min | Not changed. Needs a design decision (Nathan). | See SPEC questions in the thread |
 | Early rebirth is a pure loss | Rebirth at reb 1 gives 12.1 min total against 11.3 | Not changed | No decision exists before the gate |
+
+## 10. Round 2 active-play layer (23 Nov 2026)
+Run `python3 docs/balance-sim-active.py`. All values are in `content/config/game.tres`. Idle play still opens the gate at 10.5 min; active play is faster.
+
+| Mechanic | Rule | Sim result (gate time) |
+|---|---|---|
+| Momentum | Walking fills it (about 180 texels), 0.1 per second drains it, income x(1 + 0.4 x momentum) | Average +20% income: 10.5 to 9.0 min |
+| Golden critter | Appears every 75 to 150 s, stays 12 s, click pays 30 s of income | Caught every time: 10.5 to 8.6 to 9.4 min |
+| Pad streak | m1, m2, m3 in order, each within 10 s, pays 5 s of income, 20 s cooldown | Greedy play never does it. Deliberate play adds up to 25% income. |
+| All three | | 7.6 to 7.8 min |
+| Rebirth push | prestige gain = reb x (reb / 9) ^ 0.5 above 9 reb | Over 60 min: stopping at 9 reb gives 180 prestige, 54 reb gives 1455 (old rule: 594) |
+
+Limits: pushing further wins at every target in the sim, so there is no stop point yet. A cost wall on r1 and r2 would create one. Not decided.

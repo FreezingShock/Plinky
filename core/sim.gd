@@ -11,6 +11,10 @@ signal gate_opened(gate_id: StringName)
 signal rebirth_done(prestige_gained: BigNum)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)
+## Streak or critter payout. kind is &"streak" or &"critter"; gains is StringName -> BigNum.
+signal bonus_gained(kind: StringName, gains: Dictionary)
+signal critter_spawned()
+signal critter_gone()
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -31,6 +35,15 @@ var play_seconds: float = 0.0
 var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 var relic_drops: int = 0     # relics dropped from presses this save
+## 0 to 1. Walking charges it (feed_momentum), time drains it. Not saved.
+var momentum: float = 0.0
+var critter_active: bool = false
+var critter_left: float = 0.0
+var _critter_next: float = 60.0
+var _streak_row: StringName = &""
+var _streak_next: int = 0
+var _streak_at: float = 0.0
+var _streak_ready_at: float = 0.0
 var _last_roll_at: float = -1000.0   # play_seconds of the last drop roll
 var _last_drop_at: float = 0.0       # play_seconds of the last drop (0 = none yet)
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -83,6 +96,13 @@ func new_game() -> void:
 	press_count = 0
 	rebirth_count = 0
 	relic_drops = 0
+	momentum = 0.0
+	critter_active = false
+	critter_left = 0.0
+	_streak_row = &""
+	_streak_next = 0
+	_streak_ready_at = 0.0
+	_schedule_critter()
 	_last_roll_at = -1000.0
 	_last_drop_at = 0.0
 	if relics != null:
@@ -125,6 +145,7 @@ func income_per_second(stat_id: StringName) -> BigNum:
 		boost = get_stat(d.income_boost_stat).add(BigNum.one())
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
+	rm = rm.mul(BigNum.from_float(1.0 + momentum * config.momentum_max_bonus))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
@@ -240,6 +261,7 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
 	if allow_pulse:
+		_update_streak(b)
 		var drop: StringName = _roll_relic_drop()
 		if drop != &"":
 			relics.add_relic(drop)
@@ -249,6 +271,79 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 				if other.zone == b.zone and other.row == b.row and absi(other.row_index - b.row_index) == 1:
 					_press(other.id, world_pos, false)
 	return true
+
+
+## Walking calls this with the distance moved (texels). Fills momentum up to 1.
+func feed_momentum(distance: float) -> void:
+	momentum = minf(1.0, momentum + maxf(distance, 0.0) * config.momentum_per_unit)
+
+
+func _schedule_critter() -> void:
+	if config != null:
+		_critter_next = rng.randf_range(config.critter_min_interval, config.critter_max_interval)
+
+
+func _step_critter(dt: float) -> void:
+	if critter_active:
+		critter_left -= dt
+		if critter_left <= 0.0:
+			critter_active = false
+			_schedule_critter()
+			critter_gone.emit()
+	else:
+		_critter_next -= dt
+		if _critter_next <= 0.0:
+			critter_active = true
+			critter_left = config.critter_lifetime
+			critter_spawned.emit()
+
+
+## Click on the golden critter. Pays critter_income_seconds of income. False if none is out.
+func catch_critter() -> bool:
+	if not critter_active:
+		return false
+	critter_active = false
+	_schedule_critter()
+	var gains: Dictionary = _grant_income_seconds(config.critter_income_seconds)
+	critter_gone.emit()
+	bonus_gained.emit(&"critter", gains)
+	return true
+
+
+func _grant_income_seconds(seconds: float) -> Dictionary:
+	var gains: Dictionary = {}
+	var sb: BigNum = BigNum.from_float(seconds)
+	for s: StatDef in stat_defs.values():
+		if s.passive:
+			var g: BigNum = income_per_second(s.id).mul(sb)
+			_set_stat(s.id, get_stat(s.id).add(g))
+			gains[s.id] = g
+	_check_gates()
+	_flush()
+	return gains
+
+
+## Pad streak: m1, m2, m3 in order, each within streak_window of the last, pays streak_bonus_seconds of income.
+func _update_streak(b: ButtonDef) -> void:
+	if b.row_index == 0:
+		_streak_row = b.row
+		_streak_next = 1
+		_streak_at = play_seconds
+		return
+	if b.row == _streak_row and b.row_index == _streak_next and play_seconds - _streak_at <= config.streak_window:
+		_streak_at = play_seconds
+		_streak_next += 1
+		var last_index: int = 0
+		for other: ButtonDef in button_defs.values():
+			if other.zone == b.zone and other.row == b.row:
+				last_index = maxi(last_index, other.row_index)
+		if b.row_index >= last_index:
+			_streak_row = &""
+			if play_seconds >= _streak_ready_at:
+				_streak_ready_at = play_seconds + config.streak_cooldown
+				bonus_gained.emit(&"streak", _grant_income_seconds(config.streak_bonus_seconds))
+	else:
+		_streak_row = &""
 
 
 ## One drop roll per roll_interval of play time, with a guaranteed first drop and a pity timer.
@@ -269,6 +364,8 @@ func _roll_relic_drop() -> StringName:
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
 func step(dt: float) -> void:
 	play_seconds += dt
+	momentum = maxf(0.0, momentum - config.momentum_decay_per_second * dt)
+	_step_critter(dt)
 	var dtb: BigNum = BigNum.from_float(dt)
 	for s: StatDef in stat_defs.values():
 		if s.passive:
@@ -282,7 +379,17 @@ func can_rebirth() -> bool:
 
 
 func prestige_gain_preview() -> BigNum:
-	return get_stat(config.prestige_source_stat) if can_rebirth() else BigNum.zero()
+	return _prestige_gain() if can_rebirth() else BigNum.zero()
+
+
+## The source stat, boosted once it passes prestige_push_threshold so pushing further pays more than linearly.
+func _prestige_gain() -> BigNum:
+	var v: BigNum = get_stat(config.prestige_source_stat).copy()
+	var th: float = config.prestige_push_threshold
+	var f: float = v.to_float()
+	if th > 0.0 and f > th:
+		v = v.mul(BigNum.from_float(pow(f / th, config.prestige_push_exponent)))
+	return v
 
 
 ## Resets stats flagged resets_on_rebirth and banks the source stat into Prestige.
@@ -290,7 +397,7 @@ func prestige_gain_preview() -> BigNum:
 func try_rebirth() -> bool:
 	if not can_rebirth():
 		return false
-	var gained: BigNum = get_stat(config.prestige_source_stat).copy()
+	var gained: BigNum = _prestige_gain()
 	for s: StatDef in stat_defs.values():
 		if s.resets_on_rebirth:
 			_set_stat(s.id, BigNum.from_float(s.start))
