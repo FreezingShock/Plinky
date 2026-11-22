@@ -13,6 +13,7 @@ func _init() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 200
+	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 8.0, 6.0))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 1)
 	add_child(v)
