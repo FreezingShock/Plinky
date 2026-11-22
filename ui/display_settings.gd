@@ -21,6 +21,8 @@ const MIN_PIXEL_SCALE: int = 2
 static var bleed_ready: bool = true
 static var scale_mode: int = Scale.FIT
 static var fullscreen: bool = false
+## HUD momentum meter. On by default; Nathan is still deciding whether it stays.
+static var momentum_meter: bool = true
 ## True falls back to the operating system's title bar and border. False (default) uses the game's own frame in windowed mode.
 static var native_frame: bool = false
 ## Set by WindowFrame: a Callable(win: Window, on: bool) that plays the fullscreen wipe and then calls commit_fullscreen.
@@ -38,6 +40,7 @@ static func load_settings() -> void:
 		return
 	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.FIT)), Scale.PIXEL, Scale.WIDE)
 	fullscreen = bool(cfg.get_value(SECTION, "fullscreen", false))
+	momentum_meter = bool(cfg.get_value(SECTION, "momentum_meter", true))
 	native_frame = bool(cfg.get_value(SECTION, "native_frame", false))
 	# Saves before version 2 stored Pixel perfect, which was the old default. Reset that once to Fit, so a stale
 	# Pixel setting can't leave the view stepping in whole multiples. Pixel perfect is still there in the panel.
@@ -51,6 +54,7 @@ static func save_settings() -> void:
 	cfg.set_value(SECTION, "version", SETTINGS_VERSION)
 	cfg.set_value(SECTION, "scale", scale_mode)
 	cfg.set_value(SECTION, "fullscreen", fullscreen)
+	cfg.set_value(SECTION, "momentum_meter", momentum_meter)
 	cfg.set_value(SECTION, "native_frame", native_frame)
 	cfg.save(PATH)
 
@@ -152,3 +156,9 @@ static func commit_fullscreen(win: Window, on: bool) -> void:
 static func toggle_fullscreen(win: Window) -> void:
 	load_settings()
 	set_fullscreen(win, not fullscreen)
+
+
+static func set_momentum_meter(on: bool) -> void:
+	load_settings()
+	momentum_meter = on
+	save_settings()
