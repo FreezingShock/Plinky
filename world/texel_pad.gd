@@ -11,6 +11,9 @@ var glow: PadGlow
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var standing: bool = false
 var affordable: bool = false
+## True while the mouse is held down on this pad (hold-to-press). Read by main for Juice.
+var holding: bool = false
+var hold: HoldPress
 
 var _timer: float = 0.0
 var _label: Label
@@ -18,6 +21,10 @@ var _label_clock: float = 0.0
 
 
 func _ready() -> void:
+	hold = HoldPress.new()
+	add_child(hold)
+	hold.tick.connect(_press)
+	hold.released.connect(func() -> void: holding = false)
 	_label = Label.new()
 	_label.theme_type_variation = &"CaptionLabel"
 	_label.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -40,13 +47,33 @@ func _physics_process(delta: float) -> void:
 	if inside:
 		_timer -= delta
 		if _timer <= 0.0:
-			GameState.try_press(button_id, Vector3(global_position.x, global_position.y, 0.0))
+			_press()
 			_timer = sim.press_interval()
 	_label_clock += delta
 	if _label_clock >= 0.2:
 		_label_clock = 0.0
 		_refresh_label()
 	queue_redraw()
+
+
+func _press() -> void:
+	GameState.try_press(button_id, Vector3(global_position.x, global_position.y, 0.0))
+
+
+## Click a pad to press it; hold to repeat (HoldPress speeds up while held).
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton) or event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if event.pressed:
+		var d: Vector2 = to_local(get_global_mouse_position())
+		var h: Vector2 = HALF * 1.3
+		if (d.x * d.x) / (h.x * h.x) + (d.y * d.y) / (h.y * h.y) <= 1.0:
+			holding = true
+			hold.begin()
+			_press()
+			get_viewport().set_input_as_handled()
+	elif holding:
+		hold.end()
 
 
 func _refresh_label() -> void:

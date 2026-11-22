@@ -107,6 +107,7 @@ func _build_pads() -> void:
 
 func _enter_zone_visuals(zone_id: StringName) -> void:
 	palette_id = Palettes.for_zone(zone_id)
+	PopupStack.zone = String(palette_id)
 	PlinkyTheme.apply(theme, String(palette_id))
 	world.modulate = QUARRY_TINT if palette_id == Palettes.QUARRY else Color.WHITE
 	var cols: PackedColorArray = Palettes.colors(palette_id)
@@ -124,7 +125,7 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return
-	Juice.press(pad, pad.position, gain.to_float(), crit)
+	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding)
 
 
 ## Relic UI (PR #5): equipped bar, drop toast, collection panel, pad flash on Epic and above.
