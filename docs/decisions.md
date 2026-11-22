@@ -49,6 +49,10 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Rebirth prestige gain = reb x (reb / 9) ^ 0.5 past 9 reb | Nathan: reward pushing further. Exponent 0.5 gives 1455 prestige at 54 reb in 60 min against 594 with the flat rule. |
 | 2026-11-23 | Walking builds momentum (+40% income at full), clicks are not nerfed | Nathan. Walking charges, standing drains over 10 s. Gives the walker a job without touching click speed. |
 | 2026-11-23 | Pad streaks (m1, m2, m3 in order, 5 s of income, 20 s cooldown) and a golden critter (30 s of income, every 75 to 150 s) | Nathan. Active play opens the gate at about 7.7 min against 10.5 idle. |
+| 2026-11-22 | GUI consistency pass: one AsciiBox.panel() frame (8x6 padding, theme.md section 5) for every panel, tooltip, toast and settings; rarity tints the border via edge_override. RelicStyle.panel_box removed | Panels used 8x6, 10x8 and a flat StyleBoxFlat. Spec says 8x6 and one notched dither frame. |
+| 2026-11-22 | All panel titles use TitleLabel (Pixelify). Dim and secondary text uses RelicStyle.dim (palette 3), never modulate alpha. Disabled button text is dim | Relic panel title was body font in green, several labels used alpha 0.7 which breaks palette indexing. |
+| 2026-11-22 | Tooltip line separation 2 on both tooltips (grid steps 2, 4, 8). Focus ring on PixelButton left to the controller-navigation thread | That thread owns focus states; avoids a conflict. |
+| 2026-11-22 | Relic toast moved from y300 to y274 | Its taller title line made it cover the bottom-bar buttons (y334). |
 
 ## Footsteps and area ambience (23 Nov)
 | 2026-11-23 | Surface under the walker comes from MeadowSites: pad and gate plates are wood, the dithered cream path is sand, everything else is grass | walkable.png is binary, so surface is read from ground.png (5x5 window, 30% cream texels = sand) and placements3d.json anchors. No new baked art needed. |

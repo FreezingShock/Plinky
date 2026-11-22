@@ -259,7 +259,7 @@ func _wire_relics() -> void:
 	hud.add_child(bar)
 	bar.bind(inv)
 	var toast := RelicToast.new()
-	toast.position = Vector2(220, 300)
+	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)
 	hud.add_child(toast)
 	toast.bind(inv)
 	var panel := RelicPanel.new()

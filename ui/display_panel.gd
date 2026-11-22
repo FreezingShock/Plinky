@@ -17,6 +17,7 @@ var _hint: Label
 func bind(win: Window) -> void:
 	_win = win
 	visible = false
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	add_child(v)
@@ -65,6 +66,7 @@ func bind(win: Window) -> void:
 	_hint = Label.new()
 	_hint.custom_minimum_size.x = 220
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(_hint)
 
 	var close_btn := PixelButton.new()
@@ -120,7 +122,7 @@ func _on_window_changed() -> void:
 func _caption(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.modulate = Color(1, 1, 1, 0.7)
+	l.add_theme_color_override("font_color", RelicStyle.dim)
 	return l
 
 
