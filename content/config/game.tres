@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="GameConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/game_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tick_rate = 10
+max_ticks_per_frame = 50
+autosave_seconds = 30.0
+offline_base_cap_hours = 2.0
+prestige_exponent = 0.8
+crit_multiplier = 5.0
+prestige_source_stat = &"reb"
+prestige_stat = &"prestige"
+rebirth_min_value = 1.0

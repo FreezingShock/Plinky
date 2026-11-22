@@ -1,0 +1,113 @@
+[gd_resource type="Theme" load_steps=10 format=3]
+
+[ext_resource type="FontFile" path="res://fonts/spleen-6x12.fnt" id="1_body"]
+[ext_resource type="FontFile" path="res://fonts/PixelifySans.ttf" id="2_display"]
+[ext_resource type="FontFile" path="res://fonts/spleen-5x8.fnt" id="3_caption"]
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.0784, 0.0863, 0.1098, 1)
+border_color = Color(0.3725, 0.6392, 0.4157, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="btn_normal"]
+bg_color = Color(0.0784, 0.0863, 0.1098, 1)
+border_color = Color(0.3725, 0.6392, 0.4157, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="btn_hover"]
+bg_color = Color(0.0784, 0.0863, 0.1098, 1)
+border_color = Color(0.949, 0.902, 0.627, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 2
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="btn_pressed"]
+bg_color = Color(0.949, 0.902, 0.627, 1)
+border_color = Color(0.949, 0.902, 0.627, 1)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 1
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="btn_disabled"]
+bg_color = Color(0.0784, 0.0863, 0.1098, 1)
+border_color = Color(0.1843, 0.4196, 0.3333, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="bar_bg"]
+bg_color = Color(0.1843, 0.4196, 0.3333, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="bar_fill"]
+bg_color = Color(0.3725, 0.6392, 0.4157, 1)
+anti_aliasing = false
+
+[resource]
+default_font = ExtResource("1_body")
+default_font_size = 12
+Label/colors/font_color = Color(0.9647, 0.9373, 0.851, 1)
+Label/colors/font_outline_color = Color(0.0784, 0.0863, 0.1098, 1)
+Label/constants/outline_size = 0
+Label/font_sizes/font_size = 12
+Button/colors/font_color = Color(0.9647, 0.9373, 0.851, 1)
+Button/colors/font_hover_color = Color(0.949, 0.902, 0.627, 1)
+Button/colors/font_pressed_color = Color(0.0784, 0.0863, 0.1098, 1)
+Button/colors/font_disabled_color = Color(0.3725, 0.6392, 0.4157, 1)
+Button/styles/normal = SubResource("btn_normal")
+Button/styles/hover = SubResource("btn_hover")
+Button/styles/pressed = SubResource("btn_pressed")
+Button/styles/disabled = SubResource("btn_disabled")
+Button/styles/focus = SubResource("btn_hover")
+Panel/styles/panel = SubResource("panel")
+PanelContainer/styles/panel = SubResource("panel")
+ProgressBar/styles/background = SubResource("bar_bg")
+ProgressBar/styles/fill = SubResource("bar_fill")
+ProgressBar/constants/outline_size = 0
+ProgressBar/font_sizes/font_size = 12
+TitleLabel/base_type = &"Label"
+TitleLabel/fonts/font = ExtResource("2_display")
+TitleLabel/font_sizes/font_size = 16
+PopupLabel/base_type = &"Label"
+PopupLabel/fonts/font = ExtResource("2_display")
+PopupLabel/font_sizes/font_size = 16
+PopupLabel/colors/font_color = Color(0.949, 0.902, 0.627, 1)
+PopupLabel/colors/font_outline_color = Color(0.0784, 0.0863, 0.1098, 1)
+PopupLabel/constants/outline_size = 2
+CaptionLabel/base_type = &"Label"
+CaptionLabel/fonts/font = ExtResource("3_caption")
+CaptionLabel/font_sizes/font_size = 8
