@@ -21,6 +21,8 @@ const MIN_PIXEL_SCALE: int = 2
 static var bleed_ready: bool = true
 static var scale_mode: int = Scale.FIT
 static var fullscreen: bool = false
+## Calms the world: no camera look-ahead, punch or drift, no screen shake, frozen meadow life.
+static var reduce_motion: bool = false
 static var _loaded: bool = false
 
 
@@ -31,6 +33,8 @@ static func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) != OK:
 		return
+	reduce_motion = bool(cfg.get_value(SECTION, "reduce_motion", false))
+	_push_motion()
 	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.FIT)), Scale.PIXEL, Scale.WIDE)
 	fullscreen = bool(cfg.get_value(SECTION, "fullscreen", false))
 	# Saves before version 2 stored Pixel perfect, which was the old default. Reset that once to Fit, so a stale
@@ -45,6 +49,7 @@ static func save_settings() -> void:
 	cfg.set_value(SECTION, "version", SETTINGS_VERSION)
 	cfg.set_value(SECTION, "scale", scale_mode)
 	cfg.set_value(SECTION, "fullscreen", fullscreen)
+	cfg.set_value(SECTION, "reduce_motion", reduce_motion)
 	cfg.save(PATH)
 
 
@@ -116,3 +121,16 @@ static func set_fullscreen(win: Window, on: bool) -> void:
 static func toggle_fullscreen(win: Window) -> void:
 	load_settings()
 	set_fullscreen(win, not fullscreen)
+
+
+static func set_reduce_motion(on: bool) -> void:
+	load_settings()
+	reduce_motion = on
+	_push_motion()
+	save_settings()
+
+
+## One switch for every moving thing: the camera layers read reduce_motion, shake and meadow life have their own flags.
+static func _push_motion() -> void:
+	FxConfig.reduce_shake = reduce_motion
+	MeadowLife.reduce_motion = reduce_motion

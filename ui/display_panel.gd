@@ -9,6 +9,7 @@ var _fit_btn: PixelButton
 var _wide_btn: PixelButton
 var _window_btn: PixelButton
 var _full_btn: PixelButton
+var _motion_btn: PixelButton
 var _hint: Label
 
 
@@ -49,6 +50,11 @@ func bind(win: Window) -> void:
 		DisplaySettings.set_fullscreen(_win, true)
 		refresh())
 
+	v.add_child(_caption("Motion"))
+	_motion_btn = _option(v, "Reduce motion", func() -> void:
+		DisplaySettings.set_reduce_motion(not DisplaySettings.reduce_motion)
+		refresh())
+
 	_hint = Label.new()
 	_hint.custom_minimum_size.x = 220
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -85,6 +91,7 @@ func refresh() -> void:
 	_wide_btn.text = _tag(mode == DisplaySettings.Scale.WIDE, "Wide view")
 	_window_btn.text = _tag(not DisplaySettings.fullscreen, "Windowed")
 	_full_btn.text = _tag(DisplaySettings.fullscreen, "Fullscreen")
+	_motion_btn.text = ("[x] " if DisplaySettings.reduce_motion else "[ ] ") + "Reduce motion"
 	if mode == DisplaySettings.Scale.FIT:
 		_hint.text = "Fit fills the window at any size. Texels can differ by one pixel. F11 toggles fullscreen."
 	elif not DisplaySettings.pixel_active(_win):
