@@ -14,6 +14,7 @@ var _native_btn: PixelButton
 var _hint: Label
 var _tips_on_btn: PixelButton
 var _tips_off_btn: PixelButton
+var _momentum_btn: PixelButton
 
 signal feedback_requested
 
@@ -71,6 +72,12 @@ func bind(win: Window) -> void:
 		TipsSettings.set_enabled(true)
 		refresh())
 
+	v.add_child(_caption("HUD"))
+	_momentum_btn = PixelButton.new()
+	_momentum_btn.pressed.connect(func() -> void:
+		DisplaySettings.set_momentum_meter(not DisplaySettings.momentum_meter)
+		refresh())
+	v.add_child(_momentum_btn)
 	v.add_child(_caption("Window frame"))
 	var frame_row := HBoxContainer.new()
 	frame_row.add_theme_constant_override("separation", 4)
@@ -134,6 +141,7 @@ func refresh() -> void:
 	var tips: bool = GameState.onboarding.tips_enabled
 	_tips_on_btn.text = _tag(tips, "Tips on")
 	_tips_off_btn.text = _tag(not tips, "Tips off")
+	_momentum_btn.text = "Momentum meter: " + ("on" if DisplaySettings.momentum_meter else "off")
 	_custom_btn.text = _tag(not DisplaySettings.native_frame, "Plinky frame")
 	_native_btn.text = _tag(DisplaySettings.native_frame, "System frame")
 	if mode == DisplaySettings.Scale.FIT:

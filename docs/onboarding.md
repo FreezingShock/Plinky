@@ -42,4 +42,4 @@ The small meadow is the onboarding area. Its gate opening completes the tutorial
 ## Not in this pass
 - No pointer arrow or highlight on the world pad (the card is docked bottom right, away from pads). A pad highlight is a good next step once the PC run shows where players look.
 - No tip for relic slots or attribute choices; add after the quarry work settles those.
-- No momentum meter exists yet, so the momentum tip describes the effect only.
+- The momentum meter (a setting, off by default) is not gated by onboarding; the momentum tip describes the effect only.

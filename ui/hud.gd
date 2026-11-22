@@ -31,6 +31,8 @@ var _gate_bar: DitherBar
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
+var _momentum: MomentumMeter
+var _stats_panel: PanelContainer
 
 
 func setup(p_sim: Sim) -> void:
@@ -45,6 +47,9 @@ func setup(p_sim: Sim) -> void:
 	_build_upgrades()
 	_build_pad_list()
 	_build_tip_card()
+	_momentum = MomentumMeter.new()
+	add_child(_momentum)
+	_momentum.setup(sim)
 	_offline = Label.new()
 	_offline.theme_type_variation = &"CaptionLabel"
 	_offline.position = Vector2(8, 282)
@@ -81,6 +86,7 @@ func _panel(pos: Vector2) -> VBoxContainer:
 
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
+	_stats_panel = v.get_parent() as PanelContainer
 	for sid: StringName in [&"cash", &"mult", &"reb", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -99,7 +105,8 @@ func _build_stats() -> void:
 		name_l.custom_minimum_size.x = 66
 		name_l.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(name_l)
-		var val := Label.new()
+		var val := RollValue.new()
+		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		h.add_child(val)
@@ -112,6 +119,15 @@ func _build_stats() -> void:
 			&"reb": gate(h, Onboarding.F_REBIRTH_ROW)
 			&"prestige": gate(h, Onboarding.F_UPGRADES)
 	_prestige_label = _rows.get(&"prestige", [null, null])[1]
+
+
+## Big jumps in a stat float up beside its counter. Cash is left out: every press already pops its own number.
+func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
+	if sid == &"cash":
+		return
+	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
+	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
+	PopupNumber.spawn_text(self, at, "+%s %s" % [amount.format(), stat_name], true)
 
 
 func _build_gate() -> void:
@@ -241,6 +257,10 @@ func _place() -> void:
 		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
 		if _gate_panel.position != gp:
 			_gate_panel.position = gp
+	if _bottom != null and _momentum != null:
+		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
+		if _momentum.position != mp:
+			_momentum.position = mp
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:
@@ -253,7 +273,7 @@ func _refresh() -> void:
 	_poll_tips()
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
-		(pair[0] as Label).text = sim.get_stat(sid).format()
+		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
 		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
 	if _prestige_label != null:
