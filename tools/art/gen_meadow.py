@@ -84,6 +84,40 @@ for k in range(60):
     x = rnd.randrange(W); y = bottom.get(x, 0) + rnd.randint(3, 8)
     if x in bottom and c.o[y, x] == pl: c.put(x, y, 7 if k % 3 else 5, pl)
 
+
+# ---------- back cliff wall: terraced rock with grass-capped ledges + crystals (layout idea from reference) ----------
+top = {}
+for x in range(W):
+    ys = np.where(mask[:, x])[0]
+    if len(ys): top[x] = ys.min()
+cl = c.new(); STEP = 7
+def cliff_h(x):
+    t = (x - 90) / 470.0
+    if t < 0 or t > 1: return 0
+    env = math.sin(t * math.pi) ** .7
+    return (28 + 26 * vnoise(x, 5, 7, 38) + 10 * math.sin(x * .05)) * env
+for x, yt in top.items():
+    h = int(cliff_h(x) // STEP) * STEP
+    if h <= 0: continue
+    for k in range(1, h + 1):
+        y = yt + 2 - k
+        if y < 0: break
+        ledge = (k % STEP) >= STEP - 2 and k < h
+        cap = k > h - 3
+        if cap: v = dith([3, 4], .45 + (hsh(x, y, 3) - .5) * .5, x, y)
+        elif ledge: v = dith([2, 3], .4 + (hsh(x, y, 4) - .5) * .5, x, y)
+        else:
+            l = .22 + (.2 if x < CX else 0) + ((k // 3 + (x >> 3)) & 1) * .12 + (hsh(x, y, 5) - .5) * .35 + (vnoise(x, y, 6, 9) - .5) * .2
+            v = dith([1, 2, 6], l, x, y)
+        c.put(x, y, v, cl)
+# crystals at the cliff foot
+def crystal(cx, base, hgt, w):
+    cid = c.new()
+    c.poly([(cx - w, base), (cx - w // 2, base - hgt * .55), (cx, base - hgt), (cx + w // 2, base - hgt * .6), (cx + w, base)],
+           lambda x, y: dith([2, 4, 5, 7], .25 + (cx - x) * .05 * -1 + (base - y) / hgt * .35 + (hsh(x, y, 8) - .5) * .2, x, y), cid)
+for (cx_, b_, h_, w_) in [(150, 150, 30, 7), (160, 152, 20, 5), (138, 154, 16, 4), (430, 98, 24, 6), (442, 100, 15, 4)]:
+    crystal(cx_, b_, h_, w_)
+
 # ---------- helpers: sprites (tile ground patched out) ----------
 G.tile_ground = lambda *a, **k: None
 placed = []; layer_shadow = []; layer_body = []
