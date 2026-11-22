@@ -15,7 +15,6 @@ const REFRESH: float = 0.1
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
-var _stats_panel: Control
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_label: Label
 var _gate_label: Label
@@ -30,10 +29,16 @@ var _attr_rows: Dictionary = {}   # attribute id -> [Label, Button]
 var _zones_key: String = ""
 var _pad_list: PadList
 var _gate_bar: DitherBar
+var _tip_card: TipCard
+var _gated: Array = []            # [node, feature] pairs; see gate()
+var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
+var _momentum: MomentumMeter
+var _stats_panel: PanelContainer
 
 
 func setup(p_sim: Sim) -> void:
 	sim = p_sim
+	GameState.onboarding.update()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -42,6 +47,10 @@ func setup(p_sim: Sim) -> void:
 	_build_bottom()
 	_build_upgrades()
 	_build_pad_list()
+	_build_tip_card()
+	_momentum = MomentumMeter.new()
+	add_child(_momentum)
+	_momentum.setup(sim)
 	_offline = Label.new()
 	_offline.theme_type_variation = &"CaptionLabel"
 	_offline.position = Vector2(8, 282)
@@ -68,7 +77,7 @@ func close_panels() -> void:
 func _panel(pos: Vector2) -> VBoxContainer:
 	var p := PanelContainer.new()
 	p.position = pos
-	p.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
+	p.add_theme_stylebox_override("panel", AsciiBox.panel())
 	add_child(p)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
@@ -85,7 +94,7 @@ func stats_bottom() -> float:
 
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
-	_stats_panel = v.get_parent() as Control
+	_stats_panel = v.get_parent() as PanelContainer
 	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -102,23 +111,38 @@ func _build_stats() -> void:
 		var name_l := Label.new()
 		name_l.text = def.display_name
 		name_l.custom_minimum_size.x = 66
-		name_l.modulate = Color(1, 1, 1, 0.7)
+		name_l.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(name_l)
-		var val := Label.new()
+		var val := RollValue.new()
+		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		h.add_child(val)
 		var rate := Label.new()
-		rate.modulate = Color(1, 1, 1, 0.7)
+		rate.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
 		_row_boxes[sid] = h
+		match sid:
+			&"mult": gate(h, Onboarding.F_MULT)
+			&"reb": gate(h, Onboarding.F_REBIRTH_ROW)
+			&"prestige": gate(h, Onboarding.F_UPGRADES)
 	_prestige_label = _rows.get(&"prestige", [null, null])[1]
+
+
+## Big jumps in a stat float up beside its counter. Cash is left out: every press already pops its own number.
+func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
+	if sid == &"cash":
+		return
+	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
+	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
+	PopupNumber.spawn_text(self, at, "+%s %s" % [amount.format(), stat_name], true)
 
 
 func _build_gate() -> void:
 	var v: VBoxContainer = _panel(Vector2(456, 4))
 	_gate_panel = v.get_parent() as PanelContainer
+	gate(_gate_panel, Onboarding.F_REBIRTH_ROW)
 	_zone_label = Label.new()
 	_zone_label.theme_type_variation = &"TitleLabel"
 	v.add_child(_zone_label)
@@ -139,17 +163,20 @@ func _build_bottom() -> void:
 	_rebirth = PixelButton.new()
 	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
 	h.add_child(_rebirth)
+	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	var up := PixelButton.new()
 	up.text = "Upgrades [Tab]"
 	up.pressed.connect(func() -> void: _upgrades_panel.visible = not _upgrades_panel.visible)
 	h.add_child(up)
+	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
 		var rb := PixelButton.new()
 		rb.text = "Relics [R]"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		h.add_child(rb)
+		gate(rb, Onboarding.F_RELICS)
 	var st := PixelButton.new()
-	st.text = "Settings [F10]"
+	st.text = "Settings [%s]" % Keybinds.key_name(&"settings")
 	st.pressed.connect(func() -> void: settings_toggled.emit(true))
 	h.add_child(st)
 
@@ -158,11 +185,12 @@ func _build_pad_list() -> void:
 	_pad_list = PadList.new()
 	_pad_list.position = Vector2(456, 96)
 	add_child(_pad_list)
+	gate(_pad_list, Onboarding.F_MULT)
 
 
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
-	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
+	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.panel())
 	_upgrades_panel.position = Vector2(4, 96)
 	_upgrades_panel.visible = false
 	add_child(_upgrades_panel)
@@ -205,12 +233,14 @@ func _attr_icon(a: AttributeDef) -> String:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_TAB:
-			_upgrades_panel.visible = not _upgrades_panel.visible
+		if Keybinds.matches(&"upgrades", event):
+			if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
+				_upgrades_panel.visible = not _upgrades_panel.visible
 			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_R and GameState.relics != null:
-			relic_panel_toggled.emit(true)
-		elif event.keycode == KEY_F10:
+		elif Keybinds.matches(&"relics", event) and GameState.relics != null:
+			if GameState.onboarding.is_unlocked(Onboarding.F_RELICS):
+				relic_panel_toggled.emit(true)
+		elif Keybinds.matches(&"settings", event):
 			settings_toggled.emit(true)
 			get_viewport().set_input_as_handled()
 
@@ -227,10 +257,19 @@ func _process(delta: float) -> void:
 func _place() -> void:
 	if size != frame:
 		size = frame
+	if _tip_card != null and _tip_card.visible and _bottom != null:
+		# Bottom right, above the bottom bar: clear of the pads, the walker's start and the stats panel.
+		var cp: Vector2 = Vector2(frame.x - _tip_card.size.x - 4.0, frame.y - _bottom.size.y - _tip_card.size.y - 8.0).floor()
+		if _tip_card.position != cp:
+			_tip_card.position = cp
 	if _gate_panel != null:
 		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
 		if _gate_panel.position != gp:
 			_gate_panel.position = gp
+	if _bottom != null and _momentum != null:
+		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
+		if _momentum.position != mp:
+			_momentum.position = mp
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:
@@ -242,9 +281,12 @@ func _refresh() -> void:
 	if slag_box != null:
 		var cz: ZoneDef = sim.current_zone()
 		slag_box.visible = (cz != null and cz.order > 0) or not sim.get_stat(&"slag").is_zero()
+	_apply_gates(_gates_ready)
+	_gates_ready = true
+	_poll_tips()
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
-		(pair[0] as Label).text = sim.get_stat(sid).format()
+		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
 		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
 	if _prestige_label != null:
@@ -310,3 +352,68 @@ func _on_offline(seconds: float, gains: Dictionary) -> void:
 	var t := create_tween()
 	t.tween_interval(5.0)
 	t.tween_callback(func() -> void: _offline.visible = false)
+
+
+# ---------------------------------------------------------------- staged unlocks and tips
+
+## Show `node` only once `feature` is unlocked (see Onboarding). Call right after the node is built.
+## The node must not be shown or hidden by anything else.
+func gate(node: CanvasItem, feature: StringName) -> void:
+	_gated.append([node, feature])
+	node.visible = GameState.onboarding.is_unlocked(feature)
+
+
+func _apply_gates(flash: bool) -> void:
+	var ob: Onboarding = GameState.onboarding
+	for pair: Array in _gated:
+		var node: CanvasItem = pair[0] as CanvasItem
+		if node == null or not is_instance_valid(node):
+			continue
+		var want: bool = ob.is_unlocked(pair[1] as StringName)
+		if node.visible == want:
+			continue
+		node.visible = want
+		if want and flash:
+			_flash(node)
+	if not ob.is_unlocked(Onboarding.F_UPGRADES):
+		_upgrades_panel.visible = false
+
+
+## A system just appeared: blink it three times, stepped, so it catches the eye.
+func _flash(node: CanvasItem) -> void:
+	var base: Color = node.modulate
+	var t: Tween = node.create_tween()
+	for i in 3:
+		t.tween_property(node, "modulate", Color(2.0, 2.0, 1.5, base.a), 0.0)
+		t.tween_interval(0.12)
+		t.tween_property(node, "modulate", base, 0.0)
+		t.tween_interval(0.12)
+
+
+func _build_tip_card() -> void:
+	_tip_card = TipCard.new()
+	_tip_card.closed.connect(_on_tip_closed)
+	add_child(_tip_card)
+
+
+func _poll_tips() -> void:
+	var ob: Onboarding = GameState.onboarding
+	if not ob.tips_enabled:
+		if _tip_card.is_showing():
+			_tip_card.dismiss()
+		return
+	var id: StringName = ob.next_tip()
+	if id == &"":
+		return
+	if _tip_card.is_showing() and not ob.is_urgent(id):
+		return  # let the open card finish
+	ob.tip_shown(id)
+	_tip_card.show_tip(ob.tip_title(id), ob.tip_text(id), ob.cfg.tip_lifetime)
+
+
+func _on_tip_closed(skipped: bool) -> void:
+	if not skipped:
+		return
+	GameState.onboarding.tips_enabled = false
+	TipsSettings.set_enabled(false)
+	_apply_gates(false)  # skipping the tutorial shows every system at once

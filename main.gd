@@ -18,6 +18,7 @@ var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
+var pointer: PadPointer
 var pad_glow: PadGlow
 var shake: ScreenShake
 var camera: WorldCamera
@@ -26,12 +27,17 @@ var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
+var dev_console: DevConsole
+var window_frame: WindowFrame
+var feedback_panel: FeedbackPanel
 var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
 	DisplaySettings.apply(get_window())
+	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
+	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
@@ -84,6 +90,11 @@ func _ready() -> void:
 	Juice.transitions = transitions
 	Juice.fx_root = world
 
+	# 3b. Onboarding: tips on or off comes from its own settings file; progress comes from the save.
+	TipsSettings.load_settings()
+	TipsSettings.register_rows()
+	GameState.onboarding.tips_enabled = TipsSettings.enabled
+
 	# 4. HUD above everything.
 	hud = Hud.new()
 	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
@@ -91,6 +102,10 @@ func _ready() -> void:
 	hud.setup(sim)
 	_wire_relics()
 	_wire_display()
+	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
+	window_frame = WindowFrame.new()
+	add_child(window_frame)
+	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 
@@ -130,13 +145,17 @@ func _update_tooltip() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	if event.keycode == KEY_F11:
+	if Keybinds.matches(&"fullscreen", event):
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_F8:
+		_toggle_feedback()
+		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE:
-		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible
+		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
 		relic_panel.hide()
 		display_panel.close()
+		feedback_panel.close()
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
@@ -145,10 +164,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
 ## or smaller if the window is smaller. It is centred in the visible area, and the rest stays black.
 func _layout_frame() -> void:
-	var visible: Vector2 = get_viewport_rect().size
+	# The custom title bar takes a strip off the top of the view, so it never covers the HUD.
+	var top: float = window_frame.inset() if window_frame != null else 0.0
+	var visible: Vector2 = get_viewport_rect().size - Vector2(0.0, top)
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	var frame: Vector2 = Vector2(minf(visible.x, bleed.x), minf(visible.y, bleed.y)).floor()
-	var origin: Vector2 = ((visible - frame) * 0.5).floor()
+	var origin: Vector2 = ((visible - frame) * 0.5).floor() + Vector2(0.0, top)
 	if frame == size and origin == position:
 		return
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -208,6 +229,12 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	var first: TexelPad = pads.get(&"m1") as TexelPad
+	if first != null:
+		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
+		pointer = PadPointer.new()
+		pointer.palette = Palettes.colors(palette_id)
+		first.add_child(pointer)
 	if critter == null:
 		critter = TexelCritter.new()
 		world.add_child(critter)
@@ -315,9 +342,10 @@ func _wire_relics() -> void:
 	relic_bar = bar
 	bar.position = Vector2(8, 76)  # follows the stats panel bottom (see _process)
 	hud.add_child(bar)
+	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
 	var toast := RelicToast.new()
-	toast.position = Vector2(220, 300)
+	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)
 	hud.add_child(toast)
 	toast.bind(inv)
 	var panel := RelicPanel.new()
@@ -341,3 +369,15 @@ func _wire_display() -> void:
 			display_panel.close()
 		else:
 			display_panel.open())
+	feedback_panel = FeedbackPanel.new()
+	hud.add_child(feedback_panel)
+	feedback_panel.bind(GameState.sim)
+	display_panel.feedback_requested.connect(_toggle_feedback)
+
+
+func _toggle_feedback() -> void:
+	if feedback_panel.visible:
+		feedback_panel.close()
+	else:
+		display_panel.close()
+		feedback_panel.open()

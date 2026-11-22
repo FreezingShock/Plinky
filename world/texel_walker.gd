@@ -18,6 +18,8 @@ var _flip: bool = false
 var _squash_left: float = 0.0
 var _step_clock: float = 0.0
 const STEP_INTERVAL: float = 0.25   # seconds between footfalls while walking
+const SURROUND_INTERVAL: float = 0.1   # how often shore and tree distance are re-read for the ambience
+var _surround_clock: float = 0.0
 
 const ATLAS: Texture2D = preload("res://assets/art/walker/walker_atlas.png")
 const CELL: int = 64
@@ -83,7 +85,7 @@ func _process(delta: float) -> void:
 		_step_clock += delta
 		if _step_clock >= STEP_INTERVAL:
 			_step_clock = 0.0
-			Audio.footstep()
+			Audio.footstep(MeadowSites.surface_at(position))
 	else:
 		_step_clock = STEP_INTERVAL * 0.5
 	if moving:
@@ -93,6 +95,10 @@ func _process(delta: float) -> void:
 		else:
 			_face = &"front" if dir.y > 0.0 else &"back"
 			_flip = false
+	_surround_clock -= delta
+	if _surround_clock <= 0.0:
+		_surround_clock = SURROUND_INTERVAL
+		Audio.set_surroundings(MeadowSites.water_proximity(position), MeadowSites.tree_proximity(position))
 	_animate(delta)
 
 

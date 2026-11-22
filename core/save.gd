@@ -5,6 +5,8 @@ extends Node
 const SAVE_PATH: String = "user://save.json"
 
 var _since_save: float = 0.0
+## 0 = use the content config's autosave interval. Set from the settings menu (Gameplay > Autosave).
+var autosave_override: float = 0.0
 ## Offline report from the load in _ready(). That runs before any UI exists, so the signal is missed;
 ## the HUD reads this once when it is built (see take_offline_report()).
 var _offline_report: Dictionary = {}
@@ -21,7 +23,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_since_save += delta
 	var sim: Sim = get_node("/root/GameState").sim
-	if _since_save >= sim.config.autosave_seconds:
+	var every: float = autosave_override if autosave_override > 0.0 else sim.config.autosave_seconds
+	if _since_save >= every:
 		save_game()
 
 
@@ -62,3 +65,27 @@ func take_offline_report() -> Dictionary:
 	var r: Dictionary = _offline_report
 	_offline_report = {}
 	return r
+
+
+## The save as one line of text, for the clipboard.
+func export_string() -> String:
+	var sim: Sim = get_node("/root/GameState").sim
+	return SaveCodec.encode(sim, Time.get_unix_time_from_system())
+
+
+## Replace the current game with pasted save text. False (and nothing changed) if the text is not a usable save.
+func import_string(text: String) -> bool:
+	var data: Dictionary = SaveCodec.decode(text.strip_edges())
+	if data.is_empty():
+		return false
+	var sim: Sim = get_node("/root/GameState").sim
+	sim.from_dict(data["game"])
+	save_game()
+	return true
+
+
+## Wipe the game back to a new one and write it.
+func reset_game() -> void:
+	var sim: Sim = get_node("/root/GameState").sim
+	sim.new_game()
+	save_game()
