@@ -5,34 +5,34 @@
  ],
  "pads": [
   {
-   "x": 206,
-   "y": 246,
+   "x": 204,
+   "y": 248,
    "state": "ready"
   },
   {
-   "x": 262,
-   "y": 200,
+   "x": 258,
+   "y": 224,
    "state": "ready"
   },
   {
-   "x": 336,
-   "y": 198,
+   "x": 338,
+   "y": 206,
    "state": "ready"
   },
   {
-   "x": 392,
-   "y": 154,
+   "x": 380,
+   "y": 168,
    "state": "locked"
   },
   {
-   "x": 456,
+   "x": 350,
    "y": 128,
    "state": "locked"
   }
  ],
  "props": [
   {
-   "name": "pine",
+   "name": "pine_tall",
    "x": 178,
    "y": 128,
    "flip": false
@@ -44,9 +44,15 @@
    "flip": false
   },
   {
-   "name": "pine",
+   "name": "oak_small",
+   "x": 196,
+   "y": 166,
+   "flip": false
+  },
+  {
+   "name": "pine_small",
    "x": 150,
-   "y": 150,
+   "y": 152,
    "flip": false
   },
   {
@@ -80,27 +86,9 @@
    "flip": false
   },
   {
-   "name": "oak",
-   "x": 520,
-   "y": 108,
-   "flip": false
-  },
-  {
-   "name": "pine",
-   "x": 556,
-   "y": 122,
-   "flip": false
-  },
-  {
    "name": "bush",
    "x": 540,
    "y": 136,
-   "flip": false
-  },
-  {
-   "name": "pine",
-   "x": 494,
-   "y": 100,
    "flip": false
   },
   {
@@ -111,26 +99,20 @@
   },
   {
    "name": "oak",
-   "x": 360,
-   "y": 98,
-   "flip": false
-  },
-  {
-   "name": "pine",
-   "x": 400,
-   "y": 88,
+   "x": 420,
+   "y": 104,
    "flip": false
   },
   {
    "name": "bush",
-   "x": 378,
-   "y": 112,
+   "x": 404,
+   "y": 124,
    "flip": false
   },
   {
-   "name": "rock_s",
-   "x": 330,
-   "y": 112,
+   "name": "pine_small",
+   "x": 282,
+   "y": 108,
    "flip": false
   },
   {
@@ -212,15 +194,21 @@
    "flip": false
   },
   {
-   "name": "rock_s",
-   "x": 400,
-   "y": 262,
+   "name": "rock_big",
+   "x": 396,
+   "y": 256,
    "flip": false
   },
   {
    "name": "rock_s",
-   "x": 386,
-   "y": 280,
+   "x": 382,
+   "y": 260,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 407,
+   "y": 261,
    "flip": false
   },
   {
@@ -230,21 +218,27 @@
    "flip": false
   },
   {
+   "name": "oak_small",
+   "x": 590,
+   "y": 232,
+   "flip": false
+  },
+  {
    "name": "rock_big",
-   "x": 450,
-   "y": 256,
+   "x": 556,
+   "y": 240,
    "flip": false
   },
   {
    "name": "rock_s",
-   "x": 470,
+   "x": 542,
    "y": 244,
    "flip": false
   },
   {
-   "name": "bush",
-   "x": 438,
-   "y": 270,
+   "name": "rock_s",
+   "x": 567,
+   "y": 245,
    "flip": false
   },
   {
@@ -261,14 +255,14 @@
   },
   {
    "name": "lantern",
-   "x": 430,
-   "y": 172,
+   "x": 408,
+   "y": 176,
    "flip": false
   },
   {
    "name": "gate",
-   "x": 500,
-   "y": 116,
+   "x": 330,
+   "y": 100,
    "flip": false
   },
   {
@@ -279,31 +273,31 @@
   },
   {
    "name": "pad_ready",
-   "x": 206,
-   "y": 246,
+   "x": 204,
+   "y": 248,
    "flip": false
   },
   {
    "name": "pad_ready",
-   "x": 262,
-   "y": 200,
+   "x": 258,
+   "y": 224,
    "flip": false
   },
   {
    "name": "pad_ready",
-   "x": 336,
-   "y": 198,
+   "x": 338,
+   "y": 206,
    "flip": false
   },
   {
    "name": "pad_locked",
-   "x": 392,
-   "y": 154,
+   "x": 380,
+   "y": 168,
    "flip": false
   },
   {
    "name": "pad_locked",
-   "x": 456,
+   "x": 350,
    "y": 128,
    "flip": false
   },

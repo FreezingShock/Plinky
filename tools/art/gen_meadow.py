@@ -22,13 +22,16 @@ def noise1(t, s):
 def inside(x, y):
     dx, dy = (x + .5 - CX) / RX, (y + .5 - CY) / RY
     th = math.atan2(dy, dx); r = math.hypot(dx, dy)
-    return r <= 1 + noise1(th, 3)
+    n = noise1(th, 3) * 1.6 + 0.05 * math.sin(th * 4 + 1)
+    if (x - 478) ** 2 / 82 ** 2 + (y - 270) ** 2 / 36 ** 2 < 1: return False   # front-right cove (water)
+    return r <= 1 + n
+WATER = (lambda x, y: (x - 478) ** 2 / 82 ** 2 + (y - 270) ** 2 / 36 ** 2 < 1)
 mask = np.zeros((H, W), bool)
 for y in range(H):
     for x in range(W): mask[y, x] = inside(x, y)
 
 # ---------- path (polyline in screen space, wobbly) ----------
-PATH = [(112, 258), (150, 264), (190, 258), (222, 236), (248, 212), (284, 204), (322, 208), (352, 190), (372, 160), (410, 150), (452, 134), (488, 118)]
+PATH = [(112, 258), (150, 264), (190, 258), (222, 240), (252, 222), (290, 214), (334, 208), (368, 188), (378, 160), (362, 136), (338, 118), (330, 104)]
 def seg_dist(px, py):
     best = 1e9
     for (x0, y0), (x1, y1) in zip(PATH, PATH[1:]):
@@ -49,8 +52,10 @@ for y in range(H):
     for x in range(W):
         if not mask[y, x]: continue
         if on_path(x, y):
-            l = .32 + (hsh(x, y, 4) - .5) * .5 + (vnoise(x, y, 2, 9) - .5) * .3
-            c.put(x, y, dith(PATHR, l, x, y), 1)
+            worn = vnoise(x, y, 14, 26)
+            l = .30 + (hsh(x, y, 4) - .5) * .5 + (vnoise(x, y, 2, 9) - .5) * .3 + (worn - .5) * .55
+            if abs(seg_dist(x, y) - 3.2) < .9 and hsh(x >> 2, y >> 1, 6) > .35: l -= .25      # wheel ruts
+            c.put(x, y, dith(PATHR if worn > .38 else [6, 6, 5, 7], l, x, y), 1)
         else:
             l = .33 + (vnoise(x, y, 5, 40) - .5) * .5 + (vnoise(x, y, 6, 11) - .5) * .32 + (hsh(x >> 1, y >> 1, 3) - .5) * .22 + (hsh(x, y, 4) - .5) * .12
             c.put(x, y, dith(GRASS, l, x, y), 1)
@@ -92,10 +97,10 @@ for x in range(W):
     if len(ys): top[x] = ys.min()
 cl = c.new(); STEP = 7
 def cliff_h(x):
-    t = (x - 90) / 470.0
+    t = (x - 60) / 520.0
     if t < 0 or t > 1: return 0
-    env = math.sin(t * math.pi) ** .7
-    return (28 + 26 * vnoise(x, 5, 7, 38) + 10 * math.sin(x * .05)) * env
+    env = math.sin(t * math.pi) ** .45
+    return (34 + 36 * vnoise(x, 5, 7, 34) + 10 * math.sin(x * .05)) * env
 for x, yt in top.items():
     h = int(cliff_h(x) // STEP) * STEP
     if h <= 0: continue
@@ -115,18 +120,54 @@ def crystal(cx, base, hgt, w):
     cid = c.new()
     c.poly([(cx - w, base), (cx - w // 2, base - hgt * .55), (cx, base - hgt), (cx + w // 2, base - hgt * .6), (cx + w, base)],
            lambda x, y: dith([2, 4, 5, 7], .25 + (cx - x) * .05 * -1 + (base - y) / hgt * .35 + (hsh(x, y, 8) - .5) * .2, x, y), cid)
-for (cx_, b_, h_, w_) in [(150, 150, 30, 7), (160, 152, 20, 5), (138, 154, 16, 4), (430, 98, 24, 6), (442, 100, 15, 4)]:
+for (cx_, b_, h_, w_) in [(130, 168, 30, 7), (141, 170, 20, 5), (120, 172, 16, 4), (545, 118, 26, 6), (557, 120, 16, 4)]:
     crystal(cx_, b_, h_, w_)
+
+
+# ---------- water cove: deep teal with stepped shimmer, sand shore ----------
+wid = c.new()
+for y in range(H):
+    for x in range(W):
+        if WATER(x, y) and c.i[y, x] < 0 or (WATER(x, y) and c.o[y, x] == 1):
+            l = .30 + (y - 240) / 160 * .15 + (vnoise(x, y, 31, 14) - .5) * .35
+            v = dith([1, 2, 2, 3], l, x, y)
+            if hsh(x >> 1, y, 40) > .97 and (y & 1): v = 4
+            c.put(x, y, v, 1)
+for y in range(H):
+    for x in range(W):
+        if mask[y, x] and c.o[y, x] == 1 and any(WATER(x + dx, y + dy) for dx, dy in ((2, 0), (-2, 0), (0, 2), (0, -2), (3, 3), (-3, -3))):
+            c.put(x, y, dith([5, 7], .45 + (hsh(x, y, 41) - .5) * .5, x, y), 1)
+for (lx, ly) in [(448, 262), (500, 280), (520, 258), (470, 288)]:      # lily pads
+    for dx in range(-2, 3):
+        for dy in range(-1, 2):
+            if WATER(lx + dx, ly + dy) and abs(dx) + abs(dy) * 2 < 4: c.put(lx + dx, ly + dy, 3, 1)
 
 # ---------- helpers: sprites (tile ground patched out) ----------
 G.tile_ground = lambda *a, **k: None
 placed = []; layer_shadow = []; layer_body = []
-def render(fn, flip=False):
+def stretch(i, o):      # taller conifer: repeat foliage rows, keep base anchored
+    ys = []
+    for y in range(110):
+        ys.append(y)
+        if y < 74 and y % 4 == 0: ys.append(y)
+    extra = sum(1 for y in ys if y < 80) - 80
+    ys = ys[extra: extra + 110] if len(ys) >= 110 + extra else ys
+    ys = (ys + [109] * 110)[:110]
+    return i[ys], o[ys]
+def shrink(f):
+    def tf(i, o):
+        yy, xx = np.mgrid[0:110, 0:110]
+        sy = np.clip((80 + (yy - 80) / f).round().astype(int), 0, 109); sx = np.clip((55 + (xx - 55) / f).round().astype(int), 0, 109)
+        return i[sy, sx], o[sy, sx]
+    return tf
+TF = dict(pine_tall=stretch, pine_small=shrink(.72), oak_small=shrink(.7))
+def render(fn, flip=False, tf=None):
     t = Cv(110, 110); fn(t, 55, 80); i, o = t.i, t.o
+    if tf: i, o = tf(i, o)
     if flip: i, o = i[:, ::-1], o[:, ::-1]
     return i, o
 def place(name, fn, x, y, flip=False, **meta):
-    i, o = render(fn, flip); k = len(placed) + 1
+    i, o = render(fn, flip, TF.get(name)); k = len(placed) + 1
     placed.append(dict(name=name, x=x, y=y, flip=flip, **meta))
     for yy in range(110):
         for xx in range(110):
@@ -156,36 +197,36 @@ S = []   # (kind, x, y, flip)
 def add(kind, x, y, flip=False, **m): S.append((kind, x, y, flip, m))
 
 # back-left grove: overlapping trunks and canopies, different depths
-add('pine', 178, 128); add('oak', 214, 138); add('pine', 150, 150); add('oak', 238, 120, True); add('bush', 196, 152); add('bush', 262, 140)
+add('pine_tall', 178, 128); add('oak', 214, 138); add('oak_small', 196, 166); add('pine_small', 150, 152); add('oak', 238, 120, True); add('bush', 196, 152); add('bush', 262, 140)
 add('pine', 132, 118) ; add('rock_s', 222, 158)
 # back-right tall pair framing the gate area
-add('oak', 520, 108); add('pine', 556, 122); add('bush', 540, 136); add('pine', 494, 100); add('rock_s', 566, 154)
+add('oak', 520, 108); add('pine', 556, 122); add('bush', 540, 136); add('pine_tall', 494, 108); add('rock_s', 566, 154)
 # mid-back, loose singles
-add('oak', 360, 98); add('pine', 400, 88); add('bush', 378, 112); add('rock_s', 330, 112)
+add('oak', 420, 104); add('pine_tall', 452, 98); add('bush', 404, 124); add('pine_small', 282, 108)
 # left edge
 add('oak', 82, 196); add('bush', 70, 218); add('rock_big', 104, 214); add('rock_s', 124, 224); add('mush', 98, 232)
 # right edge / foreground
 add('rock_big', 548, 210); add('bush', 524, 224); add('rock_s', 508, 236); add('bush', 578, 206)
 # foreground clutter, low so it never hides the path or pads
-add('stump', 244, 262); add('mush', 268, 258); add('mush', 226, 272, True); add('bush', 372, 270); add('rock_s', 400, 262); add('rock_s', 386, 280)
-add('bush', 160, 276); add('rock_big', 450, 256); add('rock_s', 470, 244); add('bush', 438, 270)
+add('stump', 244, 262); add('mush', 268, 258); add('mush', 226, 272, True); add('bush', 372, 270); add('rock_cl', 396, 256)
+add('bush', 160, 276); add('oak_small', 590, 232); add('rock_cl', 556, 240)
 
 # pads (5 for zone 1), loosely arranged along the path, each offset off the line
-PADS = [(206, 246, 'ready'), (262, 200, 'ready'), (336, 198, 'ready'), (392, 154, 'locked'), (456, 128, 'locked')]
+PADS = [(204, 248, 'ready'), (258, 224, 'ready'), (338, 206, 'ready'), (380, 168, 'locked'), (350, 128, 'locked')]
 # landmarks
-add('sign', 130, 252); add('lantern', 300, 222); add('lantern', 430, 172)
-add('gate', 500, 104 + 12, False)      # at the path end
+add('sign', 130, 252); add('lantern', 300, 222); add('lantern', 408, 176)
+add('gate', 330, 100, False)      # far end of the path, centred against the cliff
 add('shrine', 566, 176)
 
 kinds = dict(
-    oak=G.tree_oak, pine=G.tree_pine, bush=G.bush, stump=G.stump, sign=G.signpost, lantern=G.lantern,
+    oak=G.tree_oak, pine=G.tree_pine, pine_tall=G.tree_pine, pine_small=G.tree_pine, oak_small=G.tree_oak, bush=G.bush, stump=G.stump, sign=G.signpost, lantern=G.lantern,
     rock_big=lambda t, x, y: G.rock(t, x, y, 'meadow', True), rock_s=lambda t, x, y: G.rock(t, x, y, 'meadow', False),
     mush=G.mushrooms, gate=lambda t, x, y: G.gate(t, x, y, 'meadow', False), shrine=lambda t, x, y: G.shrine(t, x, y, 'meadow', False))
 
 # shade pools under canopies (ground pass)
 for (k, x, y, fl, m) in S:
-    if k in ('oak', 'pine'):
-        r = 22 if k == 'oak' else 14
+    if k in ('oak', 'pine', 'pine_tall', 'oak_small', 'pine_small'):
+        r = 22 if k == 'oak' else 14 if k != 'oak_small' else 14
         for yy in range(y - 6, y + 9):
             for xx in range(x - r, x + r + 1):
                 if 0 <= xx < W and 0 <= yy < H and mask[yy, xx] and c.o[yy, xx] == 1 and ((xx - x) / r) ** 2 + ((yy - y) / (r * .38)) ** 2 < 1 and bay(xx, yy) < .55 and c.i[yy, xx] in (3, 4):
@@ -204,7 +245,11 @@ for _ in range(16): scatter_cluster(rnd.randint(90, 560), rnd.randint(110, 280),
 for (px, py, _) in PADS: scatter_cluster(px, py, 6, 24, 'tuft'); scatter_cluster(px + 6, py + 6, 4, 22, 'flower')
 
 # draw order: shadows (ground-level), decals, pads, then y-sorted bodies
-for (kind, x, y, fl, m) in S: place(kind, kinds[kind], x, y, fl)
+for (kind, x, y, fl, m) in S:
+    if not (0 <= x < W and 0 <= y < H and mask[y, x]): continue
+    if kind == 'rock_cl':
+        for dx, dy, k2 in ((0, 0, 'rock_big'), (-14, 4, 'rock_s'), (11, 5, 'rock_s')): place(k2, kinds[k2], x + dx, y + dy, fl)
+    else: place(kind, kinds[kind], x, y, fl)
 for (px, py, st) in PADS:
     place('pad_' + st, lambda t, x, y, s=st: G.pad(t, x, y, s, 'meadow'), px, py)
 # walker standing on the path near the start
