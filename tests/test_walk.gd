@@ -15,10 +15,11 @@ func run(t: Object) -> void:
 		var kind: String = str(d.get("kind", ""))
 		var p := Vector2(float(d.get("sx", 0)), float(d.get("sy", 0)))
 		if kind == "pad" or kind == "gate" or kind == "player_spawn":
-			var n: Vector2 = WalkMask.nearest(p, 12)
-			t.ok(WalkMask.walkable(n) and p.distance_to(n) <= 12.0, "%s at %s is reachable within 12 texels" % [kind, str(p)])
+			var reach: int = 24 if kind == "player_spawn" else 12   # spawn gets snapped by main._clear_spawn
+			var n: Vector2 = WalkMask.nearest(p, reach)
+			t.ok(WalkMask.walkable(n) and p.distance_to(n) <= float(reach), "%s at %s is reachable within %d texels" % [kind, str(p), reach])
 		if kind == "player_spawn":
-			spawn_ok = WalkMask.walkable(WalkMask.nearest(p, 12))
+			spawn_ok = WalkMask.walkable(WalkMask.nearest(p, 24))
 		if kind == "water":
 			t.ok(not WalkMask.walkable(p), "water '%s' centre is not walkable" % str(d.get("name", "")))
 			water_blocked += 1
