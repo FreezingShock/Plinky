@@ -41,3 +41,6 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-22 | Life steps at 12 fps (sway at 6 fps), palette indices only, Bayer dither for every glow, no alpha | Art bible sections 2 and 4. Stepped motion reads as pixel art and keeps the redraw cheap. |
 | 2026-11-22 | Reduce motion (MeadowLife.reduce_motion) freezes sway, pollen, butterflies and firefly drift; blinks, glows and twinkles stay | Blinks change in place, not in travel. The M4 settings screen sets the flag. |
 | 2026-11-22 | Wide view letterboxes the 840x480 bleed (KEEP aspect, base = bleed) instead of expanding the window aspect | Expanding gave an off-centre frame on ultrawide. The bleed is the cap, so letterboxing shows the same picture, and Godot centres it. |
+| 2026-11-23 | Cash starts at 10 (rebirth resets to it too) | v0 had 40 s with nothing to buy. First press now happens at second 0. |
+| 2026-11-23 | r2 cost 30000 to 12000 | Greedy play never reached 30000, so r2 was dead content. At 12000 saving for it is a real choice and finishes the gate about 2 min sooner. |
+| 2026-11-23 | Relic drops: 1.5% per roll, one roll per second of play, first drop by 60 s, pity at 150 s | Per-press chance rewarded hold-to-press with about 10 times more relics. Now drops follow play time. |

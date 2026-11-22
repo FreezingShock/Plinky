@@ -30,6 +30,9 @@ var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
+var relic_drops: int = 0     # relics dropped from presses this save
+var _last_roll_at: float = -1000.0   # play_seconds of the last drop roll
+var _last_drop_at: float = 0.0       # play_seconds of the last drop (0 = none yet)
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _dirty: Dictionary = {}
@@ -79,6 +82,9 @@ func new_game() -> void:
 	play_seconds = 0.0
 	press_count = 0
 	rebirth_count = 0
+	relic_drops = 0
+	_last_roll_at = -1000.0
+	_last_drop_at = 0.0
 	if relics != null:
 		relics.from_dict({})
 		relics.set_rebirths(0)
@@ -234,7 +240,7 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
 	if allow_pulse:
-		var drop: StringName = relics.roll_drop(rng, luck_level())
+		var drop: StringName = _roll_relic_drop()
 		if drop != &"":
 			relics.add_relic(drop)
 		var pulse: float = relics.total_effect(RelicDef.Effect.PULSE_CHANCE)
@@ -243,6 +249,21 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 				if other.zone == b.zone and other.row == b.row and absi(other.row_index - b.row_index) == 1:
 					_press(other.id, world_pos, false)
 	return true
+
+
+## One drop roll per roll_interval of play time, with a guaranteed first drop and a pity timer.
+func _roll_relic_drop() -> StringName:
+	var rc: RelicConfig = relics.config
+	if play_seconds - _last_roll_at < rc.roll_interval:
+		return &""
+	_last_roll_at = play_seconds
+	var due: float = rc.first_drop_seconds if relic_drops == 0 else rc.pity_seconds
+	var force: bool = play_seconds - _last_drop_at >= due
+	var drop: StringName = relics.roll_drop(rng, luck_level(), force)
+	if drop != &"":
+		relic_drops += 1
+		_last_drop_at = play_seconds
+	return drop
 
 
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
@@ -393,6 +414,8 @@ func to_dict() -> Dictionary:
 		"play_seconds": play_seconds,
 		"press_count": press_count,
 		"rebirth_count": rebirth_count,
+		"relic_drops": relic_drops,
+		"last_drop_at": _last_drop_at,
 		"relics": relics.to_dict(),
 	}
 
@@ -428,6 +451,8 @@ func from_dict(d: Dictionary) -> bool:
 	play_seconds = float(d.get("play_seconds", 0.0))
 	press_count = int(d.get("press_count", 0))
 	rebirth_count = int(d.get("rebirth_count", 0))
+	relic_drops = int(d.get("relic_drops", 0))
+	_last_drop_at = float(d.get("last_drop_at", play_seconds))
 	var rd: Variant = d.get("relics", {})
 	if rd is Dictionary:
 		relics.from_dict(rd)

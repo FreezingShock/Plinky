@@ -11,7 +11,7 @@ func run(t: Object) -> void:
 	t.near(sim.income_per_second(&"cash").to_float(), 0.25, 1e-9, "base income")
 	for i in 400:
 		sim.step(0.1)  # 40 s
-	t.near(sim.get_stat(&"cash").to_float(), 10.0, 1e-6, "40 s of income is 10 cash")
+	t.near(sim.get_stat(&"cash").to_float(), 20.0, 1e-6, "start 10 plus 40 s of income (10) is 20 cash")
 	t.ok(sim.can_afford(&"m1"), "m1 affordable at 10 cash")
 	t.ok(not sim.can_afford(&"m2"), "m2 not affordable")
 	var seen: Array = []
@@ -19,7 +19,7 @@ func run(t: Object) -> void:
 	t.ok(sim.try_press(&"m1"), "press m1")
 	t.eq(seen.size(), 1, "button_pressed emitted once")
 	t.near(sim.get_stat(&"mult").to_float(), 1.0, 1e-9, "m1 gives +1 mult")
-	t.near(sim.get_stat(&"cash").to_float(), 0.0, 1e-6, "cost spent")
+	t.near(sim.get_stat(&"cash").to_float(), 10.0, 1e-6, "cost spent")
 	t.near(sim.income_per_second(&"cash").to_float(), 0.5, 1e-9, "income doubles with 1 mult")
 	var denied: Array = []
 	sim.button_denied.connect(func(id: StringName) -> void: denied.append(id))
@@ -59,7 +59,7 @@ func run(t: Object) -> void:
 	sim.stats[&"mult"] = BigNum.from_float(77.0)
 	t.ok(sim.try_rebirth(), "rebirth at reb 9")
 	t.near(sim.get_stat(&"prestige").to_float(), 9.0, 1e-9, "prestige gained = reb at reset")
-	t.near(sim.get_stat(&"cash").to_float(), 0.0, 1e-9, "cash reset")
+	t.near(sim.get_stat(&"cash").to_float(), 10.0, 1e-9, "cash resets to its start of 10")
 	t.near(sim.get_stat(&"mult").to_float(), 0.0, 1e-9, "mult reset")
 	t.near(sim.get_stat(&"reb").to_float(), 0.0, 1e-9, "reb reset")
 	t.ok(sim.is_gate_open(&"zone1"), "gate stays open")
@@ -108,3 +108,20 @@ func run(t: Object) -> void:
 	sim.try_rebirth()
 	t.eq(sim.rebirth_count, 1, "rebirth_count increments")
 	t.eq(sim.relics.rebirths, 1, "relic inventory told about the rebirth")
+
+	# Relic drops: one roll per roll_interval, guaranteed first drop, pity timer
+	sim.new_game()
+	sim.rng.seed = 7
+	sim.relics.config.base_drop_chance = 0.0  # only the guarantees can drop anything
+	sim.stats[&"cash"] = BigNum.from_float(1000000.0)
+	for i in 50:
+		sim.try_press(&"m1")  # 50 presses at play time 0: one roll at most, and it is not due yet
+	t.eq(sim.relic_drops, 0, "no drop before first_drop_seconds")
+	sim.play_seconds = sim.relics.config.first_drop_seconds + 1.0
+	for i in 50:
+		sim.try_press(&"m1")
+	t.eq(sim.relic_drops, 1, "first drop is guaranteed, and one roll per interval caps a press burst at one")
+	sim.play_seconds += sim.relics.config.pity_seconds + 1.0
+	sim.try_press(&"m1")
+	t.eq(sim.relic_drops, 2, "pity timer forces a drop")
+	sim.relics.config.base_drop_chance = 0.015

@@ -97,8 +97,8 @@ func multiplier(effect: RelicDef.Effect) -> float:
 
 ## Rolls a drop. Returns the relic id, or &"" for no drop. `luck_level` comes from the Luck attribute.
 ## Rarity is picked by weight first (so Divine stays rare no matter how many relics exist), then a relic within it.
-func roll_drop(rng: RandomNumberGenerator, luck_level: int) -> StringName:
-	if rng.randf() >= config.drop_chance(luck_level):
+func roll_drop(rng: RandomNumberGenerator, luck_level: int, force: bool = false) -> StringName:
+	if not force and rng.randf() >= config.drop_chance(luck_level):
 		return &""
 	var by_rarity: Dictionary = {}  ## RarityDef -> Array[RelicDef]
 	for d: RelicDef in defs.values():

@@ -8,6 +8,13 @@ extends Resource
 @export var slot_unlock_rebirths: Array[int] = [5, 20]
 ## Base chance a press drops a relic, before Luck.
 @export var base_drop_chance: float = 0.02
+## A press only rolls for a drop if at least this many seconds passed since the last roll.
+## Hold-to-press can buy many times a second; this keeps drops tied to play time, not click speed.
+@export var roll_interval: float = 1.0
+## Guaranteed drop once this many play seconds pass with no drop (bad-luck protection).
+@export var pity_seconds: float = 150.0
+## The very first relic is guaranteed by this play second, so the system shows itself early.
+@export var first_drop_seconds: float = 60.0
 ## Added drop chance per Luck level (SPEC: +5% relic drop chance, treated as relative).
 @export var luck_per_level: float = 0.05
 

@@ -78,3 +78,14 @@ Each file uses the field names from SPEC section 5. Values are plain numbers. Bi
 - Confirm the Rebirths correction in section 2.
 - Gate threshold and base cash: 9 and 0.25 chosen for the 10 to 12 minute target. Confirm with the M2 simulator.
 - Zone 2 starting values.
+
+## 9. Round 2 audit (23 Nov 2026, v1 tuning)
+Run `python3 docs/balance-sim.py`. Press rate is 1 per second here; the gate time barely moves between 0.5 and 6 presses per second because cash income is passive.
+
+| Finding (v0) | Number | v1 change | v1 result |
+|---|---|---|---|
+| First purchase waits for passive cash | 40 s of nothing | Cash starts at 10 (also the value after a rebirth) | First buy at 0 s |
+| r2 (30000 mult) is never bought: greedy spends mult on r1 at 3000 | 0 of 9 gate rebirths come from r2 | r2 cost 12000 | Saver path (skip r1, wait for r2) opens the gate at 8.6 min; greedy at 10.5 min |
+| Relic drops scale with click speed, not time | 2% per press: about 5 drops in 11 min standing, about 50 with hold-to-press | 1.5% per roll, one roll per second, guaranteed first drop at 60 s, pity at 150 s | About 1 relic per 70 s, whatever the click speed |
+| Rebirth loop flattens | Run 1 is 11 min, run 2 is 3.2, then 2.9, 2.8, 2.7, 2.6 min | Not changed. Needs a design decision (Nathan). | See SPEC questions in the thread |
+| Early rebirth is a pure loss | Rebirth at reb 1 gives 12.1 min total against 11.3 | Not changed | No decision exists before the gate |
