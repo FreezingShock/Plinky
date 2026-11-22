@@ -24,6 +24,7 @@ var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
 var window_frame: WindowFrame
+var feedback_panel: FeedbackPanel
 var palette_id: StringName = Palettes.MEADOW
 
 
@@ -130,10 +131,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event.keycode == KEY_F11:
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_F8:
+		_toggle_feedback()
+		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE:
-		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible
+		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
 		relic_panel.hide()
 		display_panel.close()
+		feedback_panel.close()
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
@@ -283,3 +288,15 @@ func _wire_display() -> void:
 			display_panel.close()
 		else:
 			display_panel.open())
+	feedback_panel = FeedbackPanel.new()
+	hud.add_child(feedback_panel)
+	feedback_panel.bind(GameState.sim)
+	display_panel.feedback_requested.connect(_toggle_feedback)
+
+
+func _toggle_feedback() -> void:
+	if feedback_panel.visible:
+		feedback_panel.close()
+	else:
+		display_panel.close()
+		feedback_panel.open()
