@@ -42,12 +42,14 @@ static func write_file(path: String, text: String) -> bool:
 		if bak != null and not old.is_empty() and not decode(old).is_empty():
 			bak.store_string(old)  # only back up a save that is itself valid
 			bak.close()
-	var f: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	# Write a temp file and rename it over the save, so a crash mid-write never leaves a half file.
+	var tmp: String = path + ".tmp"
+	var f: FileAccess = FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
 		return false
 	f.store_string(text)
 	f.close()
-	return true
+	return DirAccess.rename_absolute(tmp, path) == OK
 
 
 ## Main file, then backup, then {} (caller starts a new game).
