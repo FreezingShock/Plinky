@@ -81,7 +81,7 @@ func _ready() -> void:
 	_loader.add("res://fonts/PixelifySans.ttf", 0.075, "Setting the type")
 	_loader.add("res://fonts/spleen-6x12.fnt", 0.075, "Setting the type")
 	_loader.start()
-	Audio.start_loading()
+	_audio(&"start_loading")
 
 	_tip_index = randi() % TIPS.size()
 	_tip_label.text = TIPS[_tip_index]
@@ -205,6 +205,13 @@ func _card_style() -> StyleBoxFlat:
 	return sb
 
 
+## Looked up by path so the script still compiles in the headless test runner, which has no autoloads.
+func _audio(method: StringName) -> void:
+	var a: Node = get_node_or_null("/root/Audio")
+	if a != null:
+		a.call(method)
+
+
 func _process(delta: float) -> void:
 	_elapsed += delta
 	_animate_walker(delta)
@@ -243,7 +250,7 @@ func _place_walker(fraction: float) -> void:
 
 func _start_leave() -> void:
 	_phase = Phase.LEAVING
-	Audio.stop_loading()
+	_audio(&"stop_loading")
 	var game: PackedScene = _loader.resource_for(GAME_SCENE) as PackedScene
 	if game == null:
 		_phase = Phase.FAILED
