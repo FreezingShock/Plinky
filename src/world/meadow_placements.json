@@ -1,0 +1,317 @@
+{
+ "size": [
+  640,
+  360
+ ],
+ "pads": [
+  {
+   "x": 206,
+   "y": 246,
+   "state": "ready"
+  },
+  {
+   "x": 262,
+   "y": 200,
+   "state": "ready"
+  },
+  {
+   "x": 336,
+   "y": 198,
+   "state": "ready"
+  },
+  {
+   "x": 392,
+   "y": 154,
+   "state": "locked"
+  },
+  {
+   "x": 456,
+   "y": 128,
+   "state": "locked"
+  }
+ ],
+ "props": [
+  {
+   "name": "pine",
+   "x": 178,
+   "y": 128,
+   "flip": false
+  },
+  {
+   "name": "oak",
+   "x": 214,
+   "y": 138,
+   "flip": false
+  },
+  {
+   "name": "pine",
+   "x": 150,
+   "y": 150,
+   "flip": false
+  },
+  {
+   "name": "oak",
+   "x": 238,
+   "y": 120,
+   "flip": true
+  },
+  {
+   "name": "bush",
+   "x": 196,
+   "y": 152,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 262,
+   "y": 140,
+   "flip": false
+  },
+  {
+   "name": "pine",
+   "x": 132,
+   "y": 118,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 222,
+   "y": 158,
+   "flip": false
+  },
+  {
+   "name": "oak",
+   "x": 520,
+   "y": 108,
+   "flip": false
+  },
+  {
+   "name": "pine",
+   "x": 556,
+   "y": 122,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 540,
+   "y": 136,
+   "flip": false
+  },
+  {
+   "name": "pine",
+   "x": 494,
+   "y": 100,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 566,
+   "y": 154,
+   "flip": false
+  },
+  {
+   "name": "oak",
+   "x": 360,
+   "y": 98,
+   "flip": false
+  },
+  {
+   "name": "pine",
+   "x": 400,
+   "y": 88,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 378,
+   "y": 112,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 330,
+   "y": 112,
+   "flip": false
+  },
+  {
+   "name": "oak",
+   "x": 82,
+   "y": 196,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 70,
+   "y": 218,
+   "flip": false
+  },
+  {
+   "name": "rock_big",
+   "x": 104,
+   "y": 214,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 124,
+   "y": 224,
+   "flip": false
+  },
+  {
+   "name": "mush",
+   "x": 98,
+   "y": 232,
+   "flip": false
+  },
+  {
+   "name": "rock_big",
+   "x": 548,
+   "y": 210,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 524,
+   "y": 224,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 508,
+   "y": 236,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 578,
+   "y": 206,
+   "flip": false
+  },
+  {
+   "name": "stump",
+   "x": 244,
+   "y": 262,
+   "flip": false
+  },
+  {
+   "name": "mush",
+   "x": 268,
+   "y": 258,
+   "flip": false
+  },
+  {
+   "name": "mush",
+   "x": 226,
+   "y": 272,
+   "flip": true
+  },
+  {
+   "name": "bush",
+   "x": 372,
+   "y": 270,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 400,
+   "y": 262,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 386,
+   "y": 280,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 160,
+   "y": 276,
+   "flip": false
+  },
+  {
+   "name": "rock_big",
+   "x": 450,
+   "y": 256,
+   "flip": false
+  },
+  {
+   "name": "rock_s",
+   "x": 470,
+   "y": 244,
+   "flip": false
+  },
+  {
+   "name": "bush",
+   "x": 438,
+   "y": 270,
+   "flip": false
+  },
+  {
+   "name": "sign",
+   "x": 130,
+   "y": 252,
+   "flip": false
+  },
+  {
+   "name": "lantern",
+   "x": 300,
+   "y": 222,
+   "flip": false
+  },
+  {
+   "name": "lantern",
+   "x": 430,
+   "y": 172,
+   "flip": false
+  },
+  {
+   "name": "gate",
+   "x": 500,
+   "y": 116,
+   "flip": false
+  },
+  {
+   "name": "shrine",
+   "x": 566,
+   "y": 176,
+   "flip": false
+  },
+  {
+   "name": "pad_ready",
+   "x": 206,
+   "y": 246,
+   "flip": false
+  },
+  {
+   "name": "pad_ready",
+   "x": 262,
+   "y": 200,
+   "flip": false
+  },
+  {
+   "name": "pad_ready",
+   "x": 336,
+   "y": 198,
+   "flip": false
+  },
+  {
+   "name": "pad_locked",
+   "x": 392,
+   "y": 154,
+   "flip": false
+  },
+  {
+   "name": "pad_locked",
+   "x": 456,
+   "y": 128,
+   "flip": false
+  },
+  {
+   "name": "walker",
+   "x": 164,
+   "y": 264,
+   "flip": false
+  }
+ ]
+}

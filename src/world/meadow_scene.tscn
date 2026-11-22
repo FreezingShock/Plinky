@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/world/meadow_scene.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/art/zone1/meadow_backdrop.png" id="2"]
+
+[node name="MeadowScene" type="Node2D"]
+texture_filter = 1
+script = ExtResource("1")
+
+[node name="Backdrop" type="Sprite2D" parent="."]
+centered = false
+texture = ExtResource("2")
+
+[node name="Anchors" type="Node2D" parent="."]
