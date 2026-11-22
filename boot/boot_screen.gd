@@ -8,10 +8,10 @@ extends Control
 const GAME_SCENE: String = "res://main.tscn"
 const MEADOW_SCENE: String = "res://world/meadow_scene.tscn"
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
-const WALKER_ATLAS_PATH: String = "res://assets/art/walker/walker_atlas.png"
+const WALKER_SHEET_PATH: String = "res://assets/brand/walker-press-sheet-1x.png"
 const BODY_FONT: FontFile = preload("res://fonts/spleen-6x12.fnt")
 const DISPLAY_FONT: FontFile = preload("res://fonts/PixelifySans.ttf")
-const WALKER_ATLAS: Texture2D = preload("res://assets/art/walker/walker_atlas.png")
+const WALKER_SHEET: Texture2D = preload("res://assets/brand/walker-press-sheet-1x.png")
 
 ## Shortest time the logo stays up, so a fast load does not flash past. Real progress still drives the bar.
 const MIN_SHOW_SECONDS: float = 1.8
@@ -21,16 +21,14 @@ const TRACK_WIDTH: float = 240.0
 ## Bar sits 50 texels down the track, so the walker's feet (47 texels into its cell) land on the bar.
 const BAR_Y: float = 50.0
 const WALKER_CELL: int = 64
-const WALKER_FEET_X: float = 32.0
-const WALKER_FEET_Y: float = 47.0
-const WALKER_FPS: float = 6.0
+const WALKER_FRAME_COUNT: int = 8
+## Brand press loop: the walker on its pad, pressing. Stands on the bar's leading edge.
+const WALKER_FPS: float = 8.0
+## Pad base sits on the bar: the sprite's bottom is WALKER_BASE_Y texels into its 64 texel cell.
+const WALKER_BASE_Y: float = 56.0
 const TIP_SECONDS: float = 3.4
 const TIP_BLANK_SECONDS: float = 0.15
 const DISSOLVE_SECONDS: float = 0.6
-## Atlas cells (col, row): front idle, then the front walk cycle. Row 0 col 0 is the front idle frame.
-const WALK_FRAMES: Array[Vector2i] = [
-	Vector2i(0, 0), Vector2i(0, 0), Vector2i(2, 0), Vector2i(0, 0), Vector2i(2, 1), Vector2i(0, 0),
-]
 const TIPS: Array[String] = [
 	"Stand on a pad to press it at your press rate. Hold the mouse on a pad to keep pressing.",
 	"Relics drop on every successful press. Equip them in your relic slots.",
@@ -79,7 +77,7 @@ func _ready() -> void:
 	_loader.add(MEADOW_SCENE, 0.40, "Waking the meadow")
 	_loader.add(GAME_SCENE, 0.25, "Gathering the pads")
 	_loader.add(THEME_PATH, 0.10, "Mixing the palette")
-	_loader.add(WALKER_ATLAS_PATH, 0.10, "Shaping the walker")
+	_loader.add(WALKER_SHEET_PATH, 0.10, "Shaping the walker")
 	_loader.add("res://fonts/PixelifySans.ttf", 0.075, "Setting the type")
 	_loader.add("res://fonts/spleen-6x12.fnt", 0.075, "Setting the type")
 	_loader.start()
@@ -134,7 +132,7 @@ func _build_column() -> void:
 	_track.add_child(_bar)
 
 	_walker_tex = AtlasTexture.new()
-	_walker_tex.atlas = WALKER_ATLAS
+	_walker_tex.atlas = WALKER_SHEET
 	_walker_tex.region = Rect2(0, 0, WALKER_CELL, WALKER_CELL)
 	_walker = TextureRect.new()
 	_walker.texture = _walker_tex
@@ -236,10 +234,10 @@ func _update_loading(delta: float) -> void:
 		_start_leave()
 
 
-## The walker's feet sit on the bar's leading edge.
+## The walker's pad sits on the bar's leading edge.
 func _place_walker(fraction: float) -> void:
 	var fill_x: float = 1.0 + floorf((TRACK_WIDTH - 2.0) * fraction)
-	_walker.position = Vector2(fill_x - WALKER_FEET_X, BAR_Y - WALKER_FEET_Y)
+	_walker.position = Vector2(fill_x - WALKER_CELL * 0.5, BAR_Y - WALKER_BASE_Y)
 
 
 func _start_leave() -> void:
@@ -256,9 +254,8 @@ func _start_leave() -> void:
 
 func _animate_walker(delta: float) -> void:
 	_walk_t += delta
-	var frame: int = int(_walk_t * WALKER_FPS) % WALK_FRAMES.size()
-	var cell: Vector2i = WALK_FRAMES[frame]
-	_walker_tex.region = Rect2(cell.x * WALKER_CELL, cell.y * WALKER_CELL, WALKER_CELL, WALKER_CELL)
+	var frame: int = int(_walk_t * WALKER_FPS) % WALKER_FRAME_COUNT
+	_walker_tex.region = Rect2(frame * WALKER_CELL, 0, WALKER_CELL, WALKER_CELL)
 
 
 ## Tips change on a pixel blink (hidden for a moment), not a soft alpha fade, to match the art bible.
