@@ -1,6 +1,11 @@
 class_name PopupNumber
 extends Label
 ## Rises and fades over ~0.8 s, palette 5. Spawn with PopupNumber.spawn().
+## Lives in a screen-space overlay (see fx_bus.gd), NOT under the zoomed world, so it is never
+## scaled by camera zoom. It carries its own Theme because a Node2D parent breaks theme
+## inheritance (that is why it once fell back to the thin default font).
+
+static var ui_theme: Theme  # set by fx_bus from the Main control's theme
 
 static func spawn(parent: Node, pos: Vector2, amount: float, big := false) -> PopupNumber:
 	var p := PopupNumber.new()
@@ -9,6 +14,7 @@ static func spawn(parent: Node, pos: Vector2, amount: float, big := false) -> Po
 	p.z_index = 100
 	# Font, colour and outline come from plinky_theme.tres (PopupLabel = Pixelify Sans 16),
 	# so they re-tint per zone. Nearest filtering keeps glyph edges hard.
+	p.theme = ui_theme
 	p.theme_type_variation = &"PopupLabel"
 	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -17,10 +23,9 @@ static func spawn(parent: Node, pos: Vector2, amount: float, big := false) -> Po
 	return p
 
 func _run(big: bool) -> void:
-	pivot_offset = size / 2.0
-	scale = Vector2.ONE * (1.6 if big else 1.3)
+	# Whole-number font sizes only (16, or 24 for crits). Scaling a label by a fraction would blur it.
+	add_theme_font_size_override("font_size", 24 if big else 16)
 	var t := create_tween().set_parallel(true)
-	t.tween_property(self, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# Stepped rise (4 steps) reads as pixel art, not smooth motion.
 	var start := position
 	for i in 4:
@@ -36,8 +41,9 @@ static func spawn_running(parent: Node, pos: Vector2, amount: float) -> PopupNum
 	var p := PopupNumber.new()
 	p.is_running = true
 	p.text = "+" + NumberFormat.short(amount)
-	p.position = FxConfig.snap(pos + Vector2(0, -26))
+	p.position = FxConfig.snap(pos)
 	p.z_index = 100
+	p.theme = ui_theme
 	p.theme_type_variation = &"PopupLabel"
 	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -48,9 +54,9 @@ static func spawn_running(parent: Node, pos: Vector2, amount: float) -> PopupNum
 func bump(total: float) -> void:
 	text = "+" + NumberFormat.short(total)
 	_tier = clampi(int(floor(log(maxf(total, 1.0)) / log(10.0))) - 1, 0, 3) # 10, 100, 1000+
-	pivot_offset = size / 2.0
-	scale = Vector2.ONE * (1.0 + 0.25 + 0.15 * _tier)  # pop, settles back
-	create_tween().tween_property(self, "scale", Vector2.ONE * (1.0 + 0.2 * _tier), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	add_theme_font_size_override("font_size", 16 + 4 * _tier)  # integer sizes, grows with the number
+	position.y += 2.0  # tiny stepped nudge instead of a fractional scale pop
+	create_tween().tween_property(self, "position:y", position.y - 2.0, 0.06)
 	# Tier colours by palette role: accent, accent, light, paper (theme re-tints per zone).
 	var roles := ["accent", "accent", "good", "text"]
 	add_theme_color_override("font_color", PlinkyPalette.role(PopupStack.zone, roles[_tier]))
