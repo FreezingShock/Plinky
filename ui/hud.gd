@@ -71,7 +71,7 @@ func close_panels() -> void:
 func _panel(pos: Vector2) -> VBoxContainer:
 	var p := PanelContainer.new()
 	p.position = pos
-	p.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
+	p.add_theme_stylebox_override("panel", AsciiBox.panel())
 	add_child(p)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
@@ -97,14 +97,14 @@ func _build_stats() -> void:
 		var name_l := Label.new()
 		name_l.text = def.display_name
 		name_l.custom_minimum_size.x = 66
-		name_l.modulate = Color(1, 1, 1, 0.7)
+		name_l.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(name_l)
 		var val := Label.new()
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		h.add_child(val)
 		var rate := Label.new()
-		rate.modulate = Color(1, 1, 1, 0.7)
+		rate.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
 		match sid:
@@ -165,7 +165,7 @@ func _build_pad_list() -> void:
 
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
-	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
+	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.panel())
 	_upgrades_panel.position = Vector2(4, 96)
 	_upgrades_panel.visible = false
 	add_child(_upgrades_panel)

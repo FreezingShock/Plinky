@@ -7,9 +7,22 @@ enum Kind { PANEL, BUTTON, HOVER, PRESSED, DISABLED }
 
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
+## Spacing grid (theme.md section 5): every panel uses PANEL_PAD, every button BUTTON_PAD.
+const PANEL_PAD := Vector2(8.0, 6.0)
+const BUTTON_PAD := Vector2(8.0, 4.0)
+
 var kind: Kind = Kind.PANEL
+## Optional border colour (rarity edges on tooltips and toasts). Alpha 0 means use the palette edge.
+var edge_override: Color = Color(0, 0, 0, 0)
 ## Hover ripple phase, advanced by PixelButton while hovered (texels the wash drifts).
 static var phase: int = 0
+
+
+## The one panel frame. Pass a colour to tint the border (rarity), omit for the palette edge.
+static func panel(border: Color = Color(0, 0, 0, 0)) -> AsciiBox:
+	var b := make(Kind.PANEL, PANEL_PAD.x, PANEL_PAD.y)
+	b.edge_override = border
+	return b
 
 
 static func make(p_kind: Kind, pad_x: float = 8.0, pad_y: float = 6.0) -> AsciiBox:
@@ -40,7 +53,7 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	var y: float = floorf(rect.position.y)
 	var w: float = floorf(rect.size.x)
 	var h: float = floorf(rect.size.y)
-	var edge: Color = RelicStyle.edge
+	var edge: Color = RelicStyle.edge if edge_override.a == 0.0 else edge_override
 	var fill: Color = RelicStyle.ink
 	match kind:
 		Kind.HOVER:
@@ -61,7 +74,7 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	_px(ci, x + 1, y + h - 2, 1, 1, edge)
 	_px(ci, x + w - 2, y + h - 2, 1, 1, edge)
 	if kind == Kind.PANEL:
-		var stud: Color = RelicStyle.edge
+		var stud: Color = edge
 		for p: Vector2 in [Vector2(x + 3, y + 3), Vector2(x + w - 5, y + 3), Vector2(x + 3, y + h - 5), Vector2(x + w - 5, y + h - 5)]:
 			_px(ci, p.x, p.y, 2, 2, stud)
 		_dither(ci, Rect2(x + 3, y + h - 3, w - 6, 1), edge, 6)

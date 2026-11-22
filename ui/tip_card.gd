@@ -18,7 +18,7 @@ var _total: float = 1.0
 func _init() -> void:
 	visible = false
 	z_index = 150
-	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 3)
 	add_child(v)

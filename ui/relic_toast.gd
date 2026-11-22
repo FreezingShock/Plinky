@@ -14,6 +14,7 @@ var _tween: Tween
 func _init() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	add_child(h)
@@ -23,7 +24,7 @@ func _init() -> void:
 	h.add_child(_icon)
 	var v := VBoxContainer.new()
 	h.add_child(v)
-	_name = Label.new(); v.add_child(_name)
+	_name = Label.new(); _name.theme_type_variation = &"TitleLabel"; v.add_child(_name)
 	_sub = Label.new(); v.add_child(_sub)
 
 func bind(inv: RelicInventory) -> void:
@@ -34,7 +35,7 @@ func bind(inv: RelicInventory) -> void:
 
 func show_drop(d: RelicDef, stacks: int) -> void:
 	var c: Color = d.rarity.readable_color(RelicStyle.ink)
-	add_theme_stylebox_override("panel", RelicStyle.panel_box(d.rarity.color))
+	add_theme_stylebox_override("panel", AsciiBox.panel(d.rarity.color))
 	_icon.texture = d.icon
 	_name.text = d.display_name
 	_name.add_theme_color_override("font_color", c)
