@@ -1,0 +1,82 @@
+name: Build
+
+# Test builds for sharing. Run it by hand (Actions > Build > Run workflow) or push a tag like v0.1.0.
+# Artifacts: Plinky-windows.zip and Plinky-macos.zip. A tag also publishes a GitHub release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+env:
+  GODOT_VERSION: "4.7-stable"
+  TEMPLATE_DIR: "4.7.stable"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot and templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-export-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot ~/.local/share/godot/export_templates
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
+          curl -fsSL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot/godot
+          chmod +x ~/godot/godot
+          curl -fsSL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          unzip -q /tmp/templates.tpz -d /tmp/templates
+          mv /tmp/templates/templates ~/.local/share/godot/export_templates/${TEMPLATE_DIR}
+
+      - name: Import project
+        run: ~/godot/godot --headless --path . --import
+
+      - name: Tests
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --script tests/run.gd 2>&1 | tee /tmp/tests.log
+          ! grep -E "SCRIPT ERROR|Parse Error" /tmp/tests.log
+
+      - name: Export Windows
+        run: |
+          mkdir -p build/windows build/macos
+          ~/godot/godot --headless --path . --export-release "Windows Desktop" build/windows/Plinky.exe
+
+      - name: Export macOS
+        run: ~/godot/godot --headless --path . --export-release "macOS" build/macos/Plinky.zip
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp docs/TESTING.md build/windows/README.md
+          (cd build/windows && zip -r ../../dist/Plinky-windows.zip Plinky.exe README.md)
+          cp build/macos/Plinky.zip dist/Plinky-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plinky-test-build
+          path: dist/*.zip
+
+      - name: Publish release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          prerelease: true
+          generate_release_notes: true
