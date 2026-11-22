@@ -61,6 +61,52 @@ func _ready() -> void:
 	await _wait(5)
 	var pad: Node2D = main.pads[ids[0]]
 	var p: Vector2 = pad.get_global_transform_with_canvas().origin
+	if "behind" in OS.get_cmdline_user_args():
+		main.set_process(false)
+		cam.zoom_step(1, Vector2(320, 180))
+		main.walker.position = Vector2(214, 126)  # inside the oak crown rect, above its foot at y=138
+		await _wait(50)
+		await _shot("b_behind_tree")
+		main.walker.position = Vector2(214, 150)  # in front of the same oak
+		await _wait(120)
+		await _shot("b_in_front")
+		var wp2: Vector2 = main.walker.get_global_transform_with_canvas().origin
+		_click(wp2 + Vector2(70, 30), true)
+		_click(wp2 + Vector2(70, 30), false)
+		await _wait(3)
+		print("marker click world ", main.world.get_local_mouse_position(), " expected ", main.world.to_local(wp2 + Vector2(70, 30)) if false else (wp2 + Vector2(70, 30) - main.world.position) / 2.0)
+		await _shot("b_marker")
+		get_tree().quit(0)
+		return
+	if "popups" in OS.get_cmdline_user_args():
+		main.set_process(false)
+		await _wait(30)
+		await _shot("w_idle")
+		var wp: Vector2 = main.walker.get_global_transform_with_canvas().origin
+		_click(wp + Vector2(-60, 20), true)
+		_click(wp + Vector2(-60, 20), false)
+		await _wait(14)
+		await _shot("w_walk")
+		await _wait(60)
+		for z in [1, 2]:
+			while cam.zoom_level != z:
+				cam.zoom_step(1 if cam.zoom_level < z else -1, Vector2(320, 180))
+			await _wait(40)
+			sim.stats[&"cash"] = BigNum.from_float(1e30)
+			p = pad.get_global_transform_with_canvas().origin
+			pad.holding = true  # synthetic mouse input is unreliable offscreen; drive the pad directly
+			pad.hold.begin()
+			pad._press()
+			await _wait(12)
+			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"m1"), " cost ", Formulas.button_cost(sim.button_defs[&"m1"]).format())
+			await _shot("p_z%d_press_hold" % z)
+			await _wait(60)
+			await _shot("p_z%d_hold_long" % z)
+			pad.hold.end()
+			pad.holding = false
+			await _wait(70)
+		get_tree().quit(0)
+		return
 	# tooltip on hover
 	_move(p + Vector2(40, 40))
 	await _wait(3)

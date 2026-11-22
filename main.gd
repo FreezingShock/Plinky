@@ -48,6 +48,7 @@ func _ready() -> void:
 	add_child(world)
 	meadow = (load(MEADOW_PATH) as PackedScene).instantiate()
 	world.add_child(meadow)
+	meadow.call("spawn_occluders", world)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
 	var anchors: Node = meadow.get_node("Anchors")
@@ -67,6 +68,7 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
 
 	# 3. Juice (autoload) gets its targets.
 	Juice.shake = shake
