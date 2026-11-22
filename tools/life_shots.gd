@@ -18,7 +18,7 @@ func _run(frames: int, reduce: bool, bare: bool) -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
 	var host: Node
 	if bare:
-		host = (load("res://world/meadow_scene.tscn") as PackedScene).instantiate()
+		host = (load("res://world/meadow3d_scene.tscn") as PackedScene).instantiate()
 		root.add_child(host)
 	else:
 		var main: Control = (load("res://main.tscn") as PackedScene).instantiate()

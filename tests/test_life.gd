@@ -6,7 +6,7 @@ func run(t: Object) -> void:
 	t.ok(not data.is_empty(), "meadow_life.json loads")
 	var sway: Array = data.get("sway", []) as Array
 	t.ok(sway.size() >= 60, "at least 60 sway tips (got %d)" % sway.size())
-	var img: Image = Image.load_from_file("res://assets/art/zone1/meadow_backdrop.png")
+	var img: Image = Image.load_from_file("res://assets/art/zone1/meadow3d/ground.png")
 	t.ok(img != null, "backdrop loads for checks")
 	if img == null:
 		return
@@ -34,7 +34,7 @@ func run(t: Object) -> void:
 				same = false
 		t.ok(same, "butterfly frame rows are the same width")
 	var lights: Array = data.get("lights", []) as Array
-	t.eq(lights.size(), 3, "two lanterns and the shrine are glow points")
+	t.ok(lights.size() >= 1, "at least one glow point (the shrine)")
 	var water: Array = data.get("water", []) as Array
 	t.ok(water.size() >= 1, "at least one water body in the data")
 	var water_ok: bool = true

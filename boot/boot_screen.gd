@@ -6,7 +6,7 @@ extends Control
 ## already loaded resource.
 
 const GAME_SCENE: String = "res://main.tscn"
-const MEADOW_SCENE: String = "res://world/meadow_scene.tscn"
+const MEADOW_SCENE: String = "res://world/meadow3d_scene.tscn"
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
 const WALKER_SHEET_PATH: String = "res://assets/brand/walker-press-sheet-1x.png"
 const BODY_FONT: FontFile = preload("res://fonts/spleen-6x12.fnt")
