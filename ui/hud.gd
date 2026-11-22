@@ -4,6 +4,7 @@ extends Control
 ## calls the GameState API. Colours and fonts come from the theme on the root Control.
 
 signal relic_panel_toggled(open: bool)
+signal settings_toggled(open: bool)
 
 const REFRESH: float = 0.1
 
@@ -115,6 +116,10 @@ func _build_bottom() -> void:
 		rb.text = "Relics [R]"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		h.add_child(rb)
+	var st := PixelButton.new()
+	st.text = "Settings [F10]"
+	st.pressed.connect(func() -> void: settings_toggled.emit(true))
+	h.add_child(st)
 
 
 func _build_upgrades() -> void:
@@ -155,6 +160,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_R and GameState.relics != null:
 			relic_panel_toggled.emit(true)
+		elif event.keycode == KEY_F10:
+			settings_toggled.emit(true)
+			get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
