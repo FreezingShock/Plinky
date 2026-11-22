@@ -19,3 +19,13 @@ func run(t: Object) -> void:
 	t.ok(FxConfig.reduce_shake and MeadowLife.reduce_motion, "reduce motion switches shake and meadow life too")
 	DisplaySettings.reduce_motion = was
 	DisplaySettings._push_motion()
+
+	# Scripts this change touches must compile (a parse error here would otherwise only show when the game starts).
+	for path: String in ["res://ui/display_panel.gd", "res://ui/display_settings.gd", "res://render/world_camera.gd"]:
+		var sc: GDScript = load(path) as GDScript
+		t.ok(sc != null and sc.can_instantiate(), "%s compiles" % path)
+	# The settings panel builds, Reduce motion row included.
+	var panel: DisplayPanel = DisplayPanel.new()
+	panel.bind(t.root)
+	t.ok(panel._motion_btn != null, "settings panel builds with a Reduce motion row")
+	panel.free()

@@ -116,7 +116,7 @@ func _caption(text: String) -> Label:
 	return l
 
 
-func _option(row: HBoxContainer, label: String, on_pick: Callable) -> PixelButton:
+func _option(row: BoxContainer, label: String, on_pick: Callable) -> PixelButton:
 	var b := PixelButton.new()
 	b.text = label
 	b.pressed.connect(on_pick)
