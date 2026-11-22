@@ -61,6 +61,24 @@ func _ready() -> void:
 	await _wait(5)
 	var pad: Node2D = main.pads[ids[0]]
 	var p: Vector2 = pad.get_global_transform_with_canvas().origin
+	if "popups" in OS.get_cmdline_user_args():
+		main.set_process(false)
+		for z in [1, 2]:
+			while cam.zoom_level != z:
+				cam.zoom_step(1 if cam.zoom_level < z else -1, Vector2(320, 180))
+			await _wait(40)
+			sim.stats[&"cash"] = BigNum.from_float(1e30)
+			p = pad.get_global_transform_with_canvas().origin
+			_click(p, true)
+			await _wait(12)
+			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"m1"), " cost ", Formulas.button_cost(sim.button_defs[&"m1"]).format())
+			await _shot("p_z%d_press_hold" % z)
+			await _wait(60)
+			await _shot("p_z%d_hold_long" % z)
+			_click(p, false)
+			await _wait(70)
+		get_tree().quit(0)
+		return
 	# tooltip on hover
 	_move(p + Vector2(40, 40))
 	await _wait(3)
