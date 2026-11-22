@@ -13,9 +13,9 @@ func _init() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 200
-	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 8.0, 6.0))
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 1)
+	v.add_theme_constant_override("separation", 2)
 	add_child(v)
 	_title = Label.new()
 	_title.theme_type_variation = &"TitleLabel"
@@ -25,7 +25,7 @@ func _init() -> void:
 	_gain = Label.new()
 	v.add_child(_gain)
 	_state = Label.new()
-	_state.modulate = Color(1, 1, 1, 0.75)
+	_state.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(_state)
 
 
