@@ -23,6 +23,8 @@ var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
+var window_frame: WindowFrame
+var feedback_panel: FeedbackPanel
 var palette_id: StringName = Palettes.MEADOW
 
 
@@ -86,6 +88,9 @@ func _ready() -> void:
 	hud.setup(sim)
 	_wire_relics()
 	_wire_display()
+	window_frame = WindowFrame.new()
+	add_child(window_frame)
+	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 
@@ -126,10 +131,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event.keycode == KEY_F11:
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_F8:
+		_toggle_feedback()
+		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE:
-		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible
+		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
 		relic_panel.hide()
 		display_panel.close()
+		feedback_panel.close()
 		hud.close_panels()
 		if any:
 			get_viewport().set_input_as_handled()
@@ -138,10 +147,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
 ## or smaller if the window is smaller. It is centred in the visible area, and the rest stays black.
 func _layout_frame() -> void:
-	var visible: Vector2 = get_viewport_rect().size
+	# The custom title bar takes a strip off the top of the view, so it never covers the HUD.
+	var top: float = window_frame.inset() if window_frame != null else 0.0
+	var visible: Vector2 = get_viewport_rect().size - Vector2(0.0, top)
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	var frame: Vector2 = Vector2(minf(visible.x, bleed.x), minf(visible.y, bleed.y)).floor()
-	var origin: Vector2 = ((visible - frame) * 0.5).floor()
+	var origin: Vector2 = ((visible - frame) * 0.5).floor() + Vector2(0.0, top)
 	if frame == size and origin == position:
 		return
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -277,3 +288,15 @@ func _wire_display() -> void:
 			display_panel.close()
 		else:
 			display_panel.open())
+	feedback_panel = FeedbackPanel.new()
+	hud.add_child(feedback_panel)
+	feedback_panel.bind(GameState.sim)
+	display_panel.feedback_requested.connect(_toggle_feedback)
+
+
+func _toggle_feedback() -> void:
+	if feedback_panel.visible:
+		feedback_panel.close()
+	else:
+		display_panel.close()
+		feedback_panel.open()
