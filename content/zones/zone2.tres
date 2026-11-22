@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ZoneDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/zone_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"zone2"
+display_name = "Ember Quarry"
+order = 1
+gate_stat = &""
+gate_threshold = 0.0
+next_zone = &""
+base_cash_per_second = 0.25
+press_rate = 0.5
+palette_id = &"ember_quarry"

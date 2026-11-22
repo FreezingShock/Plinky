@@ -1,0 +1,23 @@
+; Engine configuration file. Edited by the integrator only (see README.md).
+config_version=5
+
+[application]
+
+config/name="Plinky"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[autoload]
+
+EventBus="*res://core/event_bus.gd"
+GameState="*res://core/game_state.gd"
+Save="*res://core/save.gd"
+; Fx="*res://render/fx_driver.gd"   <- render thread: ask the integrator to enable this once the file exists
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

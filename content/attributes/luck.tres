@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"luck"
+display_name = "Luck"
+effect = &"luck"
+per_level = 0.05
+cap = 20
+base_cost = 3.0
+cost_growth = 1.4
