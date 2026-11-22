@@ -25,6 +25,9 @@ const SETTLE_FRAMES: int = 12
 func _init() -> void:
 	var out_dir: String = ProjectSettings.globalize_path("res://shots/sizes")
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	# Autoloads (GameState, EventBus, ...) are only registered after the first frame. Loading main.gd
+	# before that fails to compile, so wait one frame first.
+	await process_frame
 	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await _settle()
