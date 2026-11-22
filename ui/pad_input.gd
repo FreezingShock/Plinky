@@ -65,6 +65,23 @@ static func pan_vector() -> Vector2:
 	return Input.get_vector(&"plinky_pan_left", &"plinky_pan_right", &"plinky_pan_up", &"plinky_pan_down")
 
 
+## Marching-dots focus ring (1 texel dots every 2, stepping around the rect) for pad and keyboard focus.
+static func draw_focus_ring(item: CanvasItem, r: Rect2, color: Color) -> void:
+	var phase: int = int(Time.get_ticks_msec() / 120) % 2
+	var x0: int = int(r.position.x)
+	var y0: int = int(r.position.y)
+	var x1: int = int(r.end.x) - 1
+	var y1: int = int(r.end.y) - 1
+	for x: int in range(x0, x1 + 1):
+		if (x + phase) % 2 == 0:
+			item.draw_rect(Rect2(x, y0, 1, 1), color)
+			item.draw_rect(Rect2(x, y1, 1, 1), color)
+	for y: int in range(y0 + 1, y1):
+		if (y + phase) % 2 == 0:
+			item.draw_rect(Rect2(x0, y, 1, 1), color)
+			item.draw_rect(Rect2(x1, y, 1, 1), color)
+
+
 ## First visible, enabled, focusable control under root in tree order, or null.
 static func first_focusable(root: Node) -> Control:
 	if root is Control:

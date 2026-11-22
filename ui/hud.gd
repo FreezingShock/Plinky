@@ -196,7 +196,7 @@ func _attr_icon(a: AttributeDef) -> String:
 	return String(map.get(a.id, "prestige"))
 
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next would take Tab first
 	if event.is_echo():
 		return
 	if event.is_action_pressed(&"plinky_upgrades"):
