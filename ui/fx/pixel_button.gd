@@ -1,12 +1,14 @@
 class_name PixelButton
 extends Button
 ## HUD button with hover / press / disabled states in texel steps.
-## Hover: 1 texel lift + paper outline. Press: 1 texel sink + brief invert.
+## Colours and borders come from the theme (ink fill, base border; hover accent; pressed accent fill).
+## This script only adds the motion: 1 texel lift on hover, 1 texel sink on press.
 
 var _rest_y := 0.0
 var _rest_set := false
 
 func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_entered.connect(_hover.bind(true))
 	mouse_exited.connect(_hover.bind(false))
 	button_down.connect(_press.bind(true))
@@ -21,13 +23,7 @@ func _rest() -> float:
 func _hover(on: bool) -> void:
 	if disabled: return
 	position.y = _rest() - (1.0 if on else 0.0)
-	modulate = Color("f6efd9") if on else Color.WHITE
 
 func _press(down: bool) -> void:
 	if disabled: return
 	position.y = _rest() + (1.0 if down else 0.0)
-	if down and not FxConfig.reduce_flashing:
-		# One-frame inverted flash, then back.
-		modulate = Color(0.1, 0.1, 0.12)
-		await get_tree().process_frame
-		modulate = Color("f6efd9")
