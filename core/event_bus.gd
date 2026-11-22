@@ -15,5 +15,8 @@ signal relic_equipped(relic_id: StringName)
 signal relic_unequipped(relic_id: StringName)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)  # gains: StringName -> BigNum
+signal bonus_gained(kind: StringName, gains: Dictionary)  # kind: &"streak" or &"critter"
+signal critter_spawned()
+signal critter_gone()
 signal game_loaded()
 signal game_saved()
