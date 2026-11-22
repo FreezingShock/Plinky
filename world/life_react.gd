@@ -12,10 +12,11 @@ const STEP: float = 1.0 / 12.0
 const BUSH_RADIUS: float = 20.0
 const BUSH_SETTLE: float = 0.5        # seconds the rustle lingers after the walker leaves
 const BIRD_COUNT: int = 6
-const BIRD_SCARE: float = 34.0        # walker distance that startles a perched bird
+const BIRD_SCARE: float = 44.0        # walker distance that startles a perched bird
 const BIRD_RETURN_AFTER: float = 9.0  # seconds a scattered bird stays away
 const BIRD_FLIGHT: float = 1.6        # seconds spent leaving or returning
-const SHORE_REACH: float = 16.0       # walker distance from the water edge that makes ripples
+const SHORE_REACH: float = 26.0       # walker distance from the water edge that makes ripples
+const SHORE_LINGER: float = 2.5       # seconds ripples keep coming after the walker stops at the shore
 const RIPPLE_EVERY: float = 0.4
 const RIPPLE_LIFE: float = 1.0
 const IDX_INK: int = 0
@@ -29,6 +30,8 @@ var _birds: Array[Dictionary] = []    # {home, scared (seconds since scare, -1 =
 var _water: Array[Dictionary] = []
 var _ripples: Array[Dictionary] = []  # {pos, age}
 var _ripple_clock: float = 0.0
+var _shore_left: float = 0.0
+var _shore_pos: Vector2 = Vector2.INF
 var _t: float = 0.0
 var _step: int = -1
 
@@ -48,6 +51,24 @@ func setup(life: Dictionary, perches: Array) -> void:
 		pool.remove_at(pick)
 		_birds.append({"home": Vector2(float(p[0]), float(p[1])), "scared": -1.0,
 			"dir": -1.0 if MeadowLife.hash01(i + 40) < 0.5 else 1.0, "seed": i})
+
+
+func _ready() -> void:
+	var bus: Node = get_node_or_null("/root/EventBus")
+	if bus != null:
+		bus.button_pressed.connect(_on_pressed)
+
+
+## A crit press startles every bird in the meadow.
+func _on_pressed(_id: StringName, _pos: Vector3, _gain: BigNum, crit: bool) -> void:
+	if crit and not MeadowLife.reduce_motion:
+		scare_all()
+
+
+func scare_all() -> void:
+	for bird: Dictionary in _birds:
+		if float(bird.scared) < 0.0:
+			bird.scared = 0.0
 
 
 func set_bushes(sprites: Array) -> void:
@@ -112,14 +133,17 @@ func _process(delta: float) -> void:
 			bird.scared = -1.0 if since >= BIRD_RETURN_AFTER + BIRD_FLIGHT else since
 		elif not calm and wp.distance_to(bird.home as Vector2) <= BIRD_SCARE:
 			bird.scared = 0.0
-	if not calm and bool(_walker.get("moving")):
+	if not calm:
+		for w: Dictionary in _water:
+			var p: Vector2 = shore_point(w, wp, SHORE_REACH)
+			if p != Vector2.INF:
+				_shore_pos = p
+				_shore_left = SHORE_LINGER if bool(_walker.get("moving")) else _shore_left
+		_shore_left = maxf(_shore_left - delta, 0.0)
 		_ripple_clock -= delta
-		if _ripple_clock <= 0.0:
-			for w: Dictionary in _water:
-				var p: Vector2 = shore_point(w, wp, SHORE_REACH)
-				if p != Vector2.INF:
-					_ripples.append({"pos": p, "age": 0.0})
-					_ripple_clock = RIPPLE_EVERY
+		if _shore_left > 0.0 and _shore_pos != Vector2.INF and _ripple_clock <= 0.0:
+			_ripples.append({"pos": _shore_pos, "age": 0.0})
+			_ripple_clock = RIPPLE_EVERY
 	for r: Dictionary in _ripples:
 		r.age = float(r.age) + delta
 	var alive: Array[Dictionary] = []
@@ -150,25 +174,28 @@ func _draw_bird(bird: Dictionary) -> void:
 	if away >= 1.0:
 		return
 	var sx: float = float(bird.dir)
-	var at: Vector2 = home + Vector2(sx * 70.0 * away, -46.0 * away)
-	var p: Vector2i = Vector2i(roundi(at.x), roundi(at.y))
+	var at: Vector2 = home + Vector2(sx * 90.0 * away, -60.0 * away)
+	var x: int = roundi(at.x)
+	var y: int = roundi(at.y)
 	if away <= 0.0:
-		# Perched: body, head, a tail texel. Blink-peck now and then.
+		# Perched, 6 x 5 texels: paper breast and ink back so it reads on grass and sand. Pecks now and then.
 		var peck: bool = int(_t * 2.0 + float(bird.seed) * 1.7) % 5 == 0
-		_px(p.x, p.y, IDX_EARTH)
-		_px(p.x + 1, p.y, IDX_EARTH)
-		_px(p.x + 2, p.y, IDX_EARTH)
-		_px(p.x + 3, p.y + (1 if peck else 0), IDX_INK)
-		_px(p.x - 1, p.y - 1, IDX_INK)
+		_rect(x - 1, y - 3, 5, 3, IDX_INK)
+		_rect(x, y - 2, 3, 2, IDX_PAPER)
+		_rect(x + 4, y - 4 + (2 if peck else 0), 2, 2, IDX_INK)
+		_rect(x - 3, y - 3, 2, 1, IDX_EARTH)
+		_rect(x, y, 1, 1, IDX_INK)
+		_rect(x + 2, y, 1, 1, IDX_INK)
 		return
-	# In flight: two wing frames at 12 fps, wings up then flat.
+	# In flight: ink body with paper-edged wings, up then flat at 6 flaps a second.
 	var up: bool = (_step / 2) % 2 == 0
-	_px(p.x, p.y, IDX_INK)
-	_px(p.x + 1, p.y, IDX_EARTH)
-	_px(p.x - 1, p.y + (-1 if up else 0), IDX_INK)
-	_px(p.x + 2, p.y + (-1 if up else 0), IDX_INK)
-	_px(p.x - 2, p.y + (-2 if up else 1), IDX_INK)
-	_px(p.x + 3, p.y + (-2 if up else 1), IDX_INK)
+	var wy: int = -3 if up else 1
+	_rect(x - 1, y - 1, 4, 3, IDX_INK)
+	_rect(x + 1, y, 2, 1, IDX_PAPER)
+	_rect(x - 4, y + wy, 3, 2, IDX_INK)
+	_rect(x + 3, y + wy, 3, 2, IDX_INK)
+	_rect(x - 4, y + wy + (0 if up else 2), 1, 1, IDX_PAPER)
+	_rect(x + 5, y + wy + (0 if up else 2), 1, 1, IDX_PAPER)
 
 
 func _draw_ripple(r: Dictionary) -> void:
@@ -184,6 +211,10 @@ func _draw_ripple(r: Dictionary) -> void:
 		# Bayer thins the ring as it fades, so it dissolves instead of blinking out.
 		if MeadowLife.bayer(x, y) < 1.0 - f:
 			_px(x, y, IDX_PAPER)
+
+
+func _rect(x: int, y: int, w: int, h: int, idx: int) -> void:
+	draw_rect(Rect2(x, y, w, h), palette[idx])
 
 
 func _px(x: int, y: int, idx: int) -> void:
