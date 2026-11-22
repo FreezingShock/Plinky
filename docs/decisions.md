@@ -49,3 +49,5 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Rebirth prestige gain = reb x (reb / 9) ^ 0.5 past 9 reb | Nathan: reward pushing further. Exponent 0.5 gives 1455 prestige at 54 reb in 60 min against 594 with the flat rule. |
 | 2026-11-23 | Walking builds momentum (+40% income at full), clicks are not nerfed | Nathan. Walking charges, standing drains over 10 s. Gives the walker a job without touching click speed. |
 | 2026-11-23 | Pad streaks (m1, m2, m3 in order, 5 s of income, 20 s cooldown) and a golden critter (30 s of income, every 75 to 150 s) | Nathan. Active play opens the gate at about 7.7 min against 10.5 idle. |
+| 2026-11-23 | HUD stat counters roll (RollValue, BigNum ease, 30 Hz); gains of 15% or more float "+N Stat" beside the counter, except cash | Presses already pop their own number, so cash floats would double up. Whole-number stats roll in whole numbers. Tuned in FxConfig. |
+| 2026-11-23 | Momentum meter (bar and +% bonus, above the bottom bar) behind a Settings toggle, on by default | Nathan has not decided on the meter. Toggle is saved in settings.cfg so he can judge it and turn it off. |

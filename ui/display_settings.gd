@@ -21,6 +21,8 @@ const MIN_PIXEL_SCALE: int = 2
 static var bleed_ready: bool = true
 static var scale_mode: int = Scale.FIT
 static var fullscreen: bool = false
+## HUD momentum meter. On by default; Nathan is still deciding whether it stays.
+static var momentum_meter: bool = true
 static var _loaded: bool = false
 
 
@@ -33,6 +35,7 @@ static func load_settings() -> void:
 		return
 	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.FIT)), Scale.PIXEL, Scale.WIDE)
 	fullscreen = bool(cfg.get_value(SECTION, "fullscreen", false))
+	momentum_meter = bool(cfg.get_value(SECTION, "momentum_meter", true))
 	# Saves before version 2 stored Pixel perfect, which was the old default. Reset that once to Fit, so a stale
 	# Pixel setting can't leave the view stepping in whole multiples. Pixel perfect is still there in the panel.
 	if int(cfg.get_value(SECTION, "version", 1)) < SETTINGS_VERSION:
@@ -45,6 +48,7 @@ static func save_settings() -> void:
 	cfg.set_value(SECTION, "version", SETTINGS_VERSION)
 	cfg.set_value(SECTION, "scale", scale_mode)
 	cfg.set_value(SECTION, "fullscreen", fullscreen)
+	cfg.set_value(SECTION, "momentum_meter", momentum_meter)
 	cfg.save(PATH)
 
 
@@ -116,3 +120,9 @@ static func set_fullscreen(win: Window, on: bool) -> void:
 static func toggle_fullscreen(win: Window) -> void:
 	load_settings()
 	set_fullscreen(win, not fullscreen)
+
+
+static func set_momentum_meter(on: bool) -> void:
+	load_settings()
+	momentum_meter = on
+	save_settings()

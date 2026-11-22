@@ -10,6 +10,7 @@ var _wide_btn: PixelButton
 var _window_btn: PixelButton
 var _full_btn: PixelButton
 var _hint: Label
+var _momentum_btn: PixelButton
 
 
 func bind(win: Window) -> void:
@@ -49,6 +50,13 @@ func bind(win: Window) -> void:
 		DisplaySettings.set_fullscreen(_win, true)
 		refresh())
 
+	v.add_child(_caption("HUD"))
+	_momentum_btn = PixelButton.new()
+	_momentum_btn.pressed.connect(func() -> void:
+		DisplaySettings.set_momentum_meter(not DisplaySettings.momentum_meter)
+		refresh())
+	v.add_child(_momentum_btn)
+
 	_hint = Label.new()
 	_hint.custom_minimum_size.x = 220
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -85,6 +93,7 @@ func refresh() -> void:
 	_wide_btn.text = _tag(mode == DisplaySettings.Scale.WIDE, "Wide view")
 	_window_btn.text = _tag(not DisplaySettings.fullscreen, "Windowed")
 	_full_btn.text = _tag(DisplaySettings.fullscreen, "Fullscreen")
+	_momentum_btn.text = "Momentum meter: " + ("on" if DisplaySettings.momentum_meter else "off")
 	if mode == DisplaySettings.Scale.FIT:
 		_hint.text = "Fit fills the window at any size. Texels can differ by one pixel. F11 toggles fullscreen."
 	elif not DisplaySettings.pixel_active(_win):
