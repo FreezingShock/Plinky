@@ -46,7 +46,7 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var p: Vector2 = (world.get_parent() as Node2D).to_local(world.get_global_mouse_position()) if world.get_parent() is Node2D else world.get_global_mouse_position()
+		var p: Vector2 = world.get_local_mouse_position()  # world-local texels; the world node is scaled and panned by the camera
 		# Same rule as TexelWalker: clamp to its bounds.
 		_target = Vector2(
 			clampf(p.x, TexelWalker.BOUNDS.position.x, TexelWalker.BOUNDS.end.x),

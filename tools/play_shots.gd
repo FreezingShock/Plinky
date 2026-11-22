@@ -61,6 +61,23 @@ func _ready() -> void:
 	await _wait(5)
 	var pad: Node2D = main.pads[ids[0]]
 	var p: Vector2 = pad.get_global_transform_with_canvas().origin
+	if "behind" in OS.get_cmdline_user_args():
+		main.set_process(false)
+		cam.zoom_step(1, Vector2(320, 180))
+		main.walker.position = Vector2(214, 126)  # inside the oak crown rect, above its foot at y=138
+		await _wait(50)
+		await _shot("b_behind_tree")
+		main.walker.position = Vector2(214, 150)  # in front of the same oak
+		await _wait(120)
+		await _shot("b_in_front")
+		var wp2: Vector2 = main.walker.get_global_transform_with_canvas().origin
+		_click(wp2 + Vector2(70, 30), true)
+		_click(wp2 + Vector2(70, 30), false)
+		await _wait(3)
+		print("marker click world ", main.world.get_local_mouse_position(), " expected ", main.world.to_local(wp2 + Vector2(70, 30)) if false else (wp2 + Vector2(70, 30) - main.world.position) / 2.0)
+		await _shot("b_marker")
+		get_tree().quit(0)
+		return
 	if "popups" in OS.get_cmdline_user_args():
 		main.set_process(false)
 		await _wait(30)
