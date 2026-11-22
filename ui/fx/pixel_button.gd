@@ -32,3 +32,11 @@ func _hover(on: bool) -> void:
 func _press(down: bool) -> void:
 	if disabled: return
 	position.y = _rest() + (1.0 if down else 0.0)
+
+
+func _process(_d: float) -> void:
+	if is_hovered() and not disabled:
+		var ph: int = int(Time.get_ticks_msec() / 110)
+		if ph != AsciiBox.phase:
+			AsciiBox.phase = ph
+			queue_redraw()

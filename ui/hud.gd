@@ -20,6 +20,7 @@ var _offline: Label
 var _clock: float = 0.0
 var _attr_rows: Dictionary = {}   # attribute id -> [Label, Button]
 var _zones_key: String = ""
+var _pad_list: PadList
 
 
 func setup(p_sim: Sim) -> void:
@@ -31,6 +32,7 @@ func setup(p_sim: Sim) -> void:
 	_build_gate()
 	_build_bottom()
 	_build_upgrades()
+	_build_pad_list()
 	_offline = Label.new()
 	_offline.theme_type_variation = &"CaptionLabel"
 	_offline.position = Vector2(200, 40)
@@ -124,6 +126,12 @@ func _build_bottom() -> void:
 		h.add_child(rb)
 
 
+func _build_pad_list() -> void:
+	_pad_list = PadList.new()
+	_pad_list.position = Vector2(456, 96)
+	add_child(_pad_list)
+
+
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
 	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
@@ -197,6 +205,7 @@ func _refresh() -> void:
 	_rebirth.disabled = not sim.can_rebirth()
 	_rebirth.text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
 	_refresh_zone_buttons()
+	_pad_list.refresh(sim)
 	if _upgrades_panel.visible:
 		_prestige_avail.text = "Prestige to spend: %s" % sim.prestige_available().format()
 		for aid: StringName in _attr_rows:
