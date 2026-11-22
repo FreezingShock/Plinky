@@ -5,6 +5,8 @@ extends Node2D
 ## steps with no alpha: fireflies with a Bayer-dithered halo, lantern and shrine glow, drifting pollen and
 ## leaves, two butterflies, sparkles on the water cove, and a shimmer that runs round each ready pad.
 ## Colours are palette indices (art-bible section 3), so a zone palette swap re-tints the whole layer.
+## Every position comes from world/meadow_life.json (anchor data), so the layer follows the art.
+## Z order: world layers sit above the HUD's z order, so main.gd raises the HUD z_index above them.
 
 const STEP: float = 1.0 / 12.0
 const FIREFLIES: int = 12
@@ -12,22 +14,23 @@ const POLLEN: int = 14            # of which every 4th is a leaf
 const BUTTERFLIES: int = 2
 const WATER_SPARKLES: int = 6
 const PAD_PERIOD: float = 2.4
-const DRIFT: Rect2 = Rect2(34.0, 104.0, 572.0, 226.0)  # texels; the walkable meadow sits inside this
+const PAD_HALF: Vector2 = Vector2(14.0, 7.0)  # must match TexelPad.HALF (kept local so this script compiles without autoloads)
+const DEFAULT_DRIFT: Array = [34.0, 104.0, 572.0, 226.0]  # fallback if the data has no drift box
 
 ## Palette roles used here (art-bible section 3).
 const IDX_INK: int = 0
 const IDX_DARK: int = 1
-const IDX_DEEP: int = 2
 const IDX_LIGHT: int = 4
 const IDX_ACCENT: int = 5
 const IDX_EARTH: int = 6
 const IDX_PAPER: int = 7
 
-## Butterfly frames, 5 x 3 texels. a = accent wing, e = earth wing, k = ink body, . = empty.
-const BUTTERFLY_OPEN: Array = ["a...a", "aakaa", "e.k.e"]
-const BUTTERFLY_CLOSED: Array = ["..k..", ".aka.", "..k.."]
+## Butterfly frames, 7 x 4 texels, centred on column 3. a = accent wing, e = earth wing, k = ink body.
+const BUTTERFLY_OPEN: Array = ["aa.k.aa", "aaakaaa", "ee.k.ee", ".e.k.e."]
+const BUTTERFLY_CLOSED: Array = ["..k.k..", "...k...", "..aka..", "..eke.."]
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
+var _drift: Rect2 = Rect2()
 var _lights: Array = []
 var _water: Rect2 = Rect2()
 var _pads: Array[Vector2] = []
@@ -36,6 +39,8 @@ var _step: int = -1
 
 
 func setup(data: Dictionary) -> void:
+	var dr: Array = data.get("drift", DEFAULT_DRIFT) as Array
+	_drift = Rect2(float(dr[0]), float(dr[1]), float(dr[2]), float(dr[3]))
 	_lights = data.get("lights", []) as Array
 	var w: Dictionary = data.get("water", {}) as Dictionary
 	if not w.is_empty():
@@ -78,8 +83,8 @@ func _draw_fireflies(tm: float, tb: float) -> void:
 	for i: int in FIREFLIES:
 		var s: float = float(i)
 		var home: Vector2 = Vector2(
-			lerpf(DRIFT.position.x, DRIFT.end.x, MeadowLife.hash01(i * 3 + 1)),
-			lerpf(DRIFT.position.y, DRIFT.end.y, MeadowLife.hash01(i * 3 + 2)))
+			lerpf(_drift.position.x, _drift.end.x, MeadowLife.hash01(i * 3 + 1)),
+			lerpf(_drift.position.y, _drift.end.y, MeadowLife.hash01(i * 3 + 2)))
 		var p: Vector2 = home + Vector2(
 			sin(tm * 0.37 + s * 1.9) * 14.0 + sin(tm * 0.13 + s) * 6.0,
 			cos(tm * 0.29 + s * 2.3) * 5.0 - 8.0 + sin(tm * 0.9 + s) * 1.5)
@@ -144,9 +149,10 @@ func _draw_water(tb: float) -> void:
 
 
 ## A paper dot runs round the diamond of each ready pad, one lap every 2.4 s, staggered per pad.
+## The diamond is PAD_HALF, so the shimmer stays on the pad outline.
 func _draw_pads(tm: float) -> void:
-	var hx: float = 14.0
-	var hy: float = 7.0
+	var hx: float = PAD_HALF.x
+	var hy: float = PAD_HALF.y
 	var corners: Array[Vector2] = [Vector2(0, -hy), Vector2(hx, 0), Vector2(0, hy), Vector2(-hx, 0)]
 	for i: int in _pads.size():
 		var u: float = fposmod(tm + float(i) * 0.37, PAD_PERIOD) / PAD_PERIOD * 4.0
@@ -162,8 +168,8 @@ func _draw_pollen(tm: float, tb: float) -> void:
 	for i: int in POLLEN:
 		var s: float = float(i)
 		var speed: float = 8.0 + MeadowLife.hash01(i * 11) * 8.0
-		var x: float = DRIFT.position.x + fposmod(MeadowLife.hash01(i * 11 + 1) * DRIFT.size.x + tm * speed, DRIFT.size.x)
-		var y: float = DRIFT.position.y + fposmod(MeadowLife.hash01(i * 11 + 2) * DRIFT.size.y, DRIFT.size.y) \
+		var x: float = _drift.position.x + fposmod(MeadowLife.hash01(i * 11 + 1) * _drift.size.x + tm * speed, _drift.size.x)
+		var y: float = _drift.position.y + fposmod(MeadowLife.hash01(i * 11 + 2) * _drift.size.y, _drift.size.y) \
 			+ sin(tm * 0.5 + s) * 6.0
 		var p: Vector2i = Vector2i(roundi(x), roundi(y))
 		if i % 4 == 3:
@@ -182,20 +188,21 @@ func _draw_butterflies(tm: float, tb: float) -> void:
 	for i: int in BUTTERFLIES:
 		var s: float = float(i)
 		var c: Vector2 = Vector2(
-			lerpf(DRIFT.position.x + 40.0, DRIFT.end.x - 40.0, MeadowLife.hash01(i * 2 + 40)),
-			lerpf(DRIFT.position.y + 20.0, DRIFT.end.y - 40.0, MeadowLife.hash01(i * 2 + 41)))
+			lerpf(_drift.position.x + 40.0, _drift.end.x - 40.0, MeadowLife.hash01(i * 2 + 40)),
+			lerpf(_drift.position.y + 20.0, _drift.end.y - 40.0, MeadowLife.hash01(i * 2 + 41)))
 		var vx: float = cos(tm * 0.31 + s * 2.1)
 		var p: Vector2 = c + Vector2(sin(tm * 0.31 + s * 2.1) * 46.0, cos(tm * 0.23 + s) * 16.0 + sin(tm * 0.7 + s) * 3.0)
 		var origin: Vector2i = Vector2i(roundi(p.x), roundi(p.y))
 		var open: bool = int(tb * 6.0 + s) % 2 == 0
 		var rows: Array = BUTTERFLY_OPEN if open else BUTTERFLY_CLOSED
 		var flip: bool = vx < 0.0
+		var top: int = rows.size() / 2
 		for ry: int in rows.size():
 			var row: String = rows[ry]
 			for rx: int in row.length():
 				var ch: String = row[rx]
 				if ch == ".":
 					continue
-				var col: int = rx - 2 if not flip else 2 - rx
+				var col: int = rx - 3 if not flip else 3 - rx
 				var idx: int = IDX_INK if ch == "k" else (IDX_ACCENT if ch == "a" else IDX_EARTH)
-				_dot(origin + Vector2i(col, ry - 1), idx)
+				_dot(origin + Vector2i(col, ry - top), idx)

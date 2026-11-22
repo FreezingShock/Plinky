@@ -56,7 +56,7 @@ func _add_life() -> void:
 	var ground := LifeGround.new()
 	ground.name = "LifeGround"
 	add_child(ground)  # after Backdrop, so the sway draws over the baked grass
-	ground.setup($Backdrop.texture, life.get("sway", []) as Array)
+	ground.setup($Backdrop, life.get("sway", []) as Array)
 	var air := LifeAir.new()
 	air.name = "LifeAir"
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
