@@ -52,6 +52,18 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Onboarding: HUD systems appear in stages (Multiplier on first press, Rebirths row at Multiplier 200, Rebirth action at 1 Rebirth, Prestige and Upgrades after the first Rebirth, Relics on first drop) | Nathan asked for staged unlocks so a new player meets one system at a time. Thresholds in content/config/onboarding.tres, timeline in docs/onboarding.md. |
 | 2026-11-23 | Tips are one card at a time, bottom right, skippable, each shown once per save | Keeps the pads and walker clear. Seen tips and unlocks ride in the save as Sim.ui_flags. Skip tips and the on/off setting live in user://tips.cfg so a new game does not re-teach a player who skipped. |
 | 2026-11-23 | Skip tips also reveals every system; old saves get no tips | A returning player who skips wants the full HUD. Saves without ui_flags are mid-game players. |
+
+## Day/night and weather (23 Nov)
+| 2026-11-23 | Day/night is a dithered multiply shade (render/shaders/day_night.gdshader) over the 2D meadow, not a smooth tint | The meadow is 2D art drawn straight to the screen, so the post dither does not touch it. A 4x4 Bayer mask in world texels picks which texels get the shade, so it stays pixel art and pins to the world when the camera moves. Tints are blue-grey (night), warm (sunrise, sunset), cool grey (rain). |
+| 2026-11-23 | Shade sits at z 5, rain at z 11, LifeAir stays at z 10 | Fireflies, lantern and shrine glow stay bright at night. The HUD (z 100) is never shaded. |
+| 2026-11-23 | One day is 12 minutes of session time, starting in the morning (phase 0.32). Not tied to the system clock and not saved | A slow loop the player can notice without waiting for it. No save format change. Tunable in content/config/sky.tres. |
+| 2026-11-23 | Rain and wind are pure functions of time (core/sky_model.gd): two sine waves decide rain (about 16% of the time, episodes of 30 to 65 s, capped at 0.6), gusts ride over a steady breeze | Deterministic, testable headless, no state to save. Rain is light on purpose. |
+| 2026-11-23 | Trees and bushes sway by whole-texel row shifts (render/shaders/wind_sway.gdshader), crown moves most, foot stays. Sprites get 4 transparent texels of padding each side so the lean is never clipped. Rocks and crystals stay still | Pixel-stepped lean at 8 fps matches the art. Padding is built once at load. |
+| 2026-11-23 | LifeGround reads MeadowLife.wind, so grass tips lean further in a gust | Grass and trees move together. |
+| 2026-11-23 | Reduce motion: rain streaks and tree sway stop, grass lean follows wind 0, the shade still turns | Matches the existing rule that travelling motion freezes. |
+
+
+
 | 2026-11-23 | HUD stat counters roll (RollValue, BigNum ease, 30 Hz); gains of 15% or more float "+N Stat" beside the counter, except cash | Presses already pop their own number, so cash floats would double up. Whole-number stats roll in whole numbers. Tuned in FxConfig. |
 | 2026-11-23 | Momentum meter (bar and +% bonus, above the bottom bar) behind a Settings toggle, on by default | Nathan has not decided on the meter. Toggle is saved in settings.cfg so he can judge it and turn it off. |
 | 2026-11-23 | Test builds come from .github/workflows/build.yml (manual run or a v* tag), Windows and macOS, uploaded as artifacts and as a prerelease on tags | Nathan wants builds he can hand to friends. One Linux job exports both, so it needs no Windows or Mac runner. |
