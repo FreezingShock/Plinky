@@ -15,6 +15,7 @@ var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
+var pointer: PadPointer
 var pad_glow: PadGlow
 var shake: ScreenShake
 var camera: WorldCamera
@@ -83,6 +84,11 @@ func _ready() -> void:
 	Juice.shake = shake
 	Juice.transitions = transitions
 	Juice.fx_root = world
+
+	# 3b. Onboarding: tips on or off comes from its own settings file; progress comes from the save.
+	TipsSettings.load_settings()
+	TipsSettings.register_rows()
+	GameState.onboarding.tips_enabled = TipsSettings.enabled
 
 	# 4. HUD above everything.
 	hud = Hud.new()
@@ -216,6 +222,12 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	var first: TexelPad = pads.get(&"m1") as TexelPad
+	if first != null:
+		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
+		pointer = PadPointer.new()
+		pointer.palette = Palettes.colors(palette_id)
+		first.add_child(pointer)
 	if critter == null:
 		critter = TexelCritter.new()
 		world.add_child(critter)
@@ -266,6 +278,7 @@ func _wire_relics() -> void:
 	var bar := RelicBar.new()
 	bar.position = Vector2(8, 76)  # below the stats panel
 	hud.add_child(bar)
+	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)

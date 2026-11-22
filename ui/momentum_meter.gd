@@ -37,7 +37,8 @@ func setup(p_sim: Sim) -> void:
 
 
 func _process(delta: float) -> void:
-	var on: bool = DisplaySettings.momentum_meter and _sim != null
+	# Appears with the Multiplier row, so a brand new player sees Cash alone (see Onboarding).
+	var on: bool = DisplaySettings.momentum_meter and _sim != null and GameState.onboarding.is_unlocked(Onboarding.F_MULT)
 	if visible != on:
 		visible = on
 	if not on:
