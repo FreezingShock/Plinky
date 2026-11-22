@@ -47,7 +47,8 @@ func _init() -> void:
 		var fname: String = "%dx%d_%s%s" % [real.x, real.y, MODE_NAMES[mode], "_bleed" if c[3] == 1 else ""]
 		print("shot ", fname, " integer=", DisplaySettings.integer_scale(root), " stretch=", root.content_scale_stretch,
 			" aspect=", root.content_scale_aspect, " mode=", root.content_scale_mode, " view=", root.get_visible_rect().size,
-			" frame=", main.size, " origin=", main.position, " hud_scale=", _hud_scale(main))
+			" final_scale=", root.get_final_transform().x.x, " frame=", main.size, " origin=", main.position,
+			" hud_px=", _hud_px(main))
 		await _save(out_dir + "/" + fname + ".png")
 
 	# Maximized (what Nathan does by hand). The frame and HUD must follow the maximized size, and the mode must stick.
@@ -112,12 +113,13 @@ func _save(path: String) -> void:
 	print("save ", path, " size=", img.get_size(), " err=", img.save_png(path))
 
 
-## The HUD's on-screen scale: 1.0 at the 640x360 base, 4.0 when the window is 2560x1440 in Fit.
-func _hud_scale(main: Node) -> Vector2:
+## The HUD's size on screen in window pixels: its base size times the window's final stretch.
+## A canvas-local transform always reads 1.0, so the stretch has to come from get_final_transform().
+func _hud_px(main: Node) -> Vector2:
 	var hud: Control = main.get("hud") as Control
 	if hud == null:
 		return Vector2.ZERO
-	return hud.get_global_transform().get_scale()
+	return hud.size * root.get_final_transform().x.x
 
 
 ## True when every sampled pixel is fully transparent or the image has no size.
