@@ -452,10 +452,13 @@ wd = samp(WD, FU, FV); wh = samp(WH, FU, FV)
 dp = samp(dpath, FU, FV)
 tone = fbm2(FU / 14, FV / 14, 2, 11); n1 = vn2(FU / 5, FV / 5, 3); n2 = vn2(FU / 2.2, FV / 2.2, 8)
 # materials: 0 grass 1 rock 2 sand 3 wet 4 path 5 frost
-T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM = 100, 101, 102, 103, 104, 105, 106, 107, 108
+T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM, T_MOSS = 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
 mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
 mat[rockness > .5] = T_ROCK
+# moss: low and mid rock wears green so the mountain reads as a hillside, bare earth only on high ridges and steep faces
+moss_ = (mat == T_ROCK) & (h < 30) & (slope < 1.7) & (fbm2(FU / 9, FV / 9, 3, 12) + .22 * (1 - h / 30) > .52)
+mat[moss_] = T_MOSS
 mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
 beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
@@ -466,7 +469,7 @@ L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
 lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
-lt -= .07 * strata * (mat == T_ROCK)
+lt -= .04 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
 lt -= .22 * ((dp > pw - 1.4) & (dp < pw + .2) & (mat == T_PATH)) * (n2 > .45)        # ruts / worn edge
 # water points
@@ -511,7 +514,7 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 5, 5, 7], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 2, 6, 6, 6, 5], T_MOSS: [1, 2, 2, 3, 3], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 5, 5, 7], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
@@ -615,6 +618,8 @@ def render_scene(keep):
         wt = np.clip(.52 - (YY - HOR) / 260.0 + (vn2(XX / 9.0, YY / 2.5, 60) - .5) * .30, 0, .99)
         wat = dith([1, 2, 2, 3], wt, emp)
         wat = np.where((wat <= 2) & (YY % 4 == 0) & (vn2(XX / 3.0, YY / 1.0, 61) > .86), 3, wat)
+        wat = np.where((wat == 1) & (YY % 6 == 2) & (vn2(XX / 14.0, YY / 1.0, 63) > .55), 2, wat)      # long swell rows break the flat fill
+        wat = np.where((wat == 2) & (YY % 6 == 5) & (vn2(XX / 9.0, YY / 1.0, 64) > .72), 3, wat)
         wat = np.where((vn2(XX / 3.0, YY / 1.2, 62) > .93) & (YY % 3 == 0), 4, wat)
         res = np.where(YY >= HOR, wat, res)
         out[emp] = res[emp]
@@ -640,7 +645,7 @@ for t in TALL:
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
 nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0)
-wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK)
+wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK) & (mat != T_MOSS)
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)
     wk &= np.hypot(FU - t['u'], FV - t['v']) > r_
