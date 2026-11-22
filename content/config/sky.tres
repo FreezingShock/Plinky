@@ -8,7 +8,7 @@ colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1, 1.0, 0.72, 0.66, 1, 1.0, 0.92,
 
 [sub_resource type="Gradient" id="g_amt"]
 offsets = PackedFloat32Array(0, 0.2, 0.27, 0.36, 0.5, 0.64, 0.73, 0.8, 1.0)
-colors = PackedColorArray(0, 0, 0, 1, 0.05, 0.05, 0.05, 1, 0.6, 0.6, 0.6, 1, 0.3, 0.3, 0.3, 1, 0.12, 0.12, 0.12, 1, 0.3, 0.3, 0.3, 1, 0.65, 0.65, 0.65, 1, 0.4, 0.4, 0.4, 1, 0, 0, 0, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0.05, 0.05, 0.05, 1, 0.6, 0.6, 0.6, 1, 0.1, 0.1, 0.1, 1, 0.12, 0.12, 0.12, 1, 0.3, 0.3, 0.3, 1, 0.65, 0.65, 0.65, 1, 0.4, 0.4, 0.4, 1, 0, 0, 0, 1)
 
 [sub_resource type="Gradient" id="g_haze"]
 offsets = PackedFloat32Array(0, 0.2, 0.27, 0.36, 0.5, 0.64, 0.73, 0.8, 1.0)
@@ -21,7 +21,7 @@ colors = PackedColorArray(0.5, 0.6, 0.9, 1, 1.0, 0.82, 0.55, 1, 1.0, 0.95, 0.75,
 [resource]
 script = ExtResource("1")
 day_seconds = 720.0
-start_phase = 0.32
+start_phase = 0.4
 night_strength = 0.8
 dusk_strength = 0.4
 rain_period_a = 173.0
