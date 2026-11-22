@@ -16,8 +16,8 @@ const BASE: Vector2i = Vector2i(640, 360)
 const BLEED_ART: Vector2i = Vector2i(840, 480)  # meadow backdrop bleed, placements3d.json "bleed" (PR #4)
 const MIN_PIXEL_SCALE: int = 2
 
-## Stays false until the 840x480 backdrop is in the scene. Until then Wide view letterboxes at 640x360.
-static var bleed_ready: bool = false
+## True now that the 3D meadow (PR #4) provides the 840x480 backdrop bleed. Set false to letterbox Wide view at 640x360.
+static var bleed_ready: bool = true
 static var scale_mode: int = Scale.PIXEL
 static var fullscreen: bool = false
 static var _loaded: bool = false
