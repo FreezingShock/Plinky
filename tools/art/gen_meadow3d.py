@@ -103,6 +103,7 @@ def bowl(H0, B, depth):
     w = 1 - smooth(.97, 1.55, s)
     return H0 * (1 - w) + hb * w * 1.0 + 0 * w, s
 H0, sl_ = bowl(H0, LAKE, 8.0); H0, sp_ = bowl(H0, POND, 5.0)
+LAKE_S, POND_S = sl_, sp_
 Hpre = H0.copy()
 GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
@@ -637,6 +638,12 @@ for t in TALL:
     sprites.append(dict(file=fn, kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
 im.save(os.path.join(HERE, 'meadow3d-1x.png')); im.resize((W * 3, H * 3), Image.NEAREST).save(os.path.join(HERE, 'meadow3d.png'))
 im.crop((BLX, BLY, BLX + 640, BLY + 360)).resize((1920, 1080), Image.NEAREST).save(os.path.join(HERE, 'meadow3d-frame.png'))
+for _name, _sm in (('lake', LAKE_S), ('pond', POND_S)):
+    _m = (WD > .04) & (_sm < 1.25)
+    _iu, _iv = np.nonzero(_m)
+    _sx = OXS0 + (_iu - _iv); _sy = OYS0 + (_iu + _iv) / 2.0 - LEVEL
+    anchors.append(dict(kind='water', name=_name, sx=round(float((_sx.min() + _sx.max()) / 2), 1), sy=round(float((_sy.min() + _sy.max()) / 2), 1),
+                        rx=round(float((_sx.max() - _sx.min()) / 2), 1), ry=round(float((_sy.max() - _sy.min()) / 2), 1), u=float(_iu.mean()), v=float(_iv.mean())))
 anchors_out = [dict(a, u=round(a['u'], 1), v=round(a['v'], 1)) for a in anchors]
 json.dump(dict(size=[W, H], projection=dict(ox=OXS0, oy=OYS0, note='screen = (ox + u - v, oy + (u+v)/2 - h), in the 640x360 frame'), bleed=dict(left=BLX, right=BLX, top=BLY, bottom=BLY, ground_size=[W, H], ground_offset=[-BLX, -BLY], note='ground.png is 840x480; place it at (-100,-60) so the 640x360 frame lines up with the old origin. All anchors and sprite x/y/foot stay in 640x360-frame coordinates (sprite x/y may be negative).'), anchors=anchors_out, sprites=sprites), open(os.path.join(HERE, 'placements3d.json'), 'w'), indent=1)
 log('done')
