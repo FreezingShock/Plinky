@@ -17,7 +17,7 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false) -> void:
 	if big:
 		sq.hitstop(FxConfig.HITSTOP_MS * 2)
 	ParticleBurst.spawn(fx_root, pos, PARTICLE_COLORS, randi_range(10, 14) if big else -1)
-	PopupNumber.spawn(fx_root, pos + Vector2(-8, -14), amount, big)
+	PopupStack.spawn(fx_root, pos + Vector2(-8, -14), amount, big)
 	if shake: shake.add(0.45 if big else 0.1)
 
 func milestone() -> void:
