@@ -4,6 +4,12 @@ extends Control
 ## calls the GameState API. Colours and fonts come from the theme on the root Control.
 
 signal relic_panel_toggled(open: bool)
+signal settings_toggled(open: bool)
+
+## The frame the HUD lays out in (Main size). The gate panel and bottom bar hug its right and bottom edges.
+var frame: Vector2 = Vector2(640.0, 360.0)
+var _gate_panel: PanelContainer
+var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
 
@@ -101,6 +107,7 @@ func _build_stats() -> void:
 
 func _build_gate() -> void:
 	var v: VBoxContainer = _panel(Vector2(456, 4))
+	_gate_panel = v.get_parent() as PanelContainer
 	_zone_label = Label.new()
 	_zone_label.theme_type_variation = &"TitleLabel"
 	v.add_child(_zone_label)
@@ -115,6 +122,7 @@ func _build_gate() -> void:
 func _build_bottom() -> void:
 	var h := HBoxContainer.new()
 	h.position = Vector2(4, 334)
+	_bottom = h
 	h.add_theme_constant_override("separation", 4)
 	add_child(h)
 	_rebirth = PixelButton.new()
@@ -129,6 +137,10 @@ func _build_bottom() -> void:
 		rb.text = "Relics [R]"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		h.add_child(rb)
+	var st := PixelButton.new()
+	st.text = "Settings [F10]"
+	st.pressed.connect(func() -> void: settings_toggled.emit(true))
+	h.add_child(st)
 
 
 func _build_pad_list() -> void:
@@ -187,13 +199,31 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_R and GameState.relics != null:
 			relic_panel_toggled.emit(true)
+		elif event.keycode == KEY_F10:
+			settings_toggled.emit(true)
+			get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
+	_place()
 	_clock += delta
 	if _clock >= REFRESH:
 		_clock = 0.0
 		_refresh()
+
+
+## Right-hug the gate panel and bottom-hug the bottom bar, so a wider frame keeps them at its edges.
+func _place() -> void:
+	if size != frame:
+		size = frame
+	if _gate_panel != null:
+		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
+		if _gate_panel.position != gp:
+			_gate_panel.position = gp
+	if _bottom != null:
+		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
+		if _bottom.position != bp:
+			_bottom.position = bp
 
 
 func _refresh() -> void:
