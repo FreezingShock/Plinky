@@ -49,3 +49,13 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Rebirth prestige gain = reb x (reb / 9) ^ 0.5 past 9 reb | Nathan: reward pushing further. Exponent 0.5 gives 1455 prestige at 54 reb in 60 min against 594 with the flat rule. |
 | 2026-11-23 | Walking builds momentum (+40% income at full), clicks are not nerfed | Nathan. Walking charges, standing drains over 10 s. Gives the walker a job without touching click speed. |
 | 2026-11-23 | Pad streaks (m1, m2, m3 in order, 5 s of income, 20 s cooldown) and a golden critter (30 s of income, every 75 to 150 s) | Nathan. Active play opens the gate at about 7.7 min against 10.5 idle. |
+
+## Day/night and weather (23 Nov)
+| 2026-11-23 | Day/night is a dithered multiply shade (render/shaders/day_night.gdshader) over the 2D meadow, not a smooth tint | The meadow is 2D art drawn straight to the screen, so the post dither does not touch it. A 4x4 Bayer mask in world texels picks which texels get the shade, so it stays pixel art and pins to the world when the camera moves. Tints are blue-grey (night), warm (sunrise, sunset), cool grey (rain). |
+| 2026-11-23 | Shade sits at z 5, rain at z 11, LifeAir stays at z 10 | Fireflies, lantern and shrine glow stay bright at night. The HUD (z 100) is never shaded. |
+| 2026-11-23 | One day is 12 minutes of session time, starting in the morning (phase 0.32). Not tied to the system clock and not saved | A slow loop the player can notice without waiting for it. No save format change. Tunable in content/config/sky.tres. |
+| 2026-11-23 | Rain and wind are pure functions of time (core/sky_model.gd): two sine waves decide rain (about 16% of the time, episodes of 30 to 65 s, capped at 0.6), gusts ride over a steady breeze | Deterministic, testable headless, no state to save. Rain is light on purpose. |
+| 2026-11-23 | Trees and bushes sway by whole-texel row shifts (render/shaders/wind_sway.gdshader), crown moves most, foot stays. Sprites get 4 transparent texels of padding each side so the lean is never clipped. Rocks and crystals stay still | Pixel-stepped lean at 8 fps matches the art. Padding is built once at load. |
+| 2026-11-23 | LifeGround reads MeadowLife.wind, so grass tips lean further in a gust | Grass and trees move together. |
+| 2026-11-23 | Reduce motion: rain streaks and tree sway stop, grass lean follows wind 0, the shade still turns | Matches the existing rule that travelling motion freezes. |
+
