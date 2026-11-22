@@ -7,6 +7,7 @@ const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
 @export_file("*.json") var placements_path: String = DIR + "placements3d.json"
 
 var _data: Dictionary = {}
+var react: LifeReact
 
 
 func _ready() -> void:
@@ -61,11 +62,18 @@ func _add_life(ground: Sprite2D) -> void:
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
 	add_child(air)
 	air.setup(life, ground)
+	react = LifeReact.new()
+	react.name = "LifeReact"
+	react.z_index = 10
+	add_child(react)
+	react.setup(life, life.get("sway", []) as Array)
+	lg.pusher_group = &"walker"
 
 
 ## Adds each tall prop as its own sprite under `parent`, which must have y_sort_enabled. The sprite sits at the
 ## prop's foot, so anything south of the foot draws over it and anything behind it is covered by it.
 func spawn_occluders(parent: Node2D) -> void:
+	var bush_sprites: Array = []
 	for s: Dictionary in _data.sprites:
 		var sp := Sprite2D.new()
 		sp.name = "Occ_" + String(s.file).get_file().get_basename()
@@ -75,3 +83,7 @@ func spawn_occluders(parent: Node2D) -> void:
 		sp.position = Vector2(s.foot[0], s.foot[1])
 		sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
 		parent.add_child(sp)
+		if String(s.kind) == "bush":
+			bush_sprites.append(sp)
+	if react != null:
+		react.set_bushes(bush_sprites)
