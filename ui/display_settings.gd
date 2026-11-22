@@ -18,7 +18,7 @@ const MIN_PIXEL_SCALE: int = 2
 
 ## True now that the 3D meadow (PR #4) provides the 840x480 backdrop bleed. Set false to letterbox Wide view at 640x360.
 static var bleed_ready: bool = true
-static var scale_mode: int = Scale.PIXEL
+static var scale_mode: int = Scale.FIT
 static var fullscreen: bool = false
 static var _loaded: bool = false
 
@@ -30,7 +30,7 @@ static func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) != OK:
 		return
-	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.PIXEL)), Scale.PIXEL, Scale.WIDE)
+	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.FIT)), Scale.PIXEL, Scale.WIDE)
 	fullscreen = bool(cfg.get_value(SECTION, "fullscreen", false))
 
 
@@ -55,7 +55,7 @@ static func integer_scale(win: Window) -> int:
 
 ## True when a whole-number scale is in use (Pixel perfect or Wide view, not below MIN_PIXEL_SCALE).
 static func pixel_active(win: Window) -> bool:
-	return scale_mode != Scale.FIT and integer_scale(win) >= MIN_PIXEL_SCALE
+	return scale_mode == Scale.PIXEL and integer_scale(win) >= MIN_PIXEL_SCALE
 
 
 ## The view size the frame may fill: 640x360, or the 840x480 bleed once its art is in.
