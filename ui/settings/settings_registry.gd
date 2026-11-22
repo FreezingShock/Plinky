@@ -276,6 +276,13 @@ static func _register_display() -> void:
 		"set": func(v: Variant) -> void: DisplaySettings.set_fullscreen(_root(), bool(v)),
 	})
 	_add({
+		"id": &"native_frame", "tab": "Display", "label": "Window frame", "kind": Kind.CHOICE,
+		"hint": "Plinky frame is the game's own title bar. System frame uses the operating system's border.",
+		"options": func() -> Array: return [[false, "Plinky frame"], [true, "System frame"]],
+		"get": func() -> Variant: return DisplaySettings.native_frame,
+		"set": func(v: Variant) -> void: DisplaySettings.set_native_frame(_root(), bool(v)),
+	})
+	_add({
 		"id": &"scale_mode", "tab": "Display", "label": "Scaling", "kind": Kind.CHOICE,
 		"hint": "Fit fills any window size. Pixel perfect keeps whole-number texels. Wide shows more meadow.",
 		"options": func() -> Array: return [[DisplaySettings.Scale.PIXEL, "Pixel perfect"], [DisplaySettings.Scale.FIT, "Fit window"], [DisplaySettings.Scale.WIDE, "Wide view"]],

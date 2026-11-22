@@ -28,6 +28,11 @@ static var screen: int = -1
 static var vsync: bool = true
 ## 0 = unlimited.
 static var fps_cap: int = 0
+## True falls back to the operating system's title bar and border. False (default) uses the game's own frame in windowed mode.
+static var native_frame: bool = false
+## Set by WindowFrame: a Callable(win: Window, on: bool) that plays the fullscreen wipe and then calls commit_fullscreen.
+## Left empty (tests, headless), set_fullscreen switches at once.
+static var animator: Callable = Callable()
 static var _loaded: bool = false
 static var _ignore_resize_until_ms: int = 0
 
@@ -54,6 +59,7 @@ static func load_settings() -> void:
 	screen = int(cfg.get_value(SECTION, "screen", -1))
 	vsync = bool(cfg.get_value(SECTION, "vsync", true))
 	fps_cap = maxi(0, int(cfg.get_value(SECTION, "fps_cap", 0)))
+	native_frame = bool(cfg.get_value(SECTION, "native_frame", false))
 	# Saves before version 2 stored Pixel perfect, which was the old default. Reset that once to Fit, so a stale
 	# Pixel setting can't leave the view stepping in whole multiples. Pixel perfect is still there in the panel.
 	if int(cfg.get_value(SECTION, "version", 1)) < SETTINGS_VERSION:
@@ -64,7 +70,7 @@ static func load_settings() -> void:
 static func save_settings() -> void:
 	# SettingsFile loads the file first, so the game and keys sections survive this write.
 	SettingsFile.write(SECTION, {
-		"version": SETTINGS_VERSION, "scale": scale_mode, "fullscreen": fullscreen,
+		"version": SETTINGS_VERSION, "scale": scale_mode, "fullscreen": fullscreen, "native_frame": native_frame,
 		"res_w": resolution.x, "res_h": resolution.y, "screen": screen, "vsync": vsync, "fps_cap": fps_cap,
 	})
 
@@ -103,6 +109,10 @@ static func apply(win: Window) -> void:
 		mode_ok = win.mode == Window.MODE_WINDOWED or win.mode == Window.MODE_MAXIMIZED
 	if not mode_ok:
 		win.mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
+	# The game draws its own title bar and resize edges in windowed mode, so the OS border is dropped then.
+	var want_borderless: bool = custom_frame_active()
+	if win.borderless != want_borderless:
+		win.borderless = want_borderless
 	var base: Vector2i = base_size()
 	# The base canvas must scale with the window, so the root is never left in the disabled content scale mode.
 	if win.content_scale_mode != Window.CONTENT_SCALE_MODE_VIEWPORT:
@@ -127,7 +137,32 @@ static func set_scale_mode(win: Window, mode: int) -> void:
 	apply(win)
 
 
+## True when the game's own title bar and resize edges are in use (windowed, and not the native-frame fallback).
+static func custom_frame_active() -> bool:
+	load_settings()
+	return not fullscreen and not native_frame
+
+
+static func set_native_frame(win: Window, on: bool) -> void:
+	load_settings()
+	native_frame = on
+	save_settings()
+	apply(win)
+
+
+## Switch window mode. Plays the wipe when WindowFrame has registered one, otherwise switches at once.
 static func set_fullscreen(win: Window, on: bool) -> void:
+	load_settings()
+	if on == fullscreen:
+		return
+	if animator.is_valid():
+		animator.call(win, on)
+	else:
+		commit_fullscreen(win, on)
+
+
+## The switch itself: save, then apply. The wipe calls this once the screen is covered.
+static func commit_fullscreen(win: Window, on: bool) -> void:
 	load_settings()
 	fullscreen = on
 	save_settings()

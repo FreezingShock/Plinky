@@ -20,6 +20,8 @@ const SUITES: Array[String] = [
 	"res://tests/test_settings.gd",
 	"res://tests/test_dev_commands.gd",
 	"res://tests/test_script_loads.gd",
+	"res://tests/test_window.gd",
+	"res://tests/test_switch_queue.gd",
 ]
 
 

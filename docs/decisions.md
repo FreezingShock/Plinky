@@ -78,3 +78,13 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Console logic is core/dev_commands.gd (pure, tested). Node commands (tp, speed, save, clear) are registered by ui/dev_console.gd | core/ never touches nodes. |
 | 2026-11-23 | Sim gets god_mode (presses cost nothing, not saved), dev_set_stat and dev_force_zone | The only way to set a stat or skip a gate without going around the Sim's own signals. |
 | 2026-11-23 | tests/test_script_loads.gd loads main.gd and every script under core, data, ui, world, render, theme, audio and boot | CI already greps for parse errors, but this names the file and fails the suite on its own. |
+| 2026-11-23 | project.godot enables Import ETC2 ASTC | Godot refuses a universal macOS export without it (first CI build failed on exactly this). Only adds import data; the game is unaffected. |
+
+## 2026-11-22 Custom window frame and fullscreen wipe
+- Windowed mode is borderless with the game's own 12 texel title bar (ui/window_frame.gd): drag, double-click to maximise, minimise / maximise / close, resize on every edge and corner (5 px bands, 12 px corners, measured in window pixels). Drag and resize use DisplayServer.window_start_drag and window_start_resize, so one path covers Windows and macOS.
+- The bar takes 12 texels off the top of the view, and main.gd shrinks the HUD frame by that, so nothing is covered. Fullscreen and the System frame setting give the 12 texels back.
+- Settings panel has a Window frame row: Plinky frame (default) or System frame (native OS border). Saved as display/native_frame.
+- Fullscreen to windowed and back plays a dither wipe: eight stepped frames of a 4x4 Bayer sweep in the zone ink colour cover the screen, the mode switches while it is covered, then it uncovers. Reduce flashing switches at once. DisplaySettings.set_fullscreen calls the registered animator, so F11 and the panel buttons both get it.
+- Spam: SwitchQueue (core/switch_queue.gd) runs one switch at a time and collapses requests made meanwhile to the latest, which runs after only if it differs from the mode reached. A 3 s watchdog uncovers the screen if a switch hangs.
+- Sizes: resize bands are max(5 px x screen scale, one texel of the scaled view) and hit-test in window pixels via the window's final transform, so they hold on 4K, HiDPI and letterboxed windows. The black letterbox on the title row drags the window too. The wipe renders at content resolution, so its cost does not grow with window size. The bar redraws only when width, maximised state or palette change.
+
