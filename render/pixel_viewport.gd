@@ -74,10 +74,13 @@ func world_to_texel(pos: Vector3) -> Vector2:
 
 func _layout() -> void:
 	scale_factor = maxi(1, mini(int(size.x) / BASE.x, int(size.y) / BASE.y))
-	var area := Vector2(BASE * scale_factor)
-	_clip.size = area
-	_clip.position = ((size - area) * 0.5).floor()
+	# The post fills the whole frame, not just a 640x360 box in the middle, so the backdrop colour,
+	# the bleed around the view, and the Transitions effects (invert, shift, ascii) reach every edge.
+	# At 640x360 this is exactly the old layout; a bigger frame stretches the 640 body over it.
+	_clip.size = size
+	_clip.position = Vector2.ZERO
 	var shake := screen_shake.offset if screen_shake else Vector2.ZERO
-	post.scale = Vector2(scale_factor, scale_factor)
-	post.position = (camera.frac_shift + shake - Vector2.ONE) * float(scale_factor)
+	var fill: Vector2 = size / Vector2(BASE)
+	post.scale = fill
+	post.position = (camera.frac_shift + shake - Vector2.ONE) * fill
 	post_material.set_shader_parameter("dither_origin", Vector2i(camera.snap_texels.x, -camera.snap_texels.y))
