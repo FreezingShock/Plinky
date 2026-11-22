@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RarityDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/rarity_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ui/rarity/frame_1_uncommon.png" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"uncommon"
+display_name = "Uncommon"
+mc_code = "a"
+color = Color(0.333, 1, 0.333, 1)
+weight = 25.0
+rank = 1
+frame = ExtResource("2")

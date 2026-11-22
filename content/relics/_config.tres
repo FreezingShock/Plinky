@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RelicConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/relic_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+base_slots = 3
+slot_unlock_rebirths = Array[int]([5, 20])
+base_drop_chance = 0.02
+luck_per_level = 0.05
+flash_min_rank = 3
