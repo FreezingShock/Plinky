@@ -12,13 +12,14 @@ enum Scale { PIXEL, FIT, WIDE }
 
 const PATH: String = "user://settings.cfg"
 const SECTION: String = "display"
+const SETTINGS_VERSION: int = 2  # 2: Fit is the default, and older Pixel defaults are reset once
 const BASE: Vector2i = Vector2i(640, 360)
 const BLEED_ART: Vector2i = Vector2i(840, 480)  # meadow backdrop bleed, placements3d.json "bleed" (PR #4)
 const MIN_PIXEL_SCALE: int = 2
 
 ## True now that the 3D meadow (PR #4) provides the 840x480 backdrop bleed. Set false to letterbox Wide view at 640x360.
 static var bleed_ready: bool = true
-static var scale_mode: int = Scale.PIXEL
+static var scale_mode: int = Scale.FIT
 static var fullscreen: bool = false
 static var _loaded: bool = false
 
@@ -30,12 +31,18 @@ static func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) != OK:
 		return
-	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.PIXEL)), Scale.PIXEL, Scale.WIDE)
+	scale_mode = clampi(int(cfg.get_value(SECTION, "scale", Scale.FIT)), Scale.PIXEL, Scale.WIDE)
 	fullscreen = bool(cfg.get_value(SECTION, "fullscreen", false))
+	# Saves before version 2 stored Pixel perfect, which was the old default. Reset that once to Fit, so a stale
+	# Pixel setting can't leave the view stepping in whole multiples. Pixel perfect is still there in the panel.
+	if int(cfg.get_value(SECTION, "version", 1)) < SETTINGS_VERSION:
+		scale_mode = Scale.FIT
+		save_settings()
 
 
 static func save_settings() -> void:
 	var cfg := ConfigFile.new()
+	cfg.set_value(SECTION, "version", SETTINGS_VERSION)
 	cfg.set_value(SECTION, "scale", scale_mode)
 	cfg.set_value(SECTION, "fullscreen", fullscreen)
 	cfg.save(PATH)
@@ -55,7 +62,7 @@ static func integer_scale(win: Window) -> int:
 
 ## True when a whole-number scale is in use (Pixel perfect or Wide view, not below MIN_PIXEL_SCALE).
 static func pixel_active(win: Window) -> bool:
-	return scale_mode != Scale.FIT and integer_scale(win) >= MIN_PIXEL_SCALE
+	return scale_mode == Scale.PIXEL and integer_scale(win) >= MIN_PIXEL_SCALE
 
 
 ## The view size the frame may fill: 640x360, or the 840x480 bleed once its art is in.
@@ -67,10 +74,18 @@ static func bleed_size() -> Vector2i:
 static func apply(win: Window) -> void:
 	load_settings()
 	win.min_size = BASE
-	var want: Window.Mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
-	if win.mode != want:
-		win.mode = want
+	# A maximized window counts as windowed. Without this, every size_changed snapped a maximized window back to its old size.
+	var mode_ok: bool
+	if fullscreen:
+		mode_ok = win.mode == Window.MODE_FULLSCREEN
+	else:
+		mode_ok = win.mode == Window.MODE_WINDOWED or win.mode == Window.MODE_MAXIMIZED
+	if not mode_ok:
+		win.mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
 	var base: Vector2i = base_size()
+	# The base canvas must scale with the window, so the root is never left in the disabled content scale mode.
+	if win.content_scale_mode != Window.CONTENT_SCALE_MODE_VIEWPORT:
+		win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	if win.content_scale_size != base:
 		win.content_scale_size = base
 	# Always letterbox the base size. In Wide view the base is the bleed, so the whole bleed is shown,
