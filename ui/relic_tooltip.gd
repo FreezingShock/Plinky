@@ -14,11 +14,12 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 100
 	visible = false
-	add_theme_stylebox_override("panel", RelicStyle.panel_box())
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	add_child(v)
 	_name = _label(v, RelicStyle.text)
+	_name.theme_type_variation = &"TitleLabel"
 	_rarity = _label(v, RelicStyle.text)
 	_body = _label(v, RelicStyle.text)
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -54,7 +55,7 @@ func show_relic(def: RelicDef, owned: int, is_equipped: bool, hint: String, anch
 	_stats.add_theme_color_override("font_color", RelicStyle.dim if (owned > 0 and not is_equipped) else RelicStyle.good)
 	_hint.text = hint
 	_hint.visible = hint != ""
-	add_theme_stylebox_override("panel", RelicStyle.panel_box(def.rarity.color))
+	add_theme_stylebox_override("panel", AsciiBox.panel(def.rarity.color))
 	_place(anchor)
 
 ## Plain text tooltip for empty and locked slots.
@@ -66,7 +67,7 @@ func show_text(title: String, body: String, anchor: Rect2) -> void:
 	_stats.text = ""
 	_hint.text = ""
 	_rarity.visible = false; _stats.visible = false; _hint.visible = false
-	add_theme_stylebox_override("panel", RelicStyle.panel_box())
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	_place(anchor)
 
 func _place(anchor: Rect2) -> void:

@@ -9,11 +9,11 @@ var _rest_set := false
 
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.BUTTON, 8.0, 4.0))
-	add_theme_stylebox_override("hover", AsciiBox.make(AsciiBox.Kind.HOVER, 8.0, 4.0))
-	add_theme_stylebox_override("pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, 8.0, 4.0))
-	add_theme_stylebox_override("disabled", AsciiBox.make(AsciiBox.Kind.DISABLED, 8.0, 4.0))
-	add_theme_color_override("font_disabled_color", RelicStyle.ink.lerp(RelicStyle.edge, 0.5))
+	add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.BUTTON, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y))
+	add_theme_stylebox_override("hover", AsciiBox.make(AsciiBox.Kind.HOVER, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y))
+	add_theme_stylebox_override("pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y))
+	add_theme_stylebox_override("disabled", AsciiBox.make(AsciiBox.Kind.DISABLED, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y))
+	add_theme_color_override("font_disabled_color", RelicStyle.dim)
 	add_theme_stylebox_override("focus", StyleBoxEmpty.new())   # focus ring is drawn in _draw (marching dots)
 	mouse_entered.connect(_hover.bind(true))
 	mouse_exited.connect(_hover.bind(false))
