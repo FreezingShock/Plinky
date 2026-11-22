@@ -644,6 +644,8 @@ for _name, _sm in (('lake', LAKE_S), ('pond', POND_S)):
     _sx = OXS0 + (_iu - _iv); _sy = OYS0 + (_iu + _iv) / 2.0 - LEVEL
     anchors.append(dict(kind='water', name=_name, sx=round(float((_sx.min() + _sx.max()) / 2), 1), sy=round(float((_sy.min() + _sy.max()) / 2), 1),
                         rx=round(float((_sx.max() - _sx.min()) / 2), 1), ry=round(float((_sy.max() - _sy.min()) / 2), 1), u=float(_iu.mean()), v=float(_iv.mean())))
+for _a in anchors:        # ground contact = screen position at the terrain height there
+    if _a['kind'] != 'water': _a['sy'] = round(OYS0 + (_a['u'] + _a['v']) / 2.0 - float(terrain_h(_a['u'], _a['v'])), 1)
 anchors_out = [dict(a, u=round(a['u'], 1), v=round(a['v'], 1)) for a in anchors]
 json.dump(dict(size=[W, H], projection=dict(ox=OXS0, oy=OYS0, note='screen = (ox + u - v, oy + (u+v)/2 - h), in the 640x360 frame'), bleed=dict(left=BLX, right=BLX, top=BLY, bottom=BLY, ground_size=[W, H], ground_offset=[-BLX, -BLY], note='ground.png is 840x480; place it at (-100,-60) so the 640x360 frame lines up with the old origin. All anchors and sprite x/y/foot stay in 640x360-frame coordinates (sprite x/y may be negative).'), anchors=anchors_out, sprites=sprites), open(os.path.join(HERE, 'placements3d.json'), 'w'), indent=1)
 log('done')
