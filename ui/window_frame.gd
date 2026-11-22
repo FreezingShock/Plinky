@@ -32,7 +32,9 @@ var _win: Window
 var _bar: TitleBar
 var _wipe_layer: CanvasLayer
 var _wipe: ColorRect
-var _busy: bool = false
+var _queue: SwitchQueue = SwitchQueue.new()
+var _busy_since: int = 0
+var _bar_key: String = ""
 var _cursor_set: bool = false
 
 signal inset_changed
@@ -78,31 +80,52 @@ func _sync() -> void:
 		inset_changed.emit()
 	if want:
 		_bar.position = Vector2.ZERO
-		_bar.size = Vector2(vis.x, BAR_H)
-		_bar.queue_redraw()
+		var key: String = "%d|%d|%s" % [int(vis.x), _win.mode, RelicStyle.edge.to_html()]
+		if key != _bar_key:  # redraw only when width, maximised state or palette change
+			_bar_key = key
+			_bar.size = Vector2(vis.x, BAR_H)
+			_bar.queue_redraw()
 
 
 func _process(_delta: float) -> void:
 	_sync()
+	# Watchdog: a switch that has not finished in 3 s (window manager hiccup) must never leave the screen covered.
+	if _queue.busy and Time.get_ticks_msec() - _busy_since > 3000:
+		_queue.reset()
+		_wipe.visible = false
 	_update_resize_cursor()
 
 
 # --- Resize edges -----------------------------------------------------------------------------------------
 
-## The edge or corner under the mouse, as a DisplayServer.WindowResizeEdge, or -1. Uses real window pixels,
-## so the band is the same thickness at any content scale.
+## Resize band thickness in window pixels: at least EDGE, and never thinner than one texel of the scaled
+## view, so it stays grabbable on 4K and on HiDPI screens.
+func _band() -> int:
+	var vis_h: float = maxf(1.0, get_viewport_rect().size.y)
+	var texel: float = float(_win.size.y) / vis_h
+	var dpi: float = maxf(1.0, DisplayServer.screen_get_scale(_win.current_screen))
+	return maxi(int(ceilf(EDGE * dpi)), int(roundf(texel)))
+
+
 func _edge_at(p: Vector2i) -> int:
 	if not _resizable():
 		return -1
-	var s: Vector2i = _win.size
-	var left: bool = p.x < EDGE
-	var right: bool = p.x >= s.x - EDGE
-	var top: bool = p.y < EDGE
-	var bottom: bool = p.y >= s.y - EDGE
-	var near_x_l: bool = p.x < CORNER
-	var near_x_r: bool = p.x >= s.x - CORNER
-	var near_y_t: bool = p.y < CORNER
-	var near_y_b: bool = p.y >= s.y - CORNER
+	var band: int = _band()
+	return edge_at(p, _win.size, band, int(band * CORNER / EDGE))
+
+
+## The edge or corner at window pixel `p` in a window of size `s`, as a DisplayServer.WindowResizeEdge, or -1.
+static func edge_at(p: Vector2i, s: Vector2i, band: int, corner: int) -> int:
+	if p.x < 0 or p.y < 0 or p.x >= s.x or p.y >= s.y:
+		return -1
+	var left: bool = p.x < band
+	var right: bool = p.x >= s.x - band
+	var top: bool = p.y < band
+	var bottom: bool = p.y >= s.y - band
+	var near_x_l: bool = p.x < corner
+	var near_x_r: bool = p.x >= s.x - corner
+	var near_y_t: bool = p.y < corner
+	var near_y_b: bool = p.y >= s.y - corner
 	if (left and near_y_t) or (top and near_x_l):
 		return DisplayServer.WINDOW_EDGE_TOP_LEFT
 	if (right and near_y_t) or (top and near_x_r):
@@ -123,12 +146,13 @@ func _edge_at(p: Vector2i) -> int:
 
 
 func _resizable() -> bool:
-	return DisplaySettings.custom_frame_active() and _win.mode == Window.MODE_WINDOWED and not _busy
+	return DisplaySettings.custom_frame_active() and _win.mode == Window.MODE_WINDOWED and not _queue.busy
 
 
-## Mouse position in window pixels (not content texels).
+## Mouse position in window pixels (not content texels). Taken from the content-space mouse and the window's
+## stretch transform, so it is right under any DPI scale, letterbox, or monitor arrangement.
 func _mouse_px() -> Vector2i:
-	return DisplayServer.mouse_get_position() - _win.position
+	return Vector2i(_win.get_final_transform() * get_viewport().get_mouse_position())
 
 
 func _cursor_for(edge: int) -> Input.CursorShape:
@@ -160,6 +184,21 @@ func _input(event: InputEvent) -> void:
 		if edge >= 0:
 			DisplayServer.window_start_resize(edge as DisplayServer.WindowResizeEdge, _win.get_window_id())
 			get_viewport().set_input_as_handled()
+			return
+		# The black letterbox beside or above the bar drags the window too, so the title strip spans the window.
+		if _bar.visible and not _queue.busy and _in_bar_strip():
+			DisplayServer.window_start_drag(_win.get_window_id())
+			get_viewport().set_input_as_handled()
+
+
+## True when the mouse is on the window row that holds the title bar but outside the bar itself (letterbox).
+func _in_bar_strip() -> bool:
+	var m: Vector2 = get_viewport().get_mouse_position()
+	var vis: Vector2 = get_viewport_rect().size
+	if Rect2(Vector2.ZERO, Vector2(vis.x, BAR_H)).has_point(m):
+		return false  # the bar handles its own clicks
+	var bottom_px: float = (_win.get_final_transform() * Vector2(0.0, float(BAR_H))).y
+	return float(_mouse_px().y) < bottom_px
 
 
 # --- Fullscreen / windowed wipe ---------------------------------------------------------------------------
@@ -167,12 +206,19 @@ func _input(event: InputEvent) -> void:
 ## Registered as DisplaySettings.animator. Covers the screen with a dither sweep, switches mode while it is
 ## covered, then uncovers. Reduce-flashing players get an instant switch.
 func _play_switch(win: Window, on: bool) -> void:
-	if _busy:
-		return
 	if FxConfig.reduce_flashing or not is_inside_tree():
 		DisplaySettings.commit_fullscreen(win, on)
 		return
-	_busy = true
+	if not _queue.request(on):
+		return  # a switch is playing; the latest request is queued and runs after it
+	var target: int = 1 if on else 0
+	while target != SwitchQueue.NONE:
+		_busy_since = Time.get_ticks_msec()
+		await _one_switch(win, target == 1)
+		target = _queue.finish(DisplaySettings.fullscreen)
+
+
+func _one_switch(win: Window, on: bool) -> void:
 	var mat: ShaderMaterial = _wipe.material as ShaderMaterial
 	mat.set_shader_parameter("ink", RelicStyle.ink)
 	_set_progress(0.0)
@@ -186,7 +232,6 @@ func _play_switch(win: Window, on: bool) -> void:
 	_set_progress(1.0)
 	await _run_wipe(1.0, 0.0, WIPE_IN)
 	_wipe.visible = false
-	_busy = false
 
 
 func _run_wipe(from: float, to: float, time: float) -> void:

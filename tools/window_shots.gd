@@ -20,6 +20,13 @@ func _ready() -> void:
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await _wait(40)
+	var tag: String = OS.get_cmdline_user_args()[0] if OS.get_cmdline_user_args().size() > 0 else ""
+	var win: Window = get_tree().root
+	print("size ", win.size, " final ", win.get_final_transform(), " bar inset ", (main.window_frame as WindowFrame).inset())
+	if tag != "":
+		await _shot("w5_size_" + tag)
+		get_tree().quit()
+		return
 	await _shot("w1_titlebar")
 	main.display_panel.open()
 	await _wait(6)
