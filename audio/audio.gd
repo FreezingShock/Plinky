@@ -14,11 +14,13 @@ const SETTINGS_PATH: String = "user://audio.cfg"
 const DIR: String = "res://assets/audio/"
 
 const POOL_SIZE: int = 14
+const MAX_SAME_VOICES: int = 4              # rapid spam of one sound steals the oldest instead of stacking
+const SETTINGS_VERSION: int = 2             # older saved volumes (pre level fix) are ignored
 const PITCH_JITTER: float = 0.03            # +-3% on every one-shot, so repeats never sound machine-gunned
 const COMBO_WINDOW_MS: int = 650            # presses closer than this build the combo
 const COMBO_STEPS: Array[int] = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]   # semitones, C major pentatonic, 2 octaves
 const FADE_S: float = 2.0
-const DEFAULT_VOL: Dictionary = {&"Master": 0.8, &"Music": 0.2, &"SFX": 0.9, &"UI": 0.7, &"Ambience": 0.22}
+const DEFAULT_VOL: Dictionary = {&"Master": 0.7, &"Music": 0.2, &"SFX": 0.6, &"UI": 0.5, &"Ambience": 0.22}
 
 var _pool: Array[AudioStreamPlayer] = []
 var _next: int = 0
@@ -80,7 +82,30 @@ func _make_buses() -> void:
 			var idx: int = AudioServer.get_bus_count() - 1
 			AudioServer.set_bus_name(idx, b)
 			AudioServer.set_bus_send(idx, &"Master")
-	# Music sits under a gentle low-pass-free compressor-less chain: just keep it quiet and let the mix breathe.
+	_master_chain()
+
+
+## Master safety chain: a 30 Hz high-pass removes any DC offset, a hard limiter stops overlapping
+## sounds from clipping. Added once.
+func _master_chain() -> void:
+	var m: int = AudioServer.get_bus_index(&"Master")
+	if AudioServer.get_bus_effect_count(m) > 0:
+		return
+	var hp := AudioEffectHighPassFilter.new()
+	hp.cutoff_hz = 30.0
+	AudioServer.add_bus_effect(m, hp)
+	var lim := AudioEffectHardLimiter.new()
+	lim.ceiling_db = -2.0
+	lim.pre_gain_db = 0.0
+	AudioServer.add_bus_effect(m, lim)
+
+
+## For debugging levels: bus name -> volume in dB.
+func report() -> Dictionary:
+	var d: Dictionary = {}
+	for i in AudioServer.get_bus_count():
+		d[String(AudioServer.get_bus_name(i))] = AudioServer.get_bus_volume_db(i)
+	return d
 
 
 func set_volume(bus: StringName, linear: float, save := true) -> void:
@@ -108,7 +133,7 @@ func is_muted() -> bool:
 
 func _load_settings() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SETTINGS_PATH) == OK:
+	if cfg.load(SETTINGS_PATH) == OK and int(cfg.get_value("audio", "version", 1)) >= SETTINGS_VERSION:
 		for b: StringName in _vol.keys():
 			_vol[b] = clampf(float(cfg.get_value("volume", String(b), _vol[b])), 0.0, 1.0)
 		_muted = bool(cfg.get_value("audio", "muted", false))
@@ -121,6 +146,7 @@ func _save_settings() -> void:
 	for b: StringName in _vol.keys():
 		cfg.set_value("volume", String(b), _vol[b])
 	cfg.set_value("audio", "muted", _muted)
+	cfg.set_value("audio", "version", SETTINGS_VERSION)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -142,8 +168,19 @@ func play(name: StringName, pitch := 1.0, vol_db := 0.0, bus: StringName = BUS_S
 	var s: AudioStream = _stream(String(name))
 	if s == null:
 		return
-	var p: AudioStreamPlayer = _pool[_next]
-	_next = (_next + 1) % POOL_SIZE
+	var same: int = 0
+	var oldest: AudioStreamPlayer = null
+	for q in _pool:
+		if q.playing and q.stream == s:
+			same += 1
+			if oldest == null or q.get_playback_position() > oldest.get_playback_position():
+				oldest = q
+	var p: AudioStreamPlayer
+	if same >= MAX_SAME_VOICES and oldest != null:
+		p = oldest
+	else:
+		p = _pool[_next]
+		_next = (_next + 1) % POOL_SIZE
 	p.stream = s
 	p.bus = bus
 	p.volume_db = vol_db

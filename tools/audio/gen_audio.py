@@ -14,6 +14,7 @@ import numpy as np
 
 SR = 44100
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets", "audio")
+SFX_GAIN = 0.55   # one-shots overlap heavily in play; keep each one modest
 KEEP_WAV = "--wav" in sys.argv
 rng = np.random.default_rng(22112026)
 
@@ -81,8 +82,11 @@ def norm(x, peak=0.7):
 
 def write(path, x, stereo=None, q=5):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    x = np.asarray(x)
-    if x.ndim == 1: x = x[:, None]
+    x = np.asarray(x, dtype=float)
+    if x.ndim == 1:
+        x = fft_filter(x - x.mean(), lo=28)          # no DC offset, no sub-bass rumble
+        if "/sfx/" in path.replace("\\", "/"): x = x * SFX_GAIN
+        x = x[:, None]
     pcm = (np.clip(x, -1, 1) * 32767).astype("<i2")
     wavp = path[:-4] + ".wav"
     with wave.open(wavp, "wb") as w:
