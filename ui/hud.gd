@@ -36,7 +36,9 @@ func setup(p_sim: Sim) -> void:
 	_build_pad_list()
 	_offline = Label.new()
 	_offline.theme_type_variation = &"CaptionLabel"
-	_offline.position = Vector2(200, 40)
+	_offline.position = Vector2(8, 282)
+	_offline.custom_minimum_size.x = 440
+	_offline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_offline.visible = false
 	add_child(_offline)
 	var bus: Node = get_node("/root/EventBus")

@@ -49,7 +49,7 @@ func _draw(ci: RID, rect: Rect2) -> void:
 			edge = RelicStyle.accent
 			fill = RelicStyle.accent
 		Kind.DISABLED:
-			edge = RelicStyle.ink.lerp(RelicStyle.edge, 0.45)
+			edge = RelicStyle.ink.lerp(RelicStyle.edge, 0.3)
 	_px(ci, x, y, w, h, fill)
 	# 1 texel border with the corners notched.
 	_px(ci, x + 2, y, w - 4, 1, edge)
@@ -69,5 +69,7 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	elif kind == Kind.HOVER:
 		_dither(ci, Rect2(x + 2, y + 2, w - 4, h - 5), edge, 3, phase)
 		_px(ci, x + 2, y + h - 2, w - 4, 1, edge)
-	elif kind == Kind.BUTTON or kind == Kind.DISABLED:
+	elif kind == Kind.DISABLED:
+		_dither(ci, Rect2(x + 2, y + 2, w - 4, h - 4), edge, 3)
+	elif kind == Kind.BUTTON:
 		_px(ci, x + 2, y + h - 2, w - 4, 1, edge)
