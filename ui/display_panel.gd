@@ -9,13 +9,18 @@ var _fit_btn: PixelButton
 var _wide_btn: PixelButton
 var _window_btn: PixelButton
 var _full_btn: PixelButton
+var _custom_btn: PixelButton
+var _native_btn: PixelButton
 var _hint: Label
 var _momentum_btn: PixelButton
+
+signal feedback_requested
 
 
 func bind(win: Window) -> void:
 	_win = win
 	visible = false
+	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	add_child(v)
@@ -56,11 +61,34 @@ func bind(win: Window) -> void:
 		DisplaySettings.set_momentum_meter(not DisplaySettings.momentum_meter)
 		refresh())
 	v.add_child(_momentum_btn)
+	v.add_child(_caption("Window frame"))
+	var frame_row := HBoxContainer.new()
+	frame_row.add_theme_constant_override("separation", 4)
+	v.add_child(frame_row)
+	_custom_btn = _option(frame_row, "Plinky frame", func() -> void:
+		DisplaySettings.set_native_frame(_win, false)
+		refresh())
+	_native_btn = _option(frame_row, "System frame", func() -> void:
+		DisplaySettings.set_native_frame(_win, true)
+		refresh())
 
 	_hint = Label.new()
 	_hint.custom_minimum_size.x = 220
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(_hint)
+
+	var fb_btn := PixelButton.new()
+	fb_btn.text = "Send feedback [F8]"
+	fb_btn.pressed.connect(func() -> void:
+		close()
+		feedback_requested.emit())
+	v.add_child(fb_btn)
+
+	var ver := Label.new()
+	ver.text = "Plinky v%s" % BuildInfo.VERSION
+	ver.modulate = Color(1, 1, 1, 0.7)
+	v.add_child(ver)
 
 	var close_btn := PixelButton.new()
 	close_btn.text = "Close [F10]"
@@ -94,6 +122,8 @@ func refresh() -> void:
 	_window_btn.text = _tag(not DisplaySettings.fullscreen, "Windowed")
 	_full_btn.text = _tag(DisplaySettings.fullscreen, "Fullscreen")
 	_momentum_btn.text = "Momentum meter: " + ("on" if DisplaySettings.momentum_meter else "off")
+	_custom_btn.text = _tag(not DisplaySettings.native_frame, "Plinky frame")
+	_native_btn.text = _tag(DisplaySettings.native_frame, "System frame")
 	if mode == DisplaySettings.Scale.FIT:
 		_hint.text = "Fit fills the window at any size. Texels can differ by one pixel. F11 toggles fullscreen."
 	elif not DisplaySettings.pixel_active(_win):
@@ -114,7 +144,7 @@ func _on_window_changed() -> void:
 func _caption(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.modulate = Color(1, 1, 1, 0.7)
+	l.add_theme_color_override("font_color", RelicStyle.dim)
 	return l
 
 
