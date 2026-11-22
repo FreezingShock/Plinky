@@ -80,7 +80,7 @@ func run(t: Object) -> void:
 	# Offline progress is capped at 2 h
 	sim.new_game()
 	t.near(sim.apply_offline(10.0 * 3600.0), 7200.0, 1e-9, "offline capped at 2 h")
-	t.near(sim.get_stat(&"cash").to_float(), 0.25 * 7200.0, 1e-6, "offline cash")
+	t.near(sim.get_stat(&"cash").to_float(), 10.0 + 0.25 * 7200.0, 1e-6, "offline cash (10 start plus 2 h of income)")
 
 	# Crit: with crit chance 100 percent the gain is 5x
 	sim.new_game()
