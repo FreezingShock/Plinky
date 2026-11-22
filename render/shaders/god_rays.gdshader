@@ -32,7 +32,7 @@ void fragment() {
 	float fall = 1.0 - smoothstep(reach * 0.25, reach, length(v));
 	float inten = shaft * fall * amount;
 	if (inten > bayer4(t) * 0.55 + 0.06) {
-		COLOR = vec4(ray_col * ray_col * 0.26, 1.0);   // squared: keeps the colour warm instead of washing to grey
+		COLOR = vec4(ray_col * ray_col * 0.36, 1.0);   // squared: keeps the colour warm instead of washing to grey
 	} else {
 		COLOR = vec4(0.0);
 	}
