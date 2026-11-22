@@ -63,19 +63,30 @@ func _ready() -> void:
 	var p: Vector2 = pad.get_global_transform_with_canvas().origin
 	if "popups" in OS.get_cmdline_user_args():
 		main.set_process(false)
+		await _wait(30)
+		await _shot("w_idle")
+		var wp: Vector2 = main.walker.get_global_transform_with_canvas().origin
+		_click(wp + Vector2(-60, 20), true)
+		_click(wp + Vector2(-60, 20), false)
+		await _wait(14)
+		await _shot("w_walk")
+		await _wait(60)
 		for z in [1, 2]:
 			while cam.zoom_level != z:
 				cam.zoom_step(1 if cam.zoom_level < z else -1, Vector2(320, 180))
 			await _wait(40)
 			sim.stats[&"cash"] = BigNum.from_float(1e30)
 			p = pad.get_global_transform_with_canvas().origin
-			_click(p, true)
+			pad.holding = true  # synthetic mouse input is unreliable offscreen; drive the pad directly
+			pad.hold.begin()
+			pad._press()
 			await _wait(12)
 			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"m1"), " cost ", Formulas.button_cost(sim.button_defs[&"m1"]).format())
 			await _shot("p_z%d_press_hold" % z)
 			await _wait(60)
 			await _shot("p_z%d_hold_long" % z)
-			_click(p, false)
+			pad.hold.end()
+			pad.holding = false
 			await _wait(70)
 		get_tree().quit(0)
 		return
