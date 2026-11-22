@@ -49,3 +49,12 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 | 2026-11-23 | Rebirth prestige gain = reb x (reb / 9) ^ 0.5 past 9 reb | Nathan: reward pushing further. Exponent 0.5 gives 1455 prestige at 54 reb in 60 min against 594 with the flat rule. |
 | 2026-11-23 | Walking builds momentum (+40% income at full), clicks are not nerfed | Nathan. Walking charges, standing drains over 10 s. Gives the walker a job without touching click speed. |
 | 2026-11-23 | Pad streaks (m1, m2, m3 in order, 5 s of income, 20 s cooldown) and a golden critter (30 s of income, every 75 to 150 s) | Nathan. Active play opens the gate at about 7.7 min against 10.5 idle. |
+
+## Zone 2 blockout (23 Nov)
+- Zone scene, walk mask and heat numbers are data on ZoneDef (`scene_path`, `walk_mask_path`, `heat_*`). main.gd swaps the zone scene on entry. WalkMask has `use(path)` for the active zone.
+- Forge buttons cost Cash, not Rebirths, since Rebirths cannot be earned in zone 2. f1/f2/f3 = 1e4/1e5/1e6 for +1/+8/+64 Slag. Provisional.
+- Slag is a StatDef with `income_factor_per_unit = 0.5`, a generic extra income factor. It does not reset on rebirth. The HUD shows its row only past zone 1.
+- Heat is charged by standing on vents (anchors Vent0..), not by presses. Hot press pays 2x. Heat is not saved. Sim has `feed_heat`, `is_hot`, `heat_hot_changed`; the world node HeatVents feeds it.
+- Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
+- Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
+

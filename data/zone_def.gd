@@ -15,3 +15,13 @@ extends Resource
 @export var palette_id: StringName = &""
 ## Button ids in the order of the zone scene's pad anchors (Pad0, Pad1, ...).
 @export var pad_buttons: PackedStringArray = PackedStringArray()
+## Zone scene (Node2D with Anchors and spawn_occluders). Empty = the meadow scene.
+@export_file("*.tscn") var scene_path: String = ""
+## Walkable mask for the zone scene (same 840x480 frame as its ground). Empty = the meadow mask.
+@export_file("*.png") var walk_mask_path: String = ""
+## Heat (see docs/zone2.md). heat_cap 0 means the zone has no Heat.
+@export var heat_cap: float = 0.0
+@export var heat_charge_per_second: float = 0.0   ## gained per second the walker stands on a vent
+@export var heat_decay_per_second: float = 0.0
+@export var heat_hot_at: float = 5.0              ## at or above this, presses are Hot
+@export var heat_hot_mult: float = 1.0            ## reward multiplier for a Hot press

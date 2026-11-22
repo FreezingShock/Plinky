@@ -37,6 +37,11 @@ func _ready() -> void:
 	_show(0, 0)
 
 
+## Cancels a click-to-walk target (used when the zone scene changes).
+func stop() -> void:
+	_has_target = false
+
+
 ## Brief squash frame, called by main when the walker's pad fires.
 func squash() -> void:
 	_squash_left = SQUASH_TIME

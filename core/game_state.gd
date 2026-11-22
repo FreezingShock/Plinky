@@ -27,6 +27,7 @@ func _ready() -> void:
 	relics.relic_unequipped.connect(func(id: StringName) -> void: bus.relic_unequipped.emit(id))
 	sim.bonus_gained.connect(func(k: StringName, g: Dictionary) -> void: bus.bonus_gained.emit(k, g))
 	sim.critter_spawned.connect(func() -> void: bus.critter_spawned.emit())
+	sim.heat_hot_changed.connect(func(h: bool) -> void: bus.heat_hot_changed.emit(h))
 	sim.critter_gone.connect(func() -> void: bus.critter_gone.emit())
 	sim.offline_gained.connect(func(s: float, g: Dictionary) -> void: bus.offline_gained.emit(s, g))
 

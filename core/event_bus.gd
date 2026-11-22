@@ -18,5 +18,6 @@ signal offline_gained(seconds: float, gains: Dictionary)  # gains: StringName ->
 signal bonus_gained(kind: StringName, gains: Dictionary)  # kind: &"streak" or &"critter"
 signal critter_spawned()
 signal critter_gone()
+signal heat_hot_changed(hot: bool)
 signal game_loaded()
 signal game_saved()
