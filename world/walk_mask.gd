@@ -14,10 +14,9 @@ static var _tried: bool = false
 static func image() -> Image:
 	if not _tried:
 		_tried = true
-		_img = Image.load_from_file(PATH)
-		if _img == null:
-			var tex: Texture2D = load(PATH) as Texture2D
-			_img = tex.get_image() if tex != null else null
+		var tex: Texture2D = load(PATH) as Texture2D   # imported resource: works in exports too
+		if tex != null:
+			_img = tex.get_image()
 	return _img
 
 
