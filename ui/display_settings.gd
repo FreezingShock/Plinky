@@ -67,9 +67,14 @@ static func bleed_size() -> Vector2i:
 static func apply(win: Window) -> void:
 	load_settings()
 	win.min_size = BASE
-	var want: Window.Mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
-	if win.mode != want:
-		win.mode = want
+	# A maximized window counts as windowed. Without this, every size_changed snapped a maximized window back to its old size.
+	var mode_ok: bool
+	if fullscreen:
+		mode_ok = win.mode == Window.MODE_FULLSCREEN
+	else:
+		mode_ok = win.mode == Window.MODE_WINDOWED or win.mode == Window.MODE_MAXIMIZED
+	if not mode_ok:
+		win.mode = Window.MODE_FULLSCREEN if fullscreen else Window.MODE_WINDOWED
 	var base: Vector2i = base_size()
 	if win.content_scale_size != base:
 		win.content_scale_size = base
