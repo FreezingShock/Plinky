@@ -6,6 +6,9 @@
 script = ExtResource("1")
 base_slots = 3
 slot_unlock_rebirths = Array[int]([5, 20])
-base_drop_chance = 0.02
+base_drop_chance = 0.015
+roll_interval = 1.0
+pity_seconds = 150.0
+first_drop_seconds = 60.0
 luck_per_level = 0.05
 flash_min_rank = 3

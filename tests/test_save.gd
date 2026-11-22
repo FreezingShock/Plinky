@@ -30,7 +30,7 @@ func run(t: Object) -> void:
 	t.ok(SaveCodec.decode('{"game": {}}').is_empty(), "missing version is rejected")
 	var sim3: Sim = t.make_sim()
 	t.ok(not sim3.from_dict({}), "empty dict gives a new game, no crash")
-	t.near(sim3.get_stat(&"cash").to_float(), 0.0, 1e-9, "new game after empty load")
+	t.near(sim3.get_stat(&"cash").to_float(), 10.0, 1e-9, "new game after empty load starts with 10 cash")
 	sim3.from_dict({"stats": {"cash": "oops", "ghost": [1, 1]}, "zone": "nowhere", "attributes": {"luck": 9999}})
 	t.eq(sim3.zone_id, &"zone1", "unknown zone falls back")
 	t.eq(sim3.attr_level(&"luck"), 20, "attribute level clamps to cap")
