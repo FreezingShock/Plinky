@@ -11,6 +11,9 @@ extends Node2D
 const CONFIG_PATH: String = "res://content/config/sky.tres"
 const SHADE_SHADER: Shader = preload("res://render/shaders/day_night.gdshader")
 const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
+const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
+const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
+const MAX_LIGHTS: int = 12
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
 const SWAY_STEP: float = 1.0 / 8.0
@@ -22,6 +25,15 @@ static var debug_rain: float = -1.0
 var model: SkyModel = SkyModel.new()
 var sway_material: ShaderMaterial
 var rain_layer: SkyRain
+var shadows: SkyShadows                 # set by MeadowScene before this node enters the tree
+var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
+var ground_texture: Texture2D           # backdrop, so the haze shader can tell water from land
+var ponds: Array = []                   # [Vector4(cx, cy, rx, ry)] for the lake and ponds
+var _haze_mat: ShaderMaterial
+var _rays_mat: ShaderMaterial
+var _screen: ScreenLight
+var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
+var _walker: Node2D
 var _shade_mat: ShaderMaterial
 var _config: SkyConfig
 var _t: float = 0.0
@@ -34,6 +46,27 @@ func _ready() -> void:
 	if _config == null:
 		_config = SkyConfig.new()
 	_apply_config()
+	var haze := ColorRect.new()
+	haze.name = "Haze"
+	haze.position = AREA.position
+	haze.size = AREA.size
+	haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_haze_mat = ShaderMaterial.new()
+	_haze_mat.shader = HAZE_SHADER
+	if ground_texture != null:
+		_haze_mat.set_shader_parameter("ground", ground_texture)
+	_haze_mat.set_shader_parameter("ponds", _pond_array())
+	haze.material = _haze_mat
+	add_child(haze)
+	var rays := ColorRect.new()
+	rays.name = "Rays"
+	rays.position = AREA.position
+	rays.size = AREA.size
+	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rays_mat = ShaderMaterial.new()
+	_rays_mat.shader = RAYS_SHADER
+	rays.material = _rays_mat
+	add_child(rays)
 	var shade := ColorRect.new()
 	shade.name = "Shade"
 	shade.position = AREA.position
@@ -52,7 +85,44 @@ func _ready() -> void:
 	sway_material = ShaderMaterial.new()
 	sway_material.shader = SWAY_SHADER
 	sway_material.set_shader_parameter("max_texels", _config.sway_max_texels)
+	rim_material = ShaderMaterial.new()
+	rim_material.shader = SWAY_SHADER
+	rim_material.set_shader_parameter("max_texels", 0.0)
+	rim_material.set_shader_parameter("enabled", 0.0)
+	_screen = ScreenLight.new()
+	_screen.name = "ScreenLight"
+	var host: Node = _find_host()
+	if host != null:
+		host.add_child.call_deferred(_screen)
 	_update(0.0)
+
+
+## The first Control above us is the main frame; the vignette lives there so it is fixed to the screen.
+func _find_host() -> Node:
+	var n: Node = get_parent()
+	while n != null:
+		if n is Control:
+			return n
+		n = n.get_parent()
+	return null
+
+
+func _pond_array() -> Array:
+	var out: Array = []
+	for i in 3:
+		out.append(ponds[i] if i < ponds.size() else Vector4(0.0, 0.0, 0.0, 0.0))
+	return out
+
+
+## Add a light pool. `follow` (optional) is a node the pool tracks each frame.
+func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
+	if _lights.size() >= MAX_LIGHTS:
+		return
+	_lights.append({"pos": pos, "radius": radius, "strength": strength, "kind": kind})
+
+
+func light_config() -> SkyConfig:
+	return _config
 
 
 func _apply_config() -> void:
@@ -87,7 +157,12 @@ func _model_time(t: float) -> float:
 func _update(t: float) -> void:
 	var mt: float = _model_time(t)
 	_shade_mat.set_shader_parameter("night", model.night(mt))
-	_shade_mat.set_shader_parameter("dusk", model.dusk(mt))
+	var ramp: float = model.ramp(mt)
+	if _config.grade_tint != null:
+		_shade_mat.set_shader_parameter("grade_col", _config.grade_tint.sample(ramp))
+	if _config.grade_amount != null:
+		_shade_mat.set_shader_parameter("grade_amount", _config.grade_amount.sample(ramp).r)
+	_shade_mat.set_shader_parameter("pool_strength", _config.pool_strength)
 	var rain: float = model.rain(t) if debug_rain < 0.0 else debug_rain
 	var wind: float = model.wind(t)
 	if debug_rain >= 0.0:
@@ -97,6 +172,7 @@ func _update(t: float) -> void:
 	rain_layer.visible = not MeadowLife.reduce_motion
 	rain_layer.intensity = rain / maxf(model.rain_max, 0.001)
 	rain_layer.wind = wind
+	_update_light(t, mt, rain)
 	var s: int = int(t / SWAY_STEP)
 	if s != _sway_step:
 		_sway_step = s
@@ -114,3 +190,82 @@ static func padded(tex: Texture2D) -> Texture2D:
 	var out: Image = Image.create(img.get_width() + SWAY_PAD * 2, img.get_height(), false, Image.FORMAT_RGBA8)
 	out.blit_rect(img, Rect2i(0, 0, img.get_width(), img.get_height()), Vector2i(SWAY_PAD, 0))
 	return ImageTexture.create_from_image(out)
+
+
+## Sun, shadows, rim light, haze, mist, rays, vignette and light pools for this moment.
+func _update_light(t: float, mt: float, rain: float) -> void:
+	MeadowLife.night = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
+	MeadowLife.low_sun = model.low_sun(mt)
+	MeadowLife.rain = clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0)
+	var calm: bool = MeadowLife.reduce_motion
+	var steady: bool = calm or FxConfig.reduce_flashing
+	var az: float = model.azimuth(mt)
+	var ramp: float = model.ramp(mt)
+	var rain01: float = clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0)
+	# cast shadows
+	if shadows != null:
+		var len: float = model.shadow_length(mt, _config.shadow_len_noon, _config.shadow_len_low, _config.shadow_len_moon)
+		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon),
+				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip})
+	# rim light on props: whole-texel direction toward the light, warm when the sun is low, cool under the moon
+	var low: float = model.low_sun(mt)
+	var night_k: float = clampf(-model.sun_of(model.phase(mt)) * 2.0, 0.0, 1.0)
+	var rim_amt: float = _config.rim_strength * (0.35 + 0.65 * low) * (1.0 - 0.9 * rain01)
+	rim_amt = maxf(rim_amt * (1.0 - night_k), 0.45 * _config.rim_strength * night_k * (1.0 - rain01))
+	var rim_dir := Vector2(clampf(roundf(az * 1.2), -1.0, 1.0), -1.0)   # toward the light
+	var rim_col: Color = _config.ray_color.sample(ramp) if _config.ray_color != null else Color(1.0, 0.95, 0.75)
+	for m: ShaderMaterial in [sway_material, rim_material]:
+		m.set_shader_parameter("rim_dir", rim_dir)
+		m.set_shader_parameter("rim_amount", rim_amt)
+		m.set_shader_parameter("rim_col", rim_col)
+	# haze over the mountains, mist over the water
+	var haze_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
+	_haze_mat.set_shader_parameter("haze_col", haze_col)
+	_haze_mat.set_shader_parameter("haze", _config.haze_strength * (0.55 + 0.45 * model.mist(mt)))
+	_haze_mat.set_shader_parameter("mist", _config.mist_strength * model.mist(mt))
+	var drift: float = 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 860.0)
+	_haze_mat.set_shader_parameter("drift", drift)
+	# god rays: sun point sits above the frame on the side the sun is on
+	var ray_amt: float = _config.ray_strength * model.rays(mt)
+	_rays_mat.set_shader_parameter("amount", ray_amt)
+	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 460.0, -150.0))
+	_rays_mat.set_shader_parameter("ray_col", rim_col)
+	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
+	# vignette
+	if _screen != null:
+		_screen.set_strength(_config.vignette_strength)
+	_push_lights(t, steady)
+
+
+func _find_walker() -> Node2D:
+	var world: Node = get_parent().get_parent() if get_parent() != null else null
+	if world == null:
+		return null
+	for c: Node in world.get_children():
+		if c.is_in_group("walker") or (c.get_script() != null and (c.get_script() as Script).get_global_name() == &"TexelWalker"):
+			return c as Node2D
+	return null
+
+
+## Radius wobble of a light pool in texels, -1..1, on a 6 fps beat. Zero when `steady` (Reduce motion or Reduce flashing).
+static func light_flicker(t: float, key: int, steady: bool) -> float:
+	if steady:
+		return 0.0
+	return (MeadowLife.hash01(int(t * 6.0) * 7 + key) - 0.5) * 2.0
+
+
+func _push_lights(t: float, steady: bool) -> void:
+	var arr: Array = []
+	for L: Dictionary in _lights:
+		var pos: Vector2 = L.pos
+		if L.kind == &"walker":
+			if _walker == null or not is_instance_valid(_walker):
+				_walker = _find_walker()
+			if _walker == null:
+				continue
+			pos = _walker.position
+		var flick: float = light_flicker(t, int(pos.x), steady)
+		arr.append(Vector4(pos.x, pos.y - 4.0, float(L.radius) + flick, float(L.strength)))
+	while arr.size() < MAX_LIGHTS:
+		arr.append(Vector4(0.0, 0.0, 0.0, 0.0))
+	_shade_mat.set_shader_parameter("lights", arr)

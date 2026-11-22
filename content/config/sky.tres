@@ -1,6 +1,22 @@
-[gd_resource type="Resource" script_class="SkyConfig" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="SkyConfig" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://data/sky_config.gd" id="1"]
+
+[sub_resource type="Gradient" id="g_tint"]
+offsets = PackedFloat32Array(0, 0.2, 0.27, 0.36, 0.5, 0.64, 0.73, 0.8, 1.0)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1, 1.0, 0.72, 0.66, 1, 1.0, 0.92, 0.82, 1, 1.0, 1.0, 0.97, 1, 1.0, 0.93, 0.8, 1, 1.0, 0.66, 0.52, 1, 0.85, 0.6, 0.75, 1, 1, 1, 1, 1)
+
+[sub_resource type="Gradient" id="g_amt"]
+offsets = PackedFloat32Array(0, 0.2, 0.27, 0.36, 0.5, 0.64, 0.73, 0.8, 1.0)
+colors = PackedColorArray(0, 0, 0, 1, 0.05, 0.05, 0.05, 1, 0.6, 0.6, 0.6, 1, 0.3, 0.3, 0.3, 1, 0.12, 0.12, 0.12, 1, 0.3, 0.3, 0.3, 1, 0.65, 0.65, 0.65, 1, 0.4, 0.4, 0.4, 1, 0, 0, 0, 1)
+
+[sub_resource type="Gradient" id="g_haze"]
+offsets = PackedFloat32Array(0, 0.2, 0.27, 0.36, 0.5, 0.64, 0.73, 0.8, 1.0)
+colors = PackedColorArray(0.18, 0.24, 0.38, 1, 0.25, 0.3, 0.45, 1, 0.95, 0.78, 0.62, 1, 0.72, 0.86, 0.72, 1, 0.62, 0.82, 0.7, 1, 0.75, 0.84, 0.66, 1, 0.95, 0.62, 0.45, 1, 0.55, 0.4, 0.55, 1, 0.18, 0.24, 0.38, 1)
+
+[sub_resource type="Gradient" id="g_ray"]
+offsets = PackedFloat32Array(0, 0.27, 0.4, 0.5, 0.6, 0.73, 1.0)
+colors = PackedColorArray(0.5, 0.6, 0.9, 1, 1.0, 0.82, 0.55, 1, 1.0, 0.95, 0.75, 1, 1, 1, 0.85, 1, 1.0, 0.95, 0.7, 1, 1.0, 0.6, 0.35, 1, 0.5, 0.6, 0.9, 1)
 
 [resource]
 script = ExtResource("1")
@@ -20,3 +36,24 @@ wind_rain_boost = 0.3
 gust_period_a = 23.0
 gust_period_b = 37.0
 sway_max_texels = 3.0
+grade_tint = SubResource("g_tint")
+grade_amount = SubResource("g_amt")
+haze_color = SubResource("g_haze")
+ray_color = SubResource("g_ray")
+shadow_len_noon = 0.22
+shadow_len_low = 1.05
+shadow_len_moon = 0.45
+shadow_moon = 0.35
+shadow_density_foot = 1.0
+shadow_density_tip = 0.45
+pool_shrine_radius = 42.0
+pool_gate_radius = 30.0
+pool_walker_radius = 28.0
+pool_pad_radius = 20.0
+pool_strength = 0.9
+rim_strength = 0.85
+vignette_strength = 0.35
+haze_strength = 0.6
+mist_strength = 0.5
+ray_strength = 0.5
+mist_drift_seconds = 90.0
