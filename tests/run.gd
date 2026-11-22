@@ -13,6 +13,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_save.gd",
 	"res://tests/test_relics.gd",
 	"res://tests/test_boot.gd",
+	"res://tests/test_life.gd",
 ]
 
 

@@ -6,7 +6,7 @@ extends PanelContainer
 ##
 ## Wire up with bind(inventory). The panel only calls RelicInventory methods and listens to `changed`.
 
-const COLUMNS: int = 6
+const COLUMNS: int = 2
 const GAP: int = 4
 
 var inventory: RelicInventory
@@ -17,7 +17,7 @@ var _tip: RelicTooltip
 var _swap_from: StringName = &""   ## inventory relic waiting for a slot to swap into
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", RelicStyle.panel_box())
+	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 10.0, 8.0))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	add_child(v)
@@ -40,7 +40,7 @@ func _init() -> void:
 	_hint = Label.new()
 	_hint.add_theme_color_override("font_color", RelicStyle.dim)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint.custom_minimum_size.x = COLUMNS * (RelicSlot.SIZE + GAP) - GAP
+	_hint.custom_minimum_size.x = 6 * (RelicSlot.SIZE + GAP) - GAP
 	v.add_child(_hint)
 	_tip = RelicTooltip.new()
 
@@ -90,8 +90,26 @@ func refresh() -> void:
 		var s := RelicSlot.new()
 		s.setup(d, inventory.stacks_of(d.id), inventory.is_equipped(d.id))
 		_wire(s, -1, false)
-		_grid.add_child(s)
+		_grid.add_child(_card(s, d))
 	_hint.text = _hint_text(list.is_empty())
+
+## Card: the slot plus name and rarity line, so the collection reads at a glance.
+func _card(s: RelicSlot, d: RelicDef) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	h.custom_minimum_size.x = 96
+	h.add_child(s)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 0)
+	h.add_child(v)
+	var n := Label.new()
+	n.text = d.display_name
+	v.add_child(n)
+	var st := Label.new()
+	st.text = "x%d" % inventory.stacks_of(d.id)
+	st.add_theme_color_override("font_color", RelicStyle.dim)
+	v.add_child(st)
+	return h
 
 func _hint_text(no_relics: bool) -> String:
 	if no_relics:
