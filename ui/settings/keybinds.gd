@@ -66,7 +66,7 @@ static func matches(action: StringName, event: InputEvent) -> bool:
 	var k: InputEventKey = event
 	if not k.pressed or k.echo:
 		return false
-	return k.keycode == key_for(action) as Key
+	return int(k.keycode) == key_for(action)
 
 
 ## Bind `action` to `keycode`. If another action had that key, it takes this action's old key (a swap),

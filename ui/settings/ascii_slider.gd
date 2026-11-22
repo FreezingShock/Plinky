@@ -17,6 +17,7 @@ var value: float = 0.0:
 		queue_redraw()
 
 var _dragging: bool = false
+var _hover: bool = false
 
 
 func _init() -> void:
@@ -29,7 +30,7 @@ func _init() -> void:
 func _draw() -> void:
 	var w: float = floorf(size.x)
 	var h: float = floorf(size.y)
-	var edge: Color = RelicStyle.accent if (has_focus() or _dragging or is_hovered()) else RelicStyle.edge
+	var edge: Color = RelicStyle.accent if (has_focus() or _dragging or _hover) else RelicStyle.edge
 	draw_rect(Rect2(0, 0, w, h), RelicStyle.ink)
 	draw_rect(Rect2(2, 0, w - 4, 1), edge)
 	draw_rect(Rect2(2, h - 1, w - 4, 1), edge)
@@ -80,5 +81,11 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_MOUSE_ENTER or what == NOTIFICATION_MOUSE_EXIT or what == NOTIFICATION_FOCUS_ENTER or what == NOTIFICATION_FOCUS_EXIT:
+	if what == NOTIFICATION_MOUSE_ENTER:
+		_hover = true
+		queue_redraw()
+	elif what == NOTIFICATION_MOUSE_EXIT:
+		_hover = false
+		queue_redraw()
+	elif what == NOTIFICATION_FOCUS_ENTER or what == NOTIFICATION_FOCUS_EXIT:
 		queue_redraw()

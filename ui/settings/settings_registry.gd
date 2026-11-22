@@ -171,11 +171,13 @@ static func _ensure() -> void:
 
 
 static func _root() -> Window:
-	return (Engine.get_main_loop() as SceneTree).root
+	var ml: MainLoop = Engine.get_main_loop()
+	return (ml as SceneTree).root if ml is SceneTree else null
 
 
 static func _autoload(node_name: String) -> Node:
-	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null(node_name)
+	var win: Window = _root()
+	return win.get_node_or_null(node_name) if win != null else null
 
 
 static func _pct(v: Variant) -> String:
@@ -235,6 +237,8 @@ static func _register_audio() -> void:
 # ---- display
 static func _res_options() -> Array:
 	var win: Window = _root()
+	if win == null:
+		return [[Vector2i.ZERO, "Free"]]
 	var out: Array = [[Vector2i.ZERO, "Free (now %dx%d)" % [win.size.x, win.size.y]]]
 	for sz in DisplaySettings.resolution_options(win):
 		out.append([sz, DisplaySettings.resolution_label(sz, win)])
@@ -359,6 +363,12 @@ static func _register_controls() -> void:
 
 
 # ---- data
+static func _reload() -> void:
+	var ml: MainLoop = Engine.get_main_loop()
+	if ml is SceneTree:
+		(ml as SceneTree).reload_current_scene()
+
+
 static func _export_save() -> String:
 	var s: Node = _autoload("Save")
 	if s == null:
@@ -372,7 +382,7 @@ static func _import_save() -> String:
 	var s: Node = _autoload("Save")
 	if s == null or not bool(s.call("import_string", DisplayServer.clipboard_get())):
 		return "The clipboard doesn't hold a usable save. Nothing changed."
-	(Engine.get_main_loop() as SceneTree).reload_current_scene()
+	_reload()
 	return "Save imported."
 
 
@@ -386,7 +396,7 @@ static func _reset_save() -> String:
 	if s == null:
 		return "Nothing to reset."
 	s.call("reset_game")
-	(Engine.get_main_loop() as SceneTree).reload_current_scene()
+	_reload()
 	return "Save reset."
 
 
