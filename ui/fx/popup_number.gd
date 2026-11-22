@@ -8,13 +8,18 @@ extends Label
 static var ui_theme: Theme  # set by fx_bus from the Main control's theme
 
 static func spawn(parent: Node, pos: Vector2, amount: float, big := false) -> PopupNumber:
+	return spawn_text(parent, pos, "+" + NumberFormat.short(amount), big)
+
+## Same popup with ready-made text (BigNum gains, "+3 Prestige"). Under a Control parent the theme is inherited.
+static func spawn_text(parent: Node, pos: Vector2, label: String, big := false) -> PopupNumber:
 	var p := PopupNumber.new()
-	p.text = "+" + NumberFormat.short(amount)
+	p.text = label
 	p.position = FxConfig.snap(pos)
 	p.z_index = 100
 	# Font, colour and outline come from plinky_theme.tres (PopupLabel = Pixelify Sans 16),
 	# so they re-tint per zone. Nearest filtering keeps glyph edges hard.
-	p.theme = ui_theme
+	if ui_theme != null:
+		p.theme = ui_theme
 	p.theme_type_variation = &"PopupLabel"
 	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE

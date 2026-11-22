@@ -79,11 +79,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _dragging:
 		var mm: InputEventMouseMotion = event
 		pan -= mm.relative / float(zoom_level)
-	elif event.is_action_pressed(&"plinky_zoom_in"):
+	elif event.is_action_pressed(&"plinky_zoom_in") and not PadInput.menu_open:
 		zoom_step(1, frame * 0.5)
-	elif event.is_action_pressed(&"plinky_zoom_out"):
+	elif event.is_action_pressed(&"plinky_zoom_out") and not PadInput.menu_open:
 		zoom_step(-1, frame * 0.5)
-	elif event.is_action_pressed(&"plinky_recenter"):
+	elif (event.is_action_pressed(&"plinky_recenter") or Keybinds.matches(&"recenter", event)) and not PadInput.menu_open:
 		recenter()
 
 

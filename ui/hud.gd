@@ -28,6 +28,8 @@ var _attr_rows: Dictionary = {}   # attribute id -> [Label, Button]
 var _zones_key: String = ""
 var _pad_list: PadList
 var _gate_bar: DitherBar
+var _momentum: MomentumMeter
+var _stats_panel: PanelContainer
 
 
 func setup(p_sim: Sim) -> void:
@@ -40,6 +42,9 @@ func setup(p_sim: Sim) -> void:
 	_build_bottom()
 	_build_upgrades()
 	_build_pad_list()
+	_momentum = MomentumMeter.new()
+	add_child(_momentum)
+	_momentum.setup(sim)
 	_offline = Label.new()
 	_offline.theme_type_variation = &"CaptionLabel"
 	_offline.position = Vector2(8, 282)
@@ -80,6 +85,7 @@ func _panel(pos: Vector2) -> VBoxContainer:
 
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
+	_stats_panel = v.get_parent() as PanelContainer
 	for sid: StringName in [&"cash", &"mult", &"reb", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -98,7 +104,8 @@ func _build_stats() -> void:
 		name_l.custom_minimum_size.x = 66
 		name_l.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(name_l)
-		var val := Label.new()
+		var val := RollValue.new()
+		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		h.add_child(val)
@@ -107,6 +114,15 @@ func _build_stats() -> void:
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
 	_prestige_label = _rows.get(&"prestige", [null, null])[1]
+
+
+## Big jumps in a stat float up beside its counter. Cash is left out: every press already pops its own number.
+func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
+	if sid == &"cash":
+		return
+	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
+	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
+	PopupNumber.spawn_text(self, at, "+%s %s" % [amount.format(), stat_name], true)
 
 
 func _build_gate() -> void:
@@ -142,7 +158,7 @@ func _build_bottom() -> void:
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		h.add_child(rb)
 	var st := PixelButton.new()
-	st.text = "Settings [F10]"
+	st.text = "Settings [%s]" % Keybinds.key_name(&"settings")
 	st.pressed.connect(func() -> void: settings_toggled.emit(true))
 	h.add_child(st)
 
@@ -202,13 +218,13 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 	var typing: Control = get_viewport().gui_get_focus_owner()
 	if typing is LineEdit or typing is TextEdit:
 		return   # letters like R belong to the text box
-	if event.is_action_pressed(&"plinky_upgrades"):
+	if event.is_action_pressed(&"plinky_upgrades") or Keybinds.matches(&"upgrades", event):
 		_upgrades_panel.visible = not _upgrades_panel.visible
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed(&"plinky_relics") and GameState.relics != null:
+	elif (event.is_action_pressed(&"plinky_relics") or Keybinds.matches(&"relics", event)) and GameState.relics != null:
 		relic_panel_toggled.emit(true)
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed(&"plinky_settings"):
+	elif event.is_action_pressed(&"plinky_settings") or Keybinds.matches(&"settings", event):
 		settings_toggled.emit(true)
 		get_viewport().set_input_as_handled()
 
@@ -229,6 +245,10 @@ func _place() -> void:
 		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
 		if _gate_panel.position != gp:
 			_gate_panel.position = gp
+	if _bottom != null and _momentum != null:
+		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
+		if _momentum.position != mp:
+			_momentum.position = mp
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:
@@ -238,7 +258,7 @@ func _place() -> void:
 func _refresh() -> void:
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
-		(pair[0] as Label).text = sim.get_stat(sid).format()
+		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
 		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
 	if _prestige_label != null:

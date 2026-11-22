@@ -15,6 +15,7 @@ static func ensure() -> void:
 	if _ready:
 		return
 	_ready = true
+	# Keys for settings, relics, upgrades and recenter are rebindable, so they live in Keybinds; only the pad lives here.
 	for pair: Array in [
 			[&"plinky_left", [KEY_A, KEY_LEFT], [JOY_BUTTON_DPAD_LEFT], [JOY_AXIS_LEFT_X, -1.0]],
 			[&"plinky_right", [KEY_D, KEY_RIGHT], [JOY_BUTTON_DPAD_RIGHT], [JOY_AXIS_LEFT_X, 1.0]],
@@ -25,12 +26,14 @@ static func ensure() -> void:
 			[&"plinky_pan_up", [], [], [JOY_AXIS_RIGHT_Y, -1.0]],
 			[&"plinky_pan_down", [], [], [JOY_AXIS_RIGHT_Y, 1.0]],
 			[&"plinky_back", [KEY_ESCAPE], [JOY_BUTTON_B], []],
-			[&"plinky_settings", [KEY_F10], [JOY_BUTTON_START], []],
-			[&"plinky_relics", [KEY_R], [JOY_BUTTON_Y], []],
-			[&"plinky_upgrades", [KEY_TAB], [JOY_BUTTON_X], []],
+			[&"plinky_settings", [], [JOY_BUTTON_START], []],
+			[&"plinky_relics", [], [JOY_BUTTON_Y], []],
+			[&"plinky_upgrades", [], [JOY_BUTTON_X], []],
+			[&"plinky_tab_prev", [], [JOY_BUTTON_LEFT_SHOULDER], []],
+			[&"plinky_tab_next", [], [JOY_BUTTON_RIGHT_SHOULDER], []],
 			[&"plinky_zoom_in", [KEY_EQUAL, KEY_KP_ADD, KEY_PAGEUP], [JOY_BUTTON_RIGHT_SHOULDER], []],
 			[&"plinky_zoom_out", [KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN], [JOY_BUTTON_LEFT_SHOULDER], []],
-			[&"plinky_recenter", [KEY_C, KEY_HOME], [JOY_BUTTON_RIGHT_STICK], []]]:
+			[&"plinky_recenter", [KEY_HOME], [JOY_BUTTON_RIGHT_STICK], []]]:
 		var action: StringName = pair[0]
 		if not InputMap.has_action(action):
 			InputMap.add_action(action, DEADZONE)
