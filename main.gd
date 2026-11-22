@@ -16,6 +16,7 @@ var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
 var pad_glow: PadGlow
 var shake: ScreenShake
+var camera: WorldCamera
 var transitions: Transitions
 var hud: Hud
 var palette_id: StringName = Palettes.MEADOW
@@ -57,6 +58,13 @@ func _ready() -> void:
 	gate.walker = walker
 	world.add_child(gate)
 
+	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
+	camera = WorldCamera.new()
+	camera.world = world
+	camera.target = walker
+	camera.shake = shake
+	add_child(camera)
+
 	# 3. Juice (autoload) gets its targets.
 	Juice.shake = shake
 	Juice.transitions = transitions
@@ -77,7 +85,6 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	world.position = shake.offset
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
 
 
