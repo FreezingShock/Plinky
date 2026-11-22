@@ -166,9 +166,12 @@ def render(fn, flip=False, tf=None):
     if tf: i, o = tf(i, o)
     if flip: i, o = i[:, ::-1], o[:, ::-1]
     return i, o
-def place(name, fn, x, y, flip=False, **meta):
-    i, o = render(fn, flip, TF.get(name)); k = len(placed) + 1
+def place(name, fn, x, y, flip=False, draw=True, **meta):
+    k = len(placed) + 1
     placed.append(dict(name=name, x=x, y=y, flip=flip, **meta))
+    if not draw:
+        return  # anchor only: the player sprite is a live node, not baked art
+    i, o = render(fn, flip, TF.get(name))
     for yy in range(110):
         for xx in range(110):
             if i[yy, xx] < 0: continue
@@ -252,8 +255,8 @@ for (kind, x, y, fl, m) in S:
     else: place(kind, kinds[kind], x, y, fl)
 for (px, py, st) in PADS:
     place('pad_' + st, lambda t, x, y, s=st: G.pad(t, x, y, s, 'meadow'), px, py)
-# walker standing on the path near the start
-place('walker', lambda t, x, y: G.walker(t, x, y, 'front'), 164, 264)
+# walker start anchor only (the walker is the live player sprite, not part of the backdrop)
+place('walker', None, 164, 264, draw=False)
 blit(layer_shadow)
 dd = []
 for (y, kind, x, yy) in sorted(decals):
