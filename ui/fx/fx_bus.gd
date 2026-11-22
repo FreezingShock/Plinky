@@ -26,3 +26,10 @@ func milestone() -> void:
 
 func zone_enter() -> void:
 	if transitions: await transitions.zone_shift()
+
+## Wire to EventBus.relic_gained via a resolver that maps relic_id -> rarity id
+## (the relic system owns that data), e.g.
+##   EventBus.relic_gained.connect(func(id, _s): Juice.relic_drop(pad_glow, RelicDB.rarity_of(id)))
+func relic_drop(glow: PadGlow, rarity: StringName) -> void:
+	if glow.flash_rarity(rarity) and shake and rarity in [&"mythic", &"divine", &"special"]:
+		shake.add(0.2)

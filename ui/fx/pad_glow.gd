@@ -13,6 +13,37 @@ const STEPS := [
 ]
 signal color_changed(index: int)
 
+## Relic drop flash: Epic and above flash the pressed pad in the rarity colour.
+## Fixed hex (not palette indices) because rarity colours are the same in every zone.
+const RARITY_FLASH := {
+	&"epic": Color("AA00AA"), &"legendary": Color("FFAA00"), &"mythic": Color("FF55FF"),
+	&"divine": Color("55FFFF"), &"special": Color("FF5555"),
+}
+const FLASH_TIME := 0.45
+var flash_color := Color.WHITE
+var flash_t := 0.0   # 1 -> 0; 0 means no flash
+
+## Call with the dropped relic's rarity id (lowercase). Common to Rare do nothing.
+## Returns true if a flash started. Respects reduce-flashing.
+func flash_rarity(rarity: StringName) -> bool:
+	if FxConfig.reduce_flashing or not RARITY_FLASH.has(rarity):
+		return false
+	flash_color = RARITY_FLASH[rarity]
+	flash_t = 1.0
+	return true
+
+## Colour to draw the pad with this frame. Alternates flash colour and base every
+## 2 frames-worth of time (hard steps, no blending) until it ends.
+func pad_color(palette: PackedColorArray) -> Color:
+	var base := current_color(palette)
+	if flash_t <= 0.0:
+		return base
+	return flash_color if int(flash_t * 8.0) % 2 == 1 or flash_t > 0.75 else base
+
+func _process(delta: float) -> void:
+	if flash_t > 0.0:
+		flash_t = maxf(flash_t - delta / FLASH_TIME, 0.0)
+
 var multiplier := 1.0:
 	set(v):
 		multiplier = maxf(v, 1.0)
