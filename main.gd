@@ -24,6 +24,7 @@ var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
+var dev_console: DevConsole
 var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
 var palette_id: StringName = Palettes.MEADOW
@@ -32,6 +33,8 @@ var palette_id: StringName = Palettes.MEADOW
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
 	DisplaySettings.apply(get_window())
+	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
+	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
@@ -84,6 +87,7 @@ func _ready() -> void:
 
 	# 3b. Onboarding: tips on or off comes from its own settings file; progress comes from the save.
 	TipsSettings.load_settings()
+	TipsSettings.register_rows()
 	GameState.onboarding.tips_enabled = TipsSettings.enabled
 
 	# 4. HUD above everything.
@@ -93,6 +97,7 @@ func _ready() -> void:
 	hud.setup(sim)
 	_wire_relics()
 	_wire_display()
+	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
 	add_child(window_frame)
 	window_frame.bind(get_window())
@@ -133,7 +138,7 @@ func _update_tooltip() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	if event.keycode == KEY_F11:
+	if Keybinds.matches(&"fullscreen", event):
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_F8:
@@ -219,11 +224,10 @@ func _build_pads() -> void:
 		pads[pad.button_id] = pad
 	var first: TexelPad = pads.get(&"m1") as TexelPad
 	if first != null:
-		if pointer == null:
-			pointer = PadPointer.new()
-			world.add_child(pointer)
-		pointer.position = first.position
+		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
+		pointer = PadPointer.new()
 		pointer.palette = Palettes.colors(palette_id)
+		first.add_child(pointer)
 	if critter == null:
 		critter = TexelCritter.new()
 		world.add_child(critter)

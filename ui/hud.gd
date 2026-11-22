@@ -167,7 +167,7 @@ func _build_bottom() -> void:
 		h.add_child(rb)
 		gate(rb, Onboarding.F_RELICS)
 	var st := PixelButton.new()
-	st.text = "Settings [F10]"
+	st.text = "Settings [%s]" % Keybinds.key_name(&"settings")
 	st.pressed.connect(func() -> void: settings_toggled.emit(true))
 	h.add_child(st)
 
@@ -224,14 +224,14 @@ func _attr_icon(a: AttributeDef) -> String:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_TAB:
+		if Keybinds.matches(&"upgrades", event):
 			if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
 				_upgrades_panel.visible = not _upgrades_panel.visible
 			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_R and GameState.relics != null:
+		elif Keybinds.matches(&"relics", event) and GameState.relics != null:
 			if GameState.onboarding.is_unlocked(Onboarding.F_RELICS):
 				relic_panel_toggled.emit(true)
-		elif event.keycode == KEY_F10:
+		elif Keybinds.matches(&"settings", event):
 			settings_toggled.emit(true)
 			get_viewport().set_input_as_handled()
 
