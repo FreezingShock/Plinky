@@ -421,8 +421,8 @@ for pos in [(135, 200), (545, 185), (300, 296), (486, 296), (418, 140), (240, 15
 def cluster(kind, cu_, cv_, spread, n, **kw):
     for _ in range(n):
         u, v = cu_ + prng.gauss(0, spread), cv_ + prng.gauss(0, spread)
-        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > 5.5 and float(terrain_h(u, v)) < 10:
-            put(kind, u, v, prng.uniform(.85, 1.2), count=False, sid=1)
+        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > (7.5 if kind == 'flower' else 5.5) and float(terrain_h(u, v)) < 10:
+            put(kind, u, v, prng.uniform(.85, 1.2) * (1.45 if kind == 'flower' else 1.0), count=False, sid=1)
 for _ in range(36 if not FAST else 6): cluster('tuft', prng.uniform(40, 360), prng.uniform(40, 360), 7, prng.randint(3, 7))
 for _ in range(24 if not FAST else 4): cluster('flower', prng.uniform(60, 340), prng.uniform(80, 360), 6, prng.randint(5, 10))
 for (sx, sy, st) in PADS_S:
@@ -571,6 +571,8 @@ def render_scene(keep):
     img_aux = np.zeros((H, W)); img_aux[py, px] = allp['aux'][win]
     img_sh = np.zeros((H, W), bool); img_sh[py, px] = shadow[win]
     img_z = np.zeros((H, W)); img_z[py, px] = z_[win]
+    img_nu = np.zeros((H, W)); img_nu[py, px] = allp['nx'][win]
+    img_nv = np.zeros((H, W)); img_nv[py, px] = allp['ny'][win]
     for _pass in range(2):          # close pin-holes left by steep surfaces (empty pixel with 3+ filled neighbours)
         emp = img_id == -1
         cnt = np.zeros((H, W), int); src = [None]
@@ -578,7 +580,7 @@ def render_scene(keep):
             nbm = np.roll(np.roll(img_id, dx, 1), dy, 0) != -1; cnt += nbm
         fillm = emp & (cnt >= 3)
         fillm[0, :] = fillm[-1, :] = False; fillm[:, 0] = fillm[:, -1] = False
-        for arr in (img_id, img_mat, img_l, img_aux, img_sh, img_z):
+        for arr in (img_id, img_mat, img_l, img_aux, img_sh, img_z, img_nu, img_nv):
             got = np.zeros_like(arr)
             done = np.zeros((H, W), bool)
             for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -590,7 +592,7 @@ def render_scene(keep):
     global DEPTH
     if DEPTH is None:
         sun = np.array([LDIR[0] - LDIR[1], (LDIR[0] + LDIR[1]) / 2 - LDIR[2]]); sun /= np.linalg.norm(sun)
-        DEPTH = depth_pass.compute(img_z, img_id, sun) + (img_id.copy(),)
+        DEPTH = depth_pass.compute(img_z, img_id, sun, np.isin(img_mat, [M_PETA, M_PETB, M_STEM, M_PAPER, M_GRASS])) + (img_id.copy(),)
     if DEPTH_ON:
         # where the full scene had a prop, only the prop's own render takes the terms (the ground beneath it is hidden)
         own = (DEPTH[3] < 10) | (img_id == DEPTH[3])
@@ -655,9 +657,12 @@ def render_scene(keep):
     rgb = np.zeros((H, W, 3), np.uint8); rgb[:] = COLS[0]
     have = out >= 0; rgb[have] = COLS[out[have]]
 
+    global LAST_AUX; LAST_AUX = dict(nu=img_nu, nv=img_nv, l=img_l, mat=img_mat, out=out)
     return rgb, img_id
 tall_ids = np.array([t['id'] for t in TALL])
 rgb_full, id_full = render_scene(np.ones(len(u_), bool))
+AUX_FULL = LAST_AUX
+depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP, PAL)
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(HERE, 'meadow3d-ground-1x.png'))
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []
@@ -669,8 +674,9 @@ for t in TALL:
     m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
     spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(HERE, fn))
+    depth_pass.write_relight_data(os.path.join(HERE, fn[:-4] + '_n.png'), AUX_FULL, y0, y1, x0, x1, m_)
     fx, fy = OXS0 + (t['u'] - t['v']), OYS0 + (t['u'] + t['v']) / 2 - t['z']
-    sprites.append(dict(file=fn, kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
+    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
 nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0)

@@ -48,6 +48,11 @@ var _shade_mat: ShaderMaterial
 var _config: SkyConfig
 var _t: float = 0.0
 var _sway_step: int = -1
+## Per-sprite materials for props that carry relight data (see prop_material). They share the sway and rim shader and
+## get the same parameters as sway_material / rim_material; only the normal texture differs.
+var _prop_mats: Array[ShaderMaterial] = []
+var _rim_key: Array = []
+var _relight_key: Vector4 = Vector4(-99.0, 0.0, 0.0, 0.0)
 
 
 func _ready() -> void:
@@ -63,7 +68,9 @@ func _ready() -> void:
 	_haze_mat.set_shader_parameter("ponds", _pond_array())
 	for k: String in haze_params:
 		_haze_mat.set_shader_parameter(k, haze_params[k])
-	var rects: Array[Rect2] = haze_rects if not haze_rects.is_empty() else [AREA]
+	var rects: Array[Rect2] = haze_rects.duplicate()
+	if rects.is_empty():
+		rects.append(AREA)
 	for i in rects.size():
 		var haze := ColorRect.new()
 		haze.name = "Haze" if i == 0 else "Haze%d" % (i + 1)
@@ -199,6 +206,28 @@ func _update(t: float) -> void:
 		sway_material.set_shader_parameter("step_time", float(s) * SWAY_STEP)
 		sway_material.set_shader_parameter("wind", wind)
 		sway_material.set_shader_parameter("enabled", 0.0 if MeadowLife.reduce_motion else 1.0)
+		for m: ShaderMaterial in _prop_mats:
+			if m.get_shader_parameter("max_texels") > 0.0:     # the sway ones; rocks and crystals stay put
+				m.set_shader_parameter("step_time", float(s) * SWAY_STEP)
+				m.set_shader_parameter("wind", wind)
+				m.set_shader_parameter("enabled", 0.0 if MeadowLife.reduce_motion else 1.0)
+
+
+## A material for one prop sprite with relight data `nrm` (tools/art/depth_pass.py `_n.png`, padded like the sprite
+## when `sways`). The sun direction, relight strength, rim and sway parameters follow the sky.
+func prop_material(sways: bool, nrm: Texture2D) -> ShaderMaterial:
+	var base: ShaderMaterial = sway_material if sways else rim_material
+	var m: ShaderMaterial = base.duplicate() as ShaderMaterial
+	m.set_shader_parameter("nrm_tex", nrm)
+	_prop_mats.append(m)
+	_relight_key = Vector4(-99.0, 0.0, 0.0, 0.0)   # push the sun and rim to the new material on the next update
+	_rim_key = []
+	return m
+
+
+func _each_prop_material(param: StringName, value: Variant) -> void:
+	for m: ShaderMaterial in _prop_mats:
+		m.set_shader_parameter(param, value)
 
 
 ## Copy of `tex` with SWAY_PAD transparent texels each side, so a leaning crown is not clipped by the sprite edge.
@@ -239,6 +268,22 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		m.set_shader_parameter("rim_dir", rim_dir)
 		m.set_shader_parameter("rim_amount", rim_amt)
 		m.set_shader_parameter("rim_col", rim_col)
+	# sun-driven relight (render/shaders/wind_sway.gdshader): world-space sun direction, same frame as the baked
+	# normals (u, v, up). az is the screen side, so u = +az and v = -az put the light on that side; it climbs with the sun.
+	var sun_h: float = SkyModel.sun_of(model.phase(mt))
+	var relight: float = (1.0 - 0.5 * night_k) * (1.0 - 0.6 * rain01)
+	var key := Vector4(roundf(az * 32.0) / 32.0, roundf(maxf(sun_h, 0.0) * 32.0) / 32.0, roundf(relight * 32.0) / 32.0, 0.0)
+	if key != _relight_key:      # quantised: the 70-odd prop materials are only written when the sun has really moved
+		_relight_key = key
+		var sun := Vector3(key.x * 0.45, -key.x * 0.45, 0.35 + 0.5 * key.y).normalized()
+		_each_prop_material(&"sun_dir", sun)
+		_each_prop_material(&"relight", key.z)
+	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
+	if rim_key != _rim_key:
+		_rim_key = rim_key
+		_each_prop_material(&"rim_dir", rim_dir)
+		_each_prop_material(&"rim_amount", rim_amt)
+		_each_prop_material(&"rim_col", rim_col)
 	# haze over the mountains, mist over the water
 	var haze_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
 	_haze_mat.set_shader_parameter("haze_col", haze_col)
