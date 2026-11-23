@@ -14,6 +14,8 @@ var kind: StringName = &""
 var label: String = ""
 var big_icon: Texture2D
 var lift_t: float = 0.0
+## Locked by the tutorial: still focusable (so arrows and pad can land on it and read Locked) but it does nothing.
+var locked: bool = false
 
 
 func _ready() -> void:
@@ -29,7 +31,7 @@ static func lift_px(t: float) -> int:
 
 func _process(delta: float) -> void:
 	super._process(delta)
-	var want: float = 1.0 if ((is_hovered() or has_focus()) and not disabled) else 0.0
+	var want: float = 1.0 if ((is_hovered() or has_focus()) and not locked) else 0.0
 	if FxConfig.reduce_flashing or MeadowLife.reduce_motion:
 		if want != lift_t:
 			lift_t = want
@@ -49,10 +51,10 @@ func _draw() -> void:
 	if lift > 0:   # small shadow so the lift reads
 		draw_rect(Rect2(ix + 6.0, 6.0 + ICON, ICON - 12.0, 1.0), RelicStyle.edge)
 	if big_icon != null:
-		draw_texture(big_icon, Vector2(ix, iy), Color(1, 1, 1, 0.45) if disabled else Color.WHITE)
+		draw_texture(big_icon, Vector2(ix, iy), Color(1, 1, 1, 0.45) if locked else Color.WHITE)
 	var font: Font = get_theme_font(&"font")
 	var fs: int = get_theme_font_size(&"font_size")
-	var col: Color = RelicStyle.dim if disabled else (RelicStyle.ink if get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED else (RelicStyle.accent if lift > 0 else RelicStyle.text))
-	var shown: String = label if not disabled else "Locked"
+	var col: Color = RelicStyle.dim if locked else (RelicStyle.ink if get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED else (RelicStyle.accent if lift > 0 else RelicStyle.text))
+	var shown: String = label if not locked else "Locked"
 	var tw: float = font.get_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
 	font.draw_string(get_canvas_item(), Vector2(floorf((size.x - tw) * 0.5), H - 8.0), shown, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, col)

@@ -9,6 +9,8 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.9.2 - 2026-11-23- Fixed the bottom bar in Always label mode (short labels, no key hints, fits at 640 wide); Update Log scrolls with a hint and keys and has room below; close X no longer crowds panel headers; arrow keys and Tab walk the hamburger gallery, locked tiles included.
+
 ## 0.9.1 - 2026-11-23
 - Calendar uses plain season names (Spring, Summer, Autumn, Winter) and months (Early Spring, Late Spring, and so on). The window title bar shows the day count and in-game time in the middle.
 
