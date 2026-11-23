@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.38.0 - 2026-11-23
+- Ember Quarry rework: a 1400x760 terraced world with room between every pad row, mesas, craters and ember seams, lava rivers with falls, pools and a moat crossed by a bridge (not walkable), lava glow baked onto the ground and props, animated lava and embers, and the pads and props redrawn as detailed front-facing 2D sprites.
+
 ## 0.37.2 - 2026-11-23
 - Ember Quarry balance pass: the 18 forge pads cost 40% less (greedy-floor gate about 40 min after arrival, was about 66; idle about 2x that), and each quarry rebirth pays 25% more Prestige for every quarry rebirth already done (`ZoneDef.prestige_per_rebirth_bonus`), so attribute buys keep pace with their 1.4x cost growth.
 
