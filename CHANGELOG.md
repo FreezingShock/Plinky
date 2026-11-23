@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.11.0 - 2026-11-23
+- Grass redrawn: the square light/dark patchwork is gone. Seasonal recolour now spreads as smooth organic blobs (it was hashed 5x5 squares, also showing in tree canopies and rocks), and the ground has hand-placed blade tufts that gather into clumps instead of random noise patches, in the meadow and Larkmoor.
+
 ## 0.10.11 - 2026-11-23
 - Every menu (Upgrades, Relics, Settings, Feedback, Update Log, hamburger) now opens and closes with the same dither wipe and slide as Stats and Attributes, from one shared MenuAnim. Opening a menu no longer pops a tooltip on its first item; tooltips wait for hover or the first arrow, d-pad or Tab press.
 

@@ -12,7 +12,8 @@ def log(*a): print('[%5.1fs]' % (time.time() - T0), *a, flush=True)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import larkmoor_layout as LAY
-import depth_pass
+import depth_pass, grass_tex
+GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
 DEPTH = None
 OUT = os.environ.get('LARK_OUT') or os.path.join(HERE, '..', '..', 'assets', 'art', 'zone1b', 'larkmoor')
@@ -580,7 +581,8 @@ pw = 5.4 + 1.6 * (n1 - .5)
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
-lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+else: lt = .13 + .87 * diff + (tone - .5) * .10 * (mat == T_GRASS) + (n2 - .5) * .06 * (mat != T_GRASS)    # grass detail comes from grass_tex.py
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .07 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
@@ -719,6 +721,7 @@ def render_scene(keep):
     def dith(ramp, l, mask):
         r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
