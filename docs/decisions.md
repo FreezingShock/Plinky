@@ -460,6 +460,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
 
+## 2026-11-23 Quality-of-life bundle (v0.21.0)
+- **Rebind with modifiers.** A binding is a keycode OR-ed with `KEY_MASK_SHIFT/CTRL/ALT/META`, so old saves (plain keycodes) still load. A modifier alone (Shift, Ctrl) binds when released with no other key pressed. Sprint (Shift) and Sprint lock (Ctrl) are now rebindable actions. A binding's modifiers must be held; extra held modifiers are tolerated, so Shift+C still crouches-slides while sprinting.
+- **Save indicator.** "Saved" fades after each save, beside the Menu chip; a failed write shows red "Save failed" even with the indicator off (`EventBus.save_failed`). Setting: Gameplay > Save indicator.
+- **Welcome Back card** replaces the 5 s toast: time away, each gain in its stat colour, a note when the offline cap was hit. Shown only after 1 minute or more away. Stays until Collect.
+- **Rebirth confirm** card shows the Prestige and Rebirth Points you will get. Setting: Gameplay > Confirm rebirth (default on).
+- Buy max and Buy x10 were dropped from this bundle at Nathan's request.
+- Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges card placement and the indicator.
 ## 2026-11-23: History screen
 - **What.** New menu tile and window, History, opened through MenuRouter with the shared dither wipe and close X, in the same panel style as the Stats gallery. Sections: Income (last 10 minutes), Bests, Totals, Time in each zone.
 - **Data.** `core/run_stats.gd` (`Sim.run_stats`) samples Cash per second every 5 s into a 120-sample ring (the session graph, not saved). Saved with the game, no save version bump because missing keys default: time per zone, longest pad chain, chains finished, highest Momentum stage, crits, best income.
