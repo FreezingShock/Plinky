@@ -10,7 +10,7 @@
 | `changelog-guard` | PRs only. Fails if the PR edits `CHANGELOG.md`, `core/build_info.gd` or `export_presets.cfg`, or changes game folders (core, data, world, render, ui, boot, audio, theme, fonts, content, assets, project.godot) without a `changelog.d/*.patch|minor.md` fragment. Label `no-changelog` waives the fragment rule. |
 | `test` | Aggregate. Passes when every job above passed or was skipped. **This is the only required check.** |
 
-Each engine job uses `.github/actions/setup-godot`, which restores the cached Godot binary and `.godot/imported`, then runs the import. Docs-only PRs skip `unit`, `sim` and `play` and `test` still reports green. A new push to a PR cancels its older run; runs on `main` are never cancelled. Thresholds (frame budget 150/300/250/1200, sim gates, script-error greps) are unchanged.
+Each engine job uses `.github/actions/setup-godot`, which restores the cached Godot binary, then runs a fresh import (an `.godot/imported` cache was tried and removed: `.import` sidecars are gitignored, so fonts failed to load). Docs-only PRs skip `unit`, `sim` and `play` and `test` still reports green. A new push to a PR cancels its older run; runs on `main` are never cancelled. Thresholds (frame budget 150/300/250/1200, sim gates, script-error greps) are unchanged.
 
 ## Timings (GitHub-hosted, measured 2026-11-23)
 - Before: one serial job, about 45 s to 90 s total, of which import about 8 s and the sim 4 s to 58 s.

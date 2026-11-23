@@ -1,5 +1,5 @@
 name: Set up Godot
-description: Restore or download the Godot binary, restore the .godot import cache, and import the project.
+description: Restore or download the Godot binary, and import the project.
 
 inputs:
   version:
@@ -27,15 +27,8 @@ runs:
         mv ~/godot/Godot_v${{ inputs.version }}_linux.x86_64 ~/godot/godot
         chmod +x ~/godot/godot
 
-    # Import results depend on the source assets and project settings. An exact hit skips the import work;
-    # a restore-key hit still makes it incremental. Only Godot's own cache folder is stored.
-    - name: Cache import data
-      uses: actions/cache@v4
-      with:
-        path: .godot/imported
-        key: godot-import-${{ inputs.version }}-${{ hashFiles('project.godot', 'assets/**', 'fonts/**', 'theme/**', '**/*.import') }}
-        restore-keys: godot-import-${{ inputs.version }}-
-
+    # No .godot/imported cache: the .import sidecar files are gitignored, so a restored cache made Godot skip the
+    # font import ("Preload file ... has no resource loaders"). The import takes about 8 s; always run it fresh.
     - name: Import project
       shell: bash
       run: ~/godot/godot --headless --path . --import
