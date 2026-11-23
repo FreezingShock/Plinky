@@ -61,6 +61,14 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	visible = false
+	set_process(false)
+	set_process_input(false)
+
+
+## The veil and labels are built on the first Bloom, so an idle HUD carries one node for this, not eight.
+func _build() -> void:
+	if _text != null:
+		return
 	_veil_rect = ColorRect.new()
 	_veil_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_veil_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -75,7 +83,6 @@ func _ready() -> void:
 	_number = _label(NUMBER_SIZE, 0.0, 44.0)
 	_caption = _label(16, 44.0, 22.0)
 	_hint = _label(16, 66.0, 40.0)
-	set_process(false)
 
 
 func _label(font_size: int, y: float, h: float) -> Label:
@@ -104,6 +111,7 @@ func start(reset_id: StringName, gained: int) -> void:
 	_reset = sim.reset_defs.get(reset_id) as ZoneResetDef
 	if _reset == null or gained <= 0:
 		return
+	_build()
 	_end(false)   # a reset inside a running animation starts it over
 	_gained = gained
 	_calm = is_calm()
@@ -133,6 +141,7 @@ func start(reset_id: StringName, gained: int) -> void:
 	_t = 0.0
 	visible = true
 	set_process(true)
+	set_process_input(true)
 	Audio.bloom_swell()
 
 
@@ -383,6 +392,7 @@ func _end(finished: bool) -> void:
 	_t = -1.0
 	visible = false
 	set_process(false)
+	set_process_input(false)
 	if _mat != null:
 		_mat.set_shader_parameter("veil", 0.0)
 		_mat.set_shader_parameter("flash", 0.0)
