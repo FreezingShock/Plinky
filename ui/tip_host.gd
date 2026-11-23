@@ -71,8 +71,9 @@ func show_free(spec: Variant, at: Vector2) -> void:
 		_free_spec = spec
 	_free_spec = spec
 	_free_at = at
-	if _wait <= 0.0 and visible:
+	if _wait <= 0.0:
 		_fill(spec)
+		visible = true
 		_place()
 
 
