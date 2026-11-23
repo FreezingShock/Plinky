@@ -15,11 +15,11 @@ next_zone = &""
 gate_art = &"forge"
 base_cash_per_second = 0.25
 press_rate = 0.5
-boost_stat = &"mult"
+boost_stat = &"cinder"
 prestige_source_stat = &"ingot"
 entry_source_stat = &""
 entry_grants = {
-"cash": 190.0
+"embers": 190.0
 }
 palette_id = &"ember_quarry"
 pad_buttons = PackedStringArray("cinder_1","cinder_2","cinder_3","ore_1","ore_2","ore_3","slagrow_1","slagrow_2","slagrow_3","ingot_1","ingot_2","ingot_3","alloy_1","alloy_2","alloy_3","emberheart_1","emberheart_2","emberheart_3")
