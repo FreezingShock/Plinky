@@ -348,3 +348,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - The vignette shape was frame-fixed, so its dither crawled through a stationary dark rim while panning. Its shape is now computed in world texels from the playable area, so it only darkens when you pan toward an edge. All other passes (day/night, light grade, ground light, fog) were already world-anchored.
 - Veil turned down: vignette 0.6 to 0.45, night_shade 0.97 to 0.8 (night_strength stays 0.8 for the smoothness test), light_split 0.4 to 0.3.
 - New Access toggle "Reduce screen effects" (FxConfig.reduce_screen_fx) hides the edge shade and the full-frame light pass.
+
+## World shaders use true world texels (anchor fix)
+- Root cause of the camera-following dither: `MODEL_MATRIX` includes the `world` Node2D's transform, which WorldCamera scales by the zoom. Every world shader used `(MODEL_MATRIX * VERTEX).xy` as "world texels", so at zoom 2+ dither cells were single screen pixels (fine speckle, not texel-sized) and their phase slid against the ground as it panned. Zoom 1 only matched by luck, which is why the earlier PC pixel check passed.
+- Fix: globals `world_origin` and `world_scale` (RenderGlobals.set_world, called from WorldCamera._apply) are divided out in the vertex stage of ground_light, wind_sway, cast_shadow, ground_fog, god_rays, sky_haze, day_night and light_grade. This also puts light pools and the area-based fog and shade back in true world coordinates at every zoom. Season recolour and shadow dither use the same wpos, so they are covered. The vignette already did its own conversion.
+- Not run in engine. PC pass: pan at zoom 2 and 3 with frame diffs; ground dither should move 1:1 with the grass.

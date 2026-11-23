@@ -73,6 +73,10 @@ var particles: SeasonParticles
 static var debug_season: int = -1
 
 
+func _init() -> void:
+	RenderGlobals.ensure()   # world shaders declare the world_origin / world_scale globals
+
+
 func _ready() -> void:
 	z_index = 5
 	_config = load(CONFIG_PATH) as SkyConfig

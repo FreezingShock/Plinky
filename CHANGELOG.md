@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.4 - 2026-11-23
+- Fixed the dither and light on the ground, grass, shadows, fog and rays shimmering as the camera moved. World shaders measured position in screen pixels at zoom 2 and up; they now use true world texels at every zoom (`world_origin` / `world_scale` globals set by the camera), so the pattern stays put on the ground.
+
 ## 0.10.3 - 2026-11-23
 - `tools/bump_version.py` no longer glues the first changelog note onto the new version heading; covered by `tests/test_bump_version.py`, which CI now runs.
 

@@ -34,6 +34,7 @@ var _warm: int = 4   # frames drawn even when faded out, so the shadow shader co
 
 
 func _init() -> void:
+	RenderGlobals.ensure()
 	mat = ShaderMaterial.new()
 	mat.shader = SHADER
 
