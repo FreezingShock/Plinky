@@ -400,6 +400,18 @@ func _build_upgrades() -> void:
 	list.add_theme_constant_override("separation", 4)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
+	_upg_list = list
+	_upgrades_panel.visibility_changed.connect(_fill_upgrades)
+
+
+var _upg_list: VBoxContainer
+
+
+## The 27 rows are built the first time the menu opens, not at boot (node budget).
+func _fill_upgrades() -> void:
+	if not _upgrades_panel.visible or not _attr_rows.is_empty():
+		return
+	var list: VBoxContainer = _upg_list
 	var group: StringName = &"prestige"
 	for a: AttributeDef in UpgradeText.ordered(sim):
 		if a.currency != group:   # a small heading where each perk group starts
