@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.19.0 - 2026-11-23
+- Settings > Access gains Colour-safe colours (red-green safe, blue-yellow safe) for rarity, buy and stat colours, Large tooltip text, and Sound subtitles (captions for crits, relic chimes, gates, birdsong, waves, footsteps and music changes).
+
 ## 0.18.1 - 2026-11-23
 - The SPRINTING HELD / ENABLED label now has a dark backing plate so the ground no longer shows through its letters.
 

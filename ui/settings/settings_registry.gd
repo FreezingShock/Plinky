@@ -363,6 +363,22 @@ static func _register_gameplay() -> void:
 # ---- accessibility
 static func _register_access() -> void:
 	_add({
+		"id": &"color_mode", "tab": "Access", "label": "Colour-safe colours", "kind": Kind.CHOICE, "default": AccessOptions.MODE_OFF,
+		"hint": "Swaps rarity, buy and stat colours for ones that stay apart with colour blindness. Names and tags never depend on colour.",
+		"options": func() -> Array: return [[AccessOptions.MODE_OFF, "Off"], [AccessOptions.MODE_RED_GREEN, "Red-green safe"], [AccessOptions.MODE_BLUE_YELLOW, "Blue-yellow safe"]],
+		"apply": func(v: Variant) -> void: AccessOptions.set_color_mode(String(v)),
+	})
+	_add({
+		"id": &"large_text", "tab": "Access", "label": "Large tooltip text", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Tooltips use Pixelify Sans at a larger size. Menus keep their fixed pixel layout.",
+		"apply": func(v: Variant) -> void: AccessOptions.set_large_text(bool(v)),
+	})
+	_add({
+		"id": &"subtitles", "tab": "Access", "label": "Sound subtitles", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Shows a short caption for sounds that matter: critical presses, relic chimes, gates, birdsong, waves and footsteps.",
+		"apply": func(v: Variant) -> void: AccessOptions.subtitles = bool(v),
+	})
+	_add({
 		"id": &"chip_labels", "tab": "Access", "label": "Bottom bar labels", "kind": Kind.CHOICE, "default": "hover",
 		"hint": "On hover: a label floats above the button. Always: labels sit in the buttons. Never: icons only.",
 		"options": func() -> Array: return [["hover", "On hover"], ["always", "Always"], ["never", "Never"]],
