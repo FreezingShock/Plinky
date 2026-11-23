@@ -694,6 +694,13 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Same five sizes (8, 12, 16, 24, 32) for the flower and quarry stats (Sunlight, Dewdrop, Seeds, Clover, Thistle, Heather, Foxglove, Starbloom, Embers, Cinder, Ironore, Ingot, Alloy, Emberheart, Slag), the 6 relic icons and the 9 gallery menu icons. Relic files sit in `assets/icons/relics/` (16 px) with `s8 s12 s24 s32` folders beside them; menu icons at 32 px stay in `big/`, their 16 px is `assets/icons/menu_*.png`.
 - These were seeded by `tools/art/seed_staged.py` (majority-colour reduction with a rebuilt outline; Scale2x for 16 to 32 on relics), not drawn from blank. Their 8 and 12 px versions are the weakest and are the first to polish by hand. Icons that need colours beyond the 8 zone roles list them in the .txt (`%a=#rrggbb`).
 - Skipped on purpose: Rebirth and Prestige polish (the quarry reset is being replaced), the hamburger glyph (16 px only), menu tile glyphs (9 px) and area glyphs (7 px).
+
+## 2026-11-23 Clock chip centred, season shown once, zone title unclipped
+- The clock chip centres on the screen (between the stats panel and the zone card, clamped to both). Squeeze levels are unchanged.
+- The season appears once: the month line reads "Early Summer · Day 2" in the season accent, and the season accent is also the dial's bottom texel row. The separate "Summer" line is gone.
+- The dial fills the chip's full inner height (1 texel inside the frame top and bottom) and sizes itself to the text height. Art: dithered sky, a rising and falling horizon with grass tufts, a sun or moon on its arc, twinkling stars at night.
+- The zone card's Travel button moved to its own full-width row under the title. A 152 px card cannot fit "Ember Quarry" beside the button. Titles that still overflow drop to the small size.
+- Not verified in-engine: cloud threads cannot run Godot. The PC QA thread should check the chip at 640x360 and at a wide frame, plus the Ember Quarry card.
 ## Pads receive cast shadows
 - Pads are plates drawn above the baked ground, so the ground's height-march shadow stopped at their edge and the pad stayed fully lit inside a shadow. New `pad_shadow.gdshader`: the same march from the plate's own top (ground height under the fragment plus `pad_lift`, 6 encoded units, about 2 world units), with the sun, slope, reach and strength SkyCycle already feeds the ground. SkyCycle owns it (`pad_material`, `_pad_mats`); each zone scene exposes `pad_material` and main.gd assigns it to the pads it builds (one line).
 - The pad's own drop shadow blob was sized like a tree (26 x 18); it is now 22 x 4, the slab's width and thickness, in the same sun direction and softness as the other casters.
