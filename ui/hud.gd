@@ -126,6 +126,7 @@ func stats_bottom() -> float:
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
+	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
 	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -153,6 +154,7 @@ func _build_stats() -> void:
 		rate.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
+		Tip.bind_all(h, TipText.stat(sid, def.display_name))
 		_row_boxes[sid] = h
 		match sid:
 			&"mult": gate(h, Onboarding.F_MULT)
@@ -176,6 +178,7 @@ func _build_gate() -> void:
 	add_child(_zone_panel)
 	_zone_panel.setup(sim)
 	_gate_panel = _zone_panel
+	_zone_panel.add_to_group(TipHost.AVOID_GROUP)   # relic tooltips stay clear of it
 	gate(_zone_panel, Onboarding.F_MULT)
 	for part: Control in _zone_panel.gated_parts():
 		gate(part, Onboarding.F_REBIRTH_ROW)
@@ -194,6 +197,7 @@ func _build_bottom() -> void:
 	add_child(h)
 	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
 	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
+	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format()))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.")
 	up.full_text = "Upgrades [Tab]"
@@ -264,6 +268,8 @@ func _build_upgrades() -> void:
 		b.pressed.connect(func() -> void: GameState.buy_attribute(aid))
 		h.add_child(b)
 		_attr_rows[aid] = [l, b]
+		Tip.bind_all(h, func() -> Variant:
+			return TipText.attribute(a, sim.attr_level(aid), sim.attribute_cost(aid).format(), not sim.prestige_available().lt(sim.attribute_cost(aid))))
 
 var _prestige_avail: Label
 

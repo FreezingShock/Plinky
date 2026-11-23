@@ -181,6 +181,8 @@ func _make_row(def: Dictionary) -> Control:
 			_build_action(row, def)
 		SettingsRegistry.Kind.KEY:
 			_build_key(row, def)
+	if String(def.get("hint", "")) != "":
+		Tip.bind_all(row, {"title": String(def["label"]) if kind != SettingsRegistry.Kind.ACTION else "", "body": String(def["hint"])})
 	return row
 
 

@@ -12,7 +12,7 @@ const FILES: Array[String] = [
 	"res://ui/zone_panel.gd", "res://ui/area_icons.gd", "res://ui/reveal_box.gd", "res://ui/list_row.gd",
 	"res://ui/fx/expand_chip.gd", "res://ui/fx/panel_divider.gd", "res://ui/fx/close_x.gd", "res://ui/fx/gallery_tile.gd", "res://ui/gallery_menu.gd", "res://ui/update_log_panel.gd", "res://ui/menu_router.gd",
 	"res://ui/index_row.gd", "res://ui/index_panel.gd",
-	"res://ui/tip.gd", "res://ui/tip_host.gd",
+	"res://ui/tip.gd", "res://ui/tip_host.gd", "res://ui/tip_text.gd", "res://ui/pad_tooltip.gd", "res://ui/relic_tooltip.gd",
 ]
 
 const AUTOLOADS: PackedStringArray = ["GameState", "EventBus", "Save", "Fx", "Juice", "Audio"]

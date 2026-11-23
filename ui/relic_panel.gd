@@ -47,7 +47,6 @@ func _init() -> void:
 
 func _ready() -> void:
 	add_child(_tip)
-	_tip.top_level = true
 
 func bind(inv: RelicInventory) -> void:
 	if inventory != null:
