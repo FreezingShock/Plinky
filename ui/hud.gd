@@ -50,6 +50,7 @@ func setup(p_sim: Sim) -> void:
 	_build_stats()
 	_build_gate()
 	_build_clock()
+	move_child(_clock_widget, _zone_panel.get_index())   # the zone list drops over the clock, never under it
 	_build_bottom()
 	_build_upgrades()
 	_build_tip_card()
@@ -368,6 +369,30 @@ func _process(delta: float) -> void:
 		_refresh()
 
 
+## Park the clock left of the zone card and right of the stats panel. When the gap is too small it squeezes
+## (ClockWidget.set_squeeze) instead of overlapping either neighbour.
+func _place_clock(zone_left: float) -> void:
+	var stats_right: float = 0.0
+	if _stats_panel != null:
+		stats_right = _stats_panel.position.x + maxf(_stats_panel.size.x, _stats_panel.get_combined_minimum_size().x)
+	var room: float = zone_left - 6.0 - (stats_right + 6.0)
+	var cw: ClockWidget = _clock_widget
+	var level: int = cw.squeeze_level()
+	cw.remember_width()
+	# Widest layout that fits; ClockWidget remembers each layout's width so this does not flap.
+	var want: int = 2
+	for l: int in 3:
+		if cw.width_at(l) <= room:
+			want = l
+			break
+	if want != level:
+		cw.set_squeeze(want)
+	var w: float = maxf(cw.size.x, cw.get_combined_minimum_size().x)
+	var clk: Vector2 = Vector2(maxf(zone_left - w - 6.0, stats_right + 6.0), 4.0).floor()
+	if cw.position != clk:
+		cw.position = clk
+
+
 ## Right-hug the gate panel and bottom-hug the bottom bar, so a wider frame keeps them at its edges.
 func _place() -> void:
 	if size != frame:
@@ -378,13 +403,12 @@ func _place() -> void:
 		if _tip_card.position != cp:
 			_tip_card.position = cp
 	if _gate_panel != null:
-		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
+		var gsz: Vector2 = _gate_panel.size.max(_gate_panel.get_combined_minimum_size())
+		var gp: Vector2 = Vector2(frame.x - gsz.x - 4.0, 4.0)
 		if _gate_panel.position != gp:
 			_gate_panel.position = gp
 		if _clock_widget != null:
-			var clk: Vector2 = Vector2(gp.x - _clock_widget.size.x - 6.0, 4.0).floor()
-			if _clock_widget.position != clk:
-				_clock_widget.position = clk
+			_place_clock(gp.x)
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:

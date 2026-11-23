@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.12 - 2026-11-23
+- HUD top bar no longer overlaps: the clock card squeezes to fit between the stats and zone panels and sits under the zone list. The district banner is centred on the screen, 40% down.
+
 ## 0.10.11 - 2026-11-23
 - Every menu (Upgrades, Relics, Settings, Feedback, Update Log, hamburger) now opens and closes with the same dither wipe and slide as Stats and Attributes, from one shared MenuAnim. Opening a menu no longer pops a tooltip on its first item; tooltips wait for hover or the first arrow, d-pad or Tab press.
 
