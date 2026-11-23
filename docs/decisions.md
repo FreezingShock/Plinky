@@ -399,3 +399,4 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 
 ## Gallery PC-pass fixes (index panel)
 - Cards use the SELECT solid style (as the hamburger tiles). The detail page hides the hover strip and uses DETAIL_H (230) instead of the grid's 150, since nothing sits under it. Panel centring uses the combined minimum size. All index focus grabs are quiet (no tooltip on open or page change).
+- Detail page: header panel (icon+name left, value+gain right) and sub-tabs About / Sources / Level (attributes only), one page visible at a time instead of one long scroll.
