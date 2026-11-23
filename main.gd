@@ -320,14 +320,16 @@ func _build_pads() -> void:
 		critter.anchors.append(pad.position)
 
 
-func _enter_zone_visuals(zone_id: StringName) -> void:
+## `sliced` spreads the heavy part (the zone's prop sprites) over several frames; only a swap under the transition
+## wipe uses it, and awaits the result. Startup and reset keep the one-frame build.
+func _enter_zone_visuals(zone_id: StringName, sliced: bool = false) -> void:
 	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
 	PerfStats.lap_begin()
 	PlinkyTheme.apply(theme, String(palette_id))
 	PerfStats.lap("zone: theme")
-	_swap_zone_scene(zone_id)
+	await _swap_zone_scene(zone_id, sliced)
 	var cols: PackedColorArray = Palettes.colors(palette_id)
 	walker.palette = cols
 	gate.palette = cols
@@ -351,7 +353,7 @@ func _zone_mask_path(zone_id: StringName) -> String:
 ## Zones with their own scene replace the meadow: backdrop, tall props, anchors and walk mask. Going forward the
 ## walker restarts at the new scene's Walker anchor; going back it appears just inside the Gate anchor, so the
 ## zone you left is behind you and the gate does not fire again at once.
-func _swap_zone_scene(zone_id: StringName) -> void:
+func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	var path: String = _zone_scene_path(zone_id)
 	if path == _scene_path:
 		_apply_scene_frame(zone_id)
@@ -367,7 +369,7 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 	PerfStats.lap("swap: instantiate")
 	world.add_child(meadow)
 	PerfStats.lap("swap: add_child (ready)")
-	_spawn_occluders()
+	await _spawn_occluders(sliced)
 	PerfStats.lap("swap: occluders")
 	_apply_scene_frame(zone_id)
 	PerfStats.lap("swap: scene frame")
@@ -388,6 +390,7 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 
 
 var _going_back: bool = false
+const OCCLUDER_BUDGET_MS: float = 8.0   ## per frame, while the wipe covers the screen
 var _prefetching: String = ""
 
 
@@ -414,11 +417,14 @@ var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone 
 ## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
 ## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
 ## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
-func _spawn_occluders() -> void:
+func _spawn_occluders(sliced: bool = false) -> void:
 	var before: Dictionary = {}
 	for c: Node in world.get_children():
 		before[c] = true
-	meadow.call("spawn_occluders", world)
+	if sliced and meadow.has_method("spawn_occluders_sliced"):
+		await meadow.call("spawn_occluders_sliced", world, OCCLUDER_BUDGET_MS)
+	else:
+		meadow.call("spawn_occluders", world)
 	_occluders.clear()
 	for c: Node in world.get_children():
 		if not before.has(c):
@@ -541,7 +547,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 	walker.stop()
 	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
 	await transitions.cross_zone(func() -> void:
-		_enter_zone_visuals(zone_id)
+		await _enter_zone_visuals(zone_id, true)
 		if _clear_spawn_pending:
 			_clear_spawn_pending = false
 			_clear_spawn())
