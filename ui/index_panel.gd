@@ -490,15 +490,12 @@ func _on_buy() -> void:
 	_refresh()
 	if FxConfig.reduce_flashing:
 		return
-	var t := create_tween()    # blink the total and hop the icon: stepped, like the other HUD pops
+	var t := create_tween()    # blink the total: stepped, like the other HUD pops
 	for i in 3:
 		t.tween_property(_d_total, "modulate", Color(2.0, 2.0, 1.5), 0.0)
 		t.tween_interval(0.08)
 		t.tween_property(_d_total, "modulate", Color.WHITE, 0.0)
 		t.tween_interval(0.08)
-	_d_icon.pivot_offset = _d_icon.size / 2.0
-	_d_icon.position.y -= 4.0
-	t.tween_callback(func() -> void: _d_icon.position.y += 4.0)
 
 
 func _source_card(s: Dictionary) -> Control:
