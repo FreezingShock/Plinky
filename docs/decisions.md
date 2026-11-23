@@ -437,6 +437,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 
 - **Grass style A locked (2026-11-23, Nathan: "I like A baked the most").** Blade tufts gathering into clumps, baked into the ground by tools/art/grass_tex.py (default `GRASS=a`) for the meadow and Larkmoor. B, C, D stay in the module as alternatives only; do not change the default without Nathan.
 
+## 2026-11-23: Tooltips are instant (Minecraft-style)
+- Nathan: tooltips should appear the same frame the cursor enters a hoverable, follow the cursor, and disappear the same frame it leaves. No delay, no fade, no lingering.
+- `TipHost` lost its hover delay (was 0.35 s), focus delay (0.08 s), grace window (0.30 s) and hide delay (0.10 s). A bound control shows on entry, focus shows at once, and leaving hides on that frame. Moving straight onto another bound control swaps on that frame.
+- Godot's built-in `tooltip_text` (which has its own delay) was the one remaining user: the version link on boot and title now uses `Tip.bind`. Nothing in the project uses `tooltip_text` any more, so `gui/timers/tooltip_delay_sec` is not touched (project.godot is the integrator's file).
+- Kept: "no tooltip on menu open" (`Tip.grab_quiet`, `focus_muted`), so a menu opening does not pop a tip until the player navigates. A pressed button still hides its tip until the mouse leaves it.
+- Not changed on purpose: the gallery hover strip and display-panel hint are card/text readouts, not tooltips, and the chip label grace in `ui/fx/expand_chip.gd` is a HUD animation.
+
 ## 2026-11-23: Zone entry card made slim and themed (Nathan: less intrusive, themed by area)
 - The district banner was a big centred 16 pt panel (2.2 s) over the play area. It is now a slim card at 15% down (1.6 s, slides 4 texels while fading), 12 pt Pixelify name, with the zone name small in Spleen above. Per-area theme: the zone's own palette (ink fill, border and name in the area `theme_role` colour blended to role 3), the area's 7x7 icon on both sides of the name, and a dotted rule underneath. Plain notices ("The way on is still being forged") use the same slim card without a theme. `AsciiBox` gained `fill_override`. Not run in engine (CI only).
 - The top-right zone panel card (description, pads, mastery) re-opens on area entry and folds to its stub after 3.5 s (ZonePanel.PEEK), so it no longer sits over the world. Nathan called this 'the timed menu', so both it and the banner are quieter. Not run in engine.

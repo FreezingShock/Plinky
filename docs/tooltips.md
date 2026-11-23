@@ -41,16 +41,19 @@ An empty spec (null, or nothing in it) shows nothing.
 
 ## Behaviour
 
+- Minecraft-style and instant: no hover delay, no grace window, no fade. A bound control shows its tip on the frame the
+  mouse reaches it, the tip follows the cursor, and it is gone on the frame the mouse leaves. Nothing lingers.
 - The host asks the viewport which control is under the mouse every frame, so it never depends on `mouse_entered` /
   `mouse_exited` and is right at any stretch scale. A bound control under the mouse (or a bound ancestor of what is
-  under it) shows after 0.35 s and stays up for as long as the mouse rests there. It hides 0.10 s after the mouse leaves.
-- Keyboard or pad focus shows after 0.08 s under the control (flips above near the bottom).
-- Moving straight onto another bound control, or within 0.3 s of the last tip, shows instantly.
+  under it) stays up for as long as the mouse rests there.
+- Keyboard or pad focus shows at once under the control (flips above near the bottom).
+- Moving straight onto another bound control swaps to its tip on the same frame.
+- Godot's built-in `tooltip_text` is not used anywhere: it has its own delay that we cannot turn off per control.
 - Pressing a bound button hides its tip until the mouse leaves it.
 - Drawn in the 640x360 stretch view and clamped to the visible rect. Borrows the theme of the control it describes
   and sets Spleen / Pixelify explicitly, so the font is never the default.
 - Binding a control whose mouse_filter is IGNORE switches it to PASS so it can see the mouse; clicks still pass through.
-- Tests: tests/test_tooltips.gd (spec, colours, fonts, 1.5 s hold, grace, on-screen clamp).
+- Tests: tests/test_tooltips.gd (spec, colours, fonts, instant show and hide, 1.5 s hold, on-screen clamp).
 
 ## Writing tooltips
 
