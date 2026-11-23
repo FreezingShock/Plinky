@@ -99,6 +99,7 @@ func stats_bottom() -> float:
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
+	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
 	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -147,6 +148,7 @@ func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringN
 func _build_gate() -> void:
 	var v: VBoxContainer = _panel(Vector2(456, 4))
 	_gate_panel = v.get_parent() as PanelContainer
+	_gate_panel.add_to_group(TipHost.AVOID_GROUP)
 	gate(_gate_panel, Onboarding.F_REBIRTH_ROW)
 	_zone_label = Label.new()
 	_zone_label.theme_type_variation = &"TitleLabel"
@@ -194,6 +196,7 @@ func _build_bottom() -> void:
 func _build_pad_list() -> void:
 	_pad_list = PadList.new()
 	_pad_list.position = Vector2(456, 96)
+	_pad_list.add_to_group(TipHost.AVOID_GROUP)   # relic tooltips stay clear of it
 	add_child(_pad_list)
 	gate(_pad_list, Onboarding.F_MULT)
 

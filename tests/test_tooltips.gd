@@ -81,5 +81,18 @@ func run(t: Object) -> void:
 	h.hide_free()
 	t.ok(not h.visible, "hide_free hides it")
 
+	# Beside a slot: skips a spot that would cover an avoid panel.
+	var wall := Control.new()
+	wall.add_to_group(TipHost.AVOID_GROUP)
+	wall.position = Vector2(60, 0)
+	wall.size = Vector2(300, 300)
+	root.add_child(wall)
+	h.show_free({"body": "Short"}, Vector2(10, 100), true)
+	h.set_anchor(Rect2(10, 100, 20, 20))
+	h._process(TipHost.HOVER_DELAY + 0.01)
+	t.ok(not Rect2(h.position, h.size).intersects(Rect2(wall.position, wall.size)), "a tooltip beside a slot stays off avoid panels")
+	h.hide_free()
+	wall.queue_free()
+
 	c.queue_free()
 	h.queue_free()

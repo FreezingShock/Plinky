@@ -27,7 +27,7 @@ func show_text(title: String, body: String, anchor: Rect2) -> void:
 
 func _show(spec: Dictionary, anchor: Rect2) -> void:
 	visible = true
-	Tip.show_free(get_tree(), spec, Vector2(anchor.end.x + 4.0, anchor.position.y), true)
+	Tip.show_beside(get_tree(), spec, anchor)
 
 
 func hide_tip() -> void:

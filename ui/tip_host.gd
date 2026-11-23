@@ -90,6 +90,14 @@ func show_free(spec: Variant, at: Vector2, exact: bool = false) -> void:
 
 var _free_spec: Variant = null
 var _free_exact: bool = false
+var _anchor: Rect2 = Rect2()
+const AVOID_GROUP: StringName = &"tip_avoid"
+
+
+func set_anchor(r: Rect2) -> void:
+	_anchor = r
+	if visible:
+		_place()
 
 
 func hide_free() -> void:
@@ -180,6 +188,8 @@ func _place() -> void:
 	var p: Vector2
 	if _free_mode:
 		p = _free_at if _free_exact else _free_at + CURSOR_OFFSET
+		if _free_exact and _anchor.size != Vector2.ZERO:
+			p = _beside(view)
 		if not _free_exact and p.y + size.y > view.y - 2.0:
 			p.y = _free_at.y - size.y - 8.0
 	elif _by_focus and target != null:
@@ -203,3 +213,29 @@ func _place() -> void:
 func _view_size() -> Vector2:
 	var vp: Viewport = get_viewport()
 	return vp.get_visible_rect().size if vp != null else Vector2(640.0, 360.0)
+
+
+## First of right, left, below, above of the anchor that is on screen and clear of the avoid panels.
+func _beside(view: Vector2) -> Vector2:
+	var a: Rect2 = _anchor
+	var cands: Array[Vector2] = [
+		Vector2(a.end.x + 4.0, a.position.y), Vector2(a.position.x - size.x - 4.0, a.position.y),
+		Vector2(a.position.x, a.end.y + 4.0), Vector2(a.position.x, a.position.y - size.y - 4.0)]
+	var avoid: Array[Rect2] = []
+	if is_inside_tree():
+		for n: Node in get_tree().get_nodes_in_group(AVOID_GROUP):
+			if n is Control and (n as Control).is_visible_in_tree():
+				avoid.append((n as Control).get_global_rect())
+	var screen := Rect2(Vector2(2.0, 2.0), view - Vector2(4.0, 4.0))
+	for c: Vector2 in cands:
+		var r := Rect2(c, size)
+		if not screen.encloses(r):
+			continue
+		var clear: bool = true
+		for av: Rect2 in avoid:
+			if av.intersects(r):
+				clear = false
+				break
+		if clear:
+			return c
+	return cands[0]

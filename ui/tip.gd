@@ -65,6 +65,14 @@ static func show_free(tree: SceneTree, spec: Variant, at: Vector2, exact: bool =
 	h.show_free(spec, at, exact)
 
 
+## Show beside a rect (a slot) instead of at the cursor. It tries right, left, below, then above, and takes the
+## first spot that is on screen and clear of every visible Control in the "tip_avoid" group (HUD panels).
+static func show_beside(tree: SceneTree, spec: Variant, anchor: Rect2) -> void:
+	var h: TipHost = host(tree)
+	h.show_free(spec, anchor.position, true)
+	h.set_anchor(anchor)
+
+
 static func hide_free(tree: SceneTree) -> void:
 	if _host != null and is_instance_valid(_host):
 		_host.hide_free()
