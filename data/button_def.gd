@@ -3,6 +3,8 @@ extends Resource
 ## One button pad. Scenes reference it by id and hold no numbers.
 
 @export var id: StringName
+## Pad rarity: common, uncommon, rare, epic or legendary (content/rarities). Frames the plate and shows in the tooltip.
+@export var rarity: StringName = &"common"
 @export var zone: StringName
 @export var row: StringName
 @export var row_index: int = 0

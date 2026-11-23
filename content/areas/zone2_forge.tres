@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/area_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"forge"
+zone = &"zone2"
+display_name = "Forge Floor"
+order = 0
+icon = "forge"
+theme_role = 4
+blurb = "Six rows of forge pads climb the terraces, Cinder at the bottom to Emberheart by the gate. Stand on a vent to build Heat, then press while it is Hot."
+pad_buttons = PackedStringArray("cinder_1","cinder_2","cinder_3","ore_1","ore_2","ore_3","slagrow_1","slagrow_2","slagrow_3","ingot_1","ingot_2","ingot_3","alloy_1","alloy_2","alloy_3","emberheart_1","emberheart_2","emberheart_3")

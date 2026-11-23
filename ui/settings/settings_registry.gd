@@ -165,6 +165,7 @@ static func _ensure() -> void:
 	_register_audio()
 	_register_display()
 	_register_gameplay()
+	_register_qol()
 	_register_access()
 	_register_controls()
 	_register_data()
@@ -219,6 +220,12 @@ static func _device_apply(v: Variant) -> void:
 	AudioServer.output_device = want if AudioServer.get_output_device_list().has(want) else "Default"
 
 
+static func _click_limit_apply(_v: Variant) -> void:
+	var a: Node = _autoload("Audio")
+	if a != null:
+		a.call("set_click_limit", bool(value(&"click_limit")), int(value(&"click_limit_count")))
+
+
 static func _register_audio() -> void:
 	for row: Array in [[&"vol_master", "Master", &"Master"], [&"vol_music", "Music", &"Music"],
 			[&"vol_sfx", "Effects", &"SFX"], [&"vol_ui", "Interface", &"UI"], [&"vol_amb", "Ambience", &"Ambience"]]:
@@ -226,6 +233,11 @@ static func _register_audio() -> void:
 			"id": row[0], "tab": "Audio", "label": row[1], "kind": Kind.SLIDER, "min": 0.0, "max": 1.0, "step": 0.05,
 			"get": _vol_get.bind(row[2]), "set": _vol_set.bind(row[2]), "format": _pct,
 		})
+	register_stored(&"click_limit", "Audio", "Quiet pad clicks", Kind.TOGGLE, true, _click_limit_apply,
+		{"hint": "Stops the pad click after a few presses in a row while you stand on a pad or hold it. Stepping off starts it again."})
+	register_stored(&"click_limit_count", "Audio", "Clicks before quiet", Kind.SLIDER, 5.0, _click_limit_apply,
+		{"min": 1.0, "max": 10.0, "step": 1.0, "format": func(v: Variant) -> String: return "%d" % roundi(float(v)),
+		"hint": "How many presses play the click (1 to 10) before it goes quiet. Needs Quiet pad clicks on."})
 	_add({"id": &"muted", "tab": "Audio", "label": "Mute all", "kind": Kind.TOGGLE, "get": _mute_get, "set": _mute_set})
 	_add({
 		"id": &"audio_device", "tab": "Audio", "label": "Output device", "kind": Kind.CHOICE, "default": "Default",
@@ -283,6 +295,13 @@ static func _register_display() -> void:
 		"set": func(v: Variant) -> void: DisplaySettings.set_native_frame(_root(), bool(v)),
 	})
 	_add({
+		"id": &"graphics_quality", "tab": "Display", "label": "Graphics quality", "kind": Kind.CHOICE,
+		"hint": "Low draws fewer fireflies and particles and animates the grass and air more slowly. The look is the same.",
+		"options": func() -> Array: return [[GraphicsQuality.Level.LOW, "Low"], [GraphicsQuality.Level.MEDIUM, "Medium"], [GraphicsQuality.Level.HIGH, "High"]],
+		"get": func() -> Variant: GraphicsQuality.load_settings(); return GraphicsQuality.level,
+		"set": func(v: Variant) -> void: GraphicsQuality.set_level(int(v)),
+	})
+	_add({
 		"id": &"scale_mode", "tab": "Display", "label": "Scaling", "kind": Kind.CHOICE,
 		"hint": "Fit fills any window size. Pixel perfect keeps whole-number texels. Wide shows more meadow.",
 		"options": func() -> Array: return [[DisplaySettings.Scale.PIXEL, "Pixel perfect"], [DisplaySettings.Scale.FIT, "Fit window"], [DisplaySettings.Scale.WIDE, "Wide view"]],
@@ -329,6 +348,12 @@ static func _register_gameplay() -> void:
 		"apply": func(v: Variant) -> void: NumberFormat.style = int(v),
 	})
 	_add({
+		"id": &"mult_style", "tab": "Gameplay", "label": "Multiplier display", "kind": Kind.CHOICE, "default": NumberFormat.MultStyle.FACTOR,
+		"hint": "Show multipliers as a factor (x1.5) or as a percent (150%). Labels change on their next update.",
+		"options": func() -> Array: return [[NumberFormat.MultStyle.FACTOR, "Factor (x1.5)"], [NumberFormat.MultStyle.PERCENT, "Percent (150%)"]],
+		"apply": func(v: Variant) -> void: NumberFormat.mult_style = int(v),
+	})
+	_add({
 		"id": &"momentum_meter", "tab": "Gameplay", "label": "Momentum meter", "kind": Kind.TOGGLE,
 		"hint": "The bar above the bottom bar that shows walking income bonus.",
 		"get": func() -> Variant: return DisplaySettings.momentum_meter,
@@ -342,8 +367,43 @@ static func _register_gameplay() -> void:
 	})
 
 
+static func _register_qol() -> void:
+	_add({
+		"id": &"save_indicator", "tab": "Gameplay", "label": "Save indicator", "kind": Kind.TOGGLE, "default": true,
+		"hint": "A small Saved note by the Menu button after each save. A failed save always shows.",
+		"apply": func(v: Variant) -> void: SaveIndicator.enabled = bool(v),
+	})
+	_add({
+		"id": &"confirm_rebirth", "tab": "Gameplay", "label": "Confirm rebirth", "kind": Kind.TOGGLE, "default": true,
+		"hint": "Ask before a rebirth resets your Cash and pads.",
+		"apply": func(v: Variant) -> void: ModalCard.rebirth_confirm = bool(v),
+	})
+
+
 # ---- accessibility
 static func _register_access() -> void:
+	_add({
+		"id": &"color_mode", "tab": "Access", "label": "Colour-safe colours", "kind": Kind.CHOICE, "default": AccessOptions.MODE_OFF,
+		"hint": "Swaps rarity, buy and stat colours for ones that stay apart with colour blindness. Names and tags never depend on colour.",
+		"options": func() -> Array: return [[AccessOptions.MODE_OFF, "Off"], [AccessOptions.MODE_RED_GREEN, "Red-green safe"], [AccessOptions.MODE_BLUE_YELLOW, "Blue-yellow safe"]],
+		"apply": func(v: Variant) -> void: AccessOptions.set_color_mode(String(v)),
+	})
+	_add({
+		"id": &"large_text", "tab": "Access", "label": "Large tooltip text", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Tooltips use Pixelify Sans at a larger size. Menus keep their fixed pixel layout.",
+		"apply": func(v: Variant) -> void: AccessOptions.set_large_text(bool(v)),
+	})
+	_add({
+		"id": &"subtitles", "tab": "Access", "label": "Sound subtitles", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Shows a short caption for sounds that matter: critical presses, relic chimes, gates, birdsong, waves and footsteps.",
+		"apply": func(v: Variant) -> void: AccessOptions.subtitles = bool(v),
+	})
+	_add({
+		"id": &"chip_labels", "tab": "Access", "label": "Bottom bar labels", "kind": Kind.CHOICE, "default": "hover",
+		"hint": "On hover: a label floats above the button. Always: labels sit in the buttons. Never: icons only.",
+		"options": func() -> Array: return [["hover", "On hover"], ["always", "Always"], ["never", "Never"]],
+		"apply": func(v: Variant) -> void: ExpandChip.label_mode = String(v),
+	})
 	_add({
 		"id": &"reduce_flashing", "tab": "Access", "label": "Reduce flashing", "kind": Kind.TOGGLE, "default": false,
 		"hint": "Softens screen flashes and the rarity pad flash.",
@@ -352,6 +412,11 @@ static func _register_access() -> void:
 	_add({
 		"id": &"reduce_shake", "tab": "Access", "label": "Reduce screen shake", "kind": Kind.TOGGLE, "default": false,
 		"apply": func(v: Variant) -> void: FxConfig.reduce_shake = bool(v),
+	})
+	_add({
+		"id": &"reduce_screen_fx", "tab": "Access", "label": "Reduce screen effects", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Turns off the edge shade and the full-frame light pass. Ground, shadows and night still show.",
+		"apply": func(v: Variant) -> void: FxConfig.reduce_screen_fx = bool(v),
 	})
 	_add({
 		"id": &"calm_camera", "tab": "Access", "label": "Calm camera", "kind": Kind.TOGGLE, "default": false,
@@ -375,7 +440,7 @@ static func _register_controls() -> void:
 	for row: Array in Keybinds.ACTIONS:
 		_add({
 			"id": StringName("key_" + String(row[0])), "tab": "Controls", "label": String(row[1]), "kind": Kind.KEY, "action": row[0],
-			"hint": "Click, then press the new key. Esc cancels. A key already in use swaps with that action.",
+			"hint": "Click, then press the new key. Hold Shift, Ctrl or Alt for a combo, or tap one alone to bind it. Esc cancels. A key already in use swaps with that action.",
 		})
 	_add({"id": &"keys_reset", "tab": "Controls", "label": "Default keys", "kind": Kind.ACTION, "run": _keys_reset})
 

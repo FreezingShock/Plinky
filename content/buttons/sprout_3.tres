@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ButtonDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/button_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"sprout_3"
+rarity = &"common"
+zone = &"zone1"
+row = &"sprout"
+row_index = 2
+cost_stat = &"sunlight"
+base_cost = 1000
+cost_growth = 10.0
+reward_stat = &"dewdrop"
+reward = 64

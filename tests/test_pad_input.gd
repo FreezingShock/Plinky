@@ -3,7 +3,7 @@ extends RefCounted
 
 func run(t: Object) -> void:
 	PadInput.ensure()
-	for a: StringName in [&"plinky_left", &"plinky_right", &"plinky_up", &"plinky_down", &"plinky_back", &"plinky_relics", &"plinky_upgrades", &"plinky_settings", &"plinky_zoom_in", &"plinky_zoom_out", &"plinky_recenter"]:
+	for a: StringName in [&"plinky_left", &"plinky_right", &"plinky_up", &"plinky_down", &"plinky_back", &"plinky_relics", &"plinky_upgrades", &"plinky_settings", &"plinky_zoom_in", &"plinky_zoom_out", &"plinky_recenter", &"plinky_jump"]:
 		t.ok(InputMap.has_action(a), "%s is registered" % a)
 	var has_pad: bool = false
 	var has_key: bool = false

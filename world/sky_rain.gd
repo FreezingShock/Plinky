@@ -15,6 +15,19 @@ var intensity: float = 0.0   # 0..1, set by SkyCycle
 var wind: float = 0.0        # 0..1, set by SkyCycle
 var _t: float = 0.0
 var _step: int = -1
+var _x0: PackedFloat32Array = PackedFloat32Array()    # per-drop constants, so a redraw does not re-hash every drop
+var _phase: PackedFloat32Array = PackedFloat32Array()
+var _cached_drops: int = -1
+
+
+## The hash is a sin() each, and three of them per drop per redraw were the rain's spike frames. Two are constant.
+func _cache() -> void:
+	_cached_drops = drops
+	_x0.resize(drops)
+	_phase.resize(drops)
+	for i: int in drops:
+		_x0[i] = area.position.x + MeadowLife.hash01(i * 13 + 1) * area.size.x
+		_phase[i] = MeadowLife.hash01(i * 7 + 3)
 
 
 func _process(delta: float) -> void:
@@ -34,7 +47,10 @@ func _draw() -> void:
 	if intensity <= 0.001:
 		return
 	var tb: float = float(maxi(_step, 0)) * STEP
-	var active: int = int(ceilf(float(drops) * intensity))
+	if _cached_drops != drops:
+		_cache()
+	# Low draws 40% of the drops, Medium 70% (GraphicsQuality). The look is the same, just lighter rain.
+	var active: int = GraphicsQuality.life_scaled(int(ceilf(float(drops) * intensity)))
 	var slant: float = 0.15 + 0.5 * wind          # texels sideways per texel fallen
 	# Only drops inside the visible part of the sky are drawn, so a zoomed-in camera costs less, not more.
 	var view: Rect2 = get_global_transform_with_canvas().affine_inverse() * get_viewport_rect()
@@ -44,9 +60,9 @@ func _draw() -> void:
 		var speed: float = 190.0 if near else 130.0
 		var fall_h: float = area.size.y
 		var cycle: float = fall_h / speed
-		var u: float = tb / cycle + MeadowLife.hash01(i * 7 + 3)
+		var u: float = tb / cycle + _phase[i]
 		var k: float = fposmod(u, 1.0)
-		var x0: float = area.position.x + MeadowLife.hash01(i * 13 + 1) * area.size.x
+		var x0: float = _x0[i]
 		# Each drop lands on its own ground depth, so splashes spread over the field, not one line.
 		var land: float = 0.18 + 0.82 * MeadowLife.hash01(i * 17 + int(u) * 5 + 9)
 		var y_end: float = area.position.y + fall_h * land

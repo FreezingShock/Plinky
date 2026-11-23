@@ -64,3 +64,47 @@ func run(t: Object) -> void:
 
 	# Reduce motion: the flag exists, defaults off, and the ground layer stops stepping.
 	t.ok(not MeadowLife.reduce_motion, "reduce motion defaults off")
+
+	# Reactions to the walker (world/life_react.gd, LifeGround.bend)
+	t.eq(LifeReact.away_amount(-1.0), 0.0, "perched bird is not away")
+	t.eq(LifeReact.away_amount(LifeReact.BIRD_FLIGHT), 1.0, "bird is gone after its flight")
+	t.eq(LifeReact.away_amount(LifeReact.BIRD_RETURN_AFTER + LifeReact.BIRD_FLIGHT + 1.0), 0.0, "bird is back after its return")
+	t.eq(LifeReact.rustle_offset(1), 0.0, "rustle rests every other step")
+	t.eq(LifeReact.rustle_offset(2), 1.0, "rustle shuffles one texel")
+	var lake: Dictionary = {"x": 100.0, "y": 100.0, "rx": 50.0, "ry": 25.0}
+	t.ok(LifeReact.shore_point(lake, Vector2(100.0, 100.0 + 25.0 + 6.0), 26.0) != Vector2.INF, "walker at the shore makes a ripple point")
+	t.ok(LifeReact.shore_point(lake, Vector2(300.0, 300.0), 16.0) == Vector2.INF, "far walker makes none")
+	t.eq(LifeGround.bend(Vector2i(110, 100), Vector2(100.0, 100.0)), 1, "grass east of the walker leans east")
+	t.eq(LifeGround.bend(Vector2i(95, 100), Vector2(100.0, 100.0)), -2, "grass close on the west leans hard west")
+	t.eq(LifeGround.bend(Vector2i(160, 100), Vector2(100.0, 100.0)), 0, "far grass keeps the wind")
+	var rb := LifeReact.new()
+	rb.setup({"water": []}, [[10, 10], [50, 50], [90, 90]])
+	rb.scare_all()
+	t.ok(rb._birds.size() == 3 and float(rb._birds[0].scared) == 0.0, "scare_all startles every perched bird")
+	rb.free()
+	_check_tips(t, "res://world/larkmoor_life.json", "res://assets/art/zone1b/larkmoor/ground.png", "Larkmoor")
+
+
+## Every sway tip in `json_path` must sit on a palette 4 texel of the backdrop at `ground_path`, through the data's origin.
+func _check_tips(t: Object, json_path: String, ground_path: String, label: String) -> void:
+	var file: FileAccess = FileAccess.open(json_path, FileAccess.READ)
+	t.ok(file != null, "%s life data opens" % label)
+	if file == null:
+		return
+	var data: Dictionary = JSON.parse_string(file.get_as_text()) as Dictionary
+	var img: Image = Image.load_from_file(ground_path)
+	t.ok(img != null, "%s backdrop loads" % label)
+	if img == null:
+		return
+	var light: Color = Palettes.colors(Palettes.MEADOW)[4]
+	var org: Array = data.get("backdrop_origin", [0, 0]) as Array
+	var bad: int = 0
+	var sway: Array = data.get("sway", []) as Array
+	for p: Variant in sway:
+		var a: Array = p as Array
+		var tx: int = int(a[0]) - int(org[0])
+		var ty: int = int(a[1]) - int(org[1])
+		if tx <= 0 or ty <= 0 or tx >= img.get_width() - 1 or ty >= img.get_height() - 1 or not img.get_pixel(tx, ty).is_equal_approx(light):
+			bad += 1
+	t.ok(sway.size() >= 60, "%s has at least 60 sway tips (got %d)" % [label, sway.size()])
+	t.eq(bad, 0, "every %s sway tip sits on a palette 4 texel of its backdrop" % label)

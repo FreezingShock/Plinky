@@ -5,12 +5,18 @@ extends Node2D
 
 var _p: Array[Dictionary] = []
 
+const MAX_LIVE: int = 10   # spam-pressing never piles up more bursts than this
+static var _live: int = 0
+
 static func spawn(parent: Node, pos: Vector2, colors: Array[Color], count := -1) -> void:
+	if _live >= MAX_LIVE:
+		return
+	_live += 1
 	var b := ParticleBurst.new()
 	b.position = FxConfig.snap(pos)
 	b.z_index = 90
 	parent.add_child(b)
-	var n := count if count > 0 else randi_range(FxConfig.PARTICLES_MIN, FxConfig.PARTICLES_MAX)
+	var n: int = GraphicsQuality.particle_count(count if count > 0 else randi_range(FxConfig.PARTICLES_MIN, FxConfig.PARTICLES_MAX))
 	for i in n:
 		var a := randf() * TAU
 		var s := randf_range(40.0, 110.0)
@@ -31,6 +37,9 @@ func _process(delta: float) -> void:
 	queue_redraw()
 	if not alive:
 		queue_free()
+
+func _exit_tree() -> void:
+	_live = maxi(_live - 1, 0)
 
 func _draw() -> void:
 	for q in _p:

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"rp_rest"
+display_name = "Deep sleep"
+effect = &"offline_hours"
+per_level = 0.5
+cap = 8
+base_cost = 2.0
+cost_growth = 1.4
+order = 12
+currency = &"rp"

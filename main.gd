@@ -25,6 +25,7 @@ var _district_t: float = 0.0
 var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
 var walker: TexelWalker
 var gate: TexelGate
+var arch_gate: TexelGate   ## drawn at the Arch anchor of zones with gate art: the way back
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
 var pointer: PadPointer
@@ -35,10 +36,15 @@ var transitions: Transitions
 var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
+var index_panel: IndexPanel
 var display_panel: DisplayPanel
 var dev_console: DevConsole
 var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
+var gallery: GalleryMenu
+var update_log: UpdateLogPanel
+var history_panel: HistoryPanel
+var menus: MenuRouter = MenuRouter.new()   # which menu is open (ui/menu_router.gd)
 var palette_id: StringName = Palettes.MEADOW
 
 
@@ -72,7 +78,7 @@ func _ready() -> void:
 	_scene_path = _zone_scene_path(sim.zone_id)
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	_spawn_occluders()
 	_apply_scene_frame(sim.zone_id)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
@@ -85,7 +91,13 @@ func _ready() -> void:
 	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
 	gate.position = gate_marker.position if gate_marker != null else Vector2(480, 120)
 	gate.walker = walker
+	gate.dead_end.connect(func() -> void: banner.show_name("The way on is still being forged"))
 	world.add_child(gate)
+	arch_gate = TexelGate.new()
+	arch_gate.walker = walker
+	arch_gate.visible = false
+	world.add_child(arch_gate)
+	_sync_arch_gate(sim.zone_id)
 
 	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
 	camera = WorldCamera.new()
@@ -93,6 +105,8 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	ShaderWarm.run(self)  # compile the sky shaders now, not at the first sunset (render/shader_warm.gd)
+	PerfOverlay.attach(self)  # F3 frame-time overlay (ui/perf_overlay.gd)
 	camera.bounds = _camera_bounds()
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
 
@@ -112,7 +126,12 @@ func _ready() -> void:
 	add_child(hud)
 	hud.setup(sim)
 	_wire_relics()
+	_wire_index()
 	_wire_display()
+	hud.keep_centered(relic_panel)
+	_wire_menus()
+	hud.move_child(hud.bottom_bar(), -1)
+	hud.move_child(hud.menu_chip(), -1)   # chips stay above every open menu, so they stay clickable
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
 	add_child(window_frame)
@@ -124,10 +143,12 @@ func _ready() -> void:
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
+	bus.mastery_leveled.connect(_on_mastery_leveled)
 	bus.gate_opened.connect(func(_id: StringName) -> void: Juice.milestone())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
 	bus.bonus_gained.connect(_on_bonus_gained)
+	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
 	_prev_zone = _previous_zone(sim.zone_id)
@@ -138,7 +159,10 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
-	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	var boost_id: StringName = sim.current_zone().boost_stat if sim.current_zone() != null else &""
+	var mult: float = (sim.get_stat(boost_id).to_float() if boost_id != &"" else 0.0) + 1.0
+	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
+		pad_glow.multiplier = mult
 	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)
@@ -155,15 +179,22 @@ func _process(_delta: float) -> void:
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
 func _update_tooltip() -> void:
 	var over: Control = get_viewport().gui_get_hovered_control()
-	if over != null and over.mouse_filter != Control.MOUSE_FILTER_IGNORE:
-		tooltip.hide_tip()
-		return
 	var m: Vector2 = world.get_local_mouse_position()
+	var blocked: bool = over != null and over.mouse_filter != Control.MOUSE_FILTER_IGNORE
+	var shown: bool = false
 	for pad: TexelPad in pads.values():
-		if pad.hit(m):
+		pad.hovered = not blocked and not shown and pad.hit(m)
+		if pad.hovered:
 			tooltip.show_for(sim, pad.button_id, get_local_mouse_position())
-			return
-	tooltip.hide_tip()
+			shown = true
+	if not shown and not blocked and gate.hit(m):
+		tooltip.show_spec(TexelGate.spec_for(sim, gate.zone_id), get_local_mouse_position())
+		shown = true
+	if not shown and not blocked and arch_gate.visible and arch_gate.hit(m) and arch_gate.back_to != &"":
+		tooltip.show_spec(TexelGate.back_spec(sim, arch_gate.zone_id, arch_gate.back_to), get_local_mouse_position())
+		shown = true
+	if not shown:
+		tooltip.hide_tip()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -174,19 +205,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_feedback()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_back"):
-		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
-		relic_panel.hide()
-		display_panel.close()
-		feedback_panel.close()
-		hud.close_panels()
-		if any:
-			get_viewport().set_input_as_handled()
+		# Esc closes whatever is open; with nothing open it opens the hamburger menu as the pause menu.
+		if not menus.close_all():
+			menus.open(&"gallery")
+		get_viewport().set_input_as_handled()
 
 
 ## Menus without a mouse: while a panel is open the walker stands still and focus lands on its first control.
 ## Arrows, d-pad or stick move focus, Enter/Space/pad A press, Esc or pad B closes (all via Godot ui_* actions).
+var _menu_was_open: bool = false
+
+
 func _menu_focus() -> void:
-	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, hud.upgrades_panel()]
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log, history_panel]
 	var open: Control = null
 	for p: Control in panels:
 		if p != null and p.visible:
@@ -194,13 +225,16 @@ func _menu_focus() -> void:
 			break
 	PadInput.menu_open = open != null
 	var owner_ctl: Control = get_viewport().gui_get_focus_owner()
+	var just_closed: bool = _menu_was_open and open == null
+	var just_opened: bool = open != null and not _menu_was_open
+	_menu_was_open = open != null
 	if open == null:
-		if owner_ctl != null:
+		if PadInput.should_release_focus(just_closed, owner_ctl != null):
 			owner_ctl.release_focus()
-	elif owner_ctl == null or not open.is_ancestor_of(owner_ctl):
+	elif owner_ctl == null or just_opened or not (open.is_ancestor_of(owner_ctl) or hud.owns_focus(owner_ctl)):
 		var first: Control = PadInput.first_focusable(open)
 		if first != null:
-			first.grab_focus()
+			Tip.grab_quiet(first)   # menu open: focus the first control, but no tooltip until the player navigates
 
 
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
@@ -256,6 +290,7 @@ func _build_pads() -> void:
 	pads.clear()
 	var z: ZoneDef = sim.current_zone()
 	gate.zone_id = z.id if z != null else &""
+	gate.art = z.gate_art if z != null else &""
 	if z == null:
 		return
 	var anchors: Node = meadow.get_node("Anchors")
@@ -268,10 +303,11 @@ func _build_pads() -> void:
 		pad.position = marker.position
 		pad.walker = walker
 		pad.glow = pad_glow
+		pad.left.connect(Audio.reset_press_streak)
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
-	var first: TexelPad = pads.get(&"m1") as TexelPad
+	var first: TexelPad = pads.get(&"sprout_1") as TexelPad
 	if first != null:
 		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
 		pointer = PadPointer.new()
@@ -286,17 +322,24 @@ func _build_pads() -> void:
 		critter.anchors.append(pad.position)
 
 
-func _enter_zone_visuals(zone_id: StringName) -> void:
+## `sliced` spreads the heavy part (the zone's prop sprites) over several frames; only a swap under the transition
+## wipe uses it, and awaits the result. Startup and reset keep the one-frame build.
+func _enter_zone_visuals(zone_id: StringName, sliced: bool = false) -> void:
 	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
+	PerfStats.lap_begin()
 	PlinkyTheme.apply(theme, String(palette_id))
-	_swap_zone_scene(zone_id)
+	PerfStats.lap("zone: theme")
+	await _swap_zone_scene(zone_id, sliced)
 	var cols: PackedColorArray = Palettes.colors(palette_id)
 	walker.palette = cols
 	gate.palette = cols
+	PerfStats.lap_begin()
 	_build_pads()
+	PerfStats.lap("zone: build pads")
 	_build_vents(cols)
+	PerfStats.lap("zone: build vents")
 
 
 func _zone_scene_path(zone_id: StringName) -> String:
@@ -312,20 +355,29 @@ func _zone_mask_path(zone_id: StringName) -> String:
 ## Zones with their own scene replace the meadow: backdrop, tall props, anchors and walk mask. Going forward the
 ## walker restarts at the new scene's Walker anchor; going back it appears just inside the Gate anchor, so the
 ## zone you left is behind you and the gate does not fire again at once.
-func _swap_zone_scene(zone_id: StringName) -> void:
+func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	var path: String = _zone_scene_path(zone_id)
 	if path == _scene_path:
 		_apply_scene_frame(zone_id)
 		return
 	_scene_path = path
-	for c: Node in world.get_children():
-		if String(c.name).begins_with("Occ_"):
-			c.queue_free()
+	PerfStats.lap_begin()
+	_free_occluders()
 	meadow.queue_free()
-	meadow = (load(path) as PackedScene).instantiate()
+	PerfStats.lap("swap: free old")
+	var packed: PackedScene = _take_prefetched(path)
+	PerfStats.lap("swap: load scene")
+	meadow = packed.instantiate()
+	PerfStats.lap("swap: instantiate")
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	PerfStats.lap("swap: add_child (ready)")
+	if sliced:
+		await get_tree().process_frame   # the scene's first frame is its own frame, not stacked on a prop slice
+		PerfStats.lap("swap: first frame after add_child")
+	await _spawn_occluders(sliced)
+	PerfStats.lap("swap: occluders")
 	_apply_scene_frame(zone_id)
+	PerfStats.lap("swap: scene frame")
 	var anchors: Node = meadow.get_node("Anchors")
 	var going_back: bool = _going_back
 	var spawn: Marker2D = anchors.get_node_or_null("Walker") as Marker2D
@@ -343,6 +395,53 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 
 
 var _going_back: bool = false
+const OCCLUDER_BUDGET_MS: float = 8.0   ## per frame, while the wipe covers the screen
+var _prefetching: String = ""
+
+
+## Starts loading a zone scene and its textures on a worker thread, so the swap under the transition wipe does not
+## load them synchronously on the main thread (about 330 ms for Larkmoor, a visible stall at the wipe peak).
+func _prefetch_scene(path: String) -> void:
+	if path == _scene_path or path == _prefetching:
+		return
+	if ResourceLoader.load_threaded_request(path) == OK:
+		_prefetching = path
+
+
+## The prefetched scene when one was requested (waits for it if the worker is not done), else a plain load.
+func _take_prefetched(path: String) -> PackedScene:
+	if path == _prefetching:
+		_prefetching = ""
+		var got: Resource = ResourceLoader.load_threaded_get(path)
+		if got is PackedScene:
+			return got as PackedScene
+	return load(path) as PackedScene
+var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone scene, freed on a swap
+
+
+## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
+## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
+## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
+func _spawn_occluders(sliced: bool = false) -> void:
+	var before: Dictionary = {}
+	for c: Node in world.get_children():
+		before[c] = true
+	if sliced and meadow.has_method("spawn_occluders_sliced"):
+		await meadow.call("spawn_occluders_sliced", world, OCCLUDER_BUDGET_MS)
+	else:
+		meadow.call("spawn_occluders", world)
+	_occluders.clear()
+	for c: Node in world.get_children():
+		if not before.has(c):
+			_occluders.append(c)
+
+
+func _free_occluders() -> void:
+	for c: Node in _occluders:
+		if is_instance_valid(c):
+			world.remove_child(c)   # out of the tree now, so a same-named sprite from the next scene keeps its name
+			c.queue_free()
+	_occluders.clear()
 
 
 ## Frames the zone scene: the walker, the walk mask and the footstep lookups follow its size, and the camera is
@@ -358,6 +457,7 @@ func _apply_scene_frame(zone_id: StringName) -> void:
 	MeadowSites.use(String(pp) if pp is String else "", String(gp) if gp is String else "", off as Vector2i if off is Vector2i else MeadowSites.MEADOW_OFFSET)
 	var anchors: Node = meadow.get_node("Anchors")
 	_arch = anchors.get_node_or_null("Arch") as Marker2D
+	_sync_arch_gate(zone_id)
 	_district_id = ""
 	if camera != null:
 		camera.bounds = _camera_bounds()
@@ -368,6 +468,21 @@ func _camera_bounds() -> Rect2:
 		return _world_rect as Rect2
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	return Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+
+
+## Zones with gate art (the quarry) draw their own arch at the Arch anchor; others bake theirs into the scene.
+func _sync_arch_gate(zone_id: StringName) -> void:
+	if arch_gate == null:
+		return
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	var art: StringName = z.gate_art if z != null else &""
+	arch_gate.visible = _arch != null and art != &""
+	if arch_gate.visible:
+		arch_gate.position = _arch.position
+		arch_gate.art = art
+		arch_gate.zone_id = zone_id
+		arch_gate.back_to = _previous_zone(zone_id)
+		arch_gate.palette = Palettes.colors(Palettes.for_zone(zone_id))
 
 
 ## The zone whose next_zone is this one: where the Arch leads back to.
@@ -402,7 +517,12 @@ func _update_district(delta: float) -> void:
 	if id != _district_id:
 		_district_id = id
 		if id != "":
-			banner.show_name(String(d.get("name", "")))
+			hud.set_district(StringName(id))
+			var area: AreaDef = sim.area_defs.get(StringName(id)) as AreaDef
+			if area != null:
+				banner.show_area(area, sim.zone_defs.get(area.zone) as ZoneDef)
+			else:
+				banner.show_name(String(d.get("name", "")))
 
 
 ## Zone 2 vents: present only when the zone scene has Vent anchors.
@@ -430,8 +550,9 @@ func _on_zone_entered(zone_id: StringName) -> void:
 		return
 	_crossing = true
 	walker.stop()
+	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
 	await transitions.cross_zone(func() -> void:
-		_enter_zone_visuals(zone_id)
+		await _enter_zone_visuals(zone_id, true)
 		if _clear_spawn_pending:
 			_clear_spawn_pending = false
 			_clear_spawn())
@@ -447,21 +568,35 @@ func _after_crossing(zone_id: StringName) -> void:
 
 ## Streak and critter payouts float up as a gold popup at the walker or the critter.
 func _on_bonus_gained(kind: StringName, gains: Dictionary) -> void:
-	var g: BigNum = gains.get(&"cash") as BigNum
+	var g: BigNum = gains.get(&"sunlight") as BigNum
 	if g == null:
 		return
 	var at: Vector2 = critter.position if (kind == &"critter" and critter != null) else walker.position
-	PopupNumber.spawn(world, at + Vector2(0.0, -14.0), g.to_float(), true)
+	Juice.bonus_popup(at + Vector2(0.0, -14.0), g.to_float())
 	Juice.milestone()
 
 
+## Pad mastery level-up: a gold double ring on the plate and an "LV n" pop.
+func _on_mastery_leveled(button_id: StringName, level: int) -> void:
+	var pad: TexelPad = pads.get(button_id) as TexelPad
+	if pad != null:
+		Juice.level_up(pad, pad.position, level)
+
+
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
+	sim.feed_press_momentum(crit)
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return
-	if pad.standing or pad.holding:
+	# A relic pulse presses the neighbours of the pad you pressed: Juice draws those as echoes that ripple outward.
+	var from: Vector2 = Vector2.INF
+	if sim.pulse_source != &"":
+		var src: TexelPad = pads.get(sim.pulse_source) as TexelPad
+		if src != null:
+			from = src.position
+	if from == Vector2.INF and (pad.standing or pad.holding):
 		walker.squash()
-	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding)
+	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding and from == Vector2.INF, from, sim.pulse_order)
 
 
 ## Relic UI (PR #5): equipped bar, drop toast, collection panel, pad flash on Epic and above.
@@ -473,19 +608,30 @@ func _wire_relics() -> void:
 	hud.add_child(bar)
 	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
+	hud.add_child(SubtitleBar.new())   # sound subtitles (Settings > Access)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)
 	hud.add_child(toast)
 	toast.bind(inv)
 	var panel := RelicPanel.new()
 	relic_panel = panel
-	panel.position = Vector2(180, 60)
 	panel.visible = false
 	hud.add_child(panel)
 	panel.bind(inv)
-	hud.relic_panel_toggled.connect(func(_open: bool) -> void: panel.visible = not panel.visible)
+	hud.relic_panel_toggled.connect(func(_open: bool) -> void: menus.toggle(&"relics"))
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
 		Juice.relic_drop(pad_glow, inv.rarity_of(id)))
+
+
+## Stats and Attributes index: the same window, two tabs. The HUD button or key toggles it, or flips to the other tab.
+func _wire_index() -> void:
+	index_panel = IndexPanel.new()
+	hud.add_child(index_panel)
+	index_panel.bind(sim)
+	hud.keep_centered(index_panel)   # the HUD centres it in the visible frame at every view size
+	index_panel.buyer = func(id: StringName) -> bool: return GameState.buy_attribute(id)
+	hud.index_requested.connect(func(t: int) -> void:
+		menus.toggle(&"stats" if t == IndexPanel.Tab.STATS else &"attributes"))
 
 
 ## Settings panel (F10 or the bottom-bar button). Centred over the view, closes with F10 or Esc.
@@ -493,20 +639,99 @@ func _wire_display() -> void:
 	display_panel = DisplayPanel.new()
 	hud.add_child(display_panel)
 	display_panel.bind(get_window())
-	hud.settings_toggled.connect(func(_open: bool) -> void:
-		if display_panel.visible:
-			display_panel.close()
-		else:
-			display_panel.open())
+	hud.settings_toggled.connect(func(_open: bool) -> void: menus.toggle(&"settings"))
 	feedback_panel = FeedbackPanel.new()
 	hud.add_child(feedback_panel)
 	feedback_panel.bind(GameState.sim)
 	display_panel.feedback_requested.connect(_toggle_feedback)
 
 
-func _toggle_feedback() -> void:
-	if feedback_panel.visible:
-		feedback_panel.close()
+## Every menu goes through MenuRouter: one open at a time, toggles and switches are spam-safe, and each panel
+## gets the shared animated X in its top right corner.
+func _wire_menus() -> void:
+	var ups: Control = hud.upgrades_panel()
+	_register_animated(&"upgrades", ups)
+	_register_animated(&"relics", relic_panel)
+	menus.register(&"stats", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.STATS,
+		func() -> void: index_panel.open_tab(IndexPanel.Tab.STATS), index_panel.close_panel, &"index")
+	menus.register(&"attributes", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.ATTRIBUTES,
+		func() -> void: index_panel.open_tab(IndexPanel.Tab.ATTRIBUTES), index_panel.close_panel, &"index")
+	_register_animated(&"settings", display_panel, display_panel.open, display_panel.reset_capture)
+	_register_animated(&"feedback", feedback_panel, feedback_panel.open, feedback_panel.release)
+	gallery = GalleryMenu.new()
+	hud.add_child(gallery)
+	update_log = UpdateLogPanel.new()
+	hud.add_child(update_log)
+	history_panel = HistoryPanel.new()
+	hud.add_child(history_panel)
+	history_panel.bind(sim)
+	hud.keep_centered(gallery)
+	hud.keep_centered(update_log)
+	hud.keep_centered(history_panel)
+	gallery.is_locked = _section_locked
+	gallery.chosen.connect(_on_gallery_chosen)
+	gallery.resume_requested.connect(func() -> void: menus.close(&"gallery"))
+	gallery.quit_to_title_requested.connect(_quit_to_title)
+	gallery.quit_game_requested.connect(_quit_game)
+	_register_animated(&"gallery", gallery)
+	_register_animated(&"log", update_log)
+	_register_animated(&"history", history_panel)
+	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
+	CloseX.attach(update_log, func() -> void: menus.close(&"log"))
+	CloseX.attach(history_panel, func() -> void: menus.close(&"history"))
+	hud.menu_toggled.connect(menus.toggle)
+	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
+	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
+	CloseX.attach(index_panel, index_panel.close_panel)
+	CloseX.attach(display_panel, func() -> void: menus.close(&"settings"))
+	CloseX.attach(feedback_panel, func() -> void: menus.close(&"feedback"))
+
+
+## Register a menu with the shared open/close wipe (MenuAnim). Panels that position themselves on open (Settings, Feedback)
+## pass their own open/close, which run first; the wipe then plays on top.
+func _register_animated(kind: StringName, panel: Control, on_open: Callable = Callable(), on_close: Callable = Callable(), group: StringName = &"") -> void:
+	var anim: MenuAnim = MenuAnim.attach(panel)
+	menus.register(kind, anim.is_open,
+		func() -> void:
+			if on_open.is_valid():
+				on_open.call()
+			anim.open(),
+		func() -> void:
+			if on_close.is_valid():
+				on_close.call()
+			anim.close(),
+		group)
+
+
+## Pause menu footer. Both save first; the quit-to-title also lets the next boot show the title again.
+func _quit_to_title() -> void:
+	Save.save_game()
+	TitleScreen.go_to_title(get_tree())
+
+
+func _quit_game() -> void:
+	Save.save_game()
+	get_tree().quit()
+
+
+## A gallery tile was picked: open that section (the router closes the gallery), or show Travel in the zone panel.
+func _on_gallery_chosen(kind: StringName) -> void:
+	if kind == &"travel":
+		menus.close(&"gallery")
+		hud.open_travel()
 	else:
-		display_panel.close()
-		feedback_panel.open()
+		menus.open(kind)
+
+
+## Sections the tutorial has not unlocked yet show as locked tiles.
+func _section_locked(kind: StringName) -> bool:
+	var ob: Onboarding = GameState.onboarding
+	match kind:
+		&"stats", &"history": return not ob.is_unlocked(Onboarding.F_DEWDROP)
+		&"attributes", &"upgrades": return not ob.is_unlocked(Onboarding.F_UPGRADES)
+		&"relics": return GameState.relics == null or not ob.is_unlocked(Onboarding.F_RELICS)
+	return false
+
+
+func _toggle_feedback() -> void:
+	menus.toggle(&"feedback")

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MasteryConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/mastery_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+xp_per_press = 1.0
+first_level_xp = 12.0
+xp_growth = 1.35
+max_level = 25
+yield_per_level = 0.001
+crit_chance_per_level = 0.001
+crit_damage_per_level = 0.04

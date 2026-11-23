@@ -6,9 +6,21 @@ extends Label
 ## inheritance (that is why it once fell back to the thin default font).
 
 static var ui_theme: Theme  # set by fx_bus from the Main control's theme
+## Set by the HUD: true if a screen point is under an open menu panel. The overlay layer sits above the HUD, so world
+## popups ("+93.3") would draw over menus; they are hidden there instead. Popups the HUD spawns itself are never hidden.
+static var under_menu: Callable = Callable()
 
-static func spawn(parent: Node, pos: Vector2, amount: float, big := false) -> PopupNumber:
-	return spawn_text(parent, pos, "+" + NumberFormat.short(amount), big)
+static func _covered(parent: Node, pos: Vector2) -> bool:
+	return parent is CanvasLayer and under_menu.is_valid() and bool(under_menu.call(pos))
+
+## A crit popup ends in "!" and takes the crit gold, so it reads apart from a plain big number.
+const CRIT_COLOR: Color = Color("f2e6a0")
+
+static func spawn(parent: Node, pos: Vector2, amount: float, big := false, crit := false) -> PopupNumber:
+	var p: PopupNumber = spawn_text(parent, pos, "+" + NumberFormat.short(amount) + ("!" if crit else ""), big)
+	if crit:
+		p.add_theme_color_override("font_color", CRIT_COLOR)
+	return p
 
 ## Same popup with ready-made text (BigNum gains, "+3 Prestige"). Under a Control parent the theme is inherited.
 static func spawn_text(parent: Node, pos: Vector2, label: String, big := false) -> PopupNumber:
@@ -24,6 +36,7 @@ static func spawn_text(parent: Node, pos: Vector2, label: String, big := false) 
 	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(p)
+	p.visible = not _covered(parent, p.position)
 	p._run(big)
 	return p
 
@@ -53,6 +66,7 @@ static func spawn_running(parent: Node, pos: Vector2, amount: float) -> PopupNum
 	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(p)
+	p.visible = not _covered(parent, p.position)
 	p.pivot_offset = p.size / 2.0
 	return p
 

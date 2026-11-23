@@ -6,11 +6,14 @@
 script = ExtResource("1")
 id = &"zone1"
 display_name = "Meadow"
+description = "A quiet clearing where every pad is a flower. Press, walk, and let Dewdrops climb until the Clover gate opens."
+theme_role = 4
 order = 0
-gate_stat = &"reb"
+gate_stat = &"clover"
 gate_threshold = 9.0
 next_zone = &"larkmoor"
 base_cash_per_second = 0.25
 press_rate = 0.5
+boost_stat = &"dewdrop"
 palette_id = &"meadow"
-pad_buttons = PackedStringArray("m1", "m2", "m3", "r1", "r2")
+pad_buttons = PackedStringArray("sprout_1", "sprout_2", "sprout_3", "clover_1", "clover_2", "clover_3")

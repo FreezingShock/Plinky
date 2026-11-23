@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/area_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"stones"
+zone = &"zone1"
+display_name = "Standing Stones"
+order = 1
+icon = "stones"
+theme_role = 5
+blurb = "A ring of standing stones. Pads here turn Dewdrops into Clover Leaves."
+pad_buttons = PackedStringArray("clover_1", "clover_2", "clover_3")

@@ -22,6 +22,9 @@ func run(t: Object) -> void:
 	m.wind_rain_boost = cfg.wind_rain_boost
 	m.gust_period_a = cfg.gust_period_a
 	m.gust_period_b = cfg.gust_period_b
+	m.daylight_fraction = cfg.daylight_fraction
+	m.golden_reach = cfg.golden_reach
+	m.golden_floor = cfg.golden_floor
 
 	# Time of day: noon is bright, midnight is dark, the day repeats.
 	m.start_phase = 0.5
@@ -36,6 +39,19 @@ func run(t: Object) -> void:
 	t.near(m.dusk(0.0), cfg.dusk_strength, 1e-6, "sunrise has the full warm band")
 	m.start_phase = 0.5
 	t.ok(m.dusk(0.0) < 0.001, "noon has no warm band")
+	m.start_phase = cfg.start_phase
+
+	# Golden light: full at the horizon, a floor at noon, none at night, and the 08:08 look sits well above the floor.
+	m.start_phase = 0.26
+	t.ok(m.golden(0.0) > 0.9, "sunrise is full golden light")
+	m.start_phase = 0.5
+	t.near(m.golden(0.0), cfg.golden_floor, 1e-3, "noon keeps the golden floor")
+	t.ok(m.rays(0.0) < 0.001, "no god rays at noon")
+	m.start_phase = 0.0
+	t.ok(m.golden(0.0) < 0.001, "no golden light at midnight")
+	m.start_phase = 0.366
+	t.ok(m.golden(0.0) > cfg.golden_floor + 0.2, "mid morning is still well into the golden look")
+	t.ok(m.golden(0.0) > m.low_sun(0.0), "golden holds longer than the low sun")
 	m.start_phase = cfg.start_phase
 
 	# Sample two days: values stay in range and move a little at a time (no pops).
@@ -54,7 +70,7 @@ func run(t: Object) -> void:
 		var w: float = m.wind(tt)
 		if n < 0.0 or n > 1.0 or r < 0.0 or r > cfg.rain_max + 1e-6 or w < 0.0 or w > 1.0:
 			in_range = false
-		if absf(n - prev_n) > 0.02 or absf(r - prev_r) > 0.2 or absf(w - prev_w) > 0.8:
+		if absf(n - prev_n) > 0.02 * 720.0 / cfg.day_seconds * 1.4 or absf(r - prev_r) > 0.2 or absf(w - prev_w) > 0.8:
 			smooth = false
 		if r > 0.0:
 			rain_secs += 1

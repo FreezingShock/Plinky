@@ -22,11 +22,16 @@ const TREE_KINDS: Array[String] = ["oak", "pine"]
 const GRASS: StringName = &"grass"
 const SAND: StringName = &"sand"
 const WOOD: StringName = &"wood"
+const CINDER: StringName = &"cinder"   # the Ember Quarry's loose, crunchy rock; its pale roads are packed dust (sand)
+
+## The quarry road is one cream colour (assets/art/zone2/quarry/ground.png); the rest of the floor is cinder.
+const QUARRY_ROAD: Color = Color8(241, 217, 181)
 
 static var _placements: String = MEADOW_PLACEMENTS
 static var _ground_path: String = MEADOW_GROUND
 static var _offset: Vector2i = MEADOW_OFFSET
 static var _loaded: bool = false
+static var _cinder_zone: bool = false          # true when the ground under the foot is quarry rock, not meadow turf
 static var _wood: Array[Vector2] = []
 static var _water: Array[Dictionary] = []     # {c: Vector2, r: Vector2, w: float}
 static var _trees: Array[Vector2] = []
@@ -42,6 +47,7 @@ static func use(placements: String, ground: String, offset: Vector2i) -> void:
 	_placements = p
 	_ground_path = g
 	_offset = offset
+	_cinder_zone = g.contains("/zone2/")
 	_loaded = false
 	_wood.clear()
 	_water.clear()
@@ -77,18 +83,21 @@ static func _load() -> void:
 
 
 static func _is_sand(c: Color) -> bool:
+	if _cinder_zone:
+		return c.is_equal_approx(QUARRY_ROAD)
 	return c.is_equal_approx(SAND_A) or c.is_equal_approx(SAND_B)
 
 
-## Surface under a foot at texel p: &"wood", &"sand" or &"grass".
+## Surface under a foot at texel p: &"wood", &"sand", &"grass", or &"cinder" in the quarry.
 static func surface_at(p: Vector2) -> StringName:
 	_load()
 	for w: Vector2 in _wood:
 		var d: Vector2 = p - w
 		if (d.x * d.x) / (WOOD_RX * WOOD_RX) + (d.y * d.y) / (WOOD_RY * WOOD_RY) <= 1.0:
 			return WOOD
+	var base: StringName = CINDER if _cinder_zone else GRASS
 	if _ground == null:
-		return GRASS
+		return base
 	var cx: int = int(floorf(p.x)) + _offset.x
 	var cy: int = int(floorf(p.y)) + _offset.y
 	var hits: int = 0
@@ -104,7 +113,7 @@ static func surface_at(p: Vector2) -> StringName:
 				hits += 1
 	if total > 0 and float(hits) / float(total) >= SAND_MIN_FRACTION:
 		return SAND
-	return GRASS
+	return base
 
 
 ## 0..1: how loud the shore should be at p. 1 at the water's edge, 0 at WATER_RANGE texels away.

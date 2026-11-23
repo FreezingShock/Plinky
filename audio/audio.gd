@@ -13,6 +13,15 @@ const BUSES: Array[StringName] = [BUS_MUSIC, BUS_SFX, BUS_UI, BUS_AMB]
 const SETTINGS_PATH: String = "user://audio.cfg"
 const DIR: String = "res://assets/audio/"
 
+## Fired for sounds worth a caption (Settings > Access > Sound subtitles). ui/subtitle_bar.gd listens.
+signal cue(text: String)
+
+## Sound name (or name prefix, ending in _) -> caption. Constant clicks, hovers and ticks are left out on purpose.
+const CAPTIONS: Dictionary = {
+	"pad_big": "[Critical press]", "gate_open": "[Gate opens]", "rebirth": "[Rebirth chime]", "ui_back": "[Can't do that yet]",
+	"bird_": "[Birdsong]", "step_": "[Footsteps]", "shore_amb": "[Waves on the shore]",
+}
+
 const POOL_SIZE: int = 14
 const MAX_SAME_VOICES: int = 4              # rapid spam of one sound steals the oldest instead of stacking
 const SETTINGS_VERSION: int = 2             # older saved volumes (pre level fix) are ignored
@@ -25,6 +34,7 @@ const SHORE_DB: float = -4.0                 # at the water's edge; meadow_amb s
 const BIRD_DB: float = -9.0
 const BIRD_GAP_S: Vector2 = Vector2(2.5, 7.0)
 const BIRD_VARIANTS: int = 5
+const MEADOW_AMB_DB: float = -6.0            # the original meadow loop, under the layered scape
 const DEFAULT_VOL: Dictionary = {&"Master": 0.7, &"Music": 0.2, &"SFX": 0.6, &"UI": 0.5, &"Ambience": 0.22}
 
 var _pool: Array[AudioStreamPlayer] = []
@@ -33,6 +43,7 @@ var _cache: Dictionary = {}
 var _music: Array[AudioStreamPlayer] = []   # two players, crossfaded
 var _music_active: int = 0
 var _amb: AudioStreamPlayer
+var _scape: AmbientScape      # layered day/night/season loops and the bird density, see audio/ambient_scape.gd
 var _loading: AudioStreamPlayer
 var _shore: AudioStreamPlayer
 var _meadow_world: bool = true      # shore and birds play everywhere except the quarry (on until a quarry zone says otherwise)
@@ -44,6 +55,11 @@ var _bird_clock: float = 3.0
 var _combo: int = 0
 var _last_press_ms: int = -100000
 var _last_tick_ms: int = 0
+## Pad click limit (Settings > Audio): after `click_limit_count` presses in a row the click goes quiet until the streak resets.
+var click_limit_on: bool = true
+var click_limit_count: int = 5
+var _streak: int = 0
+const STREAK_GAP_MS: int = 1500
 var _zone: StringName = &""
 var _vol: Dictionary = DEFAULT_VOL.duplicate()
 var _muted: bool = false
@@ -67,6 +83,8 @@ func _ready() -> void:
 	_amb = AudioStreamPlayer.new()
 	_amb.bus = BUS_AMB
 	add_child(_amb)
+	_scape = AmbientScape.new()
+	add_child(_scape)
 	_loading = AudioStreamPlayer.new()
 	_loading.bus = BUS_UI
 	add_child(_loading)
@@ -87,6 +105,20 @@ func _ready() -> void:
 ## cold start where the signal fired before the autoload was listening.
 func start(zone_id: StringName) -> void:
 	set_zone(zone_id)
+	preload_all()
+
+
+## Loads every sound effect and ambience into the cache now (about 1 MB), so the first bird chirp, footstep or relic
+## sound never loads from disk mid-play. A one-off 170 ms frame in the bench fell at an unpredictable moment on a
+## still scene, which is what a random first use looks like. Music loads when its zone starts.
+func preload_all() -> void:
+	for folder: String in ["sfx", "amb"]:
+		var dir: DirAccess = DirAccess.open(DIR + folder)
+		if dir == null:
+			continue
+		for f: String in dir.get_files():
+			if f.ends_with(".ogg") or f.ends_with(".ogg.import"):
+				_stream(f.trim_suffix(".import").get_basename(), folder)
 
 
 # ---------------------------------------------------------------- buses and settings
@@ -183,6 +215,9 @@ func play(name: StringName, pitch := 1.0, vol_db := 0.0, bus: StringName = BUS_S
 	var s: AudioStream = _stream(String(name))
 	if s == null:
 		return
+	var caption: String = caption_for(name)
+	if caption != "":
+		cue.emit(caption)
 	var same: int = 0
 	var oldest: AudioStreamPlayer = null
 	for q in _pool:
@@ -203,10 +238,27 @@ func play(name: StringName, pitch := 1.0, vol_db := 0.0, bus: StringName = BUS_S
 	p.play()
 
 
+## The subtitle for a sound name, or "" when it has none. relic_<rarity> reads "[Relic chime: Epic]".
+static func caption_for(name: StringName) -> String:
+	var n: String = String(name)
+	if n.begins_with("relic_"):
+		return "[Relic chime: %s]" % n.substr(6).capitalize()
+	if CAPTIONS.has(n):
+		return String(CAPTIONS[n])
+	for prefix: String in CAPTIONS:
+		if prefix.ends_with("_") and n.begins_with(prefix):
+			return String(CAPTIONS[prefix])
+	return ""
+
+
 ## Pad press. Rapid repeats climb the pentatonic ladder, so holding a pad plays a rising run.
 ## big (crit) uses its own sound and does not advance the ladder past where it is.
-func pad_press(big: bool, held := false) -> void:
+## tier (0 to 5, the press streak tier) swaps the click for that tier's richer version: gold bell, glass, a rainbow flip,
+## an FM chime, a shimmering galaxy tone. Quiet pad clicks silences all of them the same way.
+func pad_press(big: bool, held := false, tier := 0) -> void:
 	var now: int = Time.get_ticks_msec()
+	_streak = 1 if now - _last_press_ms > STREAK_GAP_MS else _streak + 1
+	var quiet: bool = is_quiet()
 	if now - _last_press_ms <= COMBO_WINDOW_MS:
 		_combo = mini(_combo + 1, COMBO_STEPS.size() - 1)
 	else:
@@ -214,13 +266,52 @@ func pad_press(big: bool, held := false) -> void:
 	_last_press_ms = now
 	var semis: int = COMBO_STEPS[_combo]
 	var pitch: float = pow(2.0, float(semis) / 12.0)
+	var click: StringName = &"pad_press"
+	if tier > 0 and _stream("pad_press_%d" % tier) != null:
+		click = StringName("pad_press_%d" % tier)
 	if big:
 		play(&"pad_big", pow(2.0, float(COMBO_STEPS[mini(_combo, 4)]) / 12.0), 0.0)
-	else:
-		play(&"pad_press", pitch, -2.0 - float(_combo) * 0.15)
-	if held and now - _last_tick_ms > 70:
+		if tier > 0 and not quiet:
+			play(click, pitch, -6.0)
+	elif not quiet:
+		play(click, pitch, -2.0 - float(_combo) * 0.15)
+	if held and not quiet and now - _last_tick_ms > 70:
 		_last_tick_ms = now
 		play(&"popup_tick", 1.0 + float(_combo) * 0.04, -9.0)
+
+
+## True while the Quiet pad clicks setting has gone silent for the current run of presses.
+func is_quiet() -> bool:
+	return click_limit_on and _streak > click_limit_count
+
+
+## A press streak just reached `tier` (1 to 5): a rising flourish, richer each tier. Rare, so it ignores the click limit.
+func tier_up(tier: int) -> void:
+	var name: StringName = StringName("tier_up_%d" % clampi(tier, 1, 5))
+	play(name, 1.0, -1.0, BUS_SFX, false)
+
+
+## A relic pulse hit its order-th neighbour: a soft double ping, a step higher for each one so the chain rises.
+const PULSE_STEPS: Array[int] = [0, 4, 7, 12]
+func pulse_echo(order: int) -> void:
+	if is_quiet():
+		return
+	play(&"pulse_echo", pow(2.0, float(PULSE_STEPS[clampi(order, 0, PULSE_STEPS.size() - 1)]) / 12.0), -4.0)
+
+
+## The chain broke at `tier`: a small falling sigh, quiet.
+func streak_lost(_tier: int) -> void:
+	play(&"streak_lost", 1.0, -7.0, BUS_SFX, false)
+
+
+## Stepping off a pad (or letting go of it) starts the click count again.
+func reset_press_streak() -> void:
+	_streak = 0
+
+
+func set_click_limit(on: bool, count: int) -> void:
+	click_limit_on = on
+	click_limit_count = clampi(count, 1, 10)
 
 
 func popup_tick() -> void:
@@ -237,13 +328,14 @@ func relic(rarity: StringName) -> void:
 
 
 var _step_i: int = 0
-const STEP_DB: Dictionary = {&"grass": -6.0, &"sand": -4.0, &"wood": -8.0}   # wood knocks hottest, so it sits lowest
-## Call once per footfall. surface is &"grass", &"sand" or &"wood" (MeadowSites.surface_at); four
+const STEP_DB: Dictionary = {&"grass": -6.0, &"sand": -4.0, &"wood": -8.0, &"cinder": -5.0}   # wood knocks hottest, so it sits lowest
+## Call once per footfall. surface is &"grass", &"sand", &"wood" or &"cinder" (MeadowSites.surface_at); four
 ## variants each, never the same twice in a row. Unknown surfaces fall back to the old plain step.
-func footstep(surface: StringName = &"") -> void:
+## extra_db makes a step heavier or lighter than a walking one: a sprint adds a little, a hard landing a lot.
+func footstep(surface: StringName = &"", extra_db: float = 0.0) -> void:
 	_step_i = (_step_i + 1 + randi() % 3) % 4
 	var name: StringName = StringName("step_%s_%d" % [surface, _step_i]) if STEP_DB.has(surface) else StringName("step_%d" % _step_i)
-	play(name, randf_range(0.92, 1.08), STEP_DB.get(surface, -6.0) as float, BUS_SFX, false)
+	play(name, randf_range(0.92, 1.08), (STEP_DB.get(surface, -6.0) as float) + extra_db, BUS_SFX, false)
 
 
 ## Positional ambience. The walker reports how close the shore and the trees are (0..1 each, from
@@ -270,11 +362,14 @@ func world_step(delta: float) -> void:
 		_shore.volume_db = SHORE_DB + linear_to_db(_water_gain)
 	elif _shore.playing:
 		_shore.stop()
-	if _tree_gain > 0.05:
+	var birds: float = _scape.bird_scale() if _scape != null else 1.0
+	if _meadow_world and _amb.playing:
+		_amb.volume_db = MEADOW_AMB_DB + linear_to_db(maxf(_scape.day_gain(), 0.0001))   # the old loop has birds baked in: day only
+	if _tree_gain > 0.05 and birds > 0.02:
 		_bird_clock -= delta
 		if _bird_clock <= 0.0:
-			_bird_clock = randf_range(BIRD_GAP_S.x, BIRD_GAP_S.y) / (0.4 + _tree_gain)   # more trees, shorter pauses
-			play(StringName("bird_%d" % (randi() % BIRD_VARIANTS)), randf_range(0.85, 1.2), BIRD_DB + linear_to_db(0.3 + 0.7 * _tree_gain), BUS_AMB, false)
+			_bird_clock = randf_range(BIRD_GAP_S.x, BIRD_GAP_S.y) / ((0.4 + _tree_gain) * birds)   # more trees, shorter pauses
+			play(StringName("bird_%d" % (randi() % BIRD_VARIANTS)), randf_range(0.85, 1.2), BIRD_DB + linear_to_db((0.3 + 0.7 * _tree_gain) * minf(birds, 1.0)), BUS_AMB, false)
 	else:
 		_bird_clock = minf(_bird_clock, 1.5)
 
@@ -290,6 +385,7 @@ func _start_shore() -> void:
 		return
 	if s is AudioStreamOggVorbis:
 		(s as AudioStreamOggVorbis).loop = true
+	cue.emit(String(CAPTIONS["shore_amb"]))
 	_shore.stream = s
 	_shore.volume_db = -60.0
 	_shore.play(randf() * 15.0)   # random start so re-entering the shore never sounds the same
@@ -336,13 +432,16 @@ func set_zone(zone_id: StringName) -> void:
 	_zone = zone_id
 	var quarry: bool = String(zone_id).begins_with("quarry") or zone_id == &"zone2"
 	_meadow_world = not quarry
+	if _scape != null:
+		_scape.set_area(AmbientMix.area_of(zone_id))
 	_crossfade_music("quarry" if quarry else "meadow")
+	cue.emit("[Quarry music]" if quarry else "[Meadow music]")
 	var a: AudioStream = _stream("quarry_amb" if quarry else "meadow_amb", "amb")
 	if a != null:
 		if a is AudioStreamOggVorbis:
 			(a as AudioStreamOggVorbis).loop = true
 		_amb.stream = a
-		_amb.volume_db = -3.0
+		_amb.volume_db = -3.0 if quarry else MEADOW_AMB_DB
 		_amb.play()
 
 

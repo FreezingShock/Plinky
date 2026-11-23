@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="StatDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/stat_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"sunlight"
+display_name = "Sunlight"
+tier = 0
+start = 10.0
+zones = PackedStringArray("zone1", "larkmoor")
+passive = true
+income_boost_stat = &"dewdrop"
+income_factor_per_unit = 0.0
+gain_boost_stat = &""
+prestige_boosts_income = true
+resets_on_rebirth = true
+resets_on_bloom = true
+relics_boost_income = true
+relics_boost_gain = false

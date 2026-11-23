@@ -15,7 +15,7 @@ static func ensure() -> void:
 	if _ready:
 		return
 	_ready = true
-	# Keys for settings, relics, upgrades and recenter are rebindable, so they live in Keybinds; only the pad lives here.
+	# Keys for settings, relics, upgrades, recenter, jump and crouch are rebindable, so they live in Keybinds; only the pad lives here.
 	for pair: Array in [
 			[&"plinky_left", [KEY_A, KEY_LEFT], [JOY_BUTTON_DPAD_LEFT], [JOY_AXIS_LEFT_X, -1.0]],
 			[&"plinky_right", [KEY_D, KEY_RIGHT], [JOY_BUTTON_DPAD_RIGHT], [JOY_AXIS_LEFT_X, 1.0]],
@@ -29,11 +29,14 @@ static func ensure() -> void:
 			[&"plinky_settings", [], [JOY_BUTTON_START], []],
 			[&"plinky_relics", [], [JOY_BUTTON_Y], []],
 			[&"plinky_upgrades", [], [JOY_BUTTON_X], []],
+			[&"plinky_stats", [], [JOY_BUTTON_BACK], []],
+			[&"plinky_attributes", [], [JOY_BUTTON_LEFT_STICK], []],
 			[&"plinky_tab_prev", [], [JOY_BUTTON_LEFT_SHOULDER], []],
 			[&"plinky_tab_next", [], [JOY_BUTTON_RIGHT_SHOULDER], []],
 			[&"plinky_zoom_in", [KEY_EQUAL, KEY_KP_ADD, KEY_PAGEUP], [JOY_BUTTON_RIGHT_SHOULDER], []],
 			[&"plinky_zoom_out", [KEY_MINUS, KEY_KP_SUBTRACT, KEY_PAGEDOWN], [JOY_BUTTON_LEFT_SHOULDER], []],
-			[&"plinky_recenter", [KEY_HOME], [JOY_BUTTON_RIGHT_STICK], []]]:
+			[&"plinky_recenter", [KEY_HOME], [JOY_BUTTON_RIGHT_STICK], []],
+			[&"plinky_jump", [], [JOY_BUTTON_A], []]]:
 		var action: StringName = pair[0]
 		if not InputMap.has_action(action):
 			InputMap.add_action(action, DEADZONE)
@@ -50,6 +53,12 @@ static func ensure() -> void:
 			em.axis = (pair[3] as Array)[0] as JoyAxis
 			em.axis_value = (pair[3] as Array)[1]
 			InputMap.action_add_event(action, em)
+
+
+## Focus is dropped only on the frame a menu closes, so its pad focus ring does not linger on the HUD. Dropping it
+## every frame cancelled mouse clicks: a Button takes focus on press, and losing focus before release eats the click.
+static func should_release_focus(menu_just_closed: bool, has_focus_owner: bool) -> bool:
+	return menu_just_closed and has_focus_owner
 
 
 ## Walk input, screen space, length at most 1 (stick tilt gives partial speed). Zero while a menu is open.

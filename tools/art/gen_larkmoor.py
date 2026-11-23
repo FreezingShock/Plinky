@@ -12,6 +12,10 @@ def log(*a): print('[%5.1fs]' % (time.time() - T0), *a, flush=True)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import larkmoor_layout as LAY
+import depth_pass, grass_tex
+GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
+DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
+DEPTH = None
 OUT = os.environ.get('LARK_OUT') or os.path.join(HERE, '..', '..', 'assets', 'art', 'zone1b', 'larkmoor')
 os.makedirs(OUT, exist_ok=True)
 W, H = LAY.W, LAY.H                       # the whole world is one canvas (1520x920); texel coords = canvas pixels
@@ -283,16 +287,30 @@ def make_mush(rng):
         return d, m
     return f, (8, 8), 10, 6.0
 def make_flower(rng):
-    h = rng.uniform(4.5, 8.5); lx, ly = rng.uniform(-1.2, 1.2), rng.uniform(-1.2, 1.2); pm = rng.choice((M_PETA, M_PETB, M_PETA))
+    """Layered bloom: two leaves on the stem, a ring of cupped outer petals (darker underside), a raised inner ring
+    in a second tint, and a centre. Each layer is a different height and material so the depth pass can separate them."""
+    h = rng.uniform(5.0, 9.0); lx, ly = rng.uniform(-1.2, 1.2), rng.uniform(-1.2, 1.2)
+    outer, inner = rng.choice(((M_PETB, M_PETA), (M_PETA, M_PETA), (M_PETB, M_PAPER), (M_PETA, M_PAPER)))
+    ph = rng.uniform(0, 6.28); np_ = rng.randint(5, 7); leaf = [rng.uniform(0, 6.28) for _ in range(2)]
     def f(x, y, z):
         d = sdf_capsule(x, y, z, (0, 0, 0), (lx, ly, h), .45); m = np.full(x.shape, M_STEM, np.int16)
-        c = (lx, ly, h + .6)
-        for k in range(5):
-            a_ = k * 1.2566; dp = sdf_sphere(x, y, z, (c[0] + math.cos(a_) * 1.5, c[1] + math.sin(a_) * 1.5, c[2]), 1.05)
-            m = np.where(dp < d, pm, m); d = np.minimum(d, dp)
-        dc = sdf_sphere(x, y, z, c, 1.0); m = np.where(dc < d, M_PAPER, m); d = np.minimum(d, dc)
+        for k, a_ in enumerate(leaf):                       # leaves: flat blades that arc out and down from the stem
+            t = .35 + .2 * k; bx, by, bz = lx * t, ly * t, h * t
+            dl = sdf_capsule(x, y, z, (bx, by, bz), (bx + math.cos(a_) * 3.6, by + math.sin(a_) * 3.6, bz + 1.6 - k), .55, .12)
+            m = np.where(dl < d, M_GRASS, m); d = np.minimum(d, dl)
+        c = (lx, ly, h + .5)
+        for k in range(np_):                                # outer ring: petals splay out and cup up
+            a_ = ph + k * 6.2832 / np_; ca, sa = math.cos(a_), math.sin(a_)
+            dp = sdf_capsule(x, y, z, (c[0] + ca * .6, c[1] + sa * .6, c[2] - .2), (c[0] + ca * 2.3, c[1] + sa * 2.3, c[2] + .9), .85, .6)
+            m = np.where(dp < d, outer, m); d = np.minimum(d, dp)
+        for k in range(4):                                  # inner ring: smaller, raised, rotated half a step
+            a_ = ph + .8 + k * 1.5708; ca, sa = math.cos(a_), math.sin(a_)
+            dp = sdf_capsule(x, y, z, (c[0] + ca * .3, c[1] + sa * .3, c[2] + .5), (c[0] + ca * 1.1, c[1] + sa * 1.1, c[2] + 1.5), .7, .5)
+            m = np.where(dp < d, inner, m); d = np.minimum(d, dp)
+        dc = sdf_sphere(x, y, z, (c[0], c[1], c[2] + 1.2), .8); m = np.where(dc < d, M_PAPER, m); d = np.minimum(d, dc)
         return d, m
-    return f, (4, 4), h + 3, 2.0
+    return f, (5, 5), h + 4, 2.4
+
 def make_tuft(rng):
     bl = [(rng.uniform(-2.2, 2.2), rng.uniform(-2.2, 2.2), rng.uniform(4.5, 9), rng.uniform(-2.2, 2.2), rng.uniform(-2.2, 2.2)) for _ in range(rng.randint(5, 8))]
     def f(x, y, z):
@@ -461,7 +479,15 @@ anchors.append(dict(kind='arch', u=GATE2[0], v=GATE2[1], sx=LAY.HOLLOW_GATE[0], 
 anchors.append(dict(kind='player_spawn', sx=LAY.SPAWN[0], sy=LAY.SPAWN[1], u=s2uv(*LAY.SPAWN)[0], v=s2uv(*LAY.SPAWN)[1]))
 for d_ in LAY.DISTRICTS: anchors.append(dict(kind='district', name=d_['name'], id=d_['id'], u=s2uv(*d_['c'])[0], v=s2uv(*d_['c'])[1], sx=d_['c'][0], sy=d_['c'][1]))
 for a_ in anchors:
-    if a_['kind'] in ('pad', 'gate', 'arch', 'player_spawn'): placed.append((a_['u'], a_['v'], 12 if a_['kind'] == 'pad' else 18 if a_['kind'] != 'player_spawn' else 8))
+    if a_['kind'] in ('pad', 'gate', 'arch', 'player_spawn'): placed.append((a_['u'], a_['v'], 14 if a_['kind'] == 'pad' else 18 if a_['kind'] != 'player_spawn' else 8))
+# a tier is a line of pads: keep the gaps between them clear, and the ground just south of each plate (a tall tree standing
+# there would hide the pad behind its crown)
+for d_ in LAY.DISTRICTS:
+    for (x0, y0), (x1, y1) in zip(d_['pads'], d_['pads'][1:]):
+        placed.append((*s2uv((x0 + x1) / 2, (y0 + y1) / 2), 12))
+    for (sx, sy) in d_['pads']:
+        for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
+            placed.append((*s2uv(sx + ox_, sy + oy_), 9))
 # the two gateways (onboarding arch in the south, Emberwatch gate in the north), framing the walk-through
 for _g in (GATE, GATE2): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False)
 # landmarks first so groves flow around them
@@ -502,8 +528,8 @@ log('trees/rocks placed', len(placed))
 def cluster(kind, cu_, cv_, spread, n, **kw):
     for _ in range(n):
         u, v = cu_ + prng.gauss(0, spread), cv_ + prng.gauss(0, spread)
-        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > 5.5 and float(terrain_h(u, v)) < 10:
-            put(kind, u, v, prng.uniform(.85, 1.2), count=False, sid=1)
+        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > (7.5 if kind == 'flower' else 5.5) and float(terrain_h(u, v)) < 10:
+            put(kind, u, v, prng.uniform(.85, 1.2) * (1.45 if kind == 'flower' else 1.0), count=False, sid=1)
 for _ in range(150 if not FAST else 8): cluster('tuft', prng.uniform(60, 760), prng.uniform(60, 760), 7, prng.randint(3, 7))
 for _ in range(100 if not FAST else 6): cluster('flower', prng.uniform(60, 760), prng.uniform(60, 760), 6, prng.randint(5, 10))
 for _ in range(50 if not FAST else 0): cluster('flower', *SC((1030 + prng.uniform(-110, 110), 560 + prng.uniform(-50, 50))), 8, prng.randint(8, 14))   # Thistle Rise fields
@@ -563,7 +589,8 @@ pw = 5.4 + 1.6 * (n1 - .5)
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
-lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+else: lt = .13 + .87 * diff + (tone - .5) * .10 * (mat == T_GRASS) + (n2 - .5) * .06 * (mat != T_GRASS)    # grass detail comes from grass_tex.py
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .07 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
@@ -619,19 +646,42 @@ light = np.where(isprop | (np.arange(len(u_)) >= len(T['u'])) & False, 0, 0).ast
 # lighting for props (terrain/plinth carried theirs in 'wl')
 pi_ = isprop
 dif = np.clip(allp['nx'] * L[0] + allp['ny'] * L[1] + allp['nz'] * L[2], 0, 1)
-lp = .14 + .86 * dif
+lp = .04 + 1.05 * dif
 tex = vn3(u_ * .8, v_ * .8, z_ * .8, 3) - .5
 lp += np.where(np.isin(mat_, [M_FOL, M_PINE, M_MOSS]), tex * .55 + (vn3(u_ * 2.2, v_ * 2.2, z_ * 2.2, 9) - .5) * .4, 0)
-lp += np.where(np.isin(mat_, [M_ROCK]), tex * .5, 0) + np.where(mat_ == M_BARK, tex * .35, 0) + np.where(mat_ == M_FOL, (z_ - 20) * .004, 0)
+lp += np.where(np.isin(mat_, [M_ROCK]), tex * .5, 0) + np.where(mat_ == M_BARK, tex * .35, 0) + np.where(mat_ == M_FOL, (z_ - 20) * .012, 0)
 lp += np.where(mat_ == M_CRYS, .10, 0) + np.where(mat_ == M_PAPER + 20, .5, 0) + np.where(mat_ == M_GRASS, (z_ - samp(H0, u_, v_)) * .035 - .05, 0)
 lp += np.where(mat_ == M_LILY, .12, 0)
 light = np.where(pi_, lp, lraw)
 # rock: moss caps on upward faces
 mossy = (mat_ == M_ROCK) & (nz_ > .62) & (vn3(u_ * .35, v_ * .35, z_ * .35, 12) > .38)
 mat_ = np.where(mossy, M_MOSS, mat_)
-light = np.where(shadow, light * .55 - .03, light)
+BAKED_SHADOW = .2   # fraction of the old cast-shadow darkening kept; the runtime sun (world/sky_shadows.gd) draws the moving shadows
+light = np.where(shadow, light * (1 - .45 * BAKED_SHADOW) - .03 * BAKED_SHADOW, light)
 sd_water = shadow & (mat_ == T_WATER)
 log('shaded')
+
+def far_layer(pad, hor0, skyd, ranges, farh):
+    """The far backdrop (sky and mountains) as its own image, `pad` texels wider than the scene each side, for the
+    runtime parallax layer. Same maths as the surroundings block of render_scene, rows above the horizon only."""
+    xs = np.arange(-pad, W + pad)
+    Yf, Xf = np.mgrid[0:farh, -pad:W + pad]
+    bayf = (BAYER[Yf & 3, Xf & 3] + .5) / 16
+    def dithf(ramp, l):
+        r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
+        hi = (f > bayf) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    HORf = hor0 + 3 * np.sin(Xf * .05)
+    res = dithf([0, 1, 1, 2], .15 + .75 * (Yf / float(skyd)) ** 1.2)
+    for k, (base, amp, fr, ramp, sd) in enumerate(ranges):
+        rid = 1 - np.abs(2 * fbm2(xs / float(fr) + k * 17, np.zeros(len(xs)), 4, sd) - 1)
+        top_ = base - amp * rid ** 1.3 - 14
+        below = Yf >= top_[None, :]
+        slope_ = np.roll(top_, -2) - np.roll(top_, 2)
+        lit = np.clip(.45 - slope_[None, :] * .09 + (vn2(Xf / 5.0, Yf / 4.0, sd + 3) - .5) * .35 + (Yf - top_[None, :]) * -.004, 0, .99)
+        res = np.where(below & (Yf < HORf), dithf(ramp, lit), res)
+    return res, HORf
+
+
 def render_scene(keep):
     global mat_
     order_pix = sy * W + sx
@@ -648,6 +698,9 @@ def render_scene(keep):
     img_l = np.zeros((H, W)); img_l[py, px] = light[win]
     img_aux = np.zeros((H, W)); img_aux[py, px] = allp['aux'][win]
     img_sh = np.zeros((H, W), bool); img_sh[py, px] = shadow[win]
+    img_z = np.zeros((H, W)); img_z[py, px] = z_[win]
+    img_nu = np.zeros((H, W)); img_nu[py, px] = allp['nx'][win]
+    img_nv = np.zeros((H, W)); img_nv[py, px] = allp['ny'][win]
     for _pass in range(2):          # close pin-holes left by steep surfaces (empty pixel with 3+ filled neighbours)
         emp = img_id == -1
         cnt = np.zeros((H, W), int); src = [None]
@@ -655,18 +708,28 @@ def render_scene(keep):
             nbm = np.roll(np.roll(img_id, dx, 1), dy, 0) != -1; cnt += nbm
         fillm = emp & (cnt >= 3)
         fillm[0, :] = fillm[-1, :] = False; fillm[:, 0] = fillm[:, -1] = False
-        for arr in (img_id, img_mat, img_l, img_aux, img_sh):
+        for arr in (img_id, img_mat, img_l, img_aux, img_sh, img_z, img_nu, img_nv):
             got = np.zeros_like(arr)
             done = np.zeros((H, W), bool)
             for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nb_ = np.roll(np.roll(arr, dx, 1), dy, 0); nid = np.roll(np.roll(img_id, dx, 1), dy, 0)
                 take = fillm & ~done & (nid != -1); got = np.where(take, nb_, got); done |= take
             arr[fillm] = got[fillm]
+    # depth pass (tools/art/depth_pass.py), computed once from the full scene so ground and sprites agree
+    global DEPTH
+    if DEPTH is None:
+        sun = np.array([LDIR[0] - LDIR[1], (LDIR[0] + LDIR[1]) / 2 - LDIR[2]]); sun /= np.linalg.norm(sun)
+        DEPTH = depth_pass.compute(img_z, img_id, sun, np.isin(img_mat, [M_PETA, M_PETB, M_STEM, M_PAPER, M_GRASS])) + (img_id.copy(),)
+    if DEPTH_ON:
+        # where the full scene had a prop, only the prop's own render takes the terms (the ground beneath it is hidden)
+        own = (DEPTH[3] < 10) | (img_id == DEPTH[3])
+        img_l = img_l + np.where(own, -DEPTH[0] + DEPTH[1] + DEPTH[2], 0)
     YY, XX = np.mgrid[0:H, 0:W]
     bay = (BAYER[YY & 3, XX & 3] + .5) / 16
     def dith(ramp, l, mask):
         r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
@@ -716,15 +779,31 @@ def render_scene(keep):
         wat = np.where((wat <= 2) & (YY % 4 == 0) & (vn2(XX / 3.0, YY / 1.0, 61) > .86), 3, wat)
         wat = np.where((vn2(XX / 3.0, YY / 1.2, 62) > .93) & (YY % 3 == 0), 4, wat)
         res = np.where(YY >= HOR, wat, res)
+        global FAR_CUT; FAR_CUT = emp & (YY < HOR)   # texels the runtime far layer draws (sky and mountains)
         out[emp] = res[emp]
     rgb = np.zeros((H, W, 3), np.uint8); rgb[:] = COLS[0]
     have = out >= 0; rgb[have] = COLS[out[have]]
 
+    global LAST_AUX; LAST_AUX = dict(nu=img_nu, nv=img_nv, l=img_l, mat=img_mat, out=out, z=img_z)
     return rgb, img_id
 tall_ids = np.array([t['id'] for t in TALL])
 rgb_full, id_full = render_scene(np.ones(len(u_), bool))
+AUX_FULL = LAST_AUX
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
+AUX_GND = LAST_AUX
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(OUT, 'ground.png'))
+# parallax layers: the far backdrop on its own (wider than the scene), and the ground with those texels cut to transparent
+_FARPAD = 64
+_far_idx, _ = far_layer(_FARPAD, 118, 118, ((122, 52, 70, [1, 2], 5), (126, 38, 48, [2, 2, 3], 6), (130, 24, 34, [2, 3, 3, 4], 7)), 128)
+_far_rgb = COLS[_far_idx].astype(np.uint8)
+Image.fromarray(_far_rgb).save(os.path.join(OUT, 'backdrop_far.png'))
+_fg = np.dstack([rgb_gnd, np.full(rgb_gnd.shape[:2], 255, np.uint8)])
+_fg[FAR_CUT, 3] = 0
+Image.fromarray(_fg).save(os.path.join(OUT, 'ground_fg.png'))
+
+# ground G-buffer (same contract as gen_meadow3d.py): normal + material + baked light, and world height
+depth_pass.write_relight_data(os.path.join(OUT, 'ground_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
+depth_pass.write_height(os.path.join(OUT, 'ground_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(OUT, 'sprites'), exist_ok=True); sprites = []
 for t in TALL:
     ys_, xs_ = np.nonzero(id_full == t['id'])
@@ -734,8 +813,9 @@ for t in TALL:
     m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
     spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(OUT, fn))
+    depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUX_FULL, y0, y1, x0, x1, m_)
     fx, fy = OXS0 + (t['u'] - t['v']), OYS0 + (t['u'] + t['v']) / 2 - t['z']
-    sprites.append(dict(file=fn, kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
+    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
 nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)

@@ -2,8 +2,8 @@ class_name BootScreen
 extends Control
 ## Boot scene and the project's main scene. Shows the animated backdrop, logo, the walker walking along a
 ## progress bar, and rotating tips. The bar is driven by threaded loading of the game's scenes. When loading
-## has finished and the screen has been up for MIN_SHOW_SECONDS, it dissolves to main.tscn using the
-## already loaded resource.
+## has finished and the screen has been up for MIN_SHOW_SECONDS, it dissolves to the title screen (or straight to
+## main.tscn with --skip-title) using the already loaded resource.
 
 const GAME_SCENE: String = "res://main.tscn"
 const MEADOW_SCENE: String = "res://world/meadow3d_scene.tscn"
@@ -59,6 +59,8 @@ var _tip_index: int = 0
 var _tip_timer: float = 0.0
 var _tip_blank: float = 0.0
 var _pal: PackedColorArray
+var _version: VersionLink
+var _log: PanelOverlay
 
 
 func _ready() -> void:
@@ -71,6 +73,8 @@ func _ready() -> void:
 	_motes = BootMotes.new()
 	add_child(_motes)
 	_build_column()
+	RelicStyle.set_palette(_pal)
+	_log = PanelOverlay.host(self, UpdateLogPanel.new(), _pal[0], load(THEME_PATH) as Theme)
 
 	# Threaded loads. Weights are rough file sizes. Each task reports its own progress, so the bar is honest.
 	_loader = BootLoader.new()
@@ -86,6 +90,11 @@ func _ready() -> void:
 	_tip_index = randi() % TIPS.size()
 	_tip_label.text = TIPS[_tip_index]
 	_place_walker(0.0)
+
+
+## The version number opens the Update Log over the loading screen.
+func _open_log() -> void:
+	_log.toggle()
 
 
 ## Centred column: logo, tagline, walker track, percent, status, then the tip card at the bottom.
@@ -161,6 +170,13 @@ func _build_column() -> void:
 	_status.add_theme_constant_override("outline_size", 1)
 	_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_status)
+
+	_version = VersionLink.new()
+	_version.rest_color = _pal[7]
+	_version.accent_color = _pal[5]
+	_version.outline_color = _pal[0]
+	_version.pressed.connect(_open_log)
+	add_child(_version)
 
 	var flex := Control.new()
 	flex.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -238,7 +254,8 @@ func _update_loading(delta: float) -> void:
 		_status.text = "Opening the gate"
 	else:
 		_status.text = "Ready"
-	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= MIN_SHOW_SECONDS:
+	# Stays put while the Update Log is open, so reading it is never cut short.
+	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= MIN_SHOW_SECONDS and not _log.is_open():
 		_start_leave()
 
 
@@ -256,9 +273,13 @@ func _start_leave() -> void:
 		_phase = Phase.FAILED
 		push_error("Boot: %s did not load as a PackedScene" % GAME_SCENE)
 		return
+	# Dev and test launches (--skip-title) go straight into the game; everyone else lands on the title screen.
+	var skip: bool = TitleScreen.skip_requested()
+	TitleScreen.game_scene = game
+	var next: PackedScene = game if skip else (load(TitleScreen.TITLE_SCENE) as PackedScene)
 	var tween := create_tween()
 	tween.tween_method(_bg.set_dissolve, 0.0, 1.0, DISSOLVE_SECONDS)
-	tween.tween_callback(func() -> void: get_tree().change_scene_to_packed(game))
+	tween.tween_callback(func() -> void: get_tree().change_scene_to_packed(next))
 
 
 func _animate_walker(delta: float) -> void:

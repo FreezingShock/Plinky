@@ -6,14 +6,23 @@
 script = ExtResource("1")
 id = &"zone2"
 display_name = "Ember Quarry"
+description = "A hot pit of forges and slag. Climb six rows of the forge, from Cinder to Emberheart, and press hot pads on the vents."
+theme_role = 4
 order = 2
-gate_stat = &"slag"
-gate_threshold = 9.0
+gate_stat = &"emberheart"
+gate_threshold = 600.0
 next_zone = &""
+gate_art = &"forge"
 base_cash_per_second = 0.25
 press_rate = 0.5
+boost_stat = &"mult"
+prestige_source_stat = &"ingot"
+entry_source_stat = &""
+entry_grants = {
+"cash": 190.0
+}
 palette_id = &"ember_quarry"
-pad_buttons = PackedStringArray("f1", "f2", "f3")
+pad_buttons = PackedStringArray("cinder_1","cinder_2","cinder_3","ore_1","ore_2","ore_3","slagrow_1","slagrow_2","slagrow_3","ingot_1","ingot_2","ingot_3","alloy_1","alloy_2","alloy_3","emberheart_1","emberheart_2","emberheart_3")
 scene_path = "res://world/quarry_scene.tscn"
 walk_mask_path = "res://assets/art/zone2/quarry/walkable.png"
 heat_cap = 10.0
