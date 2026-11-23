@@ -2,8 +2,8 @@ class_name BootScreen
 extends Control
 ## Boot scene and the project's main scene. Shows the animated backdrop, logo, the walker walking along a
 ## progress bar, and rotating tips. The bar is driven by threaded loading of the game's scenes. When loading
-## has finished and the screen has been up for MIN_SHOW_SECONDS, it dissolves to main.tscn using the
-## already loaded resource.
+## has finished and the screen has been up for MIN_SHOW_SECONDS, it dissolves to the title screen (or straight to
+## main.tscn with --skip-title) using the already loaded resource.
 
 const GAME_SCENE: String = "res://main.tscn"
 const MEADOW_SCENE: String = "res://world/meadow3d_scene.tscn"
@@ -266,9 +266,13 @@ func _start_leave() -> void:
 		_phase = Phase.FAILED
 		push_error("Boot: %s did not load as a PackedScene" % GAME_SCENE)
 		return
+	# Dev and test launches (--skip-title) go straight into the game; everyone else lands on the title screen.
+	var skip: bool = TitleScreen.skip_requested()
+	TitleScreen.game_scene = game
+	var next: PackedScene = game if skip else (load(TitleScreen.TITLE_SCENE) as PackedScene)
 	var tween := create_tween()
 	tween.tween_method(_bg.set_dissolve, 0.0, 1.0, DISSOLVE_SECONDS)
-	tween.tween_callback(func() -> void: get_tree().change_scene_to_packed(game))
+	tween.tween_callback(func() -> void: get_tree().change_scene_to_packed(next))
 
 
 func _animate_walker(delta: float) -> void:

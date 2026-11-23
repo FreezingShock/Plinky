@@ -1,11 +1,15 @@
 class_name GalleryMenu
 extends PanelContainer
-## The hamburger menu: a gallery of big icon tiles, one per section, with the build version in the header.
+## The hamburger menu, which is also the Esc / pause menu: a gallery of icon tiles (labels type in on hover), one per section, with the build version in the header.
 ## Picking a tile emits `chosen(kind)`; Main routes it through MenuRouter (so the gallery closes and the section
 ## opens) and the shared CloseX closes this one. Tiles are ordinary focusable buttons, so arrows, d-pad, Enter and
 ## pad A all work, and Main's menu focus drops focus onto the first tile when it opens.
 
 signal chosen(kind: StringName)
+## Footer actions. Main wires them (Resume closes the menu; the quits save first).
+signal resume_requested
+signal quit_to_title_requested
+signal quit_game_requested
 
 const COLUMNS: int = 4
 const GAP: int = 4
@@ -24,6 +28,7 @@ const ENTRIES: Array = [
 var is_locked: Callable = Callable()
 var _tiles: Dictionary = {}   # kind -> GalleryTile
 var _clock: float = 0.0
+var _resume: MenuTextButton
 
 
 func _init() -> void:
@@ -64,10 +69,33 @@ func _init() -> void:
 		grid.add_child(tile)
 		_tiles[k] = tile
 	v.add_child(PanelDivider.new(2))
+	# Text actions, kept visually apart from the icon tiles: Resume in the good green, the quits in the accent.
+	var actions := HBoxContainer.new()
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	actions.add_theme_constant_override("separation", 4)
+	v.add_child(actions)
+	_resume = _action("Close menu", RelicStyle.good, func() -> void: resume_requested.emit())
+	actions.add_child(_resume)
+	actions.add_child(_action("Quit to title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit()))
+	actions.add_child(_action("Quit game", RelicStyle.accent, func() -> void: quit_game_requested.emit()))
 	var hint := Label.new()
-	hint.text = "Pick a section. Esc closes."
+	hint.text = "Esc closes the menu."
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(hint)
+
+
+func _action(text: String, accent: Color, on_press: Callable) -> MenuTextButton:
+	var b := MenuTextButton.new()
+	b.label = text
+	b.rest_color = RelicStyle.text
+	b.accent_color = accent
+	b.pressed.connect(on_press)
+	return b
+
+
+func resume_button() -> MenuTextButton:
+	return _resume
 
 
 static func version_text() -> String:
