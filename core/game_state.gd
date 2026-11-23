@@ -22,6 +22,8 @@ func _ready() -> void:
 	sim.stat_changed.connect(func(id: StringName, v: BigNum) -> void: bus.stat_changed.emit(id, v))
 	sim.button_pressed.connect(func(id: StringName, p: Vector3, g: BigNum, c: bool) -> void: bus.button_pressed.emit(id, p, g, c))
 	sim.button_denied.connect(func(id: StringName) -> void: bus.button_denied.emit(id))
+	sim.mastery_changed.connect(func(id: StringName, lv: int, xp: float) -> void: bus.mastery_changed.emit(id, lv, xp))
+	sim.mastery_leveled.connect(func(id: StringName, lv: int) -> void: bus.mastery_leveled.emit(id, lv))
 	sim.zone_entered.connect(func(id: StringName) -> void: bus.zone_entered.emit(id))
 	sim.gate_opened.connect(func(id: StringName) -> void: bus.gate_opened.emit(id))
 	sim.rebirth_done.connect(func(p: BigNum) -> void: bus.rebirth_done.emit(p))

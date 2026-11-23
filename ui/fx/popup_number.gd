@@ -7,8 +7,14 @@ extends Label
 
 static var ui_theme: Theme  # set by fx_bus from the Main control's theme
 
-static func spawn(parent: Node, pos: Vector2, amount: float, big := false) -> PopupNumber:
-	return spawn_text(parent, pos, "+" + NumberFormat.short(amount), big)
+## A crit popup ends in "!" and takes the crit gold, so it reads apart from a plain big number.
+const CRIT_COLOR: Color = Color("f2e6a0")
+
+static func spawn(parent: Node, pos: Vector2, amount: float, big := false, crit := false) -> PopupNumber:
+	var p: PopupNumber = spawn_text(parent, pos, "+" + NumberFormat.short(amount) + ("!" if crit else ""), big)
+	if crit:
+		p.add_theme_color_override("font_color", CRIT_COLOR)
+	return p
 
 ## Same popup with ready-made text (BigNum gains, "+3 Prestige"). Under a Control parent the theme is inherited.
 static func spawn_text(parent: Node, pos: Vector2, label: String, big := false) -> PopupNumber:
