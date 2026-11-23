@@ -28,3 +28,5 @@ func run(t: Object) -> void:
 	t.eq(BigNum.make(1.0, 3000).format(), "1NoNgNe", "last suffix still reads as a suffix")
 	t.eq(BigNum.from_float(999999.0).format(), "1M", "rounding carries into the next suffix")
 	t.eq(NumberFormat.short(1500.0), "1.5K", "float entry point for ui/fx")
+	t.eq(NumberFormat.short(1.5e15), "1.5Qd", "popup entry point reads 1.5e15 as 1.5Qd")
+	t.eq(NumberFormat.short(1.0e80), "100QnVg", "popup entry point reads 1e80 as 100QnVg")
