@@ -462,8 +462,10 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k * (0.75 + 0.5 * low_sun_k))
 	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k) * (0.9 + 0.5 * low_sun_k))
 	var night01: float = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
-	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01))
-	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01))
+	var noon01: float = smoothstep(0.7, 1.0, model.elevation(mt)) * (1.0 - 0.6 * rain01)
+	_light_mat.set_shader_parameter("exposure", 1.0 - _config.noon_exposure * noon01)
+	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * noon01)
+	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01) + _config.noon_contrast * noon01)
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
 	if _screen != null:
