@@ -548,6 +548,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
+## Balance sim: three play profiles, meadow pacing checked (2026-11-23)
+- **Why:** the sim had one greedy press rate, so it could not show how much the pacing depends on how often the player presses. Idle, active and hold now run over 8 seeded runs each, and the table shows the median and the range.
+- **Profiles are content:** `content/config/sim_profiles.tres` (`data/sim_profiles.gd`) holds the presses per second (idle 0.2, active 0.5, hold 4.0) and the seed count. They are harness assumptions for pacing, not game balance. Active is the zone's `press_rate`, which already includes walking between pads.
+- **Seeds:** each run sets `rng.seed` so a rerun gives the same numbers (checked: two runs identical).
+- **Meadow kept as it is:** active gate 10.1 min (range 9.8 to 10.1), hold 9.8, idle 16.6. Clover opens at 4.4 min in every profile. The meadow meets the 10 minute target, so no meadow costs changed.
+- **Larkmoor not edited here:** the far gate is 56.0 min median on active (range 33.7 to 58.8), just under the 57 to 61 target. Larkmoor costs belong to the flower tiers thread, which gets these numbers (see `docs/balance.md` section 11).
+- **Open:** idle reaches the Larkmoor far gate at about 134 min, and the 57 to 61 target only holds for active play. Whether idle should be faster is a design question for Nathan. Not decided.
 ## 2026-11-23 Achievements and the Ledger (0.37.0)
 - **Rewards are cosmetic only: a title.** No income, drop or balance effect, per the audit pick. The newest unlocked achievement with a title sets the Ledger's title.
 - **40 achievements, 8 categories** (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey), plain names, no streak-tier words. One `.tres` each in `content/achievements/`; targets are content, not script.
@@ -571,6 +578,12 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **`core/` wording:** pure logic is node-free; the Node autoload shells (event_bus, game_state, save, calendar_service) are the named exception.
 - **Stale docs refreshed:** `docs/features.md` rewritten for v0.27.0; `docs/balance.md` marks sections 1 to 8 as v0 history and adds a pointer to the flower and quarry ladders; `docs/zone2-ladder.md` copied into the repo.
 
+## Larkmoor cost pass: smoother unlocks, gate still short (2026-11-23)
+- **Brief (Nathan, via coordinator):** progression should feel fast and satisfying; short gaps between unlocks, no long dead stretches; idle about 2x active is fine; Larkmoor near 57 to 61 min on active.
+- **Changed (data only):** Heather 3 base cost 2.3M to 1M Thistle; Foxglove 3 1800 to 1000 Heather; Starbloom 3 2000 to 1000 Foxglove; Larkmoor `gate_threshold` 2000 to 2600 Starbloom. Meadow and Thistle costs unchanged.
+- **Result (active, median of 8 seeds):** Heather opens 11.4 min, Foxglove 22.5, Starbloom 33.9, far gate 51.6 (range 38.6 to 64.2). Before: 11.4, 27.4, 40.7, 58.4. Idle gate 114.8 (2.2x active). Hold 30.1.
+- **Still open:** the far gate is about 5 min short of the 57 to 61 target. The gate is a weak lever: raising the threshold to 5000 moved it about 3 min, and Starbloom 3 costs from 3000 to 12000 changed nothing. The next lever is Foxglove income (its rewards or the Heather costs), which slows the middle tiers too. Nathan to choose: accept about 52 min as faster progression, or slow the Foxglove economy to hit 57 to 61.
+- **HUD currency panel is a compact strip (v0.29.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
 - **HUD currency panel is a compact strip (v0.35.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
 
 ## Ember Quarry forge ladder (2026-11-23, v0.30.0)
