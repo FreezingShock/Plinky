@@ -80,3 +80,23 @@ static func pipeline_compiles() -> int:
 		+ int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_SURFACE)) \
 		+ int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_DRAW)) \
 		+ int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_SPECIALIZATION))
+
+
+## Optional stage timing for long operations (a zone swap). Off unless the benchmark turns it on, so it costs
+## one bool test in the game. `lap("label")` records the ms since the previous lap or `lap_begin()`.
+static var tracing: bool = false
+static var trace: Array[String] = []
+static var _lap_at: int = 0
+
+
+static func lap_begin() -> void:
+	if tracing:
+		_lap_at = Time.get_ticks_usec()
+
+
+static func lap(label: String) -> void:
+	if not tracing:
+		return
+	var now: int = Time.get_ticks_usec()
+	trace.append("%s %.1f ms" % [label, float(now - _lap_at) / 1000.0])
+	_lap_at = now

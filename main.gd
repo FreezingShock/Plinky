@@ -324,13 +324,18 @@ func _enter_zone_visuals(zone_id: StringName) -> void:
 	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
+	PerfStats.lap_begin()
 	PlinkyTheme.apply(theme, String(palette_id))
+	PerfStats.lap("zone: theme")
 	_swap_zone_scene(zone_id)
 	var cols: PackedColorArray = Palettes.colors(palette_id)
 	walker.palette = cols
 	gate.palette = cols
+	PerfStats.lap_begin()
 	_build_pads()
+	PerfStats.lap("zone: build pads")
 	_build_vents(cols)
+	PerfStats.lap("zone: build vents")
 
 
 func _zone_scene_path(zone_id: StringName) -> String:
@@ -352,12 +357,20 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 		_apply_scene_frame(zone_id)
 		return
 	_scene_path = path
+	PerfStats.lap_begin()
 	_free_occluders()
 	meadow.queue_free()
-	meadow = (load(path) as PackedScene).instantiate()
+	PerfStats.lap("swap: free old")
+	var packed: PackedScene = _take_prefetched(path)
+	PerfStats.lap("swap: load scene")
+	meadow = packed.instantiate()
+	PerfStats.lap("swap: instantiate")
 	world.add_child(meadow)
+	PerfStats.lap("swap: add_child (ready)")
 	_spawn_occluders()
+	PerfStats.lap("swap: occluders")
 	_apply_scene_frame(zone_id)
+	PerfStats.lap("swap: scene frame")
 	var anchors: Node = meadow.get_node("Anchors")
 	var going_back: bool = _going_back
 	var spawn: Marker2D = anchors.get_node_or_null("Walker") as Marker2D
@@ -375,6 +388,26 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 
 
 var _going_back: bool = false
+var _prefetching: String = ""
+
+
+## Starts loading a zone scene and its textures on a worker thread, so the swap under the transition wipe does not
+## load them synchronously on the main thread (about 330 ms for Larkmoor, a visible stall at the wipe peak).
+func _prefetch_scene(path: String) -> void:
+	if path == _scene_path or path == _prefetching:
+		return
+	if ResourceLoader.load_threaded_request(path) == OK:
+		_prefetching = path
+
+
+## The prefetched scene when one was requested (waits for it if the worker is not done), else a plain load.
+func _take_prefetched(path: String) -> PackedScene:
+	if path == _prefetching:
+		_prefetching = ""
+		var got: Resource = ResourceLoader.load_threaded_get(path)
+		if got is PackedScene:
+			return got as PackedScene
+	return load(path) as PackedScene
 var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone scene, freed on a swap
 
 
@@ -506,6 +539,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 		return
 	_crossing = true
 	walker.stop()
+	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
 	await transitions.cross_zone(func() -> void:
 		_enter_zone_visuals(zone_id)
 		if _clear_spawn_pending:

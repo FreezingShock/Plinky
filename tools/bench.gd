@@ -52,6 +52,7 @@ func _init() -> void:
 			if q >= 0:
 				levels = [q]
 	OS.add_logger(_log)
+	PerfStats.tracing = true   # stage timings of the zone swap, printed in the report
 	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main  # Juice parents its popup layer to the current scene
@@ -211,6 +212,8 @@ func _report() -> void:
 			"%d%%" % roundi(float(r.over_budget) * 100.0), int(r.draw_calls_max), int(r.objects_max), int(r.nodes_max)])
 	for h: String in hitches:
 		print(h)
+	for t: String in PerfStats.trace:
+		print("TRACE ", t)
 	var out_dir: String = ProjectSettings.globalize_path("res://shots")
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var f: FileAccess = FileAccess.open(out_dir + "/bench.json", FileAccess.WRITE)
