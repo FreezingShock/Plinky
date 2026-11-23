@@ -524,6 +524,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 ## Pond keeps its own palette in every season (2026-11-23)
 - **Cause:** `season_recolor` picks "green" texels by `g - max(r,b)`; the water ramp's main colour (47,107,85) scores 22/255, past the 0.015..0.09 smoothstep, so the pond was recoloured with the grass patches (and would be snow-covered in winter).
 - **Decision:** `ground_light.gdshader` skips the seasonal recolour and snow for material codes 107 (water) and 108 (foam). Water stays blue-green all year; no extra dither added. A subtle seasonal sky tint or winter ice is an open taste item, not built.
+
+## 2026-11-23: Popup stacking and stat caption (v0.24.2, Nathan: numbers still overlapped)
+- A press now folds into ANY live number of the same stat that sits on the same pad or within 40 px of it and was last bumped under 1.2 s ago (was: same pad, 0.35 s). Different stats still take separate free lanes (now 10, including above and below). The carried float offset is capped at 90% of the rise, so a long run of presses keeps one number hovering instead of climbing away.
+- Under each number, centred: the stat's display name in 12 px Pixelify, in the stat's own colour (StatStyle), outlined; while a hold stacks, " xN" follows it in the streak colour. The number keeps the streak colour. The caption sits 9 px plus 14% of the number's size below the baseline, so it holds up as the number grows through the font sizes.
 | 2026-11-23 | The Larkmoor "sunset hitch" was the zone swap, fixed by threaded scene prefetch and sliced prop spawning (0.26.2); CI gets a 150 ms frame budget | PC profiling: 0 new pipelines, 1.5 ms script, hitch at +771 ms = swap time + stall. Stage trace: load 36, ready 22, occluders 170 ms. Earlier shader and audio warm-ups were guesses and are harmless but were not the cause. |
 
 ## Meadow flower ladder (2026-11-23)
