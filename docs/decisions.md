@@ -374,3 +374,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Default is now a smooth tint or soft alpha for every wide pass. Dither survives only where it carries meaning: night ladder steps and the lantern glow (close tints), a narrow seam between palette ramp steps on relit surfaces (blend band 0.12 instead of 0.40), the cast-shadow rim, the sway rim light, and snow/season patches at a 12% Bayer weight over 4-5 texel patches. All of it is on whole world texels (world_origin / world_scale), so cells never scale with zoom.
 - The pixel-art identity now comes from the palette ramps and texel grid, not from stacked screen dithers. Revisit if Nathan wants some dither back (the bible's section 2 and 4 describe dither as the lighting language).
 - Not run in engine. PC check at dawn, noon, dusk and night, zoom 1 to 4.
+
+## Night ladder removed
+- PC at night, zoom 3 to 4, still showed a faint grid on the ground: the three-rung night ladder dithered wherever the shade was below full (any light pool falloff, dusk, dawn). Night tint and the lantern warm cast are now plain smooth multiplies of `dk` / `wk`; no Bayer in day_night.gdshader any more. Supersedes the ladder in the "Night is a solid tint" entry.
