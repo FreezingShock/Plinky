@@ -16,8 +16,8 @@ and stamped on feedback notes. `export_presets.cfg` must match; `tests/test_vers
 CHANGELOG.md has a heading for the current version. **PRs never edit these three files.** CI stamps the version after merge.
 
 ## Every PR: add a changelog fragment
-1. Add one file to `changelog.d/`, named `<short-slug>.<patch|minor>.md`, with a one-line release note, for example
-   `changelog.d/larkmoor-fog-fix.patch.md`. Pick `patch` or `minor` from the table above; no number to choose.
+1. Add one file to `changelog.d/`, named `<short-slug>.<patch|minor>.md` (slug: lowercase words and dashes), containing a one-line release note.
+   Example: `changelog.d/larkmoor-fog-fix.patch.md` with the single line `Larkmoor fog no longer hides the travel pad at noon.` Pick `patch` or `minor` from the table above; no number to choose.
 2. That is all. Do not run `tools/bump_version.py`, and do not touch CHANGELOG.md, `core/build_info.gd` or `export_presets.cfg`.
 3. Docs-only, test-only and CI-only PRs need no fragment.
 
@@ -31,9 +31,7 @@ and there is no "take the next free number" step. Pull `main` to see the new ver
 
 Manual bumps still work for emergencies (`python3 tools/bump_version.py patch|minor|set X.Y.Z`); never run `major` unless Nathan asked.
 
-## If the main ruleset blocks the Release push
-The Release job pushes to `main`, so a ruleset that requires the `test` check or a pull request will refuse it. The job then
-only warns and leaves the fragments for the next release, so nothing is lost and no PR breaks. To let it through, either
-add the GitHub Actions app to the ruleset's bypass list (not always offered on personal repos), or, the reliable way,
-create a fine-grained personal access token with Contents: read and write on this repo, save it as the repo secret
-`RELEASE_TOKEN`, and add the **Repository admin** role to the ruleset's bypass list. The workflow uses the secret when it exists.
+## The Release push and the ruleset
+`main` is protected by a ruleset that requires the `test` check, so the Release job pushes with the repo secret `RELEASE_TOKEN`
+(an admin's fine-grained PAT; admins bypass). It expires Dec 23, 2026. If the push is refused the job only warns and the
+fragments wait for the next release. Setup, renewal steps and the ruleset: docs/ci.md. Never print the token.
