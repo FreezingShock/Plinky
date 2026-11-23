@@ -88,7 +88,13 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 		var echo: float = sim.config.pulse_echo_delay
 		field.link(_to_screen(pulse_from) + POPUP_LIFT * 0.4, _to_screen(pos) + POPUP_LIFT * 0.4, tier, echo * float(pulse_order))
 		delay = echo * float(pulse_order) + 0.16
-	field.press(key, anchor, amount, tier, big, held, pulse, delay)
+	var stat_name: String = ""
+	var stat_col: Color = Color.WHITE
+	var def: ButtonDef = sim.button_defs.get(key) as ButtonDef
+	if def != null and sim.stat_defs.has(def.reward_stat):
+		stat_name = (sim.stat_defs[def.reward_stat] as StatDef).display_name
+		stat_col = StatStyle.color(def.reward_stat)
+	field.press(key, anchor, amount, tier, big, held, pulse, delay, stat_name, stat_col)
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
 		if not is_instance_valid(pad):

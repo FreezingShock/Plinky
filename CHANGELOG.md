@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.24.2 - 2026-11-23
+- Press popups now stack: a press folds into any live number of the same stat on the same pad or within 40 px (up to 1.2 s apart), so nearby numbers become one rising total instead of overlapping. Each number carries its stat name centred underneath in the stat's own colour (the number keeps the streak colour).
+
 ## 0.24.1 - 2026-11-23
 - History screen: taller graph that fills from the left with a first bar at once, a narrower window that clears the zone panel, and the tracked currency now comes from config (`income_stat`).
 
