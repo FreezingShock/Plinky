@@ -13,6 +13,7 @@ under a new version heading and updates the version everywhere.
 - World life follows the calendar: up to six butterflies by day in spring and summer (a few in autumn, none in winter, at night or in rain), each with its own wing colours, and fireflies fade out of winter.
 - The Ember Quarry has its own air: embers rise and cool off the heat vents and ash drifts across the floor.
 - Footsteps get a quarry surface (crunchy cinder; the pale road stays packed dust), and sprints and hard landings land heavier. The quarry now reads its own ground for footsteps instead of the meadow's.
+- The History tile in the menu gets its own orange section colour (the Settings refresh and the History screen had landed side by side, leaving it uncoloured and the test red).
 
 ## 0.22.0 - 2026-11-23
 - Settings and the Esc menu now match the gallery: every tab and menu tile has its own colour (coloured outlines, matching labels), each setting sits on its own outlined card, and all labels and buttons show in Title Case.
