@@ -18,10 +18,10 @@ uniform float night = 0.0;
 uniform float rain = 0.0;
 uniform vec3 grade_col : source_color = vec3(1.0);
 uniform float grade_amount = 0.0;
-uniform vec3 night_tint : source_color = vec3(0.34, 0.42, 0.72);
+uniform vec3 night_tint : source_color = vec3(0.32, 0.40, 0.78);
 uniform vec3 deep_tint : source_color = vec3(0.16, 0.20, 0.42);
 uniform vec3 rain_tint : source_color = vec3(0.82, 0.88, 0.92);
-uniform vec3 pool_tint : source_color = vec3(1.0, 0.90, 0.68);
+uniform vec3 pool_tint : source_color = vec3(1.0, 0.86, 0.58);
 uniform vec4 lights[24];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused)
 uniform float pool_strength = 0.9;
 

@@ -211,6 +211,8 @@ func _apply_config() -> void:
 	model.day_seconds = _config.day_seconds
 	model.start_phase = _config.start_phase
 	model.daylight_fraction = _config.daylight_fraction
+	model.golden_reach = _config.golden_reach
+	model.golden_floor = _config.golden_floor
 	model.night_strength = _config.night_strength
 	model.dusk_strength = _config.dusk_strength
 	model.rain_period_a = _config.rain_period_a
@@ -395,7 +397,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var ramp: float = model.ramp(mt)
 	var rain01: float = clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0)
 	# cast shadows
-	var low_sun_k: float = model.low_sun(mt)
+	var low_sun_k: float = model.golden(mt)   # golden light, not just the low sun: the look holds through the morning and afternoon
 	if shadows != null:
 		var len: float = model.shadow_length(mt, _config.shadow_len_noon, _config.shadow_len_low, _config.shadow_len_moon)
 		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon, rain01),
@@ -403,7 +405,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	# rim light on props: whole-texel direction toward the light, warm when the sun is low, cool under the moon
 	var low: float = model.low_sun(mt)
 	var night_k: float = clampf(-model.sun_of(model.phase(mt)) * 2.0, 0.0, 1.0)
-	var rim_amt: float = _config.rim_strength * (0.35 + 0.65 * low) * (1.0 - 0.9 * rain01)
+	var rim_amt: float = _config.rim_strength * (0.5 + 0.5 * maxf(low, low_sun_k)) * (1.0 - 0.9 * rain01)
 	rim_amt = maxf(rim_amt * (1.0 - night_k), 0.45 * _config.rim_strength * night_k * (1.0 - rain01))
 	var rim_dir := Vector2(clampf(roundf(az * 1.2), -1.0, 1.0), -1.0)   # toward the light
 	var rim_col: Color = _config.ray_color.sample(ramp) if _config.ray_color != null else Color(1.0, 0.95, 0.75)
@@ -468,9 +470,12 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var lit_k: float = (1.0 - clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * 0.75) * (1.0 - 0.7 * rain01)
 	_light_mat.set_shader_parameter("sun_dir", Vector2(az, -1.0))
 	_light_mat.set_shader_parameter("light_col", rim_col)
-	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.74, 0.52, 0.78), low_sun_k))
-	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k)
-	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k))
+	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.74, 0.52, 0.78), model.low_sun(mt)))
+	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k * (0.75 + 0.5 * low_sun_k))
+	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k) * (0.9 + 0.5 * low_sun_k))
+	var night01: float = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
+	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01))
+	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01))
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
 	if _screen != null:
