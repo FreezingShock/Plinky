@@ -65,10 +65,9 @@ func run(t: Object) -> void:
 	bar.show_cue("[Gate opens]")
 	bar.show_cue("[Gate opens]")
 	t.eq(bar._lines.size(), 1, "the same caption twice shows once")
-	bar.show_cue("[Birdsong]")
-	bar.show_cue("[Footsteps]")
-	bar.show_cue("[Rebirth chime]")
-	t.eq(bar._lines.size(), SubtitleBar.MAX_LINES, "at most three captions at once")
+	for c: String in ["[Birdsong]", "[Footsteps]", "[Rebirth chime]", "[Critical press]"]:
+		bar.show_cue(c)
+	t.eq(bar._lines.size(), SubtitleBar.MAX_LINES, "captions are capped")
 	t.eq(bar._lines[0]["text"], "[Birdsong]", "the oldest caption drops first")
 	AccessOptions.subtitles = false
 	bar.free()

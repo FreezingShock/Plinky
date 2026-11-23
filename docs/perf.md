@@ -79,7 +79,7 @@ were that 12 fps redraw landing on one frame: about 150 drops times three `sin()
 three hashes per drop are constant, so they are now cached once, and Low and Medium draw 40% and 70% of the drops.
 Spike frames on a real GPU after this change: not yet measured.
 
-## The Larkmoor transition stall (fixed in 0.26.1)
+## The Larkmoor transition stall (fixed in 0.26.2)
 Found by profiling on the PC (RTX 3060 Ti, 2026-11-23): one 320 to 380 ms frame, once per run, in the first Larkmoor
 row. It was not Low-specific, audio, shaders, Vulkan or a sky layer; it was the zone swap itself. `Transitions.cross_zone`
 runs the swap at the wipe's peak (0.45 s after entry), and the swap did everything in one frame: `load()` of the scene
