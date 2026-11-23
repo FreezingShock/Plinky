@@ -315,6 +315,31 @@ func set_click_limit(on: bool, count: int) -> void:
 	click_limit_count = clampi(count, 1, 10)
 
 
+## Bloom ritual cues (ui/fx/bloom_ritual.gd). Built from the existing chimes, so no new files: a low swell as the
+## countdown starts, a rising pentatonic tick for every step of the Seeds count, and a bright two-layer chime on landing.
+func bloom_swell() -> void:
+	play(&"tier_up_1", 0.5, -5.0, BUS_SFX, false)
+	cue.emit("[Bloom swell]")
+
+
+func bloom_tick(step: int) -> void:
+	var semis: int = COMBO_STEPS[clampi(step, 0, COMBO_STEPS.size() - 1)]
+	play(&"popup_tick", pow(2.0, float(semis) / 12.0), -6.0, BUS_SFX, false)
+
+
+func bloom_land() -> void:
+	play(&"tier_up_5", 1.0, -1.0, BUS_SFX, false)
+	play(&"tier_up_3", 0.75, -4.0, BUS_SFX, false)
+	cue.emit("[Bloom chime]")
+
+
+## A Bloom gift pressed a pad: a tiny soft tick, well under the click.
+func auto_press() -> void:
+	if is_quiet():
+		return
+	play(&"popup_tick", 1.5, -13.0)
+
+
 func popup_tick() -> void:
 	play(&"popup_tick", 1.0, -8.0)
 

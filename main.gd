@@ -140,6 +140,7 @@ func _ready() -> void:
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 	Banner.attach(hud)
+	BloomRitual.attach(hud, sim, get_node("/root/EventBus"))   # the zone reset animation (Bloom)
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
@@ -619,8 +620,12 @@ func _on_mastery_leveled(button_id: StringName, level: int) -> void:
 
 
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
-	sim.feed_press_momentum(crit)
 	var pad: TexelPad = pads.get(button_id) as TexelPad
+	if sim.auto_press_active:   # a Bloom gift pressed it (Dew Sprites, Wildflower): a quiet popup, no momentum, no streak
+		if pad != null:
+			Juice.auto_press(pad, pad.position, gain.to_float())
+		return
+	sim.feed_press_momentum(crit)
 	if pad == null:
 		return
 	# A relic pulse presses the neighbours of the pad you pressed: Juice draws those as echoes that ripple outward.
@@ -632,6 +637,9 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 	if from == Vector2.INF and (pad.standing or pad.holding):
 		walker.squash()
 	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding and from == Vector2.INF, from, sim.pulse_order)
+	var petals: int = int(sim.effect_total(&"petal_burst"))
+	if petals > 0 and from == Vector2.INF:
+		Juice.petals(pad, pad.position, petals)
 
 
 ## Relic UI (PR #5): equipped bar, drop toast, collection panel, pad flash on Epic and above.

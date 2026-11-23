@@ -17,6 +17,11 @@ static func amount_at(a: AttributeDef, level: int) -> float:
 
 ## "+120%" or "+5 h". Same string the tooltip and the stats index use for the number.
 static func value(a: AttributeDef, amount: float) -> String:
+	match a.value_kind:
+		&"flat", &"count":
+			return "+%s" % _trim(amount)
+		&"rate":
+			return "+%s/s" % _trim(amount)
 	if a.effect == &"offline_hours":
 		return "+%s h" % _trim(amount)
 	if a.effect == &"head_start":
@@ -72,10 +77,16 @@ static func currency_name(a: AttributeDef) -> String:
 
 
 static func unit(a: AttributeDef) -> String:
+	if a.unit_text != "":
+		return a.unit_text
 	return String(UNITS.get(a.effect, a.display_name.to_lower()))
 
 
-static func lock_text(a: AttributeDef) -> String:
+static func lock_text(a: AttributeDef, sim: Sim = null) -> String:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency) if sim != null else null
+		var nm: String = r.display_name if r != null else "resets"
+		return "Unlocks after %d %s" % [a.unlock_resets, nm + ("s" if a.unlock_resets != 1 and r != null else "")]
 	return "Unlocks at %d Rebirths" % a.unlock_rebirths
 
 
@@ -89,6 +100,8 @@ static func ordered(sim: Sim) -> Array[AttributeDef]:
 			return rank(sim, x.currency) < rank(sim, y.currency)
 		if x.unlock_rebirths != y.unlock_rebirths:
 			return x.unlock_rebirths < y.unlock_rebirths
+		if x.unlock_resets != y.unlock_resets:
+			return x.unlock_resets < y.unlock_resets
 		if x.order != y.order:
 			return x.order < y.order
 		return String(x.id) < String(y.id))
@@ -107,14 +120,21 @@ static func state(sim: Sim, a: AttributeDef) -> Dictionary:
 		"now": value(a, amount_at(a, lv)),
 		"next": "" if maxed else value(a, amount_at(a, lv + 1)),
 		"cost_text": cost.format(), "can_afford": not maxed and not sim.attribute_available(a).lt(cost),
-		"currency": a.currency, "currency_name": currency_name(a),
-		"lock": lock_text(a), "rebirths": sim.rebirth_count, "need": a.unlock_rebirths,
+		"currency": a.currency, "currency_name": currency_name(a), "blurb": a.blurb,
+		"lock": lock_text(a, sim), "rebirths": _have_for_lock(sim, a), "need": a.unlock_rebirths,
 	}
+
+
+static func _have_for_lock(sim: Sim, a: AttributeDef) -> int:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency)
+		return sim.reset_count(r.id) if r != null else 0
+	return sim.rebirth_count
 
 
 ## Tooltip for a row: what it does, the real totals, and why it can or can't be bought. Same dictionary shape as Tip.
 static func tip(s: Dictionary, effect: StringName) -> Dictionary:
-	var body: String = String(StatIndex.ATTR_TIPS.get(effect, "A permanent upgrade."))
+	var body: String = String(s["blurb"]) if String(s.get("blurb", "")) != "" else String(StatIndex.ATTR_TIPS.get(effect, "A permanent upgrade."))
 	var hint: String
 	if not bool(s["unlocked"]):
 		hint = "%s. You have %d." % [s["lock"], s["rebirths"]]

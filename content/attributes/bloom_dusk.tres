@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"bloom_dusk"
-display_name = "Long dusk"
+display_name = "Long Dusk"
 effect = &"offline_hours"
 per_level = 0.5
 cap = 8
@@ -13,3 +13,7 @@ base_cost = 3.0
 cost_growth = 1.6
 order = 4
 currency = &"seeds"
+unlock_resets = 0
+blurb = "Earn for more hours while you are away."
+icon = &"offline"
+unit_text = "offline cap"
