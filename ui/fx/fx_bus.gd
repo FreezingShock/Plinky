@@ -34,7 +34,7 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 	if pad is TexelPad:
 		# The pad animates itself (whole-texel sink and ripple), so rapid presses never stack tweens.
 		(pad as TexelPad).punch()
-		cols = [(pad as TexelPad).palette[5], (pad as TexelPad).palette[6]]
+		cols = Array([(pad as TexelPad).palette[5], (pad as TexelPad).palette[6]], TYPE_COLOR, "", null)
 		if big:
 			var hs := PressSquash.new()
 			pad.add_child(hs)
