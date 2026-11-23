@@ -16,9 +16,11 @@ var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
 const STAT_NAME_SIZE: int = 16   ## stat names in the top-left panel; integer so Pixelify Sans stays crisp
+const STAT_RATE_SIZE: int = 8    ## the small "+x/s" or "xN" gain text left of each value
+const RATE_SAMPLE: String = "+99.99Qd/s"   ## widest gain text expected; sizes the gain column so values line up
 
 var sim: Sim
-var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
+var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
 var _rebirth: ExpandChip
@@ -168,14 +170,21 @@ func _build_stats() -> void:
 		name_l.add_theme_font_size_override("font_size", STAT_NAME_SIZE)
 		name_l.add_theme_color_override("font_color", StatStyle.color(sid))   # same colour as the tooltip title
 		h.add_child(name_l)
+		# Gain text sits left of the value, small and centred on the row; the value stays centred when it is empty.
+		var rate := Label.new()
+		rate.theme_type_variation = &"TitleLabel"
+		rate.add_theme_font_size_override("font_size", STAT_RATE_SIZE)
+		rate.add_theme_color_override("font_color", RelicStyle.dim)
+		rate.custom_minimum_size.x = ceilf(name_font.get_string_size(RATE_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_RATE_SIZE).x)
+		rate.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(rate)
 		var val := RollValue.new()
 		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(val)
-		var rate := Label.new()
-		rate.add_theme_color_override("font_color", RelicStyle.dim)
-		h.add_child(rate)
 		_rows[sid] = [val, rate]
 		Tip.bind_all(h, func() -> Variant:
 			var inc: BigNum = sim.income_per_second(sid)
