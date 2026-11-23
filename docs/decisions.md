@@ -677,6 +677,7 @@ PRs add a `changelog.d/<slug>.patch|minor.md` fragment instead of bumping `core/
 ## 2026-11-23 Menu tiles always show their names
 Nathan wanted the hamburger menu words visible, not only on the focused tile. Tiles now always draw their name; a locked tile still says "Locked" while hovered. Grid is 3 columns (nine tiles fill 3x3) and tiles are 96 wide. New hover: a slanted band of 4x4 Bayer dither in the section colour sweeps across once (0.4 s), the icon bobs one texel, plus the existing lift. All off under reduced motion / flashing. Tooltips unchanged. Not run in-engine from the cloud.
 
+- Offline Sunlight uses the same `income_per_second` as the live tick, at idle factor 1 (Dewdrop boost, relics, Bloom and Sun-rate bonuses all included). Only Momentum is absent, because it is zero at load. A QA reading of 0.25/s against 0.88/s on a fresh save came from Dewdrops being 0 at load and later pressed; the new test pins offline rate / live rate = 1.
 ## Popup banners (Banner autoload)
 - `Banner.announce({title, lines, icon, color, duration, key, interrupt})` (ui/banner.gd, logic in core/banner_queue.gd). `show` is taken by CanvasLayer, so the call is `announce`.
 - Bottom-middle, typed from the centre outward and collapsed back to it. The panel is a fixed size for the whole banner, so it never jitters. Queue holds 4, same key is a duplicate, a repeat within 6 s is dropped, `skip()` ends early.
@@ -729,3 +730,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
 - `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
 - Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.
+- Offline credit now uses the day or night income rate you left with (the calendar advances after crediting), so offline Sunlight per second equals the live rate; before, advancing the clock first made the rate depend on when you came back (a test caught 1.08x). Verified with the headless suite (4393 checks, 0 failed).

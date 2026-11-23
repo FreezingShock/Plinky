@@ -671,6 +671,9 @@ func _on_offline(seconds: float, gains: Dictionary) -> void:
 			continue
 		lines.append(["+%s %s" % [g.format(), (sim.stat_defs[sid] as StatDef).display_name], StatStyle.color(sid)])
 	var tend: Dictionary = sim.last_offline.get("tend", {})
+	var spent: Dictionary = sim.last_offline.get("spent", {})
+	for sp: StringName in spent:   # the gains above are income; tending paid these out of it
+		lines.append(["-%s %s spent tending" % [(spent[sp] as BigNum).format(), (sim.stat_defs[sp] as StatDef).display_name], StatStyle.color(sp)])
 	for tid: StringName in tend:
 		var r: Dictionary = tend[tid]
 		var tier: TierDef = sim.tier_defs.get(tid) as TierDef
@@ -678,10 +681,14 @@ func _on_offline(seconds: float, gains: Dictionary) -> void:
 		if int(r["levels"]) > 0:
 			what += ", mastery +%d (Lv %d)" % [int(r["levels"]), int(r["level"])]
 		lines.append([what, StatStyle.color(&"mastery")])
+	var counts: Dictionary = {}   # relic id -> times found, in first-found order
 	for rid: StringName in sim.last_offline.get("relics", []):
-		var rd: RelicDef = sim.relics.defs.get(rid) as RelicDef
+		counts[rid] = int(counts.get(rid, 0)) + 1
+	for rid2: StringName in counts:
+		var rd: RelicDef = sim.relics.defs.get(rid2) as RelicDef
 		if rd != null:
-			lines.append(["Found %s" % rd.display_name, rd.rarity.color])
+			var n: int = int(counts[rid2])
+			lines.append(["Found %s%s" % [rd.display_name, " x%d" % n if n > 1 else ""], rd.rarity.color])
 	if seconds >= sim.offline_cap_seconds() - 1.0:
 		lines.append(["That is the most you can bank offline.", RelicStyle.dim])
 	if lines.size() < 2:

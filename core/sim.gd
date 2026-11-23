@@ -1088,16 +1088,30 @@ func apply_offline(seconds: float) -> float:
 	last_offline = {}
 	if secs <= 0.0:
 		return 0.0
-	calendar.advance(secs)   # the world keeps turning while you are away
+	last_offline["spent"] = {}
 	var gains: Dictionary = {}
-	var sb: BigNum = BigNum.from_float(secs)
-	for s: StatDef in stat_defs.values():
-		if s.passive:
-			var g: BigNum = income_per_second(s.id).mul(sb)
-			_set_stat(s.id, get_stat(s.id).add(g))
-			gains[s.id] = g
-	last_offline["tend"] = _offline_tend(secs, gains)
+	var tend: Dictionary = {}
+	# Slices keep income and tending in step: what tending pays in one slice (Dewdrops and up) raises the next slice's
+	# income, as it would if you were pressing, instead of the whole stretch paying at the rate you left with.
+	var slices: int = maxi(1, config.offline_slices)
+	var slice_secs: float = secs / float(slices)
+	var sb: BigNum = BigNum.from_float(slice_secs)
+	for i in slices:
+		for s: StatDef in stat_defs.values():
+			if s.passive:
+				var g: BigNum = income_per_second(s.id).mul(sb)
+				_set_stat(s.id, get_stat(s.id).add(g))
+				gains[s.id] = (gains[s.id] as BigNum).add(g) if gains.has(s.id) else g
+		var part: Dictionary = _offline_tend(slice_secs, gains)
+		for tid: StringName in part:
+			var r: Dictionary = part[tid]
+			if tend.has(tid):
+				r["presses"] = int(r["presses"]) + int((tend[tid] as Dictionary)["presses"])
+				r["levels"] = int(r["levels"]) + int((tend[tid] as Dictionary)["levels"])
+			tend[tid] = r
+	last_offline["tend"] = tend
 	last_offline["relics"] = _offline_relics(secs)
+	calendar.advance(secs)   # the world keeps turning while you are away; after crediting, so the rate is the one you left with
 	_check_gates()
 	_flush()
 	offline_gained.emit(secs, gains)
@@ -1130,6 +1144,8 @@ func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
 		var nb: BigNum = BigNum.from_float(n)
 		var reward: BigNum = press_gain_preview(pad.id).mul(nb)
 		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
+		var paid: BigNum = cost.mul(nb)
+		last_offline["spent"][pad.cost_stat] = (last_offline["spent"][pad.cost_stat] as BigNum).add(paid) if (last_offline["spent"] as Dictionary).has(pad.cost_stat) else paid
 		_set_stat(pad.reward_stat, get_stat(pad.reward_stat).add(reward))
 		gains[pad.reward_stat] = (gains[pad.reward_stat] as BigNum).add(reward) if gains.has(pad.reward_stat) else reward
 		press_count += int(n)
