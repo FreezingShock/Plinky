@@ -1,6 +1,6 @@
 class_name StatDef
 extends Resource
-## One stat in the chain (Cash, Multiplier, Rebirths, Prestige, later Slag).
+## One stat in the chain (Sunlight, Embers, Rebirths, Prestige, the ladders).
 
 @export var id: StringName
 @export var display_name: String

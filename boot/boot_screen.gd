@@ -33,7 +33,7 @@ const TIPS: Array[String] = [
 	"Stand on a pad to press it at your press rate. Hold the mouse on a pad to keep pressing.",
 	"Relics drop on every successful press. Equip them in your relic slots.",
 	"Relic slots unlock at 5 and 20 rebirths.",
-	"Rebirths boost Multiplier gain only.",
+	"Rebirth banks Prestige, a permanent boost to your passive income.",
 	"The gate opens after 9 rebirths in the meadow.",
 	"Epic and rarer relics flash their pad when they drop.",
 	"Divine and Special relics never drop at random.",
