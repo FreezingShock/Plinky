@@ -706,6 +706,11 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - The pad's own drop shadow blob was sized like a tree (26 x 18); it is now 22 x 4, the slab's width and thickness, in the same sun direction and softness as the other casters.
 - Moving prop shadows (SkyShadows) are drawn beneath the pads, so they used to stop at the plate. Each caster within 220 texels of a pad now also gets a copy in a `PadOverlay` node at z 1 (above the plates), using the same shader with `clip` on: it only paints inside a pad's diamond (15 x 8 around the plate centre, up to 24 pads), so the shadow carries across the plate and nowhere else. Scenes call `add_pad` for every pad anchor.
 - Not run in engine. PC: Larkmoor at golden hour, zoomed on a pad next to a tree.
+
+## 2026-11-23 Clock dial follows the zone palette
+- The dial reads the palette of the current zone (Palettes.for_zone) and recolours within a tenth of a second of a zone change. Meadow stays green.
+- Ember Quarry's sun uses the amber role (4), not the dusty rose role (5), so it reads as ember. Other zones keep role 5.
+- Not verified in-engine. The PC QA thread should check the dial in the meadow and in Ember Quarry, by day and at night.
 ## 2026-11-23 Capital Qd and Qn again
 - Nathan asked for Qd and Qn capitalised. This reverses the lowercase q from PR #193, which QA raised because a Q in "+100QnVg" read as a 0 at popup size. Only Qd and Qn change (`N_SMALL`, `UNITS`, tests). qg, qq, qe and qi stay lowercase, so compound names now mix cases (a name with Qd next to one with qg). Taste call to revisit: capitalise the rest too, or keep the split.
 - Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
