@@ -363,6 +363,12 @@ static func _register_gameplay() -> void:
 # ---- accessibility
 static func _register_access() -> void:
 	_add({
+		"id": &"chip_labels", "tab": "Access", "label": "Bottom bar labels", "kind": Kind.CHOICE, "default": "hover",
+		"hint": "On hover: a label floats above the button. Always: labels sit in the buttons. Never: icons only.",
+		"options": func() -> Array: return [["hover", "On hover"], ["always", "Always"], ["never", "Never"]],
+		"apply": func(v: Variant) -> void: ExpandChip.label_mode = String(v),
+	})
+	_add({
 		"id": &"reduce_flashing", "tab": "Access", "label": "Reduce flashing", "kind": Kind.TOGGLE, "default": false,
 		"hint": "Softens screen flashes and the rarity pad flash.",
 		"apply": func(v: Variant) -> void: FxConfig.reduce_flashing = bool(v),

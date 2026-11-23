@@ -9,8 +9,15 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.6.0 - 2026-11-23
+## 0.7.0 - 2026-11-23
 - In-game calendar (5-day months, 10-day seasons), HUD clock, outdoor seasons (blossom, lush, amber, snow) with season particles, 3 min day / 2 min night, save v3.
+
+## 0.6.0 - 2026-11-23
+- Bottom bar buttons no longer move: labels float above the button instead of widening it, open after a short hover intent (instantly on focus), linger briefly, and the hit areas fill the gaps. New setting Access > Bottom bar labels (On hover / Always / Never); number keys 1 to 5 press Upgrades, Relics, Stats, Attributes and Menu.
+- Hamburger menu at the bottom right: a gallery of big icon tiles (Stats, Attributes, Upgrades, Relics, Travel, Settings, Update Log) with the version shown; Settings moves into it.
+- Fixed the close X: it now draws a full 13 texel frame with arms and clicks reliably; the Stats, Settings and Feedback windows no longer have text Close buttons.
+- Update Log tile shows this changelog in the game.
+- Menus close and switch reliably when spammed, with an animated close X on every panel; bottom bar buttons expand to icon plus label.
 
 ## 0.5.0 - 2026-11-23
 - Single source of truth for the game version (`core/build_info.gd`), shown small on the boot screen, with `BuildInfo.string()` and `BuildInfo.changelog()` for the Update Log tile.

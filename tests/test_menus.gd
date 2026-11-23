@@ -92,19 +92,45 @@ func _close_x(t: Object) -> void:
 	t.eq(CloseX.reach(1.0, 0.0), CloseX.ARM, "a grown X has its full arms")
 	t.eq(CloseX.reach(1.0, 1.0), CloseX.ARM + 1, "hover reaches one texel further")
 	t.eq(CloseX.reach(0.5, 1.0), CloseX.reach(0.5, 0.0), "hover pop waits until the X has grown")
+	var stage := Control.new()
+	stage.size = Vector2(640, 360)
+	t.root.add_child(stage)
 	var host := PanelContainer.new()
 	host.custom_minimum_size = Vector2(120, 60)
-	t.root.add_child(host)
-	var hits: Array = [0]
-	var x: CloseX = CloseX.attach(host, func() -> void: hits[0] += 1)
+	host.position = Vector2(50, 40)
+	stage.add_child(host)
+	host.size = Vector2(120, 60)
+	var x: CloseX = CloseX.attach(host, func() -> void: host.hide())
 	x._ready()   # scripts run from _init, before the tree is up, so _ready has not fired yet
-	t.ok(x.top_level, "the X floats, so the panel layout ignores it")
+	t.ok(x.get_parent() == stage, "the X is a sibling of the panel, so the panel layout never resizes it")
+	t.ok(x.size.x >= 9.0 and x.size.y >= 9.0, "the X rect is at least 9x9 (got %s)" % x.size)
+	t.eq(x.position, host.position + CloseX.anchor(host.size), "the X sits in the panel's top right corner")
+	t.ok(x.mouse_filter == Control.MOUSE_FILTER_STOP and x.visible, "the X takes the mouse and is shown with its panel")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = x.size * 0.5
+	click.pressed = true
+	x._gui_input(click)
+	var up := click.duplicate() as InputEventMouseButton
+	up.pressed = false
+	x._gui_input(up)
+	t.ok(not host.visible, "clicking the centre of the X closes the panel")
+	host.show()
+	x._process(0.016)
+	t.ok(x.visible and x.position == host.position + CloseX.anchor(host.size), "the X comes back with its panel")
+	host.size = Vector2(200, 80)
+	x._process(0.016)
+	t.eq(x.position, host.position + CloseX.anchor(host.size), "the X follows a resized panel")
+	x.grow = 1.0
+	t.ok(x.size.x >= 9.0, "a grown X keeps its size")
+	var hits: Array = [0]
+	x._on_close = func() -> void: hits[0] += 1
 	for i in 20:
-		x.pressed.emit()
+		x.press()
 	t.eq(hits[0], 20, "every press closes (spam safe, no state of its own)")
 	host.hide()
 	host.show()
 	t.ok(x.grow == 0.0 or CloseX.calm(), "the arms regrow each time the panel opens")
 	x._process(0.5)
 	t.ok(x.grow >= 1.0, "and finish growing")
-	host.free()
+	stage.free()
