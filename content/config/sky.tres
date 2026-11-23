@@ -20,7 +20,8 @@ colors = PackedColorArray(0.5, 0.6, 0.9, 1, 1.0, 0.82, 0.55, 1, 1.0, 0.95, 0.75,
 
 [resource]
 script = ExtResource("1")
-day_seconds = 720.0
+day_seconds = 300.0
+daylight_fraction = 0.6
 start_phase = 0.4
 night_strength = 0.8
 dusk_strength = 0.4

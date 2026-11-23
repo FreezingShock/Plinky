@@ -22,6 +22,7 @@ func run(t: Object) -> void:
 	m.wind_rain_boost = cfg.wind_rain_boost
 	m.gust_period_a = cfg.gust_period_a
 	m.gust_period_b = cfg.gust_period_b
+	m.daylight_fraction = cfg.daylight_fraction
 
 	# Time of day: noon is bright, midnight is dark, the day repeats.
 	m.start_phase = 0.5
@@ -54,7 +55,7 @@ func run(t: Object) -> void:
 		var w: float = m.wind(tt)
 		if n < 0.0 or n > 1.0 or r < 0.0 or r > cfg.rain_max + 1e-6 or w < 0.0 or w > 1.0:
 			in_range = false
-		if absf(n - prev_n) > 0.02 or absf(r - prev_r) > 0.2 or absf(w - prev_w) > 0.8:
+		if absf(n - prev_n) > 0.02 * 720.0 / cfg.day_seconds * 1.4 or absf(r - prev_r) > 0.2 or absf(w - prev_w) > 0.8:
 			smooth = false
 		if r > 0.0:
 			rain_secs += 1

@@ -35,6 +35,10 @@ func _ready() -> void:
 	sim.critter_spawned.connect(func() -> void: bus.critter_spawned.emit())
 	sim.heat_hot_changed.connect(func(h: bool) -> void: bus.heat_hot_changed.emit(h))
 	sim.critter_gone.connect(func() -> void: bus.critter_gone.emit())
+	sim.calendar.day_changed.connect(func(d: int) -> void: bus.day_changed.emit(d))
+	sim.calendar.month_changed.connect(func(m: int) -> void: bus.month_changed.emit(m))
+	sim.calendar.season_changed.connect(func(s: int) -> void: bus.season_changed.emit(s))
+	sim.calendar.year_changed.connect(func(y: int) -> void: bus.year_changed.emit(y))
 	sim.offline_gained.connect(func(s: float, g: Dictionary) -> void: bus.offline_gained.emit(s, g))
 
 

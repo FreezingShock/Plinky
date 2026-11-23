@@ -32,6 +32,7 @@ var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
 var _momentum: MomentumMeter
 var _stats_panel: PanelContainer
+var _clock_widget: ClockWidget
 var _menu_chip: ExpandChip   # hamburger, bottom right
 var _key_chips: Array[ExpandChip] = []   # number keys 1 to 5 press these, in order (Rebirth is left out on purpose)
 var _centered: Array[Control] = []   # panels kept centred in the free area above the bottom bar
@@ -45,6 +46,7 @@ func setup(p_sim: Sim) -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_build_stats()
 	_build_gate()
+	_build_clock()
 	_build_bottom()
 	_build_upgrades()
 	_build_tip_card()
@@ -190,6 +192,15 @@ func _build_gate() -> void:
 ## The walker entered an area (Larkmoor district): the zone card follows.
 func set_district(id: StringName) -> void:
 	_zone_panel.set_district(id)
+
+
+## The clock sits left of the zone card and hugs it as the frame widens (see _layout below).
+func _build_clock() -> void:
+	_clock_widget = ClockWidget.new()
+	_clock_widget.position = Vector2(318, 4)
+	add_child(_clock_widget)
+	_clock_widget.setup(sim)
+	gate(_clock_widget, Onboarding.F_MULT)
 
 
 func _build_bottom() -> void:
@@ -354,6 +365,10 @@ func _place() -> void:
 		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
 		if _gate_panel.position != gp:
 			_gate_panel.position = gp
+		if _clock_widget != null:
+			var clk: Vector2 = Vector2(gp.x - _clock_widget.size.x - 6.0, 4.0).floor()
+			if _clock_widget.position != clk:
+				_clock_widget.position = clk
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
