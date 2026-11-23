@@ -40,6 +40,7 @@ var display_panel: DisplayPanel
 var dev_console: DevConsole
 var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
+var menus: MenuRouter = MenuRouter.new()   # which menu is open (ui/menu_router.gd)
 var palette_id: StringName = Palettes.MEADOW
 
 
@@ -118,7 +119,7 @@ func _ready() -> void:
 	_wire_index()
 	_wire_display()
 	hud.keep_centered(relic_panel)
-	hud.menu_opened.connect(_close_others)
+	_wire_menus()
 	hud.move_child(hud.bottom_bar(), -1)   # chips stay above every open menu, so they stay clickable
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
@@ -185,12 +186,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_feedback()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_back"):
-		var any: bool = index_panel.is_open() or relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
-		relic_panel.hide()
-		index_panel.close_panel()
-		display_panel.close()
-		feedback_panel.close()
-		hud.close_panels()
+		var any: bool = menus.close_all()
 		if any:
 			get_viewport().set_input_as_handled()
 
@@ -509,10 +505,7 @@ func _wire_relics() -> void:
 	panel.visible = false
 	hud.add_child(panel)
 	panel.bind(inv)
-	hud.relic_panel_toggled.connect(func(_open: bool) -> void:
-		if not panel.visible:
-			_close_others(&"relics")
-		panel.visible = not panel.visible)
+	hud.relic_panel_toggled.connect(func(_open: bool) -> void: menus.toggle(&"relics"))
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
 		Juice.relic_drop(pad_glow, inv.rarity_of(id)))
 
@@ -523,8 +516,7 @@ func _wire_index() -> void:
 	hud.add_child(index_panel)
 	index_panel.bind(sim)
 	hud.index_requested.connect(func(t: int) -> void:
-		_close_others(&"index")
-		index_panel.toggle_tab(t))
+		menus.toggle(&"stats" if t == IndexPanel.Tab.STATS else &"attributes"))
 
 
 ## Settings panel (F10 or the bottom-bar button). Centred over the view, closes with F10 or Esc.
@@ -532,34 +524,32 @@ func _wire_display() -> void:
 	display_panel = DisplayPanel.new()
 	hud.add_child(display_panel)
 	display_panel.bind(get_window())
-	hud.settings_toggled.connect(func(_open: bool) -> void:
-		if display_panel.visible:
-			display_panel.close()
-		else:
-			_close_others(&"settings")
-			display_panel.open())
+	hud.settings_toggled.connect(func(_open: bool) -> void: menus.toggle(&"settings"))
 	feedback_panel = FeedbackPanel.new()
 	hud.add_child(feedback_panel)
 	feedback_panel.bind(GameState.sim)
 	display_panel.feedback_requested.connect(_toggle_feedback)
 
 
-## One menu at a time: opening a menu closes every other. The kind being opened is left alone.
-func _close_others(kind: StringName) -> void:
-	if kind != &"relics":
-		relic_panel.hide()
-	if kind != &"index":
-		index_panel.close_panel()
-	if kind != &"settings":
-		display_panel.close()
-		feedback_panel.close()
-	if kind != &"upgrades":
-		hud.close_panels()
+## Every menu goes through MenuRouter: one open at a time, toggles and switches are spam-safe, and each panel
+## gets the shared animated X in its top right corner.
+func _wire_menus() -> void:
+	var ups: Control = hud.upgrades_panel()
+	menus.register(&"upgrades", func() -> bool: return ups.visible, func() -> void: ups.visible = true, func() -> void: ups.visible = false)
+	menus.register(&"relics", func() -> bool: return relic_panel.visible, func() -> void: relic_panel.visible = true, relic_panel.hide)
+	menus.register(&"stats", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.STATS,
+		func() -> void: index_panel.open_tab(IndexPanel.Tab.STATS), index_panel.close_panel, &"index")
+	menus.register(&"attributes", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.ATTRIBUTES,
+		func() -> void: index_panel.open_tab(IndexPanel.Tab.ATTRIBUTES), index_panel.close_panel, &"index")
+	menus.register(&"settings", func() -> bool: return display_panel.visible, display_panel.open, display_panel.close)
+	menus.register(&"feedback", func() -> bool: return feedback_panel.visible, feedback_panel.open, feedback_panel.close)
+	hud.menu_toggled.connect(menus.toggle)
+	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
+	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
+	CloseX.attach(index_panel, index_panel.close_panel)
+	CloseX.attach(display_panel, display_panel.close)
+	CloseX.attach(feedback_panel, feedback_panel.close)
 
 
 func _toggle_feedback() -> void:
-	if feedback_panel.visible:
-		feedback_panel.close()
-	else:
-		display_panel.close()
-		feedback_panel.open()
+	menus.toggle(&"feedback")

@@ -5,8 +5,8 @@ extends Control
 
 signal relic_panel_toggled(open: bool)
 signal settings_toggled(open: bool)
-## A HUD-owned panel is about to open, so Main can close the others (one menu at a time).
-signal menu_opened(kind: StringName)
+## The Upgrades chip or key was used. Main routes it through MenuRouter, so one menu is open at a time.
+signal menu_toggled(kind: StringName)
 signal index_requested(tab: int)   ## IndexPanel.Tab: the Stats or Attributes button or key
 
 ## The frame the HUD lays out in (Main size). The gate panel and bottom bar hug its right and bottom edges.
@@ -73,11 +73,7 @@ func upgrades_panel() -> Control:
 
 
 func toggle_upgrades() -> void:
-	if _upgrades_panel.visible:
-		_upgrades_panel.visible = false
-		return
-	menu_opened.emit(&"upgrades")
-	_upgrades_panel.visible = true
+	menu_toggled.emit(&"upgrades")
 
 
 ## The bottom bar. Main keeps it above every menu so its chips stay clickable while a menu is open.
