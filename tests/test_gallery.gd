@@ -28,8 +28,9 @@ func run(t: Object) -> void:
 
 	t.eq(DisplayPanel.title_case("Mute all"), "Mute All", "settings labels display in Title Case")
 	t.eq(DisplayPanel.title_case("VSync on 60 fps"), "VSync On 60 Fps", "words with capitals or digits are left alone")
-	for tab: String in SettingsRegistry.tabs():
+	for tab: String in SettingsRegistry.TAB_ORDER:
 		t.ok(DisplayPanel.TAB_COLORS.has(tab), "the %s tab has a colour" % tab)
+	t.eq(DisplayPanel.tab_color("Brand New"), StatStyle.PAPER, "an unknown tab falls back to paper")
 
 	t.eq(GalleryTile.lift_px(0.0), 0, "a resting tile is not lifted")
 	t.eq(GalleryTile.lift_px(1.0), GalleryTile.LIFT, "a hovered tile lifts fully")
