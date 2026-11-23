@@ -63,6 +63,23 @@ func run(t: Object) -> void:
 	var d: Dictionary = scene.call("district_at", (anchors.get_node("District_heronmere") as Marker2D).position)
 	t.eq(String(d.get("name", "")), "Heronmere", "district lookup names Heronmere at its centre")
 	t.ok((scene.call("district_at", Vector2(20.0, 20.0)) as Dictionary).is_empty(), "no district over open water")
+	# lighting: every prop casts a shadow and lanterns light the ground (same wiring as the meadow)
+	var props := Node2D.new()
+	scene.call("spawn_occluders", props)
+	var placements: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "placements3d.json")) as Dictionary
+	var sprites: Array = placements.sprites as Array
+	var lanterns: int = 0
+	for sp: Dictionary in sprites:
+		if String(sp.kind) == "lantern":
+			lanterns += 1
+	var shadows: SkyShadows = scene.get_node("Shadows") as SkyShadows
+	t.ok(shadows != null, "Larkmoor has a Shadows node")
+	if shadows != null:
+		t.eq(shadows._items.size(), sprites.size(), "Larkmoor registers a cast shadow for every prop and landmark")
+	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
+	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
+	t.ok(lanterns > 0 and sky._lights.size() >= lanterns + 1, "lanterns and the walker get light pools (%d lights)" % sky._lights.size())
+	props.free()
 	holder.free()
 	WalkMask.use("")
 
