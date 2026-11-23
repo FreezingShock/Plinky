@@ -26,20 +26,44 @@ func invert_flash() -> void:
 		await get_tree().process_frame
 	_set_u("invert", 0.0)
 
-## Zone crossing: the dither wipe takes the picture to ASCII, `swap` runs while it is covered, then it clears.
-## Awaiting it returns once the new zone is fully visible.
+## Zone crossing: a full-window Bayer dither wipe (render/shaders/cross_wipe.gdshader) covers the picture, `swap` runs
+## while it is covered, then it clears. The post-process ASCII wipe only touches the (empty) 3D view, so the cover is
+## its own overlay above the HUD. Awaiting this returns once the new zone is fully visible.
+const WIPE_SHADER: Shader = preload("res://render/shaders/cross_wipe.gdshader")
+var _wipe: ColorRect
+
+func _wipe_rect() -> ColorRect:
+	if _wipe == null:
+		layer = 60
+		_wipe = ColorRect.new()
+		_wipe.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_wipe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		m.shader = WIPE_SHADER
+		_wipe.material = m
+		_wipe.visible = false
+		add_child(_wipe)
+	return _wipe
+
+func _set_wipe(v: float) -> void:
+	var r: ColorRect = _wipe_rect()
+	r.visible = v > 0.0
+	(r.material as ShaderMaterial).set_shader_parameter("amount", floorf(v * 12.0) / 12.0)   # stepped, like the other transitions
+
 func cross_zone(swap: Callable, cover := 0.45, hold := 0.12, clear := 0.55) -> void:
-	if FxConfig.reduce_flashing or rect == null or rect.material == null:
+	if FxConfig.reduce_flashing:
 		swap.call()
 		return
 	var t := create_tween()
-	t.tween_method(func(v: float): _set_u("ascii", v), 0.0, 1.0, cover)
+	t.tween_method(_set_wipe, 0.0, 1.0, cover)
 	await t.finished
+	_set_wipe(1.0)
 	swap.call()
 	await get_tree().create_timer(hold).timeout
 	var t2 := create_tween()
-	t2.tween_method(func(v: float): _set_u("ascii", v), 1.0, 0.0, clear)
+	t2.tween_method(_set_wipe, 1.0, 0.0, clear)
 	await t2.finished
+	_set_wipe(0.0)
 
 ## Rebirth: dither-wipe to ASCII and back.
 func rebirth_ascii(hold := 0.6) -> void:

@@ -31,6 +31,19 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
 	var sim: Sim = GameState.sim
 	sim.gates_open[&"zone1"] = true
+	if "wipe" in OS.get_cmdline_user_args():
+		main = (load("res://main.tscn") as PackedScene).instantiate()
+		add_child(main)
+		main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		await _wait(30)
+		sim.enter_zone(&"larkmoor")
+		for i in 6:
+			await _wait(8)
+			await _shot("wipe_%d" % i)
+		await _wait(60)
+		await _shot("wipe_done")
+		get_tree().quit(0)
+		return
 	sim.zone_id = &"larkmoor"
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
