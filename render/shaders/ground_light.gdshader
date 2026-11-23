@@ -6,6 +6,7 @@ shader_type canvas_item;
 // (terrain and slopes shade each other), then the colour is re-picked from the material ramp with a Bayer dither.
 // Far texels (top of the frame) take a dithered depth fog. Everything stays on the palette.
 #include "res://render/shaders/prop_ramps.gdshaderinc"
+#include "res://render/shaders/season.gdshaderinc"
 uniform sampler2D nrm_tex : filter_nearest;
 uniform sampler2D h_tex : filter_nearest;
 uniform vec3 sun_dir = vec3(-0.45, 0.45, 0.85);
@@ -76,6 +77,9 @@ void fragment() {
 				c.rgb = vec3(sh);
 			}
 		}
+	}
+	if (c.a > 0.5 && debug_view == 0 && (season_amt > 0.0 || season_snow > 0.0)) {
+		c.rgb = season_recolor(c.rgb, wpos);
 	}
 	// depth fog: the far (top) rows fade toward the haze colour, dithered
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;

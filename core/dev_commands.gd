@@ -36,6 +36,8 @@ func help_lines() -> PackedStringArray:
 		"zone <id>                 jump to a zone (opens the gate that leads there)",
 		"attr <id> <level>         set an upgrade level",
 		"skip <time>               fast forward income (90s, 15m, 3h, 2d)",
+		"season [name|0-3]         show the calendar, or jump to the start of a season (spring, summer, autumn, winter)",
+		"day <n>                   advance the calendar by n in-game days",
 		"god [on|off]              presses cost nothing",
 		"reset confirm             wipe the save and restart",
 	])
@@ -77,11 +79,39 @@ func run(line: String) -> String:
 			return _attr(args)
 		"skip":
 			return _skip(args)
+		"season":
+			return _season(args)
+		"day":
+			return _day(args)
 		"god":
 			return _god(args)
 		"reset":
 			return _reset(args)
 	return "Unknown command '%s'. Type help." % cmd
+
+
+func _season(args: PackedStringArray) -> String:
+	var cal: GameCalendar = sim.calendar
+	if args.is_empty():
+		var n: Dictionary = cal.now()
+		return "Year %d, %s (%s), %s %d, %s" % [n["year"], n["season_name"], n["season_id"], n["month_name"], n["day"], n["clock_text"]]
+	var want: String = args[0].to_lower()
+	var idx: int = -1
+	for i in GameCalendar.SEASONS:
+		if want == String(cal.config.season_ids[i]).to_lower() or want == cal.season_name(i).to_lower() or want == str(i):
+			idx = i
+	if idx < 0:
+		return "Unknown season '%s'. Try spring, summer, autumn or winter." % args[0]
+	cal.jump_to_season(idx)
+	return "Jumped to %s, %s." % [cal.season_name(idx), cal.now()["clock_text"]]
+
+
+func _day(args: PackedStringArray) -> String:
+	if args.is_empty() or not args[0].is_valid_float() or args[0].to_float() <= 0.0:
+		return "Usage: day <n>  (in-game days, e.g. 2 or 0.5)"
+	sim.calendar.skip_days(minf(args[0].to_float(), 400.0))
+	var n: Dictionary = sim.calendar.now()
+	return "Now %s, %s %d, %s." % [n["season_name"], n["month_name"], n["day"], n["clock_text"]]
 
 
 # ---------------------------------------------------------------- parsing

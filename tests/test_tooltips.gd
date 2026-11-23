@@ -24,9 +24,14 @@ func run(t: Object) -> void:
 	var sim: Sim = t.make_sim()
 	var bid: StringName = sim.button_defs.keys()[0]
 	var ps: Dictionary = PadTooltip.spec_for(sim, bid)
-	t.ok(str(ps["body"]).contains("Costs") and str(ps["body"]).contains("Gives"), "pad tooltip lists cost and reward")
+	t.ok((ps["lines"] as Array).size() >= 2, "pad tooltip has cost and gain lines")
 	var rid: StringName = sim.call(&"pad_rarity", bid) if sim.has_method(&"pad_rarity") else &"common"
-	t.eq(str(ps["body"]).contains("Rarity:"), rid != &"" and rid != &"common", "the rarity line shows exactly when the pad is above common")
+	t.eq((ps["lines"] as Array).size() == 3, rid != &"" and rid != &"common", "the rarity line shows exactly when the pad is above common")
+	var cost_seg: Dictionary = (ps["lines"] as Array)[(ps["lines"] as Array).size() - 2][2] as Dictionary
+	var can: bool = sim.get_stat((sim.button_defs[bid] as ButtonDef).cost_stat).gte(Formulas.button_cost(sim.button_defs[bid] as ButtonDef))
+	t.eq(cost_seg["c"], StatStyle.buy(can), "the cost number is green when affordable and red when not")
+	var gain_seg: Dictionary = (ps["lines"] as Array)[(ps["lines"] as Array).size() - 1][2] as Dictionary
+	t.eq(gain_seg["c"], StatStyle.BUY_GREEN, "the gain number is green")
 	t.ok(PadTooltip.spec_for(sim, &"nope").is_empty(), "unknown pad gives an empty spec")
 
 	var root: Node = (t as SceneTree).root
@@ -81,6 +86,30 @@ func run(t: Object) -> void:
 	t.ok(h.position.x + h.size.x <= view.x and h.position.y + h.size.y <= view.y, "a free tip is not past the right or bottom edge")
 	h.hide_free()
 	t.ok(not h.visible, "hide_free hides it")
+
+	# Hover stays up for as long as the mouse rests on the control, and goes once it has left.
+	h.dismiss()
+	h._process(1.0)
+	h.test_hover_enabled = true
+	h.test_hover = c
+	h._process(0.016)   # discovery: the control under the mouse is bound, so it is requested
+	t.ok(h.target == c, "a bound control under the mouse is picked up without any mouse_entered signal")
+	var held: bool = true
+	for i in 90:
+		h._process(1.0 / 60.0)
+		if i > 30 and not h.visible:
+			held = false
+	t.ok(held and h.visible, "a hover tooltip stays visible for 1.5 s while the mouse rests on the control")
+	h.test_hover = null
+	for i in 3:
+		h._process(1.0 / 60.0)
+	t.ok(h.visible, "a brief slip off the control does not hide it (grace)")
+	for i in 10:
+		h._process(1.0 / 60.0)
+	t.ok(not h.visible, "it hides once the mouse has been away longer than the grace")
+	h.test_hover_enabled = false
+	t.ok(Tip.normalize(null)["empty"], "a null spec is empty and shows nothing")
+	t.ok(not Tip.normalize({"title": "x"})["empty"], "a titled spec is not empty")
 
 	# Beside a slot: skips a spot that would cover an avoid panel.
 	var wall := Rect2(430, 0, 200, 300)
