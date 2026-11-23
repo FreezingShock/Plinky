@@ -84,7 +84,7 @@ static func index_row(d: Dictionary) -> Dictionary:
 ## A relic in a slot. `owned` stacks, `is_equipped` whether it counts right now, `hint` what a click does.
 static func relic(def: RelicDef, owned: int, is_equipped: bool, hint: String) -> Dictionary:
 	var rc: Color = def.rarity.readable_color(RelicStyle.ink)
-	var lines: Array = [[Tip.seg("%s relic" % def.rarity.display_name.to_upper(), rc)]]
+	var lines: Array = [rarity_tag(def.rarity, "relic", rc)]
 	lines.append(["Owned ", Tip.seg("%d%s" % [owned, " (max)" if def.is_capped(owned) else ""], RelicStyle.accent)])
 	if owned > 0 and not is_equipped:
 		lines.append([Tip.seg("Not equipped: no effect", StatStyle.BUY_RED)])
@@ -96,3 +96,9 @@ static func relic(def: RelicDef, owned: int, is_equipped: bool, hint: String) ->
 
 static func slot_note(title: String, body: String) -> Dictionary:
 	return {"title": title, "body": body, "beside": true}
+
+
+## The one rarity line every tooltip uses: all caps, bold display face, rarity colour, rarity then type
+## ("UNCOMMON PAD", "RARE RELIC", "COMMON UPGRADE"). `c` is the readable rarity colour.
+static func rarity_tag(rarity: RarityDef, kind: String, c: Color) -> Array:
+	return [Tip.tag("%s %s" % [rarity.display_name, kind], c)]

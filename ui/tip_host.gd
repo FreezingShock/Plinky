@@ -313,6 +313,9 @@ func _rich_line(segs: Array) -> HBoxContainer:
 				row.add_child(icon_rect)
 			continue
 		var l := _label(row, false)
+		if bool(d.get("tag", false)):
+			l.add_theme_font_override(&"font", StatStyle.tag_font())
+			l.add_theme_font_size_override(&"font_size", StatStyle.TAG_SIZE)
 		l.text = str(d.get("t", ""))
 		var c: Color = d.get("c", Color(0, 0, 0, 0)) as Color
 		l.add_theme_color_override("font_color", c if c.a > 0.0 else RelicStyle.text)

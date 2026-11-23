@@ -23,3 +23,16 @@ static func color(id: StringName) -> Color:
 ## Green when the player can afford a cost, red when not.
 static func buy(can: bool) -> Color:
 	return BUY_GREEN if can else BUY_RED
+
+
+## The all-caps tag face (rarity tags, MOMENTUM): Pixelify Sans emboldened, size TAG_SIZE.
+const TAG_SIZE: int = 14
+static var _tag_font: FontVariation = null
+
+
+static func tag_font() -> FontVariation:
+	if _tag_font == null:
+		_tag_font = FontVariation.new()
+		_tag_font.base_font = load("res://fonts/PixelifySans.ttf") as Font
+		_tag_font.variation_embolden = 0.6
+	return _tag_font
