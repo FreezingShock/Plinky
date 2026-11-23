@@ -199,7 +199,8 @@ func _timeline(t: Object) -> void:
 	var order: Array = tips.map(func(p: Array) -> StringName: return p[0])
 	t.eq(order[0] if not order.is_empty() else &"", &"welcome", "the first tip is the welcome")
 	var last: int = -1
-	for id: StringName in [&"welcome", &"first_press", &"clover_row", &"rebirth_button", &"gate_open"]:
+	t.ok(not order.has(&"rebirth_button"), "the Rebirth tip waits for Zone 2: the meadow runs on Bloom")
+	for id: StringName in [&"welcome", &"first_press", &"clover_row", &"gate_open"]:
 		var at: int = order.find(id)
 		t.ok(at > last, "tip %s plays, in order" % id)
 		last = maxi(last, at)

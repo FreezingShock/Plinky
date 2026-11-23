@@ -568,3 +568,16 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Layout:** `tools/art/place_quarry_pads.py` puts 18 pads on the visible terraces (a row per terrace strip, zig-zagging up toward the gate) and rewrites the pad anchors in `placements3d.json`. Vents, gate and spawn are unchanged; two rows sit close to the spawn and road.
 - **Art:** `tools/art/gen_quarry_ladder.py` renders 16^3 voxel models (coal pile, ore chunk, slag pool, ingot stack, anvil, ember heart) in 2:1 isometric with a ramp per tier colour (matching rarity), smooth tone bands (dither only at band edges), ink outline and 3 flicker frames; outputs hero, pad-size (`_game`) and 32/16/8 px icons into `assets/art/zone2/ladder/`. Pads draw the `_game` frames (`TexelPad._draw_forge`); locked rows are a dark silhouette, opening rows rise with the same spark ring as a flower.
 - Not run in the cloud: real-hardware engine look. Tests (2862 checks) and the sim run headless here.
+
+- **HUD currency panel is a compact strip (v0.30.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
+
+
+## 2026-11-23 Bloom: the meadow's reset layer (0.31.0)
+- **Bloom replaces Rebirth in the meadow.** It opens once Larkmoor's far gate has opened and Starbloom Petals reach the gate threshold (`Sim.bloom_ref()` reads it from the zone, so Bloom follows the gate). Nathan wanted a modest layer: one reset after Rebirth, no Transcendence or Infinity.
+- **Currency is Seeds, not Petals** (Petals clashes with Starbloom Petal). Icon: a plump peach-gold seed with no sprout so it never reads as the RP gem (`tools/art/gen_seed_icon.py`, 8, 16, 24 and 32 px).
+- **Pays** floor(2 x sqrt(Starbloom Petals / gate threshold)) Seeds, at least 2 (`bloom_seed_scale`, `bloom_min_seeds`). Every Bloom also adds 5% to every pad's reward for good (`bloom_reward_per_bloom`, via `pad_yield_mult`).
+- **Resets** every stat flagged `resets_on_bloom`: Sunlight, Dewdrops, Clover Leaves, Thistle Down, Heather Sprigs, Foxglove Bells, Starbloom Petals. Keeps gates, open tiers, relics, mastery, Seeds, RP and old Prestige.
+- **Buys four gifts** in Upgrades (BLOOM GIFTS): Head start (starting Sunlight), Deep soil (Sunlight income), Wide bloom (pad yield), Long dusk (offline hours). All in `content/attributes/bloom_*.tres`.
+- **Rebirth, Prestige and RP are hidden outside `rebirth_zones` (Zone 2).** UI only: the button, stat rows, Upgrades groups and the Rebirth tip. Balances, levels and saves are untouched; they return with Zone 2. `Sim.try_rebirth` still works (dev console, tests).
+- **Saves:** `bloom_count` is new and defaults to 0, so no save version bump. Seeds is a stat and loads as 0.
+- **Open:** pacing is from `tools/sim_bloom.gd`, a greedy floor with no walking, relics or attributes. Taste call: Bloom may want to reset Sprout and Clover progress too (it does, as stats), and the first-time teach tip text.
