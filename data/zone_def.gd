@@ -23,6 +23,9 @@ extends Resource
 @export var entry_source_stat: StringName = &""
 ## The stat Rebirth banks into Prestige in this zone. Empty = GameConfig.prestige_source_stat (Clover Leaves in the meadow).
 @export var prestige_source_stat: StringName = &""
+## Extra Prestige per rebirth done in this zone: a rebirth pays x (1 + this x zone rebirths so far). 0 = off. Keeps
+## Prestige (and so attribute buys) keeping pace with attribute costs, which grow every level.
+@export var prestige_per_rebirth_bonus: float = 0.0
 @export var entry_grants: Dictionary = {}
 ## Base presses per second while standing on a pad.
 @export var press_rate: float = 0.5
