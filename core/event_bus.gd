@@ -19,6 +19,7 @@ signal bonus_gained(kind: StringName, gains: Dictionary)  # kind: &"streak" or &
 signal critter_spawned()
 signal critter_gone()
 signal heat_hot_changed(hot: bool)
+signal momentum_tier_changed(tier: int, rising: bool)
 signal mastery_changed(button_id: StringName, level: int, xp: float)  # every press; level and xp are the pad's after it
 signal mastery_leveled(button_id: StringName, level: int)
 signal game_loaded()

@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.14.0 - 2026-11-23
+- Momentum overhaul: five named stages (Idle, Stride, Rhythm, Flow, Surge) with income kickers, a hold window before it drains (4 s at Surge), pad presses and crits feed it, and a new bar with stage ticks, a decay ghost, a hold line, stage colours, a tier-up flash and thump, and a tooltip with exact numbers. Full bar is still +40%.
+
 ## 0.13.0 - 2026-11-23
 - Stats and Attributes are now a gallery: 32 px icon cards, hover info strip, and a detail page per stat with its sources (where it comes from, how to get more). New clean symmetric icon set, and `sim.stat_sources`. Attribute detail pages let you buy the next level.
 

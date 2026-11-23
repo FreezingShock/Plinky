@@ -95,7 +95,7 @@ Run `python3 docs/balance-sim-active.py`. All values are in `content/config/game
 
 | Mechanic | Rule | Sim result (gate time) |
 |---|---|---|
-| Momentum | Walking fills it (about 180 texels), 0.1 per second drains it, income x(1 + 0.4 x momentum) | Average +20% income: 10.5 to 9.0 min |
+| Momentum | Walking fills it (about 180 texels), presses add 1% (crit +5%), holds 1.2 s (4 s at full) then drains 0.1 per second. Income x(1 + 0.28 x momentum + stage kickers 1/2/3/6%), full bar +40% as before. The headless sim does not walk or feed presses, so gate times are unchanged | Average +20% income: 10.5 to 9.0 min |
 | Golden critter | Appears every 75 to 150 s, stays 12 s, click pays 30 s of income | Caught every time: 10.5 to 8.6 to 9.4 min |
 | Pad streak | m1, m2, m3 in order, each within 10 s, pays 5 s of income, 20 s cooldown | Greedy play never does it. Deliberate play adds up to 25% income. |
 | All three | | 7.6 to 7.8 min |
