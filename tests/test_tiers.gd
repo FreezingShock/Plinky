@@ -4,7 +4,8 @@ extends RefCounted
 
 func run(t: Object) -> void:
 	var sim: Sim = t.make_sim()
-	t.eq(sim.tier_defs.size(), 6, "six tiers")
+	t.eq(sim.tiers_in_zone(&"zone1").size() + sim.tiers_in_zone(&"larkmoor").size(), 6, "six flower tiers")
+	t.eq(sim.tiers_in_zone(&"zone2").size(), 6, "six forge tiers")
 	t.ok(sim.is_tier_open(&"sprout"), "the first tier of a zone is open from the start")
 	t.ok(not sim.is_tier_open(&"clover"), "Clover starts locked")
 	t.ok(sim.is_pad_locked(&"clover_1"), "its pads are locked")
