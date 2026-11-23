@@ -3,6 +3,7 @@ extends Node
 ## Run (windowed, not --headless): godot --path . tools/hud_shot.tscn -- [early|late] [out_dir]
 ##   early  fresh game: just the first rows
 ##   late   late-game fixture: every row visible (Slag, Prestige xN, Rebirth Points) with big numbers
+##   edit   the late fixture in edit mode with one row hidden (move and hide controls, the add chips, Custom count)
 ## Writes <out_dir>/hud_<fixture>.png (full frame) and hud_<fixture>_panel_4x.png (panel crop, 4x).
 ## out_dir defaults to res://captures. Point APPDATA/user:// at a scratch folder so the real save is never touched.
 
@@ -20,7 +21,7 @@ func _ready() -> void:
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await _wait(40)
-	if fixture == "late":
+	if fixture == "late" or fixture == "edit":
 		var sim: Sim = GameState.sim
 		GameState.onboarding.tips_enabled = false   # unlock every row and gate
 		sim.rebirth_count = 12
@@ -29,10 +30,14 @@ func _ready() -> void:
 			sim.stats[sid] = BigNum.from_float(big)
 			big *= 37.0
 		await _wait(60)   # rolling counters settle
+	var hud: Hud = main.get("hud") as Hud
+	if fixture == "edit" and hud != null:
+		hud.call("_hide_row", &"clover")
+		hud.set_edit_mode(true)
+		await _wait(10)
 	await _wait(10)
 	var img: Image = get_tree().root.get_viewport().get_texture().get_image()
 	print("save ", out_dir.path_join("hud_%s.png" % fixture), " err=", img.save_png(out_dir.path_join("hud_%s.png" % fixture)))
-	var hud: Hud = main.get("hud") as Hud
 	var scale: float = float(img.get_width()) / 640.0
 	var h: float = (hud.stats_bottom() + 4.0) * scale if hud != null else 120.0 * scale
 	var crop: Image = img.get_region(Rect2i(0, 0, int(300.0 * scale), int(h)))

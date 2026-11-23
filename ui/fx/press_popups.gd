@@ -612,7 +612,7 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 	var x0: float = sa.x + p.lane.x + off.x - (p.w + icon_w) * 0.5
 	# And it stays on screen: slide it back inside the view rather than letting it run off an edge.
 	var view_w: float = get_viewport_rect().size.x
-	x0 = clampf(x0, 4.0, maxf(view_w - p.w - icon_w - 4.0, 4.0))
+	x0 = clampf(x0, 4.0, maxf(view_w - p.w - icon_w - 12.0, 4.0))
 	var y: float = sa.y + p.lane.y + off.y
 	var fade: float = ceilf(clampf((1.0 - prog) / 0.3, 0.0, 1.0) * 4.0) / 4.0
 	var n: int = p.text.length()

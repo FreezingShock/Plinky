@@ -37,6 +37,27 @@ def mult(sk):
     sk.outline()
 
 
+def embers(sk):
+    """Embers: three glowing coals on a heap, the quarry's passive trickle (Sunlight's counterpart)."""
+    heap = sk.poly([(4, 26), (8, 18), (14, 14), (18, 14), (24, 18), (28, 26), (26, 28), (6, 28)])
+    sk.body(heap, 2, 3, 1)
+    for cx, cy, r in ((12, 20, 4), (21, 21, 3), (16, 14, 3)):
+        sk.body(sk.circle(cx, cy, r), 6, 5, 6)
+    sk.fill(sk.rect(15, 13, 17, 15) | sk.rect(11, 19, 13, 21) | sk.rect(20, 20, 22, 22), 7)
+    sk.fill(sk.rect(8, 6, 10, 8) | sk.rect(22, 8, 24, 10) | sk.rect(15, 4, 17, 6), 5)   # rising sparks
+    sk.outline()
+
+
+def cinder(sk):
+    """Cinder: a charred lump split by a glowing seam, the first forge stat."""
+    rock = sk.poly([(4, 22), (8, 12), (14, 8), (22, 8), (28, 14), (28, 24), (22, 28), (10, 28), (4, 26)])
+    sk.body(rock, 2, 3, 1)
+    seam = sk.line((10, 12), (16, 18), 2) | sk.line((16, 18), (14, 26), 2) | sk.line((16, 18), (24, 22), 2)
+    sk.fill(seam & rock, 6)
+    sk.fill(sk.rect(15, 17, 17, 19) | sk.rect(13, 23, 15, 25), 5)
+    sk.outline()
+
+
 def reb(sk):
     ring = (sk.circle(16, 18, 10) - sk.circle(16, 18, 6)) - sk.rect(16, 0, 32, 18)
     head = sk.poly([(14, 4), (14, 16), (26, 10)])
@@ -219,7 +240,7 @@ def attrs_menu(sk, f=0):
     sk.outline()
 
 
-ICONS = {'cash': cash, 'mult': mult, 'reb': reb, 'slag': slag, 'prestige': prestige, 'crit': crit, 'crit_dmg': crit_dmg,
+ICONS = {'cash': cash, 'mult': mult, 'embers': embers, 'cinder': cinder, 'reb': reb, 'slag': slag, 'prestige': prestige, 'crit': crit, 'crit_dmg': crit_dmg,
          'rate': rate, 'luck': luck, 'offline': offline, 'walk': walk, 'heat': heat, 'mastery': mastery,
          'presses': presses, 'clock': clock, 'rest': rest, 'lore': lore, 'fortune': fortune, 'stats_menu': stats_menu, 'attrs_menu': attrs_menu}
 

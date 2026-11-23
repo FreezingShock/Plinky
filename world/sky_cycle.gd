@@ -33,6 +33,8 @@ var sway_material: ShaderMaterial
 var rain_layer: SkyRain
 var shadows: SkyShadows                 # set by MeadowScene before this node enters the tree
 var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
+## Scales the high-sun exposure, contrast and saturation fix. Scenes with brighter, greener ground (Larkmoor) set it above 1.
+var noon_boost: float = 1.0
 var atmosphere: bool = true             # false: no mountain haze or mist
 ## Where haze and mist are drawn, in world texels. Empty = the whole sky box (the meadow). Larkmoor gives the
 ## mountain strip, the sea band under it, and one small rect for each pond, so the shader only runs where it shows.
@@ -436,7 +438,9 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
-			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
+			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k) * GraphicsQuality.shadow_stride())
+			gm.set_shader_parameter("march_steps", GraphicsQuality.shadow_steps())
+			gm.set_shader_parameter("ao_taps", GraphicsQuality.ao_taps())
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
 			gm.set_shader_parameter("fog_col", fog_col)
 			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
@@ -481,15 +485,19 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k * (0.75 + 0.5 * low_sun_k))
 	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k) * (0.9 + 0.5 * low_sun_k))
 	var night01: float = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
-	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01))
-	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01))
+	var noon01: float = smoothstep(0.7, 1.0, model.elevation(mt)) * (1.0 - 0.6 * rain01)
+	var nb: float = noon01 * noon_boost
+	_light_mat.set_shader_parameter("noon_tint", Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.95, 0.88), clampf(nb * 0.6, 0.0, 1.0)))
+	_light_mat.set_shader_parameter("exposure", 1.0 - _config.noon_exposure * nb)
+	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * nb)
+	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01) + _config.noon_contrast * nb)
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
 	if _screen != null:
 		_screen.set_area(area)
 		_screen.set_strength(_config.vignette_strength)
 	if _lg_rect != null:
-		_lg_rect.visible = not FxConfig.reduce_screen_fx
+		_lg_rect.visible = not FxConfig.reduce_screen_fx and GraphicsQuality.screen_grade()
 	_push_lights(t, steady)
 
 

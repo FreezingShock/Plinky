@@ -1,6 +1,6 @@
 class_name StatStyle
 extends RefCounted
-## One colour per stat, shared by every tooltip so Cash always reads gold and Multiplier always reads blue.
+## One colour per stat, shared by every tooltip so Sunlight always reads gold and Embers always read orange.
 ## Fixed hex like the buy colours and rarity colours: they read the same in every zone. No node or autoload use.
 
 const BUY_GREEN: Color = Color("5fd068")   ## affordable, a gain
@@ -8,7 +8,7 @@ const BUY_RED: Color = Color("d8483c")     ## not affordable
 const COLORS: Dictionary = {
 	&"sunlight": Color("ffd95a"), &"dewdrop": Color("e4f1ff"), &"clover": Color("6be86b"), &"thistle": Color("7f9bff"),
 	&"heather": Color("c27cff"), &"foxglove": Color("ffb62e"), &"starbloom": Color("ff7bff"),
-	&"cash": Color("f2c94c"), &"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("5fb0e0"), &"ironore": Color("5fb26a"), &"ingot": Color("a07ee0"), &"alloy": Color("e8b43a"), &"emberheart": Color("ff5aa0"),
+	&"embers": Color("ff8a3d"), &"cinder": Color("d6cfc4"), &"reb": Color("c77dff"), &"slag": Color("5fb0e0"), &"ironore": Color("5fb26a"), &"ingot": Color("a07ee0"), &"alloy": Color("e8b43a"), &"emberheart": Color("ff5aa0"),
 	&"prestige": Color("f08fb0"), &"rp": Color("9ee2c0"), &"seeds": Color("ffc178"), &"crit_chance": Color("ff6b5a"), &"crit_damage": Color("ffae42"),
 	&"luck": Color("7be08a"), &"press_rate": Color("6fd6e8"), &"walk_speed": Color("a3d96a"),
 	&"offline_cap": Color("8aa6ff"), &"mastery": Color("ffd166"),

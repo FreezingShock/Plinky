@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"crit_100"
+display_name = "Sharp Eye"
+description = "Land 100 critical hits."
+category = &"presses"
+counter = &"crits"
+target = 100.0
+order = 6
+title = "Sharp Eye"

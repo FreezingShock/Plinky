@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"meadow_starbloom"
+display_name = "Starbloom Field"
+description = "Open the Starbloom tier, the last row of the meadow."
+category = &"meadow"
+counter = &"tier_starbloom"
+target = 1.0
+order = 6
+title = ""
