@@ -16,7 +16,6 @@ var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
 const STAT_RATE_SIZE: int = 8    ## the small "+x/s" or "xN" gain text left of each value
-const STAT_VALUE_WIDTH: int = 48   ## value column: fits "999.99Sx" in Spleen 6x12
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
@@ -173,7 +172,6 @@ func _build_stats() -> void:
 		h.add_child(rate)
 		var val := RollValue.new()
 		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
-		val.custom_minimum_size.x = STAT_VALUE_WIDTH
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		val.add_theme_color_override("font_color", StatStyle.color(sid))

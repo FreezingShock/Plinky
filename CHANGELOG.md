@@ -12,6 +12,9 @@ under a new version heading and updates the version everywhere.
 ## 0.31.0 - 2026-11-23
 - Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
 
+## 0.30.1 - 2026-11-23
+- HUD strip: the gain sits tight against the value (no fixed-width value column), so short values no longer leave a gap.
+
 ## 0.30.0 - 2026-11-23
 - The Ember Quarry is now a six-row forge ladder, Cinder, Ore, Slag, Ingot, Alloy and Emberheart: 18 pads climbing the terraces, each row opening the next, with new isometric voxel pad objects and per-row colours, tier buffs (1.25x and 1.5x) from Slag up, Rebirth that banks Ingots and only resets the quarry, and a small flat arrival purse. Old quarry saves migrate.
 
