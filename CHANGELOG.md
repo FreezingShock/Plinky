@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.12.1 - 2026-11-23
+- Pads now take the ground's cast shadows (a tree's shadow falls across the plate, with the slab's height counted), and a pad's own shadow is short, slab-wide and follows the global sun like every other prop.
+
 ## 0.12.0 - 2026-11-23
 - Title screen overhaul: a layered dusk meadow (stars, sun, two drifting cloud decks, snow-capped mountains with mist, wooded ridge with a windmill and a smoking cottage, a lake with a sun glitter column, a swaying-tree meadow, fireflies, birds, falling leaves, tall foreground grass) on the texel grid with mouse parallax and per-layer dither; the logo and a framed menu sit left, the walker on its pad right. The menu gets pixel icons on every button: Continue (or Play), New Game, Saves, Settings, Update Log, Credits, Quit.
 - Save slots: three slots (slot 1 is the existing save), a Saves list showing rebirths, play time, presses and save date with Load, Start and a two-step Delete; Continue loads the last used slot; nothing autosaves while the title is up.
