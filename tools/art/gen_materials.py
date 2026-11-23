@@ -38,11 +38,11 @@ def dewdrop(s):
 
 def clover_leaf(s):
     d, b, l = ramp('clover_leaf')
-    s.fill(s.line((16, 22), (23, 30), 2), DEEPG)
-    lobes = s.circle(10, 12, 6) | s.circle(22, 12, 6) | s.circle(16, 21, 6) | s.rect(10, 12, 22, 20)
-    s.body(lobes, b, l, d)
-    s.fill(s.line((16, 16), (16, 8), 2) | s.line((16, 16), (10, 20), 2) | s.line((16, 16), (22, 20), 2), d)  # veins
-
+    s.fill(s.rect(15, 12, 17, 26) | s.line((16, 25), (22, 30), 2), DEEPG)          # stem shows through the lower gap
+    for cx, cy, dx, dy in [(10, 8, -1, -1), (22, 8, 1, -1), (10, 20, -1, 1), (22, 20, 1, 1)]:
+        leaf = s.circle(cx, cy, 5)
+        s.body(leaf, b, l, d)
+        s.fill(s.line((cx - dx * 3, cy - dy * 3), (cx + dx * 2, cy + dy * 2), 2) & leaf, d)   # vein from the centre outward
 
 def thistle_down(s):
     d, b, l = ramp('thistle_down')
@@ -60,28 +60,31 @@ def thistle_down(s):
 
 def heather_sprig(s):
     d, b, l = ramp('heather_sprig')
-    s.fill(s.line((6, 30), (24, 4), 2), DEEPG)
-    for (x, y, dx) in [(20, 8, 1), (16, 14, -1), (22, 14, 1), (12, 20, -1), (18, 22, 1), (8, 26, -1), (14, 28, 1)]:
-        s.fill(s.rect(x if dx > 0 else x - 4, y, x + 4 if dx > 0 else x, y + 2), GREEN)       # pedicel
-        bx = x + 5 * dx
-        bell = s.ellipse(bx, y + 4, 3, 4) | s.rect(bx - 3, y + 6, bx + 3, y + 8)
+    s.fill(s.rect(15, 6, 17, 30), DEEPG)                                                   # upright stem
+    s.fill(s.poly([(15, 30), (6, 27), (14, 27)]) | s.poly([(17, 30), (26, 27), (18, 27)]), GREEN)   # base leaves
+    s.body(s.circle(16, 4, 3), b, l, d)                                                    # top bud
+    for y, side in [(8, -1), (13, 1), (18, -1), (23, 1)]:
+        bx = 16 + 7 * side
+        s.fill(s.rect(min(16, bx), y, max(16, bx) + 1, y + 2), GREEN)                      # pedicel
+        bell = s.ellipse(bx, y + 4, 2.5, 3) | s.rect(bx - 3, y + 5, bx + 3, y + 8)
         s.body(bell, b, l, d)
-        s.fill(s.rect(bx - 2, y + 7, bx + 2, y + 8), d)
-    s.fill(s.circle(24, 4, 2), l)
+        s.fill(s.rect(bx - 2, y + 7, bx + 2, y + 8), d)                                    # mouth
 
 
 def foxglove_bell(s):
     d, b, l = ramp('foxglove_bell')
-    s.fill(s.line((4, 30), (18, 2), 2), DEEPG)
-    s.fill(s.poly([(6, 28), (2, 22), (8, 24)]) | s.poly([(8, 30), (16, 26), (10, 24)]), GREEN)
-    for cx, cy, k in [(21, 2, 0.5), (22, 9, 0.7), (14, 17, 1.0)]:
-        top = s.ellipse(cx, cy, 5 * k, 5 * k)
-        flare = s.poly([(cx - 5 * k, cy), (cx + 5 * k, cy), (cx + 8 * k, cy + 9 * k), (cx - 8 * k, cy + 9 * k)])
+    s.fill(s.rect(15, 4, 17, 30), DEEPG)
+    s.fill(s.poly([(15, 30), (6, 26), (14, 26)]) | s.poly([(17, 30), (26, 27), (18, 26)]), GREEN)
+    s.body(s.ellipse(16, 4, 3, 3), b, l, d)                                                # top bud
+    for cx, cy, k in [(9, 16, 0.85), (23, 8, 0.75)]:
+        s.fill(s.rect(min(cx, 16), cy - 1, max(cx, 16), cy + 1), DEEPG)                    # pedicel
+        top = s.ellipse(cx, cy + 2 * k, 4 * k, 5 * k)
+        flare = s.poly([(cx - 4 * k, cy + 3 * k), (cx + 4 * k, cy + 3 * k), (cx + 8 * k, cy + 12 * k), (cx - 8 * k, cy + 12 * k)])
         s.body(top | flare, b, l, d)
-        s.fill(s.ellipse(cx, cy + 9 * k, 7 * k, 2 * k), d)      # dark open mouth
-        if k >= 1:
-            for sx, sy in [(-3, 4), (2, 6), (-1, 9)]:
-                s.fill(s.rect(cx + sx * k - 1, cy + sy * k - 1, cx + sx * k + 1, cy + sy * k + 1), d)
+        s.fill(s.ellipse(cx, cy + 11.5 * k, 9 * k, 3.6 * k), l)                            # lit flared lip
+        s.fill(s.ellipse(cx, cy + 12 * k, 6.5 * k, 2.4 * k), d)                            # dark open mouth
+        for sx, sy in [(-2, 5), (2, 7)]:
+            s.fill(s.rect(cx + sx * k - 1, cy + sy * k - 1, cx + sx * k + 1, cy + sy * k + 1), d)
 
 
 def starbloom_petal(s):
