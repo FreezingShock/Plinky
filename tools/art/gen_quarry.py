@@ -139,7 +139,7 @@ for r in range(5):
     if r < 4:
         ROAD.append((ROWW[r + 1] + FRONT, RAMP_D[r + 1]))
 GATE_WD = (-246, 46)
-ROAD += [(ROWW[5] + FRONT, 46), (GATE_WD[0] + 14, GATE_WD[1])]
+ROAD += [(ROWW[5] + FRONT, 46), (ROWW[5] + FRONT, -150), (ROWW[5] + FRONT, 46), (GATE_WD[0] + 14, GATE_WD[1])]   # the spur runs past all three Emberheart pads
 ROW_SPAN = [(-95, 110)] + [(RAMP_D[r - 1], RAMP_D[r]) for r in range(1, 5)]
 # row 5 (Emberheart) sits west of the gate approach
 PAD_ROWS = []
@@ -506,6 +506,45 @@ def sample_h(T, w, d):
     return float(T['H'][int(round(u)), int(round(v))])
 
 
+def fill_void(idx, alpha):
+    """Mountains for every canvas pixel the island grid does not reach: terraced ranges laid out on the iso axes, so
+    their strata run the same two diagonals as the cliffs, with a lit lip and a shaded wall under every band. The
+    ranges rise and darken with distance from the island and fade to the void colour at the canvas edge."""
+    yy, xx = np.mgrid[0:CH, 0:CW]
+    u = (2.0 * (yy - OYS) + (xx - OXS)) / 2.0
+    v = (2.0 * (yy - OYS) - (xx - OXS)) / 2.0
+    dist = np.zeros((CH, CW))
+    cur = alpha.copy()
+    for i in range(1, 181):
+        g = cur.copy()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            g |= np.roll(np.roll(cur, dy, 0), dx, 1)
+        dist[g & ~cur] = i
+        cur = g
+    dist[~cur] = 181
+    n1 = fbm(u / 60.0, v / 60.0, 4, 501)
+    n2 = fbm(u / 23.0, v / 23.0, 3, 502)
+    ridge = (1 - np.abs(2 * n1 - 1)) ** 1.7
+    hv = (ridge * 0.85 + n2 * 0.15) * (0.35 + 0.9 * smooth(0, 110, dist))
+    band = np.floor(hv * 9.0).astype(int)
+    up = np.roll(band, 4, 0)       # the terrace behind this pixel on screen
+    dn = np.roll(band, -1, 0)
+    th = BAYER[yy % 4, xx % 4]
+    tone = np.clip(0.18 + 0.12 * band + (n2 - .5) * 0.25, 0, 1)
+    ramp = np.array([0, 0, 1, 1, 6, 6], np.int32)
+    out = ramp[np.clip(np.floor(tone * 5 + (th - .5) * 0.8 + .5).astype(int), 0, 5)]
+    wall = (up > band)                      # a higher terrace behind: this strip is its front wall
+    out = np.where(wall, np.where(((yy // 3) % 2) == 0, 0, 1), out)
+    out = np.where((dn < band) & ~wall, 6, out)          # lit lip where the ground steps down toward the camera
+    out = np.where((dn < band) & ~wall & (th > 0.5), 5, out)
+    ember = (h2(xx // 4, yy // 4, 77) > 0.985) & wall
+    out = np.where(ember, 2, out)
+    fade = smooth(70, 175, dist)
+    out = np.where(th < fade, 0, out)
+    res = np.where(alpha, idx, out).astype(np.uint8)
+    return res
+
+
 def lit_sprite(img, x0, y0, GL):
     """Shift a prop's pixels along the ember ramp by the lava glow under it (props use the 8 quarry colours only)."""
     a = np.array(img)
@@ -691,7 +730,10 @@ def bake():
     for (px, py) in ((ax - 26, ay), (ax + 26, ay), (gx - 26, gy), (gx + 26, gy)):
         walk &= ~(((xx - px) / 8.0) ** 2 + ((yy - py) / 4.0) ** 2 <= 1.0)
     # ground png: unpainted pixels are the dark void
-    rgb = PALRGB[np.where(alpha, ground_idx, 0)]
+    ground_idx = fill_void(ground_idx, alpha)
+    log('void filled')
+    rgb = PALRGB[ground_idx]
+    alpha = np.ones_like(alpha)
     Image.fromarray(rgb, 'RGB').save(os.path.join(OUT, 'ground.png'))
     Image.fromarray((walk * 255).astype(np.uint8), 'L').convert('RGB').save(os.path.join(OUT, 'walkable.png'))
     # anchors
