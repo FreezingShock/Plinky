@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.37.9 - 2026-11-23
+- Zone panel is more compact: narrower (152 px), tighter padding, description clamped to two lines (full text in its tooltip), three pads before "N more...".
+
 ## 0.37.8 - 2026-11-23
 - Menu: every tile always shows its name, the grid is 3 wide (3x3, no orphan row), and hovering a tile plays a light-dither sweep in its section colour plus a one-texel icon bob on top of the lift. Reduced motion and reduced flashing turn the sweep, bob and lift off.
 
