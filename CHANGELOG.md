@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.26.1 - 2026-11-23
+- Fixed the Larkmoor transition stall (one 330 ms frame at the wipe): the zone scene loads on a worker thread, the prop sprites are built over several frames under the wipe, and CI now fails on any frame over 150 ms in the headless bench.
+
 ## 0.26.0 - 2026-11-23
 - Relics menu refresh: relics are now rarity-framed cards (exact rarity-colour outline, name in the rarity colour, stack count, Equipped mark) in a scrolling collection, with Sort (Rarity, Name, Stacks, Equipped), Show (All, Equipped, Unequipped) and Rarity filter buttons, an Active bonuses readout under the slots, and compare-on-hover.
 
