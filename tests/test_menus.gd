@@ -83,7 +83,7 @@ func _index_spam(t: Object) -> void:
 	t.ok(panel.is_open() and panel.tab == IndexPanel.Tab.ATTRIBUTES, "alternating tabs keeps the window open on the last tab")
 	panel.close_panel()
 	panel.open_tab(IndexPanel.Tab.STATS)
-	t.ok(panel.is_open() and panel.visible and not panel._closing, "re-opening during the close animation recovers cleanly")
+	t.ok(panel.is_open() and panel.visible and not panel._anim.closing, "re-opening during the close animation recovers cleanly")
 	t.ok(panel._t >= 0.0 and panel._t <= 1.0, "wipe progress stays in range")
 	host.free()
 
