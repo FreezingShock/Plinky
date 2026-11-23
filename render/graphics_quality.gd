@@ -20,6 +20,10 @@ const LIFE_STEP: Array[float] = [1.0 / 8.0, 1.0 / 10.0, 1.0 / 12.0]  # seconds p
 const SWAY_STEP: Array[float] = [1.0 / 4.0, 1.0 / 5.0, 1.0 / 6.0]    # seconds per LifeGround redraw
 const SWAY_STRIDE: Array[int] = [2, 1, 1]                   # draw every Nth grass tip
 const PARTICLE_SCALE: Array[float] = [0.5, 0.75, 1.0]       # share of each burst's particles
+const SHADOW_STEPS: Array[int] = [6, 9, 12]                 # ground relight height-march taps (ground_light.gdshader)
+const SHADOW_STRIDE: Array[float] = [2.0, 1.34, 1.0]        # march stride multiplier, so fewer taps still reach as far
+const AO_TAPS: Array[int] = [2, 4, 4]                       # ground occlusion taps
+const SCREEN_GRADE: Array[bool] = [false, true, true]      # the full-frame light grade reads the screen texture (a back-buffer copy)
 const CULL_MARGIN: float = 24.0                             # texels beyond the view still drawn, so edges never pop
 
 static var path: String = "user://graphics.cfg"
@@ -96,6 +100,28 @@ static func sway_step() -> float:
 static func sway_stride() -> int:
 	load_settings()
 	return SWAY_STRIDE[level]
+
+
+## Ground relight cost knobs: the shader's `march_steps`, the stride multiplier and `ao_taps`.
+static func shadow_steps() -> int:
+	load_settings()
+	return SHADOW_STEPS[level]
+
+
+static func shadow_stride() -> float:
+	load_settings()
+	return SHADOW_STRIDE[level]
+
+
+static func ao_taps() -> int:
+	load_settings()
+	return AO_TAPS[level]
+
+
+## False on Low: the light grade pass is skipped (it is the only shader that reads the finished screen).
+static func screen_grade() -> bool:
+	load_settings()
+	return SCREEN_GRADE[level]
 
 
 ## `full` scaled by the level's particle share, never below 2 so a burst still reads as a burst.

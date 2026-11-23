@@ -10,4 +10,4 @@ order = 2
 zone = &"zone2"
 stat = &"ironore"
 rarity = &"uncommon"
-blurb = "A veined green ore chunk. Costs Multiplier, pays Iron Ore."
+blurb = "A veined green ore chunk. Costs Cinder, pays Iron Ore."

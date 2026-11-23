@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"growth_attr_30"
+display_name = "Well Rounded"
+description = "Buy 30 Attribute levels in total."
+category = &"growth"
+counter = &"attributes_bought"
+target = 30.0
+order = 2
+title = "Well Rounded"
