@@ -30,7 +30,7 @@ func run(t: Object) -> void:
 	# the scene: one pad anchor per pad, the gates, the spawn, districts, and every one of them reachable on foot
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "placements3d.json")) as Dictionary
 	t.ok(not data.is_empty(), "placements load")
-	var pad_count: int = 0
+	var pads: int = 0
 	var kinds: Dictionary = {}
 	WalkMask.use(z.walk_mask_path, Vector2i.ZERO)
 	t.ok(WalkMask.available(), "walk mask loads")
@@ -39,7 +39,7 @@ func run(t: Object) -> void:
 		var p := Vector2(float(a.sx), float(a.sy))
 		match String(a.kind):
 			"pad":
-				pad_count += 1
+				pads += 1
 				t.ok(WalkMask.walkable(WalkMask.nearest(p, 14)) and WalkMask.nearest(p, 14).distance_to(p) < 14.0, "pad %s is within reach on foot" % str(p))
 			"gate", "arch", "player_spawn":
 				t.ok(WalkMask.nearest(p, 14).distance_to(p) < 14.0, "%s %s is within reach on foot" % [a.kind, str(p)])
