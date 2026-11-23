@@ -630,11 +630,11 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 		col.a = fade
 		draw_char(font, Vector2(cx, cy), p.text[i], fs, col)
 	if p.stat != "" or (p.running and p.count >= 3):
-		_draw_caption(p, x0 + icon_w, y, fs, off, fade, tcol, oc)
+		_draw_caption(p, x0 + icon_w + p.w * 0.5, y, fs, fade, tcol, oc)
 
 
 ## Under the number, centred: the stat's name in the stat's own colour, then " xN" (streak colour) while a hold stacks.
-func _draw_caption(p: Pop, _x0: float, y: float, fs: int, off: Vector2, fade: float, tcol: float, oc: Color) -> void:
+func _draw_caption(p: Pop, cx: float, y: float, fs: int, fade: float, tcol: float, oc: Color) -> void:
 	var count_txt: String = (" x%d" % p.count) if (p.running and p.count >= 3) else ""
 	var w_name: float = 0.0
 	for k in p.stat.length():
@@ -642,7 +642,7 @@ func _draw_caption(p: Pop, _x0: float, y: float, fs: int, off: Vector2, fade: fl
 	var w_cnt: float = 0.0
 	for k in count_txt.length():
 		w_cnt += font.get_char_size(count_txt.unicode_at(k), 12).x
-	var sx: float = roundf(p.anchor.x + p.lane.x + off.x - (w_name + w_cnt) * 0.5)
+	var sx: float = roundf(cx - (w_name + w_cnt) * 0.5)
 	var sy: float = roundf(y + 9.0 + float(fs) * 0.14)
 	if p.stat != "":
 		var sc: Color = p.stat_col
