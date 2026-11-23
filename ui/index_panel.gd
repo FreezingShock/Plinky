@@ -73,11 +73,6 @@ func _init() -> void:
 		b.pressed.connect(set_tab.bind(i))
 		bar.add_child(b)
 		_tabs.append(b)
-	var close := PixelButton.new()
-	close.text = "Close"
-	close.size_flags_horizontal = Control.SIZE_SHRINK_END | Control.SIZE_EXPAND
-	close.pressed.connect(close_panel)
-	bar.add_child(close)
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true

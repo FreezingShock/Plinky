@@ -40,6 +40,8 @@ var display_panel: DisplayPanel
 var dev_console: DevConsole
 var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
+var gallery: GalleryMenu
+var update_log: UpdateLogPanel
 var menus: MenuRouter = MenuRouter.new()   # which menu is open (ui/menu_router.gd)
 var palette_id: StringName = Palettes.MEADOW
 
@@ -120,7 +122,8 @@ func _ready() -> void:
 	_wire_display()
 	hud.keep_centered(relic_panel)
 	_wire_menus()
-	hud.move_child(hud.bottom_bar(), -1)   # chips stay above every open menu, so they stay clickable
+	hud.move_child(hud.bottom_bar(), -1)
+	hud.move_child(hud.menu_chip(), -1)   # chips stay above every open menu, so they stay clickable
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
 	add_child(window_frame)
@@ -197,7 +200,7 @@ var _menu_was_open: bool = false
 
 
 func _menu_focus() -> void:
-	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel()]
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log]
 	var open: Control = null
 	for p: Control in panels:
 		if p != null and p.visible:
@@ -543,12 +546,43 @@ func _wire_menus() -> void:
 		func() -> void: index_panel.open_tab(IndexPanel.Tab.ATTRIBUTES), index_panel.close_panel, &"index")
 	menus.register(&"settings", func() -> bool: return display_panel.visible, display_panel.open, display_panel.close)
 	menus.register(&"feedback", func() -> bool: return feedback_panel.visible, feedback_panel.open, feedback_panel.close)
+	gallery = GalleryMenu.new()
+	hud.add_child(gallery)
+	update_log = UpdateLogPanel.new()
+	hud.add_child(update_log)
+	hud.keep_centered(gallery)
+	hud.keep_centered(update_log)
+	gallery.is_locked = _section_locked
+	gallery.chosen.connect(_on_gallery_chosen)
+	menus.register(&"gallery", func() -> bool: return gallery.visible, func() -> void: gallery.visible = true, func() -> void: gallery.visible = false)
+	menus.register(&"log", func() -> bool: return update_log.visible, func() -> void: update_log.visible = true, func() -> void: update_log.visible = false)
+	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
+	CloseX.attach(update_log, func() -> void: menus.close(&"log"))
 	hud.menu_toggled.connect(menus.toggle)
 	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
 	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
 	CloseX.attach(index_panel, index_panel.close_panel)
 	CloseX.attach(display_panel, display_panel.close)
 	CloseX.attach(feedback_panel, feedback_panel.close)
+
+
+## A gallery tile was picked: open that section (the router closes the gallery), or show Travel in the zone panel.
+func _on_gallery_chosen(kind: StringName) -> void:
+	if kind == &"travel":
+		menus.close(&"gallery")
+		hud.open_travel()
+	else:
+		menus.open(kind)
+
+
+## Sections the tutorial has not unlocked yet show as locked tiles.
+func _section_locked(kind: StringName) -> bool:
+	var ob: Onboarding = GameState.onboarding
+	match kind:
+		&"stats": return not ob.is_unlocked(Onboarding.F_MULT)
+		&"attributes", &"upgrades": return not ob.is_unlocked(Onboarding.F_UPGRADES)
+		&"relics": return GameState.relics == null or not ob.is_unlocked(Onboarding.F_RELICS)
+	return false
 
 
 func _toggle_feedback() -> void:
