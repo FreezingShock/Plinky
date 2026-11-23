@@ -39,6 +39,11 @@ var full_text: String = "":
 			return
 		full_text = v
 		_dirty = true
+## Shorter label for Always mode (no key hints), so the whole bar fits at 640 wide. Falls back to full_text.
+var short_text: String = "":
+	set(v):
+		short_text = v
+		_dirty = true
 ## Bubble opens leftwards from the chip's right edge (for chips at the right edge of the screen).
 var bubble_right: bool = false
 ## 0 closed .. 1 open. Read by tests.
@@ -48,6 +53,7 @@ var _dirty: bool = true
 var _collapsed_w: float = 32.0
 var _open_w: float = 32.0
 var _text_w: float = 0.0
+var _always_w: float = 0.0
 var _settle: float = 0.0
 var _hover_time: float = 0.0
 var _grace: float = 0.0
@@ -125,11 +131,16 @@ func _measure() -> void:
 	var font: Font = get_theme_font(&"font")
 	var fs: int = get_theme_font_size(&"font_size")
 	_text_w = font.get_string_size(full_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x if font != null else 0.0
+	_always_w = font.get_string_size(always_text(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x if font != null else 0.0
 	var pad: float = AsciiBox.BUTTON_PAD.x * 2.0
 	var iw: float = ICON_SIZE if icon != null else 0.0
 	_collapsed_w = ceilf(pad + iw)
-	_open_w = ceilf(pad + iw + (float(get_theme_constant(&"h_separation")) if icon != null else 0.0) + _text_w)
+	_open_w = ceilf(pad + iw + (float(get_theme_constant(&"h_separation")) if icon != null else 0.0) + _always_w)
 	_dirty = false
+
+
+func always_text() -> String:
+	return short_text if short_text != "" else full_text
 
 
 func bubble_text() -> String:
@@ -167,7 +178,7 @@ func _apply() -> void:
 	var w: float = _open_w if label_mode == MODE_ALWAYS else _collapsed_w
 	if custom_minimum_size.x != w:
 		custom_minimum_size.x = w
-	var t: String = full_text if label_mode == MODE_ALWAYS else ""
+	var t: String = always_text() if label_mode == MODE_ALWAYS else ""
 	if text != t:
 		text = t
 	var z: int = 4 if progress > 0.0 else 0   # an open bubble draws over its neighbours and the meter above
