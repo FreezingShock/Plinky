@@ -625,7 +625,7 @@ func _refresh() -> void:
 			_set_row_shown(_row_boxes[sid2] as Control, _row_in_zone(sid2), _gates_ready)
 	var rp_box: Control = _row_boxes.get(&"rp") as Control
 	if rp_box != null:   # Rebirth Points show once you have rebirthed (or hold some)
-		rp_box.visible = _layout_rows().has(&"rp") and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (_edit_mode or sim.rebirth_count > 0 or not sim.rp_available().is_zero())
+		_set_row_shown(rp_box, _layout_rows().has(&"rp") and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (_edit_mode or sim.rebirth_count > 0 or not sim.rp_available().is_zero()), _gates_ready)
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()

@@ -41,6 +41,17 @@ func run(t: Object) -> void:
 	t.ok(not cap.add(&"z", &"extra", many), "a full strip refuses another row")
 	t.ok(cap.hide(&"z", &"s0", many) and cap.add(&"z", &"extra", many), "room opens up when a row is hidden")
 
+	# A Default longer than the usual cap still fits (the strip once read "Default 11/10").
+	var long_default: Array[StringName] = []
+	for i in HudLayout.MAX_ROWS + 1:
+		long_default.append(StringName("l%d" % i))
+	var longer := HudLayout.new()
+	t.eq(HudLayout.cap_for(long_default), HudLayout.MAX_ROWS + 1, "the cap never drops below the zone's own Default")
+	t.eq(longer.rows(&"z", long_default).size(), HudLayout.MAX_ROWS + 1, "a long Default shows whole")
+	t.ok(longer.is_full(&"z", long_default), "and counts as full, not over the cap")
+	t.ok(not longer.add(&"z", &"extra", long_default), "so nothing more is added")
+	t.eq(HudLayout.cap_for(MEADOW), HudLayout.MAX_ROWS, "a short Default uses the usual cap")
+
 	# The strip is never empty.
 	var one := HudLayout.new()
 	t.ok(one.hide(&"z", &"s0", pair), "one of two rows can go")
