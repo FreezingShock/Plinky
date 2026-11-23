@@ -42,11 +42,13 @@ func run(t: Object) -> void:
 
 	# a Hot press pays heat_hot_mult times as much as a cold one
 	sim.stats[&"cash"] = BigNum.from_float(1.0e7)
-	var cold: BigNum = sim.press_gain_preview(&"cinder_1")
+	var hot_gain: BigNum = sim.press_gain_preview(&"cinder_1")   # the preview includes Heat
 	var before: float = sim.get_stat(&"mult").to_float()
 	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while Hot")
-	t.near(sim.get_stat(&"mult").to_float() - before, cold.to_float() * z2.heat_hot_mult, 1e-9, "Hot press pays double")
+	t.near(sim.get_stat(&"mult").to_float() - before, hot_gain.to_float(), 1e-9, "Hot press pays what the tooltip preview says")
 	sim.heat = 0.0
+	var cold: BigNum = sim.press_gain_preview(&"cinder_1")
+	t.near(hot_gain.to_float(), cold.to_float() * z2.heat_hot_mult, 1e-9, "Hot preview is heat_hot_mult times the cold one")
 	before = sim.get_stat(&"mult").to_float()
 	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while cold")
 	t.near(sim.get_stat(&"mult").to_float() - before, cold.to_float(), 1e-9, "cold press pays the base reward")
