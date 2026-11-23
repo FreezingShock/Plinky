@@ -69,6 +69,11 @@ extends Resource
 @export_group("Atmosphere")
 ## Vignette: how much of the frame edge is darkened, 0..1 (0 = off).
 @export var vignette_strength: float = 0.35
+## Ground relight (ground_light.gdshader): N.L strength, terrain cast shadows, occlusion, far fog. 0 = baked look.
+@export var ground_relight: float = 2.2
+@export var ground_shadow: float = 1.2
+@export var ground_ao: float = 0.5
+@export var ground_fog: float = 0.45
 ## Full-frame light pass (light_grade.gdshader): sun-side lift and away-side shade across the whole frame, 0..1.
 @export var light_side: float = 0.6
 ## Highlight-warm / shadow-cool split by luminance, 0..1.

@@ -14,6 +14,9 @@ uniform float relight = 0.0;                    // 0 = baked look
 uniform float shadow_amt = 0.0;                 // how dark the cast shadow makes the light value
 uniform float shadow_slope = 2.6;               // encoded height units a step may rise before it blocks the sun
 uniform float ao_amt = 0.0;
+uniform float shadow_reach = 2.0;               // texels per march step; longer when the sun is low
+uniform vec3 shadow_tint : source_color = vec3(0.45, 0.52, 0.80);   // cool colour multiplied into shadowed texels
+uniform int debug_view = 0;                     // 0 off, 1 albedo, 2 normal, 3 height, 4 shadow only, 5 lit (F6 cycles)
 uniform vec3 fog_col : source_color = vec3(0.7, 0.85, 0.7);
 uniform float fog_amt = 0.0;                    // 0..1 at the far edge
 const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);
@@ -33,10 +36,22 @@ void fragment() {
 	vec4 c = texture(TEXTURE, UV);
 	vec2 px = TEXTURE_PIXEL_SIZE;
 	float thr = bayer4(ivec2(floor(wpos)));
+	if (debug_view == 1) {
+		COLOR = c;
+		return;
+	}
+	if (debug_view == 2) {
+		COLOR = vec4(texture(nrm_tex, UV).rg, 0.5, c.a);
+		return;
+	}
+	if (debug_view == 3) {
+		COLOR = vec4(vec3(texture(h_tex, UV).r), c.a);
+		return;
+	}
 	if (relight > 0.0 && c.a > 0.5) {
 		vec4 d = texture(nrm_tex, UV);
 		int code = int(d.b * 255.0 + 0.5);
-		if (code >= 10 && code < 48 && RAMP_LEN[code] > 0) {
+		if (code >= 10 && code < 110 && RAMP_LEN[code] > 0) {
 			vec3 n = vec3(d.rg * 2.0 - 1.0, 0.0);
 			n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
 			float lb = d.a * 1.8 - 0.4;
@@ -45,9 +60,9 @@ void fragment() {
 			float h0 = texture(h_tex, UV).r * 255.0;
 			float sh = 0.0;
 			float occ = 0.0;
-			for (int k = 1; k <= 8; k++) {
-				float hn = texture(h_tex, UV + sun_px * float(k) * 2.0 * px).r * 255.0;
-				if (hn > 0.5 && hn - h0 > shadow_slope * float(k) * 2.0) {
+			for (int k = 1; k <= 12; k++) {
+				float hn = texture(h_tex, UV + sun_px * float(k) * shadow_reach * px).r * 255.0;
+				if (hn > 0.5 && hn - h0 > shadow_slope * float(k) * shadow_reach) {
 					sh = 1.0;
 				}
 			}
@@ -64,6 +79,12 @@ void fragment() {
 				float f = clamp((v - lo - 0.30) / 0.40, 0.0, 1.0);
 				int step_i = int(lo) + ((f > thr && int(lo) < cnt) ? 1 : 0);
 				c.rgb = PAL[RAMP_IDX[RAMP_START[code] + step_i]];
+			}
+			if (sh > 0.5) {
+				c.rgb *= mix(vec3(1.0), shadow_tint, min(shadow_amt, 1.0));
+			}
+			if (debug_view == 4) {
+				c.rgb = vec3(sh);
 			}
 		}
 	}

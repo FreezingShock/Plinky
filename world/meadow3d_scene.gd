@@ -87,6 +87,7 @@ func _add_sky() -> void:
 	_sky.name = "Sky"
 	_sky.shadows = _shadows
 	_sky.ground_texture = _ground.texture
+	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
 	var water: Array = []
 	for a: Dictionary in _data.anchors:
 		if String(a.kind) == "water":

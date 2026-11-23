@@ -70,13 +70,22 @@ def write_relight_data(path, aux, y0, y1, x0, x1, mask):
     d[..., 0] = np.clip((aux['nu'][sl] * .5 + .5) * 255, 0, 255)
     d[..., 1] = np.clip((aux['nv'][sl] * .5 + .5) * 255, 0, 255)
     mat = aux['mat'][sl]
-    lit = mask & (aux['out'][sl] != 0) & (mat >= 10) & (mat < 48)
+    lit = mask & (aux['out'][sl] != 0) & (mat >= 10) & (mat < 110)
     d[..., 2] = np.where(lit, mat, 0)
     d[..., 3] = np.where(mask, np.clip(np.round((aux['l'][sl] + L_ENC_OFF) / L_ENC_SCALE * 255), 1, 255), 0)
     Image.fromarray(d).save(path)
 
 
-def write_ramp_include(path, ramp, pal, mat_lo=10, mat_hi=48):
+def write_height(path, z, mask):
+    """Greyscale world height for AO and shadows: 1..255 inside the scene (z scaled to the scene's own range), 0 outside."""
+    from PIL import Image
+    zz = np.where(mask, z, 0.0)
+    lo, hi = float(zz[mask].min()), float(zz[mask].max())
+    d = np.where(mask, 1 + np.clip((zz - lo) / max(hi - lo, 1e-6), 0, 1) * 254, 0).astype(np.uint8)
+    Image.fromarray(d).save(path)
+
+
+def write_ramp_include(path, ramp, pal, mat_lo=10, mat_hi=110):
     """Shader include with the palette and the per-material ramps, so the shader quantises to the same colours as the baker."""
     starts, lens, idx = [], [], []
     for m in range(mat_hi):

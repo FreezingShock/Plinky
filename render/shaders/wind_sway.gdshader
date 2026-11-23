@@ -53,7 +53,7 @@ void fragment() {
 	if (relight > 0.0 && c.a > 0.5) {
 		vec4 d = texture(nrm_tex, uv);
 		int code = int(d.b * 255.0 + 0.5);
-		if (code >= 10 && code < 48 && RAMP_LEN[code] > 0) {
+		if (code >= 10 && code < 110 && RAMP_LEN[code] > 0) {
 			vec3 n = vec3(d.rg * 2.0 - 1.0, 0.0);
 			n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
 			float lb = d.a * 1.8 - 0.4;
