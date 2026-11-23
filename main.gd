@@ -35,6 +35,7 @@ var transitions: Transitions
 var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
+var index_panel: IndexPanel
 var display_panel: DisplayPanel
 var dev_console: DevConsole
 var window_frame: WindowFrame
@@ -114,6 +115,7 @@ func _ready() -> void:
 	add_child(hud)
 	hud.setup(sim)
 	_wire_relics()
+	_wire_index()
 	_wire_display()
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
@@ -178,8 +180,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_feedback()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_back"):
-		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
+		var any: bool = index_panel.is_open() or relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
 		relic_panel.hide()
+		index_panel.close_panel()
 		display_panel.close()
 		feedback_panel.close()
 		hud.close_panels()
@@ -193,7 +196,7 @@ var _menu_was_open: bool = false
 
 
 func _menu_focus() -> void:
-	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, hud.upgrades_panel()]
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel()]
 	var open: Control = null
 	for p: Control in panels:
 		if p != null and p.visible:
@@ -495,6 +498,19 @@ func _wire_relics() -> void:
 	hud.relic_panel_toggled.connect(func(_open: bool) -> void: panel.visible = not panel.visible)
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
 		Juice.relic_drop(pad_glow, inv.rarity_of(id)))
+
+
+## Stats and Attributes index: the same window, two tabs. The HUD button or key toggles it, or flips to the other tab.
+func _wire_index() -> void:
+	index_panel = IndexPanel.new()
+	hud.add_child(index_panel)
+	index_panel.bind(sim)
+	hud.index_requested.connect(func(t: int) -> void:
+		if index_panel.is_open() and index_panel.tab == t:
+			index_panel.close_panel()
+		else:
+			relic_panel.hide()
+			index_panel.open_tab(t))
 
 
 ## Settings panel (F10 or the bottom-bar button). Centred over the view, closes with F10 or Esc.

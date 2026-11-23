@@ -201,3 +201,10 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
+
+## Stats and Attributes index (2026-11-23)
+- One window (ui/index_panel.gd) with two tabs, opened by two icon-only HUD buttons, keys I (Stats) and O (Attributes), pad Back and Left-stick click. Read only: buying stays in Upgrades.
+- Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage and pad mastery show as "Soon" rows until the Sim has the API (`StatIndex.CRIT_DAMAGE_API`, `MASTERY_API`), then switch on by themselves.
+- Open and close are a stepped 6 level Bayer wipe (ui/fx/dither_reveal.gd) plus an 8 texel slide; the header icon plays a 4 frame sheet. Reduce flashing turns the wipe off.
+- Tooltips use RelicTooltip.show_text for now; swap to the shared `Tip` once PR #73 is in.
+- New 16x16 icons (tools/art/gen_index_icons.py): stats_menu, attrs_menu (+4 frame sheets), crit_dmg, mastery, presses, clock; heat.png copied from the library set.

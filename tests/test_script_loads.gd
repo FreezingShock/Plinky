@@ -8,7 +8,8 @@ extends RefCounted
 const DIRS: Array[String] = ["res://core", "res://data", "res://ui/settings", "res://theme"]
 const FILES: Array[String] = [
 	"res://ui/display_panel.gd", "res://ui/dev_console.gd", "res://ui/ascii_box.gd", "res://ui/relic_style.gd",
-	"res://ui/display_settings.gd", "res://ui/fx/pixel_button.gd",
+	"res://ui/display_settings.gd", "res://ui/fx/pixel_button.gd", "res://ui/fx/dither_reveal.gd",
+	"res://ui/index_row.gd", "res://ui/index_panel.gd",
 ]
 
 const AUTOLOADS: PackedStringArray = ["GameState", "EventBus", "Save", "Fx", "Juice", "Audio"]

@@ -5,6 +5,7 @@ extends Control
 
 signal relic_panel_toggled(open: bool)
 signal settings_toggled(open: bool)
+signal index_requested(tab: int)   ## IndexPanel.Tab: the Stats or Attributes button or key
 
 ## The frame the HUD lays out in (Main size). The gate panel and bottom bar hug its right and bottom edges.
 var frame: Vector2 = Vector2(640.0, 360.0)
@@ -179,6 +180,15 @@ func _build_bottom() -> void:
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		h.add_child(rb)
 		gate(rb, Onboarding.F_RELICS)
+	for t: int in 2:
+		var ib := PixelButton.new()
+		var nm: String = ["Stats", "Attributes"][t]
+		var act: StringName = [&"stats", &"attributes"][t]
+		ib.icon = load("res://assets/icons/%s.png" % ["stats_menu", "attrs_menu"][t]) as Texture2D
+		ib.tooltip_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
+		ib.pressed.connect(func() -> void: index_requested.emit(t))
+		h.add_child(ib)
+		gate(ib, Onboarding.F_MULT if t == 0 else Onboarding.F_UPGRADES)
 	var st := PixelButton.new()
 	st.text = "Settings [%s]" % Keybinds.key_name(&"settings")
 	st.pressed.connect(func() -> void: settings_toggled.emit(true))
@@ -248,6 +258,14 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 	elif (event.is_action_pressed(&"plinky_relics") or Keybinds.matches(&"relics", event)) and GameState.relics != null:
 		if GameState.onboarding.is_unlocked(Onboarding.F_RELICS):
 			relic_panel_toggled.emit(true)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"plinky_stats") or Keybinds.matches(&"stats", event):
+		if GameState.onboarding.is_unlocked(Onboarding.F_MULT):
+			index_requested.emit(0)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"plinky_attributes") or Keybinds.matches(&"attributes", event):
+		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
+			index_requested.emit(1)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_settings") or Keybinds.matches(&"settings", event):
 		settings_toggled.emit(true)
