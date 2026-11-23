@@ -13,6 +13,7 @@ const SHADE_SHADER: Shader = preload("res://render/shaders/day_night.gdshader")
 const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
+const LIGHT_SHADER: Shader = preload("res://render/shaders/light_grade.gdshader")
 const MAX_LIGHTS: int = 24
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
@@ -45,6 +46,7 @@ var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
+var _light_mat: ShaderMaterial          # full-frame light pass (light_grade.gdshader)
 var _config: SkyConfig
 var _t: float = 0.0
 var _sway_step: int = -1
@@ -98,6 +100,17 @@ func _ready() -> void:
 	_shade_mat.shader = SHADE_SHADER
 	shade.material = _shade_mat
 	add_child(shade)
+	var lg := ColorRect.new()
+	lg.name = "LightGrade"
+	lg.position = area.position
+	lg.size = area.size
+	lg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_light_mat = ShaderMaterial.new()
+	_light_mat.shader = LIGHT_SHADER
+	_light_mat.set_shader_parameter("area_center", area.get_center())
+	_light_mat.set_shader_parameter("area_half", area.size * 0.5)
+	lg.material = _light_mat
+	add_child(lg)
 	rain_layer = SkyRain.new()
 	rain_layer.name = "Rain"
 	rain_layer.z_index = 6   # relative to this node: z 11 overall
@@ -301,6 +314,14 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_rays_mat.set_shader_parameter("sun", Vector2(area.get_center().x + az * area.size.x * 0.465, area.position.y - 50.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
 	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
+	# full-frame light pass: sun side lifts and warms, away side shades cool (magenta at dusk), highlights and shadows split
+	var lit_k: float = (1.0 - clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * 0.75) * (1.0 - 0.7 * rain01)
+	_light_mat.set_shader_parameter("sun_dir", Vector2(az, -1.0))
+	_light_mat.set_shader_parameter("light_col", rim_col)
+	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.74, 0.52, 0.78), low_sun_k))
+	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k)
+	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k))
+	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
 	if _screen != null:
 		_screen.set_strength(_config.vignette_strength)
