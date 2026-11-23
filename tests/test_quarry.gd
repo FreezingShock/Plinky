@@ -40,7 +40,7 @@ func run(t: Object) -> void:
 	t.ok(qsrc.contains("\"Arch\""), "quarry_scene.gd creates the Arch marker")
 	var sim0: Sim = t.make_sim()
 	var back: Dictionary = TexelGate.back_spec(sim0, &"zone2", &"larkmoor")
-	t.ok(str(back.get("body", "")).contains("Larkmoor"), "the way back's tooltip names Larkmoor")
+	t.ok(str(back.get("title", "")).contains("Larkmoor"), "the way back's tooltip names Larkmoor")
 
 	# the gate
 	var sim: Sim = t.make_sim()
