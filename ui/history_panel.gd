@@ -4,8 +4,8 @@ extends PanelContainer
 ## lifetime totals. Read only: it shows Sim and RunStats and never changes them. Same window style as the Stats and
 ## Attributes gallery (title, divider, close X, scrolling body); opens through MenuRouter with the shared dither wipe.
 
-const WIDTH: float = 316.0
-const SCROLL_H: float = 172.0
+const WIDTH: float = 260.0
+const SCROLL_H: float = 196.0
 const REFRESH: float = 0.5
 
 var sim: Sim

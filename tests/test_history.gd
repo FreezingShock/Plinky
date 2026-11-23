@@ -59,7 +59,7 @@ func run(t: Object) -> void:
 	t.eq(hs[2], 40, "the highest sample fills the box")
 	t.ok(HistoryGraph.bar_heights(PackedFloat32Array(), 40).is_empty(), "no samples, no bars")
 	t.ok(HistoryGraph.bar_heights(PackedFloat32Array([3.0, 3.0]), 40)[0] > 0, "a flat line still draws")
-	t.ok(HistoryGraph.capacity(302) >= RunStats.MAX_SAMPLES, "the graph box fits 10 minutes of samples")
+	t.ok(HistoryGraph.capacity(246) >= RunStats.MAX_SAMPLES, "the graph box fits 10 minutes of samples")
 	t.eq(HistoryGraph.new().custom_minimum_size.y, float(HistoryGraph.HEIGHT), "the graph is its full height")
 	t.ok(HistoryGraph.HEIGHT >= 72, "the graph is tall enough to read")
 
