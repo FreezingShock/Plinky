@@ -42,7 +42,7 @@ void fragment() {
 		c *= shade_col;
 	}
 	// luminance split on the offset half of the matrix, so the two patterns interleave
-	float hi = smoothstep(0.50, 0.85, lum) * split_amount;
+	float hi = smoothstep(0.66, 0.95, lum) * split_amount;
 	float lo = (1.0 - smoothstep(0.12, 0.45, lum)) * split_amount;
 	if (thr2 < hi) {
 		c = c * (1.0 + lift * 0.6) * mix(vec3(1.0), light_col * 1.2, 0.7);

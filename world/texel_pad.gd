@@ -6,7 +6,7 @@ extends Node2D
 const HALF: Vector2 = Vector2(14.0, 7.0)  # pad half extents in texels (2:1 diamond)
 
 var button_id: StringName
-var walker: TexelWalker
+var walker: Node2D  # a TexelWalker; typed loosely so this script compiles under --script
 var glow: PadGlow
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var standing: bool = false
@@ -26,42 +26,61 @@ const BUY_RED: Color = Color("d8483c")
 const STAT_COLORS: Dictionary = {
 	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
 }
-## Unique inlay motif per pad, picked from its id: 0 solid, 1 quartered, 2 ring, 3 stripes.
-var variant: int = 0
+var rarity: RarityDef
+var emblem_bits: int = 0  # 15 bits: the unique pattern for this pad
 var stat_color: Color = Color("f6efd9")
 
 enum PadState { FAR, CLOSE, READY }
 const THICK: int = 3                 # slab thickness in texels at rest
 const FAR_BELOW: float = 0.1         # under this share of the cost the pad looks inert (stone, no gauge)
 const PUNCH_TIME: float = 0.16       # sink recovers in whole-texel steps over this long
+const LEVEL_TIME: float = 0.8
 const RING_TIME: float = 0.3         # the ripple that leaves the pad on a press
 const NEAR_TEXELS: float = 40.0      # the approach cue starts this far from the pad (vertical doubled)
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
+signal left  ## the walker stepped off, or the mouse was released
 var _timer: float = 0.0
 var _punch_t: float = 0.0   # 1 -> 0 after a press
+var _lvl_t: float = 0.0     # 1 -> 0 after a mastery level-up
 var _ring_t: float = 1.0    # 0 -> 1 ripple; 1 = idle
 var _progress_t: float = 0.0
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
+## The GameState autoload, looked up by path so this script also compiles under --script (tests have no autoloads).
+func _gs() -> Node:
+	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameState")
+
+
+func _sim() -> Sim:
+	var g: Node = _gs()
+	return g.get("sim") as Sim if g != null else null
+
+
 func _ready() -> void:
-	variant = absi(String(button_id).hash()) % 4
-	var b: ButtonDef = GameState.sim.button_defs.get(button_id) as ButtonDef
+	position = position.round()  # anchors are fractional; a plate drawn between texels would not sit on the world's grid
+	emblem_bits = absi(String(button_id).hash()) & 0x7FFF
+	rarity = load("res://content/rarities/%s.tres" % _sim().pad_rarity(button_id)) as RarityDef
+	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if b != null:
 		stat_color = STAT_COLORS.get(b.reward_stat, stat_color)
 	hold = HoldPress.new()
 	add_child(hold)
 	hold.tick.connect(_press)
-	hold.released.connect(func() -> void: holding = false)
+	hold.released.connect(func() -> void:
+		holding = false
+		left.emit())
 
 
 func _physics_process(delta: float) -> void:
-	var sim: Sim = GameState.sim
+	var sim: Sim = _sim()
 	var d: Vector2 = walker.position - position
 	var inside: bool = (d.x * d.x) / (HALF.x * HALF.x) + (d.y * d.y) / (HALF.y * HALF.y) <= 1.0
 	if inside and not standing:
 		_timer = 0.0  # first press is immediate on arrival
+	if standing and not inside:
+		left.emit()
 	standing = inside
 	affordable = sim.can_afford(button_id)
 	_progress_t -= delta
@@ -69,6 +88,7 @@ func _physics_process(delta: float) -> void:
 		_progress_t = 0.2
 		_refresh_progress(sim)
 	_punch_t = maxf(_punch_t - delta / PUNCH_TIME, 0.0)
+	_lvl_t = maxf(_lvl_t - delta / LEVEL_TIME, 0.0)
 	if _ring_t < 1.0:
 		_ring_t = minf(_ring_t + delta / RING_TIME, 1.0)
 	if inside:
@@ -83,7 +103,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _press() -> void:
-	GameState.try_press(button_id, Vector3(global_position.x, global_position.y, 0.0))
+	_gs().try_press(button_id, Vector3(global_position.x, global_position.y, 0.0))
 
 
 ## Click a pad to press it; hold to repeat (HoldPress speeds up while held).
@@ -111,6 +131,16 @@ func hit(p: Vector2, slack: float = 1.3) -> bool:
 func punch() -> void:
 	_punch_t = 1.0
 	_ring_t = 0.0
+
+
+## Mastery level-up: two gold rings spread from the plate (hard steps, no blending). Quiet under reduce flashing.
+func level_flash() -> void:
+	_lvl_t = 1.0
+	_sig = -1
+
+
+func _level_step() -> int:
+	return 0 if _lvl_t <= 0.0 else 1 + int((1.0 - _lvl_t) * 7.0)
 
 
 func _refresh_progress(sim: Sim) -> void:
@@ -164,7 +194,7 @@ func _pulse_step() -> int:
 func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
-		| int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
+		| _level_step() << 24 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -201,7 +231,12 @@ func _draw() -> void:
 	if rs >= 0:
 		var g: float = 1.0 + 0.45 * float(rs + 1) / 6.0
 		var rc: Color = palette[7] if rs < 4 else palette[4]
-		draw_polyline(_diamond(g), rc, 1.0)
+		_outline(g, 0, rc)
+	var ls: int = _level_step()
+	if ls > 0:
+		for k in 2:
+			var g2: float = 1.0 + 0.2 * float(ls) + 0.35 * float(k)
+			_outline(g2, 0, palette[7] if ((ls + k) % 2 == 0 and not FxConfig.reduce_flashing) else palette[5])
 	# Ink silhouette (rule 6: one outline in palette 0) around the whole slab.
 	for k in range(0, th + 1):
 		_rows(0, top + k, hx + 1, hy + 1, ink, ink)
@@ -226,10 +261,10 @@ func _draw() -> void:
 		rim = rim.lerp(Color.WHITE, 0.4)
 	if hovered:
 		rim = palette[7]
-	draw_polyline(_diamond_at(1.0, top), rim, 1.0)
+	_outline(1.0, top, rim)
 	# Inset: green when buyable, red when not, with a green gauge filling as you earn the cost. Each pad has its own motif.
-	var ihx: int = 8
-	var ihy: int = 4
+	var ihx: int = 10
+	var ihy: int = 5
 	var buy: Color = BUY_GREEN
 	if st == PadState.READY:
 		if glow != null and glow.flash_t > 0.0:
@@ -249,17 +284,13 @@ func _draw() -> void:
 					continue
 				var w: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5)))
 				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), BUY_GREEN.darkened(0.2))
-	# Unique motif cut into the inlay in ink, so every pad has its own face.
-	match variant:
-		1:
-			draw_rect(Rect2(-ihx + 2, top, ihx * 2 - 3, 1), ink)
-			draw_rect(Rect2(0, top - ihy + 1, 1, ihy * 2 - 1), ink)
-		2:
-			draw_polyline(_diamond_at(0.3, top), ink, 1.0)
-		3:
-			for dy in [-2, 0, 2]:
-				var w2: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5))) - 2
-				draw_rect(Rect2(-w2, top + dy, w2 * 2 + 1, 1), ink)
+	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Legendary adds corner studs.
+	if rarity != null and rarity.rank > 0:
+		_dashed_diamond(0.86, top, rarity.color)  # dashed, so Uncommon green never reads as the buy-state green
+		if rarity.rank >= 4:
+			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
+				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
+	_draw_emblem(top, ink)
 	# Stat colour: a gem on each corner of the plate plus a centre pip.
 	for g: Vector2i in [Vector2i(-hx + 2, 0), Vector2i(hx - 2, 0), Vector2i(0, -hy + 1), Vector2i(0, hy - 1)]:
 		draw_rect(Rect2(g.x - 1, top + g.y, 3 if g.y == 0 else 3, 1), stat_color)
@@ -271,18 +302,50 @@ func _draw() -> void:
 		glyph.assign([Vector2i(-1, -1), Vector2i(1, -1), Vector2i(0, 0), Vector2i(-1, 1), Vector2i(1, 1)])
 	for q: Vector2i in glyph:
 		draw_rect(Rect2(q.x, top + q.y, 1, 1), ink)
-	draw_polyline(_diamond_at(0.6, top), ink, 1.0)
+	_outline(0.6, top, ink)
 	if standing:
-		draw_polyline(_diamond_at(0.38, top), palette[7], 1.0)
+		_outline(0.38, top, palette[7])
 
 
-func _diamond_at(scale: float, y: int) -> PackedVector2Array:
-	var pts: PackedVector2Array = _diamond(scale)
-	for i in pts.size():
-		pts[i].y += float(y)
-	return pts
+## Unique 5x5 emblem per pad (mirrored, so it reads as a badge), projected onto the 2:1 plate. The centre stays clear
+## for the buy-state tick or X; the spine in the stat colour.
+func _draw_emblem(top: int, ink: Color) -> void:
+	var bit: int = 0
+	for v in 5:
+		for u in 5:
+			var uu: int = mini(u, v)
+			var vv: int = maxi(u, v)
+			var idx: int = ((vv * (vv + 1)) >> 1) + uu   # 0..14 over the triangle
+			var on: bool = (emblem_bits >> idx) & 1 == 1
+			var spine: bool = u == v
+			if not on and not spine:
+				continue
+			var x: int = (u - v) * 2
+			var y: int = u + v - 4
+			if absi(x) <= 3 and absi(y) <= 1:
+				continue
+			draw_rect(Rect2(x - 1, top + y, 2, 1), stat_color if spine else ink)
 
 
-func _diamond(scale: float) -> PackedVector2Array:
-	var h: Vector2 = HALF * scale
-	return PackedVector2Array([Vector2(-h.x, 0), Vector2(0, -h.y), Vector2(h.x, 0), Vector2(0, h.y), Vector2(-h.x, 0)])
+## A 1 texel diamond outline built from whole-texel rects. draw_polyline's diagonals are anti-aliased and finer than
+## the world's pixel grid, which made the plate look like a high-res overlay on the chunky scene.
+func _outline(scale: float, y: int, col: Color) -> void:
+	var rx: float = HALF.x * scale
+	var ry: float = HALF.y * scale
+	for x in range(-roundi(rx), roundi(rx) + 1):
+		var dy: int = roundi(ry * (1.0 - absf(float(x)) / rx))
+		draw_rect(Rect2(x, y - dy, 1, 1), col)
+		if dy != 0:
+			draw_rect(Rect2(x, y + dy, 1, 1), col)
+
+
+func _dashed_diamond(scale: float, y: int, col: Color) -> void:
+	var rx: float = HALF.x * scale
+	var ry: float = HALF.y * scale
+	for x in range(-int(rx), int(rx) + 1):
+		if x % 2 != 0:
+			continue
+		var dy: int = roundi(ry * (1.0 - absf(float(x)) / rx))
+		draw_rect(Rect2(x, y - dy, 1, 1), col)
+		if dy != 0:
+			draw_rect(Rect2(x, y + dy, 1, 1), col)

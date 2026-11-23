@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/area_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"heronmere"
+zone = &"larkmoor"
+display_name = "Heronmere"
+order = 1
+glyph = "~"
+theme_role = 3
+blurb = "A reed-fringed lake; the pads sit on its western shore."
+pad_buttons = PackedStringArray("h1", "h2")

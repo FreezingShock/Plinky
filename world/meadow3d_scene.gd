@@ -7,6 +7,8 @@ const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
 @export_file("*.json") var placements_path: String = DIR + "placements3d.json"
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd). Rocks and crystals stay put.
+## Cast shadow of a pad slab: width in texels and the height it stretches from (the slab is about 3 texels thick).
+const PAD_SHADOW: Vector2 = Vector2(26.0, 18.0)
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 
 var _data: Dictionary = {}
@@ -87,6 +89,7 @@ func _add_sky() -> void:
 	_sky.name = "Sky"
 	_sky.shadows = _shadows
 	_sky.ground_texture = _ground.texture
+	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
 	var water: Array = []
 	for a: Dictionary in _data.anchors:
 		if String(a.kind) == "water":
@@ -110,6 +113,7 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+				_shadows.add_blob(Vector2(a.sx, a.sy), PAD_SHADOW.x, PAD_SHADOW.y)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 

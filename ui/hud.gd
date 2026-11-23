@@ -19,9 +19,7 @@ const REFRESH: float = 0.1
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
-var _zone_label: Label
-var _gate_label: Label
-var _zone_buttons: HBoxContainer
+var _zone_panel: ZonePanel
 var _rebirth: ExpandChip
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
@@ -29,9 +27,6 @@ var _prestige_label: Label
 var _offline: Label
 var _clock: float = 0.0
 var _attr_rows: Dictionary = {}   # attribute id -> [Label, Button]
-var _zones_key: String = ""
-var _pad_list: PadList
-var _gate_bar: DitherBar
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -50,7 +45,6 @@ func setup(p_sim: Sim) -> void:
 	_build_gate()
 	_build_bottom()
 	_build_upgrades()
-	_build_pad_list()
 	_build_tip_card()
 	_momentum = MomentumMeter.new()
 	add_child(_momentum)
@@ -170,18 +164,19 @@ func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringN
 
 
 func _build_gate() -> void:
-	var v: VBoxContainer = _panel(Vector2(456, 4))
-	_gate_panel = v.get_parent() as PanelContainer
-	gate(_gate_panel, Onboarding.F_REBIRTH_ROW)
-	_zone_label = Label.new()
-	_zone_label.theme_type_variation = &"TitleLabel"
-	v.add_child(_zone_label)
-	_gate_label = Label.new()
-	_gate_bar = DitherBar.new(150.0)
-	v.add_child(_gate_bar)
-	v.add_child(_gate_label)
-	_zone_buttons = HBoxContainer.new()
-	v.add_child(_zone_buttons)
+	_zone_panel = ZonePanel.new()
+	_zone_panel.position = Vector2(456, 4)
+	add_child(_zone_panel)
+	_zone_panel.setup(sim)
+	_gate_panel = _zone_panel
+	gate(_zone_panel, Onboarding.F_MULT)
+	for part: Control in _zone_panel.gated_parts():
+		gate(part, Onboarding.F_REBIRTH_ROW)
+
+
+## The walker entered an area (Larkmoor district): the zone card follows.
+func set_district(id: StringName) -> void:
+	_zone_panel.set_district(id)
 
 
 func _build_bottom() -> void:
@@ -222,13 +217,6 @@ func _chip(parent: Control, icon_name: String, tip_title: String, tip_body: Stri
 	parent.add_child(c)
 	Tip.bind(c, {"title": tip_title, "body": tip_body})
 	return c
-
-
-func _build_pad_list() -> void:
-	_pad_list = PadList.new()
-	_pad_list.position = Vector2(456, 96)
-	add_child(_pad_list)
-	gate(_pad_list, Onboarding.F_MULT)
 
 
 func _build_upgrades() -> void:
@@ -357,13 +345,9 @@ func _refresh() -> void:
 		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
 	if _prestige_label != null:
 		_prestige_label.text = "x%s" % sim.prestige_mult().format()
-	var z: ZoneDef = sim.current_zone()
-	_zone_label.text = z.display_name if z != null else ""
-	_gate_label.text = _gate_text(z)
 	_rebirth.disabled = not sim.can_rebirth()
 	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
-	_refresh_zone_buttons()
-	_pad_list.refresh(sim)
+	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		_prestige_avail.text = "Prestige to spend: %s" % sim.prestige_available().format()
 		for aid: StringName in _attr_rows:
@@ -374,39 +358,6 @@ func _refresh() -> void:
 			var btn: PixelButton = row[1]
 			btn.text = "MAX" if lv >= a.cap else "Buy %s" % sim.attribute_cost(aid).format()
 			btn.disabled = lv >= a.cap or sim.prestige_available().lt(sim.attribute_cost(aid))
-
-
-func _gate_text(z: ZoneDef) -> String:
-	if z == null or z.gate_stat == &"":
-		_gate_bar.visible = false
-		return "No gate here"
-	_gate_bar.visible = true
-	if sim.is_gate_open(z.id):
-		_gate_bar.value = 1.0
-		return "Gate open! Walk in." if z.next_zone != &"" else "Gate open! Nothing past it yet."
-	var have: float = minf(sim.get_stat(z.gate_stat).to_float(), z.gate_threshold)
-	_gate_bar.value = have / z.gate_threshold
-	var name_s: String = (sim.stat_defs[z.gate_stat] as StatDef).display_name
-	return "%d/%d %s" % [int(have), int(z.gate_threshold), name_s]
-
-
-## Buttons to travel to any unlocked zone other than the current one.
-func _refresh_zone_buttons() -> void:
-	var key: String = String(sim.zone_id)
-	for zid: StringName in sim.zone_defs:
-		if sim.is_zone_unlocked(zid):
-			key += "|" + String(zid)
-	if key == _zones_key:
-		return
-	_zones_key = key
-	for c in _zone_buttons.get_children():
-		c.queue_free()
-	for zid: StringName in sim.zone_defs:
-		if zid != sim.zone_id and sim.is_zone_unlocked(zid):
-			var b := PixelButton.new()
-			b.text = "Go: %s" % (sim.zone_defs[zid] as ZoneDef).display_name
-			b.pressed.connect(func() -> void: GameState.enter_zone(zid))
-			_zone_buttons.add_child(b)
 
 
 func _on_offline(seconds: float, gains: Dictionary) -> void:

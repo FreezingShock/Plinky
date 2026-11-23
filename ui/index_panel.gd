@@ -89,12 +89,36 @@ func _init() -> void:
 	_hint.custom_minimum_size.x = WIDTH
 	v.add_child(_hint)
 	_reveal = DitherReveal.new()
-	_reveal.top_level = true
-	add_child(_reveal)
+	_reveal.z_index = 1   # above the panel; it is a sibling, added in _ready, so nothing in the panel can cover it
+
+
+func _exit_tree() -> void:
+	if _reveal != null and _reveal.get_parent() != null and not _reveal.is_queued_for_deletion():
+		_reveal.queue_free()
+
+
+## What Main's I and O keys and the HUD buttons call: open the tab, or close if it is already the one showing.
+func toggle_tab(t: int) -> void:
+	if is_open() and tab == t:
+		close_panel()
+	else:
+		open_tab(t)
+
+
+## Debug: F7 slows the open and close animation 5x so the wipe can be checked by eye.
+static var slow_mo: bool = false
+
+
+## True while the wipe overlay is on screen, sized to the panel, and drawn above it.
+func wipe_showing() -> bool:
+	return _reveal.visible and _reveal.size.x > 0.0 and _reveal.size.y > 0.0 and _reveal.z_index > z_index
 
 
 func bind(p_sim: Sim) -> void:
 	sim = p_sim
+	var host: Node = get_parent()
+	if host != null and _reveal.get_parent() == null:
+		host.add_child(_reveal)
 
 
 ## True while the window is on screen and not on its way out.
@@ -115,6 +139,7 @@ func open_tab(t: int) -> void:
 		return
 	_closing = false
 	visible = true
+	reset_size()
 	_layout()
 	_animate(true)
 	_focus_first_row()
@@ -161,7 +186,9 @@ func _animate(opening: bool) -> void:
 	if FxConfig.reduce_flashing:
 		_set_t(1.0)
 		return
+	_set_t(0.0 if opening else 1.0)   # cover now, so the first drawn frame is already wiping, not opaque
 	_tween = create_tween()
+	_tween.set_speed_scale(0.2 if slow_mo else 1.0)
 	var from: float = 0.0 if opening else 1.0
 	var to: float = 1.0 if opening else 0.0
 	_tween.tween_method(_set_t, from, to, OPEN_TIME if opening else CLOSE_TIME)
@@ -250,7 +277,12 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 	tail.custom_minimum_size = Vector2(1, 6)
 	_list.add_child(tail)
 	if keep != &"" and _rows.has(keep) and is_open():
-		(_rows[keep] as IndexRow).call_deferred("grab_focus")
+		_grab.call_deferred(_rows[keep] as IndexRow)
+
+
+func _grab(row: IndexRow) -> void:
+	if is_instance_valid(row) and row.is_inside_tree() and is_open():
+		row.grab_focus()
 
 
 func _focus_first_row() -> void:
@@ -258,7 +290,7 @@ func _focus_first_row() -> void:
 		return
 	for c in _list.get_children():
 		if c is IndexRow:
-			(c as IndexRow).call_deferred("grab_focus")
+			_grab.call_deferred(c as IndexRow)
 			return
 
 
@@ -275,7 +307,7 @@ func _layout() -> void:
 		reset_size()
 	position = ((host.size - size) * 0.5).floor() + Vector2(0.0, _slide)
 	_reveal.global_position = global_position
-	_reveal.size = size
+	_reveal.size = size.max(get_combined_minimum_size())
 
 
 func _process(delta: float) -> void:
@@ -289,6 +321,10 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F7 and visible:
+		slow_mo = not slow_mo
+		get_viewport().set_input_as_handled()
+		return
 	if not is_open() or event.is_echo():
 		return
 	if event.is_action_pressed(&"plinky_tab_prev"):

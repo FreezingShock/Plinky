@@ -27,6 +27,7 @@ var stat_defs: Dictionary = {}       # StringName -> StatDef
 var button_defs: Dictionary = {}     # StringName -> ButtonDef
 var zone_defs: Dictionary = {}       # StringName -> ZoneDef
 var attribute_defs: Dictionary = {}  # StringName -> AttributeDef
+var area_defs: Dictionary = {}       # StringName -> AreaDef (zone menu grouping only)
 ## Owned and equipped relics. Built by ContentLoader. Always non-null after load.
 var relics: RelicInventory
 ## Pad XP and levels. Replaced by ContentLoader with the content's config.
@@ -87,6 +88,15 @@ func validate() -> PackedStringArray:
 		for bid in z.pad_buttons:
 			if not button_defs.has(StringName(bid)):
 				errs.append("zone %s: pad_buttons has unknown button %s" % [z.id, bid])
+	for a: AreaDef in area_defs.values():
+		if not zone_defs.has(a.zone):
+			errs.append("area %s: unknown zone %s" % [a.id, a.zone])
+		for bid in a.pad_buttons:
+			var bd: ButtonDef = button_defs.get(StringName(bid)) as ButtonDef
+			if bd == null:
+				errs.append("area %s: unknown button %s" % [a.id, bid])
+			elif bd.zone != a.zone:
+				errs.append("area %s: button %s belongs to zone %s" % [a.id, bid, bd.zone])
 	for s: StatDef in stat_defs.values():
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
@@ -146,6 +156,16 @@ func current_zone() -> ZoneDef:
 	return zone_defs.get(zone_id) as ZoneDef
 
 
+## The areas of a zone, in listing order. Empty when the zone has none.
+func areas_in_zone(z_id: StringName) -> Array[AreaDef]:
+	var out: Array[AreaDef] = []
+	for a: AreaDef in area_defs.values():
+		if a.zone == z_id:
+			out.append(a)
+	out.sort_custom(func(x: AreaDef, y: AreaDef) -> bool: return x.order < y.order)
+	return out
+
+
 func prestige_mult() -> BigNum:
 	return Formulas.prestige_mult(get_stat(config.prestige_stat), config.prestige_exponent)
 
@@ -165,6 +185,12 @@ func income_per_second(stat_id: StringName) -> BigNum:
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
 	rm = rm.mul(BigNum.from_float(1.0 + momentum * config.momentum_max_bonus))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
+
+
+## Rarity id of a pad (&"common" when unknown).
+func pad_rarity(button_id: StringName) -> StringName:
+	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
+	return b.rarity if b != null else &"common"
 
 
 func can_afford(button_id: StringName) -> bool:

@@ -44,6 +44,11 @@ var _bird_clock: float = 3.0
 var _combo: int = 0
 var _last_press_ms: int = -100000
 var _last_tick_ms: int = 0
+## Pad click limit (Settings > Audio): after `click_limit_count` presses in a row the click goes quiet until the streak resets.
+var click_limit_on: bool = true
+var click_limit_count: int = 5
+var _streak: int = 0
+const STREAK_GAP_MS: int = 1500
 var _zone: StringName = &""
 var _vol: Dictionary = DEFAULT_VOL.duplicate()
 var _muted: bool = false
@@ -221,6 +226,8 @@ func play(name: StringName, pitch := 1.0, vol_db := 0.0, bus: StringName = BUS_S
 ## big (crit) uses its own sound and does not advance the ladder past where it is.
 func pad_press(big: bool, held := false) -> void:
 	var now: int = Time.get_ticks_msec()
+	_streak = 1 if now - _last_press_ms > STREAK_GAP_MS else _streak + 1
+	var quiet: bool = click_limit_on and _streak > click_limit_count
 	if now - _last_press_ms <= COMBO_WINDOW_MS:
 		_combo = mini(_combo + 1, COMBO_STEPS.size() - 1)
 	else:
@@ -230,11 +237,21 @@ func pad_press(big: bool, held := false) -> void:
 	var pitch: float = pow(2.0, float(semis) / 12.0)
 	if big:
 		play(&"pad_big", pow(2.0, float(COMBO_STEPS[mini(_combo, 4)]) / 12.0), 0.0)
-	else:
+	elif not quiet:
 		play(&"pad_press", pitch, -2.0 - float(_combo) * 0.15)
-	if held and now - _last_tick_ms > 70:
+	if held and not quiet and now - _last_tick_ms > 70:
 		_last_tick_ms = now
 		play(&"popup_tick", 1.0 + float(_combo) * 0.04, -9.0)
+
+
+## Stepping off a pad (or letting go of it) starts the click count again.
+func reset_press_streak() -> void:
+	_streak = 0
+
+
+func set_click_limit(on: bool, count: int) -> void:
+	click_limit_on = on
+	click_limit_count = clampi(count, 1, 10)
 
 
 func popup_tick() -> void:
