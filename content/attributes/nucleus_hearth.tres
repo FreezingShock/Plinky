@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_hearth"
+display_name = "Banked Embers"
+effect = &"ember_start"
+per_level = 100.0
+cap = 10
+base_cost = 2.0
+cost_growth = 1.5
+order = 1
+currency = &"shards"
+unlock_resets = 0
+blurb = "Every run after a Nucleus starts with extra Embers, so the first pads come at once."
+icon = &"embers"
+unit_text = "starting Embers"
+value_kind = &"flat"

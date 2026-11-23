@@ -38,6 +38,11 @@ extends Resource
 @export var pay_effect: StringName = &""
 @export var bonus_effect: StringName = &""
 ## Menu skin: the heading of its section in Upgrades, and the words on its button, tooltip, confirm card and tutorial tip.
+## Animation skin (ui/fx/bloom_ritual.gd): the stats whose colours the burst particles use (the zone's ladder), the characters
+## of the closing ring of marks, and whether the particles rise like sparks (true) or fall like petals (false).
+@export var fx_stats: PackedStringArray = PackedStringArray()
+@export var fx_marks: String = ".o*O"
+@export var fx_rise: bool = false
 @export var menu_title: String = ""
 @export var button_hint: String = ""
 @export_multiline var tip_body: String = ""

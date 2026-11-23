@@ -78,7 +78,7 @@ func run(t: Object) -> void:
 	t.near(m2.get_stat(&"cinder").to_float(), 56.0, 1e-9, "old Multiplier became Cinder")
 	t.near(m2.get_stat(&"ingot").to_float(), 3.0, 1e-9, "the rest of the quarry stock is kept")
 	t.ok(not m2.stat_defs.has(&"cash") and not m2.stat_defs.has(&"mult"), "Cash and Multiplier are no longer stats (parked)")
-	t.eq(int(m2.to_dict().get("ladder")), 3, "saving writes the new format")
+	t.eq(int(m2.to_dict().get("ladder")), 4, "saving writes the new format")
 	t.ok(not (m2.to_dict().get("stats") as Dictionary).has("cash"), "and no old keys")
 	t.ok(m2.is_tier_open(&"ore"), "open rows stay open")
 	t.near(m2.income_per_second(&"embers").to_float(), 0.25 * (1.0 + 56.0) * m2.prestige_mult().to_float(), 1e-6, "Embers income follows Cinder")

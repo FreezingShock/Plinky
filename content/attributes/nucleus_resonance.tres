@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_resonance"
+display_name = "Core Resonance"
+effect = &"nucleus_bonus"
+per_level = 0.02
+cap = 10
+base_cost = 8.0
+cost_growth = 1.6
+order = 11
+currency = &"shards"
+unlock_resets = 3
+blurb = "Every Nucleus you have done gives every pad even more reward, now and for each Nucleus to come."
+icon = &"emberheart"
+unit_text = "pad reward per Nucleus"

@@ -21,7 +21,6 @@ var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
-var _rebirth: ExpandChip
 var _reset_chips: Dictionary = {}   # zone reset id -> its bottom-bar chip (generated from content/resets)
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
@@ -39,7 +38,7 @@ var _momentum: MomentumMeter
 var _stats_panel: PanelContainer
 var _clock_widget: ClockWidget
 var _menu_chip: ExpandChip   # hamburger, bottom right
-var _key_chips: Array[ExpandChip] = []   # number keys 1 to 5 press these, in order (Rebirth is left out on purpose)
+var _key_chips: Array[ExpandChip] = []   # number keys 1 to 5 press these, in order 
 var _centered: Array[Control] = []   # panels kept centred in the free area above the bottom bar
 
 ## The stat strip is customizable (core/hud_layout.gd, saved per game): right-click a row to hide it, or press the pencil for
@@ -311,31 +310,12 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 	_modal.open("%s?" % r.display_name, lines, r.display_name, "Not yet", func() -> void: GameState.try_reset(rid))
 
 
-## Rebirth asks first (Settings > Gameplay > Confirm rebirth turns that off). The numbers are read when it is pressed.
-func _on_rebirth_pressed() -> void:
-	if not sim.can_rebirth():
-		return
-	if not ModalCard.rebirth_confirm:
-		GameState.try_rebirth()
-		return
-	var lines: Array = [
-		["Resets your income stats and pads.", StatStyle.PAPER],
-		["+%s Prestige" % sim.prestige_gain_preview().format(), StatStyle.color(&"prestige")],
-		["+%d Rebirth Points" % sim.rp_gain_preview(), StatStyle.color(&"rp")],
-	]
-	_modal.open("Rebirth?", lines, "Rebirth", "Not yet", func() -> void: GameState.try_rebirth())
-
-
 func _build_bottom() -> void:
 	var h := HBoxContainer.new()
 	h.position = Vector2(4, 334)
 	_bottom = h
 	h.add_theme_constant_override("separation", 4)
 	add_child(h)
-	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
-	_rebirth.pressed.connect(_on_rebirth_pressed)
-	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format(), str(sim.rp_gain_preview()) if sim.can_rebirth() else ""))
-	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	for zr: ZoneResetDef in sim.resets_ordered():   # one chip per zone reset; only the current zone's shows
 		var rid: StringName = zr.id
 		var chip: ExpandChip = _chip(h, String(zr.currency), zr.display_name, zr.button_hint)
@@ -344,7 +324,7 @@ func _build_bottom() -> void:
 		Tip.bind(chip, func() -> Variant: return TipText.zone_reset(zr, cname, sim.can_reset(rid), sim.reset_gain(rid), "Reach %s %s." % [BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[zr.source_stat] as StatDef).display_name]))
 		chip.visible = false
 		_reset_chips[rid] = chip
-	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
+	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend what a reset pays on permanent gifts.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
 	up.pressed.connect(toggle_upgrades)
 	_key_chips.append(up)
@@ -640,8 +620,6 @@ func _refresh() -> void:
 		(pair[1] as Label).visible = show_rates
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
-	_rebirth.disabled = not sim.can_rebirth()
-	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need %s %s)" % [BigNum.from_float(sim.config.rebirth_min_value).format(), (sim.stat_defs[sim.prestige_source()] as StatDef).display_name]
 	for rid: StringName in _reset_chips:
 		var rd: ZoneResetDef = sim.reset_defs[rid] as ZoneResetDef
 		var rc: ExpandChip = _reset_chips[rid] as ExpandChip
@@ -952,8 +930,6 @@ func gate(node: CanvasItem, feature: StringName) -> void:
 
 ## A gated stat row also has to belong to the current zone; any other gated node always does.
 func _gated_in_zone(node: CanvasItem) -> bool:
-	if node == _rebirth:   # Rebirth lives in the quarry; the meadow has Bloom
-		return sim.rebirth_here()
 	for sid: StringName in _gated_rows:
 		if _row_boxes.get(sid) == node:
 			return _row_in_zone(sid)

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_study"
+display_name = "Anvil Study"
+effect = &"mastery_xp"
+per_level = 0.15
+cap = 5
+base_cost = 6.0
+cost_growth = 1.7
+order = 12
+currency = &"shards"
+unlock_resets = 3
+blurb = "Pads earn Mastery XP faster, so they level sooner."
+icon = &"mastery"
+unit_text = "pad XP"

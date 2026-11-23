@@ -155,7 +155,7 @@ func _tip_ready(tip: StringName) -> bool:
 			var zr: ZoneResetDef = sim.reset_for_zone()
 			return zr != null and sim.can_reset(zr.id)
 		&"upgrades":
-			return _latched(F_UPGRADES) and sim.rebirth_here()
+			return _latched(F_UPGRADES) and sim.resets_started()
 	return false
 
 
@@ -223,5 +223,5 @@ func tip_text(tip: StringName) -> String:
 			var zr: ZoneResetDef = sim.reset_for_zone()
 			return zr.teach_text if zr != null else ""
 		&"upgrades":
-			return "Prestige is yours to spend. Open Upgrades [Tab] for permanent boosts."
+			return "Your gifts are ready to buy. Open Upgrades [Tab] for permanent boosts."
 	return ""

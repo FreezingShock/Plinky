@@ -273,7 +273,7 @@ func income_per_second(stat_id: StringName) -> BigNum:
 			boost = boost.mul(get_stat(s.id).mul(BigNum.from_float(s.income_factor_per_unit)).add(BigNum.one()))
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
-	rm = rm.mul(BigNum.from_float((1.0 + momentum_bonus()) * (1.0 + effect_total(&"sun_rate"))))
+	rm = rm.mul(BigNum.from_float((1.0 + momentum_bonus()) * (1.0 + effect_total(&"sun_rate") + effect_total(&"ember_rate"))))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
@@ -989,6 +989,8 @@ func try_reset(reset_id: StringName) -> bool:
 		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
 	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
 	reset_counts[reset_id] = reset_count(reset_id) + 1
+	rebirth_count += 1   # every zone reset counts toward the relic slots (5 and 20)
+	relics.set_rebirths(rebirth_count)
 	_set_heat(0.0)
 	_flush()
 	run_stats.mark_rebirth()
@@ -1277,7 +1279,7 @@ func _check_gates() -> void:
 # ---------------------------------------------------------------- save format
 
 ## Save format of the flower ladder (the meadow's Sunlight to Starbloom economy). Older saves are migrated on load.
-const LADDER_SAVE: int = 3   # 3: the quarry's Cash and Multiplier became Embers and Cinder
+const LADDER_SAVE: int = 4   # 3: the quarry's Cash and Multiplier became Embers and Cinder; 4: Rebirth became the Nucleus
 
 func to_dict() -> Dictionary:
 	var s: Dictionary = {}
@@ -1396,6 +1398,8 @@ func from_dict(d_in: Dictionary) -> bool:
 		_evaluate_achievements()   # a save from before the Ledger: what is already earned counts, with no pop-ups
 	if old_quarry:
 		_migrate_to_quarry_ladder()
+	if save_ladder < 4:
+		_migrate_quarry_rebirth()
 	_dirty.clear()
 	return true
 
@@ -1434,6 +1438,29 @@ func _migrate_to_quarry_ladder() -> void:
 	if gates_open.get(&"zone2", false):   # the old gate (9 Slag) was beaten: keep every row open for the new one
 		for t: TierDef in tiers_in_zone(&"zone2"):
 			tiers_open[t.id] = true
+
+
+## Saves from before the Nucleus: the quarry's old Rebirth, Prestige, Rebirth Points and the Prestige-bought upgrades are
+## retired. Every old Rebirth counts as a Nucleus (so the pad bonus carries on, up to nucleus_carry_max), pays 2 Core Shards,
+## and every level bought in the old upgrades pays 1 Core Shard back. The old levels, Prestige and Rebirth Points are cleared;
+## the relic slots (rebirth_count) stay. Core Shards then buy the new Nucleus gifts.
+func _migrate_quarry_rebirth() -> void:
+	var r: ZoneResetDef = reset_defs.get(&"nucleus") as ZoneResetDef
+	if r == null or not (bool(zones_entered.get(&"zone2", false)) or zone_id == &"zone2"):   # only players who have been to the quarry
+		return
+	var refund: int = 0
+	for a: AttributeDef in attribute_defs.values():
+		if a.currency == config.prestige_stat or a.currency == config.rp_stat:
+			refund += attr_level(a.id)
+			attr_levels.erase(a.id)
+	var done: int = rebirth_count
+	if done <= 0 and refund <= 0 and get_stat(config.prestige_stat).is_zero():
+		return
+	reset_counts[r.id] = maxi(reset_count(r.id), mini(done, config.nucleus_carry_max))
+	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(refund + 2 * done))))
+	_set_stat(config.prestige_stat, BigNum.zero())
+	_set_stat(config.rp_stat, BigNum.zero())
+	prestige_spent = BigNum.zero()
 
 
 ## Saves from before Cash and Multiplier left the quarry (ladder < 3): the Cash stock becomes Embers and the Multiplier

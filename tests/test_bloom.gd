@@ -86,7 +86,7 @@ func run(t: Object) -> void:
 	t.ok(not UpgradeText.group_shown(sim, &"prestige"), "Prestige upgrades hide in the meadow")
 	t.ok(UpgradeText.group_shown(sim, &"seeds"), "Bloom gifts show after a Bloom")
 	sim.zone_id = &"zone2"
-	t.ok(sim.rebirth_here(), "Zone 2 runs Rebirth")
+	t.ok(not sim.rebirth_here(), "no zone runs the old Rebirth any more: the quarry has the Nucleus")
 
 	# Gifts cost Seeds, not Prestige, and do what they say.
 	var gift: AttributeDef = sim.attribute_defs[&"bloom_head_start"]
