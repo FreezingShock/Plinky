@@ -151,7 +151,7 @@ func _build_stats() -> void:
 		# Compact strip: icon, then (small dim gain, value) pushed to the right edge. No names: the instant tooltip has them,
 		# and the value takes the stat's colour. The panel is only as wide as its widest visible row.
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 4)
+		h.add_theme_constant_override("separation", 8)   # 8: the long gain text ("+44.48TDo/s") must never touch the value
 		v.add_child(h)
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
@@ -171,7 +171,6 @@ func _build_stats() -> void:
 		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(rate)
 		var val := RollValue.new()
-		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		val.add_theme_color_override("font_color", StatStyle.color(sid))
@@ -228,20 +227,6 @@ func _earned(sid: StringName) -> bool:
 		_earned_rows[sid] = true
 		return true
 	return false
-
-
-## Big jumps in a stat float up beside its counter. The first stat is left out: every press already pops its own number.
-func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
-	if sid == &"sunlight" or sid == &"cash":
-		return
-	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
-	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
-	var text: String = "+%s %s" % [amount.format(), stat_name]
-	if PressPopups.instance != null:
-		# The shared popup field keeps stat floats off each other (and off press numbers) by taking a free lane.
-		PressPopups.instance.label(StringName("stat_" + String(sid)), global_position + at + Vector2(40.0, 12.0), text, 0)
-	else:
-		PopupNumber.spawn_text(self, at, text, true)
 
 
 func _build_gate() -> void:
