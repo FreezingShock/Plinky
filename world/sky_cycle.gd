@@ -268,6 +268,7 @@ func _update_season() -> void:
 		_push_season(pm, false)
 	_push_season(sway_material, false)
 	_push_season(rim_material, false)
+	MeadowLife.season = _season.weights
 	if particles != null:
 		particles.weights = _season.weights
 
