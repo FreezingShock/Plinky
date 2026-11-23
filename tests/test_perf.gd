@@ -61,3 +61,8 @@ func run(t: Object) -> void:
 		fast.push(8.0)
 	t.near(float(fast.summary().over_budget), 0.0, 1e-9, "8 ms frames are within budget")
 	t.near(float(fast.summary().fps), 125.0, 1e-3, "fps from average")
+
+	# The settings menu row (ui/settings/settings_registry.gd).
+	var row: Dictionary = SettingsRegistry.find(&"graphics_quality")
+	t.ok(not row.is_empty() and String(row["tab"]) == "Display", "graphics quality row is registered under Display")
+	t.eq((((row["options"] as Callable).call()) as Array).size(), 3, "graphics quality offers Low, Medium and High")

@@ -14,6 +14,7 @@ mostly CPU: GDScript redraws and node count. Every number below is a budget to m
   godot --path . --script tools/bench.gd -- --quality=low --frames=600
   godot --headless --path . --script tools/bench.gd             # scripts only; draws, objects, VRAM read 0
   ```
+- Settings menu: Display > Graphics quality (ui/settings/settings_registry.gd).
 - `PerfStats` (render/perf_stats.gd) is the shared sampler; `PerfStats.counters()` has the engine monitors.
 
 ## Graphics quality (render/graphics_quality.gd)
