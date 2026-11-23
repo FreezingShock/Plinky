@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.32.2 - 2026-11-23
+- New pad-press popups: pooled, procedural stacking gain numbers coloured by streak tier (Gold, Ice, Rainbow, Chroma, Galaxy), stat-name caption, relic pulse echoes, new SFX, anchored in the world and drawn below menus; pads shake instead of the camera.
+
 ## 0.32.1 - 2026-11-23
 - HUD strip: more room between the gain text and the value so long suffixes never touch it.
 
