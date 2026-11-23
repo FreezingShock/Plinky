@@ -19,6 +19,8 @@ func run(t: Object) -> void:
 	t.eq(MenuTextButton.nudge_px(5.0), MenuTextButton.NUDGE, "nudge is clamped")
 	t.eq(MenuTextButton.underline_px(100.0, 0.5), 50, "the underline sweeps out in whole texels")
 	t.eq(MenuTextButton.underline_px(100.0, 0.0), 0, "no underline at rest")
+	t.ok(MenuTextButton.ARROW_GAP >= 3, "the > marker keeps a gap before the first letter")
+	t.ok(CrispFont.apply(MenuTextButton.FONT).antialiasing == TextServer.FONT_ANTIALIASING_NONE, "Pixelify Sans renders without grey anti-aliasing")
 
 	var root: Node = (t as SceneTree).root
 	var b := MenuTextButton.new()

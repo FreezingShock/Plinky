@@ -7,6 +7,8 @@ extends PixelButton
 ## changes. Reduce motion / flashing snaps instead of easing.
 
 const FONT: FontFile = preload("res://fonts/PixelifySans.ttf")
+## Gap in texels between the ">" marker and the first letter.
+const ARROW_GAP: int = 4
 const FONT_SIZE: int = 16
 const SPEED: float = 9.0
 const NUDGE: int = 4
@@ -26,6 +28,7 @@ var t: float = 0.0
 
 
 func _ready() -> void:
+	CrispFont.apply(FONT)
 	super._ready()
 	text = ""
 	flat = true
@@ -68,11 +71,13 @@ func _draw() -> void:
 	var down: bool = get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
 	var col: Color = RelicStyle.dim if disabled else rest_color.lerp(accent_color, 1.0 if t > 0.0 else 0.0)
 	var x: float = PAD_X + float(NUDGE) + float(nudge_px(t))
-	var base: float = PAD_Y + FONT.get_ascent(fs) + (1.0 if down else 0.0)
+	var base: float = floorf(PAD_Y + FONT.get_ascent(fs)) + (1.0 if down else 0.0)
 	FONT.draw_string(get_canvas_item(), Vector2(x, base), label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, col)
 	if t > 0.0:
 		# ">" marker slides in from the left; underline sweeps out beneath the text.
-		var mx: float = PAD_X - 2.0 + float(nudge_px(t)) * 0.5
+		# Right-aligned a fixed gap before the first letter, on whole texels, so the two never touch.
+		var aw: float = ceilf(FONT.get_string_size(">", HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x)
+		var mx: float = x - aw - float(ARROW_GAP)
 		FONT.draw_string(get_canvas_item(), Vector2(mx, base), ">", HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, Color(col, clampf(t * 2.0, 0.0, 1.0)))
 		var uy: float = base + 3.0
 		draw_rect(Rect2(x, uy, float(underline_px(tw, t)), 1.0), col)
