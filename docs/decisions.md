@@ -249,3 +249,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - ground_light.gdshader: N.L relight, height-march cast shadows (flowers, tufts, rocks, slopes), cool shadow tint (multiplied), contact occlusion, depth fog. Pushed hard on purpose: relight 2.2, shadow 1.2, AO 0.5, step length 1.6 texels at noon to 3.4 at low sun. Tune down in content/config/sky.tres from here.
 - Debug: F6 cycles the ground view: off, albedo, normal, height, shadow only.
 - Process note: the first stage 2a push never carried the code (a denied command was never run, then a hard reset dropped the edits). This commit is the first one that actually contains it.
+## 2026-11-23 Pad art, rarity and Momentum label
+- Nathan: pad inlay sprites were too small and all alike. Inlay is now 21x11 texels, and each pad gets a unique mirrored 5x5 emblem from its id, projected onto the plate, with a stat-colour spine. The centre stays clear for the tick or X.
+- Pads have a rarity (`ButtonDef.rarity`, content only): Meadow common, common, uncommon, rare, epic; Larkmoor common to legendary by cost; Quarry uncommon, rare, epic. Frame ring in the tier colour (none for Common), white studs from Legendary. Shown in the tooltip through `Sim.pad_rarity`.
+- Momentum label: Pixelify Sans, capitals, embolden 0.6 and a 2px ink outline.
+
+## 2026-11-23 Quiet pad clicks
+- Nathan: standing on a pad clicked forever. Settings > Audio now has "Quiet pad clicks" (on by default) and "Clicks before quiet" (slider 1 to 10, default 5). After that many presses in a row the pad click and hold tick go quiet. Stepping off or releasing a pad resets the count, as does a 1.5 s pause. Crit sounds always play. Settings are stored per id with defaults in settings.cfg, which has no schema version, so there was nothing to bump.
