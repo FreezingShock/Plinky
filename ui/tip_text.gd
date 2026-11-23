@@ -35,7 +35,7 @@ static func stat(sid: StringName, display_name: String, have: String = "", per_s
 	if have != "":
 		lines.append(["You have ", Tip.icon(String(sid)), Tip.seg(have, c)])
 	if per_second != "":
-		lines.append(["Income ", Tip.seg("+%s/s" % per_second, StatStyle.BUY_GREEN)])
+		lines.append(["Income ", Tip.seg("+%s/s" % per_second, StatStyle.gain())])
 	return {"title": display_name, "title_color": c, "color": c, "icon": String(sid),
 		"body": base.get("body", ""), "lines": lines, "hint": base.get("hint", "")}
 
@@ -44,14 +44,14 @@ static func attribute(a: AttributeDef, level: int, cost_text: String, can_afford
 	var c: Color = StatStyle.color(a.effect)
 	var maxed: bool = level >= a.cap
 	var lines: Array = [["Level ", Tip.seg("%d/%d" % [level, a.cap], c)]]
-	lines.append(["Now ", Tip.seg(StatIndex.effect_text(a, float(level) * a.per_level), StatStyle.BUY_GREEN)])
+	lines.append(["Now ", Tip.seg(StatIndex.effect_text(a, float(level) * a.per_level), StatStyle.gain())])
 	if not maxed:
-		lines.append(["Next ", Tip.seg(StatIndex.effect_text(a, float(level + 1) * a.per_level), StatStyle.BUY_GREEN)])
+		lines.append(["Next ", Tip.seg(StatIndex.effect_text(a, float(level + 1) * a.per_level), StatStyle.gain())])
 		lines.append(["Costs ", Tip.icon(String(a.currency)), Tip.seg(cost_text, StatStyle.buy(can_afford)), " ", Tip.seg(UpgradeText.currency_name(a), StatStyle.color(a.currency))])
 	return {"title": a.display_name, "title_color": c, "color": c, "icon": String(ATTR_ICONS.get(a.effect, "prestige")),
 		"body": ATTRS.get(a.effect, ""), "lines": lines,
 		"hint": "Max level." if maxed else ("Click Buy to upgrade." if can_afford else "Need more %s." % UpgradeText.currency_name(a)),
-		"hint_color": StatStyle.BUY_GREEN if (maxed or can_afford) else StatStyle.BUY_RED}
+		"hint_color": StatStyle.gain() if (maxed or can_afford) else StatStyle.cant()}
 
 
 static func rebirth(can: bool, gain_text: String, rp_text: String = "") -> Dictionary:
@@ -59,11 +59,11 @@ static func rebirth(can: bool, gain_text: String, rp_text: String = "") -> Dicti
 	if can:
 		return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
 			"body": "Reset your Cash and pads for a Rebirth.",
-			"lines": [["Gives ", Tip.icon("prestige"), Tip.seg("+%s" % gain_text, StatStyle.BUY_GREEN), " ", Tip.seg("Prestige", pc)]]
-				+ ([["Gives ", Tip.icon("rp"), Tip.seg("+%s" % rp_text, StatStyle.BUY_GREEN), " ", Tip.seg("Rebirth Points", StatStyle.color(&"rp"))]] if rp_text != "" else []),
-			"hint": "Prestige and relics are kept.", "hint_color": StatStyle.BUY_GREEN}
+			"lines": [["Gives ", Tip.icon("prestige"), Tip.seg("+%s" % gain_text, StatStyle.gain()), " ", Tip.seg("Prestige", pc)]]
+				+ ([["Gives ", Tip.icon("rp"), Tip.seg("+%s" % rp_text, StatStyle.gain()), " ", Tip.seg("Rebirth Points", StatStyle.color(&"rp"))]] if rp_text != "" else []),
+			"hint": "Prestige and relics are kept.", "hint_color": StatStyle.gain()}
 	return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
-		"body": "Start over for Prestige and a faster Multiplier.", "hint": "Not available yet.", "hint_color": StatStyle.BUY_RED}
+		"body": "Start over for Prestige and a faster Multiplier.", "hint": "Not available yet.", "hint_color": StatStyle.cant()}
 
 
 static func zone_button(display_name: String) -> Dictionary:
@@ -78,7 +78,7 @@ static func index_row(d: Dictionary) -> Dictionary:
 	if str(d.get("value", "")) != "":
 		lines.append(["Now ", Tip.seg(str(d["value"]), c)])
 	if str(d.get("note", "")) != "":
-		lines.append([Tip.seg(str(d["note"]), StatStyle.BUY_GREEN)])
+		lines.append([Tip.seg(str(d["note"]), StatStyle.gain())])
 	return {"title": str(d["name"]), "title_color": c, "color": c, "icon": str(d.get("icon", "")),
 		"body": str(d["tip"]), "lines": lines}
 
@@ -89,9 +89,9 @@ static func relic(def: RelicDef, owned: int, is_equipped: bool, hint: String) ->
 	var lines: Array = [rarity_tag(def.rarity, "relic", rc)]
 	lines.append(["Owned ", Tip.seg("%d%s" % [owned, " (max)" if def.is_capped(owned) else ""], RelicStyle.accent)])
 	if owned > 0 and not is_equipped:
-		lines.append([Tip.seg("Not equipped: no effect", StatStyle.BUY_RED)])
+		lines.append([Tip.seg("Not equipped: no effect", StatStyle.cant())])
 	elif not def.is_capped(owned):
-		lines.append(["Next stack ", Tip.seg("+%s" % RelicDef._pct(def.value_for(owned + 1) - def.value_for(owned)), StatStyle.BUY_GREEN)])
+		lines.append(["Next stack ", Tip.seg("+%s" % RelicDef._pct(def.value_for(owned + 1) - def.value_for(owned)), StatStyle.gain())])
 	return {"title": def.display_name, "title_color": rc, "color": rc, "body": def.describe(maxi(owned, 1)),
 		"lines": lines, "hint": hint, "beside": true}
 

@@ -20,8 +20,6 @@ var hovered: bool = false
 var progress: float = 0.0
 
 ## Buy state colours are fixed hex (like rarity colours): green = you can buy, red = you can't. Not palette-tinted, so they read in every zone.
-const BUY_GREEN: Color = Color("5fd068")
-const BUY_RED: Color = Color("d8483c")
 ## Secondary colour = the stat this pad raises. Unknown stats fall back to paper.
 const STAT_COLORS: Dictionary = {
 	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
@@ -44,6 +42,9 @@ var _timer: float = 0.0
 var _punch_t: float = 0.0   # 1 -> 0 after a press
 var _lvl_t: float = 0.0     # 1 -> 0 after a mastery level-up
 var _ring_t: float = 1.0    # 0 -> 1 ripple; 1 = idle
+var _punch_extra: int = 0   # 0 or 1 extra texel of sink for crits and high streak tiers
+var _shake_t: float = 0.0   # 1 -> 0: the pad itself shakes sideways one texel (instead of the camera)
+var _ring_tint: Color = Color(0.0, 0.0, 0.0, 0.0)   # streak tier colour for the ripple; alpha 0 = the plain palette ripple
 var _progress_t: float = 0.0
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
@@ -64,7 +65,7 @@ func _ready() -> void:
 	rarity = load("res://content/rarities/%s.tres" % _sim().pad_rarity(button_id)) as RarityDef
 	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if b != null:
-		stat_color = STAT_COLORS.get(b.reward_stat, stat_color)
+		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 	hold = HoldPress.new()
 	add_child(hold)
 	hold.tick.connect(_press)
@@ -91,6 +92,9 @@ func _physics_process(delta: float) -> void:
 		_refresh_progress(sim)
 	_punch_t = maxf(_punch_t - delta / PUNCH_TIME, 0.0)
 	_lvl_t = maxf(_lvl_t - delta / LEVEL_TIME, 0.0)
+	if _shake_t > 0.0:
+		_shake_t = maxf(_shake_t - delta / 0.2, 0.0)
+		queue_redraw()
 	if _ring_t < 1.0:
 		_ring_t = minf(_ring_t + delta / RING_TIME, 1.0)
 	if inside:
@@ -130,15 +134,27 @@ func hit(p: Vector2, slack: float = 1.3) -> bool:
 
 
 ## Called by Juice on every press. Restarts the sink and ripple, so spam-pressing never stacks tweens or drifts the pad.
-func punch() -> void:
+## tint (alpha above 0) recolours the ripple with the press streak tier's colour.
+## power (0 to 2) is how hard the press lands: 1 sinks one texel deeper, and any power shakes the pad itself.
+func punch(tint: Color = Color(0.0, 0.0, 0.0, 0.0), power: int = 0) -> void:
 	_punch_t = 1.0
 	_ring_t = 0.0
+	_ring_tint = tint
+	_punch_extra = 1 if power >= 1 else 0
+	_shake_t = float(power) * 0.5 if not (FxConfig.reduce_shake or FxConfig.reduce_flashing) else 0.0
 
 
 ## Mastery level-up: two gold rings spread from the plate (hard steps, no blending). Quiet under reduce flashing.
 func level_flash() -> void:
 	_lvl_t = 1.0
 	_sig = -1
+
+
+## -1, 0 or +1 texel sideways while the pad shakes: a hard-stepped buzz, 30 steps a second.
+func _shake_step() -> int:
+	if _shake_t <= 0.0:
+		return 0
+	return 1 if int(_shake_t * 30.0) % 2 == 0 else -1
 
 
 func _level_step() -> int:
@@ -168,7 +184,7 @@ func sink_texels() -> int:
 	var s: int = 0
 	if standing or holding:
 		s = 1
-	return maxi(s, ceili(_punch_t * float(FxConfig.PRESS_SINK_TEXELS)))
+	return mini(maxi(s, ceili(_punch_t * float(FxConfig.PRESS_SINK_TEXELS + _punch_extra))), THICK)
 
 
 ## 0 (far) .. 2 (on the plate): the approach cue brightens the rim as the walker gets close.
@@ -220,6 +236,7 @@ func _lit_rim(cy: int, hx: int, hy: int, col: Color) -> void:
 
 
 func _draw() -> void:
+	draw_set_transform(Vector2(float(_shake_step()), 0.0))
 	var st: PadState = pad_state()
 	var sink: int = sink_texels()
 	var lift: int = 1 if (hovered and sink == 0) else 0
@@ -233,6 +250,8 @@ func _draw() -> void:
 	if rs >= 0:
 		var g: float = 1.0 + 0.45 * float(rs + 1) / 6.0
 		var rc: Color = palette[7] if rs < 4 else palette[4]
+		if _ring_tint.a > 0.0:
+			rc = _ring_tint if rs < 4 else _ring_tint.lightened(0.35)
 		_outline(g, 0, rc)
 	var ls: int = _level_step()
 	if ls > 0:
@@ -258,7 +277,7 @@ func _draw() -> void:
 		_lit_rim(top, hx, hy, palette[3])
 	# Rim: brighter as the walker approaches or the mouse hovers.
 	var near: int = nearness()
-	var rim: Color = BUY_RED.darkened(0.3) if st != PadState.READY else BUY_GREEN
+	var rim: Color = StatStyle.cant().darkened(0.3) if st != PadState.READY else StatStyle.gain()
 	if near >= 2:
 		rim = rim.lerp(Color.WHITE, 0.4)
 	if hovered:
@@ -267,7 +286,7 @@ func _draw() -> void:
 	# Inset: green when buyable, red when not, with a green gauge filling as you earn the cost. Each pad has its own motif.
 	var ihx: int = 10
 	var ihy: int = 5
-	var buy: Color = BUY_GREEN
+	var buy: Color = StatStyle.gain()
 	if st == PadState.READY:
 		if glow != null and glow.flash_t > 0.0:
 			buy = glow.pad_color(palette)   # relic drop flash
@@ -277,7 +296,7 @@ func _draw() -> void:
 			buy = Color.WHITE
 		_rows(0, top, ihx, ihy, buy, buy)
 	else:
-		var red: Color = BUY_RED.darkened(0.45) if st == PadState.FAR else BUY_RED
+		var red: Color = StatStyle.cant().darkened(0.45) if st == PadState.FAR else StatStyle.cant()
 		_rows(0, top, ihx, ihy, red, red)
 		if st == PadState.CLOSE:
 			var cut: int = top + ihy - roundi(progress * float(ihy * 2 + 1))
@@ -285,10 +304,10 @@ func _draw() -> void:
 				if top + dy < cut:
 					continue
 				var w: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5)))
-				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), BUY_GREEN.darkened(0.2))
+				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), StatStyle.gain().darkened(0.2))
 	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Legendary adds corner studs.
 	if rarity != null and rarity.rank > 0:
-		_dashed_diamond(0.86, top, rarity.color)  # dashed, so Uncommon green never reads as the buy-state green
+		_dashed_diamond(0.86, top, rarity.tint())  # dashed, so Uncommon green never reads as the buy-state green
 		if rarity.rank >= 4:
 			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)

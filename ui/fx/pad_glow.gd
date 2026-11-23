@@ -28,7 +28,7 @@ var flash_t := 0.0   # 1 -> 0; 0 means no flash
 func flash_rarity(rarity: StringName) -> bool:
 	if FxConfig.reduce_flashing or not RARITY_FLASH.has(rarity):
 		return false
-	flash_color = RARITY_FLASH[rarity]
+	flash_color = AccessOptions.tint(RARITY_FLASH[rarity] as Color)
 	flash_t = 1.0
 	return true
 

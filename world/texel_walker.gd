@@ -78,8 +78,7 @@ func _typing() -> bool:
 
 
 func _key_down(action: StringName) -> bool:
-	var k: int = Keybinds.key_for(action)
-	return k != KEY_NONE and Input.is_key_pressed(k as Key)
+	return Keybinds.held(action)
 
 
 func _process(delta: float) -> void:
@@ -101,7 +100,7 @@ func _process(delta: float) -> void:
 		_has_target = false
 	motion.cfg = GameState.sim.config
 	motion.tick(delta, dir != Vector2.ZERO,
-		not blocked and Input.is_physical_key_pressed(KEY_SHIFT),
+		not blocked and _key_down(&"sprint"),
 		not blocked and _key_down(&"crouch"),
 		not blocked and (_key_down(&"jump") or Input.is_action_pressed(&"plinky_jump")))
 	speed_factor = motion.speed_factor
@@ -111,11 +110,11 @@ func _process(delta: float) -> void:
 		_kick_dust(3, dir)
 	if motion.just_jumped:
 		_kick_dust(2, Vector2.ZERO)
-		Audio.footstep(MeadowSites.surface_at(position))
+		Audio.footstep(MeadowSites.surface_at(position), 1.0)   # the push-off
 		_air_face = _face if dir != Vector2.ZERO else &"front"
 	if motion.just_landed:
 		_kick_dust(2 + int(motion.land_impact * 2.0), Vector2.ZERO)
-		Audio.footstep(MeadowSites.surface_at(position))
+		Audio.footstep(MeadowSites.surface_at(position), clampf(motion.land_impact * 3.0, 0.0, 5.0))   # a hard landing thumps
 		landed.emit(motion.land_impact)
 	moving = dir != Vector2.ZERO
 	if moving:
@@ -137,7 +136,7 @@ func _process(delta: float) -> void:
 		_step_clock += delta * motion.speed_factor
 		if _step_clock >= STEP_INTERVAL:
 			_step_clock = 0.0
-			Audio.footstep(MeadowSites.surface_at(position))
+			Audio.footstep(MeadowSites.surface_at(position), clampf((motion.speed_factor - 1.0) * 3.0, -1.0, 2.5))   # a sprint lands heavier
 	else:
 		_step_clock = STEP_INTERVAL * 0.5
 	if moving:
@@ -253,8 +252,7 @@ func _animate(delta: float, dir: Vector2) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and not PadInput.menu_open:
-		var k: InputEventKey = event
-		if k.pressed and not k.echo and (k.keycode == KEY_CTRL or k.physical_keycode == KEY_CTRL):
+		if Keybinds.matches(&"sprint_lock", event):
 			motion.toggle_sprint_lock()
 			return
 		if Keybinds.matches(&"jump", event) or event.is_action_pressed(&"plinky_jump"):

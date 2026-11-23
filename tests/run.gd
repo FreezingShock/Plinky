@@ -16,6 +16,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_boot.gd",
 	"res://tests/test_version.gd",
 	"res://tests/test_life.gd",
+	"res://tests/test_world_life.gd",
 	"res://tests/test_sky.gd",
 	"res://tests/test_lighting.gd",
 	"res://tests/test_walk.gd",
@@ -29,6 +30,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_sites.gd",
 	"res://tests/test_perf.gd",
 	"res://tests/test_settings.gd",
+	"res://tests/test_access.gd",
 	"res://tests/test_dev_commands.gd",
 	"res://tests/test_upgrades.gd",
 	"res://tests/test_rebirth_points.gd",
@@ -51,9 +53,12 @@ const SUITES: Array[String] = [
 	"res://tests/test_menus.gd",
 	"res://tests/test_calendar.gd",
 	"res://tests/test_gallery.gd",
+	"res://tests/test_history.gd",
 	"res://tests/test_title.gd",
 	"res://tests/test_title_scene.gd",
 	"res://tests/test_world_anchor.gd",
+	"res://tests/test_press_popups.gd",
+	"res://tests/test_ambient.gd",
 ]
 
 

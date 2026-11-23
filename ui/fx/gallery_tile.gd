@@ -19,6 +19,8 @@ var lift_t: float = 0.0
 ## 0 label hidden .. 1 fully typed in. Read by tests.
 var label_t: float = 0.0
 var _settle: float = 0.0
+## Section colour. Set before the tile enters the tree; Color(0,0,0,0) keeps the palette look.
+var accent: Color = Color(0, 0, 0, 0)
 var _select: AsciiBox = AsciiBox.make(AsciiBox.Kind.SELECT, 0.0, 0.0)
 
 
@@ -29,6 +31,15 @@ func _ready() -> void:
 	clip_text = true
 	# Hover is a solid lifted panel (no dither wash behind the icon and label); focus draws the same panel.
 	add_theme_stylebox_override("hover", _select)
+	if accent.a > 0.0:
+		var rest: AsciiBox = AsciiBox.make(AsciiBox.Kind.BUTTON, 0.0, 0.0)
+		rest.edge_override = accent.darkened(0.35)
+		add_theme_stylebox_override("normal", rest)
+		_select.edge_override = accent.lightened(0.2)
+		var down: AsciiBox = AsciiBox.make(AsciiBox.Kind.PRESSED, 0.0, 0.0)
+		down.edge_override = accent
+		add_theme_stylebox_override("pressed", down)
+		add_theme_stylebox_override("hover_pressed", down)
 
 
 static func lift_px(t: float) -> int:
@@ -65,7 +76,7 @@ func _draw() -> void:
 		draw_texture(big_icon, Vector2(ix, iy), Color(1, 1, 1, 0.45) if disabled else Color.WHITE)
 	var font: Font = get_theme_font(&"font")
 	var fs: int = get_theme_font_size(&"font_size")
-	var col: Color = RelicStyle.dim if disabled else (RelicStyle.ink if get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED else (RelicStyle.accent if lift > 0 else RelicStyle.text))
+	var col: Color = RelicStyle.dim if disabled else (RelicStyle.ink if get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED else ((accent.lightened(0.2) if accent.a > 0.0 else RelicStyle.accent) if lift > 0 else RelicStyle.text))
 	var shown: String = ExpandChip.reveal(label if not disabled else "Locked", label_t, int(Time.get_ticks_msec() / ExpandChip.TICK_MS), _settle, FxConfig.reduce_flashing or MeadowLife.reduce_motion)
 	if shown == "":
 		return

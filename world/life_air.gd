@@ -13,7 +13,7 @@ const FIREFLIES: int = 12
 const POLLEN: int = 20            # of which every 4th is a leaf; the day count scales it (see _pollen_count)
 const POLLEN_DAY: int = 14
 const FIREFLIES_DAY: int = 2      # a few stragglers at noon; the rest come out as the light goes
-const BUTTERFLIES: int = 2
+const BUTTERFLIES: int = 6        # the most that are ever out (summer noon); the season, light and rain thin them
 const WATER_SPARKLES: int = 6
 const PAD_PERIOD: float = 2.4
 const PAD_HALF: Vector2 = Vector2(14.0, 7.0)  # must match TexelPad.HALF (kept local so this script compiles without autoloads)
@@ -90,7 +90,8 @@ func _dot(p: Vector2i, idx: int) -> void:
 ## Fireflies come out with the dark: a couple by day, most of them by dusk, all of them at night, none in the rain.
 func _firefly_count() -> int:
 	var dark: float = clampf(MeadowLife.night * 1.3 + MeadowLife.low_sun * 0.55, 0.0, 1.0)
-	return roundi(lerpf(float(FIREFLIES_DAY), float(FIREFLIES), dark) * (1.0 - MeadowLife.rain))
+	var n: float = lerpf(float(FIREFLIES_DAY), float(FIREFLIES), dark) * (1.0 - MeadowLife.rain)
+	return roundi(n * MeadowLife.firefly_season_share())
 
 
 ## Pollen is a daytime thing: full by day, thin at night, and a handful more motes at low sun where the light hits them.
@@ -236,9 +237,19 @@ func _draw_pollen(tm: float, tb: float) -> void:
 				_dot(p, IDX_PAPER if glint and i % 2 == 0 else IDX_ACCENT)
 
 
-## Two butterflies wander on Lissajous loops and flap open and shut at 6 fps.
+## Butterflies are out by day in spring and summer, a few in autumn, none in winter, at night or in the rain.
+## Each has its own wing colours.
+func _butterfly_count() -> int:
+	return GraphicsQuality.life_scaled(roundi(float(BUTTERFLIES) * MeadowLife.butterfly_share()))
+
+
+## Wing colour pairs (big wing, small wing) as palette indices: accent over earth, paper over accent, light over earth.
+const WINGS: Array = [[IDX_ACCENT, IDX_EARTH], [IDX_PAPER, IDX_ACCENT], [IDX_LIGHT, IDX_EARTH]]
+
+
+## Butterflies wander on Lissajous loops and flap open and shut at 6 fps.
 func _draw_butterflies(tm: float, tb: float) -> void:
-	for i: int in BUTTERFLIES:
+	for i: int in _butterfly_count():
 		var s: float = float(i)
 		var c: Vector2 = Vector2(
 			lerpf(_drift.position.x + 40.0, _drift.end.x - 40.0, MeadowLife.hash01(i * 2 + 40)),
@@ -257,5 +268,6 @@ func _draw_butterflies(tm: float, tb: float) -> void:
 				if ch == ".":
 					continue
 				var col: int = rx - 3 if not flip else 3 - rx
-				var idx: int = IDX_INK if ch == "k" else (IDX_ACCENT if ch == "a" else IDX_EARTH)
+				var wing: Array = WINGS[i % WINGS.size()] as Array
+				var idx: int = IDX_INK if ch == "k" else (int(wing[0]) if ch == "a" else int(wing[1]))
 				_dot(origin + Vector2i(col, ry - top), idx)
