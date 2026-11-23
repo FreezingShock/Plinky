@@ -348,6 +348,12 @@ static func _register_gameplay() -> void:
 		"apply": func(v: Variant) -> void: NumberFormat.style = int(v),
 	})
 	_add({
+		"id": &"mult_style", "tab": "Gameplay", "label": "Multiplier display", "kind": Kind.CHOICE, "default": NumberFormat.MultStyle.FACTOR,
+		"hint": "Show multipliers as a factor (x1.5) or as a percent (150%). Labels change on their next update.",
+		"options": func() -> Array: return [[NumberFormat.MultStyle.FACTOR, "Factor (x1.5)"], [NumberFormat.MultStyle.PERCENT, "Percent (150%)"]],
+		"apply": func(v: Variant) -> void: NumberFormat.mult_style = int(v),
+	})
+	_add({
 		"id": &"momentum_meter", "tab": "Gameplay", "label": "Momentum meter", "kind": Kind.TOGGLE,
 		"hint": "The bar above the bottom bar that shows walking income bonus.",
 		"get": func() -> Variant: return DisplaySettings.momentum_meter,

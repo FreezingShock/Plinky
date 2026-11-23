@@ -58,6 +58,7 @@ func _init() -> void:
 		quit(1)
 		return
 	sim.new_game()
+	sim.rng.seed = 7   # fixed, so the run is repeatable; relic drops still swing the real time by a few minutes
 	var failed: bool = false
 	var t: float = 0.0
 	var zone: StringName = sim.zone_id

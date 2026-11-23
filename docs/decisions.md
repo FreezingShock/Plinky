@@ -547,3 +547,16 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Pad yield cap 25 to 15** (last level was 64k prestige for +2%, about 13x worse per prestige than crit chance). **Quick study cap 20 to 10** (21k prestige for mastery XP that barely matters). **Press rate cap 20 to 15** (so Stopwatch and the attribute together stay near 5x press rate).
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
+
+## Tier buffs, multiplier display, clearer pad states (2026-11-23)
+- **Decision (Nathan):** stats from the 3rd tier up buff several lower stats, not just the one below. `StatDef.buff_stats` and `buff_factor` (data, reusable by the Ember Quarry ladder): while a stat is held (>= 1), rewards into each listed stat are multiplied by the factor, and buffs from different stats stack. Meadow: Thistle Down and Heather Sprigs 1.25x, Foxglove Bells and Starbloom Petals 1.5x, each on every stat below it. This is flat, not per unit, so it stays predictable; the per-unit chain (`gain_boost_stat`) is unchanged.
+- **Setting:** Settings > Gameplay > Multiplier display, Factor (x1.5) or Percent (150%), through `NumberFormat.mult()`. Used by the stat sources lists and the HUD prestige label.
+- **Pacing:** with buffs the Larkmoor gate is 2000 Starbloom Petals; `tools/sim.gd` (now seeded) lands at 58 to 61 min, with a few minutes of swing from relic drops.
+- **Pad states:** locked pads are dark with a dull bud and no buy colours; buyable pads get a green ground halo, plus the existing green inset and tick; unaffordable stays red with the X.
+
+## 2026-11-23 Docs and rules hygiene (docs only)
+- **CLAUDE.md and SPEC.md describe the real flat layout** (`core/`, `world/`, ...; no `src/`). `docs/interfaces.md` now exists (autoloads, EventBus signals, rules) instead of being a missing reference.
+- **Shader uniform rule amended, not refactored.** Gameplay never sets uniforms; `Fx` owns gameplay-driven ones; presentation scripts that own a material (sky, shadows, screen light, toon material, pixel viewport, window frame, transitions, boot and title backgrounds) set their own. Reason: about 60 sky calls would otherwise move into `Fx` for no gain.
+- **`core/` wording:** pure logic is node-free; the Node autoload shells (event_bus, game_state, save, calendar_service) are the named exception.
+- **Stale docs refreshed:** `docs/features.md` rewritten for v0.27.0; `docs/balance.md` marks sections 1 to 8 as v0 history and adds a pointer to the flower and quarry ladders; `docs/zone2-ladder.md` copied into the repo.
+
