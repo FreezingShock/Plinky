@@ -58,3 +58,10 @@ func run(t: Object) -> void:
 	parent.free()
 	var src: String = FileAccess.get_file_as_string("res://main.gd")
 	t.ok(src.contains("_free_occluders()") and not src.contains("begins_with(\"Occ_\")"), "main frees zone props by reference")
+
+	# a click on the cliff face snaps to ground (the walk ring and the walker use the same rule)
+	WalkMask.use("res://assets/art/zone2/quarry/walkable.png", Vector2i(100, 60))
+	var cliff: Vector2 = Vector2(300.0, 345.0)
+	t.ok(not WalkMask.walkable(cliff), "the cliff face below the plateau is not walkable")
+	t.ok(WalkMask.walkable(WalkMask.nearest(cliff)), "a click on the cliff snaps to walkable ground")
+	WalkMask.use("")
