@@ -17,7 +17,7 @@ func run(t: Object) -> void:
 	var p: float = 0.0
 	for i in 5:
 		p = ExpandChip.step_progress(p, 1.0, 0.1)
-	t.ok(p == 0.5 or absf(p - 0.5) < 0.001 or p > 0.0, "progress moves toward open")
+	t.ok(absf(p - 0.5) < 0.001, "progress moves toward open")
 	p = ExpandChip.step_progress(0.9, 1.0, 1.0)
 	t.eq(p, 1.0, "progress never overshoots")
 	p = ExpandChip.step_progress(0.1, 0.0, 1.0)
@@ -36,7 +36,7 @@ func run(t: Object) -> void:
 	var w0: float = chip.custom_minimum_size.x
 	chip.progress = 1.0
 	chip._settle = 1.0
-	chip._process(0.016)
+	chip._apply()
 	t.eq(chip.text, "Upgrades [Tab]", "an open chip shows its label")
 	t.ok(chip.custom_minimum_size.x > w0, "an open chip is wider than a resting one")
 	chip.queue_free()

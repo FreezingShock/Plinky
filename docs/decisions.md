@@ -231,3 +231,8 @@ First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far ga
 
 ## 2026-11-23: Mastery yield cut again
 PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.
+
+## 2026-11-23: Bottom bar chips (ExpandChip)
+- Bottom-bar buttons (Rebirth, Upgrades, Relics, Settings) are icon-only at rest and open to icon + label on hover or focus. `ui/fx/expand_chip.gd`, extends PixelButton so focus ring, press sink and AsciiBox frame carry over.
+- One eased progress value, no tweens, so spamming hover is continuous. Label types in with 3 scrambled trailing glyphs (ASCII noise at ~22 Hz) and a short settle flicker. Width grows in whole texels; the HBox slides neighbours aside. Reduce motion snaps with no noise.
+- Each chip has a Tip tooltip so the icon-only state is named. New 16x16 `assets/icons/settings.png` (meadow palette). Stat rows and panel headers not changed: Nathan scoped this to the bottom bar.
