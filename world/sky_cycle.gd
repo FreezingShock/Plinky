@@ -33,6 +33,7 @@ var ground_texture: Texture2D           # backdrop, so the haze shader can tell 
 var ponds: Array = []                   # [Vector4(cx, cy, rx, ry)] for the lake and ponds
 var _haze_mat: ShaderMaterial
 var _rays_mat: ShaderMaterial
+var _rays_rect: ColorRect
 var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _walker: Node2D
@@ -68,6 +69,7 @@ func _ready() -> void:
 	_rays_mat = ShaderMaterial.new()
 	_rays_mat.shader = RAYS_SHADER
 	rays.material = _rays_mat
+	_rays_rect = rays
 	add_child(rays)
 	var shade := ColorRect.new()
 	shade.name = "Shade"
@@ -229,6 +231,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_haze_mat.set_shader_parameter("drift", drift)
 	# god rays: sun point sits above the frame on the side the sun is on
 	var ray_amt: float = _config.ray_strength * model.rays(mt, rain01)
+	# The rays are only lit at dawn and dusk. Skip the full-area atan and sin pass the rest of the day.
+	_rays_rect.visible = ray_amt > 0.002
 	_rays_mat.set_shader_parameter("amount", ray_amt)
 	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 400.0, -120.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)

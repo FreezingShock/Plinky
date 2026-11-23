@@ -7,6 +7,8 @@ const SAVE_PATH: String = "user://save.json"
 var _since_save: float = 0.0
 ## 0 = use the content config's autosave interval. Set from the settings menu (Gameplay > Autosave).
 var autosave_override: float = 0.0
+## False while tools/bench.gd runs, so a benchmark never overwrites the player's save.
+var enabled: bool = true
 ## Offline report from the load in _ready(). That runs before any UI exists, so the signal is missed;
 ## the HUD reads this once when it is built (see take_offline_report()).
 var _offline_report: Dictionary = {}
@@ -35,6 +37,8 @@ func _notification(what: int) -> void:
 
 func save_game() -> bool:
 	_since_save = 0.0
+	if not enabled:
+		return false
 	var sim: Sim = get_node("/root/GameState").sim
 	var ok: bool = SaveCodec.write_file(SAVE_PATH, SaveCodec.encode(sim, Time.get_unix_time_from_system()))
 	if ok:
