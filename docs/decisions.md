@@ -202,6 +202,8 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
 
+## 2026-11-23: Shared tooltip system (`Tip`)
+`Tip.bind(control, spec)` gives any Control a themed tooltip (hover delay 0.35 s following the cursor, focus 0.08 s anchored, instant inside a 0.3 s grace window, clamped on screen). The host panel is created lazily under the scene root instead of an autoload, so project.godot is untouched. Existing PadTooltip and RelicTooltip stay as they are (they show richer rows); new UI uses `Tip`. API in docs/tooltips.md. Not run in-engine from the cloud; CI runs tests/test_tooltips.gd.
 ## 2026-11-23: Pad mastery and crits
 - Every press gives the pad `xp_per_press` XP. Level n+1 needs `first_level_xp * xp_growth^n` XP; cap `max_level`. Each level adds `yield_per_level` to that pad's reward multiplier, `crit_chance_per_level` to its crit chance and `crit_damage_per_level` to its crit multiplier (added to `GameConfig.crit_multiplier`, then relic crit damage multiplies it). All numbers are in `content/config/mastery.tres`.
 - Mastery is permanent: rebirth keeps it, `new_game` clears it. It sits on the pad, not the stat, so a stat index can still show the global crit chance (attribute only) and the per-pad value separately.
