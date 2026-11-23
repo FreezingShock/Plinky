@@ -12,6 +12,7 @@ order = 1
 gate_stat = &"reb"
 gate_threshold = 1500
 next_zone = &"zone2"
+travel_parent = &"zone1"
 base_cash_per_second = 0.25
 press_rate = 0.5
 palette_id = &"meadow"

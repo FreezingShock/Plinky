@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.25.0 - 2026-11-23
+- **Simpler travel map.** The Travel menu now lists only top-level areas (Meadow, Ember Quarry) plus locked "???" rows for what comes next. Larkmoor and its districts stay in the world but leave the list; the Meadow row lands in Larkmoor once the Meadow gate is open.
+
 ## 0.24.0 - 2026-11-23
 - New press popups: one pooled node draws every number, rolls a motion, easing and size per press, stacks held presses into one number, merges quick clicks and keeps numbers off each other. Escalating streak tiers (Gold, Ice, Rainbow, Chroma, Galaxy) change colour, sparkles, pad ripple and sound. Relic pulses now ripple outward as echoes with spark links and their own sound. Twelve new sounds. Respects Quiet pad clicks, Reduce flashing and Calm camera.
 

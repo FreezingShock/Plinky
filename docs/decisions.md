@@ -510,3 +510,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 ## Pond keeps its own palette in every season (2026-11-23)
 - **Cause:** `season_recolor` picks "green" texels by `g - max(r,b)`; the water ramp's main colour (47,107,85) scores 22/255, past the 0.015..0.09 smoothstep, so the pond was recoloured with the grass patches (and would be snow-covered in winter).
 - **Decision:** `ground_light.gdshader` skips the seasonal recolour and snow for material codes 107 (water) and 108 (foam). Water stays blue-green all year; no extra dither added. A subtle seasonal sky tint or winter ice is an open taste item, not built.
+
+## 2026-11-23 Travel menu lists top-level areas only (v0.25.0)
+Travel shows Meadow and Ember Quarry plus two locked "???" teaser rows (`travel_teased_rows` in game.tres). Larkmoor is inside the Meadow (`ZoneDef.travel_parent`), so its districts leave the list. The Meadow row lands in the furthest unlocked zone of the Meadow (Larkmoor once the first gate is open), or stays put if you are already inside it. Sub-area expand toggles removed.
