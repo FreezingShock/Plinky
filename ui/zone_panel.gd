@@ -151,7 +151,7 @@ func _build_list(list: VBoxContainer) -> void:
 			var ar := ListRow.new()
 			ar.tint = area_colour(a)
 			ar.text = "   " + a.display_name
-			ar.icon = a.icon
+			ar.area_icon = a.icon
 			ar.pressed.connect(func() -> void: _go(zid, aid))
 			_bind(ar, func() -> Array: return _area_tip(aid))
 			box.add_child(ar)

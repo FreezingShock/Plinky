@@ -8,7 +8,7 @@ var tint: Color = Color.WHITE:
 		tint = v
 		_colours()
 ## Pixel icon id (AreaIcons) drawn in the indent before the text.
-var icon: String = ""
+var area_icon: String = ""
 var marked: bool = false:
 	set(v):
 		if v != marked:
@@ -39,8 +39,8 @@ func _colours() -> void:
 func _draw() -> void:
 	if marked:
 		draw_rect(Rect2(1, 3, 2, maxf(size.y - 6.0, 2.0)), tint)
-	if icon != "":
-		AreaIcons.draw(self, icon, Vector2(7.0, floorf((size.y - AreaIcons.SIZE) * 0.5)), tint)
+	if area_icon != "":
+		AreaIcons.draw(self, area_icon, Vector2(7.0, floorf((size.y - AreaIcons.SIZE) * 0.5)), tint)
 	if has_focus():
 		PadInput.draw_focus_ring(self, Rect2(Vector2.ZERO, size).grow(1), tint)
 
