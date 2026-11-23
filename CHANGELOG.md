@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.32.2 - 2026-11-23
+## 0.32.3 - 2026-11-23
 - Noon no longer bleaches and sunset is softer: the light pass gets an exposure drop, extra contrast and saturation at high sun (10:00 to 14:00), the noon grade is less green, and the 17:00 to 19:00 grade and ray colours are a softer amber instead of red-orange so shadow detail stays readable.
+
+## 0.32.2 - 2026-11-23
+- New pad-press popups: pooled, procedural stacking gain numbers coloured by streak tier (Gold, Ice, Rainbow, Chroma, Galaxy), stat-name caption, relic pulse echoes, new SFX, anchored in the world and drawn below menus; pads shake instead of the camera.
 
 ## 0.32.1 - 2026-11-23
 - HUD strip: more room between the gain text and the value so long suffixes never touch it.
