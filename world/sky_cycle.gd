@@ -129,6 +129,7 @@ func _ready() -> void:
 	rim_material.set_shader_parameter("enabled", 0.0)
 	_screen = ScreenLight.new()
 	_screen.name = "ScreenLight"
+	_screen.world_ref = self
 	var host: Node = _find_host()
 	if host != null:
 		host.add_child.call_deferred(_screen)
