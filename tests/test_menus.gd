@@ -97,6 +97,7 @@ func _close_x(t: Object) -> void:
 	t.root.add_child(host)
 	var hits: Array = [0]
 	var x: CloseX = CloseX.attach(host, func() -> void: hits[0] += 1)
+	x._ready()   # scripts run from _init, before the tree is up, so _ready has not fired yet
 	t.ok(x.top_level, "the X floats, so the panel layout ignores it")
 	for i in 20:
 		x.pressed.emit()
