@@ -89,6 +89,8 @@ func _next() -> void:
 		visible = false
 		return
 	_showing = true
+	while BloomRitual.running and is_inside_tree():   # held until the reset animation ends
+		await get_tree().process_frame
 	var d: AchievementDef = _queue.pop_front()
 	var col: Color = LedgerPanel.color_of(d.category)
 	add_theme_stylebox_override("panel", AsciiBox.panel(col))

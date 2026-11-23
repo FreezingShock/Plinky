@@ -102,6 +102,10 @@ static func is_calm() -> bool:
 	return FxConfig.reduce_flashing or MeadowLife.reduce_motion or WorldCamera.calm
 
 
+## True while a reset animation runs anywhere: toasts, tip cards and banners hold until it ends.
+static var running: bool = false
+
+
 func playing() -> bool:
 	return _t >= 0.0
 
@@ -139,6 +143,7 @@ func start(reset_id: StringName, gained: int) -> void:
 	_hint.add_theme_color_override("font_color", StatStyle.gain())
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_t = 0.0
+	running = true
 	visible = true
 	set_process(true)
 	set_process_input(true)
@@ -403,6 +408,7 @@ func _end(finished: bool) -> void:
 	if _t < 0.0 and not finished:
 		return
 	_t = -1.0
+	running = false
 	visible = false
 	set_process(false)
 	set_process_input(false)

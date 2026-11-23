@@ -66,6 +66,8 @@ static func currencies(sim: Sim) -> Array[StringName]:
 static func group_shown(sim: Sim, currency: StringName) -> bool:
 	var r: ZoneResetDef = sim.reset_for_currency(currency)
 	if r != null:
+		if r != sim.reset_for_zone():
+			return false   # only the zone you are in shows its own gifts
 		return sim.reset_count(r.id) > 0 or sim.reset_unlocked(r.id) or not sim.get_stat(currency).is_zero()
 	if currency == &"rp":
 		return sim.rebirth_here() and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
