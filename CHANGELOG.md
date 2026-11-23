@@ -11,6 +11,7 @@ under a new version heading and updates the version everywhere.
 
 ## 0.11.0 - 2026-11-23
 - Stats and Attributes are now a gallery: 32 px icon cards, hover info strip, and a detail page per stat with its sources (where it comes from, how to get more). New clean symmetric icon set, and `sim.stat_sources`. Attribute detail pages let you buy the next level.
+
 ## 0.10.9 - 2026-11-23
 - HUD currency panel: each stat name (Cash, Multiplier, Rebirths, Slag, Prestige) is drawn in Pixelify Sans in that stat's own tooltip colour instead of plain green Spleen; the name column sizes to the widest name so the numbers stay aligned.
 
