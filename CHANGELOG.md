@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.31.1 - 2026-11-23
+## 0.31.2 - 2026-11-23
 - Ember Quarry balance pass: the 18 forge pads cost 40% less (greedy-floor gate about 40 min after arrival, was about 66; idle about 2x that), and each quarry rebirth pays 25% more Prestige for every quarry rebirth already done (`ZoneDef.prestige_per_rebirth_bonus`), so attribute buys keep pace with their 1.4x cost growth.
+
+## 0.31.1 - 2026-11-23
+- Pad tooltips show the real gain: one shared press formula now includes Heat, buffs, mastery, yield and Bloom, plus an average-with-crits line when crit or double chance is active. Test checks tooltip against a real press.
 
 ## 0.31.0 - 2026-11-23
 - Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
