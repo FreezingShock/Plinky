@@ -15,6 +15,12 @@ const ATTR_ICONS: Dictionary = {
 	&"walk_speed": "walk", &"press_rate": "rate", &"crit_chance": "crit", &"luck": "luck",
 	&"offline_hours": "offline", &"crit_damage": "crit_dmg", &"mastery_xp": "mastery", &"pad_yield": "cash",
 }
+## Attribute id -> its own icon, where an attribute should not share its effect's icon.
+const ID_ICONS: Dictionary = {&"rp_rest": "rest", &"rp_lore": "lore", &"rp_fortune": "fortune"}
+## Card labels for names too long for a card (12 characters at 6 px). The full name stays on the detail page.
+const SHORT: Dictionary = {"Rebirth Points": "Rebirth Pts", "Rebirths Done": "Rebirths"}
+const MAX_LABEL: int = 12
+
 const ATTR_TIPS: Dictionary = {
 	&"walk_speed": "How fast the walker moves between pads.",
 	&"press_rate": "How often a pad pays while you stand on it.",
@@ -39,6 +45,8 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 		var inc: BigNum = sim.income_per_second(sid)
 		var note: String = "+%s/s" % inc.format() if not inc.is_zero() else ""
 		var value: String = sim.get_stat(sid).format()
+		if sid == &"rp":   # RP is paid in whole points, so never show a fraction
+			value = BigNum.from_float(floorf(sim.get_stat(sid).to_float() + 0.0001)).format()
 		if sid == &"prestige":
 			note = "x%s income" % sim.prestige_mult().format()
 		elif sid == &"rp" and sim.can_rebirth():
@@ -84,9 +92,12 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 			tip += "\nMaxed out."
 		else:
 			tip += "\nNext level: %s\nCost: %s %s" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format(), UpgradeText.currency_name(a)]
-		var r: Dictionary = _row(aid, "Attributes", a.display_name, String(ATTR_ICONS.get(a.effect, "prestige")), "Lv %d/%d" % [lv, a.cap], now, tip)
+		var perk: bool = a.currency == &"rp"
+		var r: Dictionary = _row(aid, "Rebirth Perks" if perk else "Attributes", a.display_name, String(ID_ICONS.get(aid, ATTR_ICONS.get(a.effect, "prestige"))), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap
+		r["maxed"] = lv >= a.cap
+		r["color_id"] = &"rp" if perk else a.effect   # StatStyle colour: perks wear the RP colour
 		rows.append(r)
 	return rows
 
@@ -128,7 +139,18 @@ static func _trim(f: float) -> String:
 
 
 static func _row(id: StringName, group: String, label: String, icon: String, value: String, note: String, tip: String) -> Dictionary:
-	return {"id": id, "group": group, "name": label, "icon": icon, "value": value, "note": note, "tip": tip, "pending": false}
+	var nm: String = title_case(label)
+	var short: String = String(SHORT.get(nm, nm))
+	return {"id": id, "group": group, "name": nm, "short": short, "icon": icon, "value": value, "note": note, "tip": tip, "pending": false, "maxed": false, "color_id": id}
+
+
+## "Crit chance" -> "Crit Chance": every word capitalised, the rest left as written.
+static func title_case(s: String) -> String:
+	var words: PackedStringArray = s.split(" ")
+	for i in words.size():
+		if words[i] != "":
+			words[i] = words[i].left(1).to_upper() + words[i].substr(1)
+	return " ".join(words)
 
 
 static func _pending(id: StringName, group: String, label: String, icon: String, tip: String) -> Dictionary:

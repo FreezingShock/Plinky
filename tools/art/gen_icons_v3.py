@@ -117,6 +117,40 @@ def offline(sk):
     sk.outline()
 
 
+def rest(sk):
+    """Deep Sleep: a pillow under a big Z."""
+    pillow = sk.rect(4, 20, 28, 28)
+    sk.body(pillow, 7, 7, 4)
+    sk.fill(sk.rect(4, 20, 6, 28) | sk.rect(26, 20, 28, 28), 4)
+    z = sk.rect(8, 4, 24, 8) | sk.line((24, 8), (8, 20), 5) | sk.rect(8, 16, 24, 20)
+    sk.body(z & sk.rect(0, 0, 32, 20), 5, 7, 6)
+    sk.outline()
+
+
+def lore(sk):
+    """Pad Lore: an open book, mirrored page to page."""
+    left = sk.poly([(3, 8), (14, 10), (14, 27), (3, 25)])
+    sk.body(sk.mirror(left), 7, 7, 4)
+    sk.fill(sk.rect(15, 9, 17, 27), 6)
+    for y in (13, 17, 21):
+        sk.fill(sk.mirror(sk.rect(6, y, 12, y + 1)), 3)
+    sk.fill(sk.mirror(sk.rect(3, 25, 14, 27)), 6)
+    sk.outline()
+
+
+def fortune(sk):
+    """Lucky Streak: a horseshoe, open at the top, three nail holes down each arm."""
+    shoe = sk.circle(16, 17, 12) - sk.circle(16, 17, 6) - sk.rect(10, 0, 22, 14)
+    shoe = shoe | sk.rect(4, 5, 10, 17) & sk.circle(16, 17, 12) | sk.rect(22, 5, 28, 17) & sk.circle(16, 17, 12)
+    shoe = shoe - sk.rect(10, 0, 22, 14)
+    sk.body(shoe, 3, 4, 2)
+    if sk.S >= 32:
+        for y in (8, 14):
+            sk.fill(sk.rect(6, y, 8, y + 2) | sk.rect(24, y, 26, y + 2), 1)
+    sk.fill(sk.rect(4, 5, 10, 8) | sk.rect(22, 5, 28, 8), 7)
+    sk.outline()
+
+
 def walk(sk):
     boot = sk.poly([(8, 4), (18, 4), (18, 16), (28, 20), (28, 28), (6, 28), (6, 10)])
     sk.body(boot, 6, 5, 1)
@@ -187,7 +221,7 @@ def attrs_menu(sk, f=0):
 
 ICONS = {'cash': cash, 'mult': mult, 'reb': reb, 'slag': slag, 'prestige': prestige, 'crit': crit, 'crit_dmg': crit_dmg,
          'rate': rate, 'luck': luck, 'offline': offline, 'walk': walk, 'heat': heat, 'mastery': mastery,
-         'presses': presses, 'clock': clock, 'stats_menu': stats_menu, 'attrs_menu': attrs_menu}
+         'presses': presses, 'clock': clock, 'rest': rest, 'lore': lore, 'fortune': fortune, 'stats_menu': stats_menu, 'attrs_menu': attrs_menu}
 
 
 def render(fn, size, **kw):

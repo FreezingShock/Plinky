@@ -13,7 +13,7 @@ const COLORS: Dictionary = {
 }
 const PAPER: Color = Color("f6efd9")
 ## Attribute effect id -> the stat id whose colour it uses.
-const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap"}
+const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap", &"mastery_xp": &"mastery", &"pad_yield": &"cash"}
 
 
 static func color(id: StringName) -> Color:
