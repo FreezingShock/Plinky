@@ -26,8 +26,9 @@ var _upgrades_box: VBoxContainer
 var _prestige_label: Label
 var _offline: Label
 var _clock: float = 0.0
+var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
 var _attr_rows: Dictionary = {}   # attribute id -> UpgradeRow
-const UPGRADE_LIST_HEIGHT: float = 214.0   ## about eight rows; more scroll
+const UPGRADE_LIST_HEIGHT: float = 168.0   ## about six rows so the panel fits above the bottom bar at 640x360; the rest scroll
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -285,7 +286,9 @@ func _build_upgrades() -> void:
 		row.buy_pressed.connect(_buy_upgrade)
 		row.refresh(UpgradeText.state(sim, a))
 		var eff: StringName = a.effect
-		Tip.bind_all(row, func() -> Variant: return UpgradeText.tip(row.state(), eff))
+		var spec: Callable = func() -> Variant: return UpgradeText.tip(row.state(), eff)
+		_row_tips[a.id] = spec
+		Tip.bind_all(row, spec)
 		_attr_rows[a.id] = row
 
 var _prestige_avail: Label
@@ -296,6 +299,10 @@ func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
 		var row: UpgradeRow = _attr_rows[aid]
 		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))
+		# A tooltip already showing (the pointer is on the button) must pick up the new level.
+		for c: Node in [row] + row.get_children():
+			if c is Control:
+				Tip.set_spec(c as Control, _row_tips[aid])
 
 
 func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next would take Tab first
