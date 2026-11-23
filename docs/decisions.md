@@ -544,7 +544,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
-## 2026-11-23 Achievements and the Ledger (0.28.0)
+## 2026-11-23 Achievements and the Ledger (0.31.0)
 - **Rewards are cosmetic only: a title.** No income, drop or balance effect, per the audit pick. The newest unlocked achievement with a title sets the Ledger's title.
 - **40 achievements, 8 categories** (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey), plain names, no streak-tier words. One `.tres` each in `content/achievements/`; targets are content, not script.
 - **Counters reuse History** (`RunStats` crits, chains, Momentum best) plus Sim totals. Stat achievements use saved **peaks** so spending never loses progress. A zone's first tier counts as opened only once the zone is entered.
@@ -553,3 +553,27 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Menu:** `Ledger` is a gallery tile after History (gold accent), a MenuRouter window like History, locked until Dewdrops unlock. Rows rebuild only when something changed.
 - Verified: 2838 headless checks, 0 failed, and the boot smoke test is clean. Screenshots rendered in the cloud on software OpenGL (`tools/ledger_shots.tscn`); the real look is for the PC pass.
 
+## Tier buffs, multiplier display, clearer pad states (2026-11-23)
+- **Decision (Nathan):** stats from the 3rd tier up buff several lower stats, not just the one below. `StatDef.buff_stats` and `buff_factor` (data, reusable by the Ember Quarry ladder): while a stat is held (>= 1), rewards into each listed stat are multiplied by the factor, and buffs from different stats stack. Meadow: Thistle Down and Heather Sprigs 1.25x, Foxglove Bells and Starbloom Petals 1.5x, each on every stat below it. This is flat, not per unit, so it stays predictable; the per-unit chain (`gain_boost_stat`) is unchanged.
+- **Setting:** Settings > Gameplay > Multiplier display, Factor (x1.5) or Percent (150%), through `NumberFormat.mult()`. Used by the stat sources lists and the HUD prestige label.
+- **Pacing:** with buffs the Larkmoor gate is 2000 Starbloom Petals; `tools/sim.gd` (now seeded) lands at 58 to 61 min, with a few minutes of swing from relic drops.
+- **Pad states:** locked pads are dark with a dull bud and no buy colours; buyable pads get a green ground halo, plus the existing green inset and tick; unaffordable stays red with the X.
+
+## 2026-11-23 Docs and rules hygiene (docs only)
+- **CLAUDE.md and SPEC.md describe the real flat layout** (`core/`, `world/`, ...; no `src/`). `docs/interfaces.md` now exists (autoloads, EventBus signals, rules) instead of being a missing reference.
+- **Shader uniform rule amended, not refactored.** Gameplay never sets uniforms; `Fx` owns gameplay-driven ones; presentation scripts that own a material (sky, shadows, screen light, toon material, pixel viewport, window frame, transitions, boot and title backgrounds) set their own. Reason: about 60 sky calls would otherwise move into `Fx` for no gain.
+- **`core/` wording:** pure logic is node-free; the Node autoload shells (event_bus, game_state, save, calendar_service) are the named exception.
+- **Stale docs refreshed:** `docs/features.md` rewritten for v0.27.0; `docs/balance.md` marks sections 1 to 8 as v0 history and adds a pointer to the flower and quarry ladders; `docs/zone2-ladder.md` copied into the repo.
+
+- **HUD currency panel is a compact strip (v0.29.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
+
+## Ember Quarry forge ladder (2026-11-23, v0.30.0)
+- **Decision (Nathan):** the quarry gets a 6-row stat ladder like the meadow's, with custom isometric art. Rows bottom to top: **Cinder** (pays Multiplier, costs the passive Cash), **Ore** (Iron Ore), **Slag**, **Ingot** (Ingots), **Alloy** (Alloys), **Emberheart** (Emberhearts), rarities Common to Mythic. Cash stays the zone's passive trickle, Multiplier is the first row's stat. Data: `content/tiers/{cinder,ore,slagrow,ingot,alloy,emberheart}.tres` (the Slag row id is `slagrow` so it never clashes with the stat), 18 pads `<row>_1..3` (+1/+8/+64), stats in `content/stats`.
+- **Buffs:** reuses `StatDef.buff_stats` / `buff_factor`: Slag 1.25x on Multiplier and Iron Ore, Ingots 1.25x on those and Slag, Alloys 1.5x, Emberhearts 1.5x, each on everything below. The `gain_boost_stat` chain still runs one step down (Iron Ore boosts Multiplier, Slag boosts Iron Ore, and so on). Rebirths no longer boost Multiplier (there are no Rebirth pads any more); the quarry's Rebirths stat is now a count that rises by 1 per rebirth.
+- **Rebirth is zone scoped (balance thread's soft-lock finding):** `ZoneDef.prestige_source_stat` (quarry: Ingots, otherwise Clover Leaves), `Sim.prestige_source()`; a rebirth resets only stats live in the zone it was done in; Cash restarts at 10 and the first Cinder pad costs 10, so there is no dead end.
+- **Arrival grant:** flat. With `entry_source_stat` empty, `entry_grants` pay the plain value: 190 Cash on top of the start 10. Before, it scaled with Starbloom and bought the gate in 2 s.
+- **Gate:** 600 Emberhearts. `tools/sim.gd` now plays the quarry: rows open at +3, +6, +15, +26 and +48 min after arrival, gate at about +64 min (greedy floor, seeded; the balance thread tunes from here).
+- **Saves:** `ladder = 2`. Old quarry saves keep Cash, Multiplier, Slag, Rebirths; Forge pad mastery f1..f3 moves to `slagrow_1..3`; rows up to Slag open, and all rows open if the old gate was already beaten.
+- **Layout:** `tools/art/place_quarry_pads.py` puts 18 pads on the visible terraces (a row per terrace strip, zig-zagging up toward the gate) and rewrites the pad anchors in `placements3d.json`. Vents, gate and spawn are unchanged; two rows sit close to the spawn and road.
+- **Art:** `tools/art/gen_quarry_ladder.py` renders 16^3 voxel models (coal pile, ore chunk, slag pool, ingot stack, anvil, ember heart) in 2:1 isometric with a ramp per tier colour (matching rarity), smooth tone bands (dither only at band edges), ink outline and 3 flicker frames; outputs hero, pad-size (`_game`) and 32/16/8 px icons into `assets/art/zone2/ladder/`. Pads draw the `_game` frames (`TexelPad._draw_forge`); locked rows are a dark silhouette, opening rows rise with the same spark ring as a flower.
+- Not run in the cloud: real-hardware engine look. Tests (2862 checks) and the sim run headless here.

@@ -208,7 +208,10 @@ func tip_text(tip: StringName) -> String:
 		&"critter":
 			return "A golden critter! Click it before it leaves for a big Cash payout."
 		&"rebirth_button":
-			return "You can Rebirth now. It resets your Sunlight, flowers and pads and banks your Clover Leaves as Prestige, a permanent income boost. An open gate stays open. Pushing past %d Clover Leaves pays more." % int(sim.config.prestige_push_threshold)
+			var src: StatDef = sim.stat_defs.get(sim.prestige_source()) as StatDef
+			var src_name: String = src.display_name if src != null else "stats"
+			var resets: String = "Cash, Multiplier and the forge pads" if sim.zone_id == &"zone2" else "Sunlight, flowers and pads"
+			return "You can Rebirth now. It resets your %s and banks your %s as Prestige, a permanent income boost. An open gate stays open. Pushing past %d %s pays more." % [resets, src_name, int(sim.config.prestige_push_threshold), src_name]
 		&"gate_open":
 			var nz: ZoneDef = sim.zone_defs.get(z.next_zone) as ZoneDef if z != null else null
 			return "The gate is open. Walk to it to enter %s." % (nz.display_name if nz != null else "the next zone")

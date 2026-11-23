@@ -125,7 +125,7 @@ func validate() -> PackedStringArray:
 		if not zone_defs.has(t.zone):
 			errs.append("tier %s: unknown zone %s" % [t.id, t.zone])
 	for b: ButtonDef in button_defs.values():
-		if not tier_defs.is_empty() and b.zone != &"zone2" and not tier_defs.has(b.row):
+		if not tier_defs.is_empty() and not tier_defs.has(b.row):
 			errs.append("button %s: row %s is not a tier" % [b.id, b.row])
 		elif tier_defs.has(b.row) and (tier_defs[b.row] as TierDef).stat != b.reward_stat:
 			errs.append("button %s: pays %s but its tier pays %s" % [b.id, b.reward_stat, (tier_defs[b.row] as TierDef).stat])
@@ -136,6 +136,9 @@ func validate() -> PackedStringArray:
 		if z.boost_stat != &"" and not stat_defs.has(z.boost_stat):
 			errs.append("zone %s: unknown boost_stat %s" % [z.id, z.boost_stat])
 	for s: StatDef in stat_defs.values():
+		for t: String in s.buff_stats:
+			if not stat_defs.has(StringName(t)):
+				errs.append("stat %s: unknown buff target %s" % [s.id, t])
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
@@ -148,6 +151,9 @@ func validate() -> PackedStringArray:
 			errs.append("achievement %s: unknown counter %s" % [a.id, a.counter])
 		if a.target <= 0.0:
 			errs.append("achievement %s: target must be above zero" % a.id)
+	for z: ZoneDef in zone_defs.values():
+		if z.prestige_source_stat != &"" and not stat_defs.has(z.prestige_source_stat):
+			errs.append("zone %s: unknown prestige_source_stat %s" % [z.id, z.prestige_source_stat])
 	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat]:
 		if not stat_defs.has(key):
 			errs.append("config: unknown stat %s" % key)
@@ -332,9 +338,21 @@ func _relic_gain_mult(b: ButtonDef) -> BigNum:
 
 func _gain_boost(reward_stat: StringName) -> BigNum:
 	var d: StatDef = stat_defs.get(reward_stat) as StatDef
-	if d == null or d.gain_boost_stat == &"":
+	if d == null:
 		return BigNum.one()
-	return get_stat(d.gain_boost_stat).add(BigNum.one())
+	var boost: BigNum = BigNum.one()
+	if d.gain_boost_stat != &"":
+		boost = get_stat(d.gain_boost_stat).add(BigNum.one())
+	return boost.mul(BigNum.from_float(buff_factor_for(reward_stat)))
+
+
+## The combined multiplier on rewards into `stat_id` from every higher stat that lists it in buff_stats and is held (>= 1).
+func buff_factor_for(stat_id: StringName) -> float:
+	var f: float = 1.0
+	for s: StatDef in stat_defs.values():
+		if s.buff_stats.has(String(stat_id)) and get_stat(s.id).gte(BigNum.one()):
+			f *= s.buff_factor
+	return f
 
 
 # ---------------------------------------------------------------- attribute effects
@@ -751,8 +769,14 @@ func dev_force_zone(z_id: StringName) -> bool:
 	return true
 
 
+## The stat Rebirth banks in the current zone: the zone's own (Ingots in the quarry) or the game's (Clover Leaves).
+func prestige_source() -> StringName:
+	var z: ZoneDef = current_zone()
+	return z.prestige_source_stat if z != null and z.prestige_source_stat != &"" else config.prestige_source_stat
+
+
 func can_rebirth() -> bool:
-	return get_stat(config.prestige_source_stat).gte(BigNum.from_float(config.rebirth_min_value))
+	return get_stat(prestige_source()).gte(BigNum.from_float(config.rebirth_min_value))
 
 
 func prestige_gain_preview() -> BigNum:
@@ -761,7 +785,7 @@ func prestige_gain_preview() -> BigNum:
 
 ## The source stat, boosted once it passes prestige_push_threshold so pushing further pays more than linearly.
 func _prestige_gain() -> BigNum:
-	var v: BigNum = get_stat(config.prestige_source_stat).copy()
+	var v: BigNum = get_stat(prestige_source()).copy()
 	var th: float = config.prestige_push_threshold
 	var f: float = v.to_float()
 	if th > 0.0 and f > th:
@@ -776,8 +800,10 @@ func try_rebirth() -> bool:
 		return false
 	var gained: BigNum = _prestige_gain()
 	for s: StatDef in stat_defs.values():
-		if s.resets_on_rebirth:
+		if s.resets_on_rebirth and s.in_zone(zone_id):   # a rebirth only resets the zone it was done in
 			_set_stat(s.id, BigNum.from_float(s.start))
+	if stat_defs.has(&"reb") and (stat_defs[&"reb"] as StatDef).in_zone(zone_id):
+		_set_stat(&"reb", get_stat(&"reb").add(BigNum.one()))   # the quarry counts its rebirths (Rebirths stat)
 	_set_stat(config.prestige_stat, get_stat(config.prestige_stat).add(gained))
 	_set_stat(config.rp_stat, get_stat(config.rp_stat).add(BigNum.from_float(float(rp_for_rebirth(rebirth_count)))))
 	rebirth_count += 1
@@ -882,9 +908,9 @@ func _pay_entry_grants(z_id: StringName) -> void:
 	if z == null or bool(zones_entered.get(z_id, false)):
 		return
 	zones_entered[z_id] = true
-	if z.entry_grants.is_empty() or z.entry_source_stat == &"":
+	if z.entry_grants.is_empty():
 		return
-	var src: BigNum = get_stat(z.entry_source_stat)
+	var src: BigNum = get_stat(z.entry_source_stat) if z.entry_source_stat != &"" else BigNum.one()   # no source = a flat purse
 	for sid: Variant in z.entry_grants:
 		var id: StringName = StringName(str(sid))
 		if stat_defs.has(id):
@@ -944,7 +970,7 @@ func _check_gates() -> void:
 # ---------------------------------------------------------------- save format
 
 ## Save format of the flower ladder (the meadow's Sunlight to Starbloom economy). Older saves are migrated on load.
-const LADDER_SAVE: int = 1
+const LADDER_SAVE: int = 2
 
 func to_dict() -> Dictionary:
 	var s: Dictionary = {}
@@ -985,8 +1011,10 @@ func from_dict(d_in: Dictionary) -> bool:
 	if d_in.is_empty():
 		return false
 	var d: Dictionary = d_in
-	var old_ladder: bool = int(d.get("ladder", 0)) < LADDER_SAVE
-	if old_ladder:
+	var save_ladder: int = int(d.get("ladder", 0))
+	var old_ladder: bool = save_ladder < 1
+	var old_quarry: bool = save_ladder < 2   # before the Ember Quarry ladder (Cinder to Emberheart)
+	if old_ladder or old_quarry:
 		d = _ladder_save_ids(d)
 	var s: Variant = d.get("stats", {})
 	if s is Dictionary:
@@ -1047,6 +1075,8 @@ func from_dict(d_in: Dictionary) -> bool:
 		achievements.from_dict(d["achievements"])
 	else:
 		_evaluate_achievements()   # a save from before the Ledger: what is already earned counts, with no pop-ups
+	if old_quarry:
+		_migrate_to_quarry_ladder()
 	_dirty.clear()
 	return true
 
@@ -1061,6 +1091,32 @@ const LADDER_PAD_MAP: Dictionary = {
 }
 
 
+## The three Forge pads of the old quarry became the Slag row of the new ladder (they paid Slag).
+const QUARRY_PAD_MAP: Dictionary = {"f1": "slagrow_1", "f2": "slagrow_2", "f3": "slagrow_3"}
+
+
+func old_pre_ladder(d: Dictionary) -> bool:
+	return int(d.get("ladder", 0)) < 1
+
+
+## A save from before the quarry ladder. A player who already was in the quarry (or had Slag, Forge mastery or an open
+## quarry gate) gets the rows they already played opened, so nothing locks behind a tier they got past. Their Cash,
+## Multiplier, Rebirths and Slag are kept as they are; the new stats start at zero.
+func _migrate_to_quarry_ladder() -> void:
+	var played: bool = zone_id == &"zone2" or bool(zones_entered.get(&"zone2", false)) or not get_stat(&"slag").is_zero()
+	for b: ButtonDef in button_defs.values():
+		if b.zone == &"zone2" and mastery.xp(b.id) > 0.0:
+			played = true
+	if not played:
+		return
+	for id: StringName in [&"cinder", &"ore", &"slagrow"]:
+		if tier_defs.has(id):
+			tiers_open[id] = true
+	if gates_open.get(&"zone2", false):   # the old gate (9 Slag) was beaten: keep every row open for the new one
+		for t: TierDef in tiers_in_zone(&"zone2"):
+			tiers_open[t.id] = true
+
+
 ## A copy of a pre-ladder save with its mastery keys renamed to the new pad ids.
 func _ladder_save_ids(d: Dictionary) -> Dictionary:
 	var out: Dictionary = d.duplicate(true)
@@ -1068,7 +1124,10 @@ func _ladder_save_ids(d: Dictionary) -> Dictionary:
 	if m is Dictionary:
 		var renamed: Dictionary = {}
 		for k: Variant in (m as Dictionary):
-			renamed[LADDER_PAD_MAP.get(str(k), str(k))] = (m as Dictionary)[k]
+			var nk: String = str(k)
+			if old_pre_ladder(d):
+				nk = LADDER_PAD_MAP.get(nk, nk)
+			renamed[QUARRY_PAD_MAP.get(nk, nk)] = (m as Dictionary)[k]
 		out["mastery"] = renamed
 	var uf: Variant = out.get("ui_flags")
 	if uf is Dictionary:   # tutorial steps were renamed with the rows they reveal

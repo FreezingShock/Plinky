@@ -58,6 +58,7 @@ func _init() -> void:
 		quit(1)
 		return
 	sim.new_game()
+	sim.rng.seed = 7   # fixed, so the run is repeatable; relic drops still swing the real time by a few minutes
 	var failed: bool = false
 	var t: float = 0.0
 	var zone: StringName = sim.zone_id
@@ -79,7 +80,7 @@ func _init() -> void:
 		failed = not open
 		t = t_end
 		var next: StringName = z.next_zone
-		if open and next != &"" and next != &"zone2":   # the quarry has its own sim (docs/zone2.md)
+		if open and next != &"":
 			sim.enter_zone(next)
 			zone = next
 		else:

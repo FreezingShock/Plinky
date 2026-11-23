@@ -9,8 +9,21 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.28.0 - 2026-11-23
+## 0.31.0 - 2026-11-23
 - Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
+
+## 0.30.0 - 2026-11-23
+- The Ember Quarry is now a six-row forge ladder, Cinder, Ore, Slag, Ingot, Alloy and Emberheart: 18 pads climbing the terraces, each row opening the next, with new isometric voxel pad objects and per-row colours, tier buffs (1.25x and 1.5x) from Slag up, Rebirth that banks Ingots and only resets the quarry, and a small flat arrival purse. Old quarry saves migrate.
+
+## 0.29.0 - 2026-11-23
+- HUD currency panel is now a compact strip: icon, small dim gain, and a value in the stat's colour. Names live in the instant tooltips. Rows appear once you have held that stat, and only the current zone's stats show. About a third of the old height.
+- New `tools/hud_shot.tscn` captures the HUD panel (early or late-game fixture); CLAUDE.md and SPEC name the real capture tools.
+
+## 0.28.0 - 2026-11-23
+- Higher flower tiers now buff several lower stats at once (Thistle and Heather 1.25x, Foxglove and Starbloom 1.5x, data-driven). New Settings option for multipliers as a factor (x1.5) or a percent (150%). Locked pads are clearly darker and buyable pads glow green. Larkmoor gate retuned to 2000 Starbloom Petals.
+
+## 0.27.2 - 2026-11-23
+- Docs only: CLAUDE.md and SPEC.md now match the flat repo layout, docs/interfaces.md added, shader-uniform rule amended, features.md and balance.md refreshed.
 
 ## 0.27.1 - 2026-11-23
 - Fixed the title screen's input error (the menu pad actions are now registered before the title), and onboarding tip cards now step aside while any menu is open, so the Esc menu's buttons are never covered.
