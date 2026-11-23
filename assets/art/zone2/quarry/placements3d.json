@@ -63,30 +63,108 @@
    "sort_y": 49.6
   },
   {
-   "file": "sprites/spire_021.png",
+   "file": "sprites/spire_020.png",
    "kind": "spire",
-   "x": 207,
-   "y": 70,
-   "w": 9,
-   "h": 49,
+   "x": 212,
+   "y": 2,
+   "w": 11,
+   "h": 56,
    "foot": [
-    211.0,
-    117.1
+    217.5,
+    56.2
    ],
-   "sort_y": 117.1
+   "sort_y": 56.2
   },
   {
-   "file": "sprites/spire_022.png",
+   "file": "sprites/spire_021.png",
    "kind": "spire",
-   "x": 213,
-   "y": 78,
-   "w": 11,
-   "h": 44,
+   "x": 206,
+   "y": 19,
+   "w": 10,
+   "h": 40,
    "foot": [
-    218.2,
-    120.1
+    210.5,
+    57.3
    ],
-   "sort_y": 120.1
+   "sort_y": 57.3
+  },
+  {
+   "file": "sprites/spire_037.png",
+   "kind": "spire",
+   "x": 233,
+   "y": 73,
+   "w": 7,
+   "h": 50,
+   "foot": [
+    235.9,
+    122.1
+   ],
+   "sort_y": 122.1
+  },
+  {
+   "file": "sprites/spire_039.png",
+   "kind": "spire",
+   "x": 224,
+   "y": 90,
+   "w": 9,
+   "h": 34,
+   "foot": [
+    227.2,
+    122.4
+   ],
+   "sort_y": 122.4
+  },
+  {
+   "file": "sprites/spire_026.png",
+   "kind": "spire",
+   "x": 214,
+   "y": 78,
+   "w": 9,
+   "h": 46,
+   "foot": [
+    217.9,
+    123.5
+   ],
+   "sort_y": 123.5
+  },
+  {
+   "file": "sprites/spire_038.png",
+   "kind": "spire",
+   "x": 230,
+   "y": 89,
+   "w": 11,
+   "h": 39,
+   "foot": [
+    235.4,
+    126.1
+   ],
+   "sort_y": 126.1
+  },
+  {
+   "file": "sprites/spire_025.png",
+   "kind": "spire",
+   "x": 214,
+   "y": 84,
+   "w": 11,
+   "h": 45,
+   "foot": [
+    219.0,
+    127.4
+   ],
+   "sort_y": 127.4
+  },
+  {
+   "file": "sprites/spire_027.png",
+   "kind": "spire",
+   "x": 205,
+   "y": 85,
+   "w": 9,
+   "h": 46,
+   "foot": [
+    208.9,
+    129.9
+   ],
+   "sort_y": 129.9
   },
   {
    "file": "sprites/spire_016.png",
@@ -100,6 +178,19 @@
     131.2
    ],
    "sort_y": 131.2
+  },
+  {
+   "file": "sprites/spire_023.png",
+   "kind": "spire",
+   "x": 438,
+   "y": 81,
+   "w": 9,
+   "h": 52,
+   "foot": [
+    441.8,
+    131.5
+   ],
+   "sort_y": 131.5
   },
   {
    "file": "sprites/spire_017.png",
@@ -128,64 +219,25 @@
    "sort_y": 134.3
   },
   {
-   "file": "sprites/spire_035.png",
+   "file": "sprites/spire_022.png",
    "kind": "spire",
-   "x": 455,
-   "y": 111,
-   "w": 9,
-   "h": 28,
+   "x": 446,
+   "y": 85,
+   "w": 7,
+   "h": 52,
    "foot": [
-    459.5,
-    137.0
+    448.6,
+    136.1
    ],
-   "sort_y": 137.0
+   "sort_y": 136.1
   },
   {
-   "file": "sprites/spire_034.png",
+   "file": "sprites/spire_041.png",
    "kind": "spire",
-   "x": 445,
-   "y": 80,
+   "x": 402,
+   "y": 101,
    "w": 11,
-   "h": 61,
-   "foot": [
-    450.5,
-    138.8
-   ],
-   "sort_y": 138.8
-  },
-  {
-   "file": "sprites/spire_038.png",
-   "kind": "spire",
-   "x": 404,
-   "y": 102,
-   "w": 11,
-   "h": 58,
-   "foot": [
-    408.7,
-    157.5
-   ],
-   "sort_y": 157.5
-  },
-  {
-   "file": "sprites/spire_039.png",
-   "kind": "spire",
-   "x": 413,
-   "y": 116,
-   "w": 9,
-   "h": 47,
-   "foot": [
-    417.4,
-    161.0
-   ],
-   "sort_y": 161.0
-  },
-  {
-   "file": "sprites/spire_036.png",
-   "kind": "spire",
-   "x": 403,
-   "y": 104,
-   "w": 9,
-   "h": 60,
+   "h": 64,
    "foot": [
     407.5,
     162.5
@@ -193,43 +245,17 @@
    "sort_y": 162.5
   },
   {
-   "file": "sprites/spire_037.png",
+   "file": "sprites/spire_042.png",
    "kind": "spire",
-   "x": 412,
-   "y": 112,
-   "w": 7,
-   "h": 53,
-   "foot": [
-    413.8,
-    162.8
-   ],
-   "sort_y": 162.8
-  },
-  {
-   "file": "sprites/spire_012.png",
-   "kind": "spire",
-   "x": 190,
-   "y": 162,
+   "x": 403,
+   "y": 121,
    "w": 11,
-   "h": 46,
-   "foot": [
-    195.0,
-    205.4
-   ],
-   "sort_y": 205.4
-  },
-  {
-   "file": "sprites/spire_011.png",
-   "kind": "spire",
-   "x": 183,
-   "y": 161,
-   "w": 9,
    "h": 47,
    "foot": [
-    187.8,
-    206.3
+    407.5,
+    166.0
    ],
-   "sort_y": 206.3
+   "sort_y": 166.0
   },
   {
    "file": "sprites/spire_004.png",
@@ -271,7 +297,7 @@
    "sort_y": 215.2
   },
   {
-   "file": "sprites/spire_026.png",
+   "file": "sprites/spire_029.png",
    "kind": "spire",
    "x": 211,
    "y": 164,
@@ -279,9 +305,9 @@
    "h": 53,
    "foot": [
     216.4,
-    215.1
+    215.0
    ],
-   "sort_y": 215.1
+   "sort_y": 215.0
   },
   {
    "file": "sprites/spire_007.png",
@@ -323,7 +349,7 @@
    "sort_y": 216.1
   },
   {
-   "file": "sprites/spire_025.png",
+   "file": "sprites/spire_028.png",
    "kind": "spire",
    "x": 207,
    "y": 158,
@@ -334,19 +360,6 @@
     217.8
    ],
    "sort_y": 217.8
-  },
-  {
-   "file": "sprites/spire_027.png",
-   "kind": "spire",
-   "x": 220,
-   "y": 192,
-   "w": 7,
-   "h": 28,
-   "foot": [
-    221.1,
-    217.7
-   ],
-   "sort_y": 217.7
   },
   {
    "file": "sprites/spire_002.png",
@@ -362,17 +375,56 @@
    "sort_y": 218.2
   },
   {
-   "file": "sprites/spire_028.png",
+   "file": "sprites/spire_035.png",
    "kind": "spire",
-   "x": 211,
-   "y": 189,
-   "w": 9,
-   "h": 32,
+   "x": 364,
+   "y": 174,
+   "w": 7,
+   "h": 51,
    "foot": [
-    215.8,
-    220.1
+    367.8,
+    223.7
    ],
-   "sort_y": 220.1
+   "sort_y": 223.7
+  },
+  {
+   "file": "sprites/spire_033.png",
+   "kind": "spire",
+   "x": 361,
+   "y": 189,
+   "w": 5,
+   "h": 36,
+   "foot": [
+    363.5,
+    223.5
+   ],
+   "sort_y": 223.5
+  },
+  {
+   "file": "sprites/spire_032.png",
+   "kind": "spire",
+   "x": 353,
+   "y": 161,
+   "w": 11,
+   "h": 65,
+   "foot": [
+    357.7,
+    224.0
+   ],
+   "sort_y": 224.0
+  },
+  {
+   "file": "sprites/spire_034.png",
+   "kind": "spire",
+   "x": 354,
+   "y": 194,
+   "w": 11,
+   "h": 36,
+   "foot": [
+    358.4,
+    228.6
+   ],
+   "sort_y": 228.6
   },
   {
    "file": "sprites/spire_015.png",
@@ -412,32 +464,58 @@
     230.4
    ],
    "sort_y": 230.4
+  },
+  {
+   "file": "sprites/spire_011.png",
+   "kind": "spire",
+   "x": 276,
+   "y": 257,
+   "w": 7,
+   "h": 51,
+   "foot": [
+    278.4,
+    306.8
+   ],
+   "sort_y": 306.8
+  },
+  {
+   "file": "sprites/spire_012.png",
+   "kind": "spire",
+   "x": 267,
+   "y": 271,
+   "w": 11,
+   "h": 39,
+   "foot": [
+    272.2,
+    307.6
+   ],
+   "sort_y": 307.6
   }
  ],
  "anchors": [
   {
    "kind": "pad",
    "state": "ready",
-   "u": 260.0,
-   "v": 258.0,
-   "sx": 322.0,
-   "sy": 243.4
+   "u": 196.0,
+   "v": 268.0,
+   "sx": 248.0,
+   "sy": 214.8
   },
   {
    "kind": "pad",
    "state": "ready",
-   "u": 256.0,
-   "v": 216.0,
-   "sx": 360.0,
-   "sy": 218.8
+   "u": 268.0,
+   "v": 196.0,
+   "sx": 392.0,
+   "sy": 214.5
   },
   {
    "kind": "pad",
    "state": "ready",
-   "u": 149.0,
-   "v": 191.0,
-   "sx": 278.0,
-   "sy": 132.0
+   "u": 146.0,
+   "v": 194.0,
+   "sx": 272.0,
+   "sy": 131.9
   },
   {
    "kind": "gate",
@@ -448,33 +526,33 @@
   },
   {
    "kind": "player_spawn",
-   "u": 250.0,
-   "v": 283.0,
-   "sx": 287.0,
-   "sy": 260.6
+   "u": 230.0,
+   "v": 230.0,
+   "sx": 320.0,
+   "sy": 213.1
   },
   {
    "kind": "vent",
-   "u": 277.0,
-   "v": 249.0,
-   "sx": 348.0,
-   "sy": 246.1,
+   "u": 255.0,
+   "v": 265.0,
+   "sx": 310.0,
+   "sy": 247.1,
    "radius": 14
   },
   {
    "kind": "vent",
-   "u": 286.0,
-   "v": 214.0,
-   "sx": 392.0,
-   "sy": 232.9,
+   "u": 275.0,
+   "v": 238.0,
+   "sx": 357.0,
+   "sy": 239.3,
    "radius": 14
   },
   {
    "kind": "vent",
-   "u": 176.0,
-   "v": 180.0,
-   "sx": 316.0,
-   "sy": 140.2,
+   "u": 205.0,
+   "v": 171.0,
+   "sx": 354.0,
+   "sy": 149.9,
    "radius": 14
   }
  ]

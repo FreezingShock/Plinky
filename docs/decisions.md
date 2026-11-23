@@ -420,3 +420,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Save v4: a v3 save gets RP backfilled for the rebirths it already did (`rp_backfill` flag set by the migration, read by Sim.from_dict).
 - World popups ("+93.3") used to draw over open menus because the popup overlay sits above the HUD. They are now hidden while their spawn point is under a centred menu panel (`PopupNumber.under_menu`, set by the HUD).
 - Checked here with the real engine headless (tests, sim, boot) and a software-GL capture of the header. Not run: the PC pass should judge the hold feel with a real mouse and pad, and the RP row in the HUD at Wide.
+## 2026-11-23: Ember Quarry map redesign
+- Nathan: no rock in front of the camera cut off by the frame; the map should face the camera with a path and areas in all directions around the origin, and a real gate. The near rim of the bowl is now a low berm (`rim_scale` falls to 0.1 toward the camera) so the plateau shows whole; the tall rim stays at the back and sides.
+- Layout (`tools/art/gen_zone2.py`): hub plaza at the middle (spawn), main road south to north ending at a stone landing under the gate, branches west, east and north-west to the three pads, vents between. Pads, vents and spawn are still snapped to visible ground.
