@@ -364,7 +364,7 @@ The agent runs this after every change, without waiting for Nathan:
 
 1. Check scripts parse: `godot --headless --check-only --script <file>`.
 2. Run tests: `godot --headless --script tests/run.gd`. Godot documents [headless mode for use with `--script`](https://docs.godotengine.org/en/4.7/tutorials/editor/command_line_tutorial.html).
-3. Capture the look: `godot --path . tools/screenshot.tscn`, which renders 30 frames, saves a PNG, and quits.
+3. Capture the look: `godot --path . tools/play_shots.tscn` (gameplay) or `tools/hud_shot.tscn -- early|late` (HUD panel), which save PNGs and quit.
 4. Open the PNG, compare it with the goal, and fix what is wrong.
 5. Commit with a one-line message once tests pass.
 

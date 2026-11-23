@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.24.3 - 2026-11-23
+- New `tools/hud_shot.tscn` captures the HUD currency panel (early or late-game fixture with every row); CLAUDE.md and SPEC now name the real capture tools.
+
 ## 0.24.2 - 2026-11-23
 - HUD currency panel: the gain text (+x/s, xN) now sits left of each value in a smaller font, vertically centred, so the panel is narrower; values stay centred on the row and line up in a column.
 
