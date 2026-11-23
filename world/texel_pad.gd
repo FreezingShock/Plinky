@@ -6,7 +6,7 @@ extends Node2D
 const HALF: Vector2 = Vector2(14.0, 7.0)  # pad half extents in texels (2:1 diamond)
 
 var button_id: StringName
-var walker: TexelWalker
+var walker: Node2D  # a TexelWalker; typed loosely so this script compiles under --script
 var glow: PadGlow
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var standing: bool = false
