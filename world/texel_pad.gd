@@ -39,6 +39,7 @@ const RING_TIME: float = 0.3         # the ripple that leaves the pad on a press
 const NEAR_TEXELS: float = 40.0      # the approach cue starts this far from the pad (vertical doubled)
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
+signal left  ## the walker stepped off, or the mouse was released
 var _timer: float = 0.0
 var _punch_t: float = 0.0   # 1 -> 0 after a press
 var _lvl_t: float = 0.0     # 1 -> 0 after a mastery level-up
@@ -66,7 +67,9 @@ func _ready() -> void:
 	hold = HoldPress.new()
 	add_child(hold)
 	hold.tick.connect(_press)
-	hold.released.connect(func() -> void: holding = false)
+	hold.released.connect(func() -> void:
+		holding = false
+		left.emit())
 
 
 func _physics_process(delta: float) -> void:
@@ -75,6 +78,8 @@ func _physics_process(delta: float) -> void:
 	var inside: bool = (d.x * d.x) / (HALF.x * HALF.x) + (d.y * d.y) / (HALF.y * HALF.y) <= 1.0
 	if inside and not standing:
 		_timer = 0.0  # first press is immediate on arrival
+	if standing and not inside:
+		left.emit()
 	standing = inside
 	affordable = sim.can_afford(button_id)
 	_progress_t -= delta

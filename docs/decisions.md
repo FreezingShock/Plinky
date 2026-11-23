@@ -253,3 +253,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Nathan: pad inlay sprites were too small and all alike. Inlay is now 21x11 texels, and each pad gets a unique mirrored 5x5 emblem from its id, projected onto the plate, with a stat-colour spine. The centre stays clear for the tick or X.
 - Pads have a rarity (`ButtonDef.rarity`, content only): Meadow common, common, uncommon, rare, epic; Larkmoor common to legendary by cost; Quarry uncommon, rare, epic. Frame ring in the tier colour (none for Common), white studs from Legendary. Shown in the tooltip through `Sim.pad_rarity`.
 - Momentum label: Pixelify Sans, capitals, embolden 0.6 and a 2px ink outline.
+
+## 2026-11-23 Quiet pad clicks
+- Nathan: standing on a pad clicked forever. Settings > Audio now has "Quiet pad clicks" (on by default) and "Clicks before quiet" (slider 1 to 10, default 5). After that many presses in a row the pad click and hold tick go quiet. Stepping off or releasing a pad resets the count, as does a 1.5 s pause. Crit sounds always play. Settings are stored per id with defaults in settings.cfg, which has no schema version, so there was nothing to bump.

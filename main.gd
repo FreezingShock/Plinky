@@ -282,6 +282,7 @@ func _build_pads() -> void:
 		pad.position = marker.position
 		pad.walker = walker
 		pad.glow = pad_glow
+		pad.left.connect(Audio.reset_press_streak)
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
