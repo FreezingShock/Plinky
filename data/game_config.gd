@@ -10,6 +10,11 @@ extends Resource
 @export var offline_base_cap_hours: float = 2.0
 ## While away the meadow is tended at this fraction of your press rate: each open tier presses its top unlocked pad,
 ## paying the same cost and reward as a real press, limited by what the tier below left in stock. 0 turns it off.
+## Offline time is credited in this many slices so tending feeds the income of the next slice.
+## Idle should take about twice as long as active play (locked rule), so away time pays this fraction of the live
+## income rate. Tending can't compound it: with one slice the whole stretch is priced at the rate you left with.
+@export var offline_income_fraction: float = 0.5
+@export var offline_slices: int = 1
 @export var offline_tend_fraction: float = 0.1
 ## Relic drop rolls run at this fraction of the awake rate (same chance, luck and pity rules), at most
 ## offline_relic_max_drops per return. 0 turns offline drops off.

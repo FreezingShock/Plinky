@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bloom_seed_pods"
+display_name = "Seed Pods"
+effect = &"seed_pay"
+per_level = 0.15
+cap = 10
+base_cost = 4.0
+cost_growth = 1.55
+order = 5
+currency = &"seeds"
+unlock_resets = 1
+blurb = "Every Bloom pays more Seeds, so every gift comes sooner."
+icon = &"seeds"
+unit_text = "Seeds per Bloom"

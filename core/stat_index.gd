@@ -120,9 +120,9 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		var a: AttributeDef = sim.attribute_defs[aid]
 		var lv: int = sim.attr_level(aid)
 		var now: String = effect_text(a, float(lv) * a.per_level)
-		var tip: String = String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
+		var tip: String = a.blurb if a.blurb != "" else String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
 		if not sim.attr_unlocked(aid):
-			tip += "\n%s." % UpgradeText.lock_text(a)
+			tip += "\n%s." % UpgradeText.lock_text(a, sim)
 		elif lv >= a.cap:
 			tip += "\nMaxed out."
 		else:
@@ -130,7 +130,7 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		var perk: bool = a.currency == &"rp"
 		var zr: ZoneResetDef = sim.reset_for_currency(a.currency)
 		var group_name: String = "Rebirth Perks" if perk else (zr.menu_title if zr != null else "Attributes")
-		var r: Dictionary = _row(aid, group_name, a.display_name, String(ID_ICONS.get(aid, ATTR_ICONS.get(a.effect, "prestige"))), "Lv %d/%d" % [lv, a.cap], now, tip)
+		var r: Dictionary = _row(aid, group_name, a.display_name, attr_icon(a), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap
 		r["maxed"] = lv >= a.cap
@@ -145,6 +145,13 @@ static func stats_value_presses(sim: Sim) -> String:
 	return BigNum.from_float(float(sim.press_count)).format()
 
 
+## The icon file name an attribute wears: its own, else its effect's, else Prestige's.
+static func attr_icon(a: AttributeDef) -> String:
+	if a.icon != &"":
+		return String(a.icon)
+	return String(ID_ICONS.get(a.id, ATTR_ICONS.get(a.effect, "prestige")))
+
+
 static func effect_text(a: AttributeDef, amount: float) -> String:
 	match a.effect:
 		&"walk_speed": return "+%s%% walk speed" % _trim(amount * 100.0)
@@ -157,6 +164,8 @@ static func effect_text(a: AttributeDef, amount: float) -> String:
 		&"offline_hours": return "+%s h offline cap" % _trim(amount)
 		&"head_start": return "+%s starting Sunlight" % _trim(amount)
 		&"sun_rate": return "+%s%% Sunlight income" % _trim(amount * 100.0)
+	if a.unit_text != "" or a.value_kind != &"percent":   # a gift with its own words ("+0.2/s auto-presses")
+		return ("%s %s" % [UpgradeText.value(a, amount), a.unit_text]).strip_edges()
 	return "+%s%%" % _trim(amount * 100.0)
 
 

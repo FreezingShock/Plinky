@@ -150,6 +150,17 @@ func _panel(pos: Vector2) -> VBoxContainer:
 	return v
 
 
+## The rolling counter of a stat row (null when the stat has none). The Bloom animation drives it.
+func stat_value(sid: StringName) -> RollValue:
+	var pair: Array = _rows.get(sid, []) as Array
+	return pair[0] as RollValue if not pair.is_empty() else null
+
+
+## Every stat id that has a row on the HUD.
+func stat_value_ids() -> Array:
+	return _rows.keys()
+
+
 ## Bottom edge of the stats panel in HUD coordinates, so panels below it (relic bar) follow its height.
 func stats_bottom() -> float:
 	if _stats_panel == null:
@@ -671,6 +682,9 @@ func _on_offline(seconds: float, gains: Dictionary) -> void:
 			continue
 		lines.append(["+%s %s" % [g.format(), (sim.stat_defs[sid] as StatDef).display_name], StatStyle.color(sid)])
 	var tend: Dictionary = sim.last_offline.get("tend", {})
+	var spent: Dictionary = sim.last_offline.get("spent", {})
+	for sp: StringName in spent:   # the gains above are income; tending paid these out of it
+		lines.append(["-%s %s spent tending" % [(spent[sp] as BigNum).format(), (sim.stat_defs[sp] as StatDef).display_name], StatStyle.color(sp)])
 	for tid: StringName in tend:
 		var r: Dictionary = tend[tid]
 		var tier: TierDef = sim.tier_defs.get(tid) as TierDef
@@ -678,10 +692,14 @@ func _on_offline(seconds: float, gains: Dictionary) -> void:
 		if int(r["levels"]) > 0:
 			what += ", mastery +%d (Lv %d)" % [int(r["levels"]), int(r["level"])]
 		lines.append([what, StatStyle.color(&"mastery")])
+	var counts: Dictionary = {}   # relic id -> times found, in first-found order
 	for rid: StringName in sim.last_offline.get("relics", []):
-		var rd: RelicDef = sim.relics.defs.get(rid) as RelicDef
+		counts[rid] = int(counts.get(rid, 0)) + 1
+	for rid2: StringName in counts:
+		var rd: RelicDef = sim.relics.defs.get(rid2) as RelicDef
 		if rd != null:
-			lines.append(["Found %s" % rd.display_name, rd.rarity.color])
+			var n: int = int(counts[rid2])
+			lines.append(["Found %s%s" % [rd.display_name, " x%d" % n if n > 1 else ""], rd.rarity.color])
 	if seconds >= sim.offline_cap_seconds() - 1.0:
 		lines.append(["That is the most you can bank offline.", RelicStyle.dim])
 	if lines.size() < 2:
@@ -991,12 +1009,14 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible   # tips never cover an open menu, a tooltip or a confirm card
+	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or Banner.is_showing()   # tips never cover an open menu, a tooltip, a confirm card or a banner
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():
 			_tip_card.dismiss()
 		return
+	if Banner.is_showing():
+		return  # the next tip waits for the banner to clear rather than being marked shown behind it
 	var id: StringName = ob.next_tip()
 	if id == &"":
 		return

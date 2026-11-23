@@ -72,7 +72,7 @@ machine is available.
 | One new visual system (a layer, a shader pass) | at most 0.1 ms avg | there are about 8 such systems in flight |
 | Whole frame on Low | at least 25% under High | Low exists for slow GPUs |
 | Draw calls | under 250 (CI-enforced; the headless bench reads 0, so it bites on real-window runs) | High peaks near 160 on the CPU rasteriser |
-| Nodes in the active zone | under 1200 (CI-enforced) | Larkmoor is 1065 headless now (it was about 414 when this was written) |
+| Nodes in the active zone | under 1300 (CI-enforced) | Larkmoor is about 1205 headless now: the Upgrades menu builds a row per gift, and the Bloom gifts added 10 rows (1065 before) |
 
 A PR that adds a visual system pastes the `tools/bench.gd` table (Low and High) and states the delta against these.
 

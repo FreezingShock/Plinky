@@ -65,3 +65,10 @@ func run(t: Object) -> void:
 	var c: Dictionary = AreaBanner.compose("Larkmoor", {"season_name": "Spring", "month_name": "Early Spring", "day": 3, "hour": 7, "minute": 30}, 0.5)
 	t.eq(c["lines"], ["Early Spring - Day 3", "07:30 - Morning"], "a calendar adds month, day and its own time")
 	t.eq(AreaBanner.compose("X", {"season": 3}, 0.0)["lines"][0], "Winter", "a season index maps to its name")
+
+	# Zone banners carry their palette: the fill passes through to the shown banner, and an unset fill stays null.
+	t.eq(BannerQueue.normalize({"title": "Meadow", "fill": Color.BLACK})["fill"], Color.BLACK, "a zone fill is kept")
+	t.eq(BannerQueue.normalize({"title": "Meadow"})["fill"], null, "no fill means the default panel")
+	var zq := BannerQueue.new()
+	zq.push({"title": "Larkmoor", "fill": Color.BLACK, "key": "zone:larkmoor"}, 0.0)
+	t.eq(zq.next()["fill"], Color.BLACK, "the fill reaches the banner that is shown")

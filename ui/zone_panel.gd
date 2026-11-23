@@ -15,6 +15,8 @@ const PEEK: float = 3.5   ## seconds the area card stays open after you walk int
 const PADS_SHOWN: int = 3      ## pads listed when an area has more than PADS_FOLD of them; the rest fold behind "N more..."
 const PADS_FOLD: int = 4
 const PADS_MAX_PX: float = 96.0   ## tallest the expanded pad list grows before it scrolls, so the panel never leaves the screen
+const SWAP_OUT: float = 0.1       ## seconds the old area card takes to dither out when you walk into another subarea
+const SWAP_IN: float = 0.2        ## seconds the new area card takes to dither in
 
 signal travel_toggled(open: bool)
 
@@ -43,6 +45,8 @@ var _mastery_bar: DitherBar
 var _card_area: StringName = &""
 var _peek_tween: Tween
 var _gated: Array[Control] = []     # parts that wait for the rebirth row to unlock
+var _swap_tween: Tween
+var _swapping: bool = false         # the card is fading out or in; refresh() leaves its rebuild to the swap
 
 
 func _init() -> void:
@@ -236,16 +240,49 @@ func _go(zid: StringName, aid: StringName) -> void:
 	refresh()
 
 
-## The walker walked into an area of the current zone.
+## The walker walked into an area of the current zone. The card changes in place (a short crossfade) and opens.
 func set_district(aid: StringName) -> void:
 	if sim == null or not sim.area_defs.has(aid):
 		return
 	if (sim.area_defs[aid] as AreaDef).zone == sim.zone_id:
 		var changed: bool = aid != _view_area
 		_view_area = aid
-		refresh()
+		if changed and _can_swap():
+			_swapping = true
+			refresh()
+			_swap_card()
+		else:
+			refresh()
 		if changed:
 			_peek()
+
+
+## A swap needs a built card on screen, and is skipped under Reduce Motion ("Still banners" in Access).
+func _can_swap() -> bool:
+	return is_inside_tree() and _card_area != &"" and _card.body() != null and not FxConfig.reduce_motion
+
+
+## Dithers the card out, rebuilds it for the new area, then dithers it back in. Alpha moves in quarters so it steps
+## like the rest of the pixel art rather than blending smoothly.
+func _swap_card() -> void:
+	if _swap_tween != null:
+		_swap_tween.kill()
+	var b: Control = _card.body()
+	_swap_tween = create_tween()
+	_swap_tween.tween_method(_set_card_alpha, b.modulate.a, 0.0, SWAP_OUT)
+	_swap_tween.tween_callback(_finish_swap)
+	_swap_tween.tween_method(_set_card_alpha, 0.0, 1.0, SWAP_IN)
+
+
+func _finish_swap() -> void:
+	_swapping = false
+	_rebuild_card()
+
+
+func _set_card_alpha(a: float) -> void:
+	var b: Control = _card.body()
+	if b != null:
+		b.modulate.a = snappedf(a, 0.25)
 
 
 ## Entering an area shows its full card for PEEK seconds, then folds it to the one-line stub so it stops covering the world.
@@ -461,7 +498,7 @@ func refresh() -> void:
 		var areas: Array[AreaDef] = sim.areas_in_zone(z.id)
 		if not sim.area_defs.has(_view_area) or (sim.area_defs[_view_area] as AreaDef).zone != z.id:
 			_view_area = areas[0].id if not areas.is_empty() else &""
-	if _card_area != _view_area or _pad_rows.is_empty() and _view_area != &"":
+	if not _swapping and (_card_area != _view_area or _pad_rows.is_empty() and _view_area != &""):
 		_rebuild_card()
 	_title.text = z.display_name
 	_title.add_theme_color_override("font_color", zone_colour(z))

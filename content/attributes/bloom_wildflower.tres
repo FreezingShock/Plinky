@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bloom_wildflower"
+display_name = "Wildflower"
+effect = &"wild_bloom"
+per_level = 0.1
+cap = 8
+base_cost = 8.0
+cost_growth = 1.5
+order = 14
+currency = &"seeds"
+unlock_resets = 4
+blurb = "A flower that blooms on its own: now and then a pad of your highest open row pays out for free."
+icon = &"starbloom"
+unit_text = "free blooms"
+value_kind = &"rate"
