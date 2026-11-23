@@ -28,7 +28,7 @@ func run(t: Object) -> void:
 	t.eq(n["month"], 0, "starts in the first month")
 	t.eq(n["clock_text"], "07:12", "starts at 07:12")
 	t.ok(n["is_day"], "the first morning is daylight")
-	t.eq(String(n["season_name"]), "Bloomtide", "spring is Bloomtide")
+	t.eq(String(n["season_name"]), "Spring", "spring is Spring")
 
 	# Day 5 is the last of month 1; day 6 starts month 2.
 	c.elapsed_days = 4.5
@@ -145,9 +145,9 @@ func run(t: Object) -> void:
 
 	# Dev commands.
 	var cmds := DevCommands.new(sim)
-	t.ok(cmds.run("season winter").contains("Hushfrost"), "season winter jumps to winter")
+	t.ok(cmds.run("season winter").contains("Winter"), "season winter jumps to winter")
 	t.eq(sim.calendar.now()["season"], 3, "the calendar is in winter")
-	t.ok(cmds.run("season").contains("Hushfrost"), "season alone reports the calendar")
+	t.ok(cmds.run("season").contains("Winter"), "season alone reports the calendar")
 	t.ok(cmds.run("season nonsense").begins_with("Unknown season"), "a bad season is refused")
 	var d0: int = sim.calendar.day_index()
 	cmds.run("day 3")
