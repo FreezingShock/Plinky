@@ -17,6 +17,11 @@ extends Resource
 ## Set threshold to 0 to turn the bonus off.
 @export var prestige_push_threshold: float = 9.0
 @export var prestige_push_exponent: float = 0.5
+## Rebirth Points: each rebirth pays rp_base, plus rp_growth for every rebirth already done (rounded down).
+## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; rebirths still only boost Multiplier gain.
+@export var rp_stat: StringName = &"rp"
+@export var rp_base: float = 1.0
+@export var rp_growth: float = 0.1
 ## Momentum: walking charges it (pressing nudges it), then it holds a moment and falls. Income gets
 ## x(1 + momentum * momentum_max_bonus + the kickers of every stage reached). Stages: Idle, then one per threshold.
 ## Full bar = max_bonus + sum(tier_bonus) = +40%.

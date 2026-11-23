@@ -43,6 +43,7 @@ var _centered: Array[Control] = []   # panels kept centred in the free area abov
 
 func setup(p_sim: Sim) -> void:
 	sim = p_sim
+	PopupNumber.under_menu = point_under_menu
 	GameState.onboarding.update()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -103,6 +104,14 @@ func owns_focus(c: Control) -> bool:
 	return c != null and _bottom != null and _bottom.is_ancestor_of(c)
 
 
+## True if the screen point is under an open menu panel (see PopupNumber.under_menu).
+func point_under_menu(pt: Vector2) -> bool:
+	for p: Control in _centered:
+		if p.is_visible_in_tree() and p.get_global_rect().has_point(pt):
+			return true
+	return false
+
+
 ## Keep `p` centred in the free area above the bottom bar (clamped to stay on screen).
 func keep_centered(p: Control) -> void:
 	_centered.append(p)
@@ -136,11 +145,11 @@ func _build_stats() -> void:
 	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
 	var name_font: FontFile = CrispFont.apply(load("res://fonts/PixelifySans.ttf") as FontFile)
 	var name_w: float = 0.0   # widest stat name, so the number column lines up
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige", &"rp"]:
 		var d: StatDef = sim.stat_defs.get(sid) as StatDef
 		if d != null:
-			name_w = maxf(name_w, name_font.get_string_size(d.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_NAME_SIZE).x)
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+			name_w = maxf(name_w, name_font.get_string_size(String(HUD_NAMES.get(sid, d.display_name)), HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_NAME_SIZE).x)
+	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige", &"rp"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
 			continue
@@ -154,7 +163,7 @@ func _build_stats() -> void:
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(icon)
 		var name_l := Label.new()
-		name_l.text = def.display_name
+		name_l.text = String(HUD_NAMES.get(sid, def.display_name))
 		name_l.custom_minimum_size.x = ceilf(name_w)
 		name_l.theme_type_variation = &"TitleLabel"   # same face as the tooltip titles
 		name_l.add_theme_font_size_override("font_size", STAT_NAME_SIZE)
@@ -223,7 +232,7 @@ func _build_bottom() -> void:
 	add_child(h)
 	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
 	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
-	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format()))
+	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format(), str(sim.rp_gain_preview()) if sim.can_rebirth() else ""))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
@@ -271,13 +280,19 @@ func _build_upgrades() -> void:
 	_upgrades_box = VBoxContainer.new()
 	_upgrades_box.add_theme_constant_override("separation", 2)
 	_upgrades_panel.add_child(_upgrades_box)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	_upgrades_box.add_child(head)
 	var title := Label.new()
 	title.theme_type_variation = &"TitleLabel"
 	title.text = "Upgrades"
-	_upgrades_box.add_child(title)
-	_prestige_avail = Label.new()
-	_prestige_avail.add_theme_color_override("font_color", RelicStyle.dim)
-	_upgrades_box.add_child(_prestige_avail)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	for sid: StringName in [&"rp", &"prestige"]:   # right-aligned balances, the one on the far right is Prestige
+		_cur_badges[sid] = _currency_badge(head, sid)
+	var x_gap := Control.new()   # keeps the balances clear of the close X in the corner
+	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
+	head.add_child(x_gap)
 	_upgrades_box.add_child(PanelDivider.new())
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -288,11 +303,20 @@ func _build_upgrades() -> void:
 	list.add_theme_constant_override("separation", 4)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
+	var group: StringName = &"prestige"
 	for a: AttributeDef in UpgradeText.ordered(sim):
+		if a.currency != group:   # a small heading where the Rebirth Point perks start
+			group = a.currency
+			var gh := Label.new()
+			gh.text = "REBIRTH PERKS"
+			gh.add_theme_color_override("font_color", StatStyle.color(&"rp"))
+			list.add_child(gh)
+			_perk_head = gh
 		var row := UpgradeRow.new()
 		list.add_child(row)
 		row.setup(a)
-		row.fly_target = func() -> Vector2: return _prestige_avail.global_position + Vector2(40.0, 0.0)
+		var cur: StringName = a.currency
+		row.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
 		row.buy_pressed.connect(_buy_upgrade)
 		row.refresh(UpgradeText.state(sim, a))
 		var eff: StringName = a.effect
@@ -301,14 +325,43 @@ func _build_upgrades() -> void:
 		Tip.bind_all(row, spec)
 		_attr_rows[a.id] = row
 
-var _prestige_avail: Label
+const HUD_NAMES: Dictionary = {&"rp": "RP"}   ## short row labels; tooltips and the gallery keep the full name
+var _perk_head: Label
+var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
+var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
+
+
+## "[icon] 793" in the stat's colour, with the stat tooltip. Returns the box; the value label is in _cur_vals.
+func _currency_badge(parent: Control, sid: StringName) -> HBoxContainer:
+	var b := HBoxContainer.new()
+	b.add_theme_constant_override("separation", 3)
+	parent.add_child(b)
+	var ic := TextureRect.new()
+	ic.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
+	ic.custom_minimum_size = Vector2(16, 16)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(ic)
+	var v := Label.new()
+	v.add_theme_color_override("font_color", StatStyle.color(sid))
+	b.add_child(v)
+	_cur_vals[sid] = v
+	var nm: String = (sim.stat_defs[sid] as StatDef).display_name
+	Tip.bind_all(b, func() -> Variant: return TipText.stat(sid, nm, _balance(sid).format()))
+	return b
+
+
+## What the player can spend of a currency: unspent Prestige, or the Rebirth Points in hand.
+func _balance(sid: StringName) -> BigNum:
+	return sim.rp_available() if sid == &"rp" else sim.prestige_available()
 
 
 ## A row asked to buy. The sim decides; the row plays the animation only if it went through.
 func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
 		var row: UpgradeRow = _attr_rows[aid]
-		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))
+		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
 		# A tooltip already showing (the pointer is on the button) must pick up the new level.
 		for c: Node in [row] + row.get_children():
 			if c is Control:
@@ -443,6 +496,9 @@ func _refresh() -> void:
 	if slag_box != null:
 		var cz: ZoneDef = sim.current_zone()
 		slag_box.visible = (cz != null and cz.id == &"zone2") or not sim.get_stat(&"slag").is_zero()
+	var rp_box: Control = _row_boxes.get(&"rp") as Control
+	if rp_box != null:   # Rebirth Points show once you have rebirthed (or hold some)
+		rp_box.visible = GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
@@ -457,7 +513,14 @@ func _refresh() -> void:
 	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
-		_prestige_avail.text = "Prestige to spend: %s" % sim.prestige_available().format()
+		for sid: StringName in _cur_vals:
+			(_cur_vals[sid] as Label).text = _balance(sid).format()
+		var show_rp: bool = sim.rebirth_count > 0 or not sim.rp_available().is_zero()
+		(_cur_badges[&"rp"] as Control).visible = show_rp
+		if _perk_head != null:
+			_perk_head.visible = show_rp
+		for aid2: StringName in _attr_rows:
+			(_attr_rows[aid2] as Control).visible = show_rp or sim.attribute_defs[aid2].currency != &"rp"
 		for aid: StringName in _attr_rows:
 			(_attr_rows[aid] as UpgradeRow).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
 

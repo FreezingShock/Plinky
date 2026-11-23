@@ -49,7 +49,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var p: Vector2 = world.get_local_mouse_position()  # world-local texels; the world node is scaled and panned by the camera
 		# Same rule as TexelWalker: clamp to its bounds, then to the nearest walkable texel, so the ring never
 		# sits on a cliff face or in water the walker cannot reach.
-		_target = WalkMask.nearest(Vector2(
+		_target = WalkMask.nearest_inset(Vector2(
 			clampf(p.x, TexelWalker.bounds.position.x, TexelWalker.bounds.end.x),
 			clampf(p.y, TexelWalker.bounds.position.y, TexelWalker.bounds.end.y)))
 		_active = true

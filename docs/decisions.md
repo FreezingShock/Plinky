@@ -411,3 +411,18 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Not run in-engine: no Godot in the cloud. CI runs the headless tests and sim; the PC pass should judge the bar at 1x and 3x, the flash and the tooltip.
 
 - Fix (v0.14.1): the stage-up pop grew the stage name from 14 to 16 pt, which made the row taller and pushed the bar to the panel border. Removed; stage-ups are colour and frame flash only, and the stage label has a fixed minimum width.
+
+## 2026-11-23 Hold-to-buy and Rebirth Points (v0.16.0)
+- Hold-to-buy: holding an Upgrades Buy button (mouse, Enter/Space or pad confirm) keeps buying, after a 0.35 s delay, one level per 0.2 s speeding up to 0.04 s over a few seconds (`core/hold_repeat.gd`, pure and tested). It stops the moment the next level is unaffordable or maxed. Repeats play a light animation (pip pop and a quiet click; no squash, flying cost or number tick). The gallery detail page Buy is still click-only.
+- Header: "Prestige to spend: N" became right-aligned balances on the title row, icon plus value in the stat colour (RP then Prestige), with stat tooltips. The gallery Attributes sub line reads "N Prestige   N RP".
+- Rebirth Points (RP) are a new currency, `content/stats/rp.tres`. Each rebirth pays `rp_base + rp_growth x rebirths done` (1 + 0.1 per rebirth, rounded down, GameConfig). RP is a balance (spending lowers it), never resets, is not income, and does not touch the Multiplier: rebirths still only boost Multiplier gain. Shown in the HUD currency panel as "RP" once you have rebirthed, in the Stats gallery as Rebirth Points, and in the Rebirth tooltip.
+- What RP buys (default pick, open to change): a "Rebirth perks" group at the bottom of Upgrades, three attributes with `currency = rp`: Pad lore (+5% pad XP per level, cap 10), Lucky streak (+5% luck, cap 10), Deep sleep (+0.5 h offline cap, cap 8). They use existing effects, so no new systems, and Prestige upgrades are untouched. The headless balance sim never buys them, so the Larkmoor gate stays at about 57.5 min.
+- Save v4: a v3 save gets RP backfilled for the rebirths it already did (`rp_backfill` flag set by the migration, read by Sim.from_dict).
+- World popups ("+93.3") used to draw over open menus because the popup overlay sits above the HUD. They are now hidden while their spawn point is under a centred menu panel (`PopupNumber.under_menu`, set by the HUD).
+- Checked here with the real engine headless (tests, sim, boot) and a software-GL capture of the header. Not run: the PC pass should judge the hold feel with a real mouse and pad, and the RP row in the HUD at Wide.
+## 2026-11-23: Ember Quarry map redesign
+- Nathan: no rock in front of the camera cut off by the frame; the map should face the camera with a path and areas in all directions around the origin, and a real gate. The near rim of the bowl is now a low berm (`rim_scale` falls to 0.1 toward the camera) so the plateau shows whole; the tall rim stays at the back and sides.
+- Layout (`tools/art/gen_zone2.py`): hub plaza at the middle (spawn), main road south to north ending at a stone landing under the gate, branches west, east and north-west to the three pads, vents between. Pads, vents and spawn are still snapped to visible ground.
+
+## Galleries overhaul (colour, Title Case, short labels, Rebirth Perks)
+- Cards take StatStyle colour via row["color_id"] (attribute effect, or rp for perks). Card labels use row["short"] (SHORT dict, max 12 chars); a test enforces it. Perks are grouped by currency == rp. Icons rest/lore/fortune added to gen_icons_v3.py. RP value floors to a whole number.

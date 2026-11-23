@@ -22,6 +22,9 @@ static func of(sim: Sim, id: StringName, is_attribute: bool = false) -> Array[Di
 		&"reb": _reb(sim, rows)
 		&"slag": _pads_paying(sim, &"slag", rows)
 		&"prestige": _prestige(sim, rows)
+		&"rp":
+			rows.append(_r("Next rebirth", "+%d" % sim.rp_for_rebirth(sim.rebirth_count), "Each rebirth pays a little more than the last.", "action"))
+			rows.append(_r("To spend", sim.rp_available().format(), "Spend it on Rebirth perks in Upgrades.", "total"))
 		&"crit_chance":
 			_attr_row(sim, &"crit_chance", "Crit chance attribute", rows)
 			rows.append(_r("Pad mastery", "+%s%% on your best pad" % StatIndex._trim(_best(sim, true) * 100.0), "Press a pad often to raise its mastery. Each level adds crit chance on that pad.", "mastery"))
@@ -100,10 +103,10 @@ static func _pads_paying(sim: Sim, reward: StringName, rows: Array[Dictionary]) 
 static func _attribute(sim: Sim, a: AttributeDef) -> Array[Dictionary]:
 	var lv: int = sim.attr_level(a.id)
 	var rows: Array[Dictionary] = []
-	rows.append(_r("Levels bought", "Lv %d/%d" % [lv, a.cap], "Spend Prestige in Upgrades.", "attribute"))
+	rows.append(_r("Levels bought", "Lv %d/%d" % [lv, a.cap], "Spend %s in Upgrades." % UpgradeText.currency_name(a), "attribute"))
 	rows.append(_r("Current bonus", StatIndex.effect_text(a, float(lv) * a.per_level), "Each level adds " + StatIndex.effect_text(a, a.per_level) + ".", "attribute"))
 	if lv < a.cap:
-		rows.append(_r("Next level", sim.attribute_cost(a.id).format() + " Prestige", "Earn Prestige by rebirthing.", "prestige"))
+		rows.append(_r("Next level", sim.attribute_cost(a.id).format() + " " + UpgradeText.currency_name(a), "Earn it by rebirthing.", "prestige"))
 	return rows
 
 
@@ -111,7 +114,7 @@ static func _attr_row(sim: Sim, effect: StringName, label: String, rows: Array[D
 	var total: float = sim.effect_total(effect)
 	for a: AttributeDef in sim.attribute_defs.values():
 		if a.effect == effect:
-			rows.append(_r(label, StatIndex.effect_text(a, total), "Spend Prestige in Upgrades (%d/%d)." % [sim.attr_level(a.id), a.cap], "attribute"))
+			rows.append(_r(label, StatIndex.effect_text(a, total), "Spend %s in Upgrades (%d/%d)." % [UpgradeText.currency_name(a), sim.attr_level(a.id), a.cap], "attribute"))
 			return
 
 

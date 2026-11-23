@@ -21,6 +21,14 @@ static func value(a: AttributeDef, amount: float) -> String:
 	return "+%s%%" % _trim(amount * 100.0)
 
 
+## Name of the stat an upgrade is paid in.
+const CURRENCY_NAMES: Dictionary = {&"prestige": "Prestige", &"rp": "Rebirth Points"}
+
+
+static func currency_name(a: AttributeDef) -> String:
+	return String(CURRENCY_NAMES.get(a.currency, "Prestige"))
+
+
 static func unit(a: AttributeDef) -> String:
 	return String(UNITS.get(a.effect, a.display_name.to_lower()))
 
@@ -29,12 +37,14 @@ static func lock_text(a: AttributeDef) -> String:
 	return "Unlocks at %d Rebirths" % a.unlock_rebirths
 
 
-## Upgrades in menu order: the ones open from the start first, then by Rebirths needed.
+## Upgrades in menu order: Prestige upgrades, then Rebirth Point perks. Each group: open from the start first, then by Rebirths needed.
 static func ordered(sim: Sim) -> Array[AttributeDef]:
 	var out: Array[AttributeDef] = []
 	for a: AttributeDef in sim.attribute_defs.values():
 		out.append(a)
 	out.sort_custom(func(x: AttributeDef, y: AttributeDef) -> bool:
+		if x.currency != y.currency:
+			return x.currency == &"prestige"
 		if x.unlock_rebirths != y.unlock_rebirths:
 			return x.unlock_rebirths < y.unlock_rebirths
 		if x.order != y.order:
@@ -54,7 +64,8 @@ static func state(sim: Sim, a: AttributeDef) -> Dictionary:
 		"unlocked": sim.attr_unlocked(a.id), "maxed": maxed,
 		"now": value(a, amount_at(a, lv)),
 		"next": "" if maxed else value(a, amount_at(a, lv + 1)),
-		"cost_text": cost.format(), "can_afford": not maxed and not sim.prestige_available().lt(cost),
+		"cost_text": cost.format(), "can_afford": not maxed and not sim.attribute_available(a).lt(cost),
+		"currency": a.currency, "currency_name": currency_name(a),
 		"lock": lock_text(a), "rebirths": sim.rebirth_count, "need": a.unlock_rebirths,
 	}
 
@@ -68,9 +79,9 @@ static func tip(s: Dictionary, effect: StringName) -> Dictionary:
 	elif bool(s["maxed"]):
 		hint = "Max level."
 	elif bool(s["can_afford"]):
-		hint = "Costs %s Prestige." % s["cost_text"]
+		hint = "Costs %s %s." % [s["cost_text"], s["currency_name"]]
 	else:
-		hint = "Need %s Prestige." % s["cost_text"]
+		hint = "Need %s %s." % [s["cost_text"], s["currency_name"]]
 	var title: String = "%s %d/%d" % [s["name"], s["level"], s["cap"]]
 	if bool(s["unlocked"]) and not bool(s["maxed"]):
 		body += "\nNow %s, next %s %s." % [s["now"], s["next"], s["unit"]]

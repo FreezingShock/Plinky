@@ -107,7 +107,7 @@ func validate() -> PackedStringArray:
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
-	for key: StringName in [config.prestige_source_stat, config.prestige_stat]:
+	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat]:
 		if not stat_defs.has(key):
 			errs.append("config: unknown stat %s" % key)
 	return errs
@@ -604,12 +604,41 @@ func try_rebirth() -> bool:
 		if s.resets_on_rebirth:
 			_set_stat(s.id, BigNum.from_float(s.start))
 	_set_stat(config.prestige_stat, get_stat(config.prestige_stat).add(gained))
+	_set_stat(config.rp_stat, get_stat(config.rp_stat).add(BigNum.from_float(float(rp_for_rebirth(rebirth_count)))))
 	rebirth_count += 1
 	relics.set_rebirths(rebirth_count)
 	_set_heat(0.0)
 	_flush()
 	rebirth_done.emit(gained)
 	return true
+
+
+## Rebirth Points paid by the rebirth that follows `done` earlier ones: rp_base + rp_growth * done, rounded down, at least 1.
+func rp_for_rebirth(done: int) -> int:
+	return maxi(1, int(floorf(config.rp_base + config.rp_growth * float(done))))
+
+
+## Everything `count` rebirths have paid in total. Used to backfill saves from before Rebirth Points.
+func rp_total_for(count: int) -> int:
+	var n: int = 0
+	for i: int in count:
+		n += rp_for_rebirth(i)
+	return n
+
+
+## What the next rebirth would pay, or 0 while it is not available.
+func rp_gain_preview() -> int:
+	return rp_for_rebirth(rebirth_count) if can_rebirth() else 0
+
+
+## Rebirth Points in hand.
+func rp_available() -> BigNum:
+	return get_stat(config.rp_stat)
+
+
+## What an attribute is paid with, as a balance: Prestige earned and not yet spent, or Rebirth Points.
+func attribute_available(a: AttributeDef) -> BigNum:
+	return rp_available() if a.currency == config.rp_stat else prestige_available()
 
 
 ## Prestige earned and not yet spent on attributes. prestige_mult uses lifetime prestige.
@@ -629,9 +658,12 @@ func buy_attribute(attr_id: StringName) -> bool:
 	if a == null or attr_level(attr_id) >= a.cap or not attr_unlocked(attr_id):
 		return false
 	var cost: BigNum = attribute_cost(attr_id)
-	if prestige_available().lt(cost):
+	if attribute_available(a).lt(cost):
 		return false
-	prestige_spent = prestige_spent.add(cost)
+	if a.currency == config.rp_stat:
+		_set_stat(config.rp_stat, rp_available().sub(cost).max_zero())
+	else:
+		prestige_spent = prestige_spent.add(cost)
 	attr_levels[attr_id] = attr_level(attr_id) + 1
 	attribute_bought.emit(attr_id, attr_level(attr_id))
 	return true
@@ -756,6 +788,8 @@ func from_dict(d: Dictionary) -> bool:
 			if stat_defs.has(id):
 				stats[id] = BigNum.from_variant((s as Dictionary)[k], BigNum.zero()).max_zero()
 	prestige_spent = BigNum.from_variant(d.get("prestige_spent"), BigNum.zero()).max_zero()
+	if bool(d.get("rp_backfill", false)):   # save v4: rebirths done before Rebirth Points existed paid out retroactively
+		stats[config.rp_stat] = BigNum.from_float(float(rp_total_for(int(d.get("rebirth_count", 0)))))
 	var z: StringName = StringName(str(d.get("zone", "")))
 	if zone_defs.has(z):
 		zone_id = z

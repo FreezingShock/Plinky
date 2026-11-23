@@ -9,6 +9,18 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.16.1 - 2026-11-23
+- Stats and Attributes galleries overhaul: every card outline and name wears its stat's colour (brighter, solid on hover or focus); maxed attributes read a gold MAX; all names in Title Case; long names get a short card label (Rebirth Pts) so nothing clips, cards are 76 px wide; RP shows as a whole number; the three Rebirth Perks sit under their own Rebirth Perks header, each with its own icon (Deep Sleep, Pad Lore, Lucky Streak); the detail header frame and name use the stat colour.
+
+## 0.16.0 - 2026-11-23
+- Hold a Buy button in Upgrades to keep buying, faster the longer you hold. The Upgrades header shows Prestige as an icon and value on the right. New currency: Rebirth Points, paid on every rebirth and spent on Rebirth perks (Pad lore, Lucky streak, Deep sleep). World popups no longer draw over open menus. Save format v4.
+
+## 0.15.0 - 2026-11-23
+- Ember Quarry redesigned as a whole map facing the camera: a hub plaza at the middle where you spawn, a main road to the gate and branches to the three pads, ground in every direction, no rock wall in front of the camera; the gate gets a dark recess that glows when open.
+
+## 0.14.7 - 2026-11-23
+- Ember Quarry: the near cliff face is now layered basalt strata with ember seams, a lip highlight and a fall-off to dark; pads and the spawn sit well back from the lip; walk clicks near a ledge land a few texels back from the edge.
+
 ## 0.14.6 - 2026-11-23
 - Stats and Attributes window is centred by the HUD, so it stays centred at Wide and other view sizes; the detail header keeps a minimum width for the value so a long name can't clip it.
 
