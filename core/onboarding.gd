@@ -22,7 +22,8 @@ const TIPS: Array[Dictionary] = [
 	{"id": &"critter", "title": "Golden critter", "urgent": true},
 	{"id": &"gate_open", "title": "Gate open", "urgent": true},
 	{"id": &"rebirth_button", "title": "Rebirth", "urgent": true},
-	{"id": &"upgrades", "title": "Prestige", "urgent": true},
+	{"id": &"bloom", "title": "Bloom", "urgent": true},
+	{"id": &"upgrades", "title": "Upgrades", "urgent": true},
 	{"id": &"relic", "title": "Relic found", "urgent": true},
 	{"id": &"clover_row", "title": "Clover pads", "urgent": false},
 	{"id": &"walk", "title": "Momentum", "urgent": false},
@@ -80,7 +81,7 @@ func _condition(feature: StringName) -> bool:
 		F_REBIRTH_BUTTON:
 			return rebirthed or sim.can_rebirth()
 		F_UPGRADES:
-			return rebirthed or not sim.prestige_available().is_zero()
+			return rebirthed or not sim.prestige_available().is_zero() or sim.bloom_count >= 1 or sim.can_bloom()
 		F_RELICS:
 			return sim.relic_drops >= 1 or not sim.relics.owned.is_empty()
 	return false
@@ -146,12 +147,14 @@ func _tip_ready(tip: StringName) -> bool:
 		&"critter":
 			return sim.critter_active and sim.press_count >= 1
 		&"rebirth_button":
-			return _latched(F_REBIRTH_BUTTON)
+			return _latched(F_REBIRTH_BUTTON) and sim.rebirth_here()   # the meadow runs on Bloom; this tip waits for Zone 2
 		&"gate_open":
 			var z: ZoneDef = sim.current_zone()
 			return z != null and z.next_zone != &"" and sim.is_gate_open(z.id)
+		&"bloom":
+			return sim.can_bloom()
 		&"upgrades":
-			return _latched(F_UPGRADES)
+			return _latched(F_UPGRADES) and sim.rebirth_here()
 	return false
 
 
@@ -212,6 +215,8 @@ func tip_text(tip: StringName) -> String:
 		&"gate_open":
 			var nz: ZoneDef = sim.zone_defs.get(z.next_zone) as ZoneDef if z != null else null
 			return "The gate is open. Walk to it to enter %s." % (nz.display_name if nz != null else "the next zone")
+		&"bloom":
+			return "The meadow can Bloom now. It resets your flowers and pays Seeds, and every pad pays %d%% more for good. Spend Seeds on Bloom gifts in Upgrades [Tab]. Open gates stay open." % int(roundf(sim.config.bloom_reward_per_bloom * 100.0))
 		&"upgrades":
 			return "Prestige is yours to spend. Open Upgrades [Tab] for permanent boosts."
 	return ""

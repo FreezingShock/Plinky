@@ -24,6 +24,7 @@ var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
 var _rebirth: ExpandChip
+var _bloom: ExpandChip
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
@@ -214,10 +215,15 @@ static func hud_stat_ids(sim: Sim) -> Array[StringName]:
 	return ids
 
 
-## Whether a stat row belongs in the current zone (Prestige and Rebirth Points always do).
+## Whether a stat row belongs in the current zone. Prestige and Rebirth Points show where Rebirth runs (not the meadow),
+## Seeds once a Bloom has paid them.
 func _row_in_zone(sid: StringName) -> bool:
 	var d: StatDef = sim.stat_defs.get(sid) as StatDef
-	return d == null or sid == &"prestige" or sid == &"rp" or d.in_zone(sim.zone_id)
+	if sid == &"prestige" or sid == &"rp":
+		return sim.rebirth_here()
+	if sid == &"seeds":
+		return sim.bloom_count > 0 or not sim.get_stat(&"seeds").is_zero()
+	return d == null or d.in_zone(sim.zone_id)
 
 
 ## Big jumps in a stat float up beside its counter. The first stat is left out: every press already pops its own number.
@@ -260,6 +266,21 @@ func _build_clock() -> void:
 	gate(_clock_widget, Onboarding.F_DEWDROP)
 
 
+## Bloom asks first too (the same Settings switch). The numbers are read when it is pressed.
+func _on_bloom_pressed() -> void:
+	if not sim.can_bloom():
+		return
+	if not ModalCard.rebirth_confirm:
+		GameState.try_bloom()
+		return
+	var lines: Array = [
+		["Resets your Sunlight and every flower.", StatStyle.PAPER],
+		["+%d Seeds" % sim.bloom_gain_preview(), StatStyle.color(&"seeds")],
+		["Every pad pays %d%% more, for good." % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), StatStyle.gain()],
+	]
+	_modal.open("Bloom?", lines, "Bloom", "Not yet", func() -> void: GameState.try_bloom())
+
+
 ## Rebirth asks first (Settings > Gameplay > Confirm rebirth turns that off). The numbers are read when it is pressed.
 func _on_rebirth_pressed() -> void:
 	if not sim.can_rebirth():
@@ -285,6 +306,10 @@ func _build_bottom() -> void:
 	_rebirth.pressed.connect(_on_rebirth_pressed)
 	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format(), str(sim.rp_gain_preview()) if sim.can_rebirth() else ""))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
+	_bloom = _chip(h, "seeds", "Bloom", "Reset the meadow for Seeds.")
+	_bloom.pressed.connect(_on_bloom_pressed)
+	Tip.bind(_bloom, func() -> Variant: return TipText.bloom(sim.can_bloom(), sim.bloom_gain_preview(), "+%d%%" % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), "Reach %s %s." % [BigNum.from_float(sim.config.bloom_seed_ref).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]))
+	_bloom.visible = false
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
 	up.pressed.connect(toggle_upgrades)
@@ -339,7 +364,7 @@ func _build_upgrades() -> void:
 	title.text = "Upgrades"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	for sid: StringName in [&"rp", &"prestige"]:   # right-aligned balances, the one on the far right is Prestige
+	for sid: StringName in [&"seeds", &"rp", &"prestige"]:   # right-aligned balances, the one on the far right is Prestige
 		_cur_badges[sid] = _currency_badge(head, sid)
 	var x_gap := Control.new()   # keeps the balances clear of the close X in the corner
 	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
@@ -356,13 +381,13 @@ func _build_upgrades() -> void:
 	scroll.add_child(list)
 	var group: StringName = &"prestige"
 	for a: AttributeDef in UpgradeText.ordered(sim):
-		if a.currency != group:   # a small heading where the Rebirth Point perks start
+		if a.currency != group:   # a small heading where each perk group starts
 			group = a.currency
 			var gh := Label.new()
-			gh.text = "REBIRTH PERKS"
-			gh.add_theme_color_override("font_color", StatStyle.color(&"rp"))
+			gh.text = String(UpgradeText.GROUP_HEADS.get(group, String(group).to_upper()))
+			gh.add_theme_color_override("font_color", StatStyle.color(group))
 			list.add_child(gh)
-			_perk_head = gh
+			_group_heads[group] = gh
 		var row := UpgradeRow.new()
 		list.add_child(row)
 		row.setup(a)
@@ -377,7 +402,7 @@ func _build_upgrades() -> void:
 		_attr_rows[a.id] = row
 
 const HUD_NAMES: Dictionary = {&"rp": "RP", &"clover": "Clover", &"heather": "Heather", &"foxglove": "Foxglove", &"starbloom": "Starbloom"}   ## short row labels; tooltips and the gallery keep the full name
-var _perk_head: Label
+var _group_heads: Dictionary = {}   # currency stat id -> the small heading above its upgrades
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
 
@@ -405,6 +430,8 @@ func _currency_badge(parent: Control, sid: StringName) -> HBoxContainer:
 
 ## What the player can spend of a currency: unspent Prestige, or the Rebirth Points in hand.
 func _balance(sid: StringName) -> BigNum:
+	if sid == &"seeds":
+		return sim.get_stat(&"seeds")
 	return sim.rp_available() if sid == &"rp" else sim.prestige_available()
 
 
@@ -552,7 +579,7 @@ func _refresh() -> void:
 			(_row_boxes[sid2] as Control).visible = _row_in_zone(sid2)
 	var rp_box: Control = _row_boxes.get(&"rp") as Control
 	if rp_box != null:   # Rebirth Points show once you have rebirthed (or hold some)
-		rp_box.visible = GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
+		rp_box.visible = GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (sim.rebirth_count > 0 or not sim.rp_available().is_zero()) and sim.rebirth_here()
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
@@ -565,16 +592,19 @@ func _refresh() -> void:
 		_prestige_label.text = "x%s" % sim.prestige_mult().format()
 	_rebirth.disabled = not sim.can_rebirth()
 	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need %s %s)" % [BigNum.from_float(sim.config.rebirth_min_value).format(), (sim.stat_defs[sim.config.prestige_source_stat] as StatDef).display_name]
+	_bloom.visible = sim.can_bloom() or sim.bloom_count > 0 or (sim.bloom_unlocked() and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES))
+	_bloom.disabled = not sim.can_bloom()
+	_bloom.full_text = "Bloom (+%d Seeds)" % sim.bloom_gain_preview() if sim.can_bloom() else "Bloom (need %s %s)" % [BigNum.from_float(sim.config.bloom_seed_ref).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:
 			(_cur_vals[sid] as Label).text = _balance(sid).format()
-		var show_rp: bool = sim.rebirth_count > 0 or not sim.rp_available().is_zero()
-		(_cur_badges[&"rp"] as Control).visible = show_rp
-		if _perk_head != null:
-			_perk_head.visible = show_rp
+		for cur: StringName in _cur_badges:
+			(_cur_badges[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
+		for cur2: StringName in _group_heads:
+			(_group_heads[cur2] as Control).visible = UpgradeText.group_shown(sim, cur2)
 		for aid2: StringName in _attr_rows:
-			(_attr_rows[aid2] as Control).visible = show_rp or sim.attribute_defs[aid2].currency != &"rp"
+			(_attr_rows[aid2] as Control).visible = UpgradeText.group_shown(sim, sim.attribute_defs[aid2].currency)
 		for aid: StringName in _attr_rows:
 			(_attr_rows[aid] as UpgradeRow).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
 
@@ -617,6 +647,8 @@ func gate(node: CanvasItem, feature: StringName) -> void:
 
 ## A gated stat row also has to belong to the current zone; any other gated node always does.
 func _gated_in_zone(node: CanvasItem) -> bool:
+	if node == _rebirth:   # Rebirth lives where Cash and Multiplier do; the meadow has Bloom
+		return sim.rebirth_here()
 	for sid: StringName in _gated_rows:
 		if _row_boxes.get(sid) == node:
 			return _row_in_zone(sid)

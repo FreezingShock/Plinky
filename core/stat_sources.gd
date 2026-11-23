@@ -18,6 +18,10 @@ static func of(sim: Sim, id: StringName, is_attribute: bool = false) -> Array[Di
 		return _attribute(sim, sim.attribute_defs[id] as AttributeDef)
 	match id:
 		&"prestige": _prestige(sim, rows)
+		&"seeds":
+			rows.append(_r("Next Bloom", "+%d" % sim.bloom_gain_preview(), "Bloom pays more the higher your %s got." % (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name, "action"))
+			rows.append(_r("Blooms done", str(sim.bloom_count), "Each Bloom makes every pad pay %d%% more for good." % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), "total"))
+			rows.append(_r("To spend", sim.get_stat(&"seeds").format(), "Spend it on Bloom gifts in Upgrades.", "total"))
 		&"rp":
 			rows.append(_r("Next rebirth", "+%d" % sim.rp_for_rebirth(sim.rebirth_count), "Each rebirth pays a little more than the last.", "action"))
 			rows.append(_r("To spend", sim.rp_available().format(), "Spend it on Rebirth perks in Upgrades.", "total"))

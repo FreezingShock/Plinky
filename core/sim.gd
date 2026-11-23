@@ -9,6 +9,8 @@ signal button_denied(button_id: StringName)
 signal zone_entered(zone_id: StringName)
 signal gate_opened(gate_id: StringName)
 signal rebirth_done(prestige_gained: BigNum)
+## A Bloom was done; the argument is the Seeds it paid.
+signal bloom_done(seeds_gained: int)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)
 ## Streak or critter payout. kind is &"streak" or &"critter"; gains is StringName -> BigNum.
@@ -51,6 +53,7 @@ var zones_entered: Dictionary = {}   # zone id -> true once its entry grants wer
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
+var bloom_count: int = 0    # Blooms done: each adds a permanent bonus to every pad reward
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 ## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
 ## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
@@ -134,7 +137,7 @@ func validate() -> PackedStringArray:
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
-	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat]:
+	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat, config.bloom_stat, config.bloom_source_stat]:
 		if not stat_defs.has(key):
 			errs.append("config: unknown stat %s" % key)
 	return errs
@@ -152,6 +155,7 @@ func new_game() -> void:
 	play_seconds = 0.0
 	press_count = 0
 	rebirth_count = 0
+	bloom_count = 0
 	relic_drops = 0
 	mastery.clear()
 	run_stats.clear()
@@ -222,7 +226,7 @@ func income_per_second(stat_id: StringName) -> BigNum:
 			boost = boost.mul(get_stat(s.id).mul(BigNum.from_float(s.income_factor_per_unit)).add(BigNum.one()))
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
-	rm = rm.mul(BigNum.from_float(1.0 + momentum_bonus()))
+	rm = rm.mul(BigNum.from_float((1.0 + momentum_bonus()) * (1.0 + effect_total(&"sun_rate"))))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
@@ -345,7 +349,7 @@ func luck_level() -> int:
 
 ## Multiplier on every press reward from the Pad yield attribute.
 func pad_yield_mult() -> float:
-	return 1.0 + effect_total(&"pad_yield")
+	return 1.0 + effect_total(&"pad_yield") + float(bloom_count) * config.bloom_reward_per_bloom
 
 
 ## True once the player has rebirthed enough times for this attribute to be bought. Levels bought stay when saves load.
@@ -685,6 +689,54 @@ func dev_force_zone(z_id: StringName) -> bool:
 	return true
 
 
+## True in the zones where Rebirth, Prestige and Rebirth Points are shown (the meadow runs on Bloom instead).
+func rebirth_here() -> bool:
+	return String(zone_id) in config.rebirth_zones
+
+
+## Bloom opens with the Larkmoor gate, and pays once the source stat is high enough for the first payout.
+func bloom_unlocked() -> bool:
+	return bool(gates_open.get(config.bloom_gate_zone, false))
+
+
+## Seeds a Bloom would pay now (0 until it is available).
+func bloom_gain_preview() -> int:
+	if not bloom_unlocked():
+		return 0
+	var v: float = maxf(0.0, get_stat(config.bloom_source_stat).to_float())
+	var n: int = int(floorf(config.bloom_seed_scale * sqrt(v / config.bloom_seed_ref)))
+	return n if float(n) >= config.bloom_min_seeds else 0
+
+
+func can_bloom() -> bool:
+	return bloom_gain_preview() > 0
+
+
+## Sunlight a run starts with after a Bloom: the stat's start plus the Head start gift.
+func bloom_start_sunlight() -> BigNum:
+	return BigNum.from_float((stat_defs[&"sunlight"] as StatDef).start + effect_total(&"head_start"))
+
+
+## Resets every stat flagged resets_on_bloom, pays Seeds and counts the Bloom. Gates, tiers, relics, mastery, RP and old
+## Prestige stay.
+func try_bloom() -> bool:
+	if not can_bloom():
+		return false
+	var gained: int = bloom_gain_preview()
+	for s: StatDef in stat_defs.values():
+		if s.resets_on_bloom:
+			_set_stat(s.id, BigNum.from_float(s.start))
+	if stat_defs.has(&"sunlight"):
+		_set_stat(&"sunlight", bloom_start_sunlight())
+	_set_stat(config.bloom_stat, get_stat(config.bloom_stat).add(BigNum.from_float(float(gained))))
+	bloom_count += 1
+	_set_heat(0.0)
+	_flush()
+	run_stats.mark_rebirth()
+	bloom_done.emit(gained)
+	return true
+
+
 func can_rebirth() -> bool:
 	return get_stat(config.prestige_source_stat).gte(BigNum.from_float(config.rebirth_min_value))
 
@@ -748,6 +800,8 @@ func rp_available() -> BigNum:
 
 ## What an attribute is paid with, as a balance: Prestige earned and not yet spent, or Rebirth Points.
 func attribute_available(a: AttributeDef) -> BigNum:
+	if a.currency == config.bloom_stat:
+		return get_stat(config.bloom_stat)
 	return rp_available() if a.currency == config.rp_stat else prestige_available()
 
 
@@ -772,6 +826,8 @@ func buy_attribute(attr_id: StringName) -> bool:
 		return false
 	if a.currency == config.rp_stat:
 		_set_stat(config.rp_stat, rp_available().sub(cost).max_zero())
+	elif a.currency == config.bloom_stat:
+		_set_stat(config.bloom_stat, get_stat(config.bloom_stat).sub(cost).max_zero())
 	else:
 		prestige_spent = prestige_spent.add(cost)
 	attr_levels[attr_id] = attr_level(attr_id) + 1
@@ -900,6 +956,7 @@ func to_dict() -> Dictionary:
 		"play_seconds": play_seconds,
 		"press_count": press_count,
 		"rebirth_count": rebirth_count,
+		"bloom_count": bloom_count,
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
 		"ui_flags": ui_flags.duplicate(true),
@@ -958,6 +1015,7 @@ func from_dict(d_in: Dictionary) -> bool:
 	play_seconds = float(d.get("play_seconds", 0.0))
 	press_count = int(d.get("press_count", 0))
 	rebirth_count = int(d.get("rebirth_count", 0))
+	bloom_count = maxi(0, int(d.get("bloom_count", 0)))
 	relic_drops = int(d.get("relic_drops", 0))
 	_last_drop_at = float(d.get("last_drop_at", play_seconds))
 	var uf: Variant = d.get("ui_flags", {})
