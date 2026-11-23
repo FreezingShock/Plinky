@@ -7,8 +7,9 @@ mostly CPU: GDScript redraws and node count. Every number below is a budget to m
 ## Tools
 - **F3 overlay** (ui/perf_overlay.gd): fps, avg / p95 / worst frame over the last 240 frames, draw calls, nodes,
   script ms, VRAM, quality. Off by default, costs nothing while hidden.
-- **Benchmark** (tools/bench.gd): runs the real main scene through idle, presses (a pad press every 6 frames),
-  and zoom 4x at each quality, vsync off so the numbers are true cost. Writes shots/bench.json.
+- **Benchmark** (tools/bench.gd): runs the real main scene, meadow then Larkmoor, through idle at noon,
+  sunset, night and rain, then presses (a pad press every 6 frames) and zoom 4x, at each quality. It forces vsync and
+  the fps cap off after saved settings load, so the numbers are true cost. Writes shots/bench.json.
   ```
   godot --path . --script tools/bench.gd                        # real window: the numbers that count
   godot --path . --script tools/bench.gd -- --quality=low --frames=600
