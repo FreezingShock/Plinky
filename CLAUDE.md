@@ -29,7 +29,7 @@ Every code PR adds a CHANGELOG.md line and bumps the version with `python3 tools
 
 ## After every change
 1. godot --headless --path . --script tests/run.gd (run `godot --headless --import` once on a fresh checkout)
-2. godot --path . tools/screenshot.tscn, then look at the PNG
+2. godot --path . tools/play_shots.tscn (gameplay) or tools/hud_shot.tscn (HUD panel, `-- early|late`), then look at the PNG
 3. Commit only when tests pass
 
 ## Parallel work
