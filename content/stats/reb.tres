@@ -13,4 +13,4 @@ passive = false
 income_boost_stat = &""
 gain_boost_stat = &""
 prestige_boosts_income = false
-resets_on_rebirth = true
+resets_on_rebirth = false

@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.29.1 - 2026-11-23
+## 0.30.1 - 2026-11-23
 - Press popups now stack: a press folds into any live number of the same stat on the same pad or within 40 px (up to 1.2 s apart), so nearby numbers become one rising total instead of overlapping. Each number carries its stat name centred underneath in the stat's own colour (the number keeps the streak colour). The old floating "+N Stat" text beside the stats panel is gone, and streak and critter payouts use the same popup field.
+
+## 0.30.0 - 2026-11-23
+- The Ember Quarry is now a six-row forge ladder, Cinder, Ore, Slag, Ingot, Alloy and Emberheart: 18 pads climbing the terraces, each row opening the next, with new isometric voxel pad objects and per-row colours, tier buffs (1.25x and 1.5x) from Slag up, Rebirth that banks Ingots and only resets the quarry, and a small flat arrival purse. Old quarry saves migrate.
 
 ## 0.29.0 - 2026-11-23
 - HUD currency panel is now a compact strip: icon, small dim gain, and a value in the stat's colour. Names live in the instant tooltips. Rows appear once you have held that stat, and only the current zone's stats show. About a third of the old height.
