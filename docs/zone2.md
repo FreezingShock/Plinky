@@ -69,4 +69,4 @@ Playable, ready to swap. Verified by the PC thread only; the cloud thread could 
 
 
 ## Rework (v0.38.0)
-The quarry is now a 1400x760 world with six terraces, mesas, lava rivers, falls, pools and a moat with a bridge. See docs/decisions.md ("Ember Quarry rework") for the layout, the baked glow and the front-facing art direction. Source: `tools/art/gen_quarry.py`.
+The quarry is now a 1400x760 world with six terraces, mesas, lava rivers, falls, pools and a moat with a bridge. See docs/decisions/README.md ("Ember Quarry rework") for the layout, the baked glow and the front-facing art direction. Source: `tools/art/gen_quarry.py`.
