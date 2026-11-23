@@ -16,16 +16,19 @@ var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
 const STAT_NAME_SIZE: int = 16   ## stat names in the top-left panel; integer so Pixelify Sans stays crisp
+const STAT_RATE_SIZE: int = 8    ## the small "+x/s" or "xN" gain text left of each value
+const RATE_SAMPLE: String = "+99.99Qd/s"   ## widest gain text expected; sizes the gain column so values line up
 
 var sim: Sim
-var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
+var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
 var _rebirth: ExpandChip
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
-var _offline: Label
+var _modal: ModalCard            # rebirth confirm and the offline summary, centred
+var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
 var _attr_rows: Dictionary = {}   # attribute id -> UpgradeRow
@@ -58,14 +61,12 @@ func setup(p_sim: Sim) -> void:
 	_momentum = MomentumMeter.new()
 	add_child(_momentum)
 	_momentum.setup(sim)
-	_offline = Label.new()
-	_offline.theme_type_variation = &"CaptionLabel"
-	_offline.position = Vector2(8, 282)
-	_offline.custom_minimum_size.x = 440
-	_offline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_offline.visible = false
-	add_child(_offline)
+	_modal = ModalCard.new()
+	add_child(_modal)
+	_save_note = SaveIndicator.new()
+	add_child(_save_note)
 	var bus: Node = get_node("/root/EventBus")
+	_save_note.connect_bus(bus)
 	bus.offline_gained.connect(_on_offline)
 	var report: Dictionary = get_node("/root/Save").take_offline_report()
 	if not report.is_empty():
@@ -169,14 +170,21 @@ func _build_stats() -> void:
 		name_l.add_theme_font_size_override("font_size", STAT_NAME_SIZE)
 		name_l.add_theme_color_override("font_color", StatStyle.color(sid))   # same colour as the tooltip title
 		h.add_child(name_l)
+		# Gain text sits left of the value, small and centred on the row; the value stays centred when it is empty.
+		var rate := Label.new()
+		rate.theme_type_variation = &"TitleLabel"
+		rate.add_theme_font_size_override("font_size", STAT_RATE_SIZE)
+		rate.add_theme_color_override("font_color", RelicStyle.dim)
+		rate.custom_minimum_size.x = ceilf(name_font.get_string_size(RATE_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_RATE_SIZE).x)
+		rate.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(rate)
 		var val := RollValue.new()
 		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(val)
-		var rate := Label.new()
-		rate.add_theme_color_override("font_color", RelicStyle.dim)
-		h.add_child(rate)
 		_rows[sid] = [val, rate]
 		Tip.bind_all(h, func() -> Variant:
 			var inc: BigNum = sim.income_per_second(sid)
@@ -195,7 +203,12 @@ func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringN
 		return
 	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
 	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
-	PopupNumber.spawn_text(self, at, "+%s %s" % [amount.format(), stat_name], true)
+	var text: String = "+%s %s" % [amount.format(), stat_name]
+	if PressPopups.instance != null:
+		# The shared popup field keeps stat floats off each other (and off press numbers) by taking a free lane.
+		PressPopups.instance.label(StringName("stat_" + String(sid)), global_position + at + Vector2(40.0, 12.0), text, 0)
+	else:
+		PopupNumber.spawn_text(self, at, text, true)
 
 
 func _build_gate() -> void:
@@ -224,6 +237,21 @@ func _build_clock() -> void:
 	gate(_clock_widget, Onboarding.F_MULT)
 
 
+## Rebirth asks first (Settings > Gameplay > Confirm rebirth turns that off). The numbers are read when it is pressed.
+func _on_rebirth_pressed() -> void:
+	if not sim.can_rebirth():
+		return
+	if not ModalCard.rebirth_confirm:
+		GameState.try_rebirth()
+		return
+	var lines: Array = [
+		["Resets your Cash and pads.", StatStyle.PAPER],
+		["+%s Prestige" % sim.prestige_gain_preview().format(), StatStyle.color(&"prestige")],
+		["+%d Rebirth Points" % sim.rp_gain_preview(), StatStyle.color(&"rp")],
+	]
+	_modal.open("Rebirth?", lines, "Rebirth", "Not yet", func() -> void: GameState.try_rebirth())
+
+
 func _build_bottom() -> void:
 	var h := HBoxContainer.new()
 	h.position = Vector2(4, 334)
@@ -231,7 +259,7 @@ func _build_bottom() -> void:
 	h.add_theme_constant_override("separation", 4)
 	add_child(h)
 	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
-	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
+	_rebirth.pressed.connect(_on_rebirth_pressed)
 	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format(), str(sim.rp_gain_preview()) if sim.can_rebirth() else ""))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
@@ -462,14 +490,15 @@ func _place() -> void:
 			_gate_panel.position = gp
 		if _clock_widget != null:
 			_place_clock(gp.x)
-	if _offline != null and _offline.visible:
-		# Centred in the upper third, clear of the bottom-left momentum panel and the corner panels.
-		var ow: float = minf(440.0, frame.x - 16.0)
-		_offline.custom_minimum_size.x = ow
-		_offline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		var op := Vector2(roundf((frame.x - ow) * 0.5), roundf(frame.y * 0.2))
-		if _offline.position != op:
-			_offline.position = op
+	if _modal != null and _modal.visible:
+		var mp0: Vector2 = ((frame - _modal.size) * 0.5).floor()
+		mp0.y = minf(mp0.y, roundf(frame.y * 0.3))
+		if _modal.position != mp0:
+			_modal.position = mp0
+	if _save_note != null and _menu_chip != null:
+		var sp: Vector2 = Vector2(_menu_chip.position.x - _save_note.size.x - 6.0, frame.y - _save_note.size.y - 6.0).floor()
+		if _save_note.position != sp:
+			_save_note.position = sp
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
@@ -526,14 +555,30 @@ func _refresh() -> void:
 
 
 func _on_offline(seconds: float, gains: Dictionary) -> void:
-	var parts: PackedStringArray = PackedStringArray()
+	if seconds < 60.0 or gains.is_empty():
+		return
+	var lines: Array = [[_away_text(seconds), StatStyle.PAPER]]
 	for sid: StringName in gains:
-		parts.append("+%s %s" % [(gains[sid] as BigNum).format(), (sim.stat_defs[sid] as StatDef).display_name])
-	_offline.text = "Welcome back! %d min away: %s" % [int(seconds / 60.0), ", ".join(parts)]
-	_offline.visible = true
-	var t := create_tween()
-	t.tween_interval(5.0)
-	t.tween_callback(func() -> void: _offline.visible = false)
+		var g: BigNum = gains[sid]
+		if g.is_zero():
+			continue
+		lines.append(["+%s %s" % [g.format(), (sim.stat_defs[sid] as StatDef).display_name], StatStyle.color(sid)])
+	if seconds >= sim.offline_cap_seconds() - 1.0:
+		lines.append(["That is the most you can bank offline.", RelicStyle.dim])
+	if lines.size() < 2:
+		return
+	_modal.open("Welcome Back", lines, "Collect")
+
+
+## "You were away 2 h 5 min." Whole minutes, hours once there are any.
+static func _away_text(seconds: float) -> String:
+	var mins: int = int(seconds / 60.0)
+	if mins < 60:
+		return "You were away %d min." % mins
+	var hrs: int = floori(mins / 60.0)
+	if hrs < 48:
+		return "You were away %d h %d min." % [hrs, mins % 60]
+	return "You were away %d days %d h." % [floori(hrs / 24.0), hrs % 24]
 
 
 # ---------------------------------------------------------------- staged unlocks and tips

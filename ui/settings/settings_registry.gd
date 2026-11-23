@@ -165,6 +165,7 @@ static func _ensure() -> void:
 	_register_audio()
 	_register_display()
 	_register_gameplay()
+	_register_qol()
 	_register_access()
 	_register_controls()
 	_register_data()
@@ -360,6 +361,19 @@ static func _register_gameplay() -> void:
 	})
 
 
+static func _register_qol() -> void:
+	_add({
+		"id": &"save_indicator", "tab": "Gameplay", "label": "Save indicator", "kind": Kind.TOGGLE, "default": true,
+		"hint": "A small Saved note by the Menu button after each save. A failed save always shows.",
+		"apply": func(v: Variant) -> void: SaveIndicator.enabled = bool(v),
+	})
+	_add({
+		"id": &"confirm_rebirth", "tab": "Gameplay", "label": "Confirm rebirth", "kind": Kind.TOGGLE, "default": true,
+		"hint": "Ask before a rebirth resets your Cash and pads.",
+		"apply": func(v: Variant) -> void: ModalCard.rebirth_confirm = bool(v),
+	})
+
+
 # ---- accessibility
 static func _register_access() -> void:
 	_add({
@@ -420,7 +434,7 @@ static func _register_controls() -> void:
 	for row: Array in Keybinds.ACTIONS:
 		_add({
 			"id": StringName("key_" + String(row[0])), "tab": "Controls", "label": String(row[1]), "kind": Kind.KEY, "action": row[0],
-			"hint": "Click, then press the new key. Esc cancels. A key already in use swaps with that action.",
+			"hint": "Click, then press the new key. Hold Shift, Ctrl or Alt for a combo, or tap one alone to bind it. Esc cancels. A key already in use swaps with that action.",
 		})
 	_add({"id": &"keys_reset", "tab": "Controls", "label": "Default keys", "kind": Kind.ACTION, "run": _keys_reset})
 
