@@ -5,9 +5,14 @@ func run(t: Object) -> void:
 	var c: Dictionary = MeadowSites.counts()
 	t.ok(bool(c["ground"]), "ground.png loads for surface lookups")
 	t.ok(int(c["wood"]) >= 6 and int(c["water"]) >= 2 and int(c["trees"]) >= 10, "pads, gate, water and trees are read from placements")
+	WalkMask.use("")
 	t.eq(MeadowSites.surface_at(Vector2(204.0, 245.5)), MeadowSites.WOOD, "a pad is wood")
+	t.eq(MeadowSites.surface_at(Vector2(204.0 + 12.0, 245.5)), MeadowSites.WOOD, "the pad's edge is still wood (TexelPad.HALF)")
+	t.ok(MeadowSites.surface_at(Vector2(204.0 + 16.0, 245.5 + 8.0)) != MeadowSites.WOOD, "past the plate is not wood")
 	t.eq(MeadowSites.surface_at(Vector2(330.0, 93.2)), MeadowSites.WOOD, "the gate is wood")
 	t.eq(MeadowSites.surface_at(Vector2(289.0, 209.0)), MeadowSites.SAND, "the path is sand")
+	t.eq(MeadowSites.surface_at(Vector2(318.0, 218.0)), MeadowSites.SAND, "path texel (318,218) is sand")
+	t.eq(MeadowSites.surface_at(Vector2(241.0, 193.0)), MeadowSites.GRASS, "meadow texel (241,193) is grass")
 	t.eq(MeadowSites.surface_at(Vector2(175.0, 175.0)), MeadowSites.GRASS, "open meadow is grass")
 	t.ok(MeadowSites.surface_at(Vector2(-500.0, -500.0)) == MeadowSites.GRASS, "off the map falls back to grass")
 	var shore: float = MeadowSites.water_proximity(Vector2(415.0, 300.0))
@@ -26,3 +31,24 @@ func run(t: Object) -> void:
 	for i in 5:
 		t.ok(ResourceLoader.exists("res://assets/audio/sfx/bird_%d.ogg" % i), "bird_%d exists" % i)
 	t.ok(ResourceLoader.exists("res://assets/audio/amb/shore_amb.ogg"), "shore loop exists")
+
+	# Gains follow proximity. Drives the Audio autoload's own stepping, no frames needed.
+	var a: Node = Engine.get_main_loop().root.get_node_or_null("Audio")
+	t.ok(a != null, "Audio autoload present")
+	if a != null:
+		a.set_surroundings(0.9, 0.0)
+		for i in 40:
+			a.world_step(0.1)
+		var st: Dictionary = a.world_state()
+		t.ok(float(st["water"]) > 0.85, "shore gain rises to the target (%.2f)" % float(st["water"]))
+		t.ok(float(st["trees"]) < 0.01, "bird gain stays down away from trees")
+		t.ok(bool(st["shore_playing"]), "shore loop starts near water")
+		a.set_surroundings(0.0, 0.96)
+		for i in 40:
+			a.world_step(0.1)
+		st = a.world_state()
+		t.ok(float(st["water"]) < 0.01 and float(st["trees"]) > 0.9, "gains swap when the walker moves from shore to oaks")
+		t.ok(not bool(st["shore_playing"]), "shore loop stops away from water")
+		a.set_surroundings(0.0, 0.0)
+		for i in 40:
+			a.world_step(0.1)

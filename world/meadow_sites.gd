@@ -5,16 +5,18 @@ extends RefCounted
 ## Sources: placements3d.json (pads, gate, water, trees) and ground.png (the sand path is dithered
 ## in two cream colours, so sand is "enough cream texels around the foot").
 
-const PLACEMENTS: String = "res://assets/art/zone1/meadow3d/placements3d.json"
-const GROUND: String = "res://assets/art/zone1/meadow3d/ground.png"
+## Per zone: the data is read from the folder of the active walk mask (WalkMask.path), so it follows
+## the zone automatically. A zone scene folder holds placements3d.json and ground.png beside walkable.png.
+const PLACEMENTS_FILE: String = "placements3d.json"
+const GROUND_FILE: String = "ground.png"
 const GROUND_OFFSET: Vector2i = Vector2i(100, 60)   # same bleed as WalkMask.OFFSET
 
 const SAND_A: Color = Color8(242, 230, 160)
 const SAND_B: Color = Color8(246, 239, 217)
 const SAND_RADIUS: int = 2          # 5x5 window around the foot
 const SAND_MIN_FRACTION: float = 0.3
-const WOOD_RX: float = 11.0         # pad and gate plates are wood; ellipse matches the 2:1 view
-const WOOD_RY: float = 5.5
+const WOOD_RX: float = 14.0         # pad plates are wood: same half extents as TexelPad.HALF
+const WOOD_RY: float = 7.0
 const WATER_RANGE: float = 90.0     # texels from the shore where lapping fades to nothing
 const TREE_RANGE: float = 70.0      # texels from a trunk where birdsong fades to nothing
 const TREE_KINDS: Array[String] = ["oak", "pine"]
@@ -23,6 +25,7 @@ const GRASS: StringName = &"grass"
 const SAND: StringName = &"sand"
 const WOOD: StringName = &"wood"
 
+static var _dir: String = ""
 static var _loaded: bool = false
 static var _wood: Array[Vector2] = []
 static var _water: Array[Dictionary] = []     # {c: Vector2, r: Vector2, w: float}
@@ -31,10 +34,18 @@ static var _ground: Image = null
 
 
 static func _load() -> void:
-	if _loaded:
+	var dir: String = WalkMask.path.get_base_dir()
+	if _loaded and dir == _dir:
 		return
 	_loaded = true
-	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(PLACEMENTS))
+	_dir = dir
+	_wood.clear()
+	_water.clear()
+	_trees.clear()
+	_ground = null
+	var pfile: String = dir + "/" + PLACEMENTS_FILE
+	var gfile: String = dir + "/" + GROUND_FILE
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(pfile)) if FileAccess.file_exists(pfile) else null
 	if data is Dictionary:
 		for a: Variant in (data as Dictionary).get("anchors", []):
 			var d: Dictionary = a as Dictionary
@@ -51,8 +62,8 @@ static func _load() -> void:
 				var foot: Array = d.get("foot", []) as Array
 				if foot.size() == 2:
 					_trees.append(Vector2(float(foot[0]), float(foot[1])))
-	if ResourceLoader.exists(GROUND):
-		var tex: Texture2D = load(GROUND) as Texture2D
+	if ResourceLoader.exists(gfile):
+		var tex: Texture2D = load(gfile) as Texture2D
 		if tex != null:
 			_ground = tex.get_image()
 

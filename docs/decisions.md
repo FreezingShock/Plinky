@@ -119,3 +119,7 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
 - Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
 
+| 2026-11-23 | PC audio check fixes: ambience gains now step in `Audio.world_step(delta)` (called by _process, callable in tests) and shore/birds default on until a quarry zone turns them off | Probe saw gains stuck at 0 with proximity 0.9+. Cause was not provable without a run; the default removes any dependence on set_zone having fired, and the test now drives gains from proximity. |
+| 2026-11-23 | Wood plate = TexelPad.HALF (14x7) instead of 11x5.5 | The walker triggers a pad anywhere inside 14x7, so a step inside the pad must read wood. |
+| 2026-11-23 | (318,218) is sand and (241,193) is grass in ground.png (checked pixel by pixel); the PC probe's guesses were off, now pinned in tests | Surface classification itself was right. |
+| 2026-11-23 | MeadowSites reads placements3d.json and ground.png from the folder of the active walk mask, so every zone scene folder with those names gets its own sites with no main.gd change | Larkmoor (PR #49): keep those two file names beside walkable.png. Zones without them fall back to grass. |

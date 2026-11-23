@@ -35,7 +35,7 @@ var _music_active: int = 0
 var _amb: AudioStreamPlayer
 var _loading: AudioStreamPlayer
 var _shore: AudioStreamPlayer
-var _meadow_world: bool = false     # shore and birds only play in the meadow
+var _meadow_world: bool = true      # shore and birds play everywhere except the quarry (on until a quarry zone says otherwise)
 var _water_target: float = 0.0
 var _tree_target: float = 0.0
 var _water_gain: float = 0.0
@@ -255,6 +255,12 @@ func set_surroundings(water: float, trees: float) -> void:
 
 
 func _process(delta: float) -> void:
+	world_step(delta)
+
+
+## Fades the shore and bird layers toward their targets and plays chirps. _process calls it every
+## frame; tests call it directly.
+func world_step(delta: float) -> void:
 	var on: bool = _meadow_world
 	_water_gain = move_toward(_water_gain, _water_target if on else 0.0, delta * WORLD_FADE_PER_S)
 	_tree_gain = move_toward(_tree_gain, _tree_target if on else 0.0, delta * WORLD_FADE_PER_S)
@@ -271,6 +277,11 @@ func _process(delta: float) -> void:
 			play(StringName("bird_%d" % (randi() % BIRD_VARIANTS)), randf_range(0.85, 1.2), BIRD_DB + linear_to_db(0.3 + 0.7 * _tree_gain), BUS_AMB, false)
 	else:
 		_bird_clock = minf(_bird_clock, 1.5)
+
+
+## For tests and debugging: current shore and bird gains (0..1) and whether the shore loop is playing.
+func world_state() -> Dictionary:
+	return {"water": _water_gain, "trees": _tree_gain, "shore_playing": _shore.playing, "meadow": _meadow_world}
 
 
 func _start_shore() -> void:
