@@ -129,8 +129,12 @@ func spawn_occluders(parent: Node2D) -> void:
 			sp.texture = SkyCycle.padded(sp.texture)
 			sp.offset.x -= float(SkyCycle.SWAY_PAD)
 			sp.material = _sky.sway_material
+			if s.has("nrm"):
+				sp.material = _sky.prop_material(true, SkyCycle.padded(load(DIR + String(s.nrm)) as Texture2D))
 		elif _sky != null:
 			sp.material = _sky.rim_material
+			if s.has("nrm"):
+				sp.material = _sky.prop_material(false, load(DIR + String(s.nrm)) as Texture2D)
 		parent.add_child(sp)
 		if _shadows != null:
 			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))

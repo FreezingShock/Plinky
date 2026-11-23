@@ -12,6 +12,14 @@ uniform float enabled = 1.0;
 uniform vec2 rim_dir = vec2(-1.0, -1.0);
 uniform float rim_amount = 0.0;
 uniform vec3 rim_col : source_color = vec3(1.0, 0.95, 0.75);
+// Relight: per-sprite `nrm_tex` (tools/art/depth_pass.py) holds the baked normal, material and light. The shader moves
+// each texel's light by the change in N.L between the baked sun and `sun_dir`, then re-picks the colour from the
+// material's ramp with a Bayer dither, so props are lit from wherever the sun is. relight = 0 is off.
+#include "res://render/shaders/prop_ramps.gdshaderinc"
+uniform sampler2D nrm_tex : filter_nearest;
+uniform vec3 sun_dir = vec3(-0.45, 0.45, 0.85);
+uniform float relight = 0.0;
+const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);   // LDIR in gen_meadow3d.py, normalised
 varying float phase;
 varying vec2 wpos;
 
@@ -41,6 +49,24 @@ void fragment() {
 	vec4 c = texture(TEXTURE, uv);
 	if (uv.x < 0.0 || uv.x > 1.0) {
 		c = vec4(0.0);
+	}
+	if (relight > 0.0 && c.a > 0.5) {
+		vec4 d = texture(nrm_tex, uv);
+		int code = int(d.b * 255.0 + 0.5);
+		if (code >= 10 && code < 48 && RAMP_LEN[code] > 0) {
+			vec3 n = vec3(d.rg * 2.0 - 1.0, 0.0);
+			n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
+			float lb = d.a * 1.8 - 0.4;
+			float l = lb + 0.86 * (max(dot(n, normalize(sun_dir)), 0.0) - max(dot(n, BASE_DIR), 0.0)) * relight;
+			if (abs(l - lb) > 0.03) {
+				int cnt = RAMP_LEN[code] - 1;
+				float v = clamp(l, 0.0, 0.9999) * float(cnt);
+				float lo = floor(v);
+				float f = clamp((v - lo - 0.30) / 0.40, 0.0, 1.0);
+				int step_i = int(lo) + ((f > bayer4(ivec2(floor(wpos))) && int(lo) < cnt) ? 1 : 0);
+				c.rgb = PAL[RAMP_IDX[RAMP_START[code] + step_i]];
+			}
+		}
 	}
 	if (rim_amount > 0.0 && c.a > 0.5 && lum(c.rgb) > 0.2) {
 		vec2 px = TEXTURE_PIXEL_SIZE;
