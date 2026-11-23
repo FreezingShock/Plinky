@@ -6,7 +6,8 @@ Run: python3 gen_meadow3d.py [--fast]  ->  meadow3d-1x.png (640x360), meadow3d.p
 import numpy as np, math, random, json, os, sys, time
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import depth_pass
+import depth_pass, grass_tex
+GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAST = '--fast' in sys.argv
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
@@ -63,7 +64,11 @@ def pl_dist(U, V, pts):
 # ---------------- scene layout (screen px -> uv) ----------------
 PATH_S = [(112, 258), (150, 264), (190, 258), (222, 240), (252, 222), (290, 214), (334, 208), (368, 188), (378, 160), (362, 136), (338, 118), (330, 104)]
 PATH = [s2uv(*p) for p in PATH_S]
-PADS_S = [(204, 248, 'ready'), (258, 224, 'ready'), (338, 206, 'ready'), (380, 168, 'locked'), (350, 128, 'locked')]
+# Two rows of three pads, 44 texels apart on the 2:1 ground grid: Sprout climbs from the spawn, Clover climbs back
+# towards the gate (pad order = ZoneDef.pad_buttons order).
+SPROUT_ROW = [(204, 248), (248, 226), (292, 204)]
+CLOVER_ROW = [(396, 174), (352, 152), (308, 130)]
+PADS_S = [(x, y, 'ready') for (x, y) in SPROUT_ROW + CLOVER_ROW]
 GATE = s2uv(330, 96)
 STREAM = [s2uv(*p) for p in [(470, 104), (486, 130), (466, 160), (486, 192), (468, 216), (448, 240)]]
 LAKE = dict(c=s2uv(412, 262), r=46.0)
@@ -400,7 +405,15 @@ for (sx, sy, st) in PADS_S: anchors.append(dict(kind='pad', state=st, **dict(zip
 anchors.append(dict(kind='gate', u=GATE[0], v=GATE[1], sx=330, sy=96))
 anchors.append(dict(kind='player_spawn', sx=164, sy=264, u=s2uv(164, 264)[0], v=s2uv(164, 264)[1]))
 SHRINE = s2uv(572, 196); anchors.append(dict(kind='shrine', u=SHRINE[0], v=SHRINE[1], sx=572, sy=196))
-for a_ in anchors: placed.append((a_['u'], a_['v'], 12 if a_['kind'] != 'gate' else 18))
+for a_ in anchors: placed.append((a_['u'], a_['v'], 14 if a_['kind'] == 'pad' else 12 if a_['kind'] != 'gate' else 18))
+# keep the gaps between a row's pads clear, and the ground just south of each plate (a tall tree standing there would
+# hide the pad behind its crown)
+for _row in (SPROUT_ROW, CLOVER_ROW):
+    for (x0, y0), (x1, y1) in zip(_row, _row[1:]):
+        placed.append((*s2uv((x0 + x1) / 2, (y0 + y1) / 2), 12))
+    for (sx, sy) in _row:
+        for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
+            placed.append((*s2uv(sx + ox_, sy + oy_), 9))
 t_trees = FAST
 # groves: tall and short conifers, oaks, bushes, never stacked
 try_region('oak', *SC((210, 165)), 36, 4, scale_rng=(.95, 1.2)); try_region('pine', *SC((165, 180)), 34, 5, scale_rng=(.7, 1.45)); try_region('bush', *SC((225, 190)), 36, 5)
@@ -484,7 +497,8 @@ pw = 5.4 + 1.6 * (n1 - .5)
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
-lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+else: lt = .13 + .87 * diff + (tone - .5) * .10 * (mat == T_GRASS) + (n2 - .5) * .06 * (mat != T_GRASS)    # grass detail comes from grass_tex.py
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .04 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
@@ -554,6 +568,28 @@ BAKED_SHADOW = .2   # fraction of the old cast-shadow darkening kept; the runtim
 light = np.where(shadow, light * (1 - .45 * BAKED_SHADOW) - .03 * BAKED_SHADOW, light)
 sd_water = shadow & (mat_ == T_WATER)
 log('shaded')
+
+def far_layer(pad, hor0, skyd, ranges, farh):
+    """The far backdrop (sky and mountains) as its own image, `pad` texels wider than the scene each side, for the
+    runtime parallax layer. Same maths as the surroundings block of render_scene, rows above the horizon only."""
+    xs = np.arange(-pad, W + pad)
+    Yf, Xf = np.mgrid[0:farh, -pad:W + pad]
+    bayf = (BAYER[Yf & 3, Xf & 3] + .5) / 16
+    def dithf(ramp, l):
+        r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
+        hi = (f > bayf) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    HORf = hor0 + 3 * np.sin(Xf * .05)
+    res = dithf([0, 1, 1, 2], .15 + .75 * (Yf / float(skyd)) ** 1.2)
+    for k, (base, amp, fr, ramp, sd) in enumerate(ranges):
+        rid = 1 - np.abs(2 * fbm2(xs / float(fr) + k * 17, np.zeros(len(xs)), 4, sd) - 1)
+        top_ = base - amp * rid ** 1.3 - 14
+        below = Yf >= top_[None, :]
+        slope_ = np.roll(top_, -2) - np.roll(top_, 2)
+        lit = np.clip(.45 - slope_[None, :] * .09 + (vn2(Xf / 5.0, Yf / 4.0, sd + 3) - .5) * .35 + (Yf - top_[None, :]) * -.004, 0, .99)
+        res = np.where(below & (Yf < HORf), dithf(ramp, lit), res)
+    return res, HORf
+
+
 def render_scene(keep):
     global mat_
     order_pix = sy * W + sx
@@ -602,6 +638,7 @@ def render_scene(keep):
     def dith(ramp, l, mask):
         r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
@@ -653,6 +690,7 @@ def render_scene(keep):
         wat = np.where((wat == 2) & (YY % 6 == 5) & (vn2(XX / 9.0, YY / 1.0, 64) > .72), 3, wat)
         wat = np.where((vn2(XX / 3.0, YY / 1.2, 62) > .93) & (YY % 3 == 0), 4, wat)
         res = np.where(YY >= HOR, wat, res)
+        global FAR_CUT; FAR_CUT = emp & (YY < HOR)   # texels the runtime far layer draws (sky and mountains)
         out[emp] = res[emp]
     rgb = np.zeros((H, W, 3), np.uint8); rgb[:] = COLS[0]
     have = out >= 0; rgb[have] = COLS[out[have]]
@@ -666,6 +704,15 @@ depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders'
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(HERE, 'meadow3d-ground-1x.png'))
+# parallax layers: the far backdrop on its own (wider than the scene), and the ground with those texels cut to transparent
+_FARPAD = 64
+_far_idx, _ = far_layer(_FARPAD, 232, 232, ((236, 62, 70, [1, 2], 5), (240, 44, 48, [2, 2, 3], 6), (244, 28, 34, [2, 3, 3, 4], 7)), 242)
+_far_rgb = COLS[_far_idx].astype(np.uint8)
+Image.fromarray(_far_rgb).save(os.path.join(HERE, 'backdrop_far.png'))
+_fg = np.dstack([rgb_gnd, np.full(rgb_gnd.shape[:2], 255, np.uint8)])
+_fg[FAR_CUT, 3] = 0
+Image.fromarray(_fg).save(os.path.join(HERE, 'ground_fg.png'))
+
 # ground G-buffer, same size as the ground art: normal + material + baked light (relight data) and world height.
 # Terrain materials are codes 100..109, so write_relight_data accepts mat < 110 (the ramp include is sized to match).
 depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
@@ -738,3 +785,5 @@ for _a in anchors:        # ground contact = screen position at the terrain heig
 anchors_out = [dict(a, u=round(a['u'], 1), v=round(a['v'], 1)) for a in anchors]
 json.dump(dict(size=[W, H], projection=dict(ox=OXS0, oy=OYS0, note='screen = (ox + u - v, oy + (u+v)/2 - h), in the 640x360 frame'), bleed=dict(left=BLX, right=BLX, top=BLY, bottom=BLY, ground_size=[W, H], ground_offset=[-BLX, -BLY], note='ground.png is 840x480; place it at (-100,-60) so the 640x360 frame lines up with the old origin. All anchors and sprite x/y/foot stay in 640x360-frame coordinates (sprite x/y may be negative).'), anchors=anchors_out, sprites=sprites), open(os.path.join(HERE, 'placements3d.json'), 'w'), indent=1)
 log('done')
+if os.environ.get('GRASS_DUMP'):    # preview hook: ground light + material + palette indices for tools/art/grass_preview.py
+    np.savez_compressed(os.environ['GRASS_DUMP'], l=AUX_GND['l'], mat=AUX_GND['mat'], out=AUX_GND['out'], fout=AUX_FULL['out'], fmat=AUX_FULL['mat'])

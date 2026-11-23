@@ -12,6 +12,7 @@ run/main_scene="res://boot/boot.tscn"
 
 EventBus="*res://core/event_bus.gd"
 GameState="*res://core/game_state.gd"
+Calendar="*res://core/calendar_service.gd"
 Save="*res://core/save.gd"
 Fx="*res://render/fx_driver.gd"
 Juice="*res://ui/fx/fx_bus.gd"

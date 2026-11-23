@@ -14,6 +14,12 @@ const ROLL_HZ := 30.0
 const BIG_GAIN_RATIO := 0.15
 const BIG_GAIN_FLASH := 0.35
 const SMALL_GAIN_FLASH := 0.12
+## Counter punch on a big gain: scale per step (overshoots, then settles on 1.0), seconds per step.
+const PUNCH_STEPS: Array[float] = [1.25, 1.15, 0.95, 1.0]
+## Relic landing in a slot: hop heights in pixels per step, and total time.
+const RELIC_HOP: Array[int] = [3, 2, 1, 0, 1, 0]
+const RELIC_POP_TIME := 0.36
+const PUNCH_STEP_TIME := 0.05
 const SHAKE_DECAY := 6.0
 const SHAKE_MAX_TEXELS := 3.0
 const FLASH_FRAMES := 3
@@ -30,6 +36,8 @@ static var reduce_flashing := false
 static var reduce_shake := false
 ## Banners and other typed text show whole, with no typing or collapse.
 static var reduce_motion := false
+## Turns off the screen-wide light passes (edge shade, full-frame light grade).
+static var reduce_screen_fx := false
 
 ## Snap a position to whole texels so FX never sit between world pixels.
 static func snap(v: Vector2) -> Vector2:

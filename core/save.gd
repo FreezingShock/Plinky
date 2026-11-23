@@ -2,7 +2,12 @@ extends Node
 ## Autoload. Autosave, load on start, offline progress.
 ## Saves: every autosave_seconds, on zone change, on rebirth, on quit.
 
-const SAVE_PATH: String = "user://save.json"
+const SAVE_PATH: String = SaveSlots.BASE_PATH
+
+## Active save slot, 1 to SLOT_COUNT. Slot 1 is the original user://save.json, so existing saves keep working.
+var slot: int = 1
+## True on the title screen: nothing autosaves there, so browsing or deleting slots never writes a new save.
+var paused: bool = false
 
 var _since_save: float = 0.0
 ## 0 = use the content config's autosave interval. Set from the settings menu (Gameplay > Autosave).
@@ -19,11 +24,15 @@ func _ready() -> void:
 	var bus: Node = get_node("/root/EventBus")
 	bus.zone_entered.connect(func(_z: StringName) -> void: save_game())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: save_game())
+	bus.bloom_done.connect(func(_n: int) -> void: save_game())
+	slot = SaveSlots.read_active_slot()
 	load_game()
 
 
 func _process(delta: float) -> void:
 	_since_save += delta
+	if paused:
+		return
 	var sim: Sim = get_node("/root/GameState").sim
 	var every: float = autosave_override if autosave_override > 0.0 else sim.config.autosave_seconds
 	if _since_save >= every:
@@ -37,20 +46,21 @@ func _notification(what: int) -> void:
 
 func save_game() -> bool:
 	_since_save = 0.0
-	if not enabled:
+	if not enabled or paused:
 		return false
 	var sim: Sim = get_node("/root/GameState").sim
-	var ok: bool = SaveCodec.write_file(SAVE_PATH, SaveCodec.encode(sim, Time.get_unix_time_from_system()))
+	var ok: bool = SaveCodec.write_file(SaveSlots.path_for(slot), SaveCodec.encode(sim, Time.get_unix_time_from_system()))
 	if ok:
 		get_node("/root/EventBus").game_saved.emit()
 	else:
-		push_warning("Save: could not write " + SAVE_PATH)
+		push_warning("Save: could not write " + SaveSlots.path_for(slot))
+		get_node("/root/EventBus").save_failed.emit()
 	return ok
 
 
 func load_game() -> bool:
 	var sim: Sim = get_node("/root/GameState").sim
-	var data: Dictionary = SaveCodec.read_with_fallback(SAVE_PATH)
+	var data: Dictionary = SaveCodec.read_with_fallback(SaveSlots.path_for(slot))
 	if data.is_empty():
 		return false
 	sim.from_dict(data["game"])
@@ -93,3 +103,28 @@ func reset_game() -> void:
 	var sim: Sim = get_node("/root/GameState").sim
 	sim.new_game()
 	save_game()
+
+
+## Make `n` the active slot and load it (a new game when it is empty). Remembers the choice for the next launch.
+func select_slot(n: int) -> void:
+	slot = clampi(n, 1, SaveSlots.SLOT_COUNT)
+	SaveSlots.write_active_slot(slot)
+	var sim: Sim = get_node("/root/GameState").sim
+	sim.new_game()
+	_offline_report = {}
+	load_game()
+
+
+## Start a new game in slot `n`, replacing whatever it held. Written when the game starts (paused is off by then).
+func new_game_in_slot(n: int) -> void:
+	delete_slot(n)
+	select_slot(n)
+
+
+## Remove a slot's files. A deleted active slot becomes a new game in memory (nothing is written while paused).
+func delete_slot(n: int) -> void:
+	SaveSlots.delete_files(n)
+	if n == slot:
+		var sim: Sim = get_node("/root/GameState").sim
+		sim.new_game()
+		_offline_report = {}

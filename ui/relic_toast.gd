@@ -35,12 +35,14 @@ func bind(inv: RelicInventory) -> void:
 
 func show_drop(d: RelicDef, stacks: int) -> void:
 	var c: Color = d.rarity.readable_color(RelicStyle.ink)
-	add_theme_stylebox_override("panel", AsciiBox.panel(d.rarity.color))
+	add_theme_stylebox_override("panel", AsciiBox.panel(d.rarity.tint()))
 	_icon.texture = d.icon
 	_name.text = d.display_name
 	_name.add_theme_color_override("font_color", c)
-	_sub.text = "%s relic%s" % [d.rarity.display_name.to_upper(), "  x%d" % stacks if stacks > 1 else ""]
-	_sub.add_theme_color_override("font_color", RelicStyle.text)
+	_sub.text = "%s RELIC%s" % [d.rarity.display_name.to_upper(), "  x%d" % stacks if stacks > 1 else ""]
+	_sub.add_theme_font_override("font", StatStyle.tag_font())
+	_sub.add_theme_font_size_override("font_size", StatStyle.TAG_SIZE)
+	_sub.add_theme_color_override("font_color", c)
 	reset_size()
 	visible = true
 	modulate.a = 1.0

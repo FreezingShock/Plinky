@@ -34,6 +34,7 @@ var _warm: int = 4   # frames drawn even when faded out, so the shadow shader co
 
 
 func _init() -> void:
+	RenderGlobals.ensure()
 	mat = ShaderMaterial.new()
 	mat.shader = SHADER
 
@@ -111,7 +112,9 @@ func _process(_delta: float) -> void:
 		_blob.visible = _walker != null
 	if _walker == null:
 		return
-	_place(_blob, Vector2(roundf(_walker.position.x), roundf(_walker.position.y)), WALKER_SIZE.x, WALKER_SIZE.y * 0.9)
+	var air: float = WalkerMotion.shadow_scale(float(_walker.get("lift")) if "lift" in _walker else 0.0)
+	_place(_blob, Vector2(roundf(_walker.position.x), roundf(_walker.position.y)), WALKER_SIZE.x * air, WALKER_SIZE.y * 0.9 * air)
+
 
 
 ## The walker is a sibling of the meadow in World. Found once, by type name (no hard dependency on its script).

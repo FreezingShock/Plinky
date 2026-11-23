@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"pad_yield"
+display_name = "Pad yield"
+effect = &"pad_yield"
+per_level = 0.02
+cap = 15
+base_cost = 20.0
+cost_growth = 1.4
+unlock_rebirths = 10
+order = 8

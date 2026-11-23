@@ -62,6 +62,6 @@ func run(t: Object) -> void:
 	var b: Dictionary = AreaBanner.compose("Larkmoor", {}, 0.5, "lake")
 	t.eq(b["title"], "Larkmoor", "the area name is the title")
 	t.eq(b["lines"], ["12:00 - Midday"], "no calendar: only the sky time shows")
-	var c: Dictionary = AreaBanner.compose("Larkmoor", {"season": "spring", "month": 2, "day": 3, "hour": 7, "minute": 30}, 0.5)
-	t.eq(c["lines"], ["Spring - Month 2 - Day 3", "07:30 - Morning"], "a calendar adds season, date and its own time")
+	var c: Dictionary = AreaBanner.compose("Larkmoor", {"season_name": "Spring", "month_name": "Early Spring", "day": 3, "hour": 7, "minute": 30}, 0.5)
+	t.eq(c["lines"], ["Early Spring - Day 3", "07:30 - Morning"], "a calendar adds month, day and its own time")
 	t.eq(AreaBanner.compose("X", {"season": 3}, 0.0)["lines"][0], "Winter", "a season index maps to its name")

@@ -69,3 +69,28 @@ static func nearest(p: Vector2, max_r: int = 80) -> Vector2:
 					best_d = d
 					best = q
 	return best
+
+
+## Like nearest(), but the result also has `inset` walkable texels straight south of it, so a click near a ledge
+## lands a little back from the lip instead of on the edge (the ring and the walker's stop stay on solid ground).
+## A click that is already well inside the walkable area is left exactly where it is.
+static func nearest_inset(p: Vector2, inset: int = 6, max_r: int = 80) -> Vector2:
+	if walkable(p) and walkable(p + Vector2(0.0, float(inset))):
+		return p
+	var best: Vector2 = nearest(p, max_r)
+	var best_d: float = INF
+	var found: bool = false
+	for r in range(0, max_r + 1):
+		if found and best_d <= float(r - 1) * float(r - 1):
+			break
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var q: Vector2 = p + Vector2(dx, dy)
+				var d: float = float(dx * dx) + float(dy * dy) * 4.0
+				if d < best_d and walkable(q) and walkable(q + Vector2(0.0, float(inset))):
+					best_d = d
+					best = q
+					found = true
+	return best

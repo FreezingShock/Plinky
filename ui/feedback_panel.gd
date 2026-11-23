@@ -45,7 +45,6 @@ func bind(sim: Sim) -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD
 	v.add_child(_status)
 
-	_button(v, "Close", close)
 
 
 func open() -> void:
@@ -59,6 +58,10 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+	release()
+
+
+func release() -> void:
 	_edit.release_focus()
 
 

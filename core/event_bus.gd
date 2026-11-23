@@ -10,6 +10,7 @@ signal gate_opened(gate_id: StringName)
 signal relic_gained(relic_id: StringName, stacks: int)
 signal buff_started(buff_id: StringName, seconds: float)
 signal rebirth_done(prestige_gained: BigNum)
+signal bloom_done(seeds_gained: int)
 # Additions to the SPEC contract (logged in docs/decisions.md):
 signal relic_equipped(relic_id: StringName)
 signal relic_unequipped(relic_id: StringName)
@@ -19,8 +20,15 @@ signal bonus_gained(kind: StringName, gains: Dictionary)  # kind: &"streak" or &
 signal critter_spawned()
 signal critter_gone()
 signal heat_hot_changed(hot: bool)
+signal momentum_tier_changed(tier: int, rising: bool)
 signal mastery_changed(button_id: StringName, level: int, xp: float)  # every press; level and xp are the pad's after it
 signal mastery_leveled(button_id: StringName, level: int)
 signal game_loaded()
 signal game_saved()
+signal save_failed()  # a save could not be written (full disk, locked file)
 signal onboarding_complete()  # the tutorial meadow's gate just opened; the main meadow can take over from here
+# Calendar (core/game_calendar.gd). Indices are 0-based within the year; season 0 spring, 1 summer, 2 autumn, 3 winter.
+signal day_changed(day_of_year: int)
+signal month_changed(month_index: int)
+signal season_changed(season_index: int)
+signal year_changed(year: int)

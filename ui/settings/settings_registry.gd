@@ -165,6 +165,7 @@ static func _ensure() -> void:
 	_register_audio()
 	_register_display()
 	_register_gameplay()
+	_register_qol()
 	_register_access()
 	_register_controls()
 	_register_data()
@@ -347,6 +348,12 @@ static func _register_gameplay() -> void:
 		"apply": func(v: Variant) -> void: NumberFormat.style = int(v),
 	})
 	_add({
+		"id": &"mult_style", "tab": "Gameplay", "label": "Multiplier display", "kind": Kind.CHOICE, "default": NumberFormat.MultStyle.FACTOR,
+		"hint": "Show multipliers as a factor (x1.5) or as a percent (150%). Labels change on their next update.",
+		"options": func() -> Array: return [[NumberFormat.MultStyle.FACTOR, "Factor (x1.5)"], [NumberFormat.MultStyle.PERCENT, "Percent (150%)"]],
+		"apply": func(v: Variant) -> void: NumberFormat.mult_style = int(v),
+	})
+	_add({
 		"id": &"momentum_meter", "tab": "Gameplay", "label": "Momentum meter", "kind": Kind.TOGGLE,
 		"hint": "The bar above the bottom bar that shows walking income bonus.",
 		"get": func() -> Variant: return DisplaySettings.momentum_meter,
@@ -360,8 +367,43 @@ static func _register_gameplay() -> void:
 	})
 
 
+static func _register_qol() -> void:
+	_add({
+		"id": &"save_indicator", "tab": "Gameplay", "label": "Save indicator", "kind": Kind.TOGGLE, "default": true,
+		"hint": "A small Saved note by the Menu button after each save. A failed save always shows.",
+		"apply": func(v: Variant) -> void: SaveIndicator.enabled = bool(v),
+	})
+	_add({
+		"id": &"confirm_rebirth", "tab": "Gameplay", "label": "Confirm rebirth", "kind": Kind.TOGGLE, "default": true,
+		"hint": "Ask before a rebirth resets your Cash and pads.",
+		"apply": func(v: Variant) -> void: ModalCard.rebirth_confirm = bool(v),
+	})
+
+
 # ---- accessibility
 static func _register_access() -> void:
+	_add({
+		"id": &"color_mode", "tab": "Access", "label": "Colour-safe colours", "kind": Kind.CHOICE, "default": AccessOptions.MODE_OFF,
+		"hint": "Swaps rarity, buy and stat colours for ones that stay apart with colour blindness. Names and tags never depend on colour.",
+		"options": func() -> Array: return [[AccessOptions.MODE_OFF, "Off"], [AccessOptions.MODE_RED_GREEN, "Red-green safe"], [AccessOptions.MODE_BLUE_YELLOW, "Blue-yellow safe"]],
+		"apply": func(v: Variant) -> void: AccessOptions.set_color_mode(String(v)),
+	})
+	_add({
+		"id": &"large_text", "tab": "Access", "label": "Large tooltip text", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Tooltips use Pixelify Sans at a larger size. Menus keep their fixed pixel layout.",
+		"apply": func(v: Variant) -> void: AccessOptions.set_large_text(bool(v)),
+	})
+	_add({
+		"id": &"subtitles", "tab": "Access", "label": "Sound subtitles", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Shows a short caption for sounds that matter: critical presses, relic chimes, gates, birdsong, waves and footsteps.",
+		"apply": func(v: Variant) -> void: AccessOptions.subtitles = bool(v),
+	})
+	_add({
+		"id": &"chip_labels", "tab": "Access", "label": "Bottom bar labels", "kind": Kind.CHOICE, "default": "hover",
+		"hint": "On hover: a label floats above the button. Always: labels sit in the buttons. Never: icons only.",
+		"options": func() -> Array: return [["hover", "On hover"], ["always", "Always"], ["never", "Never"]],
+		"apply": func(v: Variant) -> void: ExpandChip.label_mode = String(v),
+	})
 	_add({
 		"id": &"reduce_flashing", "tab": "Access", "label": "Reduce flashing", "kind": Kind.TOGGLE, "default": false,
 		"hint": "Softens screen flashes and the rarity pad flash.",
@@ -370,6 +412,11 @@ static func _register_access() -> void:
 	_add({
 		"id": &"reduce_shake", "tab": "Access", "label": "Reduce screen shake", "kind": Kind.TOGGLE, "default": false,
 		"apply": func(v: Variant) -> void: FxConfig.reduce_shake = bool(v),
+	})
+	_add({
+		"id": &"reduce_screen_fx", "tab": "Access", "label": "Reduce screen effects", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Turns off the edge shade and the full-frame light pass. Ground, shadows and night still show.",
+		"apply": func(v: Variant) -> void: FxConfig.reduce_screen_fx = bool(v),
 	})
 	_add({
 		"id": &"reduce_text_motion", "tab": "Access", "label": "Still banners", "kind": Kind.TOGGLE, "default": false,
@@ -398,7 +445,7 @@ static func _register_controls() -> void:
 	for row: Array in Keybinds.ACTIONS:
 		_add({
 			"id": StringName("key_" + String(row[0])), "tab": "Controls", "label": String(row[1]), "kind": Kind.KEY, "action": row[0],
-			"hint": "Click, then press the new key. Esc cancels. A key already in use swaps with that action.",
+			"hint": "Click, then press the new key. Hold Shift, Ctrl or Alt for a combo, or tap one alone to bind it. Esc cancels. A key already in use swaps with that action.",
 		})
 	_add({"id": &"keys_reset", "tab": "Controls", "label": "Default keys", "kind": Kind.ACTION, "run": _keys_reset})
 

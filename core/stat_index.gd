@@ -4,16 +4,32 @@ extends RefCounted
 ## A row is {id, group, name, icon, value, note, tip, pending}. `icon` is a file name under assets/icons.
 
 const STAT_TIPS: Dictionary = {
+	&"sunlight": "Trickles in on its own and pays for the first pads. Dewdrops and Thistle Down make it flow faster. Resets on Bloom.",
+	&"dewdrop": "Paid by the Sprout pads. Boosts Sunlight income, and Clover Leaves make each press pay more. Resets on Bloom.",
+	&"clover": "Paid by the Clover pads. Boosts Dewdrops per press and opens the gate to Larkmoor. Resets on Bloom.",
+	&"thistle": "Paid by the Thistle pads in Larkmoor. Boosts Sunlight income, and Heather Sprigs make each press pay more.",
+	&"heather": "Paid by the Heather pads. Spent on Foxglove pads, and boosts Thistle Down per press.",
+	&"foxglove": "Paid by the Foxglove pads. Spent on Starbloom pads, and boosts Heather Sprigs per press.",
+	&"starbloom": "Paid by the Starbloom pads, the last row. Boosts Foxglove Bells per press and opens the far gate.",
 	&"cash": "Earned every second and from presses. Spend it to unlock pads. Resets on rebirth.",
 	&"mult": "Multiplies Cash income. Earned from presses, and boosted by Rebirths. Resets on rebirth.",
+	&"seeds": "Paid by every Bloom, more the higher your Starbloom Petals were. Spend it on Bloom gifts in Upgrades.",
+	&"rp": "Earned on every rebirth, and a little more each time. Spend it on Rebirth perks in Upgrades.",
 	&"reb": "Rebirths you have banked. Each one boosts how fast the Multiplier grows.",
 	&"slag": "Quarry currency. Earned on the quarry pads.",
 	&"prestige": "Earned by rebirthing. Boosts all income and buys Attributes.",
 }
 const ATTR_ICONS: Dictionary = {
 	&"walk_speed": "walk", &"press_rate": "rate", &"crit_chance": "crit", &"luck": "luck",
-	&"offline_hours": "offline", &"crit_damage": "crit_dmg",
+	&"offline_hours": "offline", &"crit_damage": "crit_dmg", &"mastery_xp": "mastery", &"pad_yield": "cash",
+	&"head_start": "seeds", &"sun_rate": "heat",
 }
+## Attribute id -> its own icon, where an attribute should not share its effect's icon.
+const ID_ICONS: Dictionary = {&"rp_rest": "rest", &"rp_lore": "lore", &"rp_fortune": "fortune"}
+## Card labels for names too long for a card (12 characters at 6 px). The full name stays on the detail page.
+const SHORT: Dictionary = {"Rebirth Points": "Rebirth Pts", "Rebirths Done": "Rebirths", "Clover Leaves": "Clover", "Heather Sprigs": "Heather", "Foxglove Bells": "Foxglove", "Starbloom Petals": "Starbloom"}
+const MAX_LABEL: int = 12
+
 const ATTR_TIPS: Dictionary = {
 	&"walk_speed": "How fast the walker moves between pads.",
 	&"press_rate": "How often a pad pays while you stand on it.",
@@ -21,23 +37,52 @@ const ATTR_TIPS: Dictionary = {
 	&"luck": "Better odds that a press drops a relic.",
 	&"offline_hours": "Hours of income you collect while the game is closed.",
 	&"crit_damage": "How much extra a critical hit pays.",
+	&"mastery_xp": "Pads earn Mastery XP faster, so they level sooner.",
+	&"pad_yield": "Every press pays more, on every pad.",
+	&"head_start": "Each run after a Bloom starts with extra Sunlight, so the first pads come sooner.",
+	&"sun_rate": "Sunlight trickles in faster all the time.",
 }
+
+
+## The stats the index lists, in order: the current zone's ladder first, then the rest, then Prestige and Rebirth Points.
+static func listed_stats(sim: Sim) -> Array[StringName]:
+	var ids: Array[StringName] = []
+	var defs: Array = sim.stat_defs.values()
+	defs.sort_custom(func(a: StatDef, b: StatDef) -> bool: return a.tier < b.tier if a.tier != b.tier else String(a.id) < String(b.id))
+	for pass_in_zone: bool in [true, false]:
+		for d: StatDef in defs:
+			if d.id in [&"prestige", &"rp", &"seeds"] or d.id in ids:
+				continue
+			if d.in_zone(sim.zone_id) == pass_in_zone:
+				ids.append(d.id)
+	ids.append(&"seeds")
+	ids.append(&"prestige")
+	ids.append(&"rp")
+	return ids
 
 
 ## Every stat the player can see, grouped. Empty groups are left out.
 static func stats(sim: Sim) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+	for sid: StringName in listed_stats(sim):
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
 			continue
-		if sid == &"slag" and sim.get_stat(sid).is_zero() and sim.zone_id != &"zone2":
+		if not def.in_zone(sim.zone_id) and sim.get_stat(sid).is_zero():
 			continue
+		if sid == &"seeds" and not UpgradeText.group_shown(sim, &"seeds"):
+			continue
+		if sid in [&"prestige", &"rp"] and not sim.rebirth_here() and sim.get_stat(sid).is_zero():
+			continue   # the meadow runs on Bloom; Prestige and Rebirth Points come back in Zone 2
 		var inc: BigNum = sim.income_per_second(sid)
 		var note: String = "+%s/s" % inc.format() if not inc.is_zero() else ""
 		var value: String = sim.get_stat(sid).format()
+		if sid == &"rp":   # RP is paid in whole points, so never show a fraction
+			value = BigNum.from_float(floorf(sim.get_stat(sid).to_float() + 0.0001)).format()
 		if sid == &"prestige":
-			note = "x%s income" % sim.prestige_mult().format()
+			note = "%s income" % NumberFormat.mult(sim.prestige_mult())
+		elif sid == &"rp" and sim.can_rebirth():
+			note = "+%d next rebirth" % sim.rp_gain_preview()
 		rows.append(_row(sid, "Currencies", def.display_name, String(sid), value, note, String(STAT_TIPS.get(sid, ""))))
 	rows.append(_row(&"crit_chance", "Presses", "Crit chance", "crit", _pct(sim.crit_chance()), "",
 		"Chance that a press is a critical hit. Raised by the Crit chance attribute and relics."))
@@ -73,15 +118,26 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		var lv: int = sim.attr_level(aid)
 		var now: String = effect_text(a, float(lv) * a.per_level)
 		var tip: String = String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
-		if lv >= a.cap:
+		if not sim.attr_unlocked(aid):
+			tip += "\n%s." % UpgradeText.lock_text(a)
+		elif lv >= a.cap:
 			tip += "\nMaxed out."
 		else:
-			tip += "\nNext level: %s\nCost: %s Prestige" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format()]
-		var r: Dictionary = _row(aid, "Attributes", a.display_name, String(ATTR_ICONS.get(a.effect, "prestige")), "Lv %d/%d" % [lv, a.cap], now, tip)
+			tip += "\nNext level: %s\nCost: %s %s" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format(), UpgradeText.currency_name(a)]
+		var perk: bool = a.currency == &"rp"
+		var bloom: bool = a.currency == &"seeds"
+		var r: Dictionary = _row(aid, "Rebirth Perks" if perk else ("Bloom Gifts" if bloom else "Attributes"), a.display_name, String(ID_ICONS.get(aid, ATTR_ICONS.get(a.effect, "prestige"))), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap
+		r["maxed"] = lv >= a.cap
+		r["color_id"] = &"rp" if perk else (&"seeds" if bloom else a.effect)   # StatStyle colour: perks wear their currency's colour
 		rows.append(r)
 	return rows
+
+
+## The presses total as display text.
+static func stats_value_presses(sim: Sim) -> String:
+	return BigNum.from_float(float(sim.press_count)).format()
 
 
 static func effect_text(a: AttributeDef, amount: float) -> String:
@@ -91,7 +147,11 @@ static func effect_text(a: AttributeDef, amount: float) -> String:
 		&"crit_chance": return "%s%% crit chance" % _trim(amount * 100.0)
 		&"crit_damage": return "+%s%% crit damage" % _trim(amount * 100.0)
 		&"luck": return "+%s%% luck" % _trim(amount * 100.0)
+		&"mastery_xp": return "+%s%% pad XP" % _trim(amount * 100.0)
+		&"pad_yield": return "+%s%% pad yield" % _trim(amount * 100.0)
 		&"offline_hours": return "+%s h offline cap" % _trim(amount)
+		&"head_start": return "+%s starting Sunlight" % _trim(amount)
+		&"sun_rate": return "+%s%% Sunlight income" % _trim(amount * 100.0)
 	return "+%s%%" % _trim(amount * 100.0)
 
 
@@ -114,7 +174,18 @@ static func _trim(f: float) -> String:
 
 
 static func _row(id: StringName, group: String, label: String, icon: String, value: String, note: String, tip: String) -> Dictionary:
-	return {"id": id, "group": group, "name": label, "icon": icon, "value": value, "note": note, "tip": tip, "pending": false}
+	var nm: String = title_case(label)
+	var short: String = String(SHORT.get(nm, nm))
+	return {"id": id, "group": group, "name": nm, "short": short, "icon": icon, "value": value, "note": note, "tip": tip, "pending": false, "maxed": false, "color_id": id}
+
+
+## "Crit chance" -> "Crit Chance": every word capitalised, the rest left as written.
+static func title_case(s: String) -> String:
+	var words: PackedStringArray = s.split(" ")
+	for i in words.size():
+		if words[i] != "":
+			words[i] = words[i].left(1).to_upper() + words[i].substr(1)
+	return " ".join(words)
 
 
 static func _pending(id: StringName, group: String, label: String, icon: String, tip: String) -> Dictionary:

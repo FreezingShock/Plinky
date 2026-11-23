@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1")
-rebirth_reveal_mult = 200.0
+clover_reveal_dewdrops = 200.0
 streak_tip_presses = 12
 walk_tip_seconds = 40.0
 first_tip_delay = 1.0

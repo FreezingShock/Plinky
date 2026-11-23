@@ -1,6 +1,6 @@
 class_name ScreenLight
 extends Node2D
-## Frame-fixed light: the vignette. A multiply ColorRect over the whole 640x360 frame (or the wider bleed view),
+## World-anchored edge shade (the vignette). A multiply ColorRect over the whole 640x360 frame (or the wider bleed view),
 ## dithered in two steps toward the corners. It is a child of the main Control, above the world layers and
 ## below the HUD, so it never darkens the interface. SkyCycle adds it and keeps its strength in sync.
 
@@ -9,9 +9,19 @@ const SHADER: Shader = preload("res://render/shaders/vignette.gdshader")
 var _rect: ColorRect
 var _mat: ShaderMaterial
 var _host: Control
-## A node that sits at the world origin (SkyCycle). The vignette's dither is pinned to the world through its transform,
-## so the dots scroll and scale with the ground instead of staying fixed to the screen.
+## Kept for callers that set it; the shader now reads the camera transform from the world_origin / world_scale globals.
 var world_ref: Node2D
+
+
+func set_area(r: Rect2) -> void:
+	if _mat == null:
+		_pending_area = r
+		return
+	_mat.set_shader_parameter("area_center", r.get_center())
+	_mat.set_shader_parameter("area_half", r.size * 0.5)
+
+
+var _pending_area: Rect2 = Rect2()
 
 
 func _ready() -> void:
@@ -24,23 +34,18 @@ func _ready() -> void:
 	_rect.material = _mat
 	add_child(_rect)
 	_fit()
+	if _pending_area.size != Vector2.ZERO:
+		set_area(_pending_area)
 
 
 func _process(_delta: float) -> void:
 	_fit()
-	if world_ref != null and is_instance_valid(world_ref):
-		var xf: Transform2D = world_ref.get_global_transform_with_canvas()
-		var sc: float = maxf(xf.x.length(), 0.001)
-		# exact origin: rounding it to whole screen pixels slipped the pattern against the ground when the camera
-		# offset is fractional (Larkmoor at zoom 3), so the shader floors in world texels instead
-		_mat.set_shader_parameter("w_origin", xf.origin)
-		_mat.set_shader_parameter("w_scale", sc)
 
 
 func set_strength(s: float) -> void:
 	if _mat != null:
 		_mat.set_shader_parameter("strength", s)
-	visible = s > 0.001
+	visible = s > 0.001 and not FxConfig.reduce_screen_fx
 
 
 func _fit() -> void:

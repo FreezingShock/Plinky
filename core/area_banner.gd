@@ -34,16 +34,17 @@ static func clock_text(hour: int, minute: int) -> String:
 	return "%02d:%02d" % [hour, minute]
 
 
-## `cal` keys it understands, all optional: season (String or index 0 to 3), month, day, hour, minute, period.
-## Missing time falls back to `phase`; a missing season or date just leaves that line out.
-static func compose(area_name: String, cal: Dictionary, phase: float, icon: String = "") -> Dictionary:
+## `cal` is Calendar.now(), and every key is optional: season_name (or season, a name or index 0 to 3), month_name,
+## day, hour, minute, clock_text, period. Missing time falls back to `phase`; a missing date leaves that line out.
+static func compose(area_name: String, cal: Dictionary, phase: float, icon: String = "", color: Variant = null) -> Dictionary:
 	var lines: Array[String] = []
-	var season: String = _season_name(cal.get("season", ""))
+	var season: String = str(cal.get("season_name", "")) if cal.has("season_name") else _season_name(cal.get("season", ""))
+	var month: String = str(cal.get("month_name", ""))
 	var date_bits: Array[String] = []
-	if season != "":
+	if month != "":
+		date_bits.append(month)
+	elif season != "":
 		date_bits.append(season)
-	if cal.has("month"):
-		date_bits.append("Month %d" % int(cal["month"]))
 	if cal.has("day"):
 		date_bits.append("Day %d" % int(cal["day"]))
 	if not date_bits.is_empty():
@@ -59,7 +60,7 @@ static func compose(area_name: String, cal: Dictionary, phase: float, icon: Stri
 		minute = c["minute"]
 	var period: String = str(cal.get("period", period_of(float(hour * 60 + minute) / 1440.0)))
 	lines.append("%s - %s" % [clock_text(hour, minute), period])
-	return {"title": area_name, "lines": lines, "icon": icon, "key": "area:" + area_name}
+	return {"title": area_name, "lines": lines, "icon": icon, "color": color, "key": "area:" + area_name}
 
 
 static func _season_name(v: Variant) -> String:

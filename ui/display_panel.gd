@@ -9,7 +9,12 @@ signal feedback_requested
 
 const TAB_WIDTH: float = 430.0
 const BODY_HEIGHT: float = 196.0
-const LABEL_WIDTH: float = 130.0
+const LABEL_WIDTH: float = 126.0
+## One colour per tab, from the same fixed stat colours the gallery cards wear. New tabs fall back to PAPER.
+const TAB_COLORS: Dictionary = {
+	"Audio": Color("6fd6e8"), "Display": Color("55aaff"), "Gameplay": Color("f2c94c"),
+	"Access": Color("7be08a"), "Controls": Color("c77dff"), "Data": Color("f08fb0"),
+}
 
 var _win: Window
 var _tab: String = "Audio"
@@ -17,9 +22,10 @@ var _tab_buttons: Dictionary = {}     # tab name -> PixelButton
 var _body: VBoxContainer
 var _scroll: ScrollContainer
 var _hint: Label
-var _close_btn: PixelButton
+var _title: Label
 var _refreshers: Array[Callable] = []
 var _capture: StringName = &""        # key action waiting for a keypress
+var _cap_mod: int = 0                 # a modifier key held down while a key is being captured
 var _armed: StringName = &""          # confirm action pressed once
 
 
@@ -34,10 +40,11 @@ func bind(win: Window) -> void:
 	v.add_theme_constant_override("separation", 4)
 	add_child(v)
 
-	var title := Label.new()
-	title.theme_type_variation = &"TitleLabel"
-	title.text = "Settings"
-	v.add_child(title)
+	_title = Label.new()
+	_title.theme_type_variation = &"TitleLabel"
+	_title.text = "Settings"
+	v.add_child(_title)
+	v.add_child(PanelDivider.new(2))
 
 	var tab_row := HBoxContainer.new()
 	tab_row.add_theme_constant_override("separation", 2)
@@ -48,6 +55,7 @@ func bind(win: Window) -> void:
 		b.pressed.connect(show_tab.bind(t))
 		tab_row.add_child(b)
 		_tab_buttons[t] = b
+		_paint_tab(b, tab_color(t))
 
 	_scroll = ScrollContainer.new()
 	var scroll: ScrollContainer = _scroll
@@ -60,15 +68,13 @@ func bind(win: Window) -> void:
 	_body.add_theme_constant_override("separation", 4)
 	scroll.add_child(_body)
 
+	v.add_child(PanelDivider.new(2))
 	_hint = Label.new()
 	_hint.custom_minimum_size = Vector2(TAB_WIDTH, 28)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(_hint)
 
-	_close_btn = PixelButton.new()
-	_close_btn.pressed.connect(close)
-	v.add_child(_close_btn)
 
 	_win.size_changed.connect(_on_window_changed)
 	show_tab(_tab)
@@ -80,7 +86,6 @@ func _request_feedback() -> String:
 
 
 func open() -> void:
-	_close_btn.text = "Close [%s]" % Keybinds.key_name(&"settings")
 	show_tab(_tab)
 	visible = true
 	reset_size()
@@ -90,9 +95,14 @@ func open() -> void:
 
 
 func close() -> void:
+	reset_capture()
+	visible = false
+
+
+## Drop any half-finished key capture. The menu router calls this, then plays the close wipe.
+func reset_capture() -> void:
 	_capture = &""
 	_armed = &""
-	visible = false
 
 
 ## Show one tab. Rows are rebuilt, so options that depend on the machine (devices, monitors) are fresh.
@@ -106,17 +116,22 @@ func show_tab(tab: String) -> void:
 		_body.remove_child(c)
 		c.queue_free()
 	_refreshers.clear()
+	var col: Color = tab_color(tab)
+	add_theme_stylebox_override("panel", AsciiBox.panel(col.darkened(0.2)))
+	_title.add_theme_color_override("font_color", col)
 	for def in SettingsRegistry.entries(tab):
-		_body.add_child(_make_row(def))
+		_body.add_child(_make_card(_make_row(def, col), col))
 	_wire_focus()
 	_hint.text = ""
 	for t: String in _tab_buttons:
-		(_tab_buttons[t] as PixelButton).text = _tag(t == tab, t)
+		var tb: PixelButton = _tab_buttons[t]
+		tb.text = _tag(t == tab, t)
+		tb.add_theme_color_override("font_color", RelicStyle.text if t == tab else tab_color(t))
 	refresh()
 
 
 ## Pad and keyboard focus. Godot's geometry search stalls inside the scroll area, so Up and Down are wired
-## explicitly: tab -> row 1 -> ... -> last row -> Close, and back. Every control in a row shares its row's links.
+## explicitly: tab -> row 1 -> ... -> last row -> tab, and back. Every control in a row shares its row's links.
 func _wire_focus() -> void:
 	var rows: Array = []   # Array of Array[Control], one per row, in order
 	for row: Node in _body.get_children():
@@ -128,9 +143,8 @@ func _wire_focus() -> void:
 				c.focus_entered.connect(_scroll.ensure_control_visible.bind(c))
 	for t: String in _tab_buttons:
 		var b: PixelButton = _tab_buttons[t]
-		b.focus_neighbor_bottom = b.get_path_to((rows[0] as Array)[0]) if not rows.is_empty() else b.get_path_to(_close_btn)
-	link_rows(rows, _tab_buttons[_tab], _close_btn)
-	_close_btn.focus_neighbor_top = _close_btn.get_path_to(((rows[rows.size() - 1] as Array)[0] if not rows.is_empty() else _tab_buttons[_tab]) as Control)
+		b.focus_neighbor_bottom = b.get_path_to((rows[0] as Array)[0]) if not rows.is_empty() else b.get_path_to(b)
+	link_rows(rows, _tab_buttons[_tab], _tab_buttons[_tab])   # the X closes; the last row wraps back to the tabs
 
 
 ## Link rows (Array of Array[Control]) top to bottom. `above` is reached from the first row going up and
@@ -167,13 +181,52 @@ func _on_window_changed() -> void:
 
 # ---------------------------------------------------------------- rows
 
-func _make_row(def: Dictionary) -> Control:
+## Every row sits on its own small card with a dim outline in the tab colour, like the gallery's stat cards.
+func _make_card(row: Control, col: Color) -> Control:
+	var card := PanelContainer.new()
+	var box: AsciiBox = AsciiBox.make(AsciiBox.Kind.BUTTON, 5.0, 3.0)
+	box.edge_override = col.darkened(0.45)
+	card.add_theme_stylebox_override("panel", box)
+	card.add_child(row)
+	return card
+
+
+static func tab_color(tab: String) -> Color:
+	return TAB_COLORS.get(tab, StatStyle.PAPER) as Color
+
+
+## Title Case for display: every word starts with a capital. Registry strings stay as written, so rows other
+## threads add are covered too. Keeps words already containing capitals or digits (VSync, FPS) as they are.
+static func title_case(s: String) -> String:
+	var out: PackedStringArray = PackedStringArray()
+	for w: String in s.split(" "):
+		out.append(w if w == "" or w != w.to_lower() else w.substr(0, 1).to_upper() + w.substr(1))
+	return " ".join(out)
+
+
+## Tab buttons wear their tab colour: dim outline at rest, brighter on hover, solid when picked.
+static func _paint_tab(b: PixelButton, col: Color) -> void:
+	var rest: AsciiBox = AsciiBox.make(AsciiBox.Kind.BUTTON, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y)
+	rest.edge_override = col.darkened(0.35)
+	var lit: AsciiBox = AsciiBox.make(AsciiBox.Kind.SELECT, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y)
+	lit.edge_override = col.lightened(0.2)
+	var down: AsciiBox = AsciiBox.make(AsciiBox.Kind.PRESSED, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y)
+	down.edge_override = col
+	b.add_theme_stylebox_override("normal", rest)
+	b.add_theme_stylebox_override("hover", lit)
+	b.add_theme_stylebox_override("pressed", down)
+	b.add_theme_color_override("font_color", col)
+	b.add_theme_color_override("font_hover_color", col.lightened(0.2))
+
+
+func _make_row(def: Dictionary, col: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 	var kind: int = int(def["kind"])
 	if kind != SettingsRegistry.Kind.ACTION:
 		var l := Label.new()
-		l.text = String(def["label"])
+		l.text = title_case(String(def["label"]))
+		l.add_theme_color_override("font_color", col)
 		l.custom_minimum_size.x = LABEL_WIDTH
 		row.add_child(l)
 	match kind:
@@ -187,6 +240,8 @@ func _make_row(def: Dictionary) -> Control:
 			_build_action(row, def)
 		SettingsRegistry.Kind.KEY:
 			_build_key(row, def)
+	if String(def.get("hint", "")) != "":
+		Tip.bind_all(row, {"title": title_case(String(def["label"])) if kind != SettingsRegistry.Kind.ACTION else "", "body": String(def["hint"])})
 	return row
 
 
@@ -272,11 +327,11 @@ func _build_action(row: HBoxContainer, def: Dictionary) -> void:
 	var b := PixelButton.new()
 	b.custom_minimum_size.x = 200
 	var id: StringName = def["id"]
-	var label: String = String(def["label"])
+	var label: String = title_case(String(def["label"]))
 	b.pressed.connect(func() -> void:
 		if bool(def.get("confirm", false)) and _armed != id:
 			_armed = id
-			b.text = "Sure? Press again"
+			b.text = "Sure? Press Again"
 			_hint.text = String(def.get("hint", ""))
 			return
 		_armed = &""
@@ -326,18 +381,32 @@ func _input(event: InputEvent) -> void:
 	if _capture == &"" or not (event is InputEventKey):
 		return
 	var k: InputEventKey = event
-	if not k.pressed or k.echo:
+	if k.echo:
 		return
 	get_viewport().set_input_as_handled()
-	if k.keycode in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]:
+	if Keybinds.is_modifier(int(k.keycode)):
+		# A modifier alone (Shift, Ctrl) binds when it is released with no other key pressed in between;
+		# pressed with another key it becomes part of that combo (Shift+C).
+		if k.pressed:
+			_cap_mod = int(k.keycode)
+		elif _cap_mod == int(k.keycode):
+			_finish_capture(_cap_mod)
 		return
-	var action: StringName = _capture
-	_capture = &""
+	if not k.pressed:
+		return
 	if k.keycode == KEY_ESCAPE:
+		_capture = &""
+		_cap_mod = 0
 		refresh()
 		return
-	var swapped: StringName = Keybinds.set_key(action, k.keycode)
-	_close_btn.text = "Close [%s]" % Keybinds.key_name(&"settings")
+	_finish_capture(Keybinds.code_of(k))
+
+
+func _finish_capture(code: int) -> void:
+	var action: StringName = _capture
+	_capture = &""
+	_cap_mod = 0
+	var swapped: StringName = Keybinds.set_key(action, code)
 	if swapped != &"":
 		_hint.text = "%s now uses %s's old key." % [Keybinds.label_for(swapped), Keybinds.label_for(action)]
 	else:

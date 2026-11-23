@@ -3,7 +3,7 @@ extends StyleBox
 ## Notched, dithered frame drawn texel by texel (Spleen has no box-drawing glyphs).
 ## Kinds: PANEL, BUTTON, HOVER, PRESSED, DISABLED. Colours come from RelicStyle (zone palette).
 
-enum Kind { PANEL, BUTTON, HOVER, PRESSED, DISABLED }
+enum Kind { PANEL, BUTTON, HOVER, PRESSED, DISABLED, SELECT }
 
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
@@ -14,6 +14,8 @@ const BUTTON_PAD := Vector2(8.0, 4.0)
 var kind: Kind = Kind.PANEL
 ## Optional border colour (rarity edges on tooltips and toasts). Alpha 0 means use the palette edge.
 var edge_override: Color = Color(0, 0, 0, 0)
+## Optional fill colour (zone-themed cards). Alpha 0 means the palette ink.
+var fill_override: Color = Color(0, 0, 0, 0)
 ## Hover ripple phase, advanced by PixelButton while hovered (texels the wash drifts).
 static var phase: int = 0
 
@@ -54,7 +56,7 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	var w: float = floorf(rect.size.x)
 	var h: float = floorf(rect.size.y)
 	var edge: Color = RelicStyle.edge if edge_override.a == 0.0 else edge_override
-	var fill: Color = RelicStyle.ink
+	var fill: Color = RelicStyle.ink if fill_override.a == 0.0 else fill_override
 	match kind:
 		Kind.HOVER:
 			edge = RelicStyle.accent
@@ -63,6 +65,9 @@ func _draw(ci: RID, rect: Rect2) -> void:
 			fill = RelicStyle.accent
 		Kind.DISABLED:
 			edge = RelicStyle.ink.lerp(RelicStyle.edge, 0.3)
+		Kind.SELECT:   # tiles: a solid lifted panel in accent (or the edge override), so the label never sits on noise
+			edge = RelicStyle.accent if edge_override.a == 0.0 else edge_override
+			fill = RelicStyle.ink.lerp(RelicStyle.edge, 0.22)
 	_px(ci, x, y, w, h, fill)
 	# 1 texel border with the corners notched.
 	_px(ci, x + 2, y, w - 4, 1, edge)
@@ -81,6 +86,9 @@ func _draw(ci: RID, rect: Rect2) -> void:
 		_dither(ci, Rect2(x + w - 3, y + 3, 1, h - 6), edge, 6)
 	elif kind == Kind.HOVER:
 		_dither(ci, Rect2(x + 2, y + 2, w - 4, h - 5), edge, 3, phase)
+		_px(ci, x + 2, y + h - 2, w - 4, 1, edge)
+	elif kind == Kind.SELECT:   # dither only as a quiet accent: one dotted row under the border
+		_dither(ci, Rect2(x + 3, y + h - 3, w - 6, 1), edge, 6)
 		_px(ci, x + 2, y + h - 2, w - 4, 1, edge)
 	elif kind == Kind.DISABLED:
 		_dither(ci, Rect2(x + 2, y + 2, w - 4, h - 4), edge, 3)

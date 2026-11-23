@@ -1,5 +1,9 @@
 shader_type canvas_item;
 render_mode blend_add;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // God rays for dawn and dusk. Shafts fan out from a sun point above the frame. A texel is lit when the
 // shaft intensity beats the 4x4 Bayer matrix, so the rays are dithered bands, not a smooth glow. Added on top
 // of the scene at a fixed low value, so a lit texel is one step lighter than what is underneath.
@@ -19,7 +23,7 @@ float bayer4(ivec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {
@@ -31,9 +35,6 @@ void fragment() {
 	shaft = pow(shaft, 1.6);
 	float fall = 1.0 - smoothstep(reach * 0.25, reach, length(v));
 	float inten = shaft * fall * amount;
-	if (inten > bayer4(t) * 0.55 + 0.06) {
-		COLOR = vec4(ray_col * ray_col * 0.36, 1.0);   // squared: keeps the colour warm instead of washing to grey
-	} else {
-		COLOR = vec4(0.0);
-	}
+	// soft shafts, no dither. Squared colour keeps it warm instead of washing to grey.
+	COLOR = vec4(ray_col * ray_col * 0.36, clamp(inten * 0.55, 0.0, 0.4));
 }
