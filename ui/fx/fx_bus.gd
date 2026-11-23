@@ -136,9 +136,8 @@ func _pad_feedback(pad: CanvasItem, pos: Vector2, tier: int, tint: Color, big: b
 	ParticleBurst.spawn(fx_root, pos, cols, n)
 
 
-## A new streak tier: its name stamped above the pad, a ring and a burst, a thump, and the tier's chime.
+## A new streak tier: no text (Nathan: the tier shows only as the colour of the number), just a ring, a burst, a thump and the chime.
 func _tier_up(field: PressPopups, anchor: Vector2, tier: int) -> void:
-	field.label(&"tier", anchor + Vector2(0.0, -14.0), tier_name(tier).to_upper(), tier, true)
 	field.burst(anchor, tier, 1.6 + 0.25 * float(tier))
 	field.ring(anchor + Vector2(0.0, -6.0), tier, 30.0 + 8.0 * float(tier))
 	if shake:
