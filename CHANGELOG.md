@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.19.0 - 2026-11-23
+- New press popups: one pooled node draws every number, rolls a motion, easing and size per press, stacks held presses into one number, merges quick clicks and keeps numbers off each other. Escalating streak tiers (Gold, Ice, Rainbow, Chroma, Galaxy) change colour, sparkles, pad ripple and sound. Relic pulses now ripple outward as echoes with spark links and their own sound. Twelve new sounds. Respects Quiet pad clicks, Reduce flashing and Calm camera.
+
 ## 0.18.1 - 2026-11-23
 - The SPRINTING HELD / ENABLED label now has a dark backing plate so the ground no longer shows through its letters.
 

@@ -170,6 +170,62 @@ def sfx():
     buf = reverb(buf, 1.0, 0.25); loop = fold(buf, int(dur * SR))
     write(f"{d}/loading_loop.ogg", norm(loop, 0.5))
 
+
+# ---------------------------------------------------------------- PRESS TIERS
+def sfx_press():
+    """Press streak tiers (Plain, Gold, Ice, Rainbow, Chroma, Galaxy). Each tier keeps the signature C5 plink that
+    Audio.gd shifts up the pentatonic ladder, and adds one layer. Runs last, so the other sounds are untouched."""
+    d = os.path.join(ROOT, "sfx")
+    def fm(midi, dur, ratio=1.5, depth=3.0, decay=0.2):
+        t = t_(dur); f = hz(midi)
+        return np.sin(2 * np.pi * f * t + depth * np.exp(-t / (decay * 0.5)) * np.sin(2 * np.pi * f * ratio * t)) * np.exp(-t / decay) * np.minimum(t / 0.002, 1)
+    def air(dur, lo, hi, decay):
+        t = t_(dur); return fft_filter(rng.standard_normal(len(t)), lo=lo, hi=hi) * np.exp(-t / decay)
+    def mix(*xs):
+        out = np.zeros(max(len(x) for x in xs))
+        for x in xs: out[:len(x)] += x
+        return out
+    def later(x, secs): return np.pad(x, (int(secs * SR), 0))
+    # Per-tier press click: base plink plus a layer
+    base = plink(72, 0.45)
+    gold = mix(base, 0.5 * plink(84, 0.45, decay=0.22), 0.2 * plink(79, 0.45, decay=0.3))
+    ice = mix(plink(79, 0.45, bright=2.2, decay=0.2), 0.4 * plink(91, 0.3, decay=0.07), 0.25 * air(0.45, 5000, 14000, 0.012))
+    rainbow = mix(base, later(0.8 * plink(76, 0.4, decay=0.14), 0.045), later(0.7 * plink(79, 0.4, decay=0.14), 0.09))
+    chroma = mix(base * 0.7, 0.8 * fm(72, 0.45, 1.5, 3.2, 0.2), 0.3 * fm(84, 0.3, 2.0, 2.0, 0.1))
+    t = t_(0.45)
+    galaxy = mix(base * 0.8, 0.4 * np.sin(2 * np.pi * 36 * t) * np.exp(-t / 0.18), 0.5 * pad_tone(79, 0.45, 0.04, 0.3), 0.25 * air(0.45, 3000, 12000, 0.08))
+    for k, x in enumerate((gold, ice, rainbow, chroma, galaxy), start=1):
+        write(f"{d}/pad_press_{k}.ogg", norm(reverb(x, 0.5, 0.14), 0.65))
+    # Tier-up flourishes: longer and richer every tier
+    def run(notes, step, dec=0.25, br=1.0, gain=1.0, dur=None):
+        dur = dur or (len(notes) * step + 0.9)
+        buf = np.zeros(int(dur * SR))
+        for i, m in enumerate(notes): place(buf, plink(m, 0.9, bright=br, decay=dec) * gain, i * step)
+        return buf
+    write(f"{d}/tier_up_1.ogg", norm(reverb(run([72, 76, 79, 84], 0.07, 0.3), 0.9, 0.2), 0.75))
+    ice_up = run([84, 88, 91, 96, 100], 0.05, 0.22, 2.4)
+    place(ice_up, air(0.7, 6000, 15000, 0.09) * 0.3, 0.02)
+    write(f"{d}/tier_up_2.ogg", norm(reverb(ice_up, 1.2, 0.3), 0.75))
+    write(f"{d}/tier_up_3.ogg", norm(reverb(mix(run([72, 74, 76, 79, 81, 84, 86, 88, 91], 0.05, 0.22), 0.35 * run([60, 67], 0.2, 0.5, dur=9 * 0.05 + 0.9)), 1.0, 0.22), 0.8))
+    t = t_(1.6); riser = fft_filter(rng.standard_normal(len(t)), lo=500, hi=7000) * np.minimum(t / 0.6, 1) ** 2 * np.exp(-np.maximum(t - 0.6, 0) / 0.25) * 0.35
+    chroma_up = riser.copy()
+    for k, m in enumerate((60, 67, 72, 76, 79, 84)): place(chroma_up, fm(m, 1.0, 1.5 + 0.02 * k, 3.0, 0.3) * 0.7, 0.55 + k * 0.03)
+    place(chroma_up, plink(96, 0.8, bright=2.0, decay=0.3) * 0.5, 0.6)
+    write(f"{d}/tier_up_4.ogg", norm(reverb(chroma_up, 1.4, 0.28), 0.82))
+    t = t_(2.6); gal = np.zeros(len(t))
+    for m in (48, 55, 60, 67, 72, 79): place(gal, pad_tone(m, 2.2, 0.35, 1.4) * 1.3, 0.05)
+    place(gal, np.sin(2 * np.pi * (60 * np.exp(-t[:int(0.8 * SR)] * 4) + 30) * t[:int(0.8 * SR)]) * np.exp(-t[:int(0.8 * SR)] / 0.25) * 0.9, 0.0)
+    shower = np.random.default_rng(5150)
+    for k in range(18):
+        place(gal, plink(int(shower.choice([91, 96, 100, 103, 108])), 0.5, bright=2.0, decay=0.1) * 0.32, 0.25 + k * 0.07 + shower.uniform(0, 0.04))
+    write(f"{d}/tier_up_5.ogg", norm(reverb(gal, 2.0, 0.34), 0.88))
+    # Relic pulse: a soft double ping (Audio.gd steps it up per neighbour)
+    pe = np.zeros(int(0.5 * SR)); place(pe, plink(79, 0.4, decay=0.1), 0.0); place(pe, plink(86, 0.4, decay=0.12) * 0.7, 0.07)
+    write(f"{d}/pulse_echo.ogg", norm(reverb(pe, 0.5, 0.18), 0.55))
+    # Streak lost: a small falling sigh
+    sg = np.zeros(int(0.7 * SR)); place(sg, plink(67, 0.5, decay=0.12), 0.0); place(sg, plink(62, 0.5, decay=0.16) * 0.8, 0.11)
+    write(f"{d}/streak_lost.ogg", norm(fft_filter(reverb(sg, 0.6, 0.15), hi=2600), 0.45))
+
 # ---------------------------------------------------------------- MUSIC
 SECTION = [0.35, 1.0, 0.6, 1.0]   # melody density per chord group: verse/bridge feel, not a flat wall
 
@@ -295,9 +351,10 @@ def world():
     write(f"{ROOT}/amb/shore_amb.ogg", norm(out, 0.2), q=3)
 
 if __name__ == "__main__":
-    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world"]
+    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world", "press"]
     if "sfx" in what: sfx()
     if "music" in what: music_all()
     if "amb" in what: amb()
     if "world" in what: world()
+    if "press" in what: sfx_press()
     print("done ->", os.path.normpath(ROOT))

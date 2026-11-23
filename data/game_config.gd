@@ -35,6 +35,15 @@ extends Resource
 @export var momentum_per_crit: float = 0.05      ## extra charge on a crit
 @export var momentum_per_unit: float = 0.0055    ## charge per texel walked (about 180 texels fills it)
 @export var momentum_decay_per_second: float = 0.1
+## Press streak tiers (PressStreak, ui/fx/press_popups.gd). Presses closer together than popup_streak_gap seconds chain.
+## Score = chain length x (1 + momentum stage x popup_momentum_weight); each threshold reached is one tier:
+## Plain, Gold, Ice, Rainbow, Chroma, Galaxy. Pure presentation: tiers never change income.
+@export var popup_streak_gap: float = 1.6
+@export var popup_tier_thresholds: PackedFloat32Array = PackedFloat32Array([8.0, 20.0, 45.0, 90.0, 180.0])
+@export var popup_tier_names: PackedStringArray = PackedStringArray(["Plain", "Gold", "Ice", "Rainbow", "Chroma", "Galaxy"])
+@export var popup_momentum_weight: float = 0.35
+## A relic pulse hits each neighbour this many seconds after the one before it, so the chain reads as a ripple.
+@export var pulse_echo_delay: float = 0.09
 ## Walker movement (WalkerMotion). Multipliers on the walk speed, so Attribute levels still scale everything.
 @export var sprint_mult: float = 1.55            ## Shift held, or Ctrl locked
 @export var crouch_mult: float = 0.5             ## C held on the ground

@@ -543,9 +543,15 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return
-	if pad.standing or pad.holding:
+	# A relic pulse presses the neighbours of the pad you pressed: Juice draws those as echoes that ripple outward.
+	var from: Vector2 = Vector2.INF
+	if sim.pulse_source != &"":
+		var src: TexelPad = pads.get(sim.pulse_source) as TexelPad
+		if src != null:
+			from = src.position
+	if from == Vector2.INF and (pad.standing or pad.holding):
 		walker.squash()
-	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding)
+	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding and from == Vector2.INF, from, sim.pulse_order)
 
 
 ## Relic UI (PR #5): equipped bar, drop toast, collection panel, pad flash on Epic and above.

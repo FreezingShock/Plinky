@@ -44,6 +44,7 @@ var _timer: float = 0.0
 var _punch_t: float = 0.0   # 1 -> 0 after a press
 var _lvl_t: float = 0.0     # 1 -> 0 after a mastery level-up
 var _ring_t: float = 1.0    # 0 -> 1 ripple; 1 = idle
+var _ring_tint: Color = Color(0.0, 0.0, 0.0, 0.0)   # streak tier colour for the ripple; alpha 0 = the plain palette ripple
 var _progress_t: float = 0.0
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
@@ -130,9 +131,11 @@ func hit(p: Vector2, slack: float = 1.3) -> bool:
 
 
 ## Called by Juice on every press. Restarts the sink and ripple, so spam-pressing never stacks tweens or drifts the pad.
-func punch() -> void:
+## tint (alpha above 0) recolours the ripple with the press streak tier's colour.
+func punch(tint: Color = Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	_punch_t = 1.0
 	_ring_t = 0.0
+	_ring_tint = tint
 
 
 ## Mastery level-up: two gold rings spread from the plate (hard steps, no blending). Quiet under reduce flashing.
@@ -233,6 +236,8 @@ func _draw() -> void:
 	if rs >= 0:
 		var g: float = 1.0 + 0.45 * float(rs + 1) / 6.0
 		var rc: Color = palette[7] if rs < 4 else palette[4]
+		if _ring_tint.a > 0.0:
+			rc = _ring_tint if rs < 4 else _ring_tint.lightened(0.35)
 		_outline(g, 0, rc)
 	var ls: int = _level_step()
 	if ls > 0:
