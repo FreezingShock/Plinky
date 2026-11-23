@@ -14,3 +14,11 @@ Scope: how surfaces look. Lighting and atmosphere have their own thread; this gu
 ## Open taste questions
 - Sky and horizon are still a flat teal fill (atmosphere thread).
 - Distant mountains still read as blocky silhouettes on the right edge.
+
+## Backdrop (mountains and water)
+Code: `tools/art/surroundings.py`, shared by both generators.
+1. **The range exists behind the island.** Three ridge layers (far, mid, near) rise behind the island's crest and fall away to foothills at the sides, so cliffs read as the front of the same mountains, not a block floating in water.
+2. **Atmosphere by layer.** Far ridge ramp 1-2 only, mid 1-2-2-3, near 2-3-3-4 with tree stipple. Lower flanks dither into the next-lighter index, so ridges fade into mist.
+3. **No hard horizon.** The shoreline wobbles, a mist band sits where the range meets the water, the range reflects in the water, and a thin foam line marks the foot of the hills.
+4. **Peaks stay inside the frame** (soft floor), so nothing is cropped at the top of the 640x360 view.
+5. Larkmoor's island sits below the horizon, so its range is a free panorama across the full canvas width.

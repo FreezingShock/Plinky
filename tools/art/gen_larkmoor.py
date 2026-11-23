@@ -699,25 +699,7 @@ def render_scene(keep):
         ink |= (me >= 10) & (nb == -2)
     out[ink & (img_id >= 0)] = 0
     # ---- surroundings: layered distant mountains and open water, so wide windows never see the void ----
-    emp = out < 0
-    if emp.any():
-        HOR = 118 + 3 * np.sin(XX * .05)
-        sky = dith([0, 1, 1, 2], .15 + .75 * (YY / 118.0) ** 1.2, emp)
-        res = np.where(YY < HOR, sky, -1)
-        for k, (base, amp, fr, ramp, sd) in enumerate(((122, 52, 70, [1, 2], 5), (126, 38, 48, [2, 2, 3], 6), (130, 24, 34, [2, 3, 3, 4], 7))):
-            rid = 1 - np.abs(2 * fbm2(np.arange(W) / float(fr) + k * 17, np.zeros(W), 4, sd) - 1)
-            top_ = base - amp * rid ** 1.3 - 14
-            below = YY >= top_[None, :]
-            slope_ = np.roll(top_, -2) - np.roll(top_, 2)
-            lit = np.clip(.45 - slope_[None, :] * .09 + (vn2(XX / 5.0, YY / 4.0, sd + 3) - .5) * .35 + (YY - top_[None, :]) * -.004, 0, .99)
-            mt = dith(ramp, lit, emp)
-            res = np.where(below & (YY < HOR + 6), mt, res)
-        wt = np.clip(.52 - (YY - HOR) / 520.0 + (vn2(XX / 9.0, YY / 2.5, 60) - .5) * .30, 0, .99)
-        wat = dith([1, 2, 2, 3], wt, emp)
-        wat = np.where((wat <= 2) & (YY % 4 == 0) & (vn2(XX / 3.0, YY / 1.0, 61) > .86), 3, wat)
-        wat = np.where((vn2(XX / 3.0, YY / 1.2, 62) > .93) & (YY % 3 == 0), 4, wat)
-        res = np.where(YY >= HOR, wat, res)
-        out[emp] = res[emp]
+    import surroundings; surroundings.paint(out, W, H, XX, YY, dith, vn2, fbm2, 118, 520.0)
     rgb = np.zeros((H, W, 3), np.uint8); rgb[:] = COLS[0]
     have = out >= 0; rgb[have] = COLS[out[have]]
 
