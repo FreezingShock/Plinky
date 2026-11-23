@@ -21,6 +21,11 @@ func run(t: Object) -> void:
 				wrong_size += 1
 		t.eq(missing, 0, "%s: every sprite has relight data" % dir)
 		t.eq(wrong_size, 0, "%s: relight data matches its sprite size" % dir)
+	var g: Image = Image.load_from_file("res://assets/art/zone1/meadow3d/ground.png")
+	var gn: Image = Image.load_from_file("res://assets/art/zone1/meadow3d/ground_n.png")
+	var gh: Image = Image.load_from_file("res://assets/art/zone1/meadow3d/ground_h.png")
+	t.ok(g != null and gn != null and gh != null and g.get_size() == gn.get_size() and g.get_size() == gh.get_size(),
+			"ground G-buffer (normal and height) matches the ground art size")
 	var inc: String = FileAccess.get_file_as_string("res://render/shaders/prop_ramps.gdshaderinc")
 	var pal: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 	var first: Color = pal[0]
