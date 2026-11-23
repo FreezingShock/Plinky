@@ -9,8 +9,18 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.28.1 - 2026-11-23
+- Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active Larkmoor gate 58.4 to 51.6 min (target 57 to 61, still short). Meadow unchanged.
+
+## 0.28.0 - 2026-11-23
+- Higher flower tiers now buff several lower stats at once (Thistle and Heather 1.25x, Foxglove and Starbloom 1.5x, data-driven). New Settings option for multipliers as a factor (x1.5) or a percent (150%). Locked pads are clearly darker and buyable pads glow green. Larkmoor gate retuned to 2000 Starbloom Petals.
+
+## 0.27.2 - 2026-11-23
+- Docs only: CLAUDE.md and SPEC.md now match the flat repo layout, docs/interfaces.md added, shader-uniform rule amended, features.md and balance.md refreshed.
+
 ## 0.27.1 - 2026-11-23
-- Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Meadow numbers unchanged: active gate 10.1 min.
+- Fixed the title screen's input error (the menu pad actions are now registered before the title), and onboarding tip cards now step aside while any menu is open, so the Esc menu's buttons are never covered.
+
 ## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
 

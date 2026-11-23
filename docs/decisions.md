@@ -551,3 +551,20 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Meadow kept as it is:** active gate 10.1 min (range 9.8 to 10.1), hold 9.8, idle 16.6. Clover opens at 4.4 min in every profile. The meadow meets the 10 minute target, so no meadow costs changed.
 - **Larkmoor not edited here:** the far gate is 56.0 min median on active (range 33.7 to 58.8), just under the 57 to 61 target. Larkmoor costs belong to the flower tiers thread, which gets these numbers (see `docs/balance.md` section 11).
 - **Open:** idle reaches the Larkmoor far gate at about 134 min, and the 57 to 61 target only holds for active play. Whether idle should be faster is a design question for Nathan. Not decided.
+## Tier buffs, multiplier display, clearer pad states (2026-11-23)
+- **Decision (Nathan):** stats from the 3rd tier up buff several lower stats, not just the one below. `StatDef.buff_stats` and `buff_factor` (data, reusable by the Ember Quarry ladder): while a stat is held (>= 1), rewards into each listed stat are multiplied by the factor, and buffs from different stats stack. Meadow: Thistle Down and Heather Sprigs 1.25x, Foxglove Bells and Starbloom Petals 1.5x, each on every stat below it. This is flat, not per unit, so it stays predictable; the per-unit chain (`gain_boost_stat`) is unchanged.
+- **Setting:** Settings > Gameplay > Multiplier display, Factor (x1.5) or Percent (150%), through `NumberFormat.mult()`. Used by the stat sources lists and the HUD prestige label.
+- **Pacing:** with buffs the Larkmoor gate is 2000 Starbloom Petals; `tools/sim.gd` (now seeded) lands at 58 to 61 min, with a few minutes of swing from relic drops.
+- **Pad states:** locked pads are dark with a dull bud and no buy colours; buyable pads get a green ground halo, plus the existing green inset and tick; unaffordable stays red with the X.
+
+## 2026-11-23 Docs and rules hygiene (docs only)
+- **CLAUDE.md and SPEC.md describe the real flat layout** (`core/`, `world/`, ...; no `src/`). `docs/interfaces.md` now exists (autoloads, EventBus signals, rules) instead of being a missing reference.
+- **Shader uniform rule amended, not refactored.** Gameplay never sets uniforms; `Fx` owns gameplay-driven ones; presentation scripts that own a material (sky, shadows, screen light, toon material, pixel viewport, window frame, transitions, boot and title backgrounds) set their own. Reason: about 60 sky calls would otherwise move into `Fx` for no gain.
+- **`core/` wording:** pure logic is node-free; the Node autoload shells (event_bus, game_state, save, calendar_service) are the named exception.
+- **Stale docs refreshed:** `docs/features.md` rewritten for v0.27.0; `docs/balance.md` marks sections 1 to 8 as v0 history and adds a pointer to the flower and quarry ladders; `docs/zone2-ladder.md` copied into the repo.
+
+## Larkmoor cost pass: smoother unlocks, gate still short (2026-11-23)
+- **Brief (Nathan, via coordinator):** progression should feel fast and satisfying; short gaps between unlocks, no long dead stretches; idle about 2x active is fine; Larkmoor near 57 to 61 min on active.
+- **Changed (data only):** Heather 3 base cost 2.3M to 1M Thistle; Foxglove 3 1800 to 1000 Heather; Starbloom 3 2000 to 1000 Foxglove; Larkmoor `gate_threshold` 2000 to 2600 Starbloom. Meadow and Thistle costs unchanged.
+- **Result (active, median of 8 seeds):** Heather opens 11.4 min, Foxglove 22.5, Starbloom 33.9, far gate 51.6 (range 38.6 to 64.2). Before: 11.4, 27.4, 40.7, 58.4. Idle gate 114.8 (2.2x active). Hold 30.1.
+- **Still open:** the far gate is about 5 min short of the 57 to 61 target. The gate is a weak lever: raising the threshold to 5000 moved it about 3 min, and Starbloom 3 costs from 3000 to 12000 changed nothing. The next lever is Foxglove income (its rewards or the Heather costs), which slows the middle tiers too. Nathan to choose: accept about 52 min as faster progression, or slow the Foxglove economy to hit 57 to 61.

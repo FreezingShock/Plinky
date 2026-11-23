@@ -85,6 +85,7 @@ func _ready() -> void:
 	CrispFont.apply(DISPLAY_FONT)
 	_pal = Palettes.colors(Palettes.MEADOW)
 	RelicStyle.set_palette(_pal)
+	PadInput.ensure()   # registers plinky_back and the menu pad actions, which only Main did before
 	SettingsRegistry.apply_all()
 	# Nothing autosaves on the title, so browsing or deleting slots never writes a new save.
 	var save: Node = _save()

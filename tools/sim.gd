@@ -102,7 +102,7 @@ func _init() -> void:
 		return
 	var failed: bool = false
 	var table: Array[String] = []
-	var keys: Array[StringName] = [&"clover_1", &"thistle_1", &"heather_1", &"foxglove_1", &"starbloom_1"]
+	var keys: Array[StringName] = [&"clover_1", &"clover_2", &"clover_3", &"thistle_1", &"thistle_2", &"thistle_3", &"heather_1", &"heather_2", &"heather_3", &"foxglove_1", &"foxglove_2", &"foxglove_3", &"starbloom_1", &"starbloom_2", &"starbloom_3"]
 	for i: int in profiles.profile_names.size():
 		var name: String = profiles.profile_names[i]
 		var pps: float = profiles.presses_per_second[i]

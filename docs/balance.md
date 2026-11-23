@@ -1,8 +1,10 @@
 # Plinky zone 1 starting balance (v0)
 
+> **Which tables are live?** Sections 1 to 8 are the original v0 numbers (five meadow pads, r2 cost 30000) and are kept as history. Section 9 and 10 describe the v1 tuning. Section 11 (round 3) is the current balance for relics, attributes, Larkmoor pads and mastery. Meadow pads are now the six-tier flower ladder (v0.27.0, see decisions.md 2026-11-23); `content/*.tres` and `tools/sim.gd` are the truth over any table here.
+
 Status: starting values from a quick simulation, 22 Nov 2026. Not tuned by play. `tools/sim.gd` replaces these numbers in M2 and should be the source of truth after that. Every value below belongs in `content/*.tres`, never in a script (SPEC section 5 rules).
 
-## 1. Assumptions
+## 1. Assumptions (v0, historical)
 - Tick: 10 per second (dt = 0.1 s).
 - Passive base cash: 0.25 per second.
 - Press rate: 0.5 per second (the player walks between pads).
@@ -10,7 +12,7 @@ Status: starting values from a quick simulation, 22 Nov 2026. Not tuned by play.
 - Strategy used in the sim: at each press, buy the furthest affordable button.
 - No relics, shrines, crits or attributes. Those come in M4.
 
-## 2. Formulas (from SPEC section 3, with one correction)
+## 2. Formulas (from SPEC section 3, with one correction) (v0, historical)
 ```
 cash_per_second = base_cash × (1 + multiplier) × prestige_mult
 button_gain (mult rewards) = reward × (1 + rebirths)
@@ -18,7 +20,7 @@ prestige_mult = 1 + prestige ^ 0.8
 ```
 **Correction to the spec.** SPEC section 3 has two versions of the Rebirths effect. The stat table says Rebirths multiplies Multiplier gain. The formula also multiplies cash by (1 + rebirths). Using both would count rebirths twice. This table uses the stat-table version only. Confirm with Nathan before M2.
 
-## 3. Stats (4)
+## 3. Stats (4) (v0, historical)
 | id | Display | Start | Effect | Earned by |
 |---|---|---|---|---|
 | `cash` | Cash | 0 | Spent on Multiplier buttons. Income is passive. | Passive, 0.25 per second × (1 + mult) × prestige_mult |
@@ -26,7 +28,7 @@ prestige_mult = 1 + prestige ^ 0.8
 | `reb` | Rebirths | 0 | Multiplies Multiplier gain. Gate opens at 9. | Rebirth buttons |
 | `prestige` | Prestige | 0 | prestige_mult = 1 + prestige^0.8 on tiers 0 to 2. | Rebirth action (see section 5) |
 
-## 4. Buttons (5)
+## 4. Buttons (5) (v0, historical)
 | id | Row | Cost stat | Cost | Reward stat | Reward | Row index |
 |---|---|---|---|---|---|---|
 | `m1` | Multiplier | cash | 10 | mult | +1 | 0 |
@@ -37,12 +39,12 @@ prestige_mult = 1 + prestige ^ 0.8
 
 Each step in a row costs 10 times more and gives 8 times more (SPEC section 3). Between rows, the Rebirth costs are set high enough that the Multiplier row is always bought first.
 
-## 5. Gate and rebirth
+## 5. Gate and rebirth (v0, historical)
 - Zone 1 gate: opens when `reb` reaches 9 (r1 + r2 = 9).
 - Rebirth action: available once `reb` is at least 1. It resets cash, mult and reb to 0, and adds `reb` (the value at reset) to `prestige`. Example: a reset at reb = 9 adds 9 prestige, so prestige_mult = 1 + 9^0.8 ≈ 6.1.
 - Zone 2 is not balanced here. It starts in zone 2 values, which are not written yet.
 
-## 6. Rough time to each button (simulation output)
+## 6. Rough time to each button (simulation output) (v0, historical)
 | Event | Time (min) |
 |---|---|
 | m1 first bought | 0.7 |
@@ -53,7 +55,7 @@ Each step in a row costs 10 times more and gives 8 times more (SPEC section 3). 
 
 Read these against SPEC section 1: five buttons should be fun for ten minutes. The gate opens at about 11 minutes, inside the target. The Multiplier buttons arrive by 5 minutes, and the first Rebirth button at 7.2 minutes. Tuning history: base cash 0.1 per second gave a gate at 28 minutes, too slow. 0.25 per second is the chosen value.
 
-## 7. .tres-ready values
+## 7. .tres-ready values (v0, historical)
 Each file uses the field names from SPEC section 5. Values are plain numbers. BigNum conversion happens at load.
 
 `content/stats/`
@@ -74,7 +76,7 @@ Each file uses the field names from SPEC section 5. Values are plain numbers. Bi
 
 `cost_growth` is recorded for the design. The explicit `base_cost` on each button is what the game reads, so changing growth alone does nothing until the formula is wired to it.
 
-## 8. Open
+## 8. Open (v0, historical)
 - Confirm the Rebirths correction in section 2.
 - Gate threshold and base cash: 9 and 0.25 chosen for the 10 to 12 minute target. Confirm with the M2 simulator.
 - Zone 2 starting values.
@@ -211,7 +213,7 @@ No risk found. `BigNum` keeps a float mantissa and an integer exponent, so there
 - Headless tests: 2612 checks, 0 failed (2600 before, plus 12 new regression checks, three per stacking relic: diminishes, first stack is its full step, at or under 100% after 1000 stacks; the Gold Purse assertion was updated to the new step).
 - Not run here: the screenshot tool. It draws nothing under the cloud's software renderer, so the PC thread should check the relic and attribute panels in-engine.
 
-## 11. Flower ladder pacing check (23 Nov 2026, main at 5f4ab24, v0.27.0)
+## 13. Flower ladder pacing check (23 Nov 2026, before #171, main at 5f4ab24, v0.27.0)
 Run `godot --headless --path . --script tools/sim.gd`. Greedy buys (highest row first), no walking, attributes or relics. Each profile runs 8 seeded games. Times are minutes from the start of the meadow. Larkmoor's first tier (Thistle) opens on arrival, so it has no unlock time.
 
 | Profile | Presses/s | Clover opens | Heather opens | Foxglove opens | Starbloom opens | Meadow gate median (range) | Larkmoor gate median (range) |
@@ -225,3 +227,22 @@ Run `godot --headless --path . --script tools/sim.gd`. Greedy buys (highest row 
 - **Larkmoor far gate:** 56.0 median on active, under the 57 to 61 target. The spread between seeds is large (33.7 to 58.8). The median is the number to read; a single run can move by 20 minutes. Hold is faster, so a press-rate change moves the gate more than any single cost.
 - **Handed to the flower tiers thread (not edited here):** the Thistle row costs too little to pace Larkmoor, so Heather opens almost on arrival. Raising the Thistle costs would move Heather and everything after it.
 - **Idle:** at one press every 5 seconds the far gate is about 2 h 15 min. Decide with Nathan whether that is acceptable.
+## 12. Meadow flower ladder and quarry ladder (23 Nov 2026, pointer)
+- **Meadow (v0.27.0):** six flower tiers replace the old Cash, Multiplier and Rebirth pads. Costs and rewards are in `content/buttons/*.tres` and `content/tiers/*.tres`; the table is in decisions.md under the 2026-11-23 flower ladder entry. Sim result: meadow gate at 10.1 min, Larkmoor far gate at 59.2 min.
+- **Bloom:** the meadow's reset layer is decided but not built, so rebirth-loop findings in sections 9 and 10 stay open until it lands.
+- **Ember Quarry:** the ladder pitch (Cinder to Emberhearts, rebirth sourced from Ingots, flat arrival grant) is in docs/zone2-ladder.md. Numbers there are starting values for the quarry balance thread.
+
+
+### Cost pass after #171 (23 Nov 2026, v0.28.1)
+Brief from Nathan: fast and satisfying progression, short gaps between unlocks, idle about 2x active, Larkmoor near 57 to 61 min on active. Changed data only: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Meadow and Thistle unchanged.
+
+| Profile | Heather opens | Foxglove opens | Starbloom opens | Far gate median (range) |
+|---|---|---|---|---|
+| active, before (v0.28.0) | 11.4 | 27.4 | 40.7 | 58.4 (43.0 to 60.8) |
+| active, after (v0.28.1) | 11.4 | 22.5 | 33.9 | 51.6 (38.6 to 64.2) |
+| idle, after | 17.1 | 45.0 | 73.0 | 114.8 (85.5 to 120.7), 2.2x active |
+| hold, after | 24.1 | 28.5 | 29.9 | 30.1 (16.0 to 91.1) |
+
+- **Gaps (active, after):** Heather to Foxglove 11.1 min, Foxglove to Starbloom 11.4 min, Starbloom 3 bought at 46.5 min, 12.5 min after Starbloom 2. Before, the Foxglove and Starbloom gaps were 16.0 and 13.3 min.
+- **Not met:** the far gate at 51.6 is about 5 min short of 57 to 61. The gate barely responds to its own levers: threshold 5000 gave +3 min, Starbloom 3 costs from 3000 to 12000 gave the same 51 to 52 min. The next lever is Foxglove income. Decision for Nathan.
+- **Thistle:** unchanged. Heather still opens about 1 min after arrival, because the Sunlight carried in buys Thistle quickly.
