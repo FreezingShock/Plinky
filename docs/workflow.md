@@ -4,7 +4,7 @@ How work moves from idea to a tested change on Nathan's PC. Every thread, human 
 
 ## The five steps
 
-1. **One cloud thread per task.** Branch from `main`, open a PR with a CHANGELOG line and a version bump (`python3 tools/bump_version.py patch|minor`, see docs/versioning.md), and merge straight to `main` once CI is green. Take the next free version number at merge time: parallel PRs clash, so merge `main` in and re-run the bump with the next number. Merges happen from the cloud. Draft or conflicting PRs never run CI: merge `main` in and mark the PR ready. Only work with an open design question is held.
+1. **One cloud thread per task.** Branch from `main`, open a PR with a changelog fragment (`changelog.d/<slug>.patch|minor.md`, see docs/versioning.md; no version bump, CI stamps the version after merge), and merge straight to `main` once CI is green. Parallel PRs no longer clash on the version. Merges happen from the cloud. Draft or conflicting PRs never run CI: merge `main` in and mark the PR ready. Docs-only PRs skip the engine jobs; the `test` check still reports. Only work with an open design question is held.
 2. **A single PC QA Remote Control thread tests after merges.** It is the only thread that runs Godot with real hardware, so other threads leave PC runs to it.
    - Pull `main` into `C:\dev\Plinky`. Stash Nathan's local `project.godot` change, pull, then pop it; never discard it. Move any clashing untracked `.uid` files aside.
    - Run the headless tests with an isolated `APPDATA` / user folder. Never touch Nathan's real save (`%APPDATA%\Godot\app_userdata\Plinky\save.json`).
