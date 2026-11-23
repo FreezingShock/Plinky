@@ -319,6 +319,7 @@ func _build_bottom() -> void:
 	h.add_theme_constant_override("separation", 4)
 	add_child(h)
 	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
+	_rebirth.short_text = "Rebirth"
 	_rebirth.pressed.connect(_on_rebirth_pressed)
 	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format(), str(sim.rp_gain_preview()) if sim.can_rebirth() else ""))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
@@ -328,12 +329,14 @@ func _build_bottom() -> void:
 	_bloom.visible = false
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
+	up.short_text = "Upgrades"
 	up.pressed.connect(toggle_upgrades)
 	_key_chips.append(up)
 	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
 		var rb: ExpandChip = _chip(h, "relics/r_pulse", "Relics", "Equip relics you have found.", "Keys: %s or 2" % Keybinds.key_name(&"relics"))
 		rb.full_text = "Relics [R]"
+		rb.short_text = "Relics"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		_key_chips.append(rb)
 		gate(rb, Onboarding.F_RELICS)
@@ -342,12 +345,14 @@ func _build_bottom() -> void:
 		var act: StringName = [&"stats", &"attributes"][t]
 		var ib: ExpandChip = _chip(h, ["stats_menu", "attrs_menu"][t], nm, "Open the %s list." % nm.to_lower(), "Keys: %s or %d" % [Keybinds.key_name(act), 3 + t])
 		ib.full_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
+		ib.short_text = nm
 		ib.pressed.connect(func() -> void: index_requested.emit(t))
 		_key_chips.append(ib)
 		gate(ib, Onboarding.F_DEWDROP if t == 0 else Onboarding.F_UPGRADES)
 	# Settings and the Update Log live in the hamburger menu, at the far right of the screen.
 	_menu_chip = _chip(self, "big/menu_hamburger", "Menu", "Settings, the update log and every section.", "Keys: %s or 5" % Keybinds.key_name(&"menu"))
 	_menu_chip.full_text = "Menu [%s]" % Keybinds.key_name(&"menu")
+	_menu_chip.short_text = "Menu"
 	_menu_chip.bubble_right = true   # its label opens leftwards, away from the screen edge
 	_menu_chip.pressed.connect(func() -> void: menu_toggled.emit(&"gallery"))
 	_key_chips.append(_menu_chip)

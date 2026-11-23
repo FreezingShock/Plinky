@@ -1,0 +1,1 @@
+Fixed the bottom bar in Always label mode (short labels, no key hints, fits at 640 wide); Update Log scrolls with a hint and keys and has room below; close X no longer crowds panel headers; arrow keys and Tab walk the hamburger gallery, locked tiles included.
