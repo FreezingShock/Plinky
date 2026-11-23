@@ -118,7 +118,7 @@ func _ready() -> void:
 	main.set_process(false)  # the offscreen window has no real cursor; show the tooltip directly
 	main.tooltip.show_for(sim, ids[0], p)
 	await _wait(2)
-	print("tooltip visible ", main.tooltip.visible, " pos ", main.tooltip.position)
+	print("tooltip visible ", main.tooltip.visible)
 	await _shot("h1_tooltip")
 	# press and hold
 	var cash0: String = sim.get_stat(&"cash").format()

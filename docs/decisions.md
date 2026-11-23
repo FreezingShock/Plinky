@@ -224,6 +224,12 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - Save version 2 adds `game.mastery` as `{pad id: [level, xp_in_level]}`. The v1 migration adds an empty one. Unknown ids drop, levels clamp to the cap.
 - Crit popup: a crit number ends in "!" and takes the crit gold (`PopupNumber.CRIT_COLOR`), on top of the existing 24 px size, hit-stop, burst and shake.
 - Balance: the starting curve (12 XP, x1.35, cap 25, +1.5% yield per level) gives +15% yield, +3% crit chance and +0.4 crit damage on a pad after roughly 650 presses on it (level 10). Not yet measured against the 61 minute Larkmoor pacing; `tools/sim_larkmoor.gd` now prints the mastery reached by the far gate, to run on the PC.
+
+## 2026-11-23: Tooltips on the existing UI
+HUD stat rows, bottom bar (Rebirth, Upgrades, Relics, Settings), upgrade rows, zone travel, the gate bar, and every Settings row that has a hint now use `Tip.bind`. Copy lives in `ui/tip_text.gd`; no balance numbers in it, live values (cost, gain) come from the caller. Pads and relics keep their own richer tooltips. Not run in-engine from the cloud; PC pass should hover each and tab through the HUD.
+
+## 2026-11-23: Pad and relic tooltips moved onto Tip
+`PadTooltip` and `RelicTooltip` are now thin wrappers (plain Nodes) over `Tip.show_free`, so every tooltip shares one look, delay and on-screen clamp. Content for pads comes from `PadTooltip.spec_for`, which adds a "Rarity: <Name>" line and tints the border and title when `Sim.pad_rarity` exists and the pad is above common (the pad thread adds it). `Tip.show_free` gained `exact` to place beside a slot instead of a cursor. Relic stat lines lose their separate green colour (one body colour now). Not run in-engine from the cloud.
 ## 2026-11-23 Pad plates and press feel
 - The old pad was only a 1px outline (the meadow art bakes no pads by design; TexelPad drew the ring). Not a render glitch.
 - Pads are now a raised plate drawn live in palette indices: ink outline, earth side faces (lit left, shadow right), dithered lit rim, glow inlay.
@@ -304,3 +310,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Seasons are outdoor only (meadow and Larkmoor, anything with a SkyCycle). Ground and props are recoloured in the existing relight shaders (render/shaders/season.gdshaderinc): green texels switch to the season colour by a per-texel Bayer plus patch threshold, so a change is a growing scatter, never a pop; winter lays snow on greens and highlights. The grade tint, haze colour and fog are multiplied by the season. The look turns over during the last day of a season, so the new one is complete when its first day starts. Spring and summer blossom and green, autumn amber and red, winter snow, in rain becomes snow in winter. Particles (petals, sun motes, leaves, snow) in world/season_particles.gd.
 - Quarry and other themed areas have no SkyCycle, so they are unchanged. The clock still shows there.
 - Dev console: `season [name]`, `day <n>`. tools/season_shots.gd renders each season at noon, golden hour and night.
+## 2026-11-23: Game version and changelog
+- Version is MAJOR.MINOR.PATCH in `core/build_info.gd` (already existed at 0.1.0). MINOR = features, PATCH = fixes and tweaks, MAJOR only when Nathan asks. Rules in docs/versioning.md; CHANGELOG.md has history backfilled from #3-#95 grouped into 0.1.0 to 0.4.0, and this change is 0.5.0.
+- Shown small on the boot screen. Nathan wants it less tucked away than a Settings row, so the Update Log tile in the bottom-bar hamburger gallery will show it via `BuildInfo.string()` and `BuildInfo.changelog()`. No Settings About row.
+- Not run in-engine: boot label placement, CHANGELOG.md in the export (include_filter added).

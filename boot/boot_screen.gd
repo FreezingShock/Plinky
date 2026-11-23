@@ -162,6 +162,16 @@ func _build_column() -> void:
 	_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_status)
 
+	var ver := Label.new()
+	ver.text = BuildInfo.string()
+	ver.add_theme_font_override("font", BODY_FONT)
+	ver.add_theme_color_override("font_color", _pal[3])
+	ver.add_theme_color_override("font_outline_color", _pal[0])
+	ver.add_theme_constant_override("outline_size", 1)
+	ver.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ver.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 6)
+	add_child(ver)
+
 	var flex := Control.new()
 	flex.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	flex.mouse_filter = Control.MOUSE_FILTER_IGNORE
