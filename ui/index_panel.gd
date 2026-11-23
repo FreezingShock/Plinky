@@ -105,7 +105,7 @@ func toggle_tab(t: int) -> void:
 		open_tab(t)
 
 
-## Debug: F6 slows the open and close animation 5x so the wipe can be checked by eye.
+## Debug: F7 slows the open and close animation 5x so the wipe can be checked by eye.
 static var slow_mo: bool = false
 
 
@@ -316,7 +316,7 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F6 and visible:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F7 and visible:
 		slow_mo = not slow_mo
 		get_viewport().set_input_as_handled()
 		return
