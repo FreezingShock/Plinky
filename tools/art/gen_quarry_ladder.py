@@ -47,13 +47,17 @@ def surface(vox):
 
 def m_cinder():
     v = {}
-    for c, r, m in (((8,8,3),(6,6,3.4),'c'), ((5,6,5),(3.4,3.4,3.4),'b'), ((11,6,5),(3.2,3.2,3.2),'c'), ((8,11,6),(3.6,3.6,3.6),'b'), ((7,7,8),(3,3,3),'c')):
+    # a heap of angular charcoal chunks, a glowing seam down the front corner, sparks drifting up
+    for c, r, m in (((8,8,3),(6.4,6.4,3.4),'c'), ((5,6,5),(3.6,3.4,3.6),'b'), ((11,7,5),(3.4,3.4,3.4),'c'), ((8,11,6),(3.8,3.8,3.8),'b'), ((7,7,8),(3.2,3.2,3.2),'c'), ((11,11,3),(2.6,2.6,2.6),'b'), ((4,11,2),(2.2,2.2,2.2),'c')):
         ellipsoid(v, c, r, m)
+    for k in list(v):
+        if (k[0] + k[1]) % 7 == 0 and k[2] > 5 and h(*k) % 2: del v[k]
     for k in surface(v):
-        hv = h(*k)
-        if k[2] <= 6 and hv % 6 == 0: v[k] = 'a'
-        elif k[2] > 3 and hv % 17 == 0: v[k] = 'b'
-    for p in ((7,7,12),(9,8,14),(6,8,15),(10,6,13)): v[p] = 'w'
+        x, y, z = k
+        if z <= 6 and 17 <= x + y <= 19 and h(*k) % 4: v[k] = 'a'
+        elif z <= 3 and h(*k) % 9 == 0: v[k] = 'a'
+        elif z > 4 and h(*k) % 13 == 0: v[k] = 'b'
+    for p in ((8,8,12),(10,9,14),(7,10,15),(9,7,13)): v[p] = 'w'
     return v
 def m_ore():
     v = {}; ellipsoid(v, (8,8,6), (6.5,5.5,6), 'b')
@@ -67,14 +71,20 @@ def m_ore():
     return v
 def m_slag():
     v = {}
-    ellipsoid(v, (8,8,1), (7.5,6.5,2), 'c')
+    # a crusted pool: dark rim, sunken glowing lava with crust cracks, two bubbles, spatter lumps
+    for x in range(N):
+        for y in range(N):
+            d = math.hypot(x - 8, y - 8)
+            if d <= 7.4:
+                for z in range(0, 3 if d > 5 else 1): v[(x, y, z)] = 'c'
+                if d <= 5: v[(x, y, 1)] = 'a'
     for k in list(v):
-        if k[2] > 2: del v[k]
+        if v[k] == 'c' and k[2] == 2 and h(*k) % 3 == 0: del v[k]
     for k in list(v):
-        if k[2] == 2 and ((k[0]*3 + k[1]*2) % 9 < 2): v[k] = 'a'
-    ellipsoid(v, (8,8,3), (3,3,3), 'a')
-    v[(8,8,6)] = 'w'; v[(7,8,5)] = 'w'
-    for p in ((2,8),(13,6),(8,2),(9,13),(4,12)): box(v, p[0], p[0]+1, p[1], p[1]+1, 0, 2, 'b')
+        if v[k] == 'a' and ((k[0] * 2 + k[1] * 3) % 8 < 1): v[k] = 'c'
+    ellipsoid(v, (7, 9, 3), (2.4, 2.4, 2.4), 'a'); ellipsoid(v, (10, 6, 2), (1.8, 1.8, 1.8), 'a')
+    for p in ((7,9,5),(6,9,4),(10,6,3),(9,6,3)): v[p] = 'w'
+    for p in ((1,7),(14,9),(8,1),(8,14),(3,12),(13,3)): box(v, p[0], p[0]+1, p[1], p[1]+1, 0, 1, 'b')
     return v
 def m_ingot():
     v = {}
