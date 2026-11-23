@@ -36,6 +36,14 @@ static func bind(c: Control, spec: Variant) -> void:
 		(c as BaseButton).button_down.connect(_on_exit.bind(c))
 
 
+## Bind the same spec to a container and every Control directly inside it (a row of icon, label and value).
+static func bind_all(c: Control, spec: Variant) -> void:
+	bind(c, spec)
+	for ch: Node in c.get_children():
+		if ch is Control:
+			bind(ch as Control, spec)
+
+
 ## Change the spec of a bound control (also refreshes it while it is showing).
 static func set_spec(c: Control, spec: Variant) -> void:
 	bind(c, spec)
@@ -51,12 +59,22 @@ static func unbind(c: Control) -> void:
 
 ## Show a tooltip for something that is not a Control (a pad in the world). `at` is in screen texels.
 ## Call every frame while the cursor is over it; it follows `at`. hide_free() when it leaves.
-static func show_free(tree: SceneTree, spec: Variant, at: Vector2) -> void:
+## With `exact` the panel's top-left is placed at `at` (still clamped on screen) instead of beside a cursor.
+static func show_free(tree: SceneTree, spec: Variant, at: Vector2, exact: bool = false) -> void:
 	var h: TipHost = host(tree)
-	h.show_free(spec, at)
+	h.show_free(spec, at, exact)
 
 
-static func hide_free(tree: SceneTree) -> void:
+## Show beside a rect (a slot) instead of at the cursor. It tries right, left, below, then above, and takes the
+## first spot that is on screen and clear of every visible Control in the "tip_avoid" group (HUD panels).
+static func show_beside(tree: SceneTree, spec: Variant, anchor: Rect2) -> void:
+	var h: TipHost = host(tree)
+	h.show_free(spec, anchor.position, true)
+	h.set_beside(anchor)
+
+
+## `tree` may be null (a tooltip owner already out of the tree); the shown host is hidden anyway.
+static func hide_free(_tree: SceneTree) -> void:
 	if _host != null and is_instance_valid(_host):
 		_host.hide_free()
 
@@ -67,8 +85,8 @@ static func hide_all() -> void:
 
 
 static func host(tree: SceneTree) -> TipHost:
-	if _host != null and is_instance_valid(_host) and _host.is_inside_tree():
-		return _host
+	if _host != null and is_instance_valid(_host):
+		return _host   # may still be waiting to enter the tree; never make a second one
 	var layer := CanvasLayer.new()
 	layer.name = HOST_NAME
 	layer.layer = 120

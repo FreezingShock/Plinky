@@ -1,60 +1,55 @@
 class_name PadTooltip
-extends PanelContainer
+extends Node
 ## Hover tooltip for a pad: what it costs, what it gives, and how far off you are.
-## Uses the theme's panel and fonts. Never takes mouse input.
+## A thin wrapper over the shared Tip system; the content comes from spec_for.
 
-var _title: Label
-var _cost: Label
-var _gain: Label
-var _state: Label
+var visible: bool = false
 
 
-func _init() -> void:
-	visible = false
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	z_index = 200
-	add_theme_stylebox_override("panel", AsciiBox.panel())
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 2)
-	add_child(v)
-	_title = Label.new()
-	_title.theme_type_variation = &"TitleLabel"
-	v.add_child(_title)
-	_cost = Label.new()
-	v.add_child(_cost)
-	_gain = Label.new()
-	v.add_child(_gain)
-	_state = Label.new()
-	_state.add_theme_color_override("font_color", RelicStyle.dim)
-	v.add_child(_state)
-
-
-## Fill for one button and place near `at` (screen texels), kept inside the 640x360 view.
+## Fill for one button and place near `at` (screen texels). Call every frame while hovered.
 func show_for(sim: Sim, button_id: StringName, at: Vector2) -> void:
-	var b: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
-	if b == null:
+	var spec: Dictionary = spec_for(sim, button_id)
+	if spec.is_empty():
 		hide_tip()
 		return
+	visible = true
+	if is_inside_tree():
+		Tip.show_free(get_tree(), spec, at)
+
+
+func hide_tip() -> void:
+	if visible:
+		visible = false
+		Tip.hide_free(get_tree() if is_inside_tree() else null)
+
+
+## {title, body, hint, color} for a pad, or {} if the button is unknown.
+static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
+	var b: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
+	if b == null:
+		return {}
 	var cost_def: StatDef = sim.stat_defs[b.cost_stat] as StatDef
 	var reward_def: StatDef = sim.stat_defs[b.reward_stat] as StatDef
 	var cost: BigNum = Formulas.button_cost(b)
 	var have: BigNum = sim.get_stat(b.cost_stat)
-	_title.text = "%s %d" % [String(b.row).capitalize(), b.row_index + 1]
-	_cost.text = "Costs %s %s" % [cost.format(), cost_def.display_name]
-	_gain.text = "Gives +%s %s" % [sim.press_gain_preview(button_id).format(), reward_def.display_name]
-	if have.gte(cost):
-		_state.text = "Ready. Stand here or hold click."
-	else:
-		_state.text = "Need %s more" % cost.sub(have).format()
-	visible = true
-	reset_size()
-	var p: Vector2 = at + Vector2(10.0, 12.0)
-	var area: Vector2 = get_parent_area_size()  # the frame, 640x360 or the bleed size
-	p.x = clampf(p.x, 2.0, area.x - size.x - 2.0)
-	if p.y + size.y > area.y - 2.0:
-		p.y = at.y - size.y - 8.0
-	position = p.round()
+	var lines: PackedStringArray = []
+	var color := Color(0, 0, 0, 0)
+	var rar: RarityDef = _rarity(sim, button_id)
+	if rar != null:
+		color = rar.readable_color(RelicStyle.ink)
+		lines.append("Rarity: %s" % rar.display_name)
+	lines.append("Costs %s %s" % [cost.format(), cost_def.display_name])
+	lines.append("Gives +%s %s" % [sim.press_gain_preview(button_id).format(), reward_def.display_name])
+	var hint: String = "Ready. Stand here or hold click." if have.gte(cost) else "Need %s more" % cost.sub(have).format()
+	return {"title": "%s %d" % [String(b.row).capitalize(), b.row_index + 1], "body": "\n".join(lines), "hint": hint, "color": color}
 
 
-func hide_tip() -> void:
-	visible = false
+## The pad's rarity when the sim has one and it is above common; null otherwise.
+static func _rarity(sim: Sim, button_id: StringName) -> RarityDef:
+	if not sim.has_method(&"pad_rarity"):
+		return null
+	var rid: StringName = sim.call(&"pad_rarity", button_id)
+	if rid == &"" or rid == &"common":
+		return null
+	var path: String = "res://content/rarities/%s.tres" % String(rid)
+	return load(path) as RarityDef if ResourceLoader.exists(path) else null
