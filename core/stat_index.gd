@@ -71,7 +71,7 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 		if sid == &"rp":   # RP is paid in whole points, so never show a fraction
 			value = BigNum.from_float(floorf(sim.get_stat(sid).to_float() + 0.0001)).format()
 		if sid == &"prestige":
-			note = "x%s income" % sim.prestige_mult().format()
+			note = "%s income" % NumberFormat.mult(sim.prestige_mult())
 		elif sid == &"rp" and sim.can_rebirth():
 			note = "+%d next rebirth" % sim.rp_gain_preview()
 		rows.append(_row(sid, "Currencies", def.display_name, String(sid), value, note, String(STAT_TIPS.get(sid, ""))))

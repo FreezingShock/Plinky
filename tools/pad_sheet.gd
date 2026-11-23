@@ -27,11 +27,13 @@ func _ready() -> void:
 			if r == 0:
 				sim.stats[&"sunlight"] = BigNum.from_float(1.0e12)
 			await get_tree().process_frame
-	for i in 6:
-		sim.stats[&"sunlight"] = BigNum.from_float(1.0e12)
+	var mode: String = "rich"
+	for arg: String in OS.get_cmdline_user_args():
+		mode = arg   # rich (buyable), poor (open but unaffordable) or locked
 	for k: StringName in sim.stat_defs:
-		sim.stats[k] = BigNum.from_float(1.0e12)
-	sim.dev_open_tiers()
+		sim.stats[k] = BigNum.from_float(1.0e12 if mode == "rich" else 0.0)
+	if mode != "locked":
+		sim.dev_open_tiers()
 	await get_tree().create_timer(1.4).timeout
-	get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/pad_sheet.png"))
+	get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/pad_sheet_%s.png" % mode))
 	get_tree().quit(0)
