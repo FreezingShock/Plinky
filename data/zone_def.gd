@@ -11,6 +11,8 @@ extends Resource
 @export var gate_stat: StringName = &""
 @export var gate_threshold: float = 0.0
 @export var next_zone: StringName = &""
+## Drawn gate arch (TexelGate): "forge" for the Ember Quarry. Empty = the plain pulsing ring.
+@export var gate_art: StringName = &""
 @export var base_cash_per_second: float = 0.25
 ## Base presses per second while standing on a pad.
 @export var press_rate: float = 0.5

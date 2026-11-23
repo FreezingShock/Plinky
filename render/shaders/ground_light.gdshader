@@ -70,7 +70,7 @@ void fragment() {
 				int cnt = RAMP_LEN[code] - 1;
 				float v = clamp(l, 0.0, 0.9999) * float(cnt);
 				float lo = floor(v);
-				float f = clamp((v - lo - 0.30) / 0.40, 0.0, 1.0);
+				float f = clamp((v - lo - 0.44) / 0.12, 0.0, 1.0);   // a narrow blend band: steps are solid, the dither only softens the seam
 				int step_i = int(lo) + ((f > thr && int(lo) < cnt) ? 1 : 0);
 				c.rgb = PAL[RAMP_IDX[RAMP_START[code] + step_i]];
 			}
@@ -87,8 +87,8 @@ void fragment() {
 	}
 	// depth fog: the far (top) rows fade toward the haze colour, dithered
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;
-	if (c.a > 0.5 && far_k > thr) {
-		c.rgb = mix(c.rgb, fog_col, 0.6);
+	if (c.a > 0.5) {
+		c.rgb = mix(c.rgb, fog_col, clamp(far_k, 0.0, 1.0) * 0.6);
 	}
 	if (debug_view == 1) {
 		c = base;

@@ -9,10 +9,28 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.11.0 - 2026-11-23
+## 0.12.0 - 2026-11-23
 - Title screen overhaul: a layered dusk meadow (stars, sun, two drifting cloud decks, snow-capped mountains with mist, wooded ridge with a windmill and a smoking cottage, a lake with a sun glitter column, a swaying-tree meadow, fireflies, birds, falling leaves, tall foreground grass) on the texel grid with mouse parallax and per-layer dither; the logo and a framed menu sit left, the walker on its pad right. The menu gets pixel icons on every button: Continue (or Play), New Game, Saves, Settings, Update Log, Credits, Quit.
 - Save slots: three slots (slot 1 is the existing save), a Saves list showing rebirths, play time, presses and save date with Load, Start and a two-step Delete; Continue loads the last used slot; nothing autosaves while the title is up.
 - The version number on the boot and title screens is bright with an ink outline, underlines on hover, and opens the Update Log when clicked (boot waits while it is open). New Credits panel.
+
+## 0.10.13 - 2026-11-23
+- HUD top bar no longer overlaps: the clock card squeezes to fit between the stats and zone panels and sits under the zone list. The district banner is centred on the screen, 40% down.
+
+## 0.10.12 - 2026-11-23
+- Ember Quarry: meadow trees no longer carry over from Larkmoor (props are freed by reference, not by name); the forge gate gets real basalt-and-iron art with locked, open and tooltip states; pads, spawn and props moved off the cliff face onto visible ground.
+
+## 0.10.11 - 2026-11-23
+- Every menu (Upgrades, Relics, Settings, Feedback, Update Log, hamburger) now opens and closes with the same dither wipe and slide as Stats and Attributes, from one shared MenuAnim. Opening a menu no longer pops a tooltip on its first item; tooltips wait for hover or the first arrow, d-pad or Tab press.
+
+## 0.10.10 - 2026-11-23
+- Night tint and lantern glow are fully smooth gradients now (no step dither), removing the faint grid on the ground at night.
+
+## 0.10.9 - 2026-11-23
+- HUD currency panel: each stat name (Cash, Multiplier, Rebirths, Slag, Prestige) is drawn in Pixelify Sans in that stat's own tooltip colour instead of plain green Spleen; the name column sizes to the widest name so the numbers stay aligned.
+
+## 0.10.8 - 2026-11-23
+- Much less dither: the time-of-day grade, rain, sun-side light wash, edge shade, fog, haze, mist, god rays and depth fog are now smooth tints and soft alpha instead of checker patterns. Relit surfaces step through the palette with only a narrow dithered seam, and the season change spreads in coarse patches instead of a texel mosaic.
 
 ## 0.10.7 - 2026-11-23
 - Hamburger menu polish: tiles hover and focus as a solid lifted panel (dither only as one dotted row under the border) so labels read cleanly; the ">" marker on Close menu, Quit to title and Quit game sits a fixed gap before the first letter on whole texels; Pixelify Sans renders without grey anti-aliasing.

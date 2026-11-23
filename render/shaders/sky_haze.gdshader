@@ -79,11 +79,10 @@ void fragment() {
 	// mist is the cool, pale part: the haze colour pulled toward grey so a sunset does not paint the water orange
 	vec3 mist_col = mix(vec3(dot(haze_col, vec3(0.299, 0.587, 0.114))), haze_col, 0.3);
 	float mist_d = m * 0.7;
-	if (thr < mist_d && mist_d >= dens) {
-		COLOR = vec4(mist_col, 0.5);
-	} else if (thr < dens) {
-		COLOR = vec4(haze_col, 0.62);   // one fixed step toward the haze colour; the dither does the fade
+	// smooth alpha, no dither: haze and mist are soft washes
+	if (mist_d >= dens) {
+		COLOR = vec4(mist_col, clamp(mist_d * 0.5, 0.0, 0.5));
 	} else {
-		COLOR = vec4(0.0);
+		COLOR = vec4(haze_col, clamp(dens * 0.62, 0.0, 0.62));
 	}
 }

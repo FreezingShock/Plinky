@@ -76,7 +76,7 @@ func _ready() -> void:
 	_scene_path = _zone_scene_path(sim.zone_id)
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	_spawn_occluders()
 	_apply_scene_frame(sim.zone_id)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
@@ -89,6 +89,7 @@ func _ready() -> void:
 	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
 	gate.position = gate_marker.position if gate_marker != null else Vector2(480, 120)
 	gate.walker = walker
+	gate.dead_end.connect(func() -> void: banner.show_name("The way on is still being forged"))
 	world.add_child(gate)
 
 	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
@@ -177,6 +178,9 @@ func _update_tooltip() -> void:
 		if pad.hovered:
 			tooltip.show_for(sim, pad.button_id, get_local_mouse_position())
 			shown = true
+	if not shown and not blocked and gate.hit(m):
+		tooltip.show_spec(TexelGate.spec_for(sim, gate.zone_id), get_local_mouse_position())
+		shown = true
 	if not shown:
 		tooltip.hide_tip()
 
@@ -218,7 +222,7 @@ func _menu_focus() -> void:
 	elif owner_ctl == null or just_opened or not (open.is_ancestor_of(owner_ctl) or hud.owns_focus(owner_ctl)):
 		var first: Control = PadInput.first_focusable(open)
 		if first != null:
-			first.grab_focus()
+			Tip.grab_quiet(first)   # menu open: focus the first control, but no tooltip until the player navigates
 
 
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
@@ -274,6 +278,7 @@ func _build_pads() -> void:
 	pads.clear()
 	var z: ZoneDef = sim.current_zone()
 	gate.zone_id = z.id if z != null else &""
+	gate.art = z.gate_art if z != null else &""
 	if z == null:
 		return
 	var anchors: Node = meadow.get_node("Anchors")
@@ -337,13 +342,11 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 		_apply_scene_frame(zone_id)
 		return
 	_scene_path = path
-	for c: Node in world.get_children():
-		if String(c.name).begins_with("Occ_"):
-			c.queue_free()
+	_free_occluders()
 	meadow.queue_free()
 	meadow = (load(path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	_spawn_occluders()
 	_apply_scene_frame(zone_id)
 	var anchors: Node = meadow.get_node("Anchors")
 	var going_back: bool = _going_back
@@ -362,6 +365,29 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 
 
 var _going_back: bool = false
+var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone scene, freed on a swap
+
+
+## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
+## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
+## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
+func _spawn_occluders() -> void:
+	var before: Dictionary = {}
+	for c: Node in world.get_children():
+		before[c] = true
+	meadow.call("spawn_occluders", world)
+	_occluders.clear()
+	for c: Node in world.get_children():
+		if not before.has(c):
+			_occluders.append(c)
+
+
+func _free_occluders() -> void:
+	for c: Node in _occluders:
+		if is_instance_valid(c):
+			world.remove_child(c)   # out of the tree now, so a same-named sprite from the next scene keeps its name
+			c.queue_free()
+	_occluders.clear()
 
 
 ## Frames the zone scene: the walker, the walk mask and the footstep lookups follow its size, and the camera is
@@ -539,14 +565,14 @@ func _wire_display() -> void:
 ## gets the shared animated X in its top right corner.
 func _wire_menus() -> void:
 	var ups: Control = hud.upgrades_panel()
-	menus.register(&"upgrades", func() -> bool: return ups.visible, func() -> void: ups.visible = true, func() -> void: ups.visible = false)
-	menus.register(&"relics", func() -> bool: return relic_panel.visible, func() -> void: relic_panel.visible = true, relic_panel.hide)
+	_register_animated(&"upgrades", ups)
+	_register_animated(&"relics", relic_panel)
 	menus.register(&"stats", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.STATS,
 		func() -> void: index_panel.open_tab(IndexPanel.Tab.STATS), index_panel.close_panel, &"index")
 	menus.register(&"attributes", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.ATTRIBUTES,
 		func() -> void: index_panel.open_tab(IndexPanel.Tab.ATTRIBUTES), index_panel.close_panel, &"index")
-	menus.register(&"settings", func() -> bool: return display_panel.visible, display_panel.open, display_panel.close)
-	menus.register(&"feedback", func() -> bool: return feedback_panel.visible, feedback_panel.open, feedback_panel.close)
+	_register_animated(&"settings", display_panel, display_panel.open, display_panel.reset_capture)
+	_register_animated(&"feedback", feedback_panel, feedback_panel.open, feedback_panel.release)
 	gallery = GalleryMenu.new()
 	hud.add_child(gallery)
 	update_log = UpdateLogPanel.new()
@@ -558,16 +584,32 @@ func _wire_menus() -> void:
 	gallery.resume_requested.connect(func() -> void: menus.close(&"gallery"))
 	gallery.quit_to_title_requested.connect(_quit_to_title)
 	gallery.quit_game_requested.connect(_quit_game)
-	menus.register(&"gallery", func() -> bool: return gallery.visible, func() -> void: gallery.visible = true, func() -> void: gallery.visible = false)
-	menus.register(&"log", func() -> bool: return update_log.visible, func() -> void: update_log.visible = true, func() -> void: update_log.visible = false)
+	_register_animated(&"gallery", gallery)
+	_register_animated(&"log", update_log)
 	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
 	CloseX.attach(update_log, func() -> void: menus.close(&"log"))
 	hud.menu_toggled.connect(menus.toggle)
 	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
 	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
 	CloseX.attach(index_panel, index_panel.close_panel)
-	CloseX.attach(display_panel, display_panel.close)
-	CloseX.attach(feedback_panel, feedback_panel.close)
+	CloseX.attach(display_panel, func() -> void: menus.close(&"settings"))
+	CloseX.attach(feedback_panel, func() -> void: menus.close(&"feedback"))
+
+
+## Register a menu with the shared open/close wipe (MenuAnim). Panels that position themselves on open (Settings, Feedback)
+## pass their own open/close, which run first; the wipe then plays on top.
+func _register_animated(kind: StringName, panel: Control, on_open: Callable = Callable(), on_close: Callable = Callable(), group: StringName = &"") -> void:
+	var anim: MenuAnim = MenuAnim.attach(panel)
+	menus.register(kind, anim.is_open,
+		func() -> void:
+			if on_open.is_valid():
+				on_open.call()
+			anim.open(),
+		func() -> void:
+			if on_close.is_valid():
+				on_close.call()
+			anim.close(),
+		group)
 
 
 ## Pause menu footer. Both save first; the quit-to-title also lets the next boot show the title again.

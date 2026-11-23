@@ -15,6 +15,7 @@ var _gate_panel: PanelContainer
 var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
+const STAT_NAME_SIZE: int = 16   ## stat names in the top-left panel; integer so Pixelify Sans stays crisp
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
@@ -49,6 +50,7 @@ func setup(p_sim: Sim) -> void:
 	_build_stats()
 	_build_gate()
 	_build_clock()
+	move_child(_clock_widget, _zone_panel.get_index())   # the zone list drops over the clock, never under it
 	_build_bottom()
 	_build_upgrades()
 	_build_tip_card()
@@ -132,6 +134,12 @@ func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
 	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
+	var name_font: FontFile = CrispFont.apply(load("res://fonts/PixelifySans.ttf") as FontFile)
+	var name_w: float = 0.0   # widest stat name, so the number column lines up
+	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+		var d: StatDef = sim.stat_defs.get(sid) as StatDef
+		if d != null:
+			name_w = maxf(name_w, name_font.get_string_size(d.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_NAME_SIZE).x)
 	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -147,8 +155,10 @@ func _build_stats() -> void:
 		h.add_child(icon)
 		var name_l := Label.new()
 		name_l.text = def.display_name
-		name_l.custom_minimum_size.x = 66
-		name_l.add_theme_color_override("font_color", RelicStyle.dim)
+		name_l.custom_minimum_size.x = ceilf(name_w)
+		name_l.theme_type_variation = &"TitleLabel"   # same face as the tooltip titles
+		name_l.add_theme_font_size_override("font_size", STAT_NAME_SIZE)
+		name_l.add_theme_color_override("font_color", StatStyle.color(sid))   # same colour as the tooltip title
 		h.add_child(name_l)
 		var val := RollValue.new()
 		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
@@ -359,6 +369,30 @@ func _process(delta: float) -> void:
 		_refresh()
 
 
+## Park the clock left of the zone card and right of the stats panel. When the gap is too small it squeezes
+## (ClockWidget.set_squeeze) instead of overlapping either neighbour.
+func _place_clock(zone_left: float) -> void:
+	var stats_right: float = 0.0
+	if _stats_panel != null:
+		stats_right = _stats_panel.position.x + maxf(_stats_panel.size.x, _stats_panel.get_combined_minimum_size().x)
+	var room: float = zone_left - 6.0 - (stats_right + 6.0)
+	var cw: ClockWidget = _clock_widget
+	var level: int = cw.squeeze_level()
+	cw.remember_width()
+	# Widest layout that fits; ClockWidget remembers each layout's width so this does not flap.
+	var want: int = 2
+	for l: int in 3:
+		if cw.width_at(l) <= room:
+			want = l
+			break
+	if want != level:
+		cw.set_squeeze(want)
+	var w: float = maxf(cw.size.x, cw.get_combined_minimum_size().x)
+	var clk: Vector2 = Vector2(maxf(zone_left - w - 6.0, stats_right + 6.0), 4.0).floor()
+	if cw.position != clk:
+		cw.position = clk
+
+
 ## Right-hug the gate panel and bottom-hug the bottom bar, so a wider frame keeps them at its edges.
 func _place() -> void:
 	if size != frame:
@@ -369,13 +403,12 @@ func _place() -> void:
 		if _tip_card.position != cp:
 			_tip_card.position = cp
 	if _gate_panel != null:
-		var gp: Vector2 = Vector2(frame.x - _gate_panel.size.x - 4.0, 4.0)
+		var gsz: Vector2 = _gate_panel.size.max(_gate_panel.get_combined_minimum_size())
+		var gp: Vector2 = Vector2(frame.x - gsz.x - 4.0, 4.0)
 		if _gate_panel.position != gp:
 			_gate_panel.position = gp
 		if _clock_widget != null:
-			var clk: Vector2 = Vector2(gp.x - _clock_widget.size.x - 6.0, 4.0).floor()
-			if _clock_widget.position != clk:
-				_clock_widget.position = clk
+			_place_clock(gp.x)
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
@@ -384,7 +417,7 @@ func _place() -> void:
 		if cp2.visible:
 			var free_h: float = frame.y - (_bottom.size.y if _bottom != null else 0.0) - 8.0
 			var psz: Vector2 = cp2.size.max(cp2.get_combined_minimum_size())
-			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)))
+			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)) + float(cp2.get_meta(&"menu_slide", 0.0)))
 			if cp2.position != at:
 				cp2.position = at
 	if _menu_chip != null:

@@ -285,9 +285,12 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 		_grab.call_deferred(_rows[keep] as IndexRow)
 
 
-func _grab(row: IndexRow) -> void:
+func _grab(row: IndexRow, quiet: bool = false) -> void:
 	if is_instance_valid(row) and row.is_inside_tree() and is_open():
-		row.grab_focus()
+		if quiet:
+			Tip.grab_quiet(row)
+		else:
+			row.grab_focus()
 
 
 func _focus_first_row() -> void:
@@ -295,7 +298,7 @@ func _focus_first_row() -> void:
 		return
 	for c in _list.get_children():
 		if c is IndexRow:
-			_grab.call_deferred(c as IndexRow)
+			_grab.call_deferred(c as IndexRow, true)
 			return
 
 

@@ -369,7 +369,25 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Menu text buttons (Close menu, Quit to title, Quit game): the ">" marker was positioned at half-texel steps and touched the first letter. It is now right-aligned ARROW_GAP (4) texels before the text on whole texels. The Pixelify Sans FontFile had default import settings (grey anti-aliasing, light hinting; *.import files are not committed), so CrispFont.apply sets AA off, normal hinting and no subpixel positioning in code.
 - Not run in engine; needs a PC capture at zoom 1 and 3.
 
-## Title screen overhaul (0.11.0)
+## Dither cut: smooth washes by default
+- Nathan, dawn in Larkmoor: "rough and honestly unbearable", still a checker grid over grass, path and props. Cause: nearly every full-frame pass was a Bayer dither (grade, rain, light grade, edge shade, fog, haze, rays, depth fog), stacked, plus the season scatter.
+- Default is now a smooth tint or soft alpha for every wide pass. Dither survives only where it carries meaning: night ladder steps and the lantern glow (close tints), a narrow seam between palette ramp steps on relit surfaces (blend band 0.12 instead of 0.40), the cast-shadow rim, the sway rim light, and snow/season patches at a 12% Bayer weight over 4-5 texel patches. All of it is on whole world texels (world_origin / world_scale), so cells never scale with zoom.
+- The pixel-art identity now comes from the palette ramps and texel grid, not from stacked screen dithers. Revisit if Nathan wants some dither back (the bible's section 2 and 4 describe dither as the lighting language).
+- Not run in engine. PC check at dawn, noon, dusk and night, zoom 1 to 4.
+
+## 2026-11-23: one menu animation, quiet focus on open
+- Every menu registers through `Main._register_animated`, which attaches `MenuAnim` (ui/fx/menu_anim.gd): the same stepped dither wipe and 14 px slide Stats/Attributes use. Stats/Attributes keeps its own copy inside `IndexPanel` (another thread is rebuilding it); fold it into MenuAnim when that lands. Travel keeps its RevealBox fold.
+- Menu-open auto-focus goes through `Tip.grab_quiet`, so no tooltip pops on the first item. `Tip.focus_muted` clears on the first ui_up/down/left/right/Tab input; mouse hover is never muted.
+- Not run in engine (no Godot in the cloud): needs a PC check of the wipe on Upgrades, Relics, Settings, Log and the hamburger.
+## Night ladder removed
+- PC at night, zoom 3 to 4, still showed a faint grid on the ground: the three-rung night ladder dithered wherever the shade was below full (any light pool falloff, dusk, dawn). Night tint and the lantern warm cast are now plain smooth multiplies of `dk` / `wk`; no Bayer in day_night.gdshader any more. Supersedes the ladder in the "Night is a solid tint" entry.
+
+## 2026-11-23: Ember Quarry fixes (trees, gate, cliff placement)
+- Meadow trees in the quarry were Larkmoor props that survived the zone swap: `main.gd` freed old props by the `Occ_` name prefix, but a new sprite with the same name as one still queued for deletion is auto-renamed `@Sprite2D@n`, so it escaped the next cleanup. Props are now tracked and freed by reference (`_spawn_occluders` / `_free_occluders`); `tests/test_quarry.gd` covers it.
+- The quarry gate is drawn in code (`TexelGate`, `ZoneDef.gate_art = "forge"`): basalt pillars, iron bands, ember seams, a grate while shut, a gold shimmer when open, hover tooltip. Zone 3 does not exist yet, so an open gate shows the banner "The way on is still being forged" instead of travelling. Hook up `next_zone` on zone2.tres when Tidewater lands.
+- Cause of the "perspective glitch": the quarry's near rim wall is raised, so the lowest tier was flat in the height map but hidden on screen behind the wall. `tools/art/gen_zone2.py` now computes which cells are visible, keeps the walk mask and props inside them, and snaps the spawn and pads to visible ground.
+
+## Title screen overhaul (0.12.0)
 - Layout: logo and a framed ASCII menu on the left (clear of the horizon), the walker on its pad at the right on the meadow, so no button ever sits on the horizon line. The menu is a bordered panel with pixel icons (MenuIcons, 9x9, exactly symmetric) to the left of each label; icon buttons skip the ">" marker and brighten the icon plus sweep the underline instead.
 - Backdrop: title_background.gdshader (sky, stars, sun, clouds, far mountains, mid ridge, lake, near meadow) plus TitleScenery (baked pines, trees, windmill, cottage, birds, fireflies, leaves, foreground grass). Every layer dithers on its own parallax-shifted texels (mouse parallax, whole texels, reduce motion freezes it), so dither never swims over its layer. TitleScenery.mid_ridge and near_hill mirror the shader functions; keep them in step.
 - Version link (VersionLink): bright paper colour with ink outline at rest (it was palette index 3, which is the dim role and vanished over the dark ground), accent plus underline on hover or focus, click or Enter opens the Update Log. Used on the boot and title screens. Boot holds its dissolve while the log is open.

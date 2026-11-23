@@ -18,7 +18,7 @@ vec3 season_recolor(vec3 c, vec2 wp) {
 	ivec2 q = ivec2(f) & ivec2(3);
 	float b = (float(SEASON_BAYER[q.y * 4 + q.x]) + 0.5) / 16.0;
 	float patch = season_hash(floor(wp / 5.0));
-	float thr = 0.5 * b + 0.5 * patch;
+	float thr = 0.12 * b + 0.88 * patch;   // mostly coarse patches: the change spreads as soft blobs, not a texel mosaic
 	float l = dot(c, vec3(0.299, 0.587, 0.114));
 	float green = smoothstep(0.015, 0.09, c.g - max(c.r, c.b));
 	if (green > 0.5 && season_amt > thr) {
@@ -28,7 +28,7 @@ vec3 season_recolor(vec3 c, vec2 wp) {
 	if (season_snow > 0.0) {
 		float light_k = smoothstep(0.2, 0.7, l);
 		float cover = green > 0.5 ? season_snow : season_snow * 0.5 * step(0.55, l);
-		float thr2 = 0.5 * float(SEASON_BAYER[(q.x * 3 + q.y * 5) & 15] + 1) / 16.0 + 0.5 * season_hash(floor(wp / 4.0) + 7.0);
+		float thr2 = 0.12 * float(SEASON_BAYER[(q.x * 3 + q.y * 5) & 15] + 1) / 16.0 + 0.88 * season_hash(floor(wp / 4.0) + 7.0);
 		if (cover * (0.45 + 0.55 * light_k) > thr2) {
 			c = clamp(vec3(0.86, 0.92, 1.0) * (0.78 + 0.3 * l), 0.0, 1.0);
 		}
