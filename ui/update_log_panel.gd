@@ -1,10 +1,8 @@
 class_name UpdateLogPanel
 extends PanelContainer
-## The Update Log: CHANGELOG.md from the project root, shown in a scrolling themed panel with the version in the
-## title. Headings ("## ...") are accented, bullets ("- ...") wrap, everything else is body text.
-## No file or an empty one shows a short note instead of an empty box.
+## The Update Log: BuildInfo.changelog() (CHANGELOG.md), newest first, in a scrolling themed panel with the version
+## in the header. Version headings are accented, notes wrap. No entries shows a short note instead of an empty box.
 
-const PATH: String = "res://CHANGELOG.md"
 const WIDTH: float = 330.0
 const HEIGHT: float = 170.0
 
@@ -48,19 +46,17 @@ func _init() -> void:
 			reload())
 
 
-## Pure: split a changelog into [{"kind": "h" | "b" | "p", "text": String}], dropping blank lines and the top title.
-static func parse(text: String) -> Array[Dictionary]:
+## Pure: flatten BuildInfo.changelog() entries into display rows, newest first:
+## [{"kind": "h" | "b", "text": String}]. A heading is "v0.5.0  2026-11-23" (no date when there is none).
+static func rows_from(entries: Array[Dictionary]) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for raw: String in text.split("\n"):
-		var line: String = raw.strip_edges()
-		if line == "" or line.begins_with("# "):
-			continue
-		if line.begins_with("## ") or line.begins_with("### "):
-			out.append({"kind": "h", "text": line.lstrip("#").strip_edges()})
-		elif line.begins_with("- ") or line.begins_with("* "):
-			out.append({"kind": "b", "text": "- " + line.substr(2).strip_edges()})
-		else:
-			out.append({"kind": "p", "text": line})
+	for e: Dictionary in entries:
+		var head: String = "v%s" % e["version"]
+		if String(e["date"]) != "":
+			head += "  %s" % e["date"]
+		out.append({"kind": "h", "text": head})
+		for n: String in e["notes"]:
+			out.append({"kind": "b", "text": "- " + n})
 	return out
 
 
@@ -68,8 +64,7 @@ func reload() -> void:
 	for c in _list.get_children():
 		_list.remove_child(c)
 		c.queue_free()
-	var text: String = FileAccess.get_file_as_string(PATH) if FileAccess.file_exists(PATH) else ""
-	var rows: Array[Dictionary] = parse(text)
+	var rows: Array[Dictionary] = rows_from(BuildInfo.changelog())
 	if rows.is_empty():
 		rows.append({"kind": "p", "text": "No update log yet."})
 	for r: Dictionary in rows:

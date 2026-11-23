@@ -71,7 +71,7 @@ func _init() -> void:
 
 
 static func version_text() -> String:
-	return "v%s" % BuildInfo.VERSION
+	return BuildInfo.string()
 
 
 func tile(kind: StringName) -> GalleryTile:
