@@ -165,6 +165,8 @@ func _build_detail() -> void:
 	_d_name.theme_type_variation = &"TitleLabel"
 	_d_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_d_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_d_name.clip_text = true   # a long name never pushes the value out of the header
+	_d_name.custom_minimum_size.x = 40
 	head.add_child(_d_name)
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 0)
@@ -173,6 +175,7 @@ func _build_detail() -> void:
 	_d_total = _right(right, RelicStyle.accent)
 	_d_total.theme_type_variation = &"TitleLabel"
 	_d_total.add_theme_font_size_override("font_size", 24)
+	_d_total.custom_minimum_size.x = 56
 	_d_buff = _right(right, RelicStyle.good)
 	# Sub-tabs, so nothing is a long scroll: About / Sources / Level (Attributes only).
 	var tabs := HBoxContainer.new()
@@ -573,8 +576,6 @@ func _layout() -> void:
 	if _scroll.custom_minimum_size.y != h:
 		_scroll.custom_minimum_size.y = h
 		reset_size()
-	var psz: Vector2 = size.max(get_combined_minimum_size())
-	position = ((host.size - psz) * 0.5).floor() + Vector2(0.0, float(get_meta(&"menu_slide", 0.0)))
 
 
 func _process(delta: float) -> void:

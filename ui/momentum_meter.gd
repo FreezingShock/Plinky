@@ -136,13 +136,11 @@ func _spec() -> Variant:
 	var c: GameConfig = _sim.config
 	var tier: int = _sim.momentum_tier()
 	var lines: Array[String] = []
-	lines.append("Charge %d%%. Income x%.3f (+%.1f%% from charge, +%.1f%% from stage)." % [
-		roundi(_sim.momentum * 100.0), 1.0 + _sim.momentum_bonus(),
-		_sim.momentum * c.momentum_max_bonus * 100.0, (_sim.momentum_bonus() - _sim.momentum * c.momentum_max_bonus) * 100.0])
+	lines.append("Charge %d%%, income x%.2f" % [roundi(_sim.momentum * 100.0), 1.0 + _sim.momentum_bonus()])
 	if tier < c.momentum_tier_thresholds.size():
-		lines.append("Next: %s at %d%% (+%.0f%% kicker)." % [_sim.momentum_tier_name(tier + 1), roundi(c.momentum_tier_thresholds[tier] * 100.0), c.momentum_tier_bonus[tier] * 100.0])
+		lines.append("Next: %s at %d%%" % [_sim.momentum_tier_name(tier + 1), roundi(c.momentum_tier_thresholds[tier] * 100.0)])
 	else:
-		lines.append("Surge: a full bar holds %.0f s before it drains." % c.momentum_surge_hold)
-	lines.append("Walking: +%.1f%% per 100 texels. Press: +%.1f%%. Crit: +%.1f%% more." % [c.momentum_per_unit * 10000.0, c.momentum_per_press * 100.0, c.momentum_per_crit * 100.0])
-	lines.append("Holds %.1f s after you stop, then drains %.0f%% per second." % [c.momentum_grace, c.momentum_decay_per_second * 100.0])
-	return {"title": "Momentum: %s" % _sim.momentum_tier_name(tier), "body": "\n".join(lines), "hint": "Keep walking and pressing to climb the stages."}
+		lines.append("Surge holds %.0f s" % c.momentum_surge_hold)
+	lines.append("Walk +%.1f%%/100 px, press +%.0f%%, crit +%.0f%%" % [c.momentum_per_unit * 10000.0, c.momentum_per_press * 100.0, c.momentum_per_crit * 100.0])
+	lines.append("Holds %.1f s, then -%.0f%%/s" % [c.momentum_grace, c.momentum_decay_per_second * 100.0])
+	return {"title": "Momentum: %s" % _sim.momentum_tier_name(tier), "body": "\n".join(lines), "hint": "Walk to climb."}
