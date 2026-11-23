@@ -374,3 +374,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Default is now a smooth tint or soft alpha for every wide pass. Dither survives only where it carries meaning: night ladder steps and the lantern glow (close tints), a narrow seam between palette ramp steps on relit surfaces (blend band 0.12 instead of 0.40), the cast-shadow rim, the sway rim light, and snow/season patches at a 12% Bayer weight over 4-5 texel patches. All of it is on whole world texels (world_origin / world_scale), so cells never scale with zoom.
 - The pixel-art identity now comes from the palette ramps and texel grid, not from stacked screen dithers. Revisit if Nathan wants some dither back (the bible's section 2 and 4 describe dither as the lighting language).
 - Not run in engine. PC check at dawn, noon, dusk and night, zoom 1 to 4.
+
+## 2026-11-23: one menu animation, quiet focus on open
+- Every menu registers through `Main._register_animated`, which attaches `MenuAnim` (ui/fx/menu_anim.gd): the same stepped dither wipe and 14 px slide Stats/Attributes use. Stats/Attributes keeps its own copy inside `IndexPanel` (another thread is rebuilding it); fold it into MenuAnim when that lands. Travel keeps its RevealBox fold.
+- Menu-open auto-focus goes through `Tip.grab_quiet`, so no tooltip pops on the first item. `Tip.focus_muted` clears on the first ui_up/down/left/right/Tab input; mouse hover is never muted.
+- Not run in engine (no Godot in the cloud): needs a PC check of the wipe on Upgrades, Relics, Settings, Log and the hamburger.

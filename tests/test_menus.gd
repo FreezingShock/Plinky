@@ -5,6 +5,8 @@ func run(t: Object) -> void:
 	_router(t)
 	_index_spam(t)
 	_close_x(t)
+	_menu_anim(t)
+	_quiet_focus(t)
 
 
 func _router(t: Object) -> void:
@@ -134,3 +136,41 @@ func _close_x(t: Object) -> void:
 	x._process(0.5)
 	t.ok(x.grow >= 1.0, "and finish growing")
 	stage.free()
+
+
+## The shared open/close wipe. Without a scene tree it is instant, so the state transitions can be checked directly.
+func _menu_anim(t: Object) -> void:
+	var p := PanelContainer.new()
+	var a: MenuAnim = MenuAnim.attach(p)
+	t.ok(not a.is_open(), "a fresh animated menu is closed")
+	a.open()
+	t.ok(p.visible and a.is_open() and a.t == 1.0, "open shows the panel fully")
+	t.eq(p.get_meta(&"menu_slide", -1.0), 0.0, "an open menu has no slide offset")
+	a.close()
+	t.ok(not p.visible and not a.is_open() and a.t == 0.0, "close hides the panel and resets the wipe")
+	for i in 10:
+		a.open()
+		a.close()
+	t.ok(not p.visible and not a.closing, "spamming open and close never sticks")
+	p.visible = true
+	p.visible = false
+	t.ok(a.t == 0.0 and not a.reveal.visible, "hiding the panel from outside clears the wipe")
+	p.free()
+	a.reveal.free()
+
+
+## Menu-open focus must not pop a tooltip; hover still does, and navigating re-enables focus tips.
+func _quiet_focus(t: Object) -> void:
+	Tip.focus_muted = false
+	var b := Button.new()
+	Tip._on_enter(b, true)   # not in the tree and not bound: must not crash
+	Tip.focus_muted = true
+	var ev := InputEventAction.new()
+	ev.action = &"ui_down"
+	ev.pressed = true
+	var h: TipHost = TipHost.new()
+	h._input(ev)
+	t.ok(not Tip.focus_muted, "the first navigation input un-mutes focus tooltips")
+	Tip.focus_muted = false
+	h.free()
+	b.free()

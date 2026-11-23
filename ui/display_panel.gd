@@ -85,9 +85,14 @@ func open() -> void:
 
 
 func close() -> void:
+	reset_capture()
+	visible = false
+
+
+## Drop any half-finished key capture. The menu router calls this, then plays the close wipe.
+func reset_capture() -> void:
 	_capture = &""
 	_armed = &""
-	visible = false
 
 
 ## Show one tab. Rows are rebuilt, so options that depend on the machine (devices, monitors) are fresh.

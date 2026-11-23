@@ -218,7 +218,7 @@ func _menu_focus() -> void:
 	elif owner_ctl == null or just_opened or not (open.is_ancestor_of(owner_ctl) or hud.owns_focus(owner_ctl)):
 		var first: Control = PadInput.first_focusable(open)
 		if first != null:
-			first.grab_focus()
+			Tip.grab_quiet(first)   # menu open: focus the first control, but no tooltip until the player navigates
 
 
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
@@ -539,14 +539,14 @@ func _wire_display() -> void:
 ## gets the shared animated X in its top right corner.
 func _wire_menus() -> void:
 	var ups: Control = hud.upgrades_panel()
-	menus.register(&"upgrades", func() -> bool: return ups.visible, func() -> void: ups.visible = true, func() -> void: ups.visible = false)
-	menus.register(&"relics", func() -> bool: return relic_panel.visible, func() -> void: relic_panel.visible = true, relic_panel.hide)
+	_register_animated(&"upgrades", ups)
+	_register_animated(&"relics", relic_panel)
 	menus.register(&"stats", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.STATS,
 		func() -> void: index_panel.open_tab(IndexPanel.Tab.STATS), index_panel.close_panel, &"index")
 	menus.register(&"attributes", func() -> bool: return index_panel.is_open() and index_panel.tab == IndexPanel.Tab.ATTRIBUTES,
 		func() -> void: index_panel.open_tab(IndexPanel.Tab.ATTRIBUTES), index_panel.close_panel, &"index")
-	menus.register(&"settings", func() -> bool: return display_panel.visible, display_panel.open, display_panel.close)
-	menus.register(&"feedback", func() -> bool: return feedback_panel.visible, feedback_panel.open, feedback_panel.close)
+	_register_animated(&"settings", display_panel, display_panel.open, display_panel.reset_capture)
+	_register_animated(&"feedback", feedback_panel, feedback_panel.open, feedback_panel.release)
 	gallery = GalleryMenu.new()
 	hud.add_child(gallery)
 	update_log = UpdateLogPanel.new()
@@ -558,16 +558,32 @@ func _wire_menus() -> void:
 	gallery.resume_requested.connect(func() -> void: menus.close(&"gallery"))
 	gallery.quit_to_title_requested.connect(_quit_to_title)
 	gallery.quit_game_requested.connect(_quit_game)
-	menus.register(&"gallery", func() -> bool: return gallery.visible, func() -> void: gallery.visible = true, func() -> void: gallery.visible = false)
-	menus.register(&"log", func() -> bool: return update_log.visible, func() -> void: update_log.visible = true, func() -> void: update_log.visible = false)
+	_register_animated(&"gallery", gallery)
+	_register_animated(&"log", update_log)
 	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
 	CloseX.attach(update_log, func() -> void: menus.close(&"log"))
 	hud.menu_toggled.connect(menus.toggle)
 	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
 	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
 	CloseX.attach(index_panel, index_panel.close_panel)
-	CloseX.attach(display_panel, display_panel.close)
-	CloseX.attach(feedback_panel, feedback_panel.close)
+	CloseX.attach(display_panel, func() -> void: menus.close(&"settings"))
+	CloseX.attach(feedback_panel, func() -> void: menus.close(&"feedback"))
+
+
+## Register a menu with the shared open/close wipe (MenuAnim). Panels that position themselves on open (Settings, Feedback)
+## pass their own open/close, which run first; the wipe then plays on top.
+func _register_animated(kind: StringName, panel: Control, on_open: Callable = Callable(), on_close: Callable = Callable(), group: StringName = &"") -> void:
+	var anim: MenuAnim = MenuAnim.attach(panel)
+	menus.register(kind, anim.is_open,
+		func() -> void:
+			if on_open.is_valid():
+				on_open.call()
+			anim.open(),
+		func() -> void:
+			if on_close.is_valid():
+				on_close.call()
+			anim.close(),
+		group)
 
 
 ## Pause menu footer. Both save first; the quit-to-title also lets the next boot show the title again.
