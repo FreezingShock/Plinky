@@ -24,6 +24,7 @@ var results: Array[Dictionary] = []
 var _log: ErrorLog = ErrorLog.new()
 var hitches: Array[String] = []
 var total_frames: int = 0
+var audio_cache: int = 0
 
 
 ## Collects script and shader errors from the engine log. A bench that logged one is a failed bench: a broken
@@ -137,6 +138,11 @@ func _layers(main: Node) -> Array[Node]:
 	return out
 
 
+func _audio_cache_size() -> int:
+	var a: Node = root.get_node_or_null("Audio")
+	return (a.get("_cache") as Dictionary).size() if a != null and a.get("_cache") != null else 0
+
+
 func _frames(n: int, label: String = "settle") -> void:
 	var last: int = Time.get_ticks_usec()
 	for i: int in n:
@@ -166,11 +172,14 @@ func _phase(level: int, phase: String, main: Node, press: bool, zoom: int) -> Di
 		var now: int = Time.get_ticks_usec()
 		var ms: float = float(now - last) / 1000.0
 		stats.push(ms)
+		var cache_now: int = _audio_cache_size()
+		var grew: bool = cache_now > audio_cache
+		audio_cache = cache_now
 		if ms > HITCH_MS:
 			# Enough to tell a one-time compile or load from a steady cost: where it fell, and what the engine held then.
 			var c0: Dictionary = PerfStats.counters()
-			hitches.append("HITCH %s %s: frame %d of the phase (%d since the run began), %.1f ms, nodes %d, objects %d, draws %d, vram %.0f MB" % [
-				GraphicsQuality.LABELS[level], phase, i, total_frames, ms, int(c0.nodes), int(c0.objects), int(c0.draw_calls), float(c0.vram_mb)])
+			hitches.append("HITCH %s %s: frame %d of the phase (%d since the run began), %.1f ms, nodes %d, objects %d, draws %d, vram %.0f MB, audio cache %s" % [
+				GraphicsQuality.LABELS[level], phase, i, total_frames, ms, int(c0.nodes), int(c0.objects), int(c0.draw_calls), float(c0.vram_mb), "GREW (a sound loaded)" if grew else "unchanged"])
 		total_frames += 1
 		last = now
 		var c: Dictionary = PerfStats.counters()
