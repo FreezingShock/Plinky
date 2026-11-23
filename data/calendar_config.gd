@@ -8,7 +8,7 @@ extends Resource
 @export var months_per_season: int = 2
 ## Where a new game starts, in days since Day 1 00:00. 0.3 is 07:12 on the first morning.
 @export var start_elapsed_days: float = 0.3
-## Seasons crossfade over this many days, centred on each boundary (half before, half after).
+## The look crossfades into the next season over the last this-many days of a season.
 @export var blend_days: float = 1.0
 
 @export var season_ids: PackedStringArray = PackedStringArray(["spring", "summer", "autumn", "winter"])

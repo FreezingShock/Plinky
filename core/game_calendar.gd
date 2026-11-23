@@ -143,23 +143,20 @@ func season_color(i: int) -> Color:
 	return Color.WHITE
 
 
-## How much of each season is showing. Sums to 1. A smoothstep crossfade over blend_days around each boundary.
+## How much of each season is showing. Sums to 1. The look turns over smoothly during the last blend_days of a
+## season, so the new season is fully in place when its first day (and its banner) arrives.
 func season_weights() -> Array[float]:
 	var w: Array[float] = [0.0, 0.0, 0.0, 0.0]
 	var len: float = float(days_per_season())
 	var pos: float = fposmod(elapsed_days, float(days_per_year()))
 	var i: int = clampi(int(floorf(pos / len)), 0, SEASONS - 1)
 	var local: float = pos - float(i) * len
-	var half: float = clampf(config.blend_days, 0.0, len) * 0.5
+	var span: float = clampf(config.blend_days, 0.0, len)
 	w[i] = 1.0
-	if half > 0.0 and local < half:
-		var t: float = smoothstep(0.0, 1.0, 0.5 + local / (half * 2.0))
-		w[i] = t
-		w[posmod(i - 1, SEASONS)] = 1.0 - t
-	elif half > 0.0 and local > len - half:
-		var t2: float = smoothstep(0.0, 1.0, (local - (len - half)) / (half * 2.0))
-		w[i] = 1.0 - t2
-		w[(i + 1) % SEASONS] = t2
+	if span > 0.0 and local > len - span:
+		var t: float = smoothstep(0.0, 1.0, (local - (len - span)) / span)
+		w[i] = 1.0 - t
+		w[(i + 1) % SEASONS] = t
 	return w
 
 
