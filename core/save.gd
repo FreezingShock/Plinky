@@ -24,7 +24,7 @@ func _ready() -> void:
 	var bus: Node = get_node("/root/EventBus")
 	bus.zone_entered.connect(func(_z: StringName) -> void: save_game())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: save_game())
-	bus.bloom_done.connect(func(_n: int) -> void: save_game())
+	bus.reset_done.connect(func(_id: StringName, _n: int) -> void: save_game())
 	slot = SaveSlots.read_active_slot()
 	load_game()
 

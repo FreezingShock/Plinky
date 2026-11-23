@@ -9,8 +9,8 @@ signal button_denied(button_id: StringName)
 signal zone_entered(zone_id: StringName)
 signal gate_opened(gate_id: StringName)
 signal rebirth_done(prestige_gained: BigNum)
-## A Bloom was done; the argument is the Seeds it paid.
-signal bloom_done(seeds_gained: int)
+## A zone reset (Bloom, ...) was done: its id and the currency it paid.
+signal reset_done(reset_id: StringName, gained: int)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)
 ## Streak or critter payout. kind is &"streak" or &"critter"; gains is StringName -> BigNum.
@@ -35,6 +35,7 @@ var button_defs: Dictionary = {}     # StringName -> ButtonDef
 var zone_defs: Dictionary = {}       # StringName -> ZoneDef
 var attribute_defs: Dictionary = {}  # StringName -> AttributeDef
 var area_defs: Dictionary = {}       # StringName -> AreaDef (zone menu grouping only)
+var reset_defs: Dictionary = {}      # StringName -> ZoneResetDef (the zone resets, content/resets)
 var tier_defs: Dictionary = {}       # StringName -> TierDef (the flower rows, content/tiers)
 ## Owned and equipped relics. Built by ContentLoader. Always non-null after load.
 var relics: RelicInventory
@@ -59,7 +60,7 @@ var zones_entered: Dictionary = {}   # zone id -> true once its entry grants wer
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
-var bloom_count: int = 0    # Blooms done: each adds a permanent bonus to every pad reward
+var reset_counts: Dictionary = {}    # reset id -> times done (ZoneResetDef); each adds its bonus to every pad reward
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 ## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
 ## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
@@ -149,6 +150,18 @@ func validate() -> PackedStringArray:
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
+	for r: ZoneResetDef in reset_defs.values():
+		for key: StringName in [r.currency, r.source_stat]:
+			if not stat_defs.has(key):
+				errs.append("reset %s: unknown stat %s" % [r.id, key])
+		for sid: String in r.resets:
+			if not stat_defs.has(StringName(sid)):
+				errs.append("reset %s: resets unknown stat %s" % [r.id, sid])
+		if not zone_defs.has(r.gate_zone):
+			errs.append("reset %s: unknown gate zone %s" % [r.id, r.gate_zone])
+		for zid: String in r.zones:
+			if not zone_defs.has(StringName(zid)):
+				errs.append("reset %s: unknown zone %s" % [r.id, zid])
 	var known: Dictionary = achievement_counters()
 	for a: AchievementDef in achievements.sorted:
 		if Achievements.category_index(a.category) >= Achievements.CATEGORIES.size():
@@ -161,7 +174,7 @@ func validate() -> PackedStringArray:
 	for z: ZoneDef in zone_defs.values():
 		if z.prestige_source_stat != &"" and not stat_defs.has(z.prestige_source_stat):
 			errs.append("zone %s: unknown prestige_source_stat %s" % [z.id, z.prestige_source_stat])
-	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat, config.bloom_stat, config.bloom_source_stat]:
+	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat]:
 		if not stat_defs.has(key):
 			errs.append("config: unknown stat %s" % key)
 	return errs
@@ -179,7 +192,7 @@ func new_game() -> void:
 	play_seconds = 0.0
 	press_count = 0
 	rebirth_count = 0
-	bloom_count = 0
+	reset_counts.clear()
 	relic_drops = 0
 	mastery.clear()
 	run_stats.clear()
@@ -406,7 +419,7 @@ func luck_level() -> int:
 
 ## Multiplier on every press reward from the Pad yield attribute.
 func pad_yield_mult() -> float:
-	return 1.0 + effect_total(&"pad_yield") + float(bloom_count) * config.bloom_reward_per_bloom
+	return 1.0 + effect_total(&"pad_yield") + reset_bonus()
 
 
 ## True once the player has rebirthed enough times for this attribute to be bought. Levels bought stay when saves load.
@@ -799,53 +812,109 @@ func rebirth_here() -> bool:
 	return String(zone_id) in config.rebirth_zones
 
 
-## Bloom opens with the Larkmoor gate, and pays once the source stat is high enough for the first payout.
-func bloom_unlocked() -> bool:
-	return bool(gates_open.get(config.bloom_gate_zone, false))
+## Times a zone reset has been done.
+func reset_count(reset_id: StringName) -> int:
+	return int(reset_counts.get(reset_id, 0))
 
 
-## The Starbloom a first payout is measured against: the Bloom gate's own threshold, so Bloom follows the gate when it moves.
-func bloom_ref() -> float:
-	var z: ZoneDef = zone_defs.get(config.bloom_gate_zone) as ZoneDef
-	return z.gate_threshold if z != null and z.gate_threshold > 0.0 else config.bloom_seed_ref
+## What every reset done adds to every pad's reward (0.05 = +5%).
+func reset_bonus() -> float:
+	var total: float = 0.0
+	for r: ZoneResetDef in reset_defs.values():
+		total += float(reset_count(r.id)) * r.bonus_per_use
+	return total
 
 
-## Seeds a Bloom would pay now (0 until it is available).
-func bloom_gain_preview() -> int:
-	if not bloom_unlocked():
+## The reset that belongs to a zone (the current zone by default), or null.
+func reset_for_zone(z_id: StringName = &"") -> ZoneResetDef:
+	var zid: String = String(zone_id if z_id == &"" else z_id)
+	var best: ZoneResetDef = null
+	for r: ZoneResetDef in reset_defs.values():
+		if zid in r.zones and (best == null or r.order < best.order):
+			best = r
+	return best
+
+
+## The reset a currency stat is paid by, or null (Prestige and Rebirth Points have none).
+func reset_for_currency(currency: StringName) -> ZoneResetDef:
+	for r: ZoneResetDef in reset_defs.values():
+		if r.currency == currency:
+			return r
+	return null
+
+
+## Resets in menu order.
+func resets_ordered() -> Array[ZoneResetDef]:
+	var out: Array[ZoneResetDef] = []
+	for r: ZoneResetDef in reset_defs.values():
+		out.append(r)
+	out.sort_custom(func(a: ZoneResetDef, b: ZoneResetDef) -> bool: return a.order < b.order if a.order != b.order else String(a.id) < String(b.id))
+	return out
+
+
+## A reset opens with its gate zone's gate.
+func reset_unlocked(reset_id: StringName) -> bool:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	return r != null and bool(gates_open.get(r.gate_zone, false))
+
+
+## The source amount the next payout is measured against: the gate zone's own threshold (so the reset follows the gate),
+## shrunk a little by every use already done.
+func reset_ref(reset_id: StringName) -> float:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	if r == null:
+		return 1.0
+	var z: ZoneDef = zone_defs.get(r.gate_zone) as ZoneDef
+	var base: float = z.gate_threshold if z != null and z.gate_threshold > 0.0 else r.ref_fallback
+	return base * maxf(r.ref_floor, pow(r.ref_shrink_per_use, float(reset_count(reset_id))))
+
+
+## What a reset would pay now (0 until it is available).
+func reset_gain(reset_id: StringName) -> int:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	if r == null or not reset_unlocked(reset_id):
 		return 0
-	var v: float = maxf(0.0, get_stat(config.bloom_source_stat).to_float())
-	var n: int = int(floorf(config.bloom_seed_scale * sqrt(v / bloom_ref())))
-	return n if float(n) >= config.bloom_min_seeds else 0
+	var v: float = maxf(0.0, get_stat(r.source_stat).to_float())
+	var n: int = int(floorf(r.pay_scale * sqrt(v / reset_ref(reset_id))))
+	return n if float(n) >= r.min_pay else 0
 
 
-func can_bloom() -> bool:
-	return bloom_gain_preview() > 0
+func can_reset(reset_id: StringName) -> bool:
+	return reset_gain(reset_id) > 0
 
 
-## Sunlight a run starts with after a Bloom: the stat's start plus the Head start gift.
-func bloom_start_sunlight() -> BigNum:
-	return BigNum.from_float((stat_defs[&"sunlight"] as StatDef).start + effect_total(&"head_start"))
+## What a stat restarts at after a reset: its start, plus the reset's gift total for its start stat.
+func reset_start_value(reset_id: StringName, stat_id: StringName) -> BigNum:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	var d: StatDef = stat_defs.get(stat_id) as StatDef
+	var extra: float = effect_total(r.start_effect) if r != null and r.start_stat == stat_id and r.start_effect != &"" else 0.0
+	return BigNum.from_float((d.start if d != null else 0.0) + extra)
 
 
-## Resets every stat flagged resets_on_bloom, pays Seeds and counts the Bloom. Gates, tiers, relics, mastery, RP and old
-## Prestige stay.
-func try_bloom() -> bool:
-	if not can_bloom():
+## Resets the stats the def lists, pays its currency and counts the use. Gates, tiers, relics, mastery and every other
+## currency stay.
+func try_reset(reset_id: StringName) -> bool:
+	if not can_reset(reset_id):
 		return false
-	var gained: int = bloom_gain_preview()
-	for s: StatDef in stat_defs.values():
-		if s.resets_on_bloom:
-			_set_stat(s.id, BigNum.from_float(s.start))
-	if stat_defs.has(&"sunlight"):
-		_set_stat(&"sunlight", bloom_start_sunlight())
-	_set_stat(config.bloom_stat, get_stat(config.bloom_stat).add(BigNum.from_float(float(gained))))
-	bloom_count += 1
+	var r: ZoneResetDef = reset_defs[reset_id] as ZoneResetDef
+	var gained: int = reset_gain(reset_id)
+	for sid: String in r.resets:
+		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
+	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
+	reset_counts[reset_id] = reset_count(reset_id) + 1
 	_set_heat(0.0)
 	_flush()
 	run_stats.mark_rebirth()
-	bloom_done.emit(gained)
+	reset_done.emit(reset_id, gained)
 	return true
+
+
+## True once any zone reset has been done or could be done now (opens the Upgrades menu).
+func resets_started() -> bool:
+	for r: ZoneResetDef in reset_defs.values():
+		if reset_count(r.id) > 0 or can_reset(r.id):
+			return true
+	return false
 
 
 ## The stat Rebirth banks in the current zone: the zone's own (Ingots in the quarry) or the game's (Clover Leaves).
@@ -923,8 +992,8 @@ func rp_available() -> BigNum:
 
 ## What an attribute is paid with, as a balance: Prestige earned and not yet spent, or Rebirth Points.
 func attribute_available(a: AttributeDef) -> BigNum:
-	if a.currency == config.bloom_stat:
-		return get_stat(config.bloom_stat)
+	if reset_for_currency(a.currency) != null:
+		return get_stat(a.currency)
 	return rp_available() if a.currency == config.rp_stat else prestige_available()
 
 
@@ -949,8 +1018,8 @@ func buy_attribute(attr_id: StringName) -> bool:
 		return false
 	if a.currency == config.rp_stat:
 		_set_stat(config.rp_stat, rp_available().sub(cost).max_zero())
-	elif a.currency == config.bloom_stat:
-		_set_stat(config.bloom_stat, get_stat(config.bloom_stat).sub(cost).max_zero())
+	elif reset_for_currency(a.currency) != null:
+		_set_stat(a.currency, get_stat(a.currency).sub(cost).max_zero())
 	else:
 		prestige_spent = prestige_spent.add(cost)
 	attr_levels[attr_id] = attr_level(attr_id) + 1
@@ -1145,7 +1214,7 @@ func to_dict() -> Dictionary:
 		"play_seconds": play_seconds,
 		"press_count": press_count,
 		"rebirth_count": rebirth_count,
-		"bloom_count": bloom_count,
+		"reset_counts": reset_counts.duplicate(),
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
 		"ui_flags": ui_flags.duplicate(true),
@@ -1210,7 +1279,13 @@ func from_dict(d_in: Dictionary) -> bool:
 	play_seconds = float(d.get("play_seconds", 0.0))
 	press_count = int(d.get("press_count", 0))
 	rebirth_count = int(d.get("rebirth_count", 0))
-	bloom_count = maxi(0, int(d.get("bloom_count", 0)))
+	var rc: Variant = d.get("reset_counts", {})
+	if rc is Dictionary:
+		for k: Variant in (rc as Dictionary):
+			if reset_defs.has(StringName(str(k))):
+				reset_counts[StringName(str(k))] = maxi(0, int((rc as Dictionary)[k]))
+	if int(d.get("bloom_count", 0)) > 0 and reset_defs.has(&"bloom") and reset_count(&"bloom") == 0:   # saves from 0.31 kept the count on its own
+		reset_counts[&"bloom"] = int(d.get("bloom_count", 0))
 	relic_drops = int(d.get("relic_drops", 0))
 	_last_drop_at = float(d.get("last_drop_at", play_seconds))
 	var uf: Variant = d.get("ui_flags", {})
