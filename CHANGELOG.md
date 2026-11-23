@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.37.4 - 2026-11-23
+## 0.37.5 - 2026-11-23
 - Larkmoor noon no longer reads lime-flat: the high-sun light pass takes a per-scene boost (1.7 in Larkmoor) for exposure, contrast and saturation, plus a warm cast that pulls green out of the bright ground. The meadow is unchanged.
+
+## 0.37.4 - 2026-11-23
+- Zone panel: the area description is measured and pinned so it never cuts off with an ellipsis (Larkmoor "paid in Sunligh...") while Travel is open.
 
 ## 0.37.3 - 2026-11-23
 - Number suffixes use a lowercase q (qd, qn, qdDc...) so a Q is never read as a 0 at popup size; popups keep a wider right margin so the "!" is not clipped.
