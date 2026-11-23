@@ -39,6 +39,9 @@ jobs:
       - name: Import project
         run: ~/godot/godot --headless --path . --import
 
+      - name: Version bump script tests
+        run: python3 tests/test_bump_version.py
+
       - name: Unit tests (tests/run.gd)
         run: |
           set -o pipefail

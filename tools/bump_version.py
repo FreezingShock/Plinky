@@ -12,6 +12,12 @@ PRESETS = ROOT / "export_presets.cfg"
 LOG = ROOT / "CHANGELOG.md"
 
 
+def move_unreleased(log: str, new: str, date: str) -> str:
+    """Open a dated heading for `new` directly under "## Unreleased", keeping a blank line on each side so the
+    first note stays on its own line instead of being glued to the heading."""
+    return re.sub(r"## Unreleased[ \t]*\n+", f"## Unreleased\n\n## {new} - {date}\n", log, count=1)
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if a != "--dry-run"]
     dry = "--dry-run" in sys.argv
@@ -45,8 +51,7 @@ def main() -> int:
     p = re.sub(r'(application/(?:short_)?version=")[^"]*(")', rf"\g<1>{new}\2", p)
     PRESETS.write_text(p)
     log = LOG.read_text()
-    log = log.replace("## Unreleased\n", f"## Unreleased\n\n## {new} - {datetime.date.today()}", 1)
-    LOG.write_text(log)
+    LOG.write_text(move_unreleased(log, new, str(datetime.date.today())))
     return 0
 
 
