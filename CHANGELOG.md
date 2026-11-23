@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.17.0 - 2026-11-23
+- Grass redrawn: the square light/dark patchwork is gone. Seasonal recolour now spreads as smooth organic blobs (it was hashed 5x5 squares, also showing in tree canopies and rocks), and the ground has hand-placed blade tufts that gather into clumps instead of random noise patches, in the meadow and Larkmoor.
+
 ## 0.16.3 - 2026-11-23
 - Ember Quarry: the way back to Larkmoor is now a cave mouth in the rock instead of a second gate: rough basalt, a dark inside with a window of green meadow light, grass, moss and flowers at the lip, cool motes drifting out, and a green light spill on the road.
 
