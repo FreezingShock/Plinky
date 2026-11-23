@@ -5,6 +5,8 @@ extends Control
 
 signal relic_panel_toggled(open: bool)
 signal settings_toggled(open: bool)
+## A HUD-owned panel is about to open, so Main can close the others (one menu at a time).
+signal menu_opened(kind: StringName)
 signal index_requested(tab: int)   ## IndexPanel.Tab: the Stats or Attributes button or key
 
 ## The frame the HUD lays out in (Main size). The gate panel and bottom bar hug its right and bottom edges.
@@ -35,6 +37,7 @@ var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
 var _momentum: MomentumMeter
 var _stats_panel: PanelContainer
+var _centered: Array[Control] = []   # panels kept centred in the free area above the bottom bar
 
 
 func setup(p_sim: Sim) -> void:
@@ -73,6 +76,28 @@ func upgrades_open() -> bool:
 
 func upgrades_panel() -> Control:
 	return _upgrades_panel
+
+
+func toggle_upgrades() -> void:
+	if _upgrades_panel.visible:
+		_upgrades_panel.visible = false
+		return
+	menu_opened.emit(&"upgrades")
+	_upgrades_panel.visible = true
+
+
+## The bottom bar. Main keeps it above every menu so its chips stay clickable while a menu is open.
+func bottom_bar() -> Control:
+	return _bottom
+
+
+func owns_focus(c: Control) -> bool:
+	return c != null and _bottom != null and _bottom.is_ancestor_of(c)
+
+
+## Keep `p` centred in the free area above the bottom bar (clamped to stay on screen).
+func keep_centered(p: Control) -> void:
+	_centered.append(p)
 
 
 func close_panels() -> void:
@@ -170,7 +195,7 @@ func _build_bottom() -> void:
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.")
 	up.full_text = "Upgrades [Tab]"
-	up.pressed.connect(func() -> void: _upgrades_panel.visible = not _upgrades_panel.visible)
+	up.pressed.connect(toggle_upgrades)
 	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
 		var rb: ExpandChip = _chip(h, "relics/r_pulse", "Relics", "Equip relics you have found.")
@@ -209,17 +234,20 @@ func _build_pad_list() -> void:
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
 	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.panel())
-	_upgrades_panel.position = Vector2(4, 96)
 	_upgrades_panel.visible = false
 	add_child(_upgrades_panel)
+	keep_centered(_upgrades_panel)
 	_upgrades_box = VBoxContainer.new()
+	_upgrades_box.add_theme_constant_override("separation", 2)
 	_upgrades_panel.add_child(_upgrades_box)
 	var title := Label.new()
 	title.theme_type_variation = &"TitleLabel"
 	title.text = "Upgrades"
 	_upgrades_box.add_child(title)
 	_prestige_avail = Label.new()
+	_prestige_avail.add_theme_color_override("font_color", RelicStyle.dim)
 	_upgrades_box.add_child(_prestige_avail)
+	_upgrades_box.add_child(PanelDivider.new())
 	var ids: Array = sim.attribute_defs.keys()
 	ids.sort()
 	for aid: StringName in ids:
@@ -257,7 +285,7 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 		return   # letters like R belong to the text box
 	if event.is_action_pressed(&"plinky_upgrades") or Keybinds.matches(&"upgrades", event):
 		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
-			_upgrades_panel.visible = not _upgrades_panel.visible
+			toggle_upgrades()
 		get_viewport().set_input_as_handled()
 	elif (event.is_action_pressed(&"plinky_relics") or Keybinds.matches(&"relics", event)) and GameState.relics != null:
 		if GameState.onboarding.is_unlocked(Onboarding.F_RELICS):
@@ -301,6 +329,13 @@ func _place() -> void:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
 			_momentum.position = mp
+	for cp2: Control in _centered:
+		if cp2.visible:
+			var free_h: float = frame.y - (_bottom.size.y if _bottom != null else 0.0) - 8.0
+			var psz: Vector2 = cp2.size.max(cp2.get_combined_minimum_size())
+			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)))
+			if cp2.position != at:
+				cp2.position = at
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:

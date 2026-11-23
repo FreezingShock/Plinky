@@ -242,3 +242,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Bottom-bar buttons (Rebirth, Upgrades, Relics, Settings) are icon-only at rest and open to icon + label on hover or focus. `ui/fx/expand_chip.gd`, extends PixelButton so focus ring, press sink and AsciiBox frame carry over.
 - One eased progress value, no tweens, so spamming hover is continuous. Label types in with 3 scrambled trailing glyphs (ASCII noise at ~22 Hz) and a short settle flicker. Width grows in whole texels; the HBox slides neighbours aside. Reduce motion snaps with no noise.
 - Each chip has a Tip tooltip so the icon-only state is named. New 16x16 `assets/icons/settings.png` (meadow palette). Stat rows and panel headers not changed: Nathan scoped this to the bottom bar.
+
+## 2026-11-23: Menus and the bottom bar
+- Chips stay clickable while a menu is open: Main raises the bottom bar above every panel, and `_menu_focus` no longer pulls focus out of the bar (that yank cancelled clicks, same class of bug as #71). Opening a menu from the bar still puts focus in the new menu.
+- One menu at a time (`Main._close_others`): a chip opens its menu and closes the others; the same chip closes its own. Upgrades goes through `Hud.toggle_upgrades` and `menu_opened`.
+- Upgrades and Relics panels are centred in the free area above the bottom bar (`Hud.keep_centered`). `PanelDivider` (dotted 1 texel rule with air) separates sections. Tooltips untouched: the tooltips thread owns them.

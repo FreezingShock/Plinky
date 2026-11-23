@@ -43,3 +43,7 @@ func run(t: Object) -> void:
 	t.eq(chip.text, "Upgrades [Tab]", "an open chip shows its label")
 	t.ok(chip.custom_minimum_size.x > w0, "an open chip is wider than a resting one")
 	chip.queue_free()
+
+	var div := PanelDivider.new(3)
+	t.eq(div.custom_minimum_size.y, 7.0, "a divider reserves its rule plus air on both sides")
+	div.free()

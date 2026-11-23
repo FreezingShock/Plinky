@@ -117,6 +117,9 @@ func _ready() -> void:
 	_wire_relics()
 	_wire_index()
 	_wire_display()
+	hud.keep_centered(relic_panel)
+	hud.menu_opened.connect(_close_others)
+	hud.move_child(hud.bottom_bar(), -1)   # chips stay above every open menu, so they stay clickable
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
 	add_child(window_frame)
@@ -206,11 +209,12 @@ func _menu_focus() -> void:
 	PadInput.menu_open = open != null
 	var owner_ctl: Control = get_viewport().gui_get_focus_owner()
 	var just_closed: bool = _menu_was_open and open == null
+	var just_opened: bool = open != null and not _menu_was_open
 	_menu_was_open = open != null
 	if open == null:
 		if PadInput.should_release_focus(just_closed, owner_ctl != null):
 			owner_ctl.release_focus()
-	elif owner_ctl == null or not open.is_ancestor_of(owner_ctl):
+	elif owner_ctl == null or just_opened or not (open.is_ancestor_of(owner_ctl) or hud.owns_focus(owner_ctl)):
 		var first: Control = PadInput.first_focusable(open)
 		if first != null:
 			first.grab_focus()
@@ -492,11 +496,13 @@ func _wire_relics() -> void:
 	toast.bind(inv)
 	var panel := RelicPanel.new()
 	relic_panel = panel
-	panel.position = Vector2(180, 60)
 	panel.visible = false
 	hud.add_child(panel)
 	panel.bind(inv)
-	hud.relic_panel_toggled.connect(func(_open: bool) -> void: panel.visible = not panel.visible)
+	hud.relic_panel_toggled.connect(func(_open: bool) -> void:
+		if not panel.visible:
+			_close_others(&"relics")
+		panel.visible = not panel.visible)
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
 		Juice.relic_drop(pad_glow, inv.rarity_of(id)))
 
@@ -510,7 +516,7 @@ func _wire_index() -> void:
 		if index_panel.is_open() and index_panel.tab == t:
 			index_panel.close_panel()
 		else:
-			relic_panel.hide()
+			_close_others(&"index")
 			index_panel.open_tab(t))
 
 
@@ -523,11 +529,25 @@ func _wire_display() -> void:
 		if display_panel.visible:
 			display_panel.close()
 		else:
+			_close_others(&"settings")
 			display_panel.open())
 	feedback_panel = FeedbackPanel.new()
 	hud.add_child(feedback_panel)
 	feedback_panel.bind(GameState.sim)
 	display_panel.feedback_requested.connect(_toggle_feedback)
+
+
+## One menu at a time: opening a menu closes every other. The kind being opened is left alone.
+func _close_others(kind: StringName) -> void:
+	if kind != &"relics":
+		relic_panel.hide()
+	if kind != &"index":
+		index_panel.close_panel()
+	if kind != &"settings":
+		display_panel.close()
+		feedback_panel.close()
+	if kind != &"upgrades":
+		hud.close_panels()
 
 
 func _toggle_feedback() -> void:
