@@ -340,7 +340,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var fog_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
-			gm.set_shader_parameter("relight", _config.ground_relight * (1.0 - 0.5 * night_k))
+			gm.set_shader_parameter("relight", _config.ground_relight * (0.55 + 0.45 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
 			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
