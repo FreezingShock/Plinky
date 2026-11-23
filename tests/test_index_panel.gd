@@ -15,6 +15,15 @@ func run(t: Object) -> void:
 	t.ok(panel.wipe_showing(), "wipe overlay is visible, sized, and above the panel the moment it opens")
 	t.ok(panel._reveal.get_parent() == host, "overlay is a sibling of the panel, not under its content")
 	t.ok(panel._reveal.size.x >= IndexPanel.WIDTH, "overlay covers the panel width")
+	# detail page: opens on a card, lists sources, and Esc steps back before it closes
+	FxConfig.reduce_flashing = true   # pages swap at once, no tween needed in a headless run
+	panel.open_detail(&"crit_chance")
+	t.ok(panel.detail_open() and panel.detail_id == &"crit_chance", "a card opens its detail page")
+	t.ok(panel._d_sources.get_child_count() > 0, "the detail page lists sources")
+	t.ok(panel.back_or_close() and not panel.detail_open() and panel.is_open(), "back returns to the gallery, still open")
+	t.ok(panel.back_or_close() and not panel.is_open(), "back again closes the window")
+	FxConfig.reduce_flashing = false
+	panel.toggle_tab(IndexPanel.Tab.STATS)
 	panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)
 	t.ok(panel.is_open() and panel.tab == IndexPanel.Tab.ATTRIBUTES, "toggling the other tab switches")
 	panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)

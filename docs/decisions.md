@@ -359,3 +359,4 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - PC pan diff at zoom 3 (clock paused, calm, still): 41% match with Reduce screen effects off (best shift 32 px, not a whole texel), 96.7% on. The edge shade and the full-frame light pass were the remaining non-rigid layers.
 - Vignette: dropped its private `w_origin` / `w_scale` (derived from a node transform in ScreenLight._process, so it could trail the camera) for the `world_origin` / `world_scale` globals. Both passes now evaluate their smooth fields (edge distance, sun-side gradient) at the texel centre, so every screen pixel of a texel gets the same value.
 - Not run in engine; needs the same zoom-3 diff with Reduce screen effects off.
+- Gallery (PR #90): cards are IndexCard (ui/index_card.gd), pages swap under the dither wipe, Esc steps back from a detail page before it closes the window (handled in IndexPanel._input, so the menu router is unchanged).

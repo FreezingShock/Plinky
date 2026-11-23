@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.11.0 - 2026-11-23
+- Stats and Attributes are now a gallery: 32 px icon cards, hover info strip, and a detail page per stat with its sources (where it comes from, how to get more). New clean symmetric icon set, and `sim.stat_sources`.
+
 ## 0.10.5 - 2026-11-23
 - Edge shade and full-frame light pass now step on the world texel grid and read the camera transform from the shared globals, so they no longer drift against the ground at zoom 3 (PC pan diff: 41% match with them on, 96.7% off).
 
