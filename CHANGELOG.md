@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.5 - 2026-11-23
+- Edge shade and full-frame light pass now step on the world texel grid and read the camera transform from the shared globals, so they no longer drift against the ground at zoom 3 (PC pan diff: 41% match with them on, 96.7% off).
+
 ## 0.10.4 - 2026-11-23
 - Fixed the dither and light on the ground, grass, shadows, fog and rays shimmering as the camera moved. World shaders measured position in screen pixels at zoom 2 and up; they now use true world texels at every zoom (`world_origin` / `world_scale` globals set by the camera), so the pattern stays put on the ground.
 

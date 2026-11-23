@@ -9,8 +9,7 @@ const SHADER: Shader = preload("res://render/shaders/vignette.gdshader")
 var _rect: ColorRect
 var _mat: ShaderMaterial
 var _host: Control
-## A node that sits at the world origin (SkyCycle). The vignette's dither is pinned to the world through its transform,
-## so the dots scroll and scale with the ground instead of staying fixed to the screen.
+## Kept for callers that set it; the shader now reads the camera transform from the world_origin / world_scale globals.
 var world_ref: Node2D
 
 
@@ -41,13 +40,6 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_fit()
-	if world_ref != null and is_instance_valid(world_ref):
-		var xf: Transform2D = world_ref.get_global_transform_with_canvas()
-		var sc: float = maxf(xf.x.length(), 0.001)
-		# exact origin: rounding it to whole screen pixels slipped the pattern against the ground when the camera
-		# offset is fractional (Larkmoor at zoom 3), so the shader floors in world texels instead
-		_mat.set_shader_parameter("w_origin", xf.origin)
-		_mat.set_shader_parameter("w_scale", sc)
 
 
 func set_strength(s: float) -> void:

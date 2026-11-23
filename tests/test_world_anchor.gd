@@ -12,6 +12,8 @@ func run(t: Object) -> void:
 		var src: String = FileAccess.get_file_as_string("res://render/shaders/%s.gdshader" % n)
 		t.ok(src.contains("global uniform vec2 world_origin;") and src.contains("global uniform float world_scale;"), "%s declares the world transform globals" % n)
 		t.ok(src.contains("- world_origin) / world_scale"), "%s converts wpos to world texels" % n)
+	var vig: String = FileAccess.get_file_as_string("res://render/shaders/vignette.gdshader")
+	t.ok(vig.contains("global uniform vec2 world_origin;") and vig.contains("- world_origin) / world_scale"), "vignette reads the camera globals")
 	RenderGlobals.set_world(Vector2(12.0, -7.0), 3.0)
 	t.ok(true, "set_world runs")
 	RenderGlobals.set_world(Vector2.ZERO, 1.0)
