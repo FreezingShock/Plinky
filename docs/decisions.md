@@ -381,3 +381,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Not run in engine (no Godot in the cloud): needs a PC check of the wipe on Upgrades, Relics, Settings, Log and the hamburger.
 ## Night ladder removed
 - PC at night, zoom 3 to 4, still showed a faint grid on the ground: the three-rung night ladder dithered wherever the shade was below full (any light pool falloff, dusk, dawn). Night tint and the lantern warm cast are now plain smooth multiplies of `dk` / `wk`; no Bayer in day_night.gdshader any more. Supersedes the ladder in the "Night is a solid tint" entry.
+
+## 2026-11-23: Ember Quarry fixes (trees, gate, cliff placement)
+- Meadow trees in the quarry were Larkmoor props that survived the zone swap: `main.gd` freed old props by the `Occ_` name prefix, but a new sprite with the same name as one still queued for deletion is auto-renamed `@Sprite2D@n`, so it escaped the next cleanup. Props are now tracked and freed by reference (`_spawn_occluders` / `_free_occluders`); `tests/test_quarry.gd` covers it.
+- The quarry gate is drawn in code (`TexelGate`, `ZoneDef.gate_art = "forge"`): basalt pillars, iron bands, ember seams, a grate while shut, a gold shimmer when open, hover tooltip. Zone 3 does not exist yet, so an open gate shows the banner "The way on is still being forged" instead of travelling. Hook up `next_zone` on zone2.tres when Tidewater lands.
+- Cause of the "perspective glitch": the quarry's near rim wall is raised, so the lowest tier was flat in the height map but hidden on screen behind the wall. `tools/art/gen_zone2.py` now computes which cells are visible, keeps the walk mask and props inside them, and snaps the spawn and pads to visible ground.
