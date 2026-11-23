@@ -168,6 +168,7 @@ func _build_detail() -> void:
 	head.add_child(_d_name)
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 0)
+	right.size_flags_vertical = Control.SIZE_SHRINK_CENTER   # no gain line: the value sits centred against the icon
 	head.add_child(right)
 	_d_total = _right(right, RelicStyle.accent)
 	_d_total.theme_type_variation = &"TitleLabel"
@@ -471,7 +472,8 @@ func _fill_detail(d: Dictionary) -> void:
 	_d_icon.texture = IndexCard.icon_for(String(d["icon"]))
 	_d_name.text = String(d["name"])
 	_d_total.text = String(d["value"])
-	_d_buff.text = String(d["note"]) if String(d["note"]) != "" else " "
+	_d_buff.text = String(d["note"])
+	_d_buff.visible = _d_buff.text != ""
 	_d_tip.text = String(d["tip"])
 	if d.has("cap"):
 		_d_bar.value = float(d["level"]) / maxf(float(d["cap"]), 1.0)
