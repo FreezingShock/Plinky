@@ -756,3 +756,11 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 ## 2026-11-23 Node budget 1300 to 1350 (Larkmoor pads, Nathan's call)
 - **Why:** the Larkmoor Dewdrop and Clover rows add 61 nodes (six pads with their anchors and holds, and six props from the regenerated layout). Main's Larkmoor is 1266, so the scene reached 1327 and CI's `play` frame budget failed.
 - **Chosen by Nathan (decision card):** raise the active-zone node ceiling to 1350 rather than trimming props or optimising pads first. Set in `.github/workflows/ci.yml` (frame budget 150/300/250/1350), `docs/ci.md` and `docs/perf.md`.
+
+
+## HUD strip polish (2026-11-23)
+- **Stable width:** the value column is 52 px and the gain column 68 px (right-aligned, clipped), so a ticking number never resizes the panel. The strip is a little wider than before when gain rates are on; turn off Strip Gain Rates to drop that column.
+- **Cap:** `HudLayout.cap_for()` is 12 or the zone's own Default if longer, so the count never reads over its cap (the quarry's Default plus Seeds was 11 against a cap of 10). A zone-reset currency (Seeds) shows by default only in its own zone (main's `reset_for_currency` rule); it can still be pinned from the chips.
+- **Edit mode:** the three boxed buttons per row became a frameless grip (drag the row, or Up and Down while the grip has focus) and a frameless hide mark, dim until the row is hovered. This drops the move up and move down buttons, so there is nothing to disable at either end.
+- **Motion:** rows glide to new places, fade out when hidden and fade in when added, the grips and footer ease open in six steps, and chips pop in. All of it snaps under Reduce Motion or Reduce Flashing.
+- Not run in-engine from the cloud; needs a PC capture.
