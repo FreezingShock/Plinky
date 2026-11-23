@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"rebirth_1"
+display_name = "Reborn"
+description = "Rebirth for the first time."
+category = &"rebirth"
+counter = &"rebirths"
+target = 1.0
+order = 1
+title = "Reborn"

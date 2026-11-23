@@ -13,6 +13,9 @@ const SHADERS: Array[String] = [
 	"res://render/shaders/cast_shadow.gdshader",
 	"res://render/shaders/vignette.gdshader",
 	"res://render/shaders/cross_wipe.gdshader",
+	"res://render/shaders/ground_light.gdshader",
+	"res://render/shaders/ground_fog.gdshader",
+	"res://render/shaders/light_grade.gdshader",
 ]
 const FRAMES: int = 4
 

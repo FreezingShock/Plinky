@@ -9,8 +9,32 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.34.2 - 2026-11-23
+## 0.37.2 - 2026-11-23
 - Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.
+
+## 0.37.1 - 2026-11-23
+- Low graphics quality now really lowers cost: the ground light uses fewer shadow and occlusion taps and the full-frame light grade (the one pass that copies the screen) is skipped, about 10 to 13% faster on a software-GPU stand-in. High is unchanged. The ground shader skips shadow work when no shadow applies, more shaders are pre-compiled at start, and CI now fails above 250 draw calls or 1200 nodes. New `tools/bench_weak.sh` runs the bench on a CPU rasteriser.
+
+## 0.37.0 - 2026-11-23
+- Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
+
+## 0.36.0 - 2026-11-23
+- Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
+
+## 0.35.0 - 2026-11-23
+- Docs only: docs/workflow.md writes down the five-step working process and the PC pitfalls; linked from README and CLAUDE.md.
+
+## 0.34.3 - 2026-11-23
+- Zone panel: areas with more than five pads show four and fold the rest behind a greyed, underlined "N more..." line (click to expand, scrolls past 8 rows); open Travel shows the full area description and the panel shrinks back instead of leaving empty space.
+
+## 0.34.3 - 2026-11-23
+- Noon no longer bleaches and sunset is softer: the light pass gets an exposure drop, extra contrast and saturation at high sun (10:00 to 14:00), the noon grade is less green, and the 17:00 to 19:00 grade and ray colours are a softer amber instead of red-orange so shadow detail stays readable.
+
+## 0.34.3 - 2026-11-23
+- Number format tests pin 1e80 ("100QnVg") and the e-notation fallback past the last suffix.
+
+## 0.34.2 - 2026-11-23
+- Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
 
 ## 0.34.1 - 2026-11-23
 - Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.

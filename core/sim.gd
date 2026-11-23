@@ -25,6 +25,8 @@ signal mastery_changed(button_id: StringName, level: int, xp: float)
 signal mastery_leveled(button_id: StringName, level: int)
 ## A flower tier's pads just became pressable (the last pad of the tier below was pressed).
 signal tier_opened(tier_id: StringName)
+## An achievement just unlocked (core/achievements.gd). Never fires for ones a loaded save already had.
+signal achievement_unlocked(achievement_id: StringName)
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -40,6 +42,8 @@ var relics: RelicInventory
 var mastery: Mastery = Mastery.new()
 ## History numbers (income graph, time per zone, bests) for the History screen. Lifetime part is saved.
 var run_stats: RunStats = RunStats.new()
+## Which achievements are unlocked (the Ledger). Replaced by ContentLoader with the content's list.
+var achievements: Achievements = Achievements.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
 
@@ -83,6 +87,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Dev console only (core/dev_commands.gd). Presses cost nothing. Never saved.
 var god_mode: bool = false
 
+var _ach_clock: float = 0.0
 var _dirty: Dictionary = {}
 
 
@@ -142,6 +147,15 @@ func validate() -> PackedStringArray:
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
+	var known: Dictionary = achievement_counters()
+	for a: AchievementDef in achievements.sorted:
+		if Achievements.category_index(a.category) >= Achievements.CATEGORIES.size():
+			errs.append("achievement %s: unknown category %s" % [a.id, a.category])
+		var peak_ok: bool = String(a.counter).begins_with("peak_") and stat_defs.has(StringName(String(a.counter).trim_prefix("peak_")))
+		if not known.has(a.counter) and not peak_ok:
+			errs.append("achievement %s: unknown counter %s" % [a.id, a.counter])
+		if a.target <= 0.0:
+			errs.append("achievement %s: target must be above zero" % a.id)
 	for z: ZoneDef in zone_defs.values():
 		if z.prestige_source_stat != &"" and not stat_defs.has(z.prestige_source_stat):
 			errs.append("zone %s: unknown prestige_source_stat %s" % [z.id, z.prestige_source_stat])
@@ -167,6 +181,8 @@ func new_game() -> void:
 	relic_drops = 0
 	mastery.clear()
 	run_stats.clear()
+	achievements.clear()
+	_ach_clock = 0.0
 	calendar.reset()
 	ui_flags = {}
 	hud_layout.clear()
@@ -670,12 +686,62 @@ func _roll_relic_drop() -> StringName:
 	return drop
 
 
+## Seconds between achievement checks while playing.
+const ACHIEVEMENT_EVERY: float = 1.0
+
+
+## Everything an achievement can count, by name: plain totals, `tier_<id>` and `zone_<id>` flags, and `peak_<stat>`.
+func achievement_counters() -> Dictionary:
+	var best_rank: int = 0
+	var kinds: int = 0
+	for id: Variant in relics.owned:
+		if relics.stacks_of(id) > 0 and relics.defs.has(id):
+			kinds += 1
+			best_rank = maxi(best_rank, (relics.defs[id] as RelicDef).rarity.rank + 1)
+	var attrs: int = 0
+	for lv: Variant in attr_levels.values():
+		attrs += int(lv)
+	var top_mastery: int = 0
+	for bid: Variant in button_defs:
+		top_mastery = maxi(top_mastery, mastery.level(bid))
+	var c: Dictionary = {
+		&"presses": float(press_count), &"crits": float(run_stats.crits), &"streaks_done": float(run_stats.streaks_done),
+		&"best_chain": float(run_stats.best_chain), &"best_momentum": float(run_stats.best_tier),
+		&"rebirths": float(rebirth_count), &"relic_drops": float(relic_drops), &"relic_kinds": float(kinds),
+		&"best_relic_rank": float(best_rank), &"attributes_bought": float(attrs), &"mastery_best": float(top_mastery),
+		&"play_hours": play_seconds / 3600.0, &"gates_open": float(gates_open.size()),
+	}
+	for tid: Variant in tier_defs:
+		var zid: StringName = (tier_defs[tid] as TierDef).zone
+		var reached: bool = zones_entered.has(zid) or zone_id == zid   # a zone's first tier is open on arrival, not before
+		c[&"tier_" + String(tid)] = 1.0 if reached and is_tier_open(tid) else 0.0
+	for zid: Variant in zone_defs:
+		c[&"zone_" + String(zid)] = 1.0 if zones_entered.has(zid) or zone_id == zid else 0.0
+	return achievements.with_peaks(c)
+
+
+## Unlocks what has been earned and returns the ids unlocked just now. Quiet: no signal.
+func _evaluate_achievements() -> Array[StringName]:
+	achievements.note_stats(stats)
+	return achievements.check(achievement_counters())
+
+
+## Checks every achievement and announces new unlocks. Runs once a second from step() and after a rebirth.
+func check_achievements() -> void:
+	for id: StringName in _evaluate_achievements():
+		achievement_unlocked.emit(id)
+
+
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
 func step(dt: float) -> void:
 	play_seconds += dt
 	if run_stats.step(dt, zone_id):
 		run_stats.record_income(income_per_second(config.income_stat))
 	calendar.advance(dt)
+	_ach_clock += dt
+	if _ach_clock >= ACHIEVEMENT_EVERY:
+		_ach_clock = 0.0
+		check_achievements()
 	if momentum_hold > 0.0:
 		momentum_hold = maxf(0.0, momentum_hold - dt)
 	elif momentum > 0.0:
@@ -822,6 +888,7 @@ func try_rebirth() -> bool:
 	_flush()
 	run_stats.mark_rebirth()
 	rebirth_done.emit(gained)
+	check_achievements()
 	return true
 
 
@@ -935,9 +1002,15 @@ func is_gate_open(z_id: StringName) -> bool:
 	return bool(gates_open.get(z_id, false))
 
 
-## Credits passive income for time away. Capped by offline_cap_seconds(). Returns seconds credited.
+## What the last apply_offline gave beyond stat income: {"relics": Array[StringName], "tend": {tier id: {"presses", "levels", "level"}}}.
+var last_offline: Dictionary = {}
+
+
+## Credits time away, capped by offline_cap_seconds(): passive income, flower tending (reduced-rate presses that also
+## earn mastery XP), and reduced-rate relic drop rolls. Returns seconds credited.
 func apply_offline(seconds: float) -> float:
 	var secs: float = clampf(seconds, 0.0, offline_cap_seconds())
+	last_offline = {}
 	if secs <= 0.0:
 		return 0.0
 	calendar.advance(secs)   # the world keeps turning while you are away
@@ -948,17 +1021,77 @@ func apply_offline(seconds: float) -> float:
 			var g: BigNum = income_per_second(s.id).mul(sb)
 			_set_stat(s.id, get_stat(s.id).add(g))
 			gains[s.id] = g
+	last_offline["tend"] = _offline_tend(secs, gains)
+	last_offline["relics"] = _offline_relics(secs)
 	_check_gates()
 	_flush()
 	offline_gained.emit(secs, gains)
 	return secs
 
 
-# ---------------------------------------------------------------- internals
+## Each open tier of the zone (lowest first, so its yield can feed the next) presses its top unlocked pad at a fraction
+## of the press rate, as many times as the stock allows. Adds rewards to `gains` and returns per-tier results.
+func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if config.offline_tend_fraction <= 0.0:
+		return out
+	var target: float = floorf(secs * config.offline_tend_fraction / press_interval())
+	if target < 1.0:
+		return out
+	for t: TierDef in tiers_in_zone(zone_id):
+		if not is_tier_open(t.id):
+			continue
+		var pad: ButtonDef = null
+		for b: ButtonDef in buttons_in_zone(zone_id):
+			if b.row == t.id and not is_pad_locked(b.id) and (pad == null or b.row_index > pad.row_index):
+				pad = b
+		if pad == null:
+			continue
+		var cost: BigNum = Formulas.button_cost(pad)
+		var afford: float = floorf(get_stat(pad.cost_stat).div(cost).to_float()) if not cost.is_zero() else target
+		var n: float = minf(target, afford)
+		if n < 1.0:
+			continue
+		var nb: BigNum = BigNum.from_float(n)
+		var reward: BigNum = press_gain_preview(pad.id).mul(nb)
+		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
+		_set_stat(pad.reward_stat, get_stat(pad.reward_stat).add(reward))
+		gains[pad.reward_stat] = (gains[pad.reward_stat] as BigNum).add(reward) if gains.has(pad.reward_stat) else reward
+		press_count += int(n)
+		var levels: int = mastery.add_xp(pad.id, mastery.config.xp_per_press * n * (1.0 + effect_total(&"mastery_xp")))
+		out[t.id] = {"presses": int(n), "levels": levels, "level": mastery.level(pad.id)}
+	return out
+
+
+## Drop rolls for the time away, at offline_relic_roll_fraction of the awake rate, with the pity timer running on that
+## slower clock. Returns the relic ids found (at most offline_relic_max_drops).
+func _offline_relics(secs: float) -> Array[StringName]:
+	var found: Array[StringName] = []
+	var rc: RelicConfig = relics.config
+	if config.offline_relic_roll_fraction <= 0.0 or config.offline_relic_max_drops <= 0 or rc.roll_interval <= 0.0:
+		return found
+	var step_s: float = rc.roll_interval / config.offline_relic_roll_fraction
+	var now: float = play_seconds
+	var last_drop: float = _last_drop_at
+	var t: float = step_s
+	while t <= secs and found.size() < config.offline_relic_max_drops:
+		var due: float = rc.first_drop_seconds if relic_drops == 0 else rc.pity_seconds
+		var drop: StringName = relics.roll_drop(rng, luck_level(), now + t - last_drop >= due)
+		if drop != &"":
+			relics.add_relic(drop)
+			relic_drops += 1
+			last_drop = now + t
+			found.append(drop)
+		t += step_s
+	if not found.is_empty():
+		_last_drop_at = play_seconds
+	return found
+
 
 func _set_stat(stat_id: StringName, value: BigNum) -> void:
 	stats[stat_id] = value
 	_dirty[stat_id] = true
+	achievements.note_stat(stat_id, value)
 
 
 func _flush() -> void:
@@ -1015,6 +1148,7 @@ func to_dict() -> Dictionary:
 		"mastery": mastery.to_dict(),
 		"calendar": calendar.to_dict(),
 		"run_stats": run_stats.to_dict(),
+		"achievements": achievements.to_dict(),
 	}
 
 
@@ -1088,6 +1222,10 @@ func from_dict(d_in: Dictionary) -> bool:
 		run_stats.from_dict(rs)
 	if old_ladder:
 		_migrate_to_ladder(d_in)
+	if d.has("achievements"):
+		achievements.from_dict(d["achievements"])
+	else:
+		_evaluate_achievements()   # a save from before the Ledger: what is already earned counts, with no pop-ups
 	if old_quarry:
 		_migrate_to_quarry_ladder()
 	_dirty.clear()
