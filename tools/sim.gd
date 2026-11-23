@@ -79,7 +79,7 @@ func _init() -> void:
 		failed = not open
 		t = t_end
 		var next: StringName = z.next_zone
-		if open and next != &"" and next != &"zone2":   # the quarry has its own sim (docs/zone2.md)
+		if open and next != &"":
 			sim.enter_zone(next)
 			zone = next
 		else:

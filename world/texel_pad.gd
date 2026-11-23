@@ -24,7 +24,8 @@ var progress: float = 0.0
 const STAT_COLORS: Dictionary = {
 	&"dewdrop": Color("e4f1ff"), &"clover": Color("6be86b"), &"thistle": Color("7f9bff"),
 	&"heather": Color("c27cff"), &"foxglove": Color("ffb62e"), &"starbloom": Color("ff7bff"),
-	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
+	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("5fb0e0"), &"ironore": Color("5fb26a"),
+	&"ingot": Color("a07ee0"), &"alloy": Color("e8b43a"), &"emberheart": Color("ff5aa0"),
 }
 ## One standing flower per tier, 13 texels wide, drawn bottom-up from the plate centre: # petal (stat colour), d shaded
 ## petal, c bright heart, g stem and leaf. Each has its own silhouette so the six tiers read apart at 1x.
@@ -36,6 +37,12 @@ const FLOWERS: Dictionary = {
 	&"foxglove": ["......#......", ".....###.....", ".....#c#.....", "....#####....", "....#d.d#....", "...#######...", "...#d...d#...", "..#########..", "..#d.ggg.d#..", "....g.g.g...."],
 	&"starbloom": ["......#......", ".....###.....", "....#####....", "#############", ".###########.", "..####c####..", "...#######...", "..###...###..", ".###..g..###.", "......g......"],
 }
+## The Ember Quarry rows stand on their plate as small isometric voxel objects (tools/art/gen_quarry_ladder.py), three flicker
+## frames each. Tier id -> art name.
+const FORGE_ART: Dictionary = {&"cinder": "cinder", &"ore": "ore", &"slagrow": "slag", &"ingot": "ingot", &"alloy": "alloy", &"emberheart": "ember"}
+const FORGE_DIR: String = "res://assets/art/zone2/ladder/"
+const FLICKER_MS: int = 260
+static var _forge_tex: Dictionary = {}   # "name_f" -> Texture2D
 const LEAF: Color = Color("3d9a45")
 const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
 var tier_row: StringName = &""
@@ -239,7 +246,8 @@ func _pulse_step() -> int:
 func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
-		| _level_step() << 24 | int(locked) << 26 | int(_bloom_t * 10.0) << 27 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
+		| _level_step() << 24 | int(locked) << 26 | int(_bloom_t * 10.0) << 27 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18
+		| _forge_frame() << 32)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -338,7 +346,9 @@ func _draw() -> void:
 		if rarity.rank >= 4:
 			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
-	if FLOWERS.has(tier_row):
+	if FORGE_ART.has(tier_row):
+		_draw_forge(top, ink)
+	elif FLOWERS.has(tier_row):
 		_draw_flowers(top, ink)
 	else:
 		_draw_emblem(top, ink)
@@ -356,6 +366,48 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
+
+
+## 0..2: which flicker frame the forge object is on (always 0 under Reduce motion). Part of the redraw signature.
+func _forge_frame() -> int:
+	if not FORGE_ART.has(tier_row) or MeadowLife.reduce_motion or locked:
+		return 0
+	return (Time.get_ticks_msec() / FLICKER_MS) % 3
+
+
+static func forge_texture(art: String, frame: int) -> Texture2D:
+	var key: String = "%s_%d" % [art, frame]
+	if not _forge_tex.has(key):
+		_forge_tex[key] = load("%s%s_game_f%d.png" % [FORGE_DIR, art, frame]) as Texture2D
+	return _forge_tex[key] as Texture2D
+
+
+## A forge row's object, bottom-centre on the plate. Locked: a flat dark silhouette. Opening: it rises out of the plate
+## row by row and throws the same ring of sparks as a flower.
+func _draw_forge(top: int, _ink: Color) -> void:
+	var tex: Texture2D = forge_texture(String(FORGE_ART[tier_row]), _forge_frame())
+	if tex == null:
+		return
+	var w: int = tex.get_width()
+	var h: int = tex.get_height()
+	var shown: int = h
+	if _bloom_t > 0.0:
+		shown = maxi(1, ceili(float(h) * (1.0 - _bloom_t)))
+	var tint: Color = Color(0.2, 0.16, 0.2) if locked else Color.WHITE
+	var y: int = top + 1 - shown
+	draw_texture_rect_region(tex, Rect2(-w / 2, y, w, shown), Rect2(0, h - shown, w, shown), tint)
+	if _bloom_t > 0.0 and _bloom_t < 0.7:
+		var r: float = (0.7 - _bloom_t) / 0.7
+		for i in 10:
+			var ang: float = float(i) / 10.0 * TAU
+			var q: Vector2 = Vector2(cos(ang) * 14.0, sin(ang) * 7.0) * r
+			draw_rect(Rect2(roundf(q.x), roundf(top - 4 + q.y), 1, 1), Color.WHITE if i % 2 == 0 else stat_color)
+	var pips: int = 1
+	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
+	if bd != null:
+		pips = bd.row_index + 1
+	for i in pips:
+		draw_rect(Rect2(i * 2 - (pips - 1), top + 4, 1, 1), _ink if locked else stat_color)
 
 
 ## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier

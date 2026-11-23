@@ -68,3 +68,11 @@ func run(t: Object) -> void:
 	t.ok(m.is_tier_open(&"ore") and m.is_tier_open(&"slagrow"), "rows up to Slag are open")
 	t.ok(not m.is_tier_open(&"ingot"), "later rows are not handed out")
 	t.ok(m.mastery.level(&"slagrow_1") == 1, "Forge mastery moved to the Slag row")
+
+	# every forge row has its pad object, three flicker frames each, and a stat colour
+	for r: TierDef in rows:
+		var art: String = String(TexelPad.FORGE_ART.get(r.id, ""))
+		t.ok(art != "", "row %s has pad art" % r.id)
+		for f in 3:
+			t.ok(ResourceLoader.exists("%s%s_game_f%d.png" % [TexelPad.FORGE_DIR, art, f]), "%s frame %d exists" % [art, f])
+		t.ok(TexelPad.STAT_COLORS.has(r.stat) and StatStyle.COLORS.has(r.stat), "%s has a stat colour" % r.stat)
