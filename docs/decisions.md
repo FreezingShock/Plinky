@@ -459,3 +459,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Balance numbers** (`sprint_mult` 1.55, `crouch_mult`, slide and jump-boost values) live in `GameConfig` / `content/config/game.tres`. Gravity, jump velocity and ease rates are feel constants in `WalkerMotion`. Sprint and jumps raise momentum charge simply because it is fed by distance walked.
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
+
+## 2026-11-23: History screen
+- **What.** New menu tile and window, History, opened through MenuRouter with the shared dither wipe and close X, in the same panel style as the Stats gallery. Sections: Income (last 10 minutes), Bests, Totals, Time in each zone.
+- **Data.** `core/run_stats.gd` (`Sim.run_stats`) samples Cash per second every 5 s into a 120-sample ring (the session graph, not saved). Saved with the game, no save version bump because missing keys default: time per zone, longest pad chain, chains finished, highest Momentum stage, crits, best income.
+- **Graph.** Log scale (income spans many orders of magnitude), 2 px bars, dotted quarter lines, a gold line under each rebirth. Pure sizing in `HistoryGraph.bar_heights`.
+- **Best streak.** The streak tiers (Plain to Galaxy) in PR #144 are not on main yet, so "best streak" is the longest pad chain plus the highest Momentum stage. When #144 merges, swap or add its tier name to the Bests rows in `HistoryPanel.rows_for`.
+- **Unlock.** Same gate as Stats (after the first press). Not run in the cloud: Godot itself; CI runs the headless tests, the PC pass checks the look.

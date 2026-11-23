@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.20.0 - 2026-11-23
+- Added a History screen in the menu: session income graph, personal bests (longest chain, highest Momentum, best income), time in each zone and lifetime totals.
+
 ## 0.18.1 - 2026-11-23
 - The SPRINTING HELD / ENABLED label now has a dark backing plate so the ground no longer shows through its letters.
 

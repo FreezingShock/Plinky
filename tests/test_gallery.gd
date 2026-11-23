@@ -7,7 +7,7 @@ func run(t: Object) -> void:
 	for e: Array in GalleryMenu.ENTRIES:
 		kinds.append(e[0])
 		t.ok(ResourceLoader.exists("res://assets/icons/big/%s.png" % e[2]), "icon exists for %s" % e[0])
-	for k: StringName in [&"stats", &"attributes", &"upgrades", &"relics", &"travel", &"settings", &"log"]:
+	for k: StringName in [&"stats", &"attributes", &"upgrades", &"relics", &"travel", &"settings", &"history", &"log"]:
 		t.ok(kinds.has(k), "the gallery has a %s tile" % k)
 
 	var g := GalleryMenu.new()
