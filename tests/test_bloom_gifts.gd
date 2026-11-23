@@ -95,7 +95,7 @@ func run(t: Object) -> void:
 	rv.set_target(BigNum.from_float(1000.0))
 	rv.countdown(BigNum.from_float(1000.0), 1.4)
 	rv.set_target(BigNum.zero())
-	t.ok(rv.timed() and rv.text == "1000", "a counting row keeps its old number until it runs")
+	t.ok(rv.timed() and rv.text == BigNum.from_float(1000.0).format(), "a counting row keeps its old number until it runs")
 	rv.free()
 	for calm: bool in [false, true]:
 		var p: Dictionary = BloomTimeline.plan(calm)

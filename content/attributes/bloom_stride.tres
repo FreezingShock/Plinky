@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"bloom_stride"
-display_name = "Springy Stride"
+display_name = "Spring Step"
 effect = &"walk_speed"
 per_level = 0.08
 cap = 5

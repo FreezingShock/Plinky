@@ -153,8 +153,6 @@ static func attr_icon(a: AttributeDef) -> String:
 
 
 static func effect_text(a: AttributeDef, amount: float) -> String:
-	if a.unit_text != "" or a.value_kind != &"percent":
-		return "%s %s" % [UpgradeText.value(a, amount), a.unit_text]
 	match a.effect:
 		&"walk_speed": return "+%s%% walk speed" % _trim(amount * 100.0)
 		&"press_rate": return "+%s%% press rate" % _trim(amount * 100.0)
@@ -166,6 +164,8 @@ static func effect_text(a: AttributeDef, amount: float) -> String:
 		&"offline_hours": return "+%s h offline cap" % _trim(amount)
 		&"head_start": return "+%s starting Sunlight" % _trim(amount)
 		&"sun_rate": return "+%s%% Sunlight income" % _trim(amount * 100.0)
+	if a.unit_text != "" or a.value_kind != &"percent":   # a gift with its own words ("+0.2/s auto-presses")
+		return ("%s %s" % [UpgradeText.value(a, amount), a.unit_text]).strip_edges()
 	return "+%s%%" % _trim(amount * 100.0)
 
 

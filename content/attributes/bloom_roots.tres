@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"bloom_roots"
-display_name = "Perennial Roots"
+display_name = "Deep Roots"
 effect = &"keep_flowers"
 per_level = 1.0
 cap = 3

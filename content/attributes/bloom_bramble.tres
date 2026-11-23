@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"bloom_bramble"
-display_name = "Bramble Crown"
+display_name = "Brambles"
 effect = &"crit_chance"
 per_level = 0.02
 cap = 10
