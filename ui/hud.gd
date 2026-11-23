@@ -588,6 +588,18 @@ func _on_offline(seconds: float, gains: Dictionary) -> void:
 		if g.is_zero():
 			continue
 		lines.append(["+%s %s" % [g.format(), (sim.stat_defs[sid] as StatDef).display_name], StatStyle.color(sid)])
+	var tend: Dictionary = sim.last_offline.get("tend", {})
+	for tid: StringName in tend:
+		var r: Dictionary = tend[tid]
+		var tier: TierDef = sim.tier_defs.get(tid) as TierDef
+		var what: String = "%s pad tended x%d" % [tier.display_name if tier != null else str(tid), int(r["presses"])]
+		if int(r["levels"]) > 0:
+			what += ", mastery +%d (Lv %d)" % [int(r["levels"]), int(r["level"])]
+		lines.append([what, StatStyle.color(&"mastery")])
+	for rid: StringName in sim.last_offline.get("relics", []):
+		var rd: RelicDef = sim.relics.defs.get(rid) as RelicDef
+		if rd != null:
+			lines.append(["Found %s" % rd.display_name, rd.rarity.color])
 	if seconds >= sim.offline_cap_seconds() - 1.0:
 		lines.append(["That is the most you can bank offline.", RelicStyle.dim])
 	if lines.size() < 2:
