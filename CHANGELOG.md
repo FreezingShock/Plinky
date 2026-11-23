@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.23.1 - 2026-11-23
+- **Pond stays water in autumn.** The ground shader's seasonal recolour treated the water ramp's green (47,107,85) as grass and dyed the pond orange/brown with the grass patches. Water and foam texels (material codes 107, 108) now skip the recolour in every season, in the meadow and Larkmoor. Light water-only snow/frost is left for a later pass.
+
 ## 0.23.0 - 2026-11-23
 - World life follows the calendar: up to six butterflies by day in spring and summer (a few in autumn, none in winter, at night or in rain), each with its own wing colours, and fireflies fade out of winter.
 - The Ember Quarry has its own air: embers rise and cool off the heat vents and ash drifts across the floor.
