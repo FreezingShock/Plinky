@@ -24,7 +24,7 @@ func run(t: Object) -> void:
 			seen[r.tint().to_html(false)] = true
 			n += 1
 	t.eq(seen.size(), n, "rg: every rarity keeps its own colour")
-	t.eq(Color("5fd068").a, AccessOptions.tint(Color(0.372, 0.816, 0.408, 0.5)).a, "tint keeps alpha")
+	t.eq(AccessOptions.tint(Color(0.372, 0.816, 0.408, 0.5)).a, 0.5, "tint keeps alpha")
 	t.eq(AccessOptions.tint(Color.MAGENTA), Color.MAGENTA, "colours with no swap pass through")
 
 	# Blue-yellow safe leaves the buy pair alone and changes the stat blues.
