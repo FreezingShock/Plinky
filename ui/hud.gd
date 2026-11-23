@@ -308,7 +308,7 @@ func _build_bottom() -> void:
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	_bloom = _chip(h, "seeds", "Bloom", "Reset the meadow for Seeds.")
 	_bloom.pressed.connect(_on_bloom_pressed)
-	Tip.bind(_bloom, func() -> Variant: return TipText.bloom(sim.can_bloom(), sim.bloom_gain_preview(), "+%d%%" % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), "Reach %s %s." % [BigNum.from_float(sim.config.bloom_seed_ref).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]))
+	Tip.bind(_bloom, func() -> Variant: return TipText.bloom(sim.can_bloom(), sim.bloom_gain_preview(), "+%d%%" % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), "Reach %s %s." % [BigNum.from_float(sim.bloom_ref()).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]))
 	_bloom.visible = false
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
@@ -594,7 +594,7 @@ func _refresh() -> void:
 	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need %s %s)" % [BigNum.from_float(sim.config.rebirth_min_value).format(), (sim.stat_defs[sim.config.prestige_source_stat] as StatDef).display_name]
 	_bloom.visible = sim.can_bloom() or sim.bloom_count > 0 or (sim.bloom_unlocked() and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES))
 	_bloom.disabled = not sim.can_bloom()
-	_bloom.full_text = "Bloom (+%d Seeds)" % sim.bloom_gain_preview() if sim.can_bloom() else "Bloom (need %s %s)" % [BigNum.from_float(sim.config.bloom_seed_ref).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]
+	_bloom.full_text = "Bloom (+%d Seeds)" % sim.bloom_gain_preview() if sim.can_bloom() else "Bloom (need %s %s)" % [BigNum.from_float(sim.bloom_ref()).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:

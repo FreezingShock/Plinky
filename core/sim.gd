@@ -699,12 +699,18 @@ func bloom_unlocked() -> bool:
 	return bool(gates_open.get(config.bloom_gate_zone, false))
 
 
+## The Starbloom a first payout is measured against: the Bloom gate's own threshold, so Bloom follows the gate when it moves.
+func bloom_ref() -> float:
+	var z: ZoneDef = zone_defs.get(config.bloom_gate_zone) as ZoneDef
+	return z.gate_threshold if z != null and z.gate_threshold > 0.0 else config.bloom_seed_ref
+
+
 ## Seeds a Bloom would pay now (0 until it is available).
 func bloom_gain_preview() -> int:
 	if not bloom_unlocked():
 		return 0
 	var v: float = maxf(0.0, get_stat(config.bloom_source_stat).to_float())
-	var n: int = int(floorf(config.bloom_seed_scale * sqrt(v / config.bloom_seed_ref)))
+	var n: int = int(floorf(config.bloom_seed_scale * sqrt(v / bloom_ref())))
 	return n if float(n) >= config.bloom_min_seeds else 0
 
 

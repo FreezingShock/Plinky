@@ -545,9 +545,9 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
 ## 2026-11-23 Bloom: the meadow's reset layer (0.28.0)
-- **Bloom replaces Rebirth in the meadow.** It opens once Larkmoor's far gate has opened and Starbloom Petals reach 250 (`bloom_seed_ref`, the same milestone as the gate). Nathan wanted a modest layer: one reset after Rebirth, no Transcendence or Infinity.
+- **Bloom replaces Rebirth in the meadow.** It opens once Larkmoor's far gate has opened and Starbloom Petals reach the gate threshold (`Sim.bloom_ref()` reads it from the zone, so Bloom follows the gate). Nathan wanted a modest layer: one reset after Rebirth, no Transcendence or Infinity.
 - **Currency is Seeds, not Petals** (Petals clashes with Starbloom Petal). Icon: a plump peach-gold seed with no sprout so it never reads as the RP gem (`tools/art/gen_seed_icon.py`, 8, 16, 24 and 32 px).
-- **Pays** floor(2 x sqrt(Starbloom Petals / 250)) Seeds, at least 2 (`bloom_seed_scale`, `bloom_min_seeds`). Every Bloom also adds 5% to every pad's reward for good (`bloom_reward_per_bloom`, via `pad_yield_mult`).
+- **Pays** floor(2 x sqrt(Starbloom Petals / gate threshold)) Seeds, at least 2 (`bloom_seed_scale`, `bloom_min_seeds`). Every Bloom also adds 5% to every pad's reward for good (`bloom_reward_per_bloom`, via `pad_yield_mult`).
 - **Resets** every stat flagged `resets_on_bloom`: Sunlight, Dewdrops, Clover Leaves, Thistle Down, Heather Sprigs, Foxglove Bells, Starbloom Petals. Keeps gates, open tiers, relics, mastery, Seeds, RP and old Prestige.
 - **Buys four gifts** in Upgrades (BLOOM GIFTS): Head start (starting Sunlight), Deep soil (Sunlight income), Wide bloom (pad yield), Long dusk (offline hours). All in `content/attributes/bloom_*.tres`.
 - **Rebirth, Prestige and RP are hidden outside `rebirth_zones` (Zone 2).** UI only: the button, stat rows, Upgrades groups and the Rebirth tip. Balances, levels and saves are untouched; they return with Zone 2. `Sim.try_rebirth` still works (dev console, tests).

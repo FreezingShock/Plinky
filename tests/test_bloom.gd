@@ -11,17 +11,17 @@ func run(t: Object) -> void:
 	t.eq(sim.bloom_gain_preview(), 0, "no preview before the gate")
 
 	# Needs the gate and the first payout of the source stat.
-	sim.stats[&"starbloom"] = BigNum.from_float(cfg.bloom_seed_ref)
+	sim.stats[&"starbloom"] = BigNum.from_float(sim.bloom_ref())
 	t.ok(not sim.can_bloom(), "Starbloom alone is not enough, the gate must be open")
 	sim.gates_open[&"larkmoor"] = true
-	t.eq(sim.bloom_gain_preview(), 2, "250 Starbloom Petals pay 2 Seeds")
-	sim.stats[&"starbloom"] = BigNum.from_float(cfg.bloom_seed_ref * 4.0)
+	t.eq(sim.bloom_gain_preview(), 2, "the gate's worth of Starbloom Petals pays 2 Seeds")
+	sim.stats[&"starbloom"] = BigNum.from_float(sim.bloom_ref() * 4.0)
 	t.eq(sim.bloom_gain_preview(), 4, "four times the petals pay double")
-	sim.stats[&"starbloom"] = BigNum.from_float(cfg.bloom_seed_ref * 0.5)
+	sim.stats[&"starbloom"] = BigNum.from_float(sim.bloom_ref() * 0.5)
 	t.ok(not sim.can_bloom(), "too few petals pay nothing")
 
 	# A Bloom resets the flowers and keeps the rest.
-	sim.stats[&"starbloom"] = BigNum.from_float(cfg.bloom_seed_ref)
+	sim.stats[&"starbloom"] = BigNum.from_float(sim.bloom_ref())
 	sim.stats[&"clover"] = BigNum.from_float(40.0)
 	sim.stats[&"rp"] = BigNum.from_float(3.0)
 	sim.stats[&"prestige"] = BigNum.from_float(12.0)

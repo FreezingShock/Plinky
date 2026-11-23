@@ -24,7 +24,7 @@ extends Resource
 @export var income_stat: StringName = &"cash"
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
-## Bloom: the meadow's reset. Opens once `bloom_gate_zone`'s gate is open and `bloom_source_stat` reaches the first payout.
+## Bloom: the meadow's reset. Opens once `bloom_gate_zone`'s gate is open and `bloom_source_stat` reaches the first payout. The reference amount is that gate's threshold (bloom_seed_ref is only the fallback).
 ## Pays floor(bloom_seed_scale * sqrt(source / bloom_seed_ref)) Seeds (at least bloom_min_seeds), and every Bloom done adds
 ## bloom_reward_per_bloom to every pad's reward. Rebirth, Prestige and RP only show in `rebirth_zones`.
 @export var bloom_stat: StringName = &"seeds"
