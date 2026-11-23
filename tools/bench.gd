@@ -48,6 +48,18 @@ func _init() -> void:
 		GraphicsQuality.set_level(level, false)
 		await _frames(30)  # let the level take effect
 		await _zone_runs(level, main, "meadow")
+	# Which layer costs what: noon at the highest level, hiding one layer at a time.
+	GraphicsQuality.set_level(GraphicsQuality.Level.HIGH, false)
+	SkyCycle.debug_phase = 0.5
+	SkyCycle.debug_rain = 0.0
+	await _frames(30)
+	results.append(await _phase(GraphicsQuality.Level.HIGH, "layers/all", main, false, 2))
+	for node: Node in _layers(main):
+		node.set("visible", false)
+		await _frames(10)
+		var r: Dictionary = await _phase(GraphicsQuality.Level.HIGH, "layers/-" + String(node.name), main, false, 2)
+		node.set("visible", true)
+		results.append(r)
 	# Larkmoor last: it needs the meadow gate open, and there is no way back worth timing.
 	for z: ZoneDef in sim.zone_defs.values():
 		if z.next_zone == &"larkmoor":
@@ -90,6 +102,20 @@ func _zone_runs(level: int, main: Node, zone: String) -> void:
 	results.append(await _phase(level, zone + "/zoom4", main, false, 4))
 
 
+## The layers worth timing, found by name under the main scene (the meadow's sky and life nodes, and the post pass).
+func _layers(main: Node) -> Array[Node]:
+	var out: Array[Node] = []
+	for nm: String in ["Haze", "Rays", "Shade", "Rain", "LifeGround", "LifeAir", "ScreenLight", "Hud"]:
+		for n: Node in main.find_children(nm + "*", "CanvasItem", true, false):
+			if n is CanvasItem and not out.has(n):
+				out.append(n)
+				break
+	for n: Node in main.find_children("*", "SkyShadows", true, false):
+		out.append(n)  # all cast shadows at once
+		break
+	return out
+
+
 func _frames(n: int) -> void:
 	for i: int in n:
 		await process_frame
@@ -126,9 +152,9 @@ func _phase(level: int, phase: String, main: Node, press: bool, zoom: int) -> Di
 
 
 func _report() -> void:
-	print("quality  phase             fps    avg ms  p95    p99    max    >16.7ms  draws  objs  nodes")
+	print("quality  phase                  fps    avg ms  p95    p99    max    >16.7ms  draws  objs  nodes")
 	for r: Dictionary in results:
-		print("%-8s %-17s %-6d %-7.2f %-6.2f %-6.2f %-6.2f %-8s %-6d %-5d %d" % [
+		print("%-8s %-22s %-6d %-7.2f %-6.2f %-6.2f %-6.2f %-8s %-6d %-5d %d" % [
 			r.quality, r.phase, roundi(float(r.fps)), float(r.avg), float(r.p95), float(r.p99), float(r.max),
 			"%d%%" % roundi(float(r.over_budget) * 100.0), int(r.draw_calls_max), int(r.objects_max), int(r.nodes_max)])
 	var out_dir: String = ProjectSettings.globalize_path("res://shots")

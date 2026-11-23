@@ -34,6 +34,7 @@ var ponds: Array = []                   # [Vector4(cx, cy, rx, ry)] for the lake
 var _haze_mat: ShaderMaterial
 var _rays_mat: ShaderMaterial
 var _rays_rect: ColorRect
+var _warm: int = 4                  # frames the rays stay drawn after the scene loads, so their shader compiles at load, not at the first sunset
 var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _walker: Node2D
@@ -232,7 +233,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	# god rays: sun point sits above the frame on the side the sun is on
 	var ray_amt: float = _config.ray_strength * model.rays(mt, rain01)
 	# The rays are only lit at dawn and dusk. Skip the full-area atan and sin pass the rest of the day.
-	_rays_rect.visible = ray_amt > 0.002
+	_rays_rect.visible = ray_amt > 0.002 or _warm > 0
+	_warm = maxi(_warm - 1, 0)
 	_rays_mat.set_shader_parameter("amount", ray_amt)
 	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 400.0, -120.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
