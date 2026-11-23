@@ -57,13 +57,11 @@ func _show(row: int, col: int) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	var input := Vector2(
-		float(_key(KEY_D) or _key(KEY_RIGHT)) - float(_key(KEY_A) or _key(KEY_LEFT)),
-		float(_key(KEY_S) or _key(KEY_DOWN)) - float(_key(KEY_W) or _key(KEY_UP)))
+	var input: Vector2 = PadInput.move_vector()   # WASD, arrows, d-pad or left stick; analog tilt scales speed
 	var dir := Vector2.ZERO
 	if input != Vector2.ZERO:
 		_has_target = false
-		dir = input.normalized()
+		dir = input
 	elif _has_target:
 		var to: Vector2 = _target - position
 		if to.length() < 1.0:

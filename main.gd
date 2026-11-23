@@ -11,6 +11,7 @@ var pv: PixelViewport
 var world: Node2D
 var meadow: Node2D   ## the current zone scene (Anchors, spawn_occluders); named for zone 1, swapped on zone entry
 var heat_vents: HeatVents
+var relic_bar: RelicBar
 var _scene_path: String = ""
 var _clear_spawn_pending: bool = false
 var _world_rect: Variant = null   ## Rect2 when the zone scene is bigger than the 640x360 frame (Larkmoor), else null
@@ -21,10 +22,12 @@ var _prev_zone: StringName = &""
 var banner: DistrictBanner
 var _district_id: String = ""
 var _district_t: float = 0.0
+var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
 var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
+var pointer: PadPointer
 var pad_glow: PadGlow
 var shake: ScreenShake
 var camera: WorldCamera
@@ -33,13 +36,18 @@ var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
+var dev_console: DevConsole
+var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
 var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
+	PadInput.ensure()
 	DisplaySettings.apply(get_window())
+	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
+	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
@@ -93,6 +101,11 @@ func _ready() -> void:
 	Juice.transitions = transitions
 	Juice.fx_root = world
 
+	# 3b. Onboarding: tips on or off comes from its own settings file; progress comes from the save.
+	TipsSettings.load_settings()
+	TipsSettings.register_rows()
+	GameState.onboarding.tips_enabled = TipsSettings.enabled
+
 	# 4. HUD above everything.
 	hud = Hud.new()
 	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
@@ -100,6 +113,10 @@ func _ready() -> void:
 	hud.setup(sim)
 	_wire_relics()
 	_wire_display()
+	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
+	window_frame = WindowFrame.new()
+	add_child(window_frame)
+	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 	banner = DistrictBanner.new()
@@ -120,7 +137,16 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_layout_frame()
+	_menu_focus()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	if sim.zone_id != _shown_zone and not _crossing:
+		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
+		_enter_zone_visuals(sim.zone_id)
+		if _clear_spawn_pending:
+			_clear_spawn_pending = false
+			_clear_spawn()
+	if relic_bar != null:
+		relic_bar.position.y = ceilf(hud.stats_bottom()) + 4.0
 	_update_tooltip()
 	_update_district(_delta)
 	_update_arch(_delta)
@@ -140,16 +166,14 @@ func _update_tooltip() -> void:
 	tooltip.hide_tip()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	if event.keycode == KEY_F11:
+func _unhandled_input(event: InputEvent) -> void:
+	if Keybinds.matches(&"fullscreen", event):
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_F8:
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F8:
 		_toggle_feedback()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ESCAPE:
+	elif event.is_action_pressed(&"plinky_back"):
 		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
 		relic_panel.hide()
 		display_panel.close()
@@ -159,13 +183,35 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+## Menus without a mouse: while a panel is open the walker stands still and focus lands on its first control.
+## Arrows, d-pad or stick move focus, Enter/Space/pad A press, Esc or pad B closes (all via Godot ui_* actions).
+func _menu_focus() -> void:
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, hud.upgrades_panel()]
+	var open: Control = null
+	for p: Control in panels:
+		if p != null and p.visible:
+			open = p
+			break
+	PadInput.menu_open = open != null
+	var owner_ctl: Control = get_viewport().gui_get_focus_owner()
+	if open == null:
+		if owner_ctl != null:
+			owner_ctl.release_focus()
+	elif owner_ctl == null or not open.is_ancestor_of(owner_ctl):
+		var first: Control = PadInput.first_focusable(open)
+		if first != null:
+			first.grab_focus()
+
+
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
 ## or smaller if the window is smaller. It is centred in the visible area, and the rest stays black.
 func _layout_frame() -> void:
-	var visible: Vector2 = get_viewport_rect().size
+	# The custom title bar takes a strip off the top of the view, so it never covers the HUD.
+	var top: float = window_frame.inset() if window_frame != null else 0.0
+	var visible: Vector2 = get_viewport_rect().size - Vector2(0.0, top)
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	var frame: Vector2 = Vector2(minf(visible.x, bleed.x), minf(visible.y, bleed.y)).floor()
-	var origin: Vector2 = ((visible - frame) * 0.5).floor()
+	var origin: Vector2 = ((visible - frame) * 0.5).floor() + Vector2(0.0, top)
 	if frame == size and origin == position:
 		return
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -225,6 +271,12 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	var first: TexelPad = pads.get(&"m1") as TexelPad
+	if first != null:
+		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
+		pointer = PadPointer.new()
+		pointer.palette = Palettes.colors(palette_id)
+		first.add_child(pointer)
 	if critter == null:
 		critter = TexelCritter.new()
 		world.add_child(critter)
@@ -235,6 +287,7 @@ func _build_pads() -> void:
 
 
 func _enter_zone_visuals(zone_id: StringName) -> void:
+	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
 	PlinkyTheme.apply(theme, String(palette_id))
@@ -415,8 +468,10 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 func _wire_relics() -> void:
 	var inv: RelicInventory = GameState.relics
 	var bar := RelicBar.new()
-	bar.position = Vector2(8, 76)  # below the stats panel
+	relic_bar = bar
+	bar.position = Vector2(8, 76)  # follows the stats panel bottom (see _process)
 	hud.add_child(bar)
+	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)

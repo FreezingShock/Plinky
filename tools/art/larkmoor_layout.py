@@ -51,6 +51,11 @@ LANDMARKS = [
     dict(id='standing_stones', kind='stones', at=(540, 306)),
     dict(id='jetty', kind='jetty', at=(476, 566)),
     dict(id='signpost', kind='sign', at=(790, 628)),
+    dict(id='gatehouse_tower', kind='tower', at=(684, 616)),
+    dict(id='lighthouse', kind='lighthouse', at=(596, 590)),
+    dict(id='cairn_spire', kind='obelisk', at=(566, 352)),
+    dict(id='great_lantern', kind='great_lantern', at=(978, 376)),
+    dict(id='ember_watchtower', kind='tower', at=(812, 300)),
 ]
 # Tall-prop groves: kind, centre, radius, count
 GROVES = [

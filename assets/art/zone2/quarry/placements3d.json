@@ -24,7 +24,7 @@
  },
  "sprites": [
   {
-   "file": "sprites/gate_pillar_101.png",
+   "file": "sprites/gate_pillar_099.png",
    "kind": "gate_pillar",
    "x": 300,
    "y": -9,
@@ -37,7 +37,7 @@
    "sort_y": 40.6
   },
   {
-   "file": "sprites/gate_pillar_102.png",
+   "file": "sprites/gate_pillar_100.png",
    "kind": "gate_pillar",
    "x": 355,
    "y": -8,
@@ -50,7 +50,7 @@
    "sort_y": 41.2
   },
   {
-   "file": "sprites/lintel_103.png",
+   "file": "sprites/lintel_101.png",
    "kind": "lintel",
    "x": 308,
    "y": -13,
@@ -63,7 +63,7 @@
    "sort_y": -4.9
   },
   {
-   "file": "sprites/lintel_104.png",
+   "file": "sprites/lintel_102.png",
    "kind": "lintel",
    "x": 316,
    "y": -13,
@@ -76,7 +76,7 @@
    "sort_y": -4.9
   },
   {
-   "file": "sprites/lintel_105.png",
+   "file": "sprites/lintel_103.png",
    "kind": "lintel",
    "x": 322,
    "y": -13,
@@ -89,7 +89,7 @@
    "sort_y": -4.9
   },
   {
-   "file": "sprites/lintel_106.png",
+   "file": "sprites/lintel_104.png",
    "kind": "lintel",
    "x": 329,
    "y": -13,
@@ -102,7 +102,7 @@
    "sort_y": -4.9
   },
   {
-   "file": "sprites/lintel_107.png",
+   "file": "sprites/lintel_105.png",
    "kind": "lintel",
    "x": 337,
    "y": -13,
@@ -115,7 +115,7 @@
    "sort_y": -4.9
   },
   {
-   "file": "sprites/lintel_108.png",
+   "file": "sprites/lintel_106.png",
    "kind": "lintel",
    "x": 344,
    "y": -13,
@@ -128,7 +128,7 @@
    "sort_y": -4.9
   },
   {
-   "file": "sprites/lintel_109.png",
+   "file": "sprites/lintel_107.png",
    "kind": "lintel",
    "x": 350,
    "y": -13,
@@ -256,6 +256,32 @@
     134.3
    ],
    "sort_y": 134.3
+  },
+  {
+   "file": "sprites/spire_043.png",
+   "kind": "spire",
+   "x": 455,
+   "y": 111,
+   "w": 9,
+   "h": 28,
+   "foot": [
+    459.5,
+    137.0
+   ],
+   "sort_y": 137.0
+  },
+  {
+   "file": "sprites/spire_042.png",
+   "kind": "spire",
+   "x": 445,
+   "y": 80,
+   "w": 11,
+   "h": 61,
+   "foot": [
+    450.5,
+    138.8
+   ],
+   "sort_y": 138.8
   },
   {
    "file": "sprites/spire_012.png",
@@ -568,32 +594,6 @@
     289.3
    ],
    "sort_y": 289.3
-  },
-  {
-   "file": "sprites/spire_042.png",
-   "kind": "spire",
-   "x": 357,
-   "y": 239,
-   "w": 9,
-   "h": 58,
-   "foot": [
-    360.8,
-    295.1
-   ],
-   "sort_y": 295.1
-  },
-  {
-   "file": "sprites/spire_043.png",
-   "kind": "spire",
-   "x": 358,
-   "y": 248,
-   "w": 11,
-   "h": 55,
-   "foot": [
-    362.5,
-    300.1
-   ],
-   "sort_y": 300.1
   }
  ],
  "anchors": [
@@ -637,10 +637,10 @@
   },
   {
    "kind": "vent",
-   "u": 317.0,
-   "v": 303.0,
-   "sx": 334.0,
-   "sy": 314.2,
+   "u": 302.0,
+   "v": 282.0,
+   "sx": 340.0,
+   "sy": 295.6,
    "radius": 14
   },
   {

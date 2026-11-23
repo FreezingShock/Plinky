@@ -365,6 +365,24 @@ def make_gateway(rng):
         db = sdf_box(x, y, z, (0, 0, 17.8), (11.5, 1.8, 1.5), .5); sel = db < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, db)
         return d, m
     return f, (16, 6), 26, 3
+def make_tower(rng, banded=False, h=44.0):
+    def f(x, y, z):
+        r = 9.0 - z * .05
+        d = np.sqrt(x ** 2 + y ** 2) - r; d = np.maximum(d, -z); d = np.maximum(d, z - h); m = np.full(x.shape, M_ROCK, np.int16)
+        if banded: m = np.where((np.floor(z / 6.0) % 2) == 0, M_PAPER, M_BARKT2)
+        door = sdf_box(x, y + 8, z, (0, 0, 4), (2.2, 1.8, 4), .3); sel = door < 0.6; m = np.where(sel & (d < 1.5), M_BARK, m)
+        gal = np.maximum(np.sqrt(x ** 2 + y ** 2) - (r + 2.4), np.abs(z - (h + 1)) - .9); sel = gal < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, gal)
+        room = np.maximum(np.sqrt(x ** 2 + y ** 2) - 4.6, np.abs(z - (h + 5.2)) - 3.4); sel = room < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, room)
+        cap = np.maximum(np.sqrt(x ** 2 + y ** 2) - (6.4 - (z - (h + 8.6)) * .9), np.abs(z - (h + 11)) - 2.6); sel = cap < d; m = np.where(sel, M_BARKT2, m); d = np.minimum(d, cap)
+        return d, m
+    return f, (14, 14), h + 16, 10
+def make_obelisk(rng):
+    def f(x, y, z):
+        w = 5.2 - z * .06
+        d = sdf_box(x, y, z, (0, 0, 20), (w, w, 20), .5) + (vn3(x * .4, y * .4, z * .4, 6) - .5) * 1.2; m = np.full(x.shape, M_ROCK, np.int16)
+        cr = sdf_ell(x, y, z, (0, 0, 46), (3.2, 3.2, 8)); sel = cr < d; m = np.where(sel, M_CRYS, m); d = np.minimum(d, cr)
+        return d, m
+    return f, (9, 9), 56, 6
 def make_menhir(rng):
     h = rng.uniform(9, 14); tilt = rng.uniform(-.12, .12)
     def f(x, y, z):
@@ -416,17 +434,17 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **k
     big = kw.get('big', True)
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
     mk = dict(oak=make_oak, pine=make_pine, bush=make_bush, rock=lambda r: make_rock(r, big), crystals=make_crystals, stump=make_stump,
-              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, gateway=make_gateway, menhir=make_menhir, jetty=make_jetty, bridge=make_bridge)[kind](rng)
+              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=make_gateway, menhir=make_menhir, jetty=make_jetty, bridge=make_bridge)[kind](rng)
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid)
-    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'gateway', 'menhir', 'lantern', 'sign') or (kind == 'rock' and big)):
+    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0))
     if count: placed.append((u, v, rad * scale))
     return z0
 def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
     got = 0
-    r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, gateway=10, menhir=3, jetty=3, bridge=3)[kind]
+    r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, tower=11, lighthouse=11, obelisk=6, gateway=10, menhir=3, jetty=3, bridge=3)[kind]
     for _ in range(n):
         for t in range(tries):
             a_, rd = prng.uniform(0, 6.283), math.sqrt(prng.random()) * rad
@@ -450,6 +468,8 @@ for _g in (GATE, GATE2): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=Fals
 for lm in LAY.LANDMARKS:
     u, v = s2uv(*lm['at'])
     if lm['kind'] == 'elder_oak': put('oak', u, v, 1.9, rot=.7, sid='new')
+    elif lm['kind'] in ('tower', 'lighthouse', 'obelisk'): put(lm['kind'], u, v, 1.0, rot=0.0)
+    elif lm['kind'] == 'great_lantern': put('lantern', u, v, 2.6, rot=0.0)
     elif lm['kind'] == 'windmill': put('windmill', u, v, 1.0, rot=-.785)
     elif lm['kind'] == 'stones':
         for k in range(7):
@@ -718,7 +738,7 @@ for t in TALL:
     sprites.append(dict(file=fn, kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
-nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
+nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
 wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK)
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)

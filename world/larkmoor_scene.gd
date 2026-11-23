@@ -15,7 +15,11 @@ var mask_offset: Vector2i = Vector2i.ZERO
 var placements_path: String = DIR + "placements3d.json"
 var ground_path: String = DIR + "ground.png"
 
+## Prop kinds that sway in the wind (world/sky_cycle.gd), as in the meadow.
+const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
+
 var _data: Dictionary = {}
+var _sky: SkyCycle
 var districts: Array[Dictionary] = []   # {id, name, pos}
 
 
@@ -61,6 +65,15 @@ func _ready() -> void:
 				continue
 		anchors.add_child(m)
 	_add_life(ground)
+	_add_sky()
+
+
+## Day/night shade, rain and wind over the whole world (world/sky_cycle.gd).
+func _add_sky() -> void:
+	_sky = SkyCycle.new()
+	_sky.name = "Sky"
+	_sky.area = world_rect.grow(10.0)
+	add_child(_sky)
 
 
 ## The district whose centre is nearest the walker, or an empty dictionary when none is within DISTRICT_RADIUS.
@@ -102,4 +115,8 @@ func spawn_occluders(parent: Node2D) -> void:
 		sp.centered = false
 		sp.position = Vector2(s.foot[0], s.foot[1])
 		sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
+		if _sky != null and String(s.kind) in SWAY_KINDS:
+			sp.texture = SkyCycle.padded(sp.texture)
+			sp.offset.x -= float(SkyCycle.SWAY_PAD)
+			sp.material = _sky.sway_material
 		parent.add_child(sp)
