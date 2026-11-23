@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.31.2 - 2026-11-23
+## 0.32.1 - 2026-11-23
 - Ember Quarry balance pass: the 18 forge pads cost 40% less (greedy-floor gate about 40 min after arrival, was about 66; idle about 2x that), and each quarry rebirth pays 25% more Prestige for every quarry rebirth already done (`ZoneDef.prestige_per_rebirth_bonus`), so attribute buys keep pace with their 1.4x cost growth.
+
+## 0.32.0 - 2026-11-23
+- Golden light holds through the day: new SkyModel.golden() curve (warm, long shadows, rim light, rays and a thin haze fade out slowly toward noon instead of ending an hour after sunrise), richer grade curves for morning, noon, dusk and night, saturation and contrast in the full-frame light pass, warmer rim and ray colours, deeper night blue with warmer lantern pools. New tools/golden_shots.tscn captures the sky at fixed times of day.
 
 ## 0.31.1 - 2026-11-23
 - Pad tooltips show the real gain: one shared press formula now includes Heat, buffs, mastery, yield and Bloom, plus an average-with-crits line when crit or double chance is active. Test checks tooltip against a real press.
