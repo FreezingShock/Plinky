@@ -92,7 +92,7 @@ func run(t: Object) -> void:
 	t.ok(sim2.relics.equip(&"r_pulse"), "pulse relic equips")
 	var src: StringName = &""
 	for b: ButtonDef in sim2.button_defs.values():
-		if b.zone != sim2.zone_id:
+		if b.zone != sim2.zone_id or sim2.is_pad_locked(b.id):
 			continue
 		for o: ButtonDef in sim2.button_defs.values():
 			if o.zone == b.zone and o.row == b.row and absi(o.row_index - b.row_index) == 1:

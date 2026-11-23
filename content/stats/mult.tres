@@ -8,6 +8,7 @@ id = &"mult"
 display_name = "Multiplier"
 tier = 1
 start = 0.0
+zones = PackedStringArray("zone2")
 passive = false
 income_boost_stat = &""
 gain_boost_stat = &"reb"

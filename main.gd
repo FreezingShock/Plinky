@@ -682,7 +682,7 @@ func _on_gallery_chosen(kind: StringName) -> void:
 func _section_locked(kind: StringName) -> bool:
 	var ob: Onboarding = GameState.onboarding
 	match kind:
-		&"stats", &"history": return not ob.is_unlocked(Onboarding.F_MULT)
+		&"stats", &"history": return not ob.is_unlocked(Onboarding.F_DEWDROP)
 		&"attributes", &"upgrades": return not ob.is_unlocked(Onboarding.F_UPGRADES)
 		&"relics": return GameState.relics == null or not ob.is_unlocked(Onboarding.F_RELICS)
 	return false

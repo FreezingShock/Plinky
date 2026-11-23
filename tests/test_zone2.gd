@@ -59,7 +59,7 @@ func run(t: Object) -> void:
 	t.ok(not sim.is_hot(), "Heat falls below the hot line")
 	t.eq(hot_events.back(), false, "heat_hot_changed fired on the way down")
 	sim.feed_heat(100.0)
-	sim.stats[&"reb"] = BigNum.from_float(2.0)
+	sim.stats[&"clover"] = BigNum.from_float(2.0)
 	t.ok(sim.try_rebirth(), "rebirth in zone 2")
 	t.near(sim.heat, 0.0, 1e-9, "rebirth clears Heat")
 	sim.feed_heat(100.0)

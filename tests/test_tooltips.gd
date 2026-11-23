@@ -11,7 +11,7 @@ func run(t: Object) -> void:
 	d = Tip.normalize(func() -> Variant: return {"body": "live"})
 	t.eq(d["body"], "live", "a Callable spec is evaluated")
 
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+	for sid: StringName in [&"sunlight", &"dewdrop", &"clover", &"slag", &"prestige"]:
 		t.ok(str(TipText.stat(sid, "x")["body"]) != "", "stat tooltip text exists for %s" % sid)
 	var a := AttributeDef.new()
 	a.display_name = "Luck"

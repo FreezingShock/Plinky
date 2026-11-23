@@ -5,6 +5,13 @@ extends RefCounted
 ## gain or affordable and red when not, rarity in its rarity colour. No balance numbers: live values come from the caller.
 
 const STATS: Dictionary = {
+	&"sunlight": {"body": "What the first pads cost. It trickles in by itself.", "hint": "Dewdrops make it flow faster."},
+	&"dewdrop": {"body": "Boosts how fast Sunlight flows.", "hint": "Press the Sprout pads. Clover Leaves make each press pay more."},
+	&"clover": {"body": "Makes every Dewdrop press pay more, and opens the gate to Larkmoor.", "hint": "Press the Clover pads."},
+	&"thistle": {"body": "Boosts how fast Sunlight flows, on a bigger scale than Dewdrops.", "hint": "Press the Thistle pads. Heather Sprigs make each press pay more."},
+	&"heather": {"body": "Makes every Thistle Down press pay more. Foxglove pads cost it.", "hint": "Press the Heather pads."},
+	&"foxglove": {"body": "Makes every Heather Sprig press pay more. Starbloom pads cost it.", "hint": "Press the Foxglove pads."},
+	&"starbloom": {"body": "Makes every Foxglove Bell press pay more, and opens the far gate.", "hint": "Press the Starbloom pads."},
 	&"cash": {"body": "What pads cost and pay. Walk and press pads to earn it.", "hint": "Resets when you rebirth."},
 	&"mult": {"body": "Boosts your Cash income and press rewards.", "hint": "Grows from pads. Rebirths make it grow faster."},
 	&"reb": {"body": "Times you have started over. Each one speeds up Multiplier gain.", "hint": "Use the Rebirth button once you can afford it."},
@@ -58,12 +65,12 @@ static func rebirth(can: bool, gain_text: String, rp_text: String = "") -> Dicti
 	var pc: Color = StatStyle.color(&"prestige")
 	if can:
 		return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
-			"body": "Reset your Cash and pads for a Rebirth.",
+			"body": "Reset your stock and pads for a Rebirth.",
 			"lines": [["Gives ", Tip.icon("prestige"), Tip.seg("+%s" % gain_text, StatStyle.BUY_GREEN), " ", Tip.seg("Prestige", pc)]]
 				+ ([["Gives ", Tip.icon("rp"), Tip.seg("+%s" % rp_text, StatStyle.BUY_GREEN), " ", Tip.seg("Rebirth Points", StatStyle.color(&"rp"))]] if rp_text != "" else []),
 			"hint": "Prestige and relics are kept.", "hint_color": StatStyle.BUY_GREEN}
 	return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
-		"body": "Start over for Prestige and a faster Multiplier.", "hint": "Not available yet.", "hint_color": StatStyle.BUY_RED}
+		"body": "Start over for Prestige and faster income.", "hint": "Not available yet.", "hint_color": StatStyle.BUY_RED}
 
 
 static func zone_button(display_name: String) -> Dictionary:

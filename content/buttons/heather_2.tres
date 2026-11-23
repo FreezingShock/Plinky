@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ButtonDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/button_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"heather_2"
+rarity = &"epic"
+zone = &"larkmoor"
+row = &"heather"
+row_index = 1
+cost_stat = &"thistle"
+base_cost = 200000
+cost_growth = 10.0
+reward_stat = &"heather"
+reward = 8
