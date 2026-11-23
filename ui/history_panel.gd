@@ -5,7 +5,7 @@ extends PanelContainer
 ## Attributes gallery (title, divider, close X, scrolling body); opens through MenuRouter with the shared dither wipe.
 
 const WIDTH: float = 260.0
-const SCROLL_H: float = 196.0
+const SCROLL_H: float = 216.0
 const REFRESH: float = 0.5
 
 var sim: Sim
@@ -96,12 +96,12 @@ func refresh() -> void:
 		c.queue_free()
 	var rs: RunStats = sim.run_stats
 	var sd: StatDef = sim.stat_defs.get(sim.config.income_stat) as StatDef
-	_body.add_child(_heading("%s per second, last 10 minutes" % (sd.display_name if sd != null else "Income")))
+	_body.add_child(_heading("%s, last 10 min" % (sd.display_name if sd != null else "Income")))
 	_graph = HistoryGraph.new(WIDTH - 14.0)
 	_graph.samples = rs.samples
 	_graph.marks = rs.rebirth_marks
 	_body.add_child(_graph)
-	_graph_note = _line("Log scale. Gold lines mark rebirths.", RelicStyle.dim)
+	_graph_note = _line("Per second, log scale. Gold lines mark rebirths.", RelicStyle.dim)
 	if rs.samples.size() < 2:
 		_graph_note.text = "Collecting data. A bar is added every %d seconds." % int(RunStats.SAMPLE_EVERY)
 	_body.add_child(_graph_note)

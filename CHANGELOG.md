@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.24.4 - 2026-11-23
+- History: shorter graph title that fits on one line, and a taller list so the Bests rows show without scrolling.
+
 ## 0.24.3 - 2026-11-23
 - History window is narrower still so it no longer covers the zone panel at 640x360, and its list area is taller.
 
