@@ -77,6 +77,8 @@ func _physics_process(delta: float) -> void:
 	var sim: Sim = _sim()
 	var d: Vector2 = walker.position - position
 	var inside: bool = (d.x * d.x) / (HALF.x * HALF.x) + (d.y * d.y) / (HALF.y * HALF.y) <= 1.0
+	if inside and bool(walker.get("airborne")):
+		inside = false   # a jump clears the plate; landing on it presses at once
 	if inside and not standing:
 		_timer = 0.0  # first press is immediate on arrival
 	if standing and not inside:

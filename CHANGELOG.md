@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.18.0 - 2026-11-23
+- Walker overhaul: the hooded walker is redrawn (20 poses, no baked shadow) and animated procedurally (squash, stretch, lean, hop, dust). Shift sprints, Ctrl locks the sprint, Space jumps (a jump launches you faster and the camera rises with it), C crouches or slides while sprinting. A SPRINTING HELD / SPRINTING ENABLED label sits above Momentum. Recentre camera moves from C to Home.
+
 ## 0.17.4 - 2026-11-23
 - Zone panel: a long zone name such as Ember Quarry drops to the 12 pt title size so the Travel button no longer clips it.
 

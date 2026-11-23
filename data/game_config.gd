@@ -35,6 +35,15 @@ extends Resource
 @export var momentum_per_crit: float = 0.05      ## extra charge on a crit
 @export var momentum_per_unit: float = 0.0055    ## charge per texel walked (about 180 texels fills it)
 @export var momentum_decay_per_second: float = 0.1
+## Walker movement (WalkerMotion). Multipliers on the walk speed, so Attribute levels still scale everything.
+@export var sprint_mult: float = 1.55            ## Shift held, or Ctrl locked
+@export var crouch_mult: float = 0.5             ## C held on the ground
+@export var slide_mult_start: float = 2.2        ## C pressed while sprinting: burst, easing down to slide_mult_end
+@export var slide_mult_end: float = 0.6
+@export var slide_time: float = 0.7              ## seconds
+@export var jump_boost_per: float = 0.3          ## speed bonus added by each jump (bunny hops stack)
+@export var jump_boost_max: float = 0.6
+@export var jump_boost_decay: float = 0.45       ## bonus lost per second
 ## Pad streak: press a row's buttons in order, each within streak_window seconds of the last.
 @export var streak_window: float = 10.0
 @export var streak_bonus_seconds: float = 5.0    ## income paid on completing a streak
