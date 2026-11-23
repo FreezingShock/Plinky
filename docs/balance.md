@@ -213,7 +213,36 @@ No risk found. `BigNum` keeps a float mantissa and an integer exponent, so there
 - Headless tests: 2612 checks, 0 failed (2600 before, plus 12 new regression checks, three per stacking relic: diminishes, first stack is its full step, at or under 100% after 1000 stacks; the Gold Purse assertion was updated to the new step).
 - Not run here: the screenshot tool. It draws nothing under the cloud's software renderer, so the PC thread should check the relic and attribute panels in-engine.
 
+## 13. Flower ladder pacing check (23 Nov 2026, before #171, main at 5f4ab24, v0.27.0)
+Run `godot --headless --path . --script tools/sim.gd`. Greedy buys (highest row first), no walking, attributes or relics. Each profile runs 8 seeded games. Times are minutes from the start of the meadow. Larkmoor's first tier (Thistle) opens on arrival, so it has no unlock time.
+
+| Profile | Presses/s | Clover opens | Heather opens | Foxglove opens | Starbloom opens | Meadow gate median (range) | Larkmoor gate median (range) |
+|---|---|---|---|---|---|---|---|
+| idle | 0.2 | 4.4 | 17.1 | 67.0 | 124.1 | 16.6 (16.2 to 16.6) | 134.4 (71.6 to 136.9) |
+| active | 0.5 | 4.4 | 11.4 | 30.9 | 52.9 | 10.1 (9.8 to 10.1) | 56.0 (33.7 to 58.8) |
+| hold | 4.0 | 5.1 | 24.1 | 31.0 | 34.0 | 9.8 (9.6 to 9.8) | 34.5 (17.0 to 95.0) |
+
+- **Meadow:** active sits on the 10 minute target. Nothing changed in the meadow.
+- **Sunlight carried into Larkmoor (seed 1, active):** 4.49K. Thistle 1 costs 8K, and the Thistle row is bought within about a minute of arriving. The Thistle tier does not pace Larkmoor: Heather opens 1.3 minutes after arrival.
+- **Larkmoor far gate:** 56.0 median on active, under the 57 to 61 target. The spread between seeds is large (33.7 to 58.8). The median is the number to read; a single run can move by 20 minutes. Hold is faster, so a press-rate change moves the gate more than any single cost.
+- **Handed to the flower tiers thread (not edited here):** the Thistle row costs too little to pace Larkmoor, so Heather opens almost on arrival. Raising the Thistle costs would move Heather and everything after it.
+- **Idle:** at one press every 5 seconds the far gate is about 2 h 15 min. Decide with Nathan whether that is acceptable.
 ## 12. Meadow flower ladder and quarry ladder (23 Nov 2026, pointer)
 - **Meadow (v0.27.0):** six flower tiers replace the old Cash, Multiplier and Rebirth pads. Costs and rewards are in `content/buttons/*.tres` and `content/tiers/*.tres`; the table is in decisions.md under the 2026-11-23 flower ladder entry. Sim result: meadow gate at 10.1 min, Larkmoor far gate at 59.2 min.
 - **Bloom:** the meadow's reset layer is decided but not built, so rebirth-loop findings in sections 9 and 10 stay open until it lands.
 - **Ember Quarry:** the ladder pitch (Cinder to Emberhearts, rebirth sourced from Ingots, flat arrival grant) is in docs/zone2-ladder.md. Numbers there are starting values for the quarry balance thread.
+
+
+### Cost pass after #171 (23 Nov 2026, v0.28.1)
+Brief from Nathan: fast and satisfying progression, short gaps between unlocks, idle about 2x active, Larkmoor near 57 to 61 min on active. Changed data only: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Meadow and Thistle unchanged.
+
+| Profile | Heather opens | Foxglove opens | Starbloom opens | Far gate median (range) |
+|---|---|---|---|---|
+| active, before (v0.28.0) | 11.4 | 27.4 | 40.7 | 58.4 (43.0 to 60.8) |
+| active, after (v0.28.1) | 11.4 | 22.5 | 33.9 | 51.6 (38.6 to 64.2) |
+| idle, after | 17.1 | 45.0 | 73.0 | 114.8 (85.5 to 120.7), 2.2x active |
+| hold, after | 24.1 | 28.5 | 29.9 | 30.1 (16.0 to 91.1) |
+
+- **Gaps (active, after):** Heather to Foxglove 11.1 min, Foxglove to Starbloom 11.4 min, Starbloom 3 bought at 46.5 min, 12.5 min after Starbloom 2. Before, the Foxglove and Starbloom gaps were 16.0 and 13.3 min.
+- **Not met:** the far gate at 51.6 is about 5 min short of 57 to 61. The gate barely responds to its own levers: threshold 5000 gave +3 min, Starbloom 3 costs from 3000 to 12000 gave the same 51 to 52 min. The next lever is Foxglove income. Decision for Nathan.
+- **Thistle:** unchanged. Heather still opens about 1 min after arrival, because the Sunlight carried in buys Thistle quickly.
