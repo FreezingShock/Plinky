@@ -2,6 +2,7 @@ extends RefCounted
 ## Lighting and atmosphere: sun model (pure), config ramps, shadow placement, light flicker, particle tuning.
 
 func run(t: Object) -> void:
+	run_meadow(t)
 	var cfg: SkyConfig = load(SkyCycle.CONFIG_PATH) as SkyConfig
 	t.ok(cfg != null, "sky.tres loads")
 	if cfg == null:
@@ -155,3 +156,19 @@ func run(t: Object) -> void:
 	t.ok(pol_day > pol_night * 2, "pollen is a daytime thing (%d vs %d)" % [pol_day, pol_night])
 	t.ok(pol_golden > pol_day, "more motes in the low sun (%d vs %d)" % [pol_golden, pol_day])
 	air.free()
+
+
+## The onboarding meadow boots its sky: the haze material exists, the rects are built, and nothing errors.
+## (A typed-array assignment slipped through once because only Larkmoor's scene was loaded by a test.)
+func run_meadow(t: Object) -> void:
+	var scene: Node = (load("res://world/meadow3d_scene.tscn") as PackedScene).instantiate()
+	var holder := Node2D.new()
+	holder.add_child(scene)
+	scene.call("_ready")
+	var sky: SkyCycle = scene.get_node_or_null("Sky") as SkyCycle
+	t.ok(sky != null, "meadow has a Sky node")
+	if sky != null:
+		sky.call("_ready")   # holder is outside the tree, so the sky is not readied for us
+		t.ok(sky._haze_mat != null, "meadow sky built its haze material")
+		t.ok(sky.get_node_or_null("Haze") != null, "meadow has a haze rect")
+	holder.free()

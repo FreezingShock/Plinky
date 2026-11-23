@@ -68,9 +68,8 @@ func _ready() -> void:
 	_haze_mat.set_shader_parameter("ponds", _pond_array())
 	for k: String in haze_params:
 		_haze_mat.set_shader_parameter(k, haze_params[k])
-	var rects: Array[Rect2] = haze_rects.duplicate()
-	if rects.is_empty():
-		rects.append(AREA)
+	var rects: Array[Rect2] = []
+	rects.assign(haze_rects if not haze_rects.is_empty() else [AREA])
 	for i in rects.size():
 		var haze := ColorRect.new()
 		haze.name = "Haze" if i == 0 else "Haze%d" % (i + 1)
@@ -217,6 +216,8 @@ func _update(t: float) -> void:
 ## when `sways`). The sun direction, relight strength, rim and sway parameters follow the sky.
 func prop_material(sways: bool, nrm: Texture2D) -> ShaderMaterial:
 	var base: ShaderMaterial = sway_material if sways else rim_material
+	if base == null:      # _ready has not run yet (tests, early spawn): nothing to follow
+		return null
 	var m: ShaderMaterial = base.duplicate() as ShaderMaterial
 	m.set_shader_parameter("nrm_tex", nrm)
 	_prop_mats.append(m)

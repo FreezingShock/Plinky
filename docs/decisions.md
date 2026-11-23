@@ -179,3 +179,5 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Flowers are 1.45x bigger and kept 7.5 units off the path. Depth pass treats flower and grass texels as occluders even though they share the terrain id.
 - Fixed `var rects: Array[Rect2] = ... else [AREA]` in `sky_cycle.gd` (typed-array ternary aborted `_ready`, so `_shade_mat` was null and every frame logged an error). Same fix the lighting thread is making.
 - Verified: headless tests, and real frames at dawn, morning, noon, golden hour, dusk and midnight under lavapipe. Not measured: GPU cost (software renderer), so `tools/bench.gd` numbers still need the PC.
+## 2026-11-23: meadow sky hotfix, boot smoke test now gates
+`SkyCycle` assigned an untyped array to `Array[Rect2]` (PR #60), which broke the meadow's sky on main. Larkmoor was fine, and no test loaded the meadow scene. Fixed with `.assign()`, added `run_meadow` in `test_lighting.gd` (fails with the exact engine error without the fix), and removed `continue-on-error` from the CI boot smoke test.
