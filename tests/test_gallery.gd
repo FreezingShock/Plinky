@@ -25,11 +25,11 @@ func run(t: Object) -> void:
 	t.eq(got.size(), 20, "every tile press is reported (spam safe, no state of its own)")
 	g.tile(&"relics").pressed.emit()
 	t.eq(got.size(), 20, "pressing a locked tile does nothing")
-	g.free()
 
 	# Arrow keys: 7 tiles in 4 columns (a short last row) always land on a real tile, wrapping at the edges.
 	var n0: Dictionary = GalleryMenu.neighbors(7, 4, 0)
 	t.ok(n0["right"] == 1 and n0["down"] == 4 and n0["left"] == 3 and n0["up"] == 4, "tile 0: right 1, down 4, left wraps to the row end, up wraps to the column bottom")
+	var n6: Dictionary = GalleryMenu.neighbors(7, 4, 6)
 	t.ok(n6["right"] == 4 and n6["left"] == 5 and n6["up"] == 2 and n6["down"] == 2, "last tile: right wraps to its row start, up 2, down wraps to the top")
 	var n3: Dictionary = GalleryMenu.neighbors(7, 4, 3)
 	t.ok(n3["down"] == 3 and n3["right"] == 0, "a column with no tile below wraps to the top")
