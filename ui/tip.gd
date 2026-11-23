@@ -76,8 +76,8 @@ static func hide_all() -> void:
 
 
 static func host(tree: SceneTree) -> TipHost:
-	if _host != null and is_instance_valid(_host) and _host.is_inside_tree():
-		return _host
+	if _host != null and is_instance_valid(_host):
+		return _host   # may still be waiting to enter the tree; never make a second one
 	var layer := CanvasLayer.new()
 	layer.name = HOST_NAME
 	layer.layer = 120

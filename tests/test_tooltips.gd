@@ -40,6 +40,15 @@ func run(t: Object) -> void:
 
 	var h := TipHost.new()
 	root.add_child(h)
+	var th := Theme.new()
+	var themed := Control.new()
+	themed.theme = th
+	root.add_child(themed)
+	var inner := Control.new()
+	themed.add_child(inner)
+	h._adopt_theme(inner)
+	t.ok(h.theme == th, "the tooltip borrows the theme of the control it describes, so it gets the game's fonts")
+	themed.queue_free()
 	h.request(c, false)
 	t.ok(not h.visible, "a hover tip waits for its delay")
 	h._process(TipHost.HOVER_DELAY + 0.01)

@@ -52,6 +52,7 @@ func _label(parent: Node) -> Label:
 
 ## A bound control was entered or focused. Starts the delay (or shows at once inside the grace window).
 func request(c: Control, by_focus: bool) -> void:
+	_adopt_theme(c)
 	target = c
 	_by_focus = by_focus
 	_free_mode = false
@@ -65,6 +66,7 @@ func request(c: Control, by_focus: bool) -> void:
 func show_free(spec: Variant, at: Vector2, exact: bool = false) -> void:
 	_free_exact = exact
 	if not _free_mode:
+		_adopt_theme(get_tree().current_scene if is_inside_tree() else null)
 		target = null
 		_free_mode = true
 		_by_focus = false
@@ -120,12 +122,26 @@ func _process(delta: float) -> void:
 		return
 	if target == null:
 		return
+	if not _by_focus and target.is_inside_tree() and not target.get_global_rect().has_point(get_viewport().get_mouse_position() if get_viewport() != null else Vector2.ZERO):
+		dismiss()   # the mouse is no longer over it, whatever signals did or did not arrive
+		return
 	if _wait > 0.0:
 		_wait -= delta
 		if _wait <= 0.0:
 			_show()
 	elif visible and not _by_focus:
 		_place()
+
+
+## The panel lives on its own layer, outside the HUD's theme, so borrow the theme (and so the fonts) of the
+## nearest themed ancestor of whatever it describes. Shared by reference, so zone recolours reach it too.
+func _adopt_theme(from: Node) -> void:
+	var n: Node = from
+	while n != null:
+		if n is Control and (n as Control).theme != null:
+			theme = (n as Control).theme
+			return
+		n = n.get_parent()
 
 
 func _show() -> void:
@@ -167,7 +183,7 @@ func _place() -> void:
 	else:
 		var m: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else Vector2.ZERO
 		p = m + CURSOR_OFFSET
-		if p.y + size.y > view.y - 2.0:
+		if p.y + size.y > view.y - 2.0 or m.y > view.y * 0.6:
 			p.y = m.y - size.y - 8.0
 		if p.x + size.x > view.x - 2.0:
 			p.x = m.x - size.x - 6.0
