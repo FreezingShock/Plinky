@@ -564,6 +564,7 @@ func _wire_relics() -> void:
 	hud.add_child(bar)
 	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
+	hud.add_child(SubtitleBar.new())   # sound subtitles (Settings > Access)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)
 	hud.add_child(toast)

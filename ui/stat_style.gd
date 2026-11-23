@@ -17,12 +17,21 @@ const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap", &"mastery_xp"
 
 
 static func color(id: StringName) -> Color:
-	return COLORS.get(EFFECT_STAT.get(id, id), PAPER) as Color
+	return AccessOptions.tint(COLORS.get(EFFECT_STAT.get(id, id), PAPER) as Color)
+
+
+## The affordable / gain colour and the can't-afford colour, swapped for colour-safe ones when that option is on.
+static func gain() -> Color:
+	return AccessOptions.tint(BUY_GREEN)
+
+
+static func cant() -> Color:
+	return AccessOptions.tint(BUY_RED)
 
 
 ## Green when the player can afford a cost, red when not.
 static func buy(can: bool) -> Color:
-	return BUY_GREEN if can else BUY_RED
+	return gain() if can else cant()
 
 
 ## The all-caps tag face (rarity tags, MOMENTUM): Pixelify Sans emboldened, size TAG_SIZE.

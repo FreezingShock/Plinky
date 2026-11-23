@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.26.0 - 2026-11-23
+- Relics menu refresh: relics are now rarity-framed cards (exact rarity-colour outline, name in the rarity colour, stack count, Equipped mark) in a scrolling collection, with Sort (Rarity, Name, Stacks, Equipped), Show (All, Equipped, Unequipped) and Rarity filter buttons, an Active bonuses readout under the slots, and compare-on-hover.
+
 ## 0.25.0 - 2026-11-23
-- Relics menu refresh: relics are now rarity-framed cards (exact rarity-colour outline, name in the rarity colour, stack count, Equipped mark) in a scrolling collection, with Sort (Rarity, Name, Stacks, Equipped), Show (All, Equipped, Unequipped) and Rarity filter buttons, an Active bonuses readout under the slots, and compare-on-hover: a relic's tooltip shows how your bonuses would change if you equipped it or swapped it in.
+- Settings > Access gains Colour-safe colours (red-green safe, blue-yellow safe) for rarity, buy and stat colours, Large tooltip text, and Sound subtitles (captions for crits, relic chimes, gates, birdsong, waves, footsteps and music changes).
 
 ## 0.24.4 - 2026-11-23
 - Quarry embers are denser (12 per vent), bigger while hot (2 texels) and climb higher, so they read as a plume at 640x360.
