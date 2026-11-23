@@ -465,3 +465,12 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Title Case is applied at display time** (`DisplayPanel.title_case`), not by editing registry strings, so rows added by other threads (Access, QoL, rebind screen) are covered automatically. Words with capitals or digits (VSync) are kept.
 - **Layout untouched.** Rows still come from SettingsRegistry; only visuals changed, so parallel threads adding rows do not conflict.
 - Not run in the cloud: the engine. The PC pass judges the colours and spacing.
+## Ambient soundscape (23 Nov, v0.20.0)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-23 | Six new seamless loops in assets/audio/amb (wind_day, wind_night, wind_winter, crickets, leaves, crackle), made by `gen_audio.py scape` with their own RNG so older files keep their bytes | Same soft-synth style, nothing third-party |
+| 2026-11-23 | The mix is a pure function, `core/ambient_mix.gd` (zone area, clock, daylight fraction, season weights -> gain per layer). `audio/ambient_scape.gd` plays and fades the layers (about 3 s to fade, calendar read 4x a second) | Testable headless; no node code in core/ |
+| 2026-11-23 | Day = wind_day (+ old meadow loop); night = wind_night + crickets (summer full, spring and autumn about half, winter none); autumn adds leaves; winter swaps in a thin whistling wind; quarry = quiet hollow wind plus forge crackle, louder at night | Matches the 3 min day / 2 min night calendar and the seasonal crossfade |
+| 2026-11-23 | Sunrise and sunset fade over +-4% of a day (about 12 s). Birds: none at night, spring 1.0, summer 0.85, autumn 0.5, winter 0.12, +30% dawn chorus. The old baked meadow loop follows daylight so its chirps do not play at night | Birds were the one thing that still sounded daytime in the dark |
+| 2026-11-23 | No new slider: the existing Ambience volume scales every layer | One control already exists in Settings > Audio |
+| 2026-11-23 | Mix levels are consts in `ambient_mix.gd` / `ambient_scape.gd`, not content/*.tres | They are sound-design values, not game balance |

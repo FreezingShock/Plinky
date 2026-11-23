@@ -25,6 +25,7 @@ const SHORE_DB: float = -4.0                 # at the water's edge; meadow_amb s
 const BIRD_DB: float = -9.0
 const BIRD_GAP_S: Vector2 = Vector2(2.5, 7.0)
 const BIRD_VARIANTS: int = 5
+const MEADOW_AMB_DB: float = -6.0            # the original meadow loop, under the layered scape
 const DEFAULT_VOL: Dictionary = {&"Master": 0.7, &"Music": 0.2, &"SFX": 0.6, &"UI": 0.5, &"Ambience": 0.22}
 
 var _pool: Array[AudioStreamPlayer] = []
@@ -33,6 +34,7 @@ var _cache: Dictionary = {}
 var _music: Array[AudioStreamPlayer] = []   # two players, crossfaded
 var _music_active: int = 0
 var _amb: AudioStreamPlayer
+var _scape: AmbientScape      # layered day/night/season loops and the bird density, see audio/ambient_scape.gd
 var _loading: AudioStreamPlayer
 var _shore: AudioStreamPlayer
 var _meadow_world: bool = false     # shore and birds only play in the meadow
@@ -72,6 +74,8 @@ func _ready() -> void:
 	_amb = AudioStreamPlayer.new()
 	_amb.bus = BUS_AMB
 	add_child(_amb)
+	_scape = AmbientScape.new()
+	add_child(_scape)
 	_loading = AudioStreamPlayer.new()
 	_loading.bus = BUS_UI
 	add_child(_loading)
@@ -295,11 +299,14 @@ func _process(delta: float) -> void:
 		_shore.volume_db = SHORE_DB + linear_to_db(_water_gain)
 	elif _shore.playing:
 		_shore.stop()
-	if _tree_gain > 0.05:
+	var birds: float = _scape.bird_scale() if _scape != null else 1.0
+	if _meadow_world and _amb.playing:
+		_amb.volume_db = MEADOW_AMB_DB + linear_to_db(maxf(_scape.day_gain(), 0.0001))   # the old loop has birds baked in: day only
+	if _tree_gain > 0.05 and birds > 0.02:
 		_bird_clock -= delta
 		if _bird_clock <= 0.0:
-			_bird_clock = randf_range(BIRD_GAP_S.x, BIRD_GAP_S.y) / (0.4 + _tree_gain)   # more trees, shorter pauses
-			play(StringName("bird_%d" % (randi() % BIRD_VARIANTS)), randf_range(0.85, 1.2), BIRD_DB + linear_to_db(0.3 + 0.7 * _tree_gain), BUS_AMB, false)
+			_bird_clock = randf_range(BIRD_GAP_S.x, BIRD_GAP_S.y) / ((0.4 + _tree_gain) * birds)   # more trees, shorter pauses
+			play(StringName("bird_%d" % (randi() % BIRD_VARIANTS)), randf_range(0.85, 1.2), BIRD_DB + linear_to_db((0.3 + 0.7 * _tree_gain) * minf(birds, 1.0)), BUS_AMB, false)
 	else:
 		_bird_clock = minf(_bird_clock, 1.5)
 
@@ -356,13 +363,15 @@ func set_zone(zone_id: StringName) -> void:
 	_zone = zone_id
 	var quarry: bool = String(zone_id).begins_with("quarry") or zone_id == &"zone2"
 	_meadow_world = not quarry
+	if _scape != null:
+		_scape.set_area(AmbientMix.area_of(zone_id))
 	_crossfade_music("quarry" if quarry else "meadow")
 	var a: AudioStream = _stream("quarry_amb" if quarry else "meadow_amb", "amb")
 	if a != null:
 		if a is AudioStreamOggVorbis:
 			(a as AudioStreamOggVorbis).loop = true
 		_amb.stream = a
-		_amb.volume_db = -3.0
+		_amb.volume_db = -3.0 if quarry else MEADOW_AMB_DB
 		_amb.play()
 
 
