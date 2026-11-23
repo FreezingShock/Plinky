@@ -141,7 +141,9 @@ func _close_x(t: Object) -> void:
 ## The shared open/close wipe. Without a scene tree it is instant, so the state transitions can be checked directly.
 func _menu_anim(t: Object) -> void:
 	var p := PanelContainer.new()
+	p.visible = false
 	var a: MenuAnim = MenuAnim.attach(p)
+	var rev: DitherReveal = a.reveal
 	t.ok(not a.is_open(), "a fresh animated menu is closed")
 	a.open()
 	t.ok(p.visible and a.is_open() and a.t == 1.0, "open shows the panel fully")
@@ -156,7 +158,7 @@ func _menu_anim(t: Object) -> void:
 	p.visible = false
 	t.ok(a.t == 0.0 and not a.reveal.visible, "hiding the panel from outside clears the wipe")
 	p.free()
-	a.reveal.free()
+	rev.free()
 
 
 ## Menu-open focus must not pop a tooltip; hover still does, and navigating re-enables focus tips.
