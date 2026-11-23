@@ -13,6 +13,15 @@ const BUSES: Array[StringName] = [BUS_MUSIC, BUS_SFX, BUS_UI, BUS_AMB]
 const SETTINGS_PATH: String = "user://audio.cfg"
 const DIR: String = "res://assets/audio/"
 
+## Fired for sounds worth a caption (Settings > Access > Sound subtitles). ui/subtitle_bar.gd listens.
+signal cue(text: String)
+
+## Sound name (or name prefix, ending in _) -> caption. Constant clicks, hovers and ticks are left out on purpose.
+const CAPTIONS: Dictionary = {
+	"pad_big": "[Critical press]", "gate_open": "[Gate opens]", "rebirth": "[Rebirth chime]", "ui_back": "[Can't do that yet]",
+	"bird_": "[Birdsong]", "step_": "[Footsteps]", "shore_amb": "[Waves on the shore]",
+}
+
 const POOL_SIZE: int = 14
 const MAX_SAME_VOICES: int = 4              # rapid spam of one sound steals the oldest instead of stacking
 const SETTINGS_VERSION: int = 2             # older saved volumes (pre level fix) are ignored
@@ -206,6 +215,9 @@ func play(name: StringName, pitch := 1.0, vol_db := 0.0, bus: StringName = BUS_S
 	var s: AudioStream = _stream(String(name))
 	if s == null:
 		return
+	var caption: String = caption_for(name)
+	if caption != "":
+		cue.emit(caption)
 	var same: int = 0
 	var oldest: AudioStreamPlayer = null
 	for q in _pool:
@@ -224,6 +236,19 @@ func play(name: StringName, pitch := 1.0, vol_db := 0.0, bus: StringName = BUS_S
 	p.volume_db = vol_db
 	p.pitch_scale = pitch * (1.0 + (randf_range(-PITCH_JITTER, PITCH_JITTER) if jitter else 0.0))
 	p.play()
+
+
+## The subtitle for a sound name, or "" when it has none. relic_<rarity> reads "[Relic chime: Epic]".
+static func caption_for(name: StringName) -> String:
+	var n: String = String(name)
+	if n.begins_with("relic_"):
+		return "[Relic chime: %s]" % n.substr(6).capitalize()
+	if CAPTIONS.has(n):
+		return String(CAPTIONS[n])
+	for prefix: String in CAPTIONS:
+		if prefix.ends_with("_") and n.begins_with(prefix):
+			return String(CAPTIONS[prefix])
+	return ""
 
 
 ## Pad press. Rapid repeats climb the pentatonic ladder, so holding a pad plays a rising run.
@@ -349,6 +374,7 @@ func _start_shore() -> void:
 		return
 	if s is AudioStreamOggVorbis:
 		(s as AudioStreamOggVorbis).loop = true
+	cue.emit(String(CAPTIONS["shore_amb"]))
 	_shore.stream = s
 	_shore.volume_db = -60.0
 	_shore.play(randf() * 15.0)   # random start so re-entering the shore never sounds the same
@@ -398,6 +424,7 @@ func set_zone(zone_id: StringName) -> void:
 	if _scape != null:
 		_scape.set_area(AmbientMix.area_of(zone_id))
 	_crossfade_music("quarry" if quarry else "meadow")
+	cue.emit("[Quarry music]" if quarry else "[Meadow music]")
 	var a: AudioStream = _stream("quarry_amb" if quarry else "meadow_amb", "amb")
 	if a != null:
 		if a is AudioStreamOggVorbis:

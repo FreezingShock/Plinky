@@ -35,7 +35,7 @@ func bind(inv: RelicInventory) -> void:
 
 func show_drop(d: RelicDef, stacks: int) -> void:
 	var c: Color = d.rarity.readable_color(RelicStyle.ink)
-	add_theme_stylebox_override("panel", AsciiBox.panel(d.rarity.color))
+	add_theme_stylebox_override("panel", AsciiBox.panel(d.rarity.tint()))
 	_icon.texture = d.icon
 	_name.text = d.display_name
 	_name.add_theme_color_override("font_color", c)

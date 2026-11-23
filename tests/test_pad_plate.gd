@@ -25,5 +25,5 @@ func run(t: Object) -> void:
 	for id: StringName in sim.button_defs:
 		var r: StringName = sim.pad_rarity(id)
 		t.ok(ResourceLoader.exists("res://content/rarities/%s.tres" % r), "%s has a real rarity (%s)" % [id, r])
-	t.eq(sim.pad_rarity(&"m1"), &"common", "the first pad is Common")
-	t.eq(sim.pad_rarity(&"l1"), &"legendary", "a late Larkmoor pad is Legendary")
+	t.eq(sim.pad_rarity(&"sprout_1"), &"common", "the first pad is Common")
+	t.eq(sim.pad_rarity(&"foxglove_2"), &"legendary", "a Foxglove pad is Legendary")

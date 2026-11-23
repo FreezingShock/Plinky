@@ -4,6 +4,13 @@ extends RefCounted
 ## A row is {id, group, name, icon, value, note, tip, pending}. `icon` is a file name under assets/icons.
 
 const STAT_TIPS: Dictionary = {
+	&"sunlight": "Trickles in on its own and pays for the first pads. Dewdrops and Thistle Down make it flow faster. Resets on rebirth.",
+	&"dewdrop": "Paid by the Sprout pads. Boosts Sunlight income, and Clover Leaves make each press pay more. Resets on rebirth.",
+	&"clover": "Paid by the Clover pads. Boosts Dewdrops per press and opens the gate to Larkmoor. Banked on rebirth.",
+	&"thistle": "Paid by the Thistle pads in Larkmoor. Boosts Sunlight income, and Heather Sprigs make each press pay more.",
+	&"heather": "Paid by the Heather pads. Spent on Foxglove pads, and boosts Thistle Down per press.",
+	&"foxglove": "Paid by the Foxglove pads. Spent on Starbloom pads, and boosts Heather Sprigs per press.",
+	&"starbloom": "Paid by the Starbloom pads, the last row. Boosts Foxglove Bells per press and opens the far gate.",
 	&"cash": "Earned every second and from presses. Spend it to unlock pads. Resets on rebirth.",
 	&"mult": "Multiplies Cash income. Earned from presses, and boosted by Rebirths. Resets on rebirth.",
 	&"rp": "Earned on every rebirth, and a little more each time. Spend it on Rebirth perks in Upgrades.",
@@ -18,7 +25,7 @@ const ATTR_ICONS: Dictionary = {
 ## Attribute id -> its own icon, where an attribute should not share its effect's icon.
 const ID_ICONS: Dictionary = {&"rp_rest": "rest", &"rp_lore": "lore", &"rp_fortune": "fortune"}
 ## Card labels for names too long for a card (12 characters at 6 px). The full name stays on the detail page.
-const SHORT: Dictionary = {"Rebirth Points": "Rebirth Pts", "Rebirths Done": "Rebirths"}
+const SHORT: Dictionary = {"Rebirth Points": "Rebirth Pts", "Rebirths Done": "Rebirths", "Clover Leaves": "Clover", "Heather Sprigs": "Heather", "Foxglove Bells": "Foxglove", "Starbloom Petals": "Starbloom"}
 const MAX_LABEL: int = 12
 
 const ATTR_TIPS: Dictionary = {
@@ -33,14 +40,30 @@ const ATTR_TIPS: Dictionary = {
 }
 
 
+## The stats the index lists, in order: the current zone's ladder first, then the rest, then Prestige and Rebirth Points.
+static func listed_stats(sim: Sim) -> Array[StringName]:
+	var ids: Array[StringName] = []
+	var defs: Array = sim.stat_defs.values()
+	defs.sort_custom(func(a: StatDef, b: StatDef) -> bool: return a.tier < b.tier if a.tier != b.tier else String(a.id) < String(b.id))
+	for pass_in_zone: bool in [true, false]:
+		for d: StatDef in defs:
+			if d.id in [&"prestige", &"rp"] or d.id in ids:
+				continue
+			if d.in_zone(sim.zone_id) == pass_in_zone:
+				ids.append(d.id)
+	ids.append(&"prestige")
+	ids.append(&"rp")
+	return ids
+
+
 ## Every stat the player can see, grouped. Empty groups are left out.
 static func stats(sim: Sim) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige", &"rp"]:
+	for sid: StringName in listed_stats(sim):
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
 			continue
-		if sid == &"slag" and sim.get_stat(sid).is_zero() and sim.zone_id != &"zone2":
+		if not def.in_zone(sim.zone_id) and sim.get_stat(sid).is_zero():
 			continue
 		var inc: BigNum = sim.income_per_second(sid)
 		var note: String = "+%s/s" % inc.format() if not inc.is_zero() else ""

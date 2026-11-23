@@ -15,7 +15,14 @@ extends Resource
 @export var travel_parent: StringName = &""
 ## Drawn gate arch (TexelGate): "forge" for the Ember Quarry. Empty = the plain pulsing ring.
 @export var gate_art: StringName = &""
+## Income per second a passive stat of this zone starts from (before its boosts). The name is from when Cash was the only one.
 @export var base_cash_per_second: float = 0.25
+## The stat whose size sets the pad glow and the "multiplier" read of this zone (the tier-1 resource of its ladder).
+@export var boost_stat: StringName = &""
+## The first time the walker arrives here, each stat listed in entry_grants gets (value x the entry_source_stat you hold).
+## It is how the meadow hands its Starbloom Petals over to the Ember Quarry's own Cash and Multiplier. Latched in the save.
+@export var entry_source_stat: StringName = &""
+@export var entry_grants: Dictionary = {}
 ## Base presses per second while standing on a pad.
 @export var press_rate: float = 0.5
 ## Palette name for the render thread (art-bible.md).

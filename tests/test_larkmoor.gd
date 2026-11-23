@@ -13,19 +13,19 @@ func run(t: Object) -> void:
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
-	t.eq(z.pad_buttons.size(), 10, "ten pads")
-	var last: float = 0.0
-	for id: String in ["g1", "g2", "h1", "h2", "t1", "t2"]:
-		var b: ButtonDef = sim.button_defs.get(StringName(id)) as ButtonDef
-		t.ok(b != null and b.zone == &"larkmoor" and b.row == &"multiplier", "%s is a Larkmoor multiplier pad" % id)
-		t.ok(b.base_cost > last, "%s costs more than the pad before it" % id)
-		last = b.base_cost
-	last = 0.0
-	for id: String in ["o1", "c1", "l1", "e1"]:
-		var b: ButtonDef = sim.button_defs.get(StringName(id)) as ButtonDef
-		t.ok(b != null and b.zone == &"larkmoor" and b.row == &"rebirth", "%s is a Larkmoor rebirth pad" % id)
-		t.ok(b.base_cost > last, "%s costs more than the pad before it" % id)
-		last = b.base_cost
+	t.eq(z.pad_buttons.size(), 12, "twelve pads: four rows of three")
+	var rows: Dictionary = {&"thistle": &"sunlight", &"heather": &"thistle", &"foxglove": &"heather", &"starbloom": &"foxglove"}
+	for row: StringName in rows:
+		var last: float = 0.0
+		for i in 3:
+			var id: StringName = StringName("%s_%d" % [row, i + 1])
+			var b: ButtonDef = sim.button_defs.get(id) as ButtonDef
+			t.ok(b != null and b.zone == &"larkmoor" and b.row == row and b.row_index == i, "%s is pad %d of the Larkmoor %s row" % [id, i + 1, row])
+			t.ok(b.cost_stat == rows[row], "%s is paid in %s" % [id, rows[row]])
+			t.ok(b.reward_stat == (sim.tier_defs[row] as TierDef).stat, "%s pays its row's stat" % id)
+			t.ok(b.base_cost > last, "%s costs more than the pad before it" % id)
+			last = b.base_cost
+	t.eq(z.gate_stat, &"starbloom", "the far gate opens on Starbloom Petals")
 
 	# the scene: one pad anchor per pad, the gates, the spawn, districts, and every one of them reachable on foot
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "placements3d.json")) as Dictionary
@@ -96,10 +96,10 @@ func run(t: Object) -> void:
 
 	# gate chain and save migration
 	sim.new_game()
-	sim.stats[&"reb"] = BigNum.from_float(9.0)
+	sim.stats[&"clover"] = BigNum.from_float(9.0)
 	sim.step(0.1)
 	t.ok(sim.enter_zone(&"larkmoor"), "walk through the onboarding gate")
-	sim.stats[&"reb"] = BigNum.from_float(z.gate_threshold)
+	sim.stats[&"starbloom"] = BigNum.from_float(z.gate_threshold)
 	sim.step(0.1)
 	t.ok(sim.is_gate_open(&"larkmoor"), "Larkmoor's gate opens at its threshold")
 	t.ok(sim.enter_zone(&"zone2"), "and leads to the quarry")
