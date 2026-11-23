@@ -93,6 +93,7 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	ShaderWarm.run(self)  # compile the sky shaders now, not at the first sunset (render/shader_warm.gd)
 	PerfOverlay.attach(self)  # F3 frame-time overlay (ui/perf_overlay.gd)
 	camera.bounds = _camera_bounds()
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
