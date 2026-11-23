@@ -306,6 +306,9 @@ func _build_pads() -> void:
 		pad.glow = pad_glow
 		pad.left.connect(Audio.reset_press_streak)
 		pad.palette = Palettes.colors(palette_id)
+		var pad_mat: Variant = meadow.get("pad_material")
+		if pad_mat != null:
+			pad.material = pad_mat as ShaderMaterial
 		world.add_child(pad)
 		pads[pad.button_id] = pad
 	var first: TexelPad = pads.get(&"sprout_1") as TexelPad
