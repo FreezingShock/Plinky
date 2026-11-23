@@ -460,6 +460,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
 
+## 2026-11-23: Relics menu refresh (rarity cards, sort/filter, compare)
+- **Cards.** The collection is `RelicCard`s (AsciiBox border in the exact rarity colour, name in the readable rarity colour, `xN`, and an Equipped mark in the good green). Equipped and hovered cards sit on the lifted SELECT fill. The whole card is the click target. The collection scrolls past about four rows so a full relic list never outgrows the 360 texel view.
+- **Sort and filter.** `RelicQuery` (core, pure): Sort (Rarity, Name, Stacks, Equipped), Show (All, Equipped, Unequipped), Rarity (All, then each tier owned). Three buttons cycle them; filters reset with the game, not saved. `RelicInventory.sorted_owned()` is now the default query.
+- **Compare on hover.** `RelicInventory.preview_change(id, replacing)` is a pure what-if on the equipped totals. Hovering an unequipped relic shows "If equipped" with before and after per effect when a slot is free, or "If swapped for X" against the equipped relic that shares its effect when slots are full. While a swap is pending, hovering an equipped slot shows that swap. Green after-value for a gain, red for a loss. No arrows (Spleen has none): "Cash Income +10% to +20%".
+- **Bonuses readout.** The panel lists active bonuses (Title Case effect names) under the slots.
+- **Icons.** The multi-size relic icons from the icon thread were not merged yet, so cards use the 16 texel icons in the 20 texel frame. Swap in the larger icon once they land.
+- Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges card spacing, scroll height and the tooltip layout.
 ## 2026-11-23: Accessibility options
 - **Where.** New rows in Settings > Access (`SettingsRegistry._register_access`), state in `core/access_options.gd` (`AccessOptions`, no nodes). The Settings refresh thread owns how the menu looks; this only adds registry rows.
 - **Already there, left alone.** Reduce flashing, Reduce screen shake, Reduce screen effects, Calm camera, Still meadow and Bottom bar labels. Menus already take arrows, Tab, Enter, Space, d-pad, stick, A, B and Esc (`PadInput`), and chips take keys 1 to 5, so no new nav layer.
