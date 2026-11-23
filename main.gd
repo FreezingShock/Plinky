@@ -534,7 +534,7 @@ func _announce_area(area_name: String, area_id: String, zone_id: StringName = &"
 	if area != null:
 		icon = area.icon
 	var tint: Variant = null
-	if not cal.is_empty() and calendar.has_method("season_color"):
+	if sky != null and not cal.is_empty() and calendar.has_method("season_color"):
 		tint = calendar.call("season_color", int(cal.get("season", 0)))
 	Banner.announce(AreaBanner.compose(area_name, cal, phase, icon, tint))
 
