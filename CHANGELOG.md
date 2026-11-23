@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.13 - 2026-11-23
+- HUD top bar no longer overlaps: the clock card squeezes to fit between the stats and zone panels and sits under the zone list. The district banner is centred on the screen, 40% down.
+
 ## 0.10.12 - 2026-11-23
 - Ember Quarry: meadow trees no longer carry over from Larkmoor (props are freed by reference, not by name); the forge gate gets real basalt-and-iron art with locked, open and tooltip states; pads, spawn and props moved off the cliff face onto visible ground.
 
