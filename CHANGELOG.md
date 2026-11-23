@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.32.2 - 2026-11-23
+- Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
+
 ## 0.32.1 - 2026-11-23
 - HUD strip: more room between the gain text and the value so long suffixes never touch it.
 
