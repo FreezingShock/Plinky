@@ -10,12 +10,15 @@ const DATA_PATH: String = "res://world/meadow_life.json"
 ## because they change in place rather than travel.
 static var reduce_motion: bool = false
 
+## Wind strength 0..1, written by SkyCycle each frame. LifeGround leans the grass tips further in a gust.
+static var wind: float = 0.2
+
 ## 4x4 Bayer matrix, art-bible section 2. Threshold for index i is (BAYER[i] + 0.5) / 16.
 const BAYER: Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 
-static func load_data() -> Dictionary:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DATA_PATH))
+static func load_data(path: String = DATA_PATH) -> Dictionary:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	return parsed as Dictionary if parsed is Dictionary else {}
 
 

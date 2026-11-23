@@ -6,8 +6,12 @@ const DIR: String = "res://assets/art/zone1/meadow3d/"
 const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
 @export_file("*.json") var placements_path: String = DIR + "placements3d.json"
 
+## Prop kinds that sway in the wind (world/sky_cycle.gd). Rocks and crystals stay put.
+const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
+
 var _data: Dictionary = {}
 var react: LifeReact
+var _sky: SkyCycle
 
 
 func _ready() -> void:
@@ -45,6 +49,7 @@ func _ready() -> void:
 				continue
 		anchors.add_child(m)
 	_add_life(ground)
+	_add_sky()
 
 
 ## World life (world/meadow_life.gd): grass sway on the ground, fireflies and friends over everything.
@@ -70,6 +75,13 @@ func _add_life(ground: Sprite2D) -> void:
 	lg.pusher_group = &"walker"
 
 
+## Day/night shade, rain and wind (world/sky_cycle.gd). Added after the life layers; its own z indices place it.
+func _add_sky() -> void:
+	_sky = SkyCycle.new()
+	_sky.name = "Sky"
+	add_child(_sky)
+
+
 ## Adds each tall prop as its own sprite under `parent`, which must have y_sort_enabled. The sprite sits at the
 ## prop's foot, so anything south of the foot draws over it and anything behind it is covered by it.
 func spawn_occluders(parent: Node2D) -> void:
@@ -82,6 +94,10 @@ func spawn_occluders(parent: Node2D) -> void:
 		sp.centered = false
 		sp.position = Vector2(s.foot[0], s.foot[1])
 		sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
+		if _sky != null and String(s.kind) in SWAY_KINDS:
+			sp.texture = SkyCycle.padded(sp.texture)
+			sp.offset.x -= float(SkyCycle.SWAY_PAD)
+			sp.material = _sky.sway_material
 		parent.add_child(sp)
 		if String(s.kind) == "bush":
 			bush_sprites.append(sp)

@@ -15,6 +15,8 @@ signal offline_gained(seconds: float, gains: Dictionary)
 signal bonus_gained(kind: StringName, gains: Dictionary)
 signal critter_spawned()
 signal critter_gone()
+## Heat crossed the zone's hot line (see ZoneDef.heat_hot_at).
+signal heat_hot_changed(hot: bool)
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -35,8 +37,11 @@ var play_seconds: float = 0.0
 var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 var relic_drops: int = 0     # relics dropped from presses this save
+var ui_flags: Dictionary = {}  # onboarding: {"unlocked": {id: true}, "seen": {id: true}}. Opaque to the sim, saved with it.
 ## 0 to 1. Walking charges it (feed_momentum), time drains it. Not saved.
 var momentum: float = 0.0
+## 0 to ZoneDef.heat_cap. Standing on a vent charges it, time drains it. Not saved, cleared on zone entry and rebirth.
+var heat: float = 0.0
 var critter_active: bool = false
 var critter_left: float = 0.0
 var _critter_next: float = 60.0
@@ -47,6 +52,8 @@ var _streak_ready_at: float = 0.0
 var _last_roll_at: float = -1000.0   # play_seconds of the last drop roll
 var _last_drop_at: float = 0.0       # play_seconds of the last drop (0 = none yet)
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Dev console only (core/dev_commands.gd). Presses cost nothing. Never saved.
+var god_mode: bool = false
 
 var _dirty: Dictionary = {}
 
@@ -96,7 +103,9 @@ func new_game() -> void:
 	press_count = 0
 	rebirth_count = 0
 	relic_drops = 0
+	ui_flags = {}
 	momentum = 0.0
+	heat = 0.0
 	critter_active = false
 	critter_left = 0.0
 	_streak_row = &""
@@ -143,6 +152,9 @@ func income_per_second(stat_id: StringName) -> BigNum:
 	var boost: BigNum = BigNum.one()
 	if d.income_boost_stat != &"":
 		boost = get_stat(d.income_boost_stat).add(BigNum.one())
+	for s: StatDef in stat_defs.values():
+		if s.income_factor_per_unit > 0.0:
+			boost = boost.mul(get_stat(s.id).mul(BigNum.from_float(s.income_factor_per_unit)).add(BigNum.one()))
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
 	rm = rm.mul(BigNum.from_float(1.0 + momentum * config.momentum_max_bonus))
@@ -153,6 +165,8 @@ func can_afford(button_id: StringName) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null:
 		return false
+	if god_mode:
+		return true
 	return get_stat(b.cost_stat).gte(Formulas.button_cost(b))
 
 
@@ -244,7 +258,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 		if allow_pulse:
 			button_denied.emit(button_id)
 		return false
-	_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
+	if not god_mode:
+		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
 	var chance: float = crit_chance()
 	var crit: bool = chance > 0.0 and rng.randf() < chance
 	var crit_mult: float = 1.0
@@ -255,6 +270,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 	if dbl > 0.0 and rng.randf() < dbl:
 		presses = 2
 	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses)))
+	if is_hot():
+		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
 	_check_gates()
@@ -271,6 +288,31 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 				if other.zone == b.zone and other.row == b.row and absi(other.row_index - b.row_index) == 1:
 					_press(other.id, world_pos, false)
 	return true
+
+
+func heat_enabled() -> bool:
+	var z: ZoneDef = current_zone()
+	return z != null and z.heat_cap > 0.0
+
+
+## True while Heat is at or above the zone's hot line. A Hot press pays heat_hot_mult times the reward.
+func is_hot() -> bool:
+	return heat_enabled() and heat >= current_zone().heat_hot_at
+
+
+## The world calls this with the seconds the walker spent on a vent. Fills Heat up to the zone's cap.
+func feed_heat(seconds: float) -> void:
+	if not heat_enabled() or seconds <= 0.0:
+		return
+	var z: ZoneDef = current_zone()
+	_set_heat(minf(z.heat_cap, heat + z.heat_charge_per_second * seconds))
+
+
+func _set_heat(value: float) -> void:
+	var was: bool = is_hot()
+	heat = maxf(0.0, value)
+	if is_hot() != was:
+		heat_hot_changed.emit(is_hot())
 
 
 ## Walking calls this with the distance moved (texels). Fills momentum up to 1.
@@ -365,6 +407,9 @@ func _roll_relic_drop() -> StringName:
 func step(dt: float) -> void:
 	play_seconds += dt
 	momentum = maxf(0.0, momentum - config.momentum_decay_per_second * dt)
+	if heat > 0.0:
+		var zd: ZoneDef = current_zone()
+		_set_heat(heat - (zd.heat_decay_per_second if zd != null else heat) * dt)
 	_step_critter(dt)
 	var dtb: BigNum = BigNum.from_float(dt)
 	for s: StatDef in stat_defs.values():
@@ -372,6 +417,30 @@ func step(dt: float) -> void:
 			_set_stat(s.id, get_stat(s.id).add(income_per_second(s.id).mul(dtb)))
 	_check_gates()
 	_flush()
+
+
+## Dev console: set a stat outright, then settle gates and signals like any other change.
+func dev_set_stat(stat_id: StringName, value: BigNum) -> bool:
+	if not stat_defs.has(stat_id):
+		return false
+	_set_stat(stat_id, value.max_zero())
+	_check_gates()
+	_flush()
+	return true
+
+
+## Dev console: move to a zone whether or not it is unlocked. Opens the gate that leads there so the move sticks.
+func dev_force_zone(z_id: StringName) -> bool:
+	if not zone_defs.has(z_id):
+		return false
+	if z_id == zone_id:
+		return true
+	for z: ZoneDef in zone_defs.values():
+		if z.next_zone == z_id:
+			gates_open[z.id] = true
+	zone_id = z_id
+	zone_entered.emit(z_id)
+	return true
 
 
 func can_rebirth() -> bool:
@@ -404,6 +473,7 @@ func try_rebirth() -> bool:
 	_set_stat(config.prestige_stat, get_stat(config.prestige_stat).add(gained))
 	rebirth_count += 1
 	relics.set_rebirths(rebirth_count)
+	_set_heat(0.0)
 	_flush()
 	rebirth_done.emit(gained)
 	return true
@@ -434,6 +504,15 @@ func buy_attribute(attr_id: StringName) -> bool:
 	return true
 
 
+## Saves from before Larkmoor: players who had walked on to zone 2 keep it. Larkmoor's far gate is latched open for them
+## (and the onboarding gate with it), so zone 2 stays unlocked. Players still in the onboarding meadow are untouched:
+## their gate now leads to Larkmoor.
+func _migrate_zones() -> void:
+	if zone_id == &"zone2" and zone_defs.has(&"larkmoor"):
+		gates_open[&"larkmoor"] = true
+		gates_open[&"zone1"] = true
+
+
 func is_zone_unlocked(z_id: StringName) -> bool:
 	if not zone_defs.has(z_id):
 		return false
@@ -449,6 +528,7 @@ func enter_zone(z_id: StringName) -> bool:
 	if z_id == zone_id or not is_zone_unlocked(z_id):
 		return false
 	zone_id = z_id
+	_set_heat(0.0)
 	zone_entered.emit(z_id)
 	return true
 
@@ -523,6 +603,7 @@ func to_dict() -> Dictionary:
 		"rebirth_count": rebirth_count,
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
+		"ui_flags": ui_flags.duplicate(true),
 		"relics": relics.to_dict(),
 	}
 
@@ -548,6 +629,7 @@ func from_dict(d: Dictionary) -> bool:
 			var gid: StringName = StringName(str(k))
 			if zone_defs.has(gid):
 				gates_open[gid] = true
+	_migrate_zones()
 	var a: Variant = d.get("attributes", {})
 	if a is Dictionary:
 		for k: Variant in (a as Dictionary):
@@ -560,6 +642,9 @@ func from_dict(d: Dictionary) -> bool:
 	rebirth_count = int(d.get("rebirth_count", 0))
 	relic_drops = int(d.get("relic_drops", 0))
 	_last_drop_at = float(d.get("last_drop_at", play_seconds))
+	var uf: Variant = d.get("ui_flags", {})
+	if uf is Dictionary:
+		ui_flags = (uf as Dictionary).duplicate(true)
 	var rd: Variant = d.get("relics", {})
 	if rd is Dictionary:
 		relics.from_dict(rd)

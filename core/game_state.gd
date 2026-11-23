@@ -4,8 +4,10 @@ extends Node
 
 var sim: Sim
 var relics: RelicInventory  # same object as sim.relics, for UI binding
+var onboarding: Onboarding  # which systems are visible yet, and the next tip
 var paused: bool = false
 var _tick: Tick = Tick.new()
+var _onboard_clock: float = 1.0
 
 
 func _ready() -> void:
@@ -14,6 +16,8 @@ func _ready() -> void:
 		push_error("GameState: content failed to load")
 	sim.new_game()
 	relics = sim.relics
+	onboarding = Onboarding.new(sim, Onboarding.load_config())
+	onboarding.completed.connect(func() -> void: get_node("/root/EventBus").onboarding_complete.emit())
 	var bus: Node = get_node("/root/EventBus")
 	sim.stat_changed.connect(func(id: StringName, v: BigNum) -> void: bus.stat_changed.emit(id, v))
 	sim.button_pressed.connect(func(id: StringName, p: Vector3, g: BigNum, c: bool) -> void: bus.button_pressed.emit(id, p, g, c))
@@ -27,6 +31,7 @@ func _ready() -> void:
 	relics.relic_unequipped.connect(func(id: StringName) -> void: bus.relic_unequipped.emit(id))
 	sim.bonus_gained.connect(func(k: StringName, g: Dictionary) -> void: bus.bonus_gained.emit(k, g))
 	sim.critter_spawned.connect(func() -> void: bus.critter_spawned.emit())
+	sim.heat_hot_changed.connect(func(h: bool) -> void: bus.heat_hot_changed.emit(h))
 	sim.critter_gone.connect(func() -> void: bus.critter_gone.emit())
 	sim.offline_gained.connect(func(s: float, g: Dictionary) -> void: bus.offline_gained.emit(s, g))
 
@@ -38,6 +43,10 @@ func _process(delta: float) -> void:
 	var dt: float = 1.0 / float(sim.config.tick_rate)
 	for i in n:
 		sim.step(dt)
+	_onboard_clock += delta
+	if _onboard_clock >= 0.2:
+		_onboard_clock = 0.0
+		onboarding.update()
 
 
 # --- API (SPEC section 5 contract) ---

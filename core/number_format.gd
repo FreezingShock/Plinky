@@ -10,6 +10,10 @@ const N_SMALL: PackedStringArray = ["", "", "", "", "Qd", "Qn", "Sx", "Sp", "Oc"
 const UNITS: PackedStringArray = ["", "U", "D", "T", "Qd", "Qn", "Sx", "Sp", "Oc", "No"]
 const TENS: PackedStringArray = ["", "Dc", "Vg", "Tg", "Qg", "Qq", "Sg", "St", "Og", "Ng"]
 const HUNDREDS: PackedStringArray = ["", "Ce", "Dn", "Tc", "Qe", "Qi", "Se", "Sm", "Oe", "Ne"]
+## How big numbers are written. Set from the settings menu (Gameplay > Number format). Below 1000 all styles agree.
+enum Style { SUFFIX, SCIENTIFIC, ENGINEERING }
+static var style: int = Style.SUFFIX
+
 ## Highest group with a name: n = 999, i.e. 10^3003. Past that, e-notation.
 const MAX_GROUP: int = 1000
 
@@ -61,6 +65,10 @@ static func _fmt_abs(am: float, ex: int) -> String:
 		if v >= 10.0:
 			return _trim(v, 1)
 		return _trim(v, 2)
+	if style == Style.SCIENTIFIC:
+		return _sci(am, ex)
+	if style == Style.ENGINEERING:
+		return _trim(am * pow(10.0, float(ex % 3)), 2) + "e" + str(ex - ex % 3)
 	var idx: int = ex / 3  # 1 = first suffix
 	var scaled: float = am * pow(10.0, float(ex % 3))
 	if snappedf(scaled, 0.01) >= 1000.0:

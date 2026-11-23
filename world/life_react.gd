@@ -37,13 +37,13 @@ var _step: int = -1
 
 
 ## `bush_sprites` are the bush occluders from MeadowScene.spawn_occluders. `perches` are candidate ground texels.
-func setup(life: Dictionary, perches: Array) -> void:
+func setup(life: Dictionary, perches: Array, bird_count: int = BIRD_COUNT) -> void:
 	_water.clear()
 	for wb: Variant in life.get("water", []) as Array:
 		_water.append(wb as Dictionary)
 	_birds.clear()
 	var pool: Array = perches.duplicate()
-	for i: int in BIRD_COUNT:
+	for i: int in bird_count:
 		if pool.is_empty():
 			break
 		var pick: int = int(MeadowLife.hash01(i * 7 + 3) * float(pool.size())) % pool.size()
