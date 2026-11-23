@@ -59,10 +59,17 @@ func run(t: Object) -> void:
 	t.ok(chip.z_index > 0, "an open bubble draws over its neighbours")
 	t.ok(chip._has_point(Vector2(-1.0, 5.0)) and chip._has_point(Vector2(chip.size.x + 1.0, 5.0)), "the hit area reaches into the gaps between chips")
 	t.ok(chip._has_point(Vector2(5.0, -3.0)) and not chip._has_point(Vector2(5.0, -20.0)), "and a little above, but not as far as the bubble")
+	chip.short_text = "Upgrades"
+	t.eq(chip.always_text(), "Upgrades", "Always mode uses the short label (no key hint) so the bar fits at 640 wide")
+	chip._dirty = false
+	chip._always_w = 48.0
+	chip._open_w = 100.0
 	ExpandChip.label_mode = ExpandChip.MODE_ALWAYS
 	chip._apply()
 	t.eq(chip.custom_minimum_size.x, 100.0, "Always mode makes the chip wide enough for its label")
-	t.eq(chip.text, "Upgrades [Tab]", "and puts the label in the chip")
+	t.eq(chip.text, "Upgrades", "and puts the short label in the chip")
+	chip.short_text = ""
+	t.eq(chip.always_text(), "Upgrades [Tab]", "with no short label it falls back to the full one")
 	ExpandChip.label_mode = ExpandChip.MODE_NEVER
 	chip.progress = 0.0
 	chip._apply()

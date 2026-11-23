@@ -46,7 +46,7 @@ var _amb: AudioStreamPlayer
 var _scape: AmbientScape      # layered day/night/season loops and the bird density, see audio/ambient_scape.gd
 var _loading: AudioStreamPlayer
 var _shore: AudioStreamPlayer
-var _meadow_world: bool = false     # shore and birds only play in the meadow
+var _meadow_world: bool = true      # shore and birds play everywhere except the quarry (on until a quarry zone says otherwise)
 var _water_target: float = 0.0
 var _tree_target: float = 0.0
 var _water_gain: float = 0.0
@@ -98,7 +98,8 @@ func _ready() -> void:
 		bus.rebirth_done.connect(func(_p: BigNum) -> void: play(&"rebirth", 1.0, 0.0, BUS_SFX, false))
 		bus.button_denied.connect(func(_id: StringName) -> void: play(&"ui_back", 0.8, -4.0, BUS_UI))
 		bus.offline_gained.connect(func(_s: float, _g: Dictionary) -> void: play(&"relic_uncommon", 1.0, -6.0))
-	get_tree().node_added.connect(_on_node_added)
+	if is_inside_tree():   # a private instance under test is not in the tree yet
+		get_tree().node_added.connect(_on_node_added)
 
 
 ## Music and ambience start with the first zone. Main calls zone_entered on load, but this covers a
@@ -372,25 +373,37 @@ func set_surroundings(water: float, trees: float) -> void:
 
 
 func _process(delta: float) -> void:
+	world_step(delta)
+
+
+## Fades the shore and bird layers toward their targets and plays chirps. _process calls it every
+## frame; tests call it directly.
+func world_step(delta: float) -> void:
 	var on: bool = _meadow_world
 	_water_gain = move_toward(_water_gain, _water_target if on else 0.0, delta * WORLD_FADE_PER_S)
 	_tree_gain = move_toward(_tree_gain, _tree_target if on else 0.0, delta * WORLD_FADE_PER_S)
+	var live: bool = is_inside_tree()   # players cannot start outside the tree (headless tests step this directly)
 	if _water_gain > 0.01:
-		if not _shore.playing:
+		if live and not _shore.playing:
 			_start_shore()
 		_shore.volume_db = SHORE_DB + linear_to_db(_water_gain)
-	elif _shore.playing:
+	elif live and _shore.playing:
 		_shore.stop()
 	var birds: float = _scape.bird_scale() if _scape != null else 1.0
 	if _meadow_world and _amb.playing:
 		_amb.volume_db = MEADOW_AMB_DB + linear_to_db(maxf(_scape.day_gain(), 0.0001))   # the old loop has birds baked in: day only
-	if _tree_gain > 0.05 and birds > 0.02:
+	if live and _tree_gain > 0.05 and birds > 0.02:
 		_bird_clock -= delta
 		if _bird_clock <= 0.0:
 			_bird_clock = randf_range(BIRD_GAP_S.x, BIRD_GAP_S.y) / ((0.4 + _tree_gain) * birds)   # more trees, shorter pauses
 			play(StringName("bird_%d" % (randi() % BIRD_VARIANTS)), randf_range(0.85, 1.2), BIRD_DB + linear_to_db((0.3 + 0.7 * _tree_gain) * minf(birds, 1.0)), BUS_AMB, false)
 	else:
 		_bird_clock = minf(_bird_clock, 1.5)
+
+
+## For tests and debugging: current shore and bird gains (0..1) and whether the shore loop is playing.
+func world_state() -> Dictionary:
+	return {"water": _water_gain, "trees": _tree_gain, "shore_playing": _shore.playing, "meadow": _meadow_world}
 
 
 func _start_shore() -> void:

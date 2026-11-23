@@ -79,16 +79,3 @@ func run(t: Object) -> void:
 		t.eq(shown, la.pad_buttons.size(), "expanding shows every pad")
 		t.ok(panel._pads_scroll.custom_minimum_size.y <= ZonePanel.PADS_MAX_PX, "the expanded list is height-capped")
 	panel.free()
-	_banner_checks(t, sim)
-
-
-## The slim district card: themed by the area's zone palette, short, and plain notices still work.
-func _banner_checks(t: Object, sim: Sim) -> void:
-	var b := DistrictBanner.new()
-	var a: AreaDef = sim.area_defs[&"heronmere"] as AreaDef
-	b.show_area(a, sim.zone_defs[&"larkmoor"] as ZoneDef)
-	t.ok(b.visible, "area card shows")
-	t.ok(DistrictBanner.LIFETIME <= 2.0, "zone card stays short")
-	b.show_name("Notice")
-	t.ok(b.visible, "plain notice shows")
-	b.free()

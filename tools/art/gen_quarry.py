@@ -148,6 +148,9 @@ for r in range(5):
     c = (a + b) / 2.0
     PAD_ROWS.append([(ROWW[r], c - PAD_DX), (ROWW[r], c), (ROWW[r], c + PAD_DX)])
 PAD_ROWS.append([(ROWW[5], -150), (ROWW[5], -80), (ROWW[5], -10)])
+# where the road meets each row; pads are numbered 1, 2, 3 by distance from that point so the cheapest is reached first
+ROW_ENTRY = [-95, RAMP_D[0], RAMP_D[1], RAMP_D[2], RAMP_D[3], RAMP_D[4]]
+PAD_ROWS = [sorted(row, key=lambda q, e=ROW_ENTRY[i]: abs(q[1] - e)) for i, row in enumerate(PAD_ROWS)]
 PADS = [p for row in PAD_ROWS for p in row]
 VENTS = [(200, 96), (150, -190), (18, 190), (-100, -190), (-170, 188)]
 SPAWN = (HUB[0] - 6, HUB[1])
@@ -753,6 +756,9 @@ def bake():
         if lava[int(u)][int(v)] if False else T['lava'][int(round(u)), int(round(v))]:
             x, y = scr(w, d, sample_h(T, w, d)); anchors.append(dict(kind='lava', sx=round(x, 1), sy=round(y, 1)))
     # reachability: every anchor the walker has to reach must connect to the spawn
+    row_entry = []
+    for r in range(6):
+        x, y = scr(ROWW[r] + FRONT, ROW_ENTRY[r], sample_h(T, ROWW[r] + FRONT, ROW_ENTRY[r])); row_entry.append([round(x, 1), round(y, 1)])
     goals = [(a['sx'], a['sy']) for a in anchors if a['kind'] in ('pad', 'gate', 'arch', 'vent')]
     bad, seen = flood(walk, (sx_, sy_), goals)
     for a in anchors:
@@ -784,7 +790,7 @@ def bake():
             lava_tiles.append(dict(file=name, x=int(tx + x0), y=int(ty + y0), w=int(x1 - x0), h=int(y1 - y0), frames=6))
     data = dict(size=[CW, CH], world=[40, 10, CW - 80, CH - 20], bleed=dict(left=0, right=0, top=0, bottom=0, ground_size=[CW, CH], ground_offset=[0, 0]),
                 projection=dict(ox=OXS, oy=OYS, note='canvas texels; ground is a full-size backdrop at (0, 0)'),
-                sprites=sprites, anchors=anchors, lava=lava_tiles)
+                sprites=sprites, anchors=anchors, lava=lava_tiles, row_entry=row_entry)
     with open(os.path.join(OUT, 'placements3d.json'), 'w') as f:
         json.dump(data, f, indent=1)
     # composed preview, for review only

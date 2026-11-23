@@ -14,9 +14,10 @@ const FILES: Array[String] = [
 	"res://ui/index_card.gd", "res://ui/index_panel.gd", "res://ui/strip_button.gd",
 	"res://ui/tip.gd", "res://ui/tip_host.gd", "res://ui/tip_text.gd", "res://ui/stat_style.gd", "res://ui/pad_tooltip.gd",
 	"res://world/walker_motion.gd", "res://world/walker_body.gd", "res://ui/fx/popup_style.gd", "res://ui/fx/bloom_timeline.gd",
+	"res://ui/banner.gd",
 ]
 
-const AUTOLOADS: PackedStringArray = ["GameState", "EventBus", "Save", "Fx", "Juice", "Audio"]
+const AUTOLOADS: PackedStringArray = ["GameState", "EventBus", "Save", "Fx", "Juice", "Audio", "Banner"]
 
 func run(t: Object) -> void:
 	for dir in DIRS:
