@@ -22,7 +22,10 @@ var _inside: bool = false
 
 func _process(delta: float) -> void:
 	_t += delta
-	var sim: Sim = GameState.sim
+	var gs: Node = _gs()
+	if gs == null:
+		return
+	var sim: Sim = gs.get("sim") as Sim
 	if art != &"" or sim.is_gate_open(zone_id):
 		queue_redraw()
 	var near: bool = walker.position.distance_to(position) <= RADIUS
@@ -34,10 +37,15 @@ func _process(delta: float) -> void:
 		return
 	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
 	if z != null and z.next_zone != &"":
-		GameState.enter_zone(z.next_zone)
+		gs.call("enter_zone", z.next_zone)
 	elif not _inside:
 		dead_end.emit()
 	_inside = true
+
+
+## The GameState autoload, looked up by path so this script also compiles under --script (tests have no autoloads).
+func _gs() -> Node:
+	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameState")
 
 
 ## True when a point in world texels is over the drawn arch (only zones with gate art are hoverable).
@@ -75,7 +83,10 @@ static func spec_for(sim: Sim, z_id: StringName) -> Dictionary:
 
 
 func _draw() -> void:
-	var open: bool = GameState.sim.is_gate_open(zone_id)
+	var gs: Node = _gs()
+	if gs == null:
+		return
+	var open: bool = (gs.get("sim") as Sim).is_gate_open(zone_id)
 	if art == &"forge":
 		_draw_forge(open)
 		return
