@@ -30,3 +30,10 @@ can share a release (one version, both notes). Because no PR touches the version
 and there is no "take the next free number" step. Pull `main` to see the new version.
 
 Manual bumps still work for emergencies (`python3 tools/bump_version.py patch|minor|set X.Y.Z`); never run `major` unless Nathan asked.
+
+## If the main ruleset blocks the Release push
+The Release job pushes to `main`, so a ruleset that requires the `test` check or a pull request will refuse it. The job then
+only warns and leaves the fragments for the next release, so nothing is lost and no PR breaks. To let it through, either
+add the GitHub Actions app to the ruleset's bypass list (not always offered on personal repos), or, the reliable way,
+create a fine-grained personal access token with Contents: read and write on this repo, save it as the repo secret
+`RELEASE_TOKEN`, and add the **Repository admin** role to the ruleset's bypass list. The workflow uses the secret when it exists.
