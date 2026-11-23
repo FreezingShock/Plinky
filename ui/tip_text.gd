@@ -22,7 +22,7 @@ const STATS: Dictionary = {
 
 const ATTR_ICONS: Dictionary = {
 	&"walk_speed": "walk", &"press_rate": "rate", &"crit_chance": "crit", &"luck": "luck",
-	&"offline_hours": "offline", &"crit_damage": "crit_dmg",
+	&"offline_hours": "offline", &"crit_damage": "crit_dmg", &"head_start": "seeds", &"sun_rate": "heat",
 }
 const ATTRS: Dictionary = {
 	&"walk_speed": "Walk faster between pads.",
@@ -31,6 +31,8 @@ const ATTRS: Dictionary = {
 	&"crit_damage": "A critical hit pays more.",
 	&"luck": "Better odds on relic drops.",
 	&"offline_hours": "Earn for more hours while you are away.",
+	&"head_start": "Every run after a Bloom starts with extra Sunlight.",
+	&"sun_rate": "Sunlight flows in faster all the time.",
 }
 
 
@@ -71,6 +73,18 @@ static func rebirth(can: bool, gain_text: String, rp_text: String = "") -> Dicti
 			"hint": "Prestige and relics are kept.", "hint_color": StatStyle.gain()}
 	return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
 		"body": "Start over for Prestige and faster income.", "hint": "Not available yet.", "hint_color": StatStyle.cant()}
+
+
+static func bloom(can: bool, seeds: int, bonus_text: String, need_text: String) -> Dictionary:
+	var sc: Color = StatStyle.color(&"seeds")
+	if can:
+		return {"title": "Bloom", "title_color": sc, "color": sc, "icon": "seeds",
+			"body": "Let the meadow reset and bloom again. Your flowers start over.",
+			"lines": [["Gives ", Tip.icon("seeds"), Tip.seg("+%d" % seeds, StatStyle.gain()), " ", Tip.seg("Seeds", sc)],
+				["Every pad pays ", Tip.seg(bonus_text, StatStyle.gain()), " more for good"]],
+			"hint": "Gates, relics, mastery and Seeds are kept.", "hint_color": StatStyle.gain()}
+	return {"title": "Bloom", "title_color": sc, "color": sc, "icon": "seeds",
+		"body": "Reset the meadow for Seeds and a lasting boost to every pad.", "hint": need_text, "hint_color": StatStyle.cant()}
 
 
 static func zone_button(display_name: String) -> Dictionary:
