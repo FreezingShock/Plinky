@@ -6,9 +6,9 @@
 script = ExtResource("1")
 id = &"quarry_gate"
 display_name = "Forge Gate"
-description = "Hold 9 Slag, enough to open the forge gate."
+description = "Hold 600 Emberhearts, enough to open the forge gate."
 category = &"quarry"
-counter = &"peak_slag"
-target = 9.0
+counter = &"peak_emberheart"
+target = 600.0
 order = 3
 title = ""

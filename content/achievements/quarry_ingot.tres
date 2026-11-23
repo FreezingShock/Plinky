@@ -4,11 +4,11 @@
 
 [resource]
 script = ExtResource("1")
-id = &"quarry_cash"
-display_name = "Cash Flow"
-description = "Hold 1 million Cash at once."
+id = &"quarry_ingot"
+display_name = "First Ingot"
+description = "Hold your first Ingot."
 category = &"quarry"
-counter = &"peak_cash"
-target = 1000000.0
+counter = &"peak_ingot"
+target = 1.0
 order = 2
 title = ""

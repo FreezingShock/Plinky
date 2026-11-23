@@ -305,7 +305,7 @@ func _on_rebirth_pressed() -> void:
 		GameState.try_rebirth()
 		return
 	var lines: Array = [
-		["Resets your Cash and pads.", StatStyle.PAPER],
+		["Resets your income stats and pads.", StatStyle.PAPER],
 		["+%s Prestige" % sim.prestige_gain_preview().format(), StatStyle.color(&"prestige")],
 		["+%d Rebirth Points" % sim.rp_gain_preview(), StatStyle.color(&"rp")],
 	]
@@ -915,7 +915,7 @@ func gate(node: CanvasItem, feature: StringName) -> void:
 
 ## A gated stat row also has to belong to the current zone; any other gated node always does.
 func _gated_in_zone(node: CanvasItem) -> bool:
-	if node == _rebirth:   # Rebirth lives where Cash and Multiplier do; the meadow has Bloom
+	if node == _rebirth:   # Rebirth lives in the quarry; the meadow has Bloom
 		return sim.rebirth_here()
 	for sid: StringName in _gated_rows:
 		if _row_boxes.get(sid) == node:
@@ -957,7 +957,7 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open   # tips never cover an open menu
+	_tip_card.held = PadInput.menu_open or Tip.is_showing()   # tips never cover an open menu or a tooltip
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

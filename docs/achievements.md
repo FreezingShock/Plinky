@@ -27,7 +27,7 @@ Copy any `.tres` in `content/achievements/`, change `id`, `display_name`, `descr
 ## Not built yet
 - **Bloom.** The Bloom layer is not in the game, so there are no Bloom achievements. When it lands, add a `blooms` counter and
   three or four entries (first Bloom, 5, 25, a Bloom Gift bought) to the Rebirth category.
-- **Quarry depth.** Quarry has four entries on what exists today (entering, Cash, Slag). Heat, Ingots and Emberhearts want entries once the quarry ladder ships.
+- **Quarry depth.** Quarry has four entries on what exists today (entering, Ingots, Emberhearts, Slag). Heat and Alloys want entries once they have a feel pass.
 - **Divine and Special relics** (see below).
 
 ## Proposal: Divine and Special relics from achievements
