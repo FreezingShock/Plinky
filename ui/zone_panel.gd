@@ -3,7 +3,7 @@ extends PanelContainer
 ## Top-right zone panel: where you are (name, gate progress), a foldable travel menu of every location with its
 ## areas, and the card of the area you are viewing (description, pads, mastery). While the travel menu is open the
 ## card folds down to a dithered stub; closed, it shows in full. Every row is a focusable button, so keyboard and pad
-## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and glyph).
+## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and icon).
 ## The mastery row sums the area's pads from `sim.mastery`.
 
 const WIDTH: float = 176.0
@@ -76,7 +76,6 @@ func setup(p_sim: Sim) -> void:
 	_build_list(list)
 	_travel.set_open(false, false)
 	_card = RevealBox.new()
-	_card.fade = true
 	_card.floor_px = 0.0
 	var card := VBoxContainer.new()
 	card.add_theme_constant_override("separation", 2)
@@ -151,7 +150,8 @@ func _build_list(list: VBoxContainer) -> void:
 			var aid: StringName = a.id
 			var ar := ListRow.new()
 			ar.tint = area_colour(a)
-			ar.text = "  %s %s" % [a.glyph, a.display_name]
+			ar.text = "   " + a.display_name
+			ar.area_icon = a.icon
 			ar.pressed.connect(func() -> void: _go(zid, aid))
 			_bind(ar, func() -> Array: return _area_tip(aid))
 			box.add_child(ar)
@@ -172,7 +172,10 @@ func _sync_toggles() -> void:
 
 ## Height of the folded card: the title row and exactly one description line, so no line is cut through.
 func _stub_px() -> float:
-	return _card_title.get_combined_minimum_size().y + 2.0 + _card_desc.get_line_height()
+	var font: Font = _card_desc.get_theme_font("font")
+	var fs: int = _card_desc.get_theme_font_size("font_size")
+	var line: float = maxf(_card_desc.get_line_height(), font.get_height(fs) if font != null else 0.0)
+	return _card_title.get_combined_minimum_size().y + 2.0 + line + 3.0   # +3 keeps descenders (g, p, y) whole
 
 
 func set_travel_open(on: bool, animate: bool = true) -> void:
@@ -250,7 +253,7 @@ func _rebuild_card() -> void:
 		_card_desc.text = z.description if z != null else ""
 		return
 	var col: Color = area_colour(a)
-	_card_title.text = "%s %s" % [a.glyph, a.display_name]
+	_card_title.text = a.display_name
 	_card_title.add_theme_color_override("font_color", col)
 	_card_desc.text = a.blurb
 	_mastery_bar.fill = col
@@ -351,9 +354,8 @@ func refresh() -> void:
 		var zd: ZoneDef = sim.zone_defs[zid] as ZoneDef
 		var row: ListRow = _zone_rows[zid]
 		var open: bool = sim.is_zone_unlocked(zid)
-		row.text = zd.display_name if open else "??? (locked)"
+		row.text = ("%s (here)" % zd.display_name if zid == sim.zone_id else zd.display_name) if open else "??? (locked)"
 		row.disabled = not open
-		row.marked = zid == sim.zone_id
 		(_zone_toggles[zid] as ListRow).disabled = not open
 		(_zone_areas[zid] as RevealBox).visible = open
 	for aid: StringName in _area_rows:
