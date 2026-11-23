@@ -13,7 +13,7 @@ const SHADE_SHADER: Shader = preload("res://render/shaders/day_night.gdshader")
 const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
-const MAX_LIGHTS: int = 12
+const MAX_LIGHTS: int = 24
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
 const SWAY_STEP: float = 1.0 / 8.0
@@ -29,6 +29,12 @@ var sway_material: ShaderMaterial
 var rain_layer: SkyRain
 var shadows: SkyShadows                 # set by MeadowScene before this node enters the tree
 var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
+var atmosphere: bool = true             # false: no mountain haze or mist
+## Where haze and mist are drawn, in world texels. Empty = the whole sky box (the meadow). Larkmoor gives the
+## mountain strip, the sea band under it, and one small rect for each pond, so the shader only runs where it shows.
+var haze_rects: Array[Rect2] = []
+## Shader parameters for the haze placement (horizon_y, band_half, island_half, island, ground_origin): see sky_haze.gdshader.
+var haze_params: Dictionary = {}
 var ground_texture: Texture2D           # backdrop, so the haze shader can tell water from land
 var ponds: Array = []                   # [Vector4(cx, cy, rx, ry)] for the lake and ponds
 var _haze_mat: ShaderMaterial
@@ -42,6 +48,11 @@ var _shade_mat: ShaderMaterial
 var _config: SkyConfig
 var _t: float = 0.0
 var _sway_step: int = -1
+## Per-sprite materials for props that carry relight data (see prop_material). They share the sway and rim shader and
+## get the same parameters as sway_material / rim_material; only the normal texture differs.
+var _prop_mats: Array[ShaderMaterial] = []
+var _rim_key: Array = []
+var _relight_key: Vector4 = Vector4(-99.0, 0.0, 0.0, 0.0)
 
 
 func _ready() -> void:
@@ -50,22 +61,28 @@ func _ready() -> void:
 	if _config == null:
 		_config = SkyConfig.new()
 	_apply_config()
-	var haze := ColorRect.new()
-	haze.name = "Haze"
-	haze.position = AREA.position
-	haze.size = AREA.size
-	haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_haze_mat = ShaderMaterial.new()
 	_haze_mat.shader = HAZE_SHADER
 	if ground_texture != null:
 		_haze_mat.set_shader_parameter("ground", ground_texture)
 	_haze_mat.set_shader_parameter("ponds", _pond_array())
-	haze.material = _haze_mat
-	add_child(haze)
+	for k: String in haze_params:
+		_haze_mat.set_shader_parameter(k, haze_params[k])
+	var rects: Array[Rect2] = []
+	rects.assign(haze_rects if not haze_rects.is_empty() else [AREA])
+	for i in rects.size():
+		var haze := ColorRect.new()
+		haze.name = "Haze" if i == 0 else "Haze%d" % (i + 1)
+		haze.visible = atmosphere
+		haze.position = rects[i].position
+		haze.size = rects[i].size
+		haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		haze.material = _haze_mat
+		add_child(haze)
 	var rays := ColorRect.new()
 	rays.name = "Rays"
-	rays.position = AREA.position
-	rays.size = AREA.size
+	rays.position = area.position
+	rays.size = area.size
 	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rays_mat = ShaderMaterial.new()
 	_rays_mat.shader = RAYS_SHADER
@@ -127,6 +144,10 @@ func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = 
 
 
 func light_config() -> SkyConfig:
+	if _config == null:
+		_config = load(CONFIG_PATH) as SkyConfig
+		if _config == null:
+			_config = SkyConfig.new()
 	return _config
 
 
@@ -184,6 +205,30 @@ func _update(t: float) -> void:
 		sway_material.set_shader_parameter("step_time", float(s) * SWAY_STEP)
 		sway_material.set_shader_parameter("wind", wind)
 		sway_material.set_shader_parameter("enabled", 0.0 if MeadowLife.reduce_motion else 1.0)
+		for m: ShaderMaterial in _prop_mats:
+			if m.get_shader_parameter("max_texels") > 0.0:     # the sway ones; rocks and crystals stay put
+				m.set_shader_parameter("step_time", float(s) * SWAY_STEP)
+				m.set_shader_parameter("wind", wind)
+				m.set_shader_parameter("enabled", 0.0 if MeadowLife.reduce_motion else 1.0)
+
+
+## A material for one prop sprite with relight data `nrm` (tools/art/depth_pass.py `_n.png`, padded like the sprite
+## when `sways`). The sun direction, relight strength, rim and sway parameters follow the sky.
+func prop_material(sways: bool, nrm: Texture2D) -> ShaderMaterial:
+	var base: ShaderMaterial = sway_material if sways else rim_material
+	if base == null:      # _ready has not run yet (tests, early spawn): nothing to follow
+		return null
+	var m: ShaderMaterial = base.duplicate() as ShaderMaterial
+	m.set_shader_parameter("nrm_tex", nrm)
+	_prop_mats.append(m)
+	_relight_key = Vector4(-99.0, 0.0, 0.0, 0.0)   # push the sun and rim to the new material on the next update
+	_rim_key = []
+	return m
+
+
+func _each_prop_material(param: StringName, value: Variant) -> void:
+	for m: ShaderMaterial in _prop_mats:
+		m.set_shader_parameter(param, value)
 
 
 ## Copy of `tex` with SWAY_PAD transparent texels each side, so a leaning crown is not clipped by the sprite edge.
@@ -208,10 +253,11 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var ramp: float = model.ramp(mt)
 	var rain01: float = clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0)
 	# cast shadows
+	var low_sun_k: float = model.low_sun(mt)
 	if shadows != null:
 		var len: float = model.shadow_length(mt, _config.shadow_len_noon, _config.shadow_len_low, _config.shadow_len_moon)
 		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon, rain01),
-				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip})
+				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip, "low": low_sun_k})
 	# rim light on props: whole-texel direction toward the light, warm when the sun is low, cool under the moon
 	var low: float = model.low_sun(mt)
 	var night_k: float = clampf(-model.sun_of(model.phase(mt)) * 2.0, 0.0, 1.0)
@@ -223,6 +269,22 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		m.set_shader_parameter("rim_dir", rim_dir)
 		m.set_shader_parameter("rim_amount", rim_amt)
 		m.set_shader_parameter("rim_col", rim_col)
+	# sun-driven relight (render/shaders/wind_sway.gdshader): world-space sun direction, same frame as the baked
+	# normals (u, v, up). az is the screen side, so u = +az and v = -az put the light on that side; it climbs with the sun.
+	var sun_h: float = SkyModel.sun_of(model.phase(mt))
+	var relight: float = (1.0 - 0.5 * night_k) * (1.0 - 0.6 * rain01)
+	var key := Vector4(roundf(az * 32.0) / 32.0, roundf(maxf(sun_h, 0.0) * 32.0) / 32.0, roundf(relight * 32.0) / 32.0, 0.0)
+	if key != _relight_key:      # quantised: the 70-odd prop materials are only written when the sun has really moved
+		_relight_key = key
+		var sun := Vector3(key.x * 0.45, -key.x * 0.45, 0.35 + 0.5 * key.y).normalized()
+		_each_prop_material(&"sun_dir", sun)
+		_each_prop_material(&"relight", key.z)
+	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
+	if rim_key != _rim_key:
+		_rim_key = rim_key
+		_each_prop_material(&"rim_dir", rim_dir)
+		_each_prop_material(&"rim_amount", rim_amt)
+		_each_prop_material(&"rim_col", rim_col)
 	# haze over the mountains, mist over the water
 	var haze_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
 	_haze_mat.set_shader_parameter("haze_col", haze_col)
@@ -236,7 +298,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_rays_rect.visible = ray_amt > 0.002 or _warm > 0
 	_warm = maxi(_warm - 1, 0)
 	_rays_mat.set_shader_parameter("amount", ray_amt)
-	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 400.0, -120.0))
+	_rays_mat.set_shader_parameter("sun", Vector2(area.get_center().x + az * area.size.x * 0.465, area.position.y - 50.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
 	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
 	# vignette

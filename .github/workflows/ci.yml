@@ -52,10 +52,17 @@ jobs:
           ~/godot/godot --headless --path . --script tools/sim.gd 2>&1 | tee /tmp/sim.log
           ! grep -E "SCRIPT ERROR|Parse Error|NOT reached" /tmp/sim.log
 
+      # Plays the real main scene through the meadow, Larkmoor, every sky state and pad presses, and fails on any
+      # script or shader error (a per-frame error in a layer shows up as a "fast" frame time, not a crash).
+      - name: Play smoke (tools/bench.gd)
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --script tools/bench.gd -- --frames=20 --quality=low 2>&1 | tee /tmp/bench.log
+          ! grep -E "SCRIPT ERROR|Parse Error" /tmp/bench.log
+
       # Autoloads don't exist under --script, so main.gd can't be compiled by the unit tests. Boot the real
-      # project for a couple of seconds and fail on script errors. Not gating yet: headless rendering may add noise.
+      # project for a couple of seconds and fail on script errors. Gating: it catches runtime script errors the unit tests miss.
       - name: Boot smoke test (loads main.gd)
-        continue-on-error: true
         run: |
           set -o pipefail
           timeout 90 ~/godot/godot --headless --path . --quit-after 180 2>&1 | tee /tmp/boot.log || true

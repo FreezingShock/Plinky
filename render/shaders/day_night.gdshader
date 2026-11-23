@@ -17,7 +17,7 @@ uniform vec3 night_tint : source_color = vec3(0.50, 0.58, 0.82);
 uniform vec3 deep_tint : source_color = vec3(0.30, 0.36, 0.62);
 uniform vec3 rain_tint : source_color = vec3(0.82, 0.88, 0.92);
 uniform vec3 pool_tint : source_color = vec3(1.0, 0.90, 0.68);
-uniform vec4 lights[12];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused)
+uniform vec4 lights[24];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused)
 uniform float pool_strength = 0.9;
 
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
@@ -38,7 +38,7 @@ void fragment() {
 	float thr = bayer4(t);
 	// light pools: sum of falloffs on the 2:1 ground ellipse
 	float pool = 0.0;
-	for (int i = 0; i < 12; i++) {
+	for (int i = 0; i < 24; i++) {
 		vec4 L = lights[i];
 		if (L.w > 0.0) {
 			float d = length((p - L.xy) * vec2(1.0, 2.0)) / max(L.z, 1.0);

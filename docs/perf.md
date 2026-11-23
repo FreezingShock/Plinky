@@ -78,6 +78,23 @@ were that 12 fps redraw landing on one frame: about 150 drops times three `sin()
 three hashes per drop are constant, so they are now cached once, and Low and Medium draw 40% and 70% of the drops.
 Spike frames on a real GPU after this change: not yet measured.
 
+## The Larkmoor Low stall (open, left as is)
+One frame of 166 to 271 ms, always on Low in Larkmoor, in the first Larkmoor row that runs (sunset or noon depending on
+the run), always at frame 222 to 242 of the phase. Latest: bench on aa46bae, "HITCH Low larkmoor/sunset: frame 230 of the
+phase, 271.0 ms, nodes 520, objects 1218, draws 76, vram 50 MB, audio cache unchanged". Counters are flat. Medium and
+High, which run later in the same session, never show it. It does not reproduce under software GL.
+
+Ruled out: a compile of the shared shaders (ShaderWarm and an earlier warm did not remove it), zone entry (it falls
+well after it), music (same tracks as the meadow), and audio one-shots (`Audio.preload_all()` is in and the cache does not
+grow on the hitch frame). The frame position is steady from run to run, so it is deterministic, not a random first use:
+something one-time that is ready about 230 frames (about 0.1 s of wall time at 2000 fps) after the first Larkmoor
+measurement begins, on the first quality level only.
+
+Next step if someone wants it: a Godot profiler capture (editor Debugger > Profiler, or `--profiling` with the
+Monitors tab) around that frame, in a real window, bench with `--quality=low --frames=300`. Look at the frame's script
+and physics time and at the Video RAM and Objects monitors. A single 170 to 270 ms frame on the lowest setting, once per
+session, is minor, so it is fine to leave.
+
 ## Open
 - No GPU numbers yet. A real-hardware run of tools/bench.gd is needed to find the actual hot spot; the CPU
   side is cheap enough that the post shader and window fill rate at 4K may matter more.
