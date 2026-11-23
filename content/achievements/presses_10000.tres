@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"presses_10000"
+display_name = "Tireless Thumbs"
+description = "Press pads 10,000 times."
+category = &"presses"
+counter = &"presses"
+target = 10000.0
+order = 4
+title = "Tireless"

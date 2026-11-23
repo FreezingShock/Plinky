@@ -43,6 +43,7 @@ var feedback_panel: FeedbackPanel
 var gallery: GalleryMenu
 var update_log: UpdateLogPanel
 var history_panel: HistoryPanel
+var ledger_panel: LedgerPanel
 var menus: MenuRouter = MenuRouter.new()   # which menu is open (ui/menu_router.gd)
 var palette_id: StringName = Palettes.MEADOW
 
@@ -216,7 +217,7 @@ var _menu_was_open: bool = false
 
 
 func _menu_focus() -> void:
-	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log, history_panel]
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log, history_panel, ledger_panel]
 	var open: Control = null
 	for p: Control in panels:
 		if p != null and p.visible:
@@ -696,9 +697,17 @@ func _wire_menus() -> void:
 	history_panel = HistoryPanel.new()
 	hud.add_child(history_panel)
 	history_panel.bind(sim)
+	ledger_panel = LedgerPanel.new()
+	hud.add_child(ledger_panel)
+	ledger_panel.bind(sim)
+	var ach_toast := AchievementToast.new()
+	hud.add_child(ach_toast)
+	ach_toast.enabled = func() -> bool: return GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)   # quiet during the tutorial
+	ach_toast.bind(sim)
 	hud.keep_centered(gallery)
 	hud.keep_centered(update_log)
 	hud.keep_centered(history_panel)
+	hud.keep_centered(ledger_panel)
 	gallery.is_locked = _section_locked
 	gallery.chosen.connect(_on_gallery_chosen)
 	gallery.resume_requested.connect(func() -> void: menus.close(&"gallery"))
@@ -707,9 +716,11 @@ func _wire_menus() -> void:
 	_register_animated(&"gallery", gallery)
 	_register_animated(&"log", update_log)
 	_register_animated(&"history", history_panel)
+	_register_animated(&"ledger", ledger_panel)
 	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
 	CloseX.attach(update_log, func() -> void: menus.close(&"log"))
 	CloseX.attach(history_panel, func() -> void: menus.close(&"history"))
+	CloseX.attach(ledger_panel, func() -> void: menus.close(&"ledger"))
 	hud.menu_toggled.connect(menus.toggle)
 	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
 	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
@@ -758,7 +769,7 @@ func _on_gallery_chosen(kind: StringName) -> void:
 func _section_locked(kind: StringName) -> bool:
 	var ob: Onboarding = GameState.onboarding
 	match kind:
-		&"stats", &"history": return not ob.is_unlocked(Onboarding.F_DEWDROP)
+		&"stats", &"history", &"ledger": return not ob.is_unlocked(Onboarding.F_DEWDROP)
 		&"attributes", &"upgrades": return not ob.is_unlocked(Onboarding.F_UPGRADES)
 		&"relics": return GameState.relics == null or not ob.is_unlocked(Onboarding.F_RELICS)
 	return false
