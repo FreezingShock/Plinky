@@ -36,6 +36,11 @@ func _init() -> void:
 	root.add_child(main)
 	current_scene = main  # Juice parents its popup layer to the current scene
 	_uncap()
+	# Never touch the player's save, and start from a fresh game, so the first zone really is the meadow even when
+	# the saved game is already in Larkmoor or beyond.
+	root.get_node("Save").set("enabled", false)
+	var sim: Sim = main.get("sim") as Sim
+	sim.new_game()
 	await _frames(WARMUP_FRAMES)
 	_uncap()  # main and the saved settings turn vsync back on, so force it off again after they have run
 
@@ -44,17 +49,19 @@ func _init() -> void:
 		await _frames(30)  # let the level take effect
 		await _zone_runs(level, main, "meadow")
 	# Larkmoor last: it needs the meadow gate open, and there is no way back worth timing.
-	var sim: Sim = main.get("sim") as Sim
 	for z: ZoneDef in sim.zone_defs.values():
 		if z.next_zone == &"larkmoor":
 			sim.gates_open[z.id] = true
-	if sim.enter_zone(&"larkmoor"):
+	if sim.zone_id == &"larkmoor" or sim.enter_zone(&"larkmoor"):
 		await _frames(180)  # the zone transition plays out
 		_uncap()
 		for level: int in levels:
 			GraphicsQuality.set_level(level, false)
 			await _frames(30)
 			await _zone_runs(level, main, "larkmoor")
+	else:
+		printerr("bench: could not enter Larkmoor (zone_id=%s, unlocked=%s, gates_open=%s). No Larkmoor rows." % [
+			sim.zone_id, sim.is_zone_unlocked(&"larkmoor"), sim.gates_open])
 	SkyCycle.debug_phase = -1.0
 	SkyCycle.debug_rain = -1.0
 	_report()
