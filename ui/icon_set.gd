@@ -8,6 +8,8 @@ const SIZES: Array[int] = [8, 12, 16, 24, 32]
 
 ## Path of icon `name` at exactly `px` (one of SIZES).
 static func path(name: String, px: int) -> String:
+	if name.begins_with("r_"):   # relic icons: 16 px beside s8 s12 s24 s32 folders under icons/relics
+		return "res://assets/icons/relics/%s.png" % name if px == 16 else "res://assets/icons/relics/s%d/%s.png" % [px, name]
 	match px:
 		16:
 			return "res://assets/icons/%s.png" % name

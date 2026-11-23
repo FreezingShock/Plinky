@@ -14,6 +14,8 @@ ORDER = ['rp', 'cash', 'mult', 'reb', 'prestige', 'slag', 'heat', 'crit', 'crit_
 
 
 def dest(name, size):
+    if name.startswith('r_'):          # relic icons live in assets/icons/relics/ (16 px) with s8 s12 s24 s32 beside it
+        return os.path.join(OUT, 'relics', name + '.png') if size == 16 else os.path.join(OUT, 'relics', 's%d' % size, name + '.png')
     if size == 16:
         return os.path.join(OUT, name + '.png')
     if size == 32:
@@ -34,13 +36,17 @@ def main():
         sheets.append((n, grids))
     sheets.sort(key=lambda t: ORDER.index(t[0]) if t[0] in ORDER else 99)
     os.makedirs(os.path.join(ROOT, 'docs', 'img'), exist_ok=True)
-    half = (len(sheets) + 1) // 2
-    a = k.sheet(sheets[:half], scale=4, bg=(40, 46, 56, 255))
-    b = k.sheet(sheets[half:], scale=4, bg=(40, 46, 56, 255))
     from PIL import Image
-    im = Image.new('RGBA', (a.width + b.width, max(a.height, b.height)), (40, 46, 56, 255))
-    im.paste(a, (0, 0)); im.paste(b, (a.width, 0))
+    cols = 4
+    per = -(-len(sheets) // cols)
+    parts = [k.sheet(sheets[i * per:(i + 1) * per], scale=3, bg=(40, 46, 56, 255)) for i in range(cols) if sheets[i * per:(i + 1) * per]]
+    im = Image.new('RGBA', (sum(p.width for p in parts), max(p.height for p in parts)), (40, 46, 56, 255))
+    x = 0
+    for p in parts:
+        im.paste(p, (x, 0)); x += p.width
     im.save(os.path.join(ROOT, 'docs', 'img', 'icons_staged.png'))
+    for i, grp in enumerate(('stats', 'relics_menu')):
+        pass
     print(len(names), 'icons x', len(k.SIZES), 'sizes')
 
 
