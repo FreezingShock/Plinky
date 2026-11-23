@@ -6,6 +6,8 @@
 script = ExtResource("1")
 id = &"zone2"
 display_name = "Ember Quarry"
+description = "A hot pit of forges and slag. Build Heat on the vents, then press while it burns."
+theme_role = 4
 order = 2
 gate_stat = &"slag"
 gate_threshold = 9.0

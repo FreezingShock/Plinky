@@ -6,6 +6,8 @@
 script = ExtResource("1")
 id = &"zone1"
 display_name = "Meadow"
+description = "A quiet clearing where every pad is new. Press, walk, and let Multiplier climb until the gate opens."
+theme_role = 4
 order = 0
 gate_stat = &"reb"
 gate_threshold = 9.0

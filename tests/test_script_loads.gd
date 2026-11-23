@@ -9,6 +9,7 @@ const DIRS: Array[String] = ["res://core", "res://data", "res://ui/settings", "r
 const FILES: Array[String] = [
 	"res://ui/display_panel.gd", "res://ui/dev_console.gd", "res://ui/ascii_box.gd", "res://ui/relic_style.gd",
 	"res://ui/display_settings.gd", "res://ui/fx/pixel_button.gd",
+	"res://ui/zone_panel.gd", "res://ui/reveal_box.gd", "res://ui/hint_tip.gd", "res://ui/list_row.gd",
 ]
 
 const AUTOLOADS: PackedStringArray = ["GameState", "EventBus", "Save", "Fx", "Juice", "Audio"]

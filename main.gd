@@ -411,6 +411,7 @@ func _update_district(delta: float) -> void:
 	if id != _district_id:
 		_district_id = id
 		if id != "":
+			hud.set_district(StringName(id))
 			banner.show_name(String(d.get("name", "")))
 
 

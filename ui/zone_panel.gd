@@ -1,0 +1,380 @@
+class_name ZonePanel
+extends PanelContainer
+## Top-right zone panel: where you are (name, gate progress), a foldable travel menu of every location with its
+## areas, and the card of the area you are viewing (description, pads, mastery). While the travel menu is open the
+## card folds down to a dithered stub; closed, it shows in full. Every row is a focusable button, so keyboard and pad
+## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and glyph).
+## Mastery is read from `sim.mastery` when that exists (pad mastery API); until then the row says so.
+
+const WIDTH: float = 176.0
+const INNER: float = WIDTH - 16.0
+const CARD_STUB: float = 26.0
+
+signal travel_toggled(open: bool)
+
+var sim: Sim
+var travel_open: bool = false
+var _view_area: StringName = &""
+var _zone: StringName = &""
+var _title: Label
+var _gate_box: VBoxContainer
+var _gate_bar: DitherBar
+var _gate_label: Label
+var _travel_btn: PixelButton
+var _travel: RevealBox
+var _tip: HintTip
+var _zone_rows: Dictionary = {}     # zone id -> ListRow
+var _zone_toggles: Dictionary = {}  # zone id -> ListRow
+var _zone_areas: Dictionary = {}    # zone id -> RevealBox
+var _area_rows: Dictionary = {}     # area id -> ListRow
+var _card: RevealBox
+var _card_title: Label
+var _card_desc: Label
+var _card_pads: VBoxContainer
+var _pad_rows: Dictionary = {}      # button id -> Label
+var _mastery_label: Label
+var _mastery_bar: DitherBar
+var _card_area: StringName = &""
+var _gated: Array[Control] = []     # parts that wait for the rebirth row to unlock
+
+
+func _init() -> void:
+	add_theme_stylebox_override("panel", AsciiBox.panel())
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func setup(p_sim: Sim) -> void:
+	sim = p_sim
+	_tip = HintTip.new()
+	add_child(_tip)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	_title = Label.new()
+	_title.theme_type_variation = &"TitleLabel"
+	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_title.clip_text = true
+	head.add_child(_title)
+	_travel_btn = PixelButton.new()
+	_travel_btn.text = "Travel +"
+	_travel_btn.pressed.connect(func() -> void: set_travel_open(not travel_open))
+	_tip.attach(_travel_btn, func() -> Array: return ["Travel", "Pick a place to go, or look at another area. Hide the menu to read the full area card."])
+	head.add_child(_travel_btn)
+	_gate_box = VBoxContainer.new()
+	_gate_box.add_theme_constant_override("separation", 2)
+	v.add_child(_gate_box)
+	_gate_bar = DitherBar.new(INNER)
+	_gate_box.add_child(_gate_bar)
+	_gate_label = Label.new()
+	_gate_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	_tip.attach(_gate_label, _gate_tip)
+	_gate_box.add_child(_gate_label)
+	_gated = [_gate_box, _travel_btn]
+	_travel = RevealBox.new()
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 0)
+	_travel.add_child(list)
+	v.add_child(_travel)
+	_build_list(list)
+	_travel.set_open(false, false)
+	_card = RevealBox.new()
+	_card.fade = true
+	_card.floor_px = 0.0
+	var card := VBoxContainer.new()
+	card.add_theme_constant_override("separation", 2)
+	_card.add_child(card)
+	v.add_child(_card)
+	_build_card(card)
+
+
+func gated_parts() -> Array[Control]:
+	return _gated
+
+
+# ------------------------------------------------------------ travel list
+
+func _zones_sorted() -> Array[ZoneDef]:
+	var out: Array[ZoneDef] = []
+	for z: ZoneDef in sim.zone_defs.values():
+		out.append(z)
+	out.sort_custom(func(a: ZoneDef, b: ZoneDef) -> bool: return a.order < b.order)
+	return out
+
+
+func palette_of(zone_id: StringName) -> PackedColorArray:
+	return Palettes.colors(Palettes.for_zone(zone_id))
+
+
+func zone_colour(z: ZoneDef) -> Color:
+	return palette_of(z.id)[clampi(z.theme_role, 0, 7)]
+
+
+func area_colour(a: AreaDef) -> Color:
+	return palette_of(a.zone)[clampi(a.theme_role, 0, 7)]
+
+
+func _build_list(list: VBoxContainer) -> void:
+	for z in _zones_sorted():
+		var zid: StringName = z.id
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 0)
+		list.add_child(head)
+		var tog := ListRow.new()
+		tog.text = "+"
+		tog.custom_minimum_size.x = 18
+		tog.tint = zone_colour(z)
+		tog.pressed.connect(func() -> void: _toggle_zone(zid))
+		_tip.attach(tog, func() -> Array: return ["Areas", "Show or hide the areas inside %s." % z.display_name])
+		head.add_child(tog)
+		_zone_toggles[zid] = tog
+		var row := ListRow.new()
+		row.tint = zone_colour(z)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.pressed.connect(func() -> void: _go(zid, &""))
+		_tip.attach(row, func() -> Array: return _zone_tip(zid))
+		head.add_child(row)
+		_zone_rows[zid] = row
+		var reveal := RevealBox.new()
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 0)
+		reveal.add_child(box)
+		list.add_child(reveal)
+		_zone_areas[zid] = reveal
+		for a in sim.areas_in_zone(zid):
+			var aid: StringName = a.id
+			var ar := ListRow.new()
+			ar.tint = area_colour(a)
+			ar.text = "  %s %s" % [a.glyph, a.display_name]
+			ar.pressed.connect(func() -> void: _go(zid, aid))
+			_tip.attach(ar, func() -> Array: return _area_tip(aid))
+			box.add_child(ar)
+			_area_rows[aid] = ar
+		reveal.set_open(zid == sim.zone_id, false)
+
+
+func _toggle_zone(zid: StringName, animate: bool = true) -> void:
+	var r: RevealBox = _zone_areas[zid]
+	r.set_open(not r._target, animate)
+	_sync_toggles()
+
+
+func _sync_toggles() -> void:
+	for zid: StringName in _zone_toggles:
+		(_zone_toggles[zid] as ListRow).text = "-" if (_zone_areas[zid] as RevealBox)._target else "+"
+
+
+func set_travel_open(on: bool, animate: bool = true) -> void:
+	travel_open = on
+	_travel.set_open(on, animate)
+	if on:
+		_card.floor_px = CARD_STUB
+		_card.set_open(false, animate)
+	else:
+		var b: Control = _card.body()
+		var full: float = maxf(b.get_combined_minimum_size().y, 1.0) if b != null else 1.0
+		_card.floor_px = 0.0
+		_card.amount = minf(CARD_STUB / full, 1.0)
+		_card.set_open(true, animate)
+	_travel_btn.text = "Travel -" if on else "Travel +"
+	_tip.hide_tip()
+	travel_toggled.emit(on)
+
+
+## Travel to `zid` if needed, then show `aid` (or the zone's first area).
+func _go(zid: StringName, aid: StringName) -> void:
+	if zid != sim.zone_id:
+		if not sim.enter_zone(zid):
+			return
+	_zone = zid
+	var areas: Array[AreaDef] = sim.areas_in_zone(zid)
+	_view_area = aid if aid != &"" else (areas[0].id if not areas.is_empty() else &"")
+	refresh()
+
+
+## The walker walked into an area of the current zone.
+func set_district(aid: StringName) -> void:
+	if sim == null or not sim.area_defs.has(aid):
+		return
+	if (sim.area_defs[aid] as AreaDef).zone == sim.zone_id:
+		_view_area = aid
+		refresh()
+
+
+func view_area() -> StringName:
+	return _view_area
+
+
+# ------------------------------------------------------------ card
+
+func _build_card(card: VBoxContainer) -> void:
+	_card_title = Label.new()
+	_card_title.theme_type_variation = &"TitleLabel"
+	card.add_child(_card_title)
+	_card_desc = Label.new()
+	_card_desc.custom_minimum_size.x = INNER
+	_card_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_card_desc.add_theme_color_override("font_color", RelicStyle.text)
+	card.add_child(_card_desc)
+	_card_pads = VBoxContainer.new()
+	_card_pads.add_theme_constant_override("separation", 0)
+	card.add_child(_card_pads)
+	_mastery_label = Label.new()
+	_mastery_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	_tip.attach(_mastery_label, _mastery_tip)
+	card.add_child(_mastery_label)
+	_mastery_bar = DitherBar.new(INNER)
+	card.add_child(_mastery_bar)
+
+
+func _rebuild_card() -> void:
+	_card_area = _view_area
+	for c in _card_pads.get_children():
+		c.queue_free()
+	_pad_rows.clear()
+	var a: AreaDef = sim.area_defs.get(_view_area) as AreaDef
+	if a == null:
+		var z: ZoneDef = sim.current_zone()
+		_card_title.text = z.display_name if z != null else ""
+		_card_desc.text = z.description if z != null else ""
+		return
+	var col: Color = area_colour(a)
+	_card_title.text = "%s %s" % [a.glyph, a.display_name]
+	_card_title.add_theme_color_override("font_color", col)
+	_card_desc.text = a.blurb
+	_mastery_bar.fill = col
+	for bid in a.pad_buttons:
+		var l := Label.new()
+		l.mouse_filter = Control.MOUSE_FILTER_STOP
+		var id: StringName = StringName(bid)
+		_tip.attach(l, func() -> Array: return _pad_tip(id))
+		_card_pads.add_child(l)
+		_pad_rows[id] = l
+
+
+func _pad_tip(id: StringName) -> Array:
+	var b: ButtonDef = sim.button_defs.get(id) as ButtonDef
+	if b == null:
+		return []
+	var cost: BigNum = Formulas.button_cost(b)
+	var cost_name: String = (sim.stat_defs[b.cost_stat] as StatDef).display_name
+	var gain_name: String = (sim.stat_defs[b.reward_stat] as StatDef).display_name
+	var state: String = "Ready. Stand on it or hold click." if sim.can_afford(id) else "Need %s more." % cost.sub(sim.get_stat(b.cost_stat)).format()
+	return ["%s %d" % [String(b.row).capitalize(), b.row_index + 1], "Costs %s %s. Gives +%s %s.\n%s" % [cost.format(), cost_name, sim.press_gain_preview(id).format(), gain_name, state]]
+
+
+func _area_pads(aid: StringName) -> PackedStringArray:
+	var a: AreaDef = sim.area_defs.get(aid) as AreaDef
+	return a.pad_buttons if a != null else PackedStringArray()
+
+
+## [pad levels summed, level cap total, mean progress 0..1] or an empty array when pad mastery is not in the game yet.
+func _mastery_of(aid: StringName) -> Array:
+	var m: Variant = sim.get("mastery")
+	if m == null or not (m as Object).has_method("level"):
+		return []
+	var lv: int = 0
+	var prog: float = 0.0
+	var n: int = 0
+	for bid in _area_pads(aid):
+		var id: StringName = StringName(bid)
+		lv += int(m.level(id))
+		prog += float(m.progress(id)) if m.has_method("progress") else 0.0
+		n += 1
+	return [lv, n, prog / maxf(float(n), 1.0)]
+
+
+func _mastery_tip() -> Array:
+	if _mastery_of(_view_area).is_empty():
+		return ["Mastery", "Pads you press a lot grow in skill. This area has nothing to train yet."]
+	return ["Mastery", "Every press trains its pad. Each level adds crit chance and crit damage. The bar is the average progress to the next level."]
+
+
+func _zone_tip(zid: StringName) -> Array:
+	var z: ZoneDef = sim.zone_defs[zid] as ZoneDef
+	if not sim.is_zone_unlocked(zid):
+		var prev: String = ""
+		for o: ZoneDef in sim.zone_defs.values():
+			if o.next_zone == zid:
+				prev = o.display_name
+		return ["Locked", "Open the gate in %s to come here." % prev]
+	var n_pads: int = z.pad_buttons.size()
+	var state: String = "You are here." if zid == sim.zone_id else "Click to travel."
+	return [z.display_name, "%s\n%d areas, %d pads." % [state, sim.areas_in_zone(zid).size(), n_pads]]
+
+
+func _area_tip(aid: StringName) -> Array:
+	var a: AreaDef = sim.area_defs[aid] as AreaDef
+	var here: String = " You are in this zone." if a.zone == sim.zone_id else " Click to travel there."
+	return [a.display_name, "%s\n%d pads.%s" % [a.blurb, a.pad_buttons.size(), here]]
+
+
+func _gate_tip() -> Array:
+	var z: ZoneDef = sim.current_zone()
+	if z == null or z.gate_stat == &"":
+		return []
+	var nm: String = (sim.stat_defs[z.gate_stat] as StatDef).display_name
+	return ["Gate", "Reach %d %s to open the way on. Walk into the gate once it glows." % [int(z.gate_threshold), nm]]
+
+
+# ------------------------------------------------------------ refresh (10 Hz from the Hud)
+
+func refresh() -> void:
+	var z: ZoneDef = sim.current_zone()
+	if z == null:
+		return
+	if z.id != _zone:
+		_zone = z.id
+		var areas: Array[AreaDef] = sim.areas_in_zone(z.id)
+		if not sim.area_defs.has(_view_area) or (sim.area_defs[_view_area] as AreaDef).zone != z.id:
+			_view_area = areas[0].id if not areas.is_empty() else &""
+		for zid: StringName in _zone_areas:
+			(_zone_areas[zid] as RevealBox).set_open(zid == z.id)
+		_sync_toggles()
+	if _card_area != _view_area or _pad_rows.is_empty() and _view_area != &"":
+		_rebuild_card()
+	_title.text = z.display_name
+	_title.add_theme_color_override("font_color", zone_colour(z))
+	for zid: StringName in _zone_rows:
+		var zd: ZoneDef = sim.zone_defs[zid] as ZoneDef
+		var row: ListRow = _zone_rows[zid]
+		var open: bool = sim.is_zone_unlocked(zid)
+		row.text = zd.display_name if open else "Locked"
+		row.disabled = not open
+		row.marked = zid == sim.zone_id
+		(_zone_toggles[zid] as ListRow).disabled = not open
+		(_zone_areas[zid] as RevealBox).visible = open
+	for aid: StringName in _area_rows:
+		(_area_rows[aid] as ListRow).marked = aid == _view_area
+	for bid: StringName in _pad_rows:
+		var b: ButtonDef = sim.button_defs[bid]
+		var ready: bool = sim.can_afford(bid)
+		var l: Label = _pad_rows[bid]
+		l.text = "%s %s %d  %s" % ["*" if ready else "-", String(b.row).capitalize(), b.row_index + 1, Formulas.button_cost(b).format()]
+		l.add_theme_color_override("font_color", RelicStyle.accent if ready else RelicStyle.dim)
+	var ms: Array = _mastery_of(_view_area)
+	if ms.is_empty():
+		_mastery_label.text = "Mastery  not trained yet"
+		_mastery_label.add_theme_color_override("font_color", RelicStyle.dim)
+		_mastery_bar.value = 0.0
+	else:
+		_mastery_label.text = "Mastery  Lv %d" % int(ms[0])
+		_mastery_label.add_theme_color_override("font_color", RelicStyle.text)
+		_mastery_bar.value = float(ms[2])
+	_gate_text(z)
+
+
+func _gate_text(z: ZoneDef) -> void:
+	if z.gate_stat == &"":
+		_gate_bar.visible = false
+		_gate_label.text = "No gate here"
+		return
+	_gate_bar.visible = true
+	if sim.is_gate_open(z.id):
+		_gate_bar.value = 1.0
+		_gate_label.text = "Gate open! Walk in." if z.next_zone != &"" else "Gate open! Nothing past it yet."
+		return
+	var have: float = minf(sim.get_stat(z.gate_stat).to_float(), z.gate_threshold)
+	_gate_bar.value = have / z.gate_threshold
+	_gate_label.text = "%d/%d %s" % [int(have), int(z.gate_threshold), (sim.stat_defs[z.gate_stat] as StatDef).display_name]

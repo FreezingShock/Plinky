@@ -201,3 +201,10 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
+
+## 2026-11-23: Zone menu, areas and the zone card
+- New `AreaDef` (content/areas/*.tres, loaded into `sim.areas_in_zone()`): a named sub-area of a zone with a glyph, a palette role and the pads it lists. Larkmoor's seven districts reuse the district ids from the scene (so the walker entering a district moves the card), the Meadow has Starting Clearing and Standing Stones (invented names), the Quarry has Forge Floor. `ZoneDef` gained `description` and `theme_role`.
+- `ZonePanel` replaces the gate panel, the Go buttons and the Pads list: title, gate bar, a foldable Travel menu (every location with its areas, each in its zone palette colour, locked zones shown as Locked), and the current area card (description, every pad with cost, mastery). With Travel open the card folds to a 26 texel dithered stub; closed it shows in full. Folding is `RevealBox` (8 steps, 0.22 s). Rows are focusable `ListRow`s with the marching-dot ring.
+- Clicking a location or an area in another zone travels there and shows that area. Clicking an area in the current zone only views it; walking into a district moves the card back.
+- Mastery row reads `sim.mastery` (level/progress per pad) when it exists and says "not trained yet" until then. Tooltips use a small local `HintTip`; switch to `Tip.bind` once PR #73 lands.
+- Not run in-engine from the cloud.
