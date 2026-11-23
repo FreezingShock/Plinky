@@ -412,7 +412,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 
 - Fix (v0.14.1): the stage-up pop grew the stage name from 14 to 16 pt, which made the row taller and pushed the bar to the panel border. Removed; stage-ups are colour and frame flash only, and the stage label has a fixed minimum width.
 
-## 2026-11-23 Hold-to-buy and Rebirth Points (v0.15.0)
+## 2026-11-23 Hold-to-buy and Rebirth Points (v0.16.0)
 - Hold-to-buy: holding an Upgrades Buy button (mouse, Enter/Space or pad confirm) keeps buying, after a 0.35 s delay, one level per 0.2 s speeding up to 0.04 s over a few seconds (`core/hold_repeat.gd`, pure and tested). It stops the moment the next level is unaffordable or maxed. Repeats play a light animation (pip pop and a quiet click; no squash, flying cost or number tick). The gallery detail page Buy is still click-only.
 - Header: "Prestige to spend: N" became right-aligned balances on the title row, icon plus value in the stat colour (RP then Prestige), with stat tooltips. The gallery Attributes sub line reads "N Prestige   N RP".
 - Rebirth Points (RP) are a new currency, `content/stats/rp.tres`. Each rebirth pays `rp_base + rp_growth x rebirths done` (1 + 0.1 per rebirth, rounded down, GameConfig). RP is a balance (spending lowers it), never resets, is not income, and does not touch the Multiplier: rebirths still only boost Multiplier gain. Shown in the HUD currency panel as "RP" once you have rebirthed, in the Stats gallery as Rebirth Points, and in the Rebirth tooltip.

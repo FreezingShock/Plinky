@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.15.0 - 2026-11-23
+## 0.16.0 - 2026-11-23
 - Hold a Buy button in Upgrades to keep buying, faster the longer you hold. The Upgrades header shows Prestige as an icon and value on the right. New currency: Rebirth Points, paid on every rebirth and spent on Rebirth perks (Pad lore, Lucky streak, Deep sleep). World popups no longer draw over open menus. Save format v4.
+
+## 0.14.7 - 2026-11-23
+- Ember Quarry: the near cliff face is now layered basalt strata with ember seams, a lip highlight and a fall-off to dark; pads and the spawn sit well back from the lip; walk clicks near a ledge land a few texels back from the edge.
 
 ## 0.14.6 - 2026-11-23
 - Stats and Attributes window is centred by the HUD, so it stays centred at Wide and other view sizes; the detail header keeps a minimum width for the value so a long name can't clip it.

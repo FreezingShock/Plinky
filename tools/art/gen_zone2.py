@@ -221,6 +221,8 @@ class Scene:
             pos = np.clip(S[sel], 0, 0.999) * ln + (th[sel] - .5) * 0.9
             idx = np.clip(np.floor(pos + .5).astype(int), 0, ln)
             out[sel] = np.array(ramp, np.uint8)[idx]
+        if self.pal == 'quarry':
+            self._quarry_cliff(out, S, Mat, F, ID, th, yy, xx)
         # fallback for unknown materials
         miss = alpha & ~np.isin(Mat, list(ramps.keys()))
         out[miss] = 6
@@ -241,6 +243,36 @@ class Scene:
         lip = (F == 1) & (above == 0) & (DR > 5) & alpha & (pid == 0)
         out[lip & ~edge] = 5 if self.pal == 'quarry' else 4
         return out, alpha
+
+    def _quarry_cliff(self, out, S, Mat, F, ID, th, yy, xx):
+        """Layered basalt strata on the rock faces: tone bands with a wobble, a soot crack between layers, ember
+        seams that thin out with depth, and a falloff to soot below the lip (the lip highlight is added later)."""
+        face = (Mat == M_WALL) & (F == 1) & (ID == 0)
+        if not face.any():
+            return
+        depth = np.zeros((GH, GW), np.int32)
+        for y in range(1, GH):
+            depth[y] = np.where(face[y], np.where(face[y - 1], depth[y - 1] + 1, 1), 0)
+        wob = (3.0 * np.sin(xx / 23.0 + 1.3) + 2.0 * np.sin(xx / 9.0) + 1.5 * (h2(xx // 6, np.zeros_like(xx), 5) - .5) * 4).astype(np.int64)
+        rows = yy + wob
+        band = rows // 6
+        tone = h2(band.astype(np.int64), np.zeros_like(band, dtype=np.int64), 17)
+        fade = np.clip(1.0 - depth / 120.0, 0.0, 1.0)
+        v = np.clip(0.32 + 0.45 * S + 0.28 * (tone - .5) + 0.30 * fade - 0.28, 0.0, 1.0) * (0.35 + 0.65 * fade)
+        ramp = np.array([0, 1, 6, 2], np.uint8)
+        pos = v * 3.0 + (th - .5) * 0.9
+        idx = ramp[np.clip(np.floor(pos + .5).astype(int), 0, 3)]
+        crack = (rows % 6 == 0) & (depth > 2)
+        idx = np.where(crack, 0, idx)
+        hi = (rows % 6 == 1) & (tone > .55) & (depth > 2) & (fade > .25)
+        idx = np.where(hi & (th > 5), 6, idx)
+        # ember seams: short dashes inside a layer, sparser the deeper they sit
+        cell = h2((xx // 5).astype(np.int64), band.astype(np.int64), 29)
+        dash = (cell > 0.90 + 0.09 * (1.0 - fade)) & (rows % 6 == 3) & (depth > 4) & (depth < 95)
+        idx = np.where(dash, np.where(((xx // 5) % 2) == 0, 3, 2), idx)
+        core = dash & (cell > 0.965) & (rows % 6 == 3) & (xx % 5 == 2)
+        idx = np.where(core, 4, idx)
+        out[face] = idx[face]
 
     def terrain_masks(self):
         return None
@@ -468,14 +500,19 @@ def screen_of(sc, u, v):
 def bake_quarry(outdir, preview=None):
     rng = np.random.default_rng(7)
     sc = build_quarry()
-    inner = visible_walk(sc, 8)
-    sc.walk &= visible_walk(sc, 3)
+    inner = visible_walk(sc, 14)
+    vis3 = visible_walk(sc, 3)
     global SPAWN_WD
     SPAWN_WD = snap_to(inner, SPAWN_WD)
     keep = [wd_uv(*SPAWN_WD)]
     for i, p in enumerate(PADS_WD):
         PADS_WD[i] = snap_to(inner, p, keep)
         keep.append(wd_uv(*PADS_WD[i]))
+    for i, p in enumerate(VENTS_WD):
+        VENTS_WD[i] = snap_to(inner, p, keep, gap=16.0)
+        keep.append(wd_uv(*VENTS_WD[i]))
+    sc = build_quarry()   # the vent glow is painted from VENTS_WD, so rebuild with the snapped positions
+    sc.walk &= vis3
     populate_quarry(sc, rng)
     finalize_props_walk(sc)
     os.makedirs(os.path.join(outdir, 'sprites'), exist_ok=True)
