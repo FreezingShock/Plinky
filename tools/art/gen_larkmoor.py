@@ -479,7 +479,15 @@ anchors.append(dict(kind='arch', u=GATE2[0], v=GATE2[1], sx=LAY.HOLLOW_GATE[0], 
 anchors.append(dict(kind='player_spawn', sx=LAY.SPAWN[0], sy=LAY.SPAWN[1], u=s2uv(*LAY.SPAWN)[0], v=s2uv(*LAY.SPAWN)[1]))
 for d_ in LAY.DISTRICTS: anchors.append(dict(kind='district', name=d_['name'], id=d_['id'], u=s2uv(*d_['c'])[0], v=s2uv(*d_['c'])[1], sx=d_['c'][0], sy=d_['c'][1]))
 for a_ in anchors:
-    if a_['kind'] in ('pad', 'gate', 'arch', 'player_spawn'): placed.append((a_['u'], a_['v'], 12 if a_['kind'] == 'pad' else 18 if a_['kind'] != 'player_spawn' else 8))
+    if a_['kind'] in ('pad', 'gate', 'arch', 'player_spawn'): placed.append((a_['u'], a_['v'], 14 if a_['kind'] == 'pad' else 18 if a_['kind'] != 'player_spawn' else 8))
+# a tier is a line of pads: keep the gaps between them clear, and the ground just south of each plate (a tall tree standing
+# there would hide the pad behind its crown)
+for d_ in LAY.DISTRICTS:
+    for (x0, y0), (x1, y1) in zip(d_['pads'], d_['pads'][1:]):
+        placed.append((*s2uv((x0 + x1) / 2, (y0 + y1) / 2), 12))
+    for (sx, sy) in d_['pads']:
+        for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
+            placed.append((*s2uv(sx + ox_, sy + oy_), 9))
 # the two gateways (onboarding arch in the south, Emberwatch gate in the north), framing the walk-through
 for _g in (GATE, GATE2): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False)
 # landmarks first so groves flow around them

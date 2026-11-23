@@ -4,7 +4,8 @@ extends Node
 ## Follow: smooth chase of the walker. Zoom: mouse wheel or +/-, integer levels only, so every
 ## texel stays a whole number of screen texels (pixel snap at every zoom). Pan: hold right or
 ## middle mouse and drag, or push the mouse to a window edge. The pan drifts back to the walker
-## after a short idle (sooner while the walker moves). C or Home snaps back at once.
+## after a short idle (sooner while the walker moves). Home (rebindable) snaps back at once. A jump lifts the view by
+## two thirds of its height, eased; a hard landing thumps it; sprinting leans it further ahead.
 ## Polish layers, all off under Calm camera (WorldCamera.calm), all whole-texel at the end:
 ## look-ahead leans the view a few texels in the walk direction, a punch kicks it on a crit, and a slow
 ## drift sways it after a long stillness. None of them touch pan, so follow, zoom and pan behave as before.
@@ -31,6 +32,10 @@ const DRIFT_DELAY: float = 6.0          # seconds of stillness before the drift 
 const DRIFT_FADE: float = 4.0           # seconds to fade it in
 const DRIFT_AMPLITUDE: Vector2 = Vector2(4.0, 2.5)   # world texels
 const DRIFT_PERIOD: Vector2 = Vector2(23.0, 31.0)    # seconds, two slow axes
+const LIFT_FOLLOW: float = 0.65         # share of a jump's height the view rises with (a jump nudges it, never throws it)
+const LIFT_RATE: float = 6.0            # ease rate of that rise
+const SPRINT_LOOK: float = 0.9          # extra look-ahead per +1.0 of the walker's speed factor
+const THUMP_TEXELS: float = 2.5         # a hard landing's downward kick, screen texels
 const FOCUS_LIFT: Vector2 = Vector2(0.0, -6.0)   # aim at the walker's body, not its feet
 
 var world: Node2D
@@ -51,6 +56,7 @@ var _punch: Vector2 = Vector2.ZERO
 var _still: float = 0.0
 var _clock: float = 0.0
 var _last_target: Vector2 = Vector2.ZERO
+var _lift: float = 0.0                   # eased height the view has risen with the walker's jump
 
 
 func _ready() -> void:
@@ -61,6 +67,8 @@ func _ready() -> void:
 	var bus: Node = get_node_or_null("/root/EventBus")
 	if bus != null and not bus.is_connected(&"button_pressed", _on_pressed):
 		bus.connect(&"button_pressed", _on_pressed)
+	if target != null and target.has_signal(&"landed") and not target.is_connected(&"landed", land_thump):
+		target.connect(&"landed", land_thump)
 	_apply()
 
 
@@ -68,6 +76,10 @@ func _process(delta: float) -> void:
 	if world == null:
 		return
 	var z: float = float(zoom_level)
+	var lift_goal: float = 0.0
+	if target != null and not calm and "lift" in target:
+		lift_goal = float(target.get("lift")) * LIFT_FOLLOW
+	_lift = lift_follow_step(_lift, lift_goal, delta)
 	var manual: bool = _dragging
 	var stick: Vector2 = PadInput.pan_vector()
 	if stick != Vector2.ZERO:
@@ -89,7 +101,7 @@ func _process(delta: float) -> void:
 	pan = base - _follow_point()
 	_update_polish(delta, manual)
 	var goal: Vector2 = _clamp_center(base + _look + _drift())
-	_center = _center.lerp(goal, 1.0 - exp(-FOLLOW_RATE * delta))
+	_center = _center.lerp(goal, 1.0 - exp(-follow_rate(_speed_factor()) * delta))
 	_apply()
 
 
@@ -106,10 +118,39 @@ func _update_polish(delta: float, manual: bool) -> void:
 		_punch = Vector2.ZERO
 		_still = 0.0
 		return
-	var want: Vector2 = look_ahead_goal(step, delta, moving, LOOK_AHEAD)
+	var want: Vector2 = look_ahead_goal(step, delta, moving, look_reach(_speed_factor()))
 	_look = lean_step(_look, want, delta)
 	_punch = _punch.lerp(Vector2.ZERO, 1.0 - exp(-PUNCH_DECAY * delta))
 	_still = 0.0 if (moving or manual) else _still + delta
+
+
+## The walker's eased speed factor (1 walking, higher sprinting or after a jump), 1 when the target has none.
+func _speed_factor() -> float:
+	if target != null and "speed_factor" in target:
+		return float(target.get("speed_factor"))
+	return 1.0
+
+
+## Look-ahead reach for a speed factor: it leans further the faster the walker runs, so sprinting shows more road.
+static func look_reach(factor: float) -> float:
+	return LOOK_AHEAD * (1.0 + clampf(factor - 1.0, 0.0, 1.2) * SPRINT_LOOK)
+
+
+## Follow rate for a speed factor: a touch tighter at speed so the walker never outruns the view.
+static func follow_rate(factor: float) -> float:
+	return FOLLOW_RATE * (1.0 + clampf(factor - 1.0, 0.0, 1.2) * 0.35)
+
+
+## One eased step of the view's rise toward `goal` (a share of the walker's jump height). Exponential, no overshoot.
+static func lift_follow_step(cur: float, goal: float, delta: float) -> float:
+	return lerpf(cur, goal, 1.0 - exp(-LIFT_RATE * delta))
+
+
+## A landing's downward thump, the same kick as a crit but scaled by how hard the walker came down.
+func land_thump(impact: float) -> void:
+	if calm:
+		return
+	_punch = Vector2(0.0, THUMP_TEXELS * clampf(impact, 0.0, 1.2) / 1.2)
 
 
 func _on_pressed(_id: StringName, _pos: Vector3, _gain: BigNum, crit: bool) -> void:
@@ -191,7 +232,7 @@ func recenter() -> void:
 
 
 func _follow_point() -> Vector2:
-	return (target.position + FOCUS_LIFT) if target != null else frame * 0.5
+	return (target.position + FOCUS_LIFT - Vector2(0.0, _lift)) if target != null else frame * 0.5
 
 
 ## Keep the view inside `area`. When the view is as big as the area or bigger on an axis, centre on it.

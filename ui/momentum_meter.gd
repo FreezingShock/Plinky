@@ -19,6 +19,8 @@ var _ghost_wait: float = 0.0
 var _flash: float = 0.0
 var _blink: float = 0.0
 var _last_tier: int = 0
+var _sprint: Label        ## floats above the panel: SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock)
+var _sprint_state: int = 0
 
 
 func setup(p_sim: Sim) -> void:
@@ -53,6 +55,19 @@ func setup(p_sim: Sim) -> void:
 	_value.custom_minimum_size.x = 42
 	_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(_value)
+	_sprint = _title("", RelicStyle.accent)
+	_sprint.top_level = true   # outside the container's layout, so showing it never resizes the panel
+	var plate := StyleBoxFlat.new()   # a dark backing, so the busy ground never shows through the letters
+	plate.bg_color = Color("14161c")
+	plate.set_border_width_all(1)
+	plate.border_color = RelicStyle.edge
+	plate.content_margin_left = 4.0
+	plate.content_margin_right = 4.0
+	plate.content_margin_top = 0.0
+	plate.content_margin_bottom = 1.0
+	_sprint.add_theme_stylebox_override("normal", plate)
+	_sprint.visible = false
+	add_child(_sprint)
 	Tip.bind_all(self, Callable(self, "_spec"))
 	_apply()
 
@@ -81,9 +96,10 @@ func _tier_color(tier: int) -> Color:
 
 func _process(delta: float) -> void:
 	# Appears with the Multiplier row, so a brand new player sees Cash alone (see Onboarding).
-	var on: bool = DisplaySettings.momentum_meter and _sim != null and GameState.onboarding.is_unlocked(Onboarding.F_MULT)
+	var on: bool = DisplaySettings.momentum_meter and _sim != null and GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)
 	if visible != on:
 		visible = on
+	_update_sprint_label(on)
 	if not on:
 		return
 	var target: float = _sim.momentum
@@ -106,6 +122,22 @@ func _process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta / FLASH_TIME)
 	_blink += delta
 	_apply()
+
+
+func _update_sprint_label(panel_on: bool) -> void:
+	var st: int = 0
+	if panel_on and is_inside_tree():
+		var w: Node = get_tree().get_first_node_in_group(&"walker")
+		if w != null and w.has_method(&"sprint_state"):
+			st = int(w.call(&"sprint_state"))
+	if st != _sprint_state:
+		_sprint_state = st
+		_sprint.text = WalkerMotion.sprint_text(st)
+		_sprint.add_theme_color_override("font_color", RelicStyle.accent if st == 1 else RelicStyle.good)
+		_sprint.reset_size()
+	_sprint.visible = st > 0
+	if st > 0:
+		_sprint.global_position = global_position + Vector2(0.0, -_sprint.size.y - 1.0)
 
 
 func _apply() -> void:

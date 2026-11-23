@@ -55,7 +55,7 @@ Palette shift on zone entry: blend the two palette textures over 1.5 seconds (SP
 - Popups: palette 5, bold, rise and fade over about 0.8 seconds.
 
 ## 6. Character
-- Hooded walker, 7 x 10 texels. Index 0 outline, 5 butter cape, 7 paper face. Colour comes from palette indices, so it changes with the zone.
+- Hooded walker (v3, redrawn 2026-11-23), about 17 x 30 texels. Index 0 outline, 6 terracotta cloak with 5 highlight and 1 shadow, 1-3 dark scarf, 5/7 face. Colour comes from palette indices, so it changes with the zone. Atlas has 20 poses (walk, crouch, slide, jump rise and fall); squash, stretch and lean are procedural, drawn a texel row at a time so nothing leaves the grid. No baked ground shadow: SkyShadows casts it and shrinks it in a jump. Generator: tools/art/gen_walker.py.
 - Rows (k = ink, p = paper, b = butter):
 ```
 ..kkk..

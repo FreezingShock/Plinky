@@ -8,6 +8,7 @@ id = &"cash"
 display_name = "Cash"
 tier = 0
 start = 10.0
+zones = PackedStringArray("zone2")
 passive = true
 income_boost_stat = &"mult"
 gain_boost_stat = &""

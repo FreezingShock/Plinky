@@ -1,5 +1,5 @@
 extends RefCounted
-## Tooltip system: spec normalising, bind bookkeeping, delay, grace window, and staying on screen.
+## Tooltip system: spec normalising, bind bookkeeping, instant show and hide, and staying on screen.
 
 func run(t: Object) -> void:
 	var d: Dictionary = Tip.normalize("hello")
@@ -11,7 +11,7 @@ func run(t: Object) -> void:
 	d = Tip.normalize(func() -> Variant: return {"body": "live"})
 	t.eq(d["body"], "live", "a Callable spec is evaluated")
 
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+	for sid: StringName in [&"sunlight", &"dewdrop", &"clover", &"slag", &"prestige"]:
 		t.ok(str(TipText.stat(sid, "x")["body"]) != "", "stat tooltip text exists for %s" % sid)
 	var a := AttributeDef.new()
 	a.display_name = "Luck"
@@ -66,25 +66,17 @@ func run(t: Object) -> void:
 	h._adopt_theme(inner)
 	t.ok(h.theme == th, "the tooltip borrows the theme of the control it describes, so it gets the game's fonts")
 	themed.queue_free()
+	# Minecraft-style: no delay, no grace, no fade. The tip is up the same frame the control is entered.
 	h.request(c, false)
-	t.ok(not h.visible, "a hover tip waits for its delay")
-	h._process(TipHost.HOVER_DELAY + 0.01)
-	t.ok(h.visible, "a hover tip shows after the delay")
+	t.ok(h.visible, "a hover tip shows at once, with no delay")
 	h.dismiss()
 	t.ok(not h.visible, "dismiss hides it")
-	h.request(c, false)
-	t.ok(h.visible, "the next tip shows at once inside the grace window")
-	h.dismiss()
-	h._process(TipHost.GRACE + 0.5)
 	h.request(c, true)
-	t.ok(not h.visible and TipHost.FOCUS_DELAY < TipHost.HOVER_DELAY, "focus uses the shorter delay")
-	h._process(TipHost.FOCUS_DELAY + 0.01)
-	t.ok(h.visible, "a focus tip shows after its short delay")
+	t.ok(h.visible, "a focus tip shows at once too")
 	h.dismiss()
 
 	# Stays on screen even when asked for far outside the corner.
 	h.show_free({"title": "Pad", "body": "Costs a lot of something, so the box is wide enough to need wrapping."}, Vector2(99999, 99999))
-	h._process(TipHost.HOVER_DELAY + 0.01)
 	var view: Vector2 = h._view_size()
 	t.ok(h.visible, "a free tip shows")
 	t.ok(h.position.x >= 0.0 and h.position.y >= 0.0, "a free tip is not above or left of the screen")
@@ -92,26 +84,30 @@ func run(t: Object) -> void:
 	h.hide_free()
 	t.ok(not h.visible, "hide_free hides it")
 
-	# Hover stays up for as long as the mouse rests on the control, and goes once it has left.
+	# Hover: picked up on the frame the mouse is over a bound control, stays while it rests there, and is gone on
+	# the very frame the mouse leaves. Sliding straight onto another bound control swaps on that same frame.
 	h.dismiss()
-	h._process(1.0)
 	h.test_hover_enabled = true
 	h.test_hover = c
-	h._process(0.016)   # discovery: the control under the mouse is bound, so it is requested
-	t.ok(h.target == c, "a bound control under the mouse is picked up without any mouse_entered signal")
+	h._process(1.0 / 60.0)
+	t.ok(h.target == c and h.visible, "a bound control under the mouse shows on the first frame, with no mouse_entered signal")
 	var held: bool = true
 	for i in 90:
 		h._process(1.0 / 60.0)
-		if i > 30 and not h.visible:
+		if not h.visible:
 			held = false
-	t.ok(held and h.visible, "a hover tooltip stays visible for 1.5 s while the mouse rests on the control")
+	t.ok(held, "a hover tooltip stays visible for 1.5 s while the mouse rests on the control")
+	var c2 := Control.new()
+	c2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(c2)
+	Tip.bind(c2, "two")
+	h.test_hover = c2
+	h._process(1.0 / 60.0)
+	t.ok(h.target == c2 and h.visible, "moving straight onto another bound control swaps the tip on that frame")
 	h.test_hover = null
-	for i in 3:
-		h._process(1.0 / 60.0)
-	t.ok(h.visible, "a brief slip off the control does not hide it (grace)")
-	for i in 10:
-		h._process(1.0 / 60.0)
-	t.ok(not h.visible, "it hides once the mouse has been away longer than the grace")
+	h._process(1.0 / 60.0)
+	t.ok(not h.visible, "the tip hides on the same frame the mouse leaves the control")
+	c2.queue_free()
 	h.test_hover_enabled = false
 	t.ok(Tip.normalize(null)["empty"], "a null spec is empty and shows nothing")
 	t.ok(not Tip.normalize({"title": "x"})["empty"], "a titled spec is not empty")
@@ -121,7 +117,7 @@ func run(t: Object) -> void:
 	h.avoid_extra = [wall]
 	h.show_free({"body": "Short"}, Vector2(400, 100), true)
 	h.set_beside(Rect2(400, 100, 20, 20))
-	h._process(TipHost.HOVER_DELAY + 0.01)
+	h._process(1.0 / 60.0)
 	t.ok(not Rect2(h.position, h.size).intersects(wall), "a tooltip beside a slot stays off avoid panels")
 	h.hide_free()
 	h.avoid_extra = []

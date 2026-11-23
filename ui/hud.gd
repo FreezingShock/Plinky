@@ -16,16 +16,19 @@ var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
 const STAT_NAME_SIZE: int = 16   ## stat names in the top-left panel; integer so Pixelify Sans stays crisp
+const STAT_RATE_SIZE: int = 8    ## the small "+x/s" or "xN" gain text left of each value
+const RATE_SAMPLE: String = "+99.99Qd/s"   ## widest gain text expected; sizes the gain column so values line up
 
 var sim: Sim
-var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
+var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
 var _rebirth: ExpandChip
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
-var _offline: Label
+var _modal: ModalCard            # rebirth confirm and the offline summary, centred
+var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
 var _attr_rows: Dictionary = {}   # attribute id -> UpgradeRow
@@ -58,14 +61,12 @@ func setup(p_sim: Sim) -> void:
 	_momentum = MomentumMeter.new()
 	add_child(_momentum)
 	_momentum.setup(sim)
-	_offline = Label.new()
-	_offline.theme_type_variation = &"CaptionLabel"
-	_offline.position = Vector2(8, 282)
-	_offline.custom_minimum_size.x = 440
-	_offline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_offline.visible = false
-	add_child(_offline)
+	_modal = ModalCard.new()
+	add_child(_modal)
+	_save_note = SaveIndicator.new()
+	add_child(_save_note)
 	var bus: Node = get_node("/root/EventBus")
+	_save_note.connect_bus(bus)
 	bus.offline_gained.connect(_on_offline)
 	var report: Dictionary = get_node("/root/Save").take_offline_report()
 	if not report.is_empty():
@@ -145,11 +146,12 @@ func _build_stats() -> void:
 	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
 	var name_font: FontFile = CrispFont.apply(load("res://fonts/PixelifySans.ttf") as FontFile)
 	var name_w: float = 0.0   # widest stat name, so the number column lines up
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige", &"rp"]:
+	var row_ids: Array[StringName] = hud_stat_ids(sim)
+	for sid: StringName in row_ids:
 		var d: StatDef = sim.stat_defs.get(sid) as StatDef
 		if d != null:
 			name_w = maxf(name_w, name_font.get_string_size(String(HUD_NAMES.get(sid, d.display_name)), HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_NAME_SIZE).x)
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige", &"rp"]:
+	for sid: StringName in row_ids:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
 			continue
@@ -169,33 +171,67 @@ func _build_stats() -> void:
 		name_l.add_theme_font_size_override("font_size", STAT_NAME_SIZE)
 		name_l.add_theme_color_override("font_color", StatStyle.color(sid))   # same colour as the tooltip title
 		h.add_child(name_l)
+		# Gain text sits left of the value, small and centred on the row; the value stays centred when it is empty.
+		var rate := Label.new()
+		rate.theme_type_variation = &"TitleLabel"
+		rate.add_theme_font_size_override("font_size", STAT_RATE_SIZE)
+		rate.add_theme_color_override("font_color", RelicStyle.dim)
+		rate.custom_minimum_size.x = ceilf(name_font.get_string_size(RATE_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_RATE_SIZE).x)
+		rate.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(rate)
 		var val := RollValue.new()
 		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(val)
-		var rate := Label.new()
-		rate.add_theme_color_override("font_color", RelicStyle.dim)
-		h.add_child(rate)
 		_rows[sid] = [val, rate]
 		Tip.bind_all(h, func() -> Variant:
 			var inc: BigNum = sim.income_per_second(sid)
 			return TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format()))
 		_row_boxes[sid] = h
 		match sid:
-			&"mult": gate(h, Onboarding.F_MULT)
-			&"reb": gate(h, Onboarding.F_REBIRTH_ROW)
+			&"dewdrop": gate(h, Onboarding.F_DEWDROP)
+			&"clover": gate(h, Onboarding.F_CLOVER_ROW)
 			&"prestige": gate(h, Onboarding.F_UPGRADES)
+		if sid in [&"dewdrop", &"clover", &"prestige"]:
+			_gated_rows[sid] = true
 	_prestige_label = _rows.get(&"prestige", [null, null])[1]
 
 
-## Big jumps in a stat float up beside its counter. Cash is left out: every press already pops its own number.
+## The stat rows of the HUD, top to bottom: every stat by ladder position, then Prestige and Rebirth Points last.
+## A row shows only in the zones its stat works in (StatDef.zones); Prestige and Rebirth Points show in every zone.
+static func hud_stat_ids(sim: Sim) -> Array[StringName]:
+	var defs: Array = sim.stat_defs.values()
+	defs.sort_custom(func(a: StatDef, b: StatDef) -> bool: return a.tier < b.tier if a.tier != b.tier else String(a.id) < String(b.id))
+	var ids: Array[StringName] = []
+	for d: StatDef in defs:
+		if d.id != &"prestige" and d.id != &"rp":
+			ids.append(d.id)
+	ids.append(&"prestige")
+	ids.append(&"rp")
+	return ids
+
+
+## Whether a stat row belongs in the current zone (Prestige and Rebirth Points always do).
+func _row_in_zone(sid: StringName) -> bool:
+	var d: StatDef = sim.stat_defs.get(sid) as StatDef
+	return d == null or sid == &"prestige" or sid == &"rp" or d.in_zone(sim.zone_id)
+
+
+## Big jumps in a stat float up beside its counter. The first stat is left out: every press already pops its own number.
 func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
-	if sid == &"cash":
+	if sid == &"sunlight" or sid == &"cash":
 		return
 	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
 	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
-	PopupNumber.spawn_text(self, at, "+%s %s" % [amount.format(), stat_name], true)
+	var text: String = "+%s %s" % [amount.format(), stat_name]
+	if PressPopups.instance != null:
+		# The shared popup field keeps stat floats off each other (and off press numbers) by taking a free lane.
+		PressPopups.instance.label(StringName("stat_" + String(sid)), global_position + at + Vector2(40.0, 12.0), text, 0)
+	else:
+		PopupNumber.spawn_text(self, at, text, true)
 
 
 func _build_gate() -> void:
@@ -205,9 +241,9 @@ func _build_gate() -> void:
 	_zone_panel.setup(sim)
 	_gate_panel = _zone_panel
 	_zone_panel.add_to_group(TipHost.AVOID_GROUP)   # relic tooltips stay clear of it
-	gate(_zone_panel, Onboarding.F_MULT)
+	gate(_zone_panel, Onboarding.F_DEWDROP)
 	for part: Control in _zone_panel.gated_parts():
-		gate(part, Onboarding.F_REBIRTH_ROW)
+		gate(part, Onboarding.F_CLOVER_ROW)
 
 
 ## The walker entered an area (Larkmoor district): the zone card follows.
@@ -221,7 +257,22 @@ func _build_clock() -> void:
 	_clock_widget.position = Vector2(318, 4)
 	add_child(_clock_widget)
 	_clock_widget.setup(sim)
-	gate(_clock_widget, Onboarding.F_MULT)
+	gate(_clock_widget, Onboarding.F_DEWDROP)
+
+
+## Rebirth asks first (Settings > Gameplay > Confirm rebirth turns that off). The numbers are read when it is pressed.
+func _on_rebirth_pressed() -> void:
+	if not sim.can_rebirth():
+		return
+	if not ModalCard.rebirth_confirm:
+		GameState.try_rebirth()
+		return
+	var lines: Array = [
+		["Resets your Cash and pads.", StatStyle.PAPER],
+		["+%s Prestige" % sim.prestige_gain_preview().format(), StatStyle.color(&"prestige")],
+		["+%d Rebirth Points" % sim.rp_gain_preview(), StatStyle.color(&"rp")],
+	]
+	_modal.open("Rebirth?", lines, "Rebirth", "Not yet", func() -> void: GameState.try_rebirth())
 
 
 func _build_bottom() -> void:
@@ -231,7 +282,7 @@ func _build_bottom() -> void:
 	h.add_theme_constant_override("separation", 4)
 	add_child(h)
 	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
-	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
+	_rebirth.pressed.connect(_on_rebirth_pressed)
 	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format(), str(sim.rp_gain_preview()) if sim.can_rebirth() else ""))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
@@ -252,7 +303,7 @@ func _build_bottom() -> void:
 		ib.full_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
 		ib.pressed.connect(func() -> void: index_requested.emit(t))
 		_key_chips.append(ib)
-		gate(ib, Onboarding.F_MULT if t == 0 else Onboarding.F_UPGRADES)
+		gate(ib, Onboarding.F_DEWDROP if t == 0 else Onboarding.F_UPGRADES)
 	# Settings and the Update Log live in the hamburger menu, at the far right of the screen.
 	_menu_chip = _chip(self, "big/menu_hamburger", "Menu", "Settings, the update log and every section.", "Keys: %s or 5" % Keybinds.key_name(&"menu"))
 	_menu_chip.full_text = "Menu [%s]" % Keybinds.key_name(&"menu")
@@ -325,7 +376,7 @@ func _build_upgrades() -> void:
 		Tip.bind_all(row, spec)
 		_attr_rows[a.id] = row
 
-const HUD_NAMES: Dictionary = {&"rp": "RP"}   ## short row labels; tooltips and the gallery keep the full name
+const HUD_NAMES: Dictionary = {&"rp": "RP", &"clover": "Clover", &"heather": "Heather", &"foxglove": "Foxglove", &"starbloom": "Starbloom"}   ## short row labels; tooltips and the gallery keep the full name
 var _perk_head: Label
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
@@ -383,7 +434,7 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 			relic_panel_toggled.emit(true)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_stats") or Keybinds.matches(&"stats", event):
-		if GameState.onboarding.is_unlocked(Onboarding.F_MULT):
+		if GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP):
 			index_requested.emit(0)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_attributes") or Keybinds.matches(&"attributes", event):
@@ -462,20 +513,21 @@ func _place() -> void:
 			_gate_panel.position = gp
 		if _clock_widget != null:
 			_place_clock(gp.x)
-	if _offline != null and _offline.visible:
-		# Centred in the upper third, clear of the bottom-left momentum panel and the corner panels.
-		var ow: float = minf(440.0, frame.x - 16.0)
-		_offline.custom_minimum_size.x = ow
-		_offline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		var op := Vector2(roundf((frame.x - ow) * 0.5), roundf(frame.y * 0.2))
-		if _offline.position != op:
-			_offline.position = op
+	if _modal != null and _modal.visible:
+		var mp0: Vector2 = ((frame - _modal.size) * 0.5).floor()
+		mp0.y = minf(mp0.y, roundf(frame.y * 0.3))
+		if _modal.position != mp0:
+			_modal.position = mp0
+	if _save_note != null and _menu_chip != null:
+		var sp: Vector2 = Vector2(_menu_chip.position.x - _save_note.size.x - 6.0, frame.y - _save_note.size.y - 6.0).floor()
+		if _save_note.position != sp:
+			_save_note.position = sp
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
 			_momentum.position = mp
 	for cp2: Control in _centered:
-		if cp2.visible:
+		if is_instance_valid(cp2) and cp2.visible:
 			var free_h: float = frame.y - (_bottom.size.y if _bottom != null else 0.0) - 8.0
 			var psz: Vector2 = cp2.size.max(cp2.get_combined_minimum_size())
 			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)) + float(cp2.get_meta(&"menu_slide", 0.0)))
@@ -491,11 +543,13 @@ func _place() -> void:
 			_bottom.position = bp
 
 
+var _gated_rows: Dictionary = {}   # stat id -> true for rows a tutorial step holds back (see gate())
+
+
 func _refresh() -> void:
-	var slag_box: Control = _row_boxes.get(&"slag") as Control
-	if slag_box != null:
-		var cz: ZoneDef = sim.current_zone()
-		slag_box.visible = (cz != null and cz.id == &"zone2") or not sim.get_stat(&"slag").is_zero()
+	for sid2: StringName in _row_boxes:   # rows no tutorial step holds back follow the zone alone
+		if not _gated_rows.has(sid2) and sid2 != &"rp":
+			(_row_boxes[sid2] as Control).visible = _row_in_zone(sid2)
 	var rp_box: Control = _row_boxes.get(&"rp") as Control
 	if rp_box != null:   # Rebirth Points show once you have rebirthed (or hold some)
 		rp_box.visible = GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
@@ -510,7 +564,7 @@ func _refresh() -> void:
 	if _prestige_label != null:
 		_prestige_label.text = "x%s" % sim.prestige_mult().format()
 	_rebirth.disabled = not sim.can_rebirth()
-	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
+	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need %s %s)" % [BigNum.from_float(sim.config.rebirth_min_value).format(), (sim.stat_defs[sim.config.prestige_source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:
@@ -526,14 +580,30 @@ func _refresh() -> void:
 
 
 func _on_offline(seconds: float, gains: Dictionary) -> void:
-	var parts: PackedStringArray = PackedStringArray()
+	if seconds < 60.0 or gains.is_empty():
+		return
+	var lines: Array = [[_away_text(seconds), StatStyle.PAPER]]
 	for sid: StringName in gains:
-		parts.append("+%s %s" % [(gains[sid] as BigNum).format(), (sim.stat_defs[sid] as StatDef).display_name])
-	_offline.text = "Welcome back! %d min away: %s" % [int(seconds / 60.0), ", ".join(parts)]
-	_offline.visible = true
-	var t := create_tween()
-	t.tween_interval(5.0)
-	t.tween_callback(func() -> void: _offline.visible = false)
+		var g: BigNum = gains[sid]
+		if g.is_zero():
+			continue
+		lines.append(["+%s %s" % [g.format(), (sim.stat_defs[sid] as StatDef).display_name], StatStyle.color(sid)])
+	if seconds >= sim.offline_cap_seconds() - 1.0:
+		lines.append(["That is the most you can bank offline.", RelicStyle.dim])
+	if lines.size() < 2:
+		return
+	_modal.open("Welcome Back", lines, "Collect")
+
+
+## "You were away 2 h 5 min." Whole minutes, hours once there are any.
+static func _away_text(seconds: float) -> String:
+	var mins: int = int(seconds / 60.0)
+	if mins < 60:
+		return "You were away %d min." % mins
+	var hrs: int = floori(mins / 60.0)
+	if hrs < 48:
+		return "You were away %d h %d min." % [hrs, mins % 60]
+	return "You were away %d days %d h." % [floori(hrs / 24.0), hrs % 24]
 
 
 # ---------------------------------------------------------------- staged unlocks and tips
@@ -545,13 +615,21 @@ func gate(node: CanvasItem, feature: StringName) -> void:
 	node.visible = GameState.onboarding.is_unlocked(feature)
 
 
+## A gated stat row also has to belong to the current zone; any other gated node always does.
+func _gated_in_zone(node: CanvasItem) -> bool:
+	for sid: StringName in _gated_rows:
+		if _row_boxes.get(sid) == node:
+			return _row_in_zone(sid)
+	return true
+
+
 func _apply_gates(flash: bool) -> void:
 	var ob: Onboarding = GameState.onboarding
 	for pair: Array in _gated:
 		var node: CanvasItem = pair[0] as CanvasItem
 		if node == null or not is_instance_valid(node):
 			continue
-		var want: bool = ob.is_unlocked(pair[1] as StringName)
+		var want: bool = ob.is_unlocked(pair[1] as StringName) and _gated_in_zone(node)
 		if node.visible == want:
 			continue
 		node.visible = want

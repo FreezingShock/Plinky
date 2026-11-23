@@ -9,8 +9,93 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.18.0 - 2026-11-23
+## 0.28.0 - 2026-11-23
 - Icons are now staged: stat, currency, attribute and perk icons are hand-drawn at 8, 12, 16, 24 and 32 px (new `IconSet` picks the size), and Rebirth Points has a new sprouting-gem icon at every size.
+
+## 0.27.0 - 2026-11-23
+- The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
+
+## 0.26.7 - 2026-11-23
+- Balance: the four linear relics (Gold Purse, Stopwatch, Growth Crystal, Sharp Fang) now diminish, so long play tops out near +100% per relic instead of running away; Gold Purse and Growth Crystal step down to 6% and 10%. Pad yield caps at 15 (was 25), Quick study at 10 (was 20), Press rate at 15 (was 20). Larkmoor pacing, pads, mastery, Rebirth Points and Momentum are unchanged.
+
+## 0.26.6 - 2026-11-23
+- Relics hop into their slot with a widening ring when equipped or swapped in (HUD strip and Relics menu; skipped under Reduce motion).
+
+## 0.26.5 - 2026-11-23
+- Stat counters punch with an overshoot when a big gain lands (stepped, skipped under Reduce motion).
+
+## 0.26.4 - 2026-11-23
+- Relics menu: the rarity name is back on each card (small, dim) with an On or Swap mark, bonuses wrap whole instead of mid-phrase, and the collection shows three card rows.
+
+## 0.26.3 - 2026-11-23
+- Relics menu: shorter collection so the panel fits 640x360, wider cards (less name truncation), bonuses on one wrapped line, and the card's second line shows only the stack count and Equipped or Swapping.
+
+## 0.26.2 - 2026-11-23
+- Fixed the Larkmoor transition stall (one 330 ms frame at the wipe): the zone scene loads on a worker thread, the prop sprites are built over several frames under the wipe, and CI now fails on any frame over 150 ms (300 ms for the covered zone swap) in the headless bench.
+
+## 0.26.1 - 2026-11-23
+- Sound subtitles sit on a dark plate so they read on bright ground, and up to four show at once.
+
+## 0.26.0 - 2026-11-23
+- Relics menu refresh: relics are now rarity-framed cards (exact rarity-colour outline, name in the rarity colour, stack count, Equipped mark) in a scrolling collection, with Sort (Rarity, Name, Stacks, Equipped), Show (All, Equipped, Unequipped) and Rarity filter buttons, an Active bonuses readout under the slots, and compare-on-hover.
+
+## 0.25.0 - 2026-11-23
+- Settings > Access gains Colour-safe colours (red-green safe, blue-yellow safe) for rarity, buy and stat colours, Large tooltip text, and Sound subtitles (captions for crits, relic chimes, gates, birdsong, waves, footsteps and music changes).
+
+## 0.24.4 - 2026-11-23
+- Quarry embers are denser (12 per vent), bigger while hot (2 texels) and climb higher, so they read as a plume at 640x360.
+
+## 0.24.3 - 2026-11-23
+- History window is narrower still so it no longer covers the zone panel at 640x360, and its list area is taller.
+
+## 0.24.2 - 2026-11-23
+- HUD currency panel: the gain text (+x/s, xN) now sits left of each value in a smaller font, vertically centred, so the panel is narrower; values stay centred on the row and line up in a column.
+
+## 0.24.1 - 2026-11-23
+- History screen: taller graph that fills from the left with a first bar at once, a narrower window that clears the zone panel, and the tracked currency now comes from config (`income_stat`).
+
+## 0.24.0 - 2026-11-23
+- New press popups: one pooled node draws every number, rolls a motion, easing and size per press, stacks held presses into one number, merges quick clicks and keeps numbers off each other. Escalating streak tiers (Gold, Ice, Rainbow, Chroma, Galaxy) change colour, sparkles, pad ripple and sound. Relic pulses now ripple outward as echoes with spark links and their own sound. Twelve new sounds. Respects Quiet pad clicks, Reduce flashing and Calm camera.
+
+## 0.23.1 - 2026-11-23
+- **Pond stays water in autumn.** The ground shader's seasonal recolour treated the water ramp's green (47,107,85) as grass and dyed the pond orange/brown with the grass patches. Water and foam texels (material codes 107, 108) now skip the recolour in every season, in the meadow and Larkmoor. Light water-only snow/frost is left for a later pass.
+
+## 0.23.0 - 2026-11-23
+- World life follows the calendar: up to six butterflies by day in spring and summer (a few in autumn, none in winter, at night or in rain), each with its own wing colours, and fireflies fade out of winter.
+- The Ember Quarry has its own air: embers rise and cool off the heat vents and ash drifts across the floor.
+- Footsteps get a quarry surface (crunchy cinder; the pale road stays packed dust), and sprints and hard landings land heavier. The quarry now reads its own ground for footsteps instead of the meadow's.
+- The History tile in the menu gets its own orange section colour (the Settings refresh and the History screen had landed side by side, leaving it uncoloured and the test red).
+
+## 0.22.0 - 2026-11-23
+- Settings and the Esc menu now match the gallery: every tab and menu tile has its own colour (coloured outlines, matching labels), each setting sits on its own outlined card, and all labels and buttons show in Title Case.
+
+
+## 0.21.0 - 2026-11-23
+- Added a History screen in the menu: session income graph, personal bests (longest chain, highest Momentum, best income), time in each zone and lifetime totals.
+
+
+## 0.20.0 - 2026-11-23
+- Ambient soundscape: six layered loops (day wind, night wind, winter wind, crickets, autumn leaves, forge crackle) fade with the time of day, the season and the zone. Birdsong thins at night and in winter and swells at dawn; the Ambience slider scales it all.
+
+## 0.19.0 - 2026-11-23
+- Quality of life: a small "Saved" note after each save (red "Save failed" if a write fails), a Welcome Back card with what you earned while away, a confirm card before Rebirth, and rebinding that accepts Shift, Ctrl and Alt combos plus new Sprint and Sprint lock keys. Settings > Gameplay can turn off the Saved note and the rebirth confirm.
+
+## 0.18.1 - 2026-11-23
+- The SPRINTING HELD / ENABLED label now has a dark backing plate so the ground no longer shows through its letters.
+
+## 0.18.0 - 2026-11-23
+- Walker overhaul: the hooded walker is redrawn (20 poses, no baked shadow) and animated procedurally (squash, stretch, lean, hop, dust). Shift sprints, Ctrl locks the sprint, Space jumps (a jump launches you faster and the camera rises with it), C crouches or slides while sprinting. A SPRINTING HELD / SPRINTING ENABLED label sits above Momentum. Recentre camera moves from C to Home.
+
+## 0.17.4 - 2026-11-23
+- Zone panel: a long zone name such as Ember Quarry drops to the 12 pt title size so the Travel button no longer clips it.
+
+## 0.17.3 - 2026-11-23
+- Tooltips are instant, like Minecraft: no hover or focus delay, no grace window, and they vanish the frame the cursor leaves. The version link on the boot and title screens moved from Godot's delayed tooltip to the shared tooltip.
+
+## 0.17.2 - 2026-11-23
+- The top-right area card now folds to its one-line stub 3.5 s after you walk into an area (hover keeps it open).
+- Entering an area now shows a slim title card (about 1.6 s, top-centre, 12 pt name) instead of the big centred panel. It takes the zone palette: border and name in the area colour, the area icon either side, a dotted rule and the zone name small above.
+
 
 ## 0.17.1 - 2026-11-23
 - Larkmoor grass sway tips regenerated for the new grass, so every flicking tip sits on a blade; a test now checks it.

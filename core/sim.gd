@@ -21,6 +21,8 @@ signal momentum_tier_changed(tier: int, rising: bool)
 ## A press gave a pad XP. level and xp are the pad's after the press.
 signal mastery_changed(button_id: StringName, level: int, xp: float)
 signal mastery_leveled(button_id: StringName, level: int)
+## A flower tier's pads just became pressable (the last pad of the tier below was pressed).
+signal tier_opened(tier_id: StringName)
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -29,10 +31,13 @@ var button_defs: Dictionary = {}     # StringName -> ButtonDef
 var zone_defs: Dictionary = {}       # StringName -> ZoneDef
 var attribute_defs: Dictionary = {}  # StringName -> AttributeDef
 var area_defs: Dictionary = {}       # StringName -> AreaDef (zone menu grouping only)
+var tier_defs: Dictionary = {}       # StringName -> TierDef (the flower rows, content/tiers)
 ## Owned and equipped relics. Built by ContentLoader. Always non-null after load.
 var relics: RelicInventory
 ## Pad XP and levels. Replaced by ContentLoader with the content's config.
 var mastery: Mastery = Mastery.new()
+## History numbers (income graph, time per zone, bests) for the History screen. Lifetime part is saved.
+var run_stats: RunStats = RunStats.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
 
@@ -41,10 +46,16 @@ var stats: Dictionary = {}           # StringName -> BigNum
 var prestige_spent: BigNum = BigNum.zero()
 var zone_id: StringName = &""
 var gates_open: Dictionary = {}      # zone id -> true (latched; survives rebirth)
+var tiers_open: Dictionary = {}      # tier id -> true (latched; survives rebirth). A zone's first tier needs no entry.
+var zones_entered: Dictionary = {}   # zone id -> true once its entry grants were paid (latched)
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
+## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
+## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
+var pulse_source: StringName = &""
+var pulse_order: int = 0
 var relic_drops: int = 0     # relics dropped from presses this save
 var ui_flags: Dictionary = {}  # onboarding: {"unlocked": {id: true}, "seen": {id: true}}. Opaque to the sim, saved with it.
 ## 0 to 1. Walking charges it (feed_momentum), pressing nudges it (feed_press_momentum). Once charging stops it holds
@@ -103,6 +114,22 @@ func validate() -> PackedStringArray:
 				errs.append("area %s: unknown button %s" % [a.id, bid])
 			elif bd.zone != a.zone:
 				errs.append("area %s: button %s belongs to zone %s" % [a.id, bid, bd.zone])
+	for t: TierDef in tier_defs.values():
+		if not stat_defs.has(t.stat):
+			errs.append("tier %s: unknown stat %s" % [t.id, t.stat])
+		if not zone_defs.has(t.zone):
+			errs.append("tier %s: unknown zone %s" % [t.id, t.zone])
+	for b: ButtonDef in button_defs.values():
+		if not tier_defs.is_empty() and b.zone != &"zone2" and not tier_defs.has(b.row):
+			errs.append("button %s: row %s is not a tier" % [b.id, b.row])
+		elif tier_defs.has(b.row) and (tier_defs[b.row] as TierDef).stat != b.reward_stat:
+			errs.append("button %s: pays %s but its tier pays %s" % [b.id, b.reward_stat, (tier_defs[b.row] as TierDef).stat])
+	for z: ZoneDef in zone_defs.values():
+		for sid: Variant in z.entry_grants:
+			if not stat_defs.has(StringName(str(sid))):
+				errs.append("zone %s: entry grant for unknown stat %s" % [z.id, sid])
+		if z.boost_stat != &"" and not stat_defs.has(z.boost_stat):
+			errs.append("zone %s: unknown boost_stat %s" % [z.id, z.boost_stat])
 	for s: StatDef in stat_defs.values():
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
@@ -119,12 +146,15 @@ func new_game() -> void:
 		stats[s.id] = BigNum.from_float(s.start)
 	prestige_spent = BigNum.zero()
 	gates_open.clear()
+	tiers_open.clear()
+	zones_entered.clear()
 	attr_levels.clear()
 	play_seconds = 0.0
 	press_count = 0
 	rebirth_count = 0
 	relic_drops = 0
 	mastery.clear()
+	run_stats.clear()
 	calendar.reset()
 	ui_flags = {}
 	momentum = 0.0
@@ -182,13 +212,13 @@ func prestige_mult() -> BigNum:
 func income_per_second(stat_id: StringName) -> BigNum:
 	var d: StatDef = stat_defs.get(stat_id) as StatDef
 	var z: ZoneDef = current_zone()
-	if d == null or z == null or not d.passive:
+	if d == null or z == null or not d.passive or not d.in_zone(z.id):
 		return BigNum.zero()
 	var boost: BigNum = BigNum.one()
 	if d.income_boost_stat != &"":
 		boost = get_stat(d.income_boost_stat).add(BigNum.one())
 	for s: StatDef in stat_defs.values():
-		if s.income_factor_per_unit > 0.0:
+		if s.income_factor_per_unit > 0.0 and s.in_zone(z.id):
 			boost = boost.mul(get_stat(s.id).mul(BigNum.from_float(s.income_factor_per_unit)).add(BigNum.one()))
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
@@ -202,9 +232,58 @@ func pad_rarity(button_id: StringName) -> StringName:
 	return b.rarity if b != null else &"common"
 
 
+## The tiers of a zone, lowest order first.
+func tiers_in_zone(z_id: StringName) -> Array[TierDef]:
+	var out: Array[TierDef] = []
+	for t: TierDef in tier_defs.values():
+		if t.zone == z_id:
+			out.append(t)
+	out.sort_custom(func(a: TierDef, b: TierDef) -> bool: return a.order < b.order)
+	return out
+
+
+## The tier a pad belongs to, or null (the Ember Quarry rows are not tiers).
+func tier_of(button_id: StringName) -> TierDef:
+	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
+	return tier_defs.get(b.row) as TierDef if b != null else null
+
+
+## A zone's first tier is open from the start; every other opens once the last pad of the tier below was pressed.
+func is_tier_open(tier_id: StringName) -> bool:
+	var t: TierDef = tier_defs.get(tier_id) as TierDef
+	if t == null:
+		return true
+	var first: Array[TierDef] = tiers_in_zone(t.zone)
+	return first.is_empty() or first[0].id == tier_id or bool(tiers_open.get(tier_id, false))
+
+
+## The tier a tier opens when its last pad is pressed (same zone, next order), or null.
+func next_tier(tier_id: StringName) -> TierDef:
+	var t: TierDef = tier_defs.get(tier_id) as TierDef
+	if t == null:
+		return null
+	var list: Array[TierDef] = tiers_in_zone(t.zone)
+	var i: int = list.find(t)
+	return list[i + 1] if i >= 0 and i + 1 < list.size() else null
+
+
+## True while the pad's tier has not opened yet. Locked pads cannot be pressed or bought.
+func is_pad_locked(button_id: StringName) -> bool:
+	var t: TierDef = tier_of(button_id)
+	return t != null and not is_tier_open(t.id)
+
+
+## The pad that opens the next tier: the last one of the row.
+func is_row_finisher(b: ButtonDef) -> bool:
+	for other: ButtonDef in button_defs.values():
+		if other.zone == b.zone and other.row == b.row and other.row_index > b.row_index:
+			return false
+	return true
+
+
 func can_afford(button_id: StringName) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
-	if b == null:
+	if b == null or is_pad_locked(button_id):
 		return false
 	if god_mode:
 		return true
@@ -351,6 +430,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
+	_open_next_tier(b)
+	run_stats.on_press(crit)
 	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * (1.0 + effect_total(&"mastery_xp")))
 	_check_gates()
 	_flush()
@@ -365,10 +446,25 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 			relics.add_relic(drop)
 		var pulse: float = relics.total_effect(RelicDef.Effect.PULSE_CHANCE)
 		if pulse > 0.0 and rng.randf() < pulse:
+			pulse_source = button_id
+			var order: int = 0
 			for other: ButtonDef in button_defs.values():
 				if other.zone == b.zone and other.row == b.row and absi(other.row_index - b.row_index) == 1:
+					pulse_order = order
+					order += 1
 					_press(other.id, world_pos, false)
+			pulse_source = &""
+			pulse_order = 0
 	return true
+
+
+func _open_next_tier(b: ButtonDef) -> void:
+	if not is_row_finisher(b):
+		return
+	var nxt: TierDef = next_tier(b.row)
+	if nxt != null and not bool(tiers_open.get(nxt.id, false)):
+		tiers_open[nxt.id] = true
+		tier_opened.emit(nxt.id)
 
 
 func heat_enabled() -> bool:
@@ -445,6 +541,7 @@ func _sync_momentum_tier() -> void:
 	if t != _momentum_tier:
 		var rising: bool = t > _momentum_tier
 		_momentum_tier = t
+		run_stats.on_tier(t)
 		momentum_tier_changed.emit(t, rising)
 
 
@@ -493,7 +590,7 @@ func _grant_income_seconds(seconds: float) -> Dictionary:
 	return gains
 
 
-## Pad streak: m1, m2, m3 in order, each within streak_window of the last, pays streak_bonus_seconds of income.
+## Pad streak: the pads of a row in order (Sprout 1, 2, 3), each within streak_window of the last, pays streak_bonus_seconds of income.
 func _update_streak(b: ButtonDef) -> void:
 	if b.row_index == 0:
 		_streak_row = b.row
@@ -503,12 +600,14 @@ func _update_streak(b: ButtonDef) -> void:
 	if b.row == _streak_row and b.row_index == _streak_next and play_seconds - _streak_at <= config.streak_window:
 		_streak_at = play_seconds
 		_streak_next += 1
+		run_stats.on_chain(_streak_next)
 		var last_index: int = 0
 		for other: ButtonDef in button_defs.values():
 			if other.zone == b.zone and other.row == b.row:
 				last_index = maxi(last_index, other.row_index)
 		if b.row_index >= last_index:
 			_streak_row = &""
+			run_stats.on_streak_done()
 			if play_seconds >= _streak_ready_at:
 				_streak_ready_at = play_seconds + config.streak_cooldown
 				bonus_gained.emit(&"streak", _grant_income_seconds(config.streak_bonus_seconds))
@@ -534,6 +633,8 @@ func _roll_relic_drop() -> StringName:
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
 func step(dt: float) -> void:
 	play_seconds += dt
+	if run_stats.step(dt, zone_id):
+		run_stats.record_income(income_per_second(config.income_stat))
 	calendar.advance(dt)
 	if momentum_hold > 0.0:
 		momentum_hold = maxf(0.0, momentum_hold - dt)
@@ -560,6 +661,14 @@ func dev_set_stat(stat_id: StringName, value: BigNum) -> bool:
 	_check_gates()
 	_flush()
 	return true
+
+
+## Dev console: open one flower tier, or all of them when `tier_id` is empty.
+func dev_open_tiers(tier_id: StringName = &"") -> void:
+	for t: TierDef in tier_defs.values():
+		if tier_id == &"" or t.id == tier_id:
+			tiers_open[t.id] = true
+			tier_opened.emit(t.id)
 
 
 ## Dev console: move to a zone whether or not it is unlocked. Opens the gate that leads there so the move sticks.
@@ -609,6 +718,7 @@ func try_rebirth() -> bool:
 	relics.set_rebirths(rebirth_count)
 	_set_heat(0.0)
 	_flush()
+	run_stats.mark_rebirth()
 	rebirth_done.emit(gained)
 	return true
 
@@ -694,8 +804,25 @@ func enter_zone(z_id: StringName) -> bool:
 		return false
 	zone_id = z_id
 	_set_heat(0.0)
+	_pay_entry_grants(z_id)
 	zone_entered.emit(z_id)
 	return true
+
+
+## First arrival in a zone: pay its entry_grants from the stock of its entry_source_stat (see ZoneDef).
+func _pay_entry_grants(z_id: StringName) -> void:
+	var z: ZoneDef = zone_defs.get(z_id) as ZoneDef
+	if z == null or bool(zones_entered.get(z_id, false)):
+		return
+	zones_entered[z_id] = true
+	if z.entry_grants.is_empty() or z.entry_source_stat == &"":
+		return
+	var src: BigNum = get_stat(z.entry_source_stat)
+	for sid: Variant in z.entry_grants:
+		var id: StringName = StringName(str(sid))
+		if stat_defs.has(id):
+			_set_stat(id, get_stat(id).add(src.mul(BigNum.from_float(float(z.entry_grants[sid])))))
+	_flush()
 
 
 func is_gate_open(z_id: StringName) -> bool:
@@ -748,6 +875,9 @@ func _check_gates() -> void:
 
 # ---------------------------------------------------------------- save format
 
+## Save format of the flower ladder (the meadow's Sunlight to Starbloom economy). Older saves are migrated on load.
+const LADDER_SAVE: int = 1
+
 func to_dict() -> Dictionary:
 	var s: Dictionary = {}
 	for id: StringName in stats:
@@ -763,6 +893,9 @@ func to_dict() -> Dictionary:
 		"prestige_spent": prestige_spent.to_array(),
 		"zone": String(zone_id),
 		"gates": g,
+		"tiers": tiers_open.keys().map(func(k: Variant) -> String: return String(k)),
+		"zones_entered": zones_entered.keys().map(func(k: Variant) -> String: return String(k)),
+		"ladder": LADDER_SAVE,
 		"attributes": a,
 		"play_seconds": play_seconds,
 		"press_count": press_count,
@@ -773,14 +906,19 @@ func to_dict() -> Dictionary:
 		"relics": relics.to_dict(),
 		"mastery": mastery.to_dict(),
 		"calendar": calendar.to_dict(),
+		"run_stats": run_stats.to_dict(),
 	}
 
 
 ## Loads a dict from to_dict(). Unknown ids are ignored, missing ones keep defaults. Never throws.
-func from_dict(d: Dictionary) -> bool:
+func from_dict(d_in: Dictionary) -> bool:
 	new_game()
-	if d.is_empty():
+	if d_in.is_empty():
 		return false
+	var d: Dictionary = d_in
+	var old_ladder: bool = int(d.get("ladder", 0)) < LADDER_SAVE
+	if old_ladder:
+		d = _ladder_save_ids(d)
 	var s: Variant = d.get("stats", {})
 	if s is Dictionary:
 		for k: Variant in (s as Dictionary):
@@ -799,6 +937,16 @@ func from_dict(d: Dictionary) -> bool:
 			var gid: StringName = StringName(str(k))
 			if zone_defs.has(gid):
 				gates_open[gid] = true
+	var tl: Variant = d.get("tiers", [])
+	if tl is Array:
+		for k: Variant in (tl as Array):
+			if tier_defs.has(StringName(str(k))):
+				tiers_open[StringName(str(k))] = true
+	var ze: Variant = d.get("zones_entered", [])
+	if ze is Array:
+		for k: Variant in (ze as Array):
+			if zone_defs.has(StringName(str(k))):
+				zones_entered[StringName(str(k))] = true
 	_migrate_zones()
 	var a: Variant = d.get("attributes", {})
 	if a is Dictionary:
@@ -821,5 +969,86 @@ func from_dict(d: Dictionary) -> bool:
 	relics.set_rebirths(rebirth_count)
 	mastery.from_dict(d.get("mastery", {}), button_defs)
 	calendar.from_dict(d.get("calendar", {}))
+	var rs: Variant = d.get("run_stats", {})
+	if rs is Dictionary:
+		run_stats.from_dict(rs)
+	if old_ladder:
+		_migrate_to_ladder(d_in)
 	_dirty.clear()
 	return true
+
+
+# ---------------------------------------------------------------- flower ladder migration
+
+## Old pad id (Multiplier and Rebirth pads, before the flower ladder) -> the pad that took its place. Used for mastery.
+const LADDER_PAD_MAP: Dictionary = {
+	"m1": "sprout_1", "m2": "sprout_2", "m3": "sprout_3", "r1": "clover_1", "r2": "clover_2",
+	"g1": "thistle_1", "g2": "thistle_2", "o1": "thistle_3", "h1": "heather_1", "c1": "heather_2", "h2": "heather_3",
+	"t1": "foxglove_1", "l1": "foxglove_2", "t2": "foxglove_3", "e1": "starbloom_1",
+}
+
+
+## A copy of a pre-ladder save with its mastery keys renamed to the new pad ids.
+func _ladder_save_ids(d: Dictionary) -> Dictionary:
+	var out: Dictionary = d.duplicate(true)
+	var m: Variant = out.get("mastery")
+	if m is Dictionary:
+		var renamed: Dictionary = {}
+		for k: Variant in (m as Dictionary):
+			renamed[LADDER_PAD_MAP.get(str(k), str(k))] = (m as Dictionary)[k]
+		out["mastery"] = renamed
+	var uf: Variant = out.get("ui_flags")
+	if uf is Dictionary:   # tutorial steps were renamed with the rows they reveal
+		var renames: Dictionary = {"mult": "dewdrop", "rebirth_row": "clover_row"}
+		for bag: String in ["unlocked", "seen"]:
+			var b: Variant = (uf as Dictionary).get(bag)
+			if b is Dictionary:
+				for old_id: String in renames:
+					if (b as Dictionary).has(old_id):
+						(b as Dictionary)[renames[old_id]] = (b as Dictionary)[old_id]
+						(b as Dictionary).erase(old_id)
+	return out
+
+
+## A save from before the flower ladder. Cash, Multiplier and Rebirths now only live in the Ember Quarry, so a player who
+## has left the meadow gets their progress as the matching flower stock instead: the old Multiplier becomes Thistle Down
+## (it was the income multiplier Larkmoor ran on) and the old Rebirths become Heather Sprigs. Tiers and arrivals the
+## player already got past are opened and latched, so nothing locks behind them.
+func _migrate_to_ladder(old: Dictionary) -> void:
+	var os: Variant = old.get("stats", {})
+	var old_cash: BigNum = BigNum.zero()
+	var old_mult: BigNum = BigNum.zero()
+	var old_reb: BigNum = BigNum.zero()
+	if os is Dictionary:
+		old_cash = BigNum.from_variant((os as Dictionary).get("cash"), BigNum.zero()).max_zero()
+		old_mult = BigNum.from_variant((os as Dictionary).get("mult"), BigNum.zero()).max_zero()
+		old_reb = BigNum.from_variant((os as Dictionary).get("reb"), BigNum.zero()).max_zero()
+	var first: StringName = _first_zone()
+	var z: ZoneDef = zone_defs.get(zone_id) as ZoneDef
+	zones_entered[first] = true
+	zones_entered[zone_id] = true
+	for zd: ZoneDef in zone_defs.values():
+		if gates_open.get(zd.id, false) and zd.next_zone != &"":
+			zones_entered[zd.next_zone] = true
+			for t: TierDef in tiers_in_zone(zd.id):   # a zone whose gate is open was finished: all its tiers are open
+				tiers_open[t.id] = true
+	if zone_id == &"zone2" or zone_id == &"":
+		for t: TierDef in tier_defs.values():
+			tiers_open[t.id] = true
+		return   # still in the quarry: Cash, Multiplier and Rebirths carry on as they were
+	_set_stat(&"sunlight", old_cash)
+	if z != null and z.order > zone_defs[first].order:
+		_set_stat(&"dewdrop", BigNum.from_float(64.0))
+		_set_stat(&"clover", BigNum.from_float(9.0))
+		_set_stat(&"thistle", old_mult)
+		_set_stat(&"heather", old_reb)
+		tiers_open[&"heather"] = true
+	else:
+		_set_stat(&"dewdrop", old_mult)
+		_set_stat(&"clover", old_reb)
+	for id: StringName in [&"cash", &"mult", &"reb"]:
+		_set_stat(id, BigNum.from_float((stat_defs[id] as StatDef).start) if id == &"cash" else BigNum.zero())
+	for t: TierDef in tier_defs.values():   # any pad the player had practised opens its own tier and the one under it
+		for b: ButtonDef in button_defs.values():
+			if b.row == t.id and mastery.xp(b.id) > 0.0:
+				tiers_open[t.id] = true

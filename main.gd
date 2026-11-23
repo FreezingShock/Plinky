@@ -43,6 +43,7 @@ var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
 var gallery: GalleryMenu
 var update_log: UpdateLogPanel
+var history_panel: HistoryPanel
 var menus: MenuRouter = MenuRouter.new()   # which menu is open (ui/menu_router.gd)
 var palette_id: StringName = Palettes.MEADOW
 
@@ -158,7 +159,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
-	var mult: float = sim.get_stat(&"mult").to_float() + 1.0
+	var boost_id: StringName = sim.current_zone().boost_stat if sim.current_zone() != null else &""
+	var mult: float = (sim.get_stat(boost_id).to_float() if boost_id != &"" else 0.0) + 1.0
 	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
 		pad_glow.multiplier = mult
 	if sim.zone_id != _shown_zone and not _crossing:
@@ -215,7 +217,7 @@ var _menu_was_open: bool = false
 
 
 func _menu_focus() -> void:
-	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log]
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log, history_panel]
 	var open: Control = null
 	for p: Control in panels:
 		if p != null and p.visible:
@@ -305,7 +307,7 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
-	var first: TexelPad = pads.get(&"m1") as TexelPad
+	var first: TexelPad = pads.get(&"sprout_1") as TexelPad
 	if first != null:
 		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
 		pointer = PadPointer.new()
@@ -320,17 +322,24 @@ func _build_pads() -> void:
 		critter.anchors.append(pad.position)
 
 
-func _enter_zone_visuals(zone_id: StringName) -> void:
+## `sliced` spreads the heavy part (the zone's prop sprites) over several frames; only a swap under the transition
+## wipe uses it, and awaits the result. Startup and reset keep the one-frame build.
+func _enter_zone_visuals(zone_id: StringName, sliced: bool = false) -> void:
 	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
+	PerfStats.lap_begin()
 	PlinkyTheme.apply(theme, String(palette_id))
-	_swap_zone_scene(zone_id)
+	PerfStats.lap("zone: theme")
+	await _swap_zone_scene(zone_id, sliced)
 	var cols: PackedColorArray = Palettes.colors(palette_id)
 	walker.palette = cols
 	gate.palette = cols
+	PerfStats.lap_begin()
 	_build_pads()
+	PerfStats.lap("zone: build pads")
 	_build_vents(cols)
+	PerfStats.lap("zone: build vents")
 
 
 func _zone_scene_path(zone_id: StringName) -> String:
@@ -346,18 +355,29 @@ func _zone_mask_path(zone_id: StringName) -> String:
 ## Zones with their own scene replace the meadow: backdrop, tall props, anchors and walk mask. Going forward the
 ## walker restarts at the new scene's Walker anchor; going back it appears just inside the Gate anchor, so the
 ## zone you left is behind you and the gate does not fire again at once.
-func _swap_zone_scene(zone_id: StringName) -> void:
+func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	var path: String = _zone_scene_path(zone_id)
 	if path == _scene_path:
 		_apply_scene_frame(zone_id)
 		return
 	_scene_path = path
+	PerfStats.lap_begin()
 	_free_occluders()
 	meadow.queue_free()
-	meadow = (load(path) as PackedScene).instantiate()
+	PerfStats.lap("swap: free old")
+	var packed: PackedScene = _take_prefetched(path)
+	PerfStats.lap("swap: load scene")
+	meadow = packed.instantiate()
+	PerfStats.lap("swap: instantiate")
 	world.add_child(meadow)
-	_spawn_occluders()
+	PerfStats.lap("swap: add_child (ready)")
+	if sliced:
+		await get_tree().process_frame   # the scene's first frame is its own frame, not stacked on a prop slice
+		PerfStats.lap("swap: first frame after add_child")
+	await _spawn_occluders(sliced)
+	PerfStats.lap("swap: occluders")
 	_apply_scene_frame(zone_id)
+	PerfStats.lap("swap: scene frame")
 	var anchors: Node = meadow.get_node("Anchors")
 	var going_back: bool = _going_back
 	var spawn: Marker2D = anchors.get_node_or_null("Walker") as Marker2D
@@ -375,17 +395,41 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 
 
 var _going_back: bool = false
+const OCCLUDER_BUDGET_MS: float = 8.0   ## per frame, while the wipe covers the screen
+var _prefetching: String = ""
+
+
+## Starts loading a zone scene and its textures on a worker thread, so the swap under the transition wipe does not
+## load them synchronously on the main thread (about 330 ms for Larkmoor, a visible stall at the wipe peak).
+func _prefetch_scene(path: String) -> void:
+	if path == _scene_path or path == _prefetching:
+		return
+	if ResourceLoader.load_threaded_request(path) == OK:
+		_prefetching = path
+
+
+## The prefetched scene when one was requested (waits for it if the worker is not done), else a plain load.
+func _take_prefetched(path: String) -> PackedScene:
+	if path == _prefetching:
+		_prefetching = ""
+		var got: Resource = ResourceLoader.load_threaded_get(path)
+		if got is PackedScene:
+			return got as PackedScene
+	return load(path) as PackedScene
 var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone scene, freed on a swap
 
 
 ## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
 ## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
 ## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
-func _spawn_occluders() -> void:
+func _spawn_occluders(sliced: bool = false) -> void:
 	var before: Dictionary = {}
 	for c: Node in world.get_children():
 		before[c] = true
-	meadow.call("spawn_occluders", world)
+	if sliced and meadow.has_method("spawn_occluders_sliced"):
+		await meadow.call("spawn_occluders_sliced", world, OCCLUDER_BUDGET_MS)
+	else:
+		meadow.call("spawn_occluders", world)
 	_occluders.clear()
 	for c: Node in world.get_children():
 		if not before.has(c):
@@ -474,7 +518,11 @@ func _update_district(delta: float) -> void:
 		_district_id = id
 		if id != "":
 			hud.set_district(StringName(id))
-			banner.show_name(String(d.get("name", "")))
+			var area: AreaDef = sim.area_defs.get(StringName(id)) as AreaDef
+			if area != null:
+				banner.show_area(area, sim.zone_defs.get(area.zone) as ZoneDef)
+			else:
+				banner.show_name(String(d.get("name", "")))
 
 
 ## Zone 2 vents: present only when the zone scene has Vent anchors.
@@ -502,8 +550,9 @@ func _on_zone_entered(zone_id: StringName) -> void:
 		return
 	_crossing = true
 	walker.stop()
+	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
 	await transitions.cross_zone(func() -> void:
-		_enter_zone_visuals(zone_id)
+		await _enter_zone_visuals(zone_id, true)
 		if _clear_spawn_pending:
 			_clear_spawn_pending = false
 			_clear_spawn())
@@ -519,7 +568,7 @@ func _after_crossing(zone_id: StringName) -> void:
 
 ## Streak and critter payouts float up as a gold popup at the walker or the critter.
 func _on_bonus_gained(kind: StringName, gains: Dictionary) -> void:
-	var g: BigNum = gains.get(&"cash") as BigNum
+	var g: BigNum = gains.get(&"sunlight") as BigNum
 	if g == null:
 		return
 	var at: Vector2 = critter.position if (kind == &"critter" and critter != null) else walker.position
@@ -539,9 +588,15 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return
-	if pad.standing or pad.holding:
+	# A relic pulse presses the neighbours of the pad you pressed: Juice draws those as echoes that ripple outward.
+	var from: Vector2 = Vector2.INF
+	if sim.pulse_source != &"":
+		var src: TexelPad = pads.get(sim.pulse_source) as TexelPad
+		if src != null:
+			from = src.position
+	if from == Vector2.INF and (pad.standing or pad.holding):
 		walker.squash()
-	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding)
+	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding and from == Vector2.INF, from, sim.pulse_order)
 
 
 ## Relic UI (PR #5): equipped bar, drop toast, collection panel, pad flash on Epic and above.
@@ -553,6 +608,7 @@ func _wire_relics() -> void:
 	hud.add_child(bar)
 	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
+	hud.add_child(SubtitleBar.new())   # sound subtitles (Settings > Access)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)
 	hud.add_child(toast)
@@ -606,8 +662,12 @@ func _wire_menus() -> void:
 	hud.add_child(gallery)
 	update_log = UpdateLogPanel.new()
 	hud.add_child(update_log)
+	history_panel = HistoryPanel.new()
+	hud.add_child(history_panel)
+	history_panel.bind(sim)
 	hud.keep_centered(gallery)
 	hud.keep_centered(update_log)
+	hud.keep_centered(history_panel)
 	gallery.is_locked = _section_locked
 	gallery.chosen.connect(_on_gallery_chosen)
 	gallery.resume_requested.connect(func() -> void: menus.close(&"gallery"))
@@ -615,8 +675,10 @@ func _wire_menus() -> void:
 	gallery.quit_game_requested.connect(_quit_game)
 	_register_animated(&"gallery", gallery)
 	_register_animated(&"log", update_log)
+	_register_animated(&"history", history_panel)
 	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
 	CloseX.attach(update_log, func() -> void: menus.close(&"log"))
+	CloseX.attach(history_panel, func() -> void: menus.close(&"history"))
 	hud.menu_toggled.connect(menus.toggle)
 	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
 	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
@@ -665,7 +727,7 @@ func _on_gallery_chosen(kind: StringName) -> void:
 func _section_locked(kind: StringName) -> bool:
 	var ob: Onboarding = GameState.onboarding
 	match kind:
-		&"stats": return not ob.is_unlocked(Onboarding.F_MULT)
+		&"stats", &"history": return not ob.is_unlocked(Onboarding.F_DEWDROP)
 		&"attributes", &"upgrades": return not ob.is_unlocked(Onboarding.F_UPGRADES)
 		&"relics": return GameState.relics == null or not ob.is_unlocked(Onboarding.F_RELICS)
 	return false

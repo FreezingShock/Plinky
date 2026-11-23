@@ -6,6 +6,9 @@ extends Resource
 @export var display_name: String
 @export var tier: int = 0
 @export var start: float = 0.0
+## Zones where this stat is live: its passive income runs, its income factor applies, and the HUD lists it. Empty = every
+## zone. A stat you still hold from another zone keeps its value; it just stops working and hides until it is non-zero.
+@export var zones: PackedStringArray = PackedStringArray()
 ## Earns income every tick from the current zone's base_cash_per_second.
 @export var passive: bool = false
 ## Income is multiplied by (1 + value of this stat). Empty = none.
@@ -22,3 +25,8 @@ extends Resource
 @export var relics_boost_income: bool = false
 ## MULT_GAIN relics multiply button rewards that go into this stat.
 @export var relics_boost_gain: bool = false
+
+
+## True when this stat is live in `zone_id` (see `zones`).
+func in_zone(zone_id: StringName) -> bool:
+	return zones.is_empty() or String(zone_id) in zones
