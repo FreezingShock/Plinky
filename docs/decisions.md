@@ -608,6 +608,14 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Settings (Gameplay tab):** Edit Stat Strip (closes the menu first, then starts edit mode), Reset Stat Strip (every zone, press twice), Strip Gain Rates (the small +x/s), Strip Unearned Rows (show a layout row before you have held it), Right-click Hides a Row. These display toggles are global (settings.cfg); the layout is per save. Not added to the Stats menu on purpose: one place for settings, and the strip itself is the other.
 - **Side fix:** the strip panel now shrinks back when rows are hidden (it only ever grew before, because nothing resets a top-level PanelContainer's size).
 - Not run in the cloud: the engine look of the pencil, glyphs and chips. `tools/hud_shot.tscn -- edit` captures it on the PC.
+
+## 2026-11-23 Weak-hardware pass: Low really scales down (0.37.1)
+- **Measured first.** A software Vulkan rasteriser (lavapipe) in the cloud stands in for a weak GPU (`tools/bench_weak.sh`). Before this change Low was no faster than High there (about 21.5 vs 20.9 ms).
+- **Low now:** ground relight march 6 taps at double stride (same reach) and 2 occlusion taps; the light grade pass, the only shader that reads the screen texture, is skipped. Medium sits between on the march. High is the full look.
+- **No-cost wins at every level:** the ground shader skips its shadow march when no cast shadow applies and its occlusion taps when `ao_amt` is 0 (identical output). ShaderWarm also compiles ground_light, ground_fog and light_grade at start, so the first Larkmoor frames do not compile them.
+- **Look tradeoff on Low (taste call):** no sun-side lift or highlight and shadow split from the light grade, slightly coarser cast shadows. Palettes, dither and outlines are unchanged.
+- **CI ceilings:** `check_frame_budget.py` now also fails above 250 draw calls and 1200 nodes (Larkmoor is 1065 headless; the old 700 in perf.md was stale).
+- **Result:** Low is 10 to 13% faster than before on the stand-in, High unchanged. Short of the 25% budget; real iGPU numbers still wanted from the PC thread. Not run on a real GPU.
 ## 2026-11-23 Travel menu lists top-level areas only (v0.35.0)
 
 ## 2026-11-23 Cash and Multiplier leave the Ember Quarry (0.34.0)

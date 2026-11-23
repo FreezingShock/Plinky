@@ -422,7 +422,9 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
-			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
+			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k) * GraphicsQuality.shadow_stride())
+			gm.set_shader_parameter("march_steps", GraphicsQuality.shadow_steps())
+			gm.set_shader_parameter("ao_taps", GraphicsQuality.ao_taps())
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
 			gm.set_shader_parameter("fog_col", fog_col)
 			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
@@ -472,7 +474,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		_screen.set_area(area)
 		_screen.set_strength(_config.vignette_strength)
 	if _lg_rect != null:
-		_lg_rect.visible = not FxConfig.reduce_screen_fx
+		_lg_rect.visible = not FxConfig.reduce_screen_fx and GraphicsQuality.screen_grade()
 	_push_lights(t, steady)
 
 
