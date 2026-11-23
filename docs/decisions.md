@@ -543,3 +543,11 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Pad yield cap 25 to 15** (last level was 64k prestige for +2%, about 13x worse per prestige than crit chance). **Quick study cap 20 to 10** (21k prestige for mastery XP that barely matters). **Press rate cap 20 to 15** (so Stopwatch and the attribute together stay near 5x press rate).
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
+
+## Balance sim: three play profiles, meadow pacing checked (2026-11-23)
+- **Why:** the sim had one greedy press rate, so it could not show how much the pacing depends on how often the player presses. Idle, active and hold now run over 8 seeded runs each, and the table shows the median and the range.
+- **Profiles are content:** `content/config/sim_profiles.tres` (`data/sim_profiles.gd`) holds the presses per second (idle 0.2, active 0.5, hold 4.0) and the seed count. They are harness assumptions for pacing, not game balance. Active is the zone's `press_rate`, which already includes walking between pads.
+- **Seeds:** each run sets `rng.seed` so a rerun gives the same numbers (checked: two runs identical).
+- **Meadow kept as it is:** active gate 10.1 min (range 9.8 to 10.1), hold 9.8, idle 16.6. Clover opens at 4.4 min in every profile. The meadow meets the 10 minute target, so no meadow costs changed.
+- **Larkmoor not edited here:** the far gate is 56.0 min median on active (range 33.7 to 58.8), just under the 57 to 61 target. Larkmoor costs belong to the flower tiers thread, which gets these numbers (see `docs/balance.md` section 11).
+- **Open:** idle reaches the Larkmoor far gate at about 134 min, and the 57 to 61 target only holds for active play. Whether idle should be faster is a design question for Nathan. Not decided.

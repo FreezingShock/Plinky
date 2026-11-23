@@ -1,13 +1,16 @@
 extends SceneTree
-## Plays the whole meadow ladder with a greedy strategy and prints the minutes to each pad, each tier and each gate:
-## the onboarding meadow (Sprout, Clover) to its gate, then Larkmoor (Thistle, Heather, Foxglove, Starbloom) to the far gate.
-## Strategy: at every press, buy the highest-row pad you can afford (top tier first, then the biggest pad of the tier). No
-## walking time, no attributes, no relics: a floor for the pacing, not a prediction. Mastery is the real sim's.
+## Balance sim for the meadow ladder. Plays Meadow then Larkmoor with a greedy strategy under each play profile
+## (content/config/sim_profiles.tres), over several seeded runs, and prints the median minutes to each tier and gate.
+## Strategy: at every press, buy the highest-row pad you can afford (top tier first). No walking, attributes or relics:
+## a floor for the pacing, not a prediction. Mastery and crits still run, so seeds matter.
 ## Run: godot --headless --path . --script tools/sim.gd [-- rebirth_every_minutes]
 ## Prints "NOT reached" for a gate the strategy could not open in MAX_SECONDS, which CI treats as a failure.
 
 const DT: float = 0.25
 const MAX_SECONDS: float = 8.0 * 3600.0
+const PROFILES_PATH: String = "res://content/config/sim_profiles.tres"
+
+var t_now: float = 0.0
 
 
 func _order(sim: Sim, zone: StringName) -> Array[ButtonDef]:
@@ -22,9 +25,10 @@ func _order(sim: Sim, zone: StringName) -> Array[ButtonDef]:
 
 
 ## Plays `zone` until its gate opens (or time runs out). Returns the clock at the end.
-func _play(sim: Sim, zone: StringName, t0: float, log: Dictionary, tier_log: Dictionary, every: float) -> float:
+func _play(sim: Sim, zone: StringName, t0: float, log: Dictionary, tier_log: Dictionary, every: float, interval: float) -> float:
 	var buttons: Array[ButtonDef] = _order(sim, zone)
-	sim.tier_opened.connect(func(id: StringName) -> void: tier_log[id] = tier_log.get(id, t_now))
+	var on_open: Callable = func(id: StringName) -> void: tier_log[id] = t_now
+	sim.tier_opened.connect(on_open)
 	var t: float = t0
 	var next_press: float = t
 	var last_rebirth: float = t
@@ -33,7 +37,7 @@ func _play(sim: Sim, zone: StringName, t0: float, log: Dictionary, tier_log: Dic
 		t += DT
 		t_now = t
 		if t >= next_press:
-			next_press += sim.press_interval()
+			next_press += interval
 			for b: ButtonDef in buttons:
 				if sim.try_press(b.id):
 					if not log.has(b.id):
@@ -43,40 +47,34 @@ func _play(sim: Sim, zone: StringName, t0: float, log: Dictionary, tier_log: Dic
 			sim.try_rebirth()
 			last_rebirth = t
 			log["rebirths"] = int(log.get("rebirths", 0)) + 1
+	sim.tier_opened.disconnect(on_open)
 	return t
 
 
-var t_now: float = 0.0
-
-
-func _init() -> void:
-	var args: PackedStringArray = OS.get_cmdline_user_args()
-	var every: float = (float(args[0]) * 60.0) if args.size() > 0 else 0.0
+## One seeded run of one profile. Returns {gates: {zone: minutes or -1}, tiers: {tier: minutes}, pads: {pad: minutes}}.
+func _run(presses_per_second: float, seed_value: int, every: float) -> Dictionary:
 	var sim := Sim.new()
 	if not ContentLoader.load_into(sim):
 		push_error("content failed to load")
 		quit(1)
-		return
+	sim.rng.seed = seed_value
 	sim.new_game()
-	var failed: bool = false
+	var out: Dictionary = {"gates": {}, "tiers": {}, "pads": {}, "carry": {}}
+	var interval: float = 1.0 / maxf(presses_per_second, 0.001)
 	var t: float = 0.0
 	var zone: StringName = sim.zone_id
-	var clock0: float = 0.0
-	while zone != &"" and not failed:
+	while zone != &"":
 		var log: Dictionary = {}
 		var tiers: Dictionary = {}
 		var z: ZoneDef = sim.zone_defs[zone] as ZoneDef
-		print("-- %s (arrived at %.1f min)" % [z.display_name, t / 60.0])
-		var t_end: float = _play(sim, zone, t, log, tiers, every)
-		for tier: TierDef in sim.tiers_in_zone(zone):
-			if tiers.has(tier.id):
-				print("%s tier opens at %.1f min" % [tier.display_name, float(tiers[tier.id]) / 60.0])
-		for b: ButtonDef in sim.buttons_in_zone(zone):
-			if log.has(b.id):
-				print("%s first bought at %.1f min" % [b.id, float(log[b.id]) / 60.0])
+		var t_end: float = _play(sim, zone, t, log, tiers, every, interval)
+		for id: StringName in tiers:
+			out["tiers"][id] = float(tiers[id]) / 60.0
+		for id: StringName in log:
+			out["pads"][id] = float(log[id]) / 60.0
 		var open: bool = sim.is_gate_open(zone)
-		print("gate %s %s at %.1f min (%s %s)" % [zone, "open" if open else "NOT reached", t_end / 60.0, (sim.stat_defs[z.gate_stat] as StatDef).display_name, sim.get_stat(z.gate_stat).format()])
-		failed = not open
+		out["gates"][zone] = t_end / 60.0 if open else -1.0
+		out["carry"][zone] = sim.get_stat(&"sunlight").format()
 		t = t_end
 		var next: StringName = z.next_zone
 		if open and next != &"" and next != &"zone2":   # the quarry has its own sim (docs/zone2.md)
@@ -84,6 +82,61 @@ func _init() -> void:
 			zone = next
 		else:
 			zone = &""
-	var area: Dictionary = sim.area_mastery(&"larkmoor")
-	print("larkmoor mastery: %d of %d levels (%.1f%%)" % [area["level_sum"], area["level_cap"], float(area["fraction"]) * 100.0])
+	return out
+
+
+func _median(values: Array) -> float:
+	if values.is_empty():
+		return -1.0
+	values.sort()
+	return values[values.size() / 2]
+
+
+func _init() -> void:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var every: float = (float(args[0]) * 60.0) if args.size() > 0 else 0.0
+	var profiles: SimProfiles = load(PROFILES_PATH) as SimProfiles
+	if profiles == null:
+		push_error("missing " + PROFILES_PATH)
+		quit(1)
+		return
+	var failed: bool = false
+	var table: Array[String] = []
+	var keys: Array[StringName] = [&"clover_1", &"thistle_1", &"heather_1", &"foxglove_1", &"starbloom_1"]
+	for i: int in profiles.profile_names.size():
+		var name: String = profiles.profile_names[i]
+		var pps: float = profiles.presses_per_second[i]
+		var gates: Dictionary = {&"zone1": [], &"larkmoor": []}
+		var tiers: Dictionary = {}
+		var pads: Dictionary = {}
+		var carry: String = ""
+		for s: int in profiles.seeds:
+			var r: Dictionary = _run(pps, s + 1, every)
+			if s == 0:
+				carry = str(r["carry"].get(&"zone1", ""))
+			for z: StringName in gates:
+				var g: float = r["gates"].get(z, -1.0)
+				if g < 0.0:
+					failed = true
+				gates[z].append(g)
+			for id: StringName in r["tiers"]:
+				if not tiers.has(id):
+					tiers[id] = []
+				tiers[id].append(r["tiers"][id])
+			for id: StringName in r["pads"]:
+				if not pads.has(id):
+					pads[id] = []
+				pads[id].append(r["pads"][id])
+		print("== %s (%.2f presses/s, %d seeds)" % [name, pps, profiles.seeds])
+		for z: StringName in gates:
+			var vals: Array = gates[z]
+			var label: String = "meadow gate" if z == &"zone1" else "larkmoor gate"
+			print("   %s: median %.1f min (range %.1f to %.1f)%s" % [label, _median(vals.duplicate()), vals.min(), vals.max(), "  NOT reached" if vals.has(-1.0) else ""])
+		print("   Sunlight carried into Larkmoor (seed 1): %s" % carry)
+		for id: StringName in tiers:
+			print("   tier %s opens: median %.1f min" % [id, _median(tiers[id].duplicate())])
+		for id: StringName in keys:
+			if pads.has(id):
+				print("   %s first bought: median %.1f min" % [id, _median(pads[id].duplicate())])
+	print("Done. %s" % ["FAILED: a gate was not reached" if failed else "all gates reached"])
 	quit(1 if failed else 0)

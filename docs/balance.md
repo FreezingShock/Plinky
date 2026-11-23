@@ -210,3 +210,18 @@ No risk found. `BigNum` keeps a float mantissa and an integer exponent, so there
 ### 11.10 Verification
 - Headless tests: 2612 checks, 0 failed (2600 before, plus 12 new regression checks, three per stacking relic: diminishes, first stack is its full step, at or under 100% after 1000 stacks; the Gold Purse assertion was updated to the new step).
 - Not run here: the screenshot tool. It draws nothing under the cloud's software renderer, so the PC thread should check the relic and attribute panels in-engine.
+
+## 11. Flower ladder pacing check (23 Nov 2026, main at 5f4ab24, v0.27.0)
+Run `godot --headless --path . --script tools/sim.gd`. Greedy buys (highest row first), no walking, attributes or relics. Each profile runs 8 seeded games. Times are minutes from the start of the meadow. Larkmoor's first tier (Thistle) opens on arrival, so it has no unlock time.
+
+| Profile | Presses/s | Clover opens | Heather opens | Foxglove opens | Starbloom opens | Meadow gate median (range) | Larkmoor gate median (range) |
+|---|---|---|---|---|---|---|---|
+| idle | 0.2 | 4.4 | 17.1 | 67.0 | 124.1 | 16.6 (16.2 to 16.6) | 134.4 (71.6 to 136.9) |
+| active | 0.5 | 4.4 | 11.4 | 30.9 | 52.9 | 10.1 (9.8 to 10.1) | 56.0 (33.7 to 58.8) |
+| hold | 4.0 | 5.1 | 24.1 | 31.0 | 34.0 | 9.8 (9.6 to 9.8) | 34.5 (17.0 to 95.0) |
+
+- **Meadow:** active sits on the 10 minute target. Nothing changed in the meadow.
+- **Sunlight carried into Larkmoor (seed 1, active):** 4.49K. Thistle 1 costs 8K, and the Thistle row is bought within about a minute of arriving. The Thistle tier does not pace Larkmoor: Heather opens 1.3 minutes after arrival.
+- **Larkmoor far gate:** 56.0 median on active, under the 57 to 61 target. The spread between seeds is large (33.7 to 58.8). The median is the number to read; a single run can move by 20 minutes. Hold is faster, so a press-rate change moves the gate more than any single cost.
+- **Handed to the flower tiers thread (not edited here):** the Thistle row costs too little to pace Larkmoor, so Heather opens almost on arrival. Raising the Thistle costs would move Heather and everything after it.
+- **Idle:** at one press every 5 seconds the far gate is about 2 h 15 min. Decide with Nathan whether that is acceptable.
