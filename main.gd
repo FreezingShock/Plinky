@@ -189,9 +189,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_feedback()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_back"):
-		var any: bool = menus.close_all()
-		if any:
-			get_viewport().set_input_as_handled()
+		# Esc closes whatever is open; with nothing open it opens the hamburger menu as the pause menu.
+		if not menus.close_all():
+			menus.open(&"gallery")
+		get_viewport().set_input_as_handled()
 
 
 ## Menus without a mouse: while a panel is open the walker stands still and focus lands on its first control.
@@ -554,6 +555,9 @@ func _wire_menus() -> void:
 	hud.keep_centered(update_log)
 	gallery.is_locked = _section_locked
 	gallery.chosen.connect(_on_gallery_chosen)
+	gallery.resume_requested.connect(func() -> void: menus.close(&"gallery"))
+	gallery.quit_to_title_requested.connect(_quit_to_title)
+	gallery.quit_game_requested.connect(_quit_game)
 	menus.register(&"gallery", func() -> bool: return gallery.visible, func() -> void: gallery.visible = true, func() -> void: gallery.visible = false)
 	menus.register(&"log", func() -> bool: return update_log.visible, func() -> void: update_log.visible = true, func() -> void: update_log.visible = false)
 	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
@@ -564,6 +568,17 @@ func _wire_menus() -> void:
 	CloseX.attach(index_panel, index_panel.close_panel)
 	CloseX.attach(display_panel, display_panel.close)
 	CloseX.attach(feedback_panel, feedback_panel.close)
+
+
+## Pause menu footer. Both save first; the quit-to-title also lets the next boot show the title again.
+func _quit_to_title() -> void:
+	Save.save_game()
+	TitleScreen.go_to_title(get_tree())
+
+
+func _quit_game() -> void:
+	Save.save_game()
+	get_tree().quit()
 
 
 ## A gallery tile was picked: open that section (the router closes the gallery), or show Travel in the zone panel.

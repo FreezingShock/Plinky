@@ -338,3 +338,9 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - One shared state: focus (keyboard or pad) opens it at once; the mouse needs 130 ms of rest (a quick sweep opens nothing) and the label lingers 150 ms after leaving (no flicker across the gap). Hit areas extend 2 texels sideways and 4 up and down, so neighbours meet in the gaps and the margin below the bar is clickable.
 - Settings > Access > Bottom bar labels: On hover (default), Always (labels sit in fixed, wider chips, nothing animates), Never (icons only; tooltips still name them). Reduce motion / flashing snaps the bubble with no scramble.
 - Number keys 1 to 5 press Upgrades, Relics, Stats, Attributes, Menu (fixed numbers, shown in each chip's tooltip). Rebirth has no number key on purpose, so it cannot be hit by accident.
+
+## Title screen and Esc pause menu
+- Boot now dissolves into `boot/title_screen.tscn`; `TitleScreen.game_scene` carries the preloaded game so Play is instant. Skip with `-- --skip-title` or env `PLINKY_SKIP_TITLE` (CI boot smoke test uses it). Quit to title returns to the title even when the flag is set.
+- Esc = `plinky_back`: closes open menus first, otherwise opens the hamburger gallery. The game is not hard-paused (menus never paused it; the walker already stands still while a menu is open), so "Close menu" just closes the menu. Quit to title / Quit game save first.
+- Gallery tiles are icon-only at rest and type their label in on hover or focus (ExpandChip.reveal); tiles never change size. Text actions use `MenuTextButton` (Pixelify Sans, no frame, accent colour, sliding ">" and sweeping underline) so they read as different from the icon chips. Close menu (was Resume) is green (palette 4), quits are accent (palette 5).
+- Not run with a GPU from the cloud: headless tests and a scripted Esc / Play / Quit to title walk-through pass; visuals unverified.
