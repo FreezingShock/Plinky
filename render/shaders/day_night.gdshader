@@ -7,8 +7,8 @@ global uniform float world_scale;
 // Light and shade over the meadow. Every texel is either left alone or multiplied by one of a few tints,
 // chosen by the 4x4 Bayer matrix in world texels, so the result is dither, never a smooth blend (art bible
 // sections 2 and 4). Uniforms are densities 0..1 set by SkyCycle.
-//  - night: one solid cool tint over the whole frame. Only where it thins (the edge of a light pool, dusk and dawn)
-//    does it step through one intermediate tint by Bayer, so night reads as a calm tone, never as a checkerboard.
+//  - night: one smooth cool tint over the whole frame. Where it thins (the edge of a light pool, dusk and dawn)
+//    it is a smooth gradient, so night reads as a calm tone, never as a checkerboard or a grid.
 //  - grade: the time-of-day colour grade (peach at sunrise, gold in the afternoon, orange and magenta at dusk).
 //  - rain: cool grey.
 //  - lights: pools around lanterns, shrine, gate, pads and the walker. Inside a pool the night shade thins out
@@ -52,26 +52,13 @@ void fragment() {
 	}
 	pool = clamp(pool * pool_strength, 0.0, 1.0);
 	vec3 m = vec3(1.0);
-	// night: a solid cool multiply. The tint ladder is clear, soft, full; a texel sits on one rung, or dithers
-	// between two neighbours while the dark is changing (pool edges, dusk, dawn), and the neighbours are close.
+	// night: a smooth, solid cool multiply that thins toward the light pools. No dither at all: a pool edge or dusk
+	// is a soft gradient over many world texels, so it reads as light, never as a grid.
 	float dk = clamp(night * (1.0 - pool) / 0.8, 0.0, 1.0);
-	float lv = dk * 2.0;
-	float lo = floor(lv);
-	float rung = lo + ((thr < fract(lv)) ? 1.0 : 0.0);
-	if (rung > 1.5) {
-		m *= mix(vec3(1.0), night_tint, 0.62);
-	} else if (rung > 0.5) {
-		m *= mix(vec3(1.0), night_tint, 0.3);
-	}
-	// warm cast inside a pool, on the same kind of ladder so the lantern is a clean glow, not a noisy blob
-	float wk = clamp(pool * (0.35 + 0.65 * night) * 2.2, 0.0, 1.0) * ((pool > 0.1) ? 1.0 : 0.0);
-	float wl = wk * 2.0;
-	float wr = floor(wl) + (((1.0 - thr) < fract(wl)) ? 1.0 : 0.0);
-	if (wr > 1.5) {
-		m *= mix(vec3(1.0), pool_tint, 0.8);
-	} else if (wr > 0.5) {
-		m *= mix(vec3(1.0), pool_tint, 0.4);
-	}
+	m *= mix(vec3(1.0), night_tint, 0.62 * dk);
+	// warm cast inside a pool, smooth the same way, so a lantern is a clean glow
+	float wk = clamp(pool * (0.35 + 0.65 * night) * 2.2, 0.0, 1.0) * smoothstep(0.05, 0.2, pool);
+	m *= mix(vec3(1.0), pool_tint, 0.8 * wk);
 	// the time-of-day grade and rain are solid tints: a smooth change over hours, never a screen-wide pattern
 	m *= mix(vec3(1.0), grade_col, clamp(grade_amount, 0.0, 1.0));
 	m *= mix(vec3(1.0), rain_tint, clamp(rain * 0.5, 0.0, 1.0));
