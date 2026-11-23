@@ -43,6 +43,7 @@ var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
 var gallery: GalleryMenu
 var update_log: UpdateLogPanel
+var history_panel: HistoryPanel
 var menus: MenuRouter = MenuRouter.new()   # which menu is open (ui/menu_router.gd)
 var palette_id: StringName = Palettes.MEADOW
 
@@ -215,7 +216,7 @@ var _menu_was_open: bool = false
 
 
 func _menu_focus() -> void:
-	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log]
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, index_panel, hud.upgrades_panel(), gallery, update_log, history_panel]
 	var open: Control = null
 	for p: Control in panels:
 		if p != null and p.visible:
@@ -543,9 +544,15 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return
-	if pad.standing or pad.holding:
+	# A relic pulse presses the neighbours of the pad you pressed: Juice draws those as echoes that ripple outward.
+	var from: Vector2 = Vector2.INF
+	if sim.pulse_source != &"":
+		var src: TexelPad = pads.get(sim.pulse_source) as TexelPad
+		if src != null:
+			from = src.position
+	if from == Vector2.INF and (pad.standing or pad.holding):
 		walker.squash()
-	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding)
+	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding and from == Vector2.INF, from, sim.pulse_order)
 
 
 ## Relic UI (PR #5): equipped bar, drop toast, collection panel, pad flash on Epic and above.
@@ -610,8 +617,12 @@ func _wire_menus() -> void:
 	hud.add_child(gallery)
 	update_log = UpdateLogPanel.new()
 	hud.add_child(update_log)
+	history_panel = HistoryPanel.new()
+	hud.add_child(history_panel)
+	history_panel.bind(sim)
 	hud.keep_centered(gallery)
 	hud.keep_centered(update_log)
+	hud.keep_centered(history_panel)
 	gallery.is_locked = _section_locked
 	gallery.chosen.connect(_on_gallery_chosen)
 	gallery.resume_requested.connect(func() -> void: menus.close(&"gallery"))
@@ -619,8 +630,10 @@ func _wire_menus() -> void:
 	gallery.quit_game_requested.connect(_quit_game)
 	_register_animated(&"gallery", gallery)
 	_register_animated(&"log", update_log)
+	_register_animated(&"history", history_panel)
 	CloseX.attach(gallery, func() -> void: menus.close(&"gallery"))
 	CloseX.attach(update_log, func() -> void: menus.close(&"log"))
+	CloseX.attach(history_panel, func() -> void: menus.close(&"history"))
 	hud.menu_toggled.connect(menus.toggle)
 	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
 	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
@@ -669,7 +682,7 @@ func _on_gallery_chosen(kind: StringName) -> void:
 func _section_locked(kind: StringName) -> bool:
 	var ob: Onboarding = GameState.onboarding
 	match kind:
-		&"stats": return not ob.is_unlocked(Onboarding.F_MULT)
+		&"stats", &"history": return not ob.is_unlocked(Onboarding.F_MULT)
 		&"attributes", &"upgrades": return not ob.is_unlocked(Onboarding.F_UPGRADES)
 		&"relics": return GameState.relics == null or not ob.is_unlocked(Onboarding.F_RELICS)
 	return false

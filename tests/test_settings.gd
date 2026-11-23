@@ -37,6 +37,29 @@ func run(t: Object) -> void:
 	t.eq(SettingsRegistry.entries("Test").size(), 1, "registering an id twice replaces the row")
 	t.ok(SettingsRegistry.find(&"nope").is_empty(), "unknown id finds nothing")
 
+	# Keybinds with modifiers.
+	Keybinds.reset_all()
+	t.eq(Keybinds.key_for(&"sprint"), KEY_SHIFT, "sprint defaults to Shift")
+	t.eq(Keybinds.key_for(&"sprint_lock"), KEY_CTRL, "sprint lock defaults to Ctrl")
+	var mk := InputEventKey.new()
+	mk.keycode = KEY_C
+	mk.pressed = true
+	mk.shift_pressed = true
+	t.eq(Keybinds.code_of(mk), KEY_C | KEY_MASK_SHIFT, "a combo keeps its modifiers")
+	Keybinds.set_key(&"relics", Keybinds.code_of(mk))
+	t.ok(Keybinds.matches(&"relics", mk), "Shift+C matches a Shift+C binding")
+	mk.shift_pressed = false
+	t.ok(not Keybinds.matches(&"relics", mk), "plain C does not match Shift+C")
+	var sk := InputEventKey.new()
+	sk.keycode = KEY_SHIFT
+	sk.pressed = true
+	sk.shift_pressed = true
+	t.eq(Keybinds.code_of(sk), KEY_SHIFT, "a modifier alone binds as itself")
+	t.ok(Keybinds.matches(&"sprint", sk), "Shift matches the Sprint binding")
+	Keybinds.set_key(&"sprint_lock", KEY_F9)
+	t.ok(not Keybinds.matches(&"sprint_lock", sk), "a rebound lock ignores Ctrl and Shift")
+	Keybinds.reset_all()
+
 	# Keybinds.
 	t.eq(Keybinds.key_for(&"settings"), KEY_F10, "settings defaults to F10")
 	t.eq(Keybinds.key_for(&"fullscreen"), KEY_F11, "fullscreen defaults to F11")

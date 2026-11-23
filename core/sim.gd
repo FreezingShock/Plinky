@@ -33,6 +33,8 @@ var area_defs: Dictionary = {}       # StringName -> AreaDef (zone menu grouping
 var relics: RelicInventory
 ## Pad XP and levels. Replaced by ContentLoader with the content's config.
 var mastery: Mastery = Mastery.new()
+## History numbers (income graph, time per zone, bests) for the History screen. Lifetime part is saved.
+var run_stats: RunStats = RunStats.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
 
@@ -45,6 +47,10 @@ var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
+## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
+## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
+var pulse_source: StringName = &""
+var pulse_order: int = 0
 var relic_drops: int = 0     # relics dropped from presses this save
 var ui_flags: Dictionary = {}  # onboarding: {"unlocked": {id: true}, "seen": {id: true}}. Opaque to the sim, saved with it.
 ## 0 to 1. Walking charges it (feed_momentum), pressing nudges it (feed_press_momentum). Once charging stops it holds
@@ -125,6 +131,7 @@ func new_game() -> void:
 	rebirth_count = 0
 	relic_drops = 0
 	mastery.clear()
+	run_stats.clear()
 	calendar.reset()
 	ui_flags = {}
 	momentum = 0.0
@@ -351,6 +358,7 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
+	run_stats.on_press(crit)
 	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * (1.0 + effect_total(&"mastery_xp")))
 	_check_gates()
 	_flush()
@@ -365,9 +373,15 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 			relics.add_relic(drop)
 		var pulse: float = relics.total_effect(RelicDef.Effect.PULSE_CHANCE)
 		if pulse > 0.0 and rng.randf() < pulse:
+			pulse_source = button_id
+			var order: int = 0
 			for other: ButtonDef in button_defs.values():
 				if other.zone == b.zone and other.row == b.row and absi(other.row_index - b.row_index) == 1:
+					pulse_order = order
+					order += 1
 					_press(other.id, world_pos, false)
+			pulse_source = &""
+			pulse_order = 0
 	return true
 
 
@@ -445,6 +459,7 @@ func _sync_momentum_tier() -> void:
 	if t != _momentum_tier:
 		var rising: bool = t > _momentum_tier
 		_momentum_tier = t
+		run_stats.on_tier(t)
 		momentum_tier_changed.emit(t, rising)
 
 
@@ -503,12 +518,14 @@ func _update_streak(b: ButtonDef) -> void:
 	if b.row == _streak_row and b.row_index == _streak_next and play_seconds - _streak_at <= config.streak_window:
 		_streak_at = play_seconds
 		_streak_next += 1
+		run_stats.on_chain(_streak_next)
 		var last_index: int = 0
 		for other: ButtonDef in button_defs.values():
 			if other.zone == b.zone and other.row == b.row:
 				last_index = maxi(last_index, other.row_index)
 		if b.row_index >= last_index:
 			_streak_row = &""
+			run_stats.on_streak_done()
 			if play_seconds >= _streak_ready_at:
 				_streak_ready_at = play_seconds + config.streak_cooldown
 				bonus_gained.emit(&"streak", _grant_income_seconds(config.streak_bonus_seconds))
@@ -534,6 +551,8 @@ func _roll_relic_drop() -> StringName:
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
 func step(dt: float) -> void:
 	play_seconds += dt
+	if run_stats.step(dt, zone_id):
+		run_stats.record_income(income_per_second(config.income_stat))
 	calendar.advance(dt)
 	if momentum_hold > 0.0:
 		momentum_hold = maxf(0.0, momentum_hold - dt)
@@ -609,6 +628,7 @@ func try_rebirth() -> bool:
 	relics.set_rebirths(rebirth_count)
 	_set_heat(0.0)
 	_flush()
+	run_stats.mark_rebirth()
 	rebirth_done.emit(gained)
 	return true
 
@@ -773,6 +793,7 @@ func to_dict() -> Dictionary:
 		"relics": relics.to_dict(),
 		"mastery": mastery.to_dict(),
 		"calendar": calendar.to_dict(),
+		"run_stats": run_stats.to_dict(),
 	}
 
 
@@ -821,5 +842,8 @@ func from_dict(d: Dictionary) -> bool:
 	relics.set_rebirths(rebirth_count)
 	mastery.from_dict(d.get("mastery", {}), button_defs)
 	calendar.from_dict(d.get("calendar", {}))
+	var rs: Variant = d.get("run_stats", {})
+	if rs is Dictionary:
+		run_stats.from_dict(rs)
 	_dirty.clear()
 	return true
