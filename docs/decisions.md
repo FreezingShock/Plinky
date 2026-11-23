@@ -471,6 +471,11 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Access.** Reduce flashing freezes colour cycling and the white flash; Calm camera, Still meadow and Reduce flashing force plain Rise motion, no wave, glitch or shiver, and a quarter of the sparkle trail. Screen shake still follows Reduce screen shake. Popups hide under open menus as before.
 - **Taste calls to confirm with Nathan:** the tier thresholds, whether Galaxy should be the top or a sixth tier (e.g. Void) should follow, and how loud the tier chimes should be.
 - Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges the look and sound.
+## Settings and Esc menu refresh
+- **Colours.** Each Settings tab and each Esc menu tile takes one fixed stat colour (Audio cyan, Display blue, Gameplay gold, Access green, Controls purple, Data pink; Stats gold, Attributes blue, Upgrades green, Relics purple, Travel cyan, Settings paper, Update Log mint). Panel border, title, row labels and tab outlines use it, like the gallery's stat cards.
+- **Title Case is applied at display time** (`DisplayPanel.title_case`), not by editing registry strings, so rows added by other threads (Access, QoL, rebind screen) are covered automatically. Words with capitals or digits (VSync) are kept.
+- **Layout untouched.** Rows still come from SettingsRegistry; only visuals changed, so parallel threads adding rows do not conflict.
+- Not run in the cloud: the engine. The PC pass judges the colours and spacing.
 ## 2026-11-23 Quality-of-life bundle (v0.21.0)
 - **Rebind with modifiers.** A binding is a keycode OR-ed with `KEY_MASK_SHIFT/CTRL/ALT/META`, so old saves (plain keycodes) still load. A modifier alone (Shift, Ctrl) binds when released with no other key pressed. Sprint (Shift) and Sprint lock (Ctrl) are now rebindable actions. A binding's modifiers must be held; extra held modifiers are tolerated, so Shift+C still crouches-slides while sprinting.
 - **Save indicator.** "Saved" fades after each save, beside the Menu chip; a failed write shows red "Save failed" even with the indicator off (`EventBus.save_failed`). Setting: Gameplay > Save indicator.
@@ -478,6 +483,12 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Rebirth confirm** card shows the Prestige and Rebirth Points you will get. Setting: Gameplay > Confirm rebirth (default on).
 - Buy max and Buy x10 were dropped from this bundle at Nathan's request.
 - Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges card placement and the indicator.
+## 2026-11-23: History screen
+- **What.** New menu tile and window, History, opened through MenuRouter with the shared dither wipe and close X, in the same panel style as the Stats gallery. Sections: Income (last 10 minutes), Bests, Totals, Time in each zone.
+- **Data.** `core/run_stats.gd` (`Sim.run_stats`) samples Cash per second every 5 s into a 120-sample ring (the session graph, not saved). Saved with the game, no save version bump because missing keys default: time per zone, longest pad chain, chains finished, highest Momentum stage, crits, best income.
+- **Graph.** Log scale (income spans many orders of magnitude), 2 px bars, dotted quarter lines, a gold line under each rebirth. Pure sizing in `HistoryGraph.bar_heights`.
+- **Best streak.** The streak tiers (Plain to Galaxy) in PR #144 are not on main yet, so "best streak" is the longest pad chain plus the highest Momentum stage. When #144 merges, swap or add its tier name to the Bests rows in `HistoryPanel.rows_for`.
+- **Unlock.** Same gate as Stats (after the first press). Not run in the cloud: Godot itself; CI runs the headless tests, the PC pass checks the look.
 ## Ambient soundscape (23 Nov, v0.20.0)
 | Date | Decision | Why |
 |---|---|---|

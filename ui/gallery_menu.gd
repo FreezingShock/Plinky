@@ -21,8 +21,15 @@ const ENTRIES: Array = [
 	[&"relics", "Relics", "menu_relics"],
 	[&"travel", "Travel", "menu_travel"],
 	[&"settings", "Settings", "menu_settings"],
+	[&"history", "History", "menu_history"],
 	[&"log", "Update Log", "menu_log"],
 ]
+
+## Section colours, the same fixed stat colours the gallery cards use: Cash gold, Multiplier blue and so on.
+const COLORS: Dictionary = {
+	&"stats": Color("f2c94c"), &"attributes": Color("55aaff"), &"upgrades": Color("7be08a"), &"relics": Color("c77dff"),
+	&"travel": Color("6fd6e8"), &"settings": Color("f6efd9"), &"log": Color("9ee2c0"),
+}
 
 ## Set by Main: kind -> true while that section is still locked by the tutorial.
 var is_locked: Callable = Callable()
@@ -63,6 +70,7 @@ func _init() -> void:
 		var tile := GalleryTile.new()
 		tile.kind = e[0]
 		tile.label = e[1]
+		tile.accent = COLORS.get(e[0], Color(0, 0, 0, 0)) as Color
 		tile.big_icon = load("res://assets/icons/big/%s.png" % e[2]) as Texture2D
 		var k: StringName = e[0]
 		tile.pressed.connect(func() -> void: chosen.emit(k))
@@ -74,10 +82,10 @@ func _init() -> void:
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	actions.add_theme_constant_override("separation", 4)
 	v.add_child(actions)
-	_resume = _action("Close menu", RelicStyle.good, func() -> void: resume_requested.emit())
+	_resume = _action("Close Menu", RelicStyle.good, func() -> void: resume_requested.emit())
 	actions.add_child(_resume)
-	actions.add_child(_action("Quit to title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit()))
-	actions.add_child(_action("Quit game", RelicStyle.accent, func() -> void: quit_game_requested.emit()))
+	actions.add_child(_action("Quit To Title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit()))
+	actions.add_child(_action("Quit Game", RelicStyle.accent, func() -> void: quit_game_requested.emit()))
 	var hint := Label.new()
 	hint.text = "Esc closes the menu."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
