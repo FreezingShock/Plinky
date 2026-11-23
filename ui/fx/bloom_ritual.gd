@@ -23,6 +23,8 @@ var hud: Hud
 var _t: float = -1.0    ## seconds since the reset; negative = idle
 var _plan: Dictionary = {}
 var _calm: bool = false
+## True from the Bloom until the sequence ends. Toasts wait on it so they never cover the number and icon.
+static var running: bool = false
 var _gained: int = 0
 var _reset: ZoneResetDef
 var _color: Color = Color.WHITE
@@ -139,6 +141,7 @@ func start(reset_id: StringName, gained: int) -> void:
 	_hint.add_theme_color_override("font_color", StatStyle.gain())
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_t = 0.0
+	running = true
 	visible = true
 	set_process(true)
 	set_process_input(true)
@@ -208,8 +211,8 @@ func _set_light(p: Dictionary) -> void:
 	var veil: float = BloomTimeline.veil_at(_t, p)
 	var flash: float = BloomTimeline.flash_at(_t, p)
 	if FxConfig.reduce_screen_fx or _calm:
-		veil = 0.0 if FxConfig.reduce_screen_fx else veil * 0.4
-		flash = 0.0
+		veil = 0.0
+		flash = 0.0   # calm is a plain fade: no dither veil, no flash
 	_mat.set_shader_parameter("veil", veil)
 	_mat.set_shader_parameter("flash", flash)
 	_mat.set_shader_parameter("size_px", size)
@@ -403,6 +406,7 @@ func _end(finished: bool) -> void:
 	if _t < 0.0 and not finished:
 		return
 	_t = -1.0
+	running = false
 	visible = false
 	set_process(false)
 	set_process_input(false)
