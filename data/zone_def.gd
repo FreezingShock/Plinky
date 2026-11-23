@@ -45,3 +45,6 @@ extends Resource
 @export var heat_decay_per_second: float = 0.0
 @export var heat_hot_at: float = 5.0              ## at or above this, presses are Hot
 @export var heat_hot_mult: float = 1.0            ## reward multiplier for a Hot press
+
+## Open-air zones get the arrival banner with season and time; indoor or themed ones do not.
+@export var outdoor: bool = true

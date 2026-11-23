@@ -34,6 +34,8 @@ const PAL_PAPER := 7
 ## Set by the settings screen (M4). Respected by every effect below.
 static var reduce_flashing := false
 static var reduce_shake := false
+## Banners and other typed text show whole, with no typing or collapse.
+static var reduce_motion := false
 ## Turns off the screen-wide light passes (edge shade, full-frame light grade).
 static var reduce_screen_fx := false
 
