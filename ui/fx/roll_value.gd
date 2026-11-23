@@ -12,6 +12,7 @@ var _primed: bool = false
 var _whole: bool = false
 var _accum: float = 0.0
 var _flash: Tween
+var _pop: Tween
 
 
 ## One ease step. Pure, so tests can run it without a scene.
@@ -87,3 +88,18 @@ func _flash_gain(big: bool) -> void:
 	modulate = Color(hot.r, hot.g, hot.b, modulate.a)
 	_flash = create_tween()
 	_flash.tween_property(self, "modulate", Color.WHITE, FxConfig.BIG_GAIN_FLASH if big else FxConfig.SMALL_GAIN_FLASH)
+	if big:
+		_punch()
+
+
+## Scale punch with overshoot on a big gain. Held to a few fixed steps so the glyphs stay on whole pixels.
+func _punch() -> void:
+	if FxConfig.reduce_shake or not is_inside_tree():
+		return
+	if _pop != null and _pop.is_valid():
+		_pop.kill()
+	pivot_offset = size / 2.0
+	_pop = create_tween()
+	for i in FxConfig.PUNCH_STEPS.size():
+		_pop.tween_callback(func() -> void: scale = Vector2.ONE * FxConfig.PUNCH_STEPS[i])
+		_pop.tween_interval(FxConfig.PUNCH_STEP_TIME)

@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.26.5 - 2026-11-23
+- Stat counters punch with an overshoot when a big gain lands (stepped, skipped under Reduce motion).
+
 ## 0.26.4 - 2026-11-23
 - Relics menu: the rarity name is back on each card (small, dim) with an On or Swap mark, bonuses wrap whole instead of mid-phrase, and the collection shows three card rows.
 
