@@ -15,6 +15,7 @@ var _gate_panel: PanelContainer
 var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
+const STAT_NAME_SIZE: int = 16   ## stat names in the top-left panel; integer so Pixelify Sans stays crisp
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
@@ -132,6 +133,12 @@ func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
 	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
+	var name_font: FontFile = CrispFont.apply(load("res://fonts/PixelifySans.ttf") as FontFile)
+	var name_w: float = 0.0   # widest stat name, so the number column lines up
+	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+		var d: StatDef = sim.stat_defs.get(sid) as StatDef
+		if d != null:
+			name_w = maxf(name_w, name_font.get_string_size(d.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_NAME_SIZE).x)
 	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
@@ -147,8 +154,10 @@ func _build_stats() -> void:
 		h.add_child(icon)
 		var name_l := Label.new()
 		name_l.text = def.display_name
-		name_l.custom_minimum_size.x = 66
-		name_l.add_theme_color_override("font_color", RelicStyle.dim)
+		name_l.custom_minimum_size.x = ceilf(name_w)
+		name_l.theme_type_variation = &"TitleLabel"   # same face as the tooltip titles
+		name_l.add_theme_font_size_override("font_size", STAT_NAME_SIZE)
+		name_l.add_theme_color_override("font_color", StatStyle.color(sid))   # same colour as the tooltip title
 		h.add_child(name_l)
 		var val := RollValue.new()
 		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
