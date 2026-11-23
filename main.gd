@@ -141,6 +141,7 @@ func _ready() -> void:
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
 	bus.bonus_gained.connect(_on_bonus_gained)
+	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
 	_prev_zone = _previous_zone(sim.zone_id)
@@ -509,6 +510,7 @@ func _on_mastery_leveled(button_id: StringName, level: int) -> void:
 
 
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
+	sim.feed_press_momentum(crit)
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return

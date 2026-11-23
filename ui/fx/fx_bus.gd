@@ -64,6 +64,15 @@ func milestone() -> void:
 	if transitions: await transitions.invert_flash()
 	if shake: shake.add(0.8)
 
+## A momentum stage was crossed. Rising stages thump a little harder the higher they are; Surge also pings.
+func momentum_tier(tier: int, rising: bool) -> void:
+	if not rising:
+		return
+	if shake: shake.add(0.06 + 0.05 * float(tier))
+	if tier >= 4:
+		Audio.relic(&"rare")
+
+
 func zone_enter() -> void:
 	if transitions: await transitions.zone_shift()
 

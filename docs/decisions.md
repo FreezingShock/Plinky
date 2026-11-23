@@ -400,3 +400,12 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 ## Gallery PC-pass fixes (index panel)
 - Cards use the SELECT solid style (as the hamburger tiles). The detail page hides the hover strip and uses DETAIL_H (230) instead of the grid's 150, since nothing sits under it. Panel centring uses the combined minimum size. All index focus grabs are quiet (no tooltip on open or page change).
 - Detail page: header panel (icon+name left, value+gain right) and sub-tabs About / Sources / Level (attributes only), one page visible at a time instead of one long scroll.
+
+## 2026-11-23 Momentum overhaul (v0.14.0)
+- Nathan: "completely overhaul momentum and its bar". Momentum stays a 0..1 charge so the +40% ceiling and the balance sim are untouched, but it now has structure.
+- Stages, named and data-driven (GameConfig.momentum_tier_*): Idle, Stride (20%), Rhythm (45%), Flow (70%), Surge (full). Income is 1 + 0.28 x charge + a kicker per stage reached (1/2/3/6%), so a full bar is still +40% and mid-bar is a touch lower, which makes crossing a stage feel like a step up.
+- Hold, then drain: charging stops, the bar holds 1.2 s, then drains 0.1/s. At full the hold is 4 s (Surge), the payoff for reaching the top. Walking is still the main driver (0.55% per texel).
+- Pressing and crits feed it: +1% per press, +5% on a crit, so pressing alone settles near Stride and walking is what reaches Flow and Surge. Fed from main.gd's press handler, not Sim.try_press, so the headless balance sim (which does not walk) is unchanged and the Larkmoor gate stays where it was (about 57 to 61 min).
+- Not done, on purpose, to keep it light: relic or mastery hooks. Both can add to momentum_per_press later without new systems.
+- Bar (ui/momentum_bar.gd, ui/momentum_meter.gd): 4 stage ticks that light below the bar as stages are passed, stage colour from palette roles (edge, good, accent, text), a dithered decay ghost that lingers 0.35 s then follows, a hold line under the bar, stage name on the title row, a flash and a one-size pop on a stage-up (off under Reduce flashing), Surge shimmer. Rising stages call Juice.momentum_tier (small shake, Surge pings). Tooltip is a shared Tip with exact numbers.
+- Not run in-engine: no Godot in the cloud. CI runs the headless tests and sim; the PC pass should judge the bar at 1x and 3x, the flash and the tooltip.

@@ -66,7 +66,7 @@ static func _cash(sim: Sim, rows: Array[Dictionary]) -> void:
 	rows.append(_r("Multiplier", "x%s" % sim.get_stat(&"mult").add(BigNum.one()).format(), "Press the Multiplier pads.", "base"))
 	rows.append(_r("Prestige", "x%s" % sim.prestige_mult().format(), "Rebirth to earn Prestige.", "prestige"))
 	rows.append(_r("Equipped relics", "x%.2f" % _relic(sim, RelicDef.Effect.CASH_MULT), "Equip a relic that boosts cash.", "relic"))
-	rows.append(_r("Momentum", "x%.2f" % (1.0 + sim.momentum * sim.config.momentum_max_bonus), "Keep walking to fill the momentum meter.", "action"))
+	rows.append(_r("Momentum", "x%.2f" % (1.0 + sim.momentum_bonus()), "Keep walking to fill the momentum meter.", "action"))
 	_pads_paying(sim, &"cash", rows)
 
 

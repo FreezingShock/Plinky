@@ -16,3 +16,10 @@ static func set_palette(colors: PackedColorArray) -> void:
 		return
 	ink = colors[0]; edge = colors[3]; dim = colors[3]
 	good = colors[4]; accent = colors[5]; text = colors[7]
+
+
+## Ink frame colour that brightens toward the text colour while `amount` (0..1) is up. Used for flashes.
+static func flash_ink(amount: float) -> Color:
+	if amount <= 0.0 or FxConfig.reduce_flashing:
+		return ink
+	return ink.lerp(text, clampf(amount, 0.0, 1.0))
