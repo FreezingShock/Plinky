@@ -375,5 +375,9 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - The pixel-art identity now comes from the palette ramps and texel grid, not from stacked screen dithers. Revisit if Nathan wants some dither back (the bible's section 2 and 4 describe dither as the lighting language).
 - Not run in engine. PC check at dawn, noon, dusk and night, zoom 1 to 4.
 
+## 2026-11-23: one menu animation, quiet focus on open
+- Every menu registers through `Main._register_animated`, which attaches `MenuAnim` (ui/fx/menu_anim.gd): the same stepped dither wipe and 14 px slide Stats/Attributes use. Stats/Attributes keeps its own copy inside `IndexPanel` (another thread is rebuilding it); fold it into MenuAnim when that lands. Travel keeps its RevealBox fold.
+- Menu-open auto-focus goes through `Tip.grab_quiet`, so no tooltip pops on the first item. `Tip.focus_muted` clears on the first ui_up/down/left/right/Tab input; mouse hover is never muted.
+- Not run in engine (no Godot in the cloud): needs a PC check of the wipe on Upgrades, Relics, Settings, Log and the hamburger.
 ## Night ladder removed
 - PC at night, zoom 3 to 4, still showed a faint grid on the ground: the three-rung night ladder dithered wherever the shade was below full (any light pool falloff, dusk, dawn). Night tint and the lantern warm cast are now plain smooth multiplies of `dk` / `wk`; no Bayer in day_night.gdshader any more. Supersedes the ladder in the "Night is a solid tint" entry.

@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.11 - 2026-11-23
+- Every menu (Upgrades, Relics, Settings, Feedback, Update Log, hamburger) now opens and closes with the same dither wipe and slide as Stats and Attributes, from one shared MenuAnim. Opening a menu no longer pops a tooltip on its first item; tooltips wait for hover or the first arrow, d-pad or Tab press.
+
 ## 0.10.10 - 2026-11-23
 - Night tint and lantern glow are fully smooth gradients now (no step dither), removing the faint grid on the ground at night.
 
