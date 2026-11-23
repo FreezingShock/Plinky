@@ -202,6 +202,12 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
 
+## Stats and Attributes index (2026-11-23)
+- One window (ui/index_panel.gd) with two tabs, opened by two icon-only HUD buttons, keys I (Stats) and O (Attributes), pad Back and Left-stick click. Read only: buying stays in Upgrades.
+- Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage is `sim.crit_damage()`; Pad mastery is the sum of `sim.mastery.level(id)` over all pads.
+- Open and close are a stepped 6 level Bayer wipe (ui/fx/dither_reveal.gd) plus an 8 texel slide; the header icon plays a 4 frame sheet. Reduce flashing turns the wipe off.
+- Tooltips use the shared `Tip`.
+- New 16x16 icons (tools/art/gen_index_icons.py): stats_menu, attrs_menu (+4 frame sheets), crit_dmg, mastery, presses, clock; heat.png copied from the library set.
 ## 2026-11-23: Shared tooltip system (`Tip`)
 `Tip.bind(control, spec)` gives any Control a themed tooltip (hover delay 0.35 s following the cursor, focus 0.08 s anchored, instant inside a 0.3 s grace window, clamped on screen). The host panel is created lazily under the scene root instead of an autoload, so project.godot is untouched. Existing PadTooltip and RelicTooltip stay as they are (they show richer rows); new UI uses `Tip`. API in docs/tooltips.md. Not run in-engine from the cloud; CI runs tests/test_tooltips.gd.
 ## 2026-11-23: Pad mastery and crits
@@ -221,6 +227,28 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - Not yet run in-engine; PC thread to verify and capture before/after.
 - Nathan, 23 Nov: pads are unique, green when affordable and red when not, with a secondary colour for the stat. Buy-state green/red are fixed hex (not palette) so they read in every zone; stat colours: mult blue, reb violet, slag amber. Each pad gets one of four inlay motifs from its id, and four stat-colour gems on the plate corners.
 
+## Lighting overhaul, stage 1 (23 Nov)
+- The scene is baked 2D plus canvas overlays (the 3D viewport is mostly empty), so a deferred normal-buffer light pass is not available. Instead a full-frame pass (render/shaders/light_grade.gdshader) reads the finished picture and re-lights every texel: sun-side lift, away-side cool or magenta shade, highlight and shadow split by luminance. All changes are Bayer-stepped, so it stays dither.
+- Retuned content/config/sky.tres so light is readable at a glance: grade amount, vignette 0.6, haze 0.85, mist 0.75, rays 1.0, pools 1.0, rim 1.0. New knobs: light_side, light_split, light_lift.
+- Dusk colour: orange fading to magenta (the away-side shade lerps to magenta as the sun gets low).
+- Not yet run in-engine: PC pass needed for screenshots and perf (hint_screen_texture costs a screen copy per frame).
+## 2026-11-23: Mastery retuned after the PC sim
+First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far gate at 51.9 min instead of 61 (best pad level 10, 22 of 250 area levels). Crit chance counts too: at x5 damage, +3% chance is about +12% expected yield, so it pushed as hard as the yield did. Now +0.2% yield and +0.1% crit chance per level (best pad at level 10: about +6% expected on that pad). Estimate only, about 59 min; the PC sim still has to confirm.
+
+## 2026-11-23: Mastery yield cut again
+PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.
+- Dither wipe is drawn from tiled 4x4 textures (no shader) and is inked before the first frame; the shader version showed opaque on frame 1 on the PC.
+
+## Lighting overhaul, stage 3: real night (23 Nov)
+- Night shade was a light dither (80% of texels, mid-blue). Now a separate night_shade 0.97 (night_strength stays 0.8, test_sky needs smooth steps) with darker tints (night 0.34/0.42/0.72, deep 0.16/0.20/0.42) and 60% of shaded texels take the deep tint, so night is genuinely dark. Light pools are about 1.5x wider so shrine, gate, pads and the walker clear the dark and read as light sources.
+- Not run in-engine; PC pass to judge darkness and readability of pads and the HUD-adjacent scene.
+
+## Lighting overhaul, stage 2a (redo) and the real cause of "barely visible" (23 Nov)
+- Cause: terrain materials are codes 100..109 but the relight data and shader only accepted 10..47, so only ~11.7k of ~124k ground texels (props and flowers) were ever relit. The ground was effectively untouched. Now accepted range is < 110 (write_relight_data, write_ramp_include, both shaders); 122k of 124k ground texels carry a material code.
+- Ground G-buffer: ground_n.png (normal, material, baked light) and ground_h.png (height) beside ground.png, written by gen_meadow3d.py; ground.png is byte-identical.
+- ground_light.gdshader: N.L relight, height-march cast shadows (flowers, tufts, rocks, slopes), cool shadow tint (multiplied), contact occlusion, depth fog. Pushed hard on purpose: relight 2.2, shadow 1.2, AO 0.5, step length 1.6 texels at noon to 3.4 at low sun. Tune down in content/config/sky.tres from here.
+- Debug: F6 cycles the ground view: off, albedo, normal, height, shadow only.
+- Process note: the first stage 2a push never carried the code (a denied command was never run, then a hard reset dropped the edits). This commit is the first one that actually contains it.
 ## 2026-11-23 Pad art, rarity and Momentum label
 - Nathan: pad inlay sprites were too small and all alike. Inlay is now 21x11 texels, and each pad gets a unique mirrored 5x5 emblem from its id, projected onto the plate, with a stat-colour spine. The centre stays clear for the tick or X.
 - Pads have a rarity (`ButtonDef.rarity`, content only): Meadow common, common, uncommon, rare, epic; Larkmoor common to legendary by cost; Quarry uncommon, rare, epic. Frame ring in the tier colour (none for Common), white studs from Legendary. Shown in the tooltip through `Sim.pad_rarity`.

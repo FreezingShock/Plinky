@@ -13,6 +13,8 @@ const SHADE_SHADER: Shader = preload("res://render/shaders/day_night.gdshader")
 const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
+const GROUND_SHADER: Shader = preload("res://render/shaders/ground_light.gdshader")
+const LIGHT_SHADER: Shader = preload("res://render/shaders/light_grade.gdshader")
 const MAX_LIGHTS: int = 24
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
@@ -45,6 +47,7 @@ var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
+var _light_mat: ShaderMaterial          # full-frame light pass (light_grade.gdshader)
 var _config: SkyConfig
 var _t: float = 0.0
 var _sway_step: int = -1
@@ -52,6 +55,8 @@ var _sway_step: int = -1
 ## get the same parameters as sway_material / rim_material; only the normal texture differs.
 var _prop_mats: Array[ShaderMaterial] = []
 var _rim_key: Array = []
+var _ground_mats: Array[ShaderMaterial] = []
+var _debug_view: int = 0
 var _relight_key: Vector4 = Vector4(-99.0, 0.0, 0.0, 0.0)
 
 
@@ -98,6 +103,17 @@ func _ready() -> void:
 	_shade_mat.shader = SHADE_SHADER
 	shade.material = _shade_mat
 	add_child(shade)
+	var lg := ColorRect.new()
+	lg.name = "LightGrade"
+	lg.position = area.position
+	lg.size = area.size
+	lg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_light_mat = ShaderMaterial.new()
+	_light_mat.shader = LIGHT_SHADER
+	_light_mat.set_shader_parameter("area_center", area.get_center())
+	_light_mat.set_shader_parameter("area_half", area.size * 0.5)
+	lg.material = _light_mat
+	add_child(lg)
 	rain_layer = SkyRain.new()
 	rain_layer.name = "Rain"
 	rain_layer.z_index = 6   # relative to this node: z 11 overall
@@ -182,7 +198,7 @@ func _model_time(t: float) -> float:
 
 func _update(t: float) -> void:
 	var mt: float = _model_time(t)
-	_shade_mat.set_shader_parameter("night", model.night(mt))
+	_shade_mat.set_shader_parameter("night", clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * _config.night_shade)
 	var ramp: float = model.ramp(mt)
 	if _config.grade_tint != null:
 		_shade_mat.set_shader_parameter("grade_col", _config.grade_tint.sample(ramp))
@@ -224,6 +240,26 @@ func prop_material(sways: bool, nrm: Texture2D) -> ShaderMaterial:
 	_relight_key = Vector4(-99.0, 0.0, 0.0, 0.0)   # push the sun and rim to the new material on the next update
 	_rim_key = []
 	return m
+
+
+## Material for the baked ground sprite, relit per texel from its G-buffer (nrm: normal/material/light, height: world z).
+func ground_material(nrm: Texture2D, height: Texture2D) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = GROUND_SHADER
+	m.set_shader_parameter("nrm_tex", nrm)
+	m.set_shader_parameter("h_tex", height)
+	_ground_mats.append(m)
+	_relight_key = Vector4(-99.0, 0.0, 0.0, 0.0)
+	return m
+
+
+## F6 cycles a debug view of the ground relight: off, albedo, normal, height, shadow only. Shows whether the maps are sampled.
+func _unhandled_key_input(event: InputEvent) -> void:
+	var k := event as InputEventKey
+	if k != null and k.pressed and not k.echo and k.keycode == KEY_F6:
+		_debug_view = (_debug_view + 1) % 5
+		for gm: ShaderMaterial in _ground_mats:
+			gm.set_shader_parameter("debug_view", _debug_view)
 
 
 func _each_prop_material(param: StringName, value: Variant) -> void:
@@ -279,6 +315,21 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var sun := Vector3(key.x * 0.45, -key.x * 0.45, 0.35 + 0.5 * key.y).normalized()
 		_each_prop_material(&"sun_dir", sun)
 		_each_prop_material(&"relight", key.z)
+		for gm: ShaderMaterial in _ground_mats:
+			gm.set_shader_parameter("sun_dir", sun)
+	if not _ground_mats.is_empty():
+		var sun_px := Vector2(clampf(az * 1.2, -1.0, 1.0), -0.6)    # toward the sun on screen, texels per march step
+		var shadow_k: float = _config.ground_shadow * (1.0 - 0.8 * rain01) * (1.0 - night_k * 0.6)
+		var fog_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
+		for gm: ShaderMaterial in _ground_mats:
+			gm.set_shader_parameter("sun_px", sun_px)
+			gm.set_shader_parameter("relight", _config.ground_relight * (1.0 - 0.5 * night_k))
+			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
+			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
+			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
+			gm.set_shader_parameter("ao_amt", _config.ground_ao)
+			gm.set_shader_parameter("fog_col", fog_col)
+			gm.set_shader_parameter("fog_amt", _config.ground_fog * (0.5 + 0.5 * model.mist(mt, rain01)))
 	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
 	if rim_key != _rim_key:
 		_rim_key = rim_key
@@ -301,6 +352,14 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_rays_mat.set_shader_parameter("sun", Vector2(area.get_center().x + az * area.size.x * 0.465, area.position.y - 50.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
 	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
+	# full-frame light pass: sun side lifts and warms, away side shades cool (magenta at dusk), highlights and shadows split
+	var lit_k: float = (1.0 - clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * 0.75) * (1.0 - 0.7 * rain01)
+	_light_mat.set_shader_parameter("sun_dir", Vector2(az, -1.0))
+	_light_mat.set_shader_parameter("light_col", rim_col)
+	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.74, 0.52, 0.78), low_sun_k))
+	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k)
+	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k))
+	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
 	if _screen != null:
 		_screen.set_strength(_config.vignette_strength)
