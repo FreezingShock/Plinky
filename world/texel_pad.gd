@@ -252,7 +252,7 @@ func _draw() -> void:
 				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), BUY_GREEN.darkened(0.2))
 	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Legendary adds corner studs.
 	if rarity != null and rarity.rank > 0:
-		draw_polyline(_diamond_at(0.86, top), rarity.color, 1.0)
+		_dashed_diamond(0.86, top, rarity.color)  # dashed, so Uncommon green never reads as the buy-state green
 		if rarity.rank >= 4:
 			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
@@ -291,6 +291,18 @@ func _draw_emblem(top: int, ink: Color) -> void:
 			if absi(x) <= 3 and absi(y) <= 1:
 				continue
 			draw_rect(Rect2(x - 1, top + y, 2, 1), stat_color if spine else ink)
+
+
+func _dashed_diamond(scale: float, y: int, col: Color) -> void:
+	var rx: float = HALF.x * scale
+	var ry: float = HALF.y * scale
+	for x in range(-int(rx), int(rx) + 1):
+		if x % 2 != 0:
+			continue
+		var dy: int = roundi(ry * (1.0 - absf(float(x)) / rx))
+		draw_rect(Rect2(x, y - dy, 1, 1), col)
+		if dy != 0:
+			draw_rect(Rect2(x, y + dy, 1, 1), col)
 
 
 func _diamond_at(scale: float, y: int) -> PackedVector2Array:
