@@ -16,12 +16,14 @@ static func of(sim: Sim, id: StringName, is_attribute: bool = false) -> Array[Di
 		if not sim.attribute_defs.has(id):
 			return rows
 		return _attribute(sim, sim.attribute_defs[id] as AttributeDef)
+	var zr: ZoneResetDef = sim.reset_for_currency(id)
+	if zr != null:   # a zone reset's currency: what the next use pays, what is banked, what it buys
+		rows.append(_r("Next %s" % zr.display_name, "+%d" % sim.reset_gain(zr.id), "%s pays more the higher your %s got." % [zr.display_name, (sim.stat_defs[zr.source_stat] as StatDef).display_name], "action"))
+		rows.append(_r("%ss done" % zr.display_name, str(sim.reset_count(zr.id)), "Each %s makes every pad pay %d%% more for good." % [zr.display_name, int(roundf(zr.bonus_per_use * 100.0))], "total"))
+		rows.append(_r("To spend", sim.get_stat(id).format(), "Spend it on %s in Upgrades." % zr.menu_title.to_lower(), "total"))
+		return rows
 	match id:
 		&"prestige": _prestige(sim, rows)
-		&"seeds":
-			rows.append(_r("Next Bloom", "+%d" % sim.bloom_gain_preview(), "Bloom pays more the higher your %s got." % (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name, "action"))
-			rows.append(_r("Blooms done", str(sim.bloom_count), "Each Bloom makes every pad pay %d%% more for good." % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), "total"))
-			rows.append(_r("To spend", sim.get_stat(&"seeds").format(), "Spend it on Bloom gifts in Upgrades.", "total"))
 		&"rp":
 			rows.append(_r("Next rebirth", "+%d" % sim.rp_for_rebirth(sim.rebirth_count), "Each rebirth pays a little more than the last.", "action"))
 			rows.append(_r("To spend", sim.rp_available().format(), "Spend it on Rebirth perks in Upgrades.", "total"))

@@ -15,6 +15,7 @@ static func load_into(sim: Sim, root: String = "res://content") -> bool:
 	sim.attribute_defs = _collect(root.path_join("attributes"), "AttributeDef")
 	sim.area_defs = _collect(root.path_join("areas"), "AreaDef")
 	sim.tier_defs = _collect(root.path_join("tiers"), "TierDef")
+	sim.reset_defs = _collect(root.path_join("resets"), "ZoneResetDef")
 	var mcfg: MasteryConfig = load(root.path_join("config/mastery.tres")) as MasteryConfig
 	sim.mastery = Mastery.new(mcfg)
 	var ccfg: CalendarConfig = load(root.path_join("config/calendar.tres")) as CalendarConfig

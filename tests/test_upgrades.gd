@@ -27,7 +27,7 @@ func run(t: Object) -> void:
 		if order[i - 1].currency == order[i].currency:
 			t.ok(order[i - 1].unlock_rebirths <= order[i].unlock_rebirths, "%s is not before a lower gate" % order[i].id)
 		else:
-			t.ok(UpgradeText.CURRENCY_RANK[order[i - 1].currency] < UpgradeText.CURRENCY_RANK[order[i].currency], "Prestige upgrades, then Rebirth Point perks, then Bloom gifts")
+			t.ok(UpgradeText.rank(sim, order[i - 1].currency) < UpgradeText.rank(sim, order[i].currency), "Prestige upgrades, then Rebirth Point perks, then Bloom gifts")
 	t.eq(order[0].id, &"press_rate", "press rate leads")
 
 	# gates

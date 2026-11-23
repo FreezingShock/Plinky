@@ -31,7 +31,7 @@ func help_lines() -> PackedStringArray:
 		"prestige <amount>         set the prestige stat",
 		"rebirths <n>              set the rebirth count (unlocks relic slots)",
 		"rebirth                   do a rebirth now if allowed",
-		"bloom                     do a Bloom now if allowed",
+		"zonereset [id]            do this zone's reset (Bloom in the meadow) now if allowed",
 		"relic <id> [stacks]       give a relic; 'relic all' or 'relic rarity <tier>' gives a set",
 		"relics                    list relics and rarities",
 		"zone <id>                 jump to a zone (opens the gate that leads there)",
@@ -46,6 +46,22 @@ func help_lines() -> PackedStringArray:
 	for k: String in _extra:
 		out.append("%-26s%s" % [k, String((_extra[k] as Dictionary)["help"])])
 	return out
+
+
+func _zone_reset(cmd: String, args: PackedStringArray) -> String:
+	var rid: StringName = &"bloom"
+	if cmd != "bloom":
+		var here: ZoneResetDef = sim.reset_for_zone()
+		rid = StringName(args[0]) if args.size() > 0 else (here.id if here != null else &"")
+	var rd: ZoneResetDef = sim.reset_defs.get(rid) as ZoneResetDef
+	if rd == null:
+		var known: PackedStringArray = PackedStringArray()
+		for k: StringName in sim.reset_defs:
+			known.append(String(k))
+		return "No reset here. Known: %s" % ", ".join(known)
+	if sim.try_reset(rd.id):
+		return "%s done." % rd.display_name
+	return "Not enough yet for %s." % rd.display_name
 
 
 func run(line: String) -> String:
@@ -71,8 +87,8 @@ func run(line: String) -> String:
 			return _rebirths(args)
 		"rebirth":
 			return "Rebirth done." if sim.try_rebirth() else "Not enough yet to rebirth."
-		"bloom":
-			return "Bloom done." if sim.try_bloom() else "Not enough yet to Bloom."
+		"zonereset", "bloom":
+			return _zone_reset(cmd, args)
 		"relic":
 			return _relic(args)
 		"relics":

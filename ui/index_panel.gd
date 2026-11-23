@@ -441,7 +441,8 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 			group = r["group"]
 			var h := Label.new()
 			h.text = group.to_upper()
-			h.add_theme_color_override("font_color", StatStyle.color(&"rp") if group == "Rebirth Perks" else RelicStyle.accent)
+			var gc: StringName = StringName(String(r.get("group_color_id", "")))
+			h.add_theme_color_override("font_color", StatStyle.color(gc) if gc != &"" else RelicStyle.accent)
 			_grid_box.add_child(h)
 			flow = HFlowContainer.new()
 			flow.add_theme_constant_override("h_separation", 3)

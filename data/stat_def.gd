@@ -26,8 +26,6 @@ extends Resource
 @export var prestige_boosts_income: bool = false
 ## Reset to start by the rebirth action.
 @export var resets_on_rebirth: bool = false
-## Reset to start by the Bloom action (the meadow flower stats).
-@export var resets_on_bloom: bool = false
 ## CASH_MULT relics multiply this stat's income.
 @export var relics_boost_income: bool = false
 ## MULT_GAIN relics multiply button rewards that go into this stat.

@@ -49,13 +49,16 @@ static func listed_stats(sim: Sim) -> Array[StringName]:
 	var ids: Array[StringName] = []
 	var defs: Array = sim.stat_defs.values()
 	defs.sort_custom(func(a: StatDef, b: StatDef) -> bool: return a.tier < b.tier if a.tier != b.tier else String(a.id) < String(b.id))
+	var currencies: Array[StringName] = []   # zone reset currencies are listed last, with Prestige and Rebirth Points
+	for rd: ZoneResetDef in sim.resets_ordered():
+		currencies.append(rd.currency)
 	for pass_in_zone: bool in [true, false]:
 		for d: StatDef in defs:
-			if d.id in [&"prestige", &"rp", &"seeds"] or d.id in ids:
+			if d.id in [&"prestige", &"rp"] or d.id in currencies or d.id in ids:
 				continue
 			if d.in_zone(sim.zone_id) == pass_in_zone:
 				ids.append(d.id)
-	ids.append(&"seeds")
+	ids.append_array(currencies)
 	ids.append(&"prestige")
 	ids.append(&"rp")
 	return ids
@@ -70,7 +73,7 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 			continue
 		if not def.in_zone(sim.zone_id) and sim.get_stat(sid).is_zero():
 			continue
-		if sid == &"seeds" and not UpgradeText.group_shown(sim, &"seeds"):
+		if sim.reset_for_currency(sid) != null and not UpgradeText.group_shown(sim, sid):
 			continue
 		if sid in [&"prestige", &"rp"] and not sim.rebirth_here() and sim.get_stat(sid).is_zero():
 			continue   # the meadow runs on Bloom; Prestige and Rebirth Points come back in Zone 2
@@ -125,12 +128,14 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		else:
 			tip += "\nNext level: %s\nCost: %s %s" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format(), UpgradeText.currency_name(a)]
 		var perk: bool = a.currency == &"rp"
-		var bloom: bool = a.currency == &"seeds"
-		var r: Dictionary = _row(aid, "Rebirth Perks" if perk else ("Bloom Gifts" if bloom else "Attributes"), a.display_name, String(ID_ICONS.get(aid, ATTR_ICONS.get(a.effect, "prestige"))), "Lv %d/%d" % [lv, a.cap], now, tip)
+		var zr: ZoneResetDef = sim.reset_for_currency(a.currency)
+		var group_name: String = "Rebirth Perks" if perk else (zr.menu_title if zr != null else "Attributes")
+		var r: Dictionary = _row(aid, group_name, a.display_name, String(ID_ICONS.get(aid, ATTR_ICONS.get(a.effect, "prestige"))), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap
 		r["maxed"] = lv >= a.cap
-		r["color_id"] = &"rp" if perk else (&"seeds" if bloom else a.effect)   # StatStyle colour: perks wear their currency's colour
+		r["color_id"] = &"rp" if perk else (a.currency if zr != null else a.effect)   # StatStyle colour: perks wear their currency's colour
+		r["group_color_id"] = &"rp" if perk else (a.currency if zr != null else &"")
 		rows.append(r)
 	return rows
 
