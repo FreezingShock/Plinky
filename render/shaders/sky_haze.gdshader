@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Haze over the far mountains and drifting mist over the water. Both are dither: a texel is either lit with
 // the haze colour or left alone, picked by comparing a density to the 4x4 Bayer matrix in world texels.
 //  - mountains: density rises with distance from the island (atmospheric perspective) inside a horizon band.
@@ -38,7 +42,7 @@ float vnoise(vec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {
@@ -75,11 +79,10 @@ void fragment() {
 	// mist is the cool, pale part: the haze colour pulled toward grey so a sunset does not paint the water orange
 	vec3 mist_col = mix(vec3(dot(haze_col, vec3(0.299, 0.587, 0.114))), haze_col, 0.3);
 	float mist_d = m * 0.7;
-	if (thr < mist_d && mist_d >= dens) {
-		COLOR = vec4(mist_col, 0.5);
-	} else if (thr < dens) {
-		COLOR = vec4(haze_col, 0.62);   // one fixed step toward the haze colour; the dither does the fade
+	// smooth alpha, no dither: haze and mist are soft washes
+	if (mist_d >= dens) {
+		COLOR = vec4(mist_col, clamp(mist_d * 0.5, 0.0, 0.5));
 	} else {
-		COLOR = vec4(0.0);
+		COLOR = vec4(haze_col, clamp(dens * 0.62, 0.0, 0.62));
 	}
 }

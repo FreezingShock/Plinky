@@ -43,6 +43,15 @@ extends Resource
 ## God ray colour by time of day.
 @export var ray_color: Gradient
 
+@export_group("Golden light")
+## How high the sun gets before the golden look is down to its floor (elevation 0..1), and how much of it is kept at noon.
+@export var golden_reach: float = 0.95
+@export var golden_floor: float = 0.35
+## Full-frame saturation and contrast added at full golden light (light_grade.gdshader), and the share kept at night.
+@export var golden_sat: float = 0.16
+@export var golden_contrast: float = 0.1
+@export var night_sat: float = 0.1
+
 @export_group("Shadows")
 ## Cast shadow length in object heights at noon, with the sun low, and under the moon.
 @export var shadow_len_noon: float = 0.22
@@ -65,8 +74,8 @@ extends Resource
 ## 1 texel edge light on the sun side of trees, bushes and rocks, 0..1.
 @export var rim_strength: float = 0.85
 
-## Share of texels the night shade covers at full night, 0..1. Kept apart from night_strength so the model stays smooth.
-@export var night_shade: float = 0.97
+## Night shade scale, 0..1 (full night = 0.8 reaches the solid tint). Kept apart from night_strength so the model stays smooth.
+@export var night_shade: float = 0.8
 
 @export_group("Atmosphere")
 ## Vignette: how much of the frame edge is darkened, 0..1 (0 = off).
@@ -79,7 +88,7 @@ extends Resource
 ## Full-frame light pass (light_grade.gdshader): sun-side lift and away-side shade across the whole frame, 0..1.
 @export var light_side: float = 0.6
 ## Highlight-warm / shadow-cool split by luminance, 0..1.
-@export var light_split: float = 0.4
+@export var light_split: float = 0.3
 ## How much brighter a lit texel gets, 0..1.
 @export var light_lift: float = 0.06
 ## Drifting fog over the land (ground_fog.gdshader), 0..1. Scaled by the mist curve: thickest at dawn and dusk and in rain.

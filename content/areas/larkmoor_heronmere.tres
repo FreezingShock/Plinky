@@ -10,5 +10,5 @@ display_name = "Heronmere"
 order = 1
 icon = "lake"
 theme_role = 7
-blurb = "A reed-fringed lake; the pads sit on its western shore."
-pad_buttons = PackedStringArray("h1", "h2")
+blurb = "A reed-fringed lake with a little jetty. No pads here yet."
+pad_buttons = PackedStringArray()

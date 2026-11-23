@@ -13,3 +13,5 @@ extends Resource
 @export var cost_growth: float = 1.4
 @export var unlock_rebirths: int = 0
 @export var order: int = 0
+## Which stat pays for it: &"prestige" (the default) or &"rp" (Rebirth Points, a balance spent down on purchase).
+@export var currency: StringName = &"prestige"

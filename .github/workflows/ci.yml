@@ -39,6 +39,9 @@ jobs:
       - name: Import project
         run: ~/godot/godot --headless --path . --import
 
+      - name: Version bump script tests
+        run: python3 tests/test_bump_version.py
+
       - name: Unit tests (tests/run.gd)
         run: |
           set -o pipefail
@@ -60,10 +63,15 @@ jobs:
           ~/godot/godot --headless --path . --script tools/bench.gd -- --frames=20 --quality=low 2>&1 | tee /tmp/bench.log
           ! grep -E "SCRIPT ERROR|Parse Error" /tmp/bench.log
 
+      # Frame budget: no frame over 150 ms in the headless bench (300 ms for a zone swap under the wipe) (script-side stalls such as a synchronous load or a
+      # whole zone built in one frame; the Larkmoor swap was one 330 ms frame). GPU cost needs the real-window bench.
+      - name: Frame budget (shots/bench.json)
+        run: python3 tools/check_frame_budget.py shots/bench.json 150 300
+
       # Autoloads don't exist under --script, so main.gd can't be compiled by the unit tests. Boot the real
       # project for a couple of seconds and fail on script errors. Gating: it catches runtime script errors the unit tests miss.
       - name: Boot smoke test (loads main.gd)
         run: |
           set -o pipefail
-          timeout 90 ~/godot/godot --headless --path . --quit-after 180 2>&1 | tee /tmp/boot.log || true
+          timeout 90 ~/godot/godot --headless --path . --quit-after 180 -- --skip-title 2>&1 | tee /tmp/boot.log || true
           ! grep -E "SCRIPT ERROR|Parse Error" /tmp/boot.log

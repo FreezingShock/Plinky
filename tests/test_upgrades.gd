@@ -24,11 +24,14 @@ func run(t: Object) -> void:
 	var order: Array[AttributeDef] = UpgradeText.ordered(sim)
 	t.eq(order.size(), sim.attribute_defs.size(), "every upgrade is listed")
 	for i: int in range(1, order.size()):
-		t.ok(order[i - 1].unlock_rebirths <= order[i].unlock_rebirths, "%s is not before a lower gate" % order[i].id)
+		if order[i - 1].currency == order[i].currency:
+			t.ok(order[i - 1].unlock_rebirths <= order[i].unlock_rebirths, "%s is not before a lower gate" % order[i].id)
+		else:
+			t.ok(UpgradeText.CURRENCY_RANK[order[i - 1].currency] < UpgradeText.CURRENCY_RANK[order[i].currency], "Prestige upgrades, then Rebirth Point perks, then Bloom gifts")
 	t.eq(order[0].id, &"press_rate", "press rate leads")
 
 	# gates
-	var gated: Array = order.filter(func(a: AttributeDef) -> bool: return a.unlock_rebirths > 0)
+	var gated: Array = order.filter(func(a: AttributeDef) -> bool: return a.unlock_rebirths > 0 and a.currency == &"prestige")
 	t.ok(gated.size() >= 3, "at least three upgrades unlock through Rebirths")
 	for a: AttributeDef in gated:
 		sim.rebirth_count = 0

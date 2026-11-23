@@ -79,10 +79,13 @@ func swap(old_id: StringName, new_id: StringName) -> bool:
 
 ## Total effect of every equipped relic of one kind. Linear stacking sums; chances combine as 1-(1-a)(1-b).
 func total_effect(effect: RelicDef.Effect) -> float:
+	return _total_for(equipped, effect)
+
+func _total_for(list: Array[StringName], effect: RelicDef.Effect) -> float:
 	var total: float = 0.0
 	var miss: float = 1.0
 	var chance_like: bool = effect == RelicDef.Effect.DOUBLE_CHANCE or effect == RelicDef.Effect.PULSE_CHANCE
-	for id in equipped:
+	for id in list:
 		var d: RelicDef = defs[id]
 		if d.effect != effect:
 			continue
@@ -90,6 +93,38 @@ func total_effect(effect: RelicDef.Effect) -> float:
 		total += v
 		miss *= 1.0 - v
 	return 1.0 - miss if chance_like else total
+
+## Every effect kind with a non-zero total from the equipped relics, as [{effect, total}], in enum order.
+func active_bonuses() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for e: int in RelicDef.Effect.values():
+		var v: float = total_effect(e as RelicDef.Effect)
+		if v > 0.0:
+			out.append({"effect": e, "total": v})
+	return out
+
+## What equipping `id` would change, as [{effect, before, after}] for the effects that differ.
+## With `replacing` set, that relic leaves its slot first (the swap case); otherwise `id` takes a free slot.
+## Pure preview: nothing is equipped and no signal fires.
+func preview_change(id: StringName, replacing: StringName = &"") -> Array[Dictionary]:
+	var after: Array[StringName] = equipped.duplicate()
+	if replacing != &"" and after.has(replacing):
+		after[after.find(replacing)] = id
+	elif not after.has(id):
+		after.append(id)
+	var kinds: Array[int] = []
+	for rid: StringName in [id, replacing]:
+		if defs.has(rid):
+			var k: int = int((defs[rid] as RelicDef).effect)
+			if not kinds.has(k):
+				kinds.append(k)
+	var out: Array[Dictionary] = []
+	for k in kinds:
+		var before_v: float = _total_for(equipped, k as RelicDef.Effect)
+		var after_v: float = _total_for(after, k as RelicDef.Effect)
+		if not is_equal_approx(before_v, after_v):
+			out.append({"effect": k, "before": before_v, "after": after_v})
+	return out
 
 ## Multiplier for formulas: 1 + total_effect.
 func multiplier(effect: RelicDef.Effect) -> float:
@@ -120,16 +155,9 @@ func roll_drop(rng: RandomNumberGenerator, luck_level: int, force: bool = false)
 			return (list[rng.randi() % list.size()] as RelicDef).id
 	return &""
 
-## Rarity high to low, then name. For the inventory grid.
+## Rarity high to low, then name. The default order of the collection.
 func sorted_owned() -> Array[RelicDef]:
-	var out: Array[RelicDef] = []
-	for id in owned:
-		out.append(defs[id])
-	out.sort_custom(func(a: RelicDef, b: RelicDef) -> bool:
-		if a.rarity.rank != b.rarity.rank:
-			return a.rarity.rank > b.rarity.rank
-		return a.display_name < b.display_name)
-	return out
+	return RelicQuery.new().apply(self)
 
 func set_rebirths(n: int) -> void:
 	var before: int = slot_count()

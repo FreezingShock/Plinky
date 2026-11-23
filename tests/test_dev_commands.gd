@@ -21,15 +21,15 @@ func run(t: Object) -> void:
 	t.ok(c.run("nonsense").begins_with("Unknown command"), "unknown command is reported")
 	t.eq(c.run(""), "", "blank line does nothing")
 
-	var before: BigNum = sim.get_stat(&"cash")
-	c.run("give cash 1000")
-	t.ok(sim.get_stat(&"cash").eq(before.add(BigNum.from_float(1000.0))), "give adds to the stat")
-	c.run("set cash 5")
-	t.ok(sim.get_stat(&"cash").eq(BigNum.from_float(5.0)), "set replaces the stat")
-	c.run("set cash 1e400")
-	t.ok(sim.get_stat(&"cash").eq(BigNum.make(1.0, 400)), "set takes big numbers")
+	var before: BigNum = sim.get_stat(&"sunlight")
+	c.run("give sunlight 1000")
+	t.ok(sim.get_stat(&"sunlight").eq(before.add(BigNum.from_float(1000.0))), "give adds to the stat")
+	c.run("set sunlight 5")
+	t.ok(sim.get_stat(&"sunlight").eq(BigNum.from_float(5.0)), "set replaces the stat")
+	c.run("set sunlight 1e400")
+	t.ok(sim.get_stat(&"sunlight").eq(BigNum.make(1.0, 400)), "set takes big numbers")
 	t.ok(c.run("give nope 5").begins_with("No stat"), "unknown stat is reported")
-	t.ok(c.run("give cash lots").contains("not a number"), "bad amount is reported")
+	t.ok(c.run("give sunlight lots").contains("not a number"), "bad amount is reported")
 
 	c.run("prestige 40")
 	t.ok(sim.get_stat(sim.config.prestige_stat).eq(BigNum.from_float(40.0)), "prestige sets the prestige stat")
@@ -66,13 +66,13 @@ func run(t: Object) -> void:
 	t.ok(c.run("zone nope").begins_with("No zone"), "unknown zone is reported")
 
 	sim.new_game()
-	sim.dev_set_stat(&"cash", BigNum.zero())
-	var pad: StringName = sim.buttons_in_zone(sim.zone_id)[0].id
+	sim.dev_set_stat(&"sunlight", BigNum.zero())
+	var pad: StringName = &"sprout_1" if sim.zone_id == &"zone1" else sim.buttons_in_zone(sim.zone_id)[0].id
 	t.ok(not sim.can_afford(pad), "with no cash the first pad is out of reach")
 	c.run("god on")
 	t.ok(sim.can_afford(pad), "god mode makes presses affordable")
 	t.ok(sim.try_press(pad), "a god mode press goes through")
-	t.ok(sim.get_stat(&"cash").gte(BigNum.zero()), "and costs nothing")
+	t.ok(sim.get_stat(&"sunlight").gte(BigNum.zero()), "and costs nothing")
 	c.run("god")
 	t.ok(not sim.god_mode, "god with no argument toggles")
 

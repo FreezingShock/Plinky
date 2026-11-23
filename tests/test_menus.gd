@@ -5,6 +5,8 @@ func run(t: Object) -> void:
 	_router(t)
 	_index_spam(t)
 	_close_x(t)
+	_menu_anim(t)
+	_quiet_focus(t)
 
 
 func _router(t: Object) -> void:
@@ -69,9 +71,9 @@ func _index_spam(t: Object) -> void:
 	panel.bind(t.make_sim())
 	for i in 20:
 		panel.toggle_tab(IndexPanel.Tab.STATS)
-		t.ok(not (panel._closing and not panel.visible), "mid-spam the window is never closing while hidden")
+		t.ok(not (panel._anim.closing and not panel.visible), "mid-spam the window is never closing while hidden")
 	t.ok(not panel.is_open(), "20 quick toggles of the Stats tab end closed")
-	panel._finish_close()
+	panel._anim._finish()
 	t.ok(not panel.visible, "and it is hidden once the close finishes")
 	for i in 21:
 		panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)
@@ -81,8 +83,8 @@ func _index_spam(t: Object) -> void:
 	t.ok(panel.is_open() and panel.tab == IndexPanel.Tab.ATTRIBUTES, "alternating tabs keeps the window open on the last tab")
 	panel.close_panel()
 	panel.open_tab(IndexPanel.Tab.STATS)
-	t.ok(panel.is_open() and panel.visible and not panel._closing, "re-opening during the close animation recovers cleanly")
-	t.ok(panel._t >= 0.0 and panel._t <= 1.0, "wipe progress stays in range")
+	t.ok(panel.is_open() and panel.visible and not panel._anim.closing, "re-opening during the close animation recovers cleanly")
+	t.ok(panel._anim.t >= 0.0 and panel._anim.t <= 1.0, "wipe progress stays in range")
 	host.free()
 
 
@@ -134,3 +136,43 @@ func _close_x(t: Object) -> void:
 	x._process(0.5)
 	t.ok(x.grow >= 1.0, "and finish growing")
 	stage.free()
+
+
+## The shared open/close wipe. Without a scene tree it is instant, so the state transitions can be checked directly.
+func _menu_anim(t: Object) -> void:
+	var p := PanelContainer.new()
+	p.visible = false
+	var a: MenuAnim = MenuAnim.attach(p)
+	var rev: DitherReveal = a.reveal
+	t.ok(not a.is_open(), "a fresh animated menu is closed")
+	a.open()
+	t.ok(p.visible and a.is_open() and a.t == 1.0, "open shows the panel fully")
+	t.eq(p.get_meta(&"menu_slide", -1.0), 0.0, "an open menu has no slide offset")
+	a.close()
+	t.ok(not p.visible and not a.is_open() and a.t == 0.0, "close hides the panel and resets the wipe")
+	for i in 10:
+		a.open()
+		a.close()
+	t.ok(not p.visible and not a.closing, "spamming open and close never sticks")
+	p.visible = true
+	p.visible = false
+	t.ok(a.t == 0.0 and not a.reveal.visible, "hiding the panel from outside clears the wipe")
+	p.free()
+	rev.free()
+
+
+## Menu-open focus must not pop a tooltip; hover still does, and navigating re-enables focus tips.
+func _quiet_focus(t: Object) -> void:
+	Tip.focus_muted = false
+	var b := Button.new()
+	Tip._on_enter(b, true)   # not in the tree and not bound: must not crash
+	Tip.focus_muted = true
+	var ev := InputEventAction.new()
+	ev.action = &"ui_down"
+	ev.pressed = true
+	var h: TipHost = TipHost.new()
+	h._input(ev)
+	t.ok(not Tip.focus_muted, "the first navigation input un-mutes focus tooltips")
+	Tip.focus_muted = false
+	h.free()
+	b.free()

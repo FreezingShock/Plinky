@@ -12,7 +12,8 @@ def log(*a): print('[%5.1fs]' % (time.time() - T0), *a, flush=True)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import larkmoor_layout as LAY
-import depth_pass
+import depth_pass, grass_tex
+GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
 DEPTH = None
 OUT = os.environ.get('LARK_OUT') or os.path.join(HERE, '..', '..', 'assets', 'art', 'zone1b', 'larkmoor')
@@ -478,7 +479,15 @@ anchors.append(dict(kind='arch', u=GATE2[0], v=GATE2[1], sx=LAY.HOLLOW_GATE[0], 
 anchors.append(dict(kind='player_spawn', sx=LAY.SPAWN[0], sy=LAY.SPAWN[1], u=s2uv(*LAY.SPAWN)[0], v=s2uv(*LAY.SPAWN)[1]))
 for d_ in LAY.DISTRICTS: anchors.append(dict(kind='district', name=d_['name'], id=d_['id'], u=s2uv(*d_['c'])[0], v=s2uv(*d_['c'])[1], sx=d_['c'][0], sy=d_['c'][1]))
 for a_ in anchors:
-    if a_['kind'] in ('pad', 'gate', 'arch', 'player_spawn'): placed.append((a_['u'], a_['v'], 12 if a_['kind'] == 'pad' else 18 if a_['kind'] != 'player_spawn' else 8))
+    if a_['kind'] in ('pad', 'gate', 'arch', 'player_spawn'): placed.append((a_['u'], a_['v'], 14 if a_['kind'] == 'pad' else 18 if a_['kind'] != 'player_spawn' else 8))
+# a tier is a line of pads: keep the gaps between them clear, and the ground just south of each plate (a tall tree standing
+# there would hide the pad behind its crown)
+for d_ in LAY.DISTRICTS:
+    for (x0, y0), (x1, y1) in zip(d_['pads'], d_['pads'][1:]):
+        placed.append((*s2uv((x0 + x1) / 2, (y0 + y1) / 2), 12))
+    for (sx, sy) in d_['pads']:
+        for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
+            placed.append((*s2uv(sx + ox_, sy + oy_), 9))
 # the two gateways (onboarding arch in the south, Emberwatch gate in the north), framing the walk-through
 for _g in (GATE, GATE2): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False)
 # landmarks first so groves flow around them
@@ -580,7 +589,8 @@ pw = 5.4 + 1.6 * (n1 - .5)
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
-lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+else: lt = .13 + .87 * diff + (tone - .5) * .10 * (mat == T_GRASS) + (n2 - .5) * .06 * (mat != T_GRASS)    # grass detail comes from grass_tex.py
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .07 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
@@ -719,6 +729,7 @@ def render_scene(keep):
     def dith(ramp, l, mask):
         r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_

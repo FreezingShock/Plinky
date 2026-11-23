@@ -221,6 +221,8 @@ class Scene:
             pos = np.clip(S[sel], 0, 0.999) * ln + (th[sel] - .5) * 0.9
             idx = np.clip(np.floor(pos + .5).astype(int), 0, ln)
             out[sel] = np.array(ramp, np.uint8)[idx]
+        if self.pal == 'quarry':
+            self._quarry_cliff(out, S, Mat, F, ID, th, yy, xx)
         # fallback for unknown materials
         miss = alpha & ~np.isin(Mat, list(ramps.keys()))
         out[miss] = 6
@@ -242,6 +244,36 @@ class Scene:
         out[lip & ~edge] = 5 if self.pal == 'quarry' else 4
         return out, alpha
 
+    def _quarry_cliff(self, out, S, Mat, F, ID, th, yy, xx):
+        """Layered basalt strata on the rock faces: tone bands with a wobble, a soot crack between layers, ember
+        seams that thin out with depth, and a falloff to soot below the lip (the lip highlight is added later)."""
+        face = (Mat == M_WALL) & (F == 1) & (ID == 0)
+        if not face.any():
+            return
+        depth = np.zeros((GH, GW), np.int32)
+        for y in range(1, GH):
+            depth[y] = np.where(face[y], np.where(face[y - 1], depth[y - 1] + 1, 1), 0)
+        wob = (3.0 * np.sin(xx / 23.0 + 1.3) + 2.0 * np.sin(xx / 9.0) + 1.5 * (h2(xx // 6, np.zeros_like(xx), 5) - .5) * 4).astype(np.int64)
+        rows = yy + wob
+        band = rows // 6
+        tone = h2(band.astype(np.int64), np.zeros_like(band, dtype=np.int64), 17)
+        fade = np.clip(1.0 - depth / 120.0, 0.0, 1.0)
+        v = np.clip(0.32 + 0.45 * S + 0.28 * (tone - .5) + 0.30 * fade - 0.28, 0.0, 1.0) * (0.35 + 0.65 * fade)
+        ramp = np.array([0, 1, 6, 2], np.uint8)
+        pos = v * 3.0 + (th - .5) * 0.9
+        idx = ramp[np.clip(np.floor(pos + .5).astype(int), 0, 3)]
+        crack = (rows % 6 == 0) & (depth > 2)
+        idx = np.where(crack, 0, idx)
+        hi = (rows % 6 == 1) & (tone > .55) & (depth > 2) & (fade > .25)
+        idx = np.where(hi & (th > 5), 6, idx)
+        # ember seams: short dashes inside a layer, sparser the deeper they sit
+        cell = h2((xx // 5).astype(np.int64), band.astype(np.int64), 29)
+        dash = (cell > 0.90 + 0.09 * (1.0 - fade)) & (rows % 6 == 3) & (depth > 4) & (depth < 95)
+        idx = np.where(dash, np.where(((xx // 5) % 2) == 0, 3, 2), idx)
+        core = dash & (cell > 0.965) & (rows % 6 == 3) & (xx % 5 == 2)
+        idx = np.where(core, 4, idx)
+        out[face] = idx[face]
+
     def terrain_masks(self):
         return None
 
@@ -257,18 +289,35 @@ def to_rgba(idx, alpha, palette):
 # ---------------------------------------------------------------- Ember Quarry
 TIER_H = 21.0
 BOUNDS_W = (70.0, 10.0, -50.0)         # tier boundaries along w (near to far); tier 0 is nearest and lowest
-PATH_WD = [(128, -10), (112, -44), (92, -52), (70, -48), (52, -10), (36, 44), (14, 50), (0, 18), (-14, -40), (-34, -48),
-           (-52, -36), (-72, 0), (-98, 12)]
-PADS_WD = [(102, -46), (36, 40), (-30, -42)]
-VENTS_WD = [(92, 20), (50, 72), (-22, -4)]
+# Layout: a hub plaza at the middle of the plateau (the spawn), a main road south to north that ends at the gate, and
+# branches west, east and north-west to the three pads. Nothing rises in front of the camera: the near edge of the
+# bowl is a low berm, so the plateau reads as a whole map with ground in every direction.
+HUB_WD = (30, 0)
+ARCH_WD = (124, 0)
+MAIN_WD = [ARCH_WD, (104, -12), (76, 8), (52, -4), HUB_WD, (6, -10), (-20, 0), (-50, -6), (-76, 8), (-100, 12)]
+BRANCHES_WD = [
+    [HUB_WD, (38, -34), (32, -72)],       # west to pad 0
+    [HUB_WD, (26, 34), (32, 72)],         # east to pad 1
+    [(-28, -3), (-30, -26), (-30, -48)],  # north-west to pad 2
+]
+PATHS_WD = [MAIN_WD] + BRANCHES_WD + [[HUB_WD, HUB_WD]]
+PADS_WD = [(32, -72), (32, 72), (-30, -48)]
+VENTS_WD = [(62, -30), (60, 34), (-12, 34)]
 GATE_WD = (-100, 12)
-SPAWN_WD = (128, -12)
+SPAWN_WD = HUB_WD
+
+
+def paths_dist(paths):
+    best = np.full(UU.shape, 1e9)
+    for pts in paths:
+        best = np.minimum(best, polyline_dist(UU, VV, [wd_uv(w, d) for w, d in pts]))
+    return best
 
 
 def build_quarry(seed=0):
     sc = Scene('quarry')
-    path_pts = [wd_uv(w, d) for w, d in PATH_WD]
-    dpath = polyline_dist(UU, VV, path_pts)
+    path_pts = [wd_uv(w, d) for w, d in MAIN_WD]
+    dpath = paths_dist(PATHS_WD)
     corridor = blur(smooth(30, 8, dpath), 3)           # 1 on the path, 0 away from it
     w = (UU + VV) / 2 - 200
     d = UU - VV
@@ -285,7 +334,7 @@ def build_quarry(seed=0):
     # rough floors and rock noise
     H += (fbm(UU / 9.0, VV / 9.0, 3, 5) - .5) * 2.4 * (1 - corridor * .7)
     # lava pools (carved) and seams
-    pools = [(wd_uv(40, -58), 13.0), (wd_uv(-18, 62), 13.0), (wd_uv(-78, -44), 11.0)]
+    pools = [(wd_uv(-8, -66), 13.0), (wd_uv(-52, 60), 12.0), (wd_uv(-80, -44), 11.0), (wd_uv(96, 58), 12.0)]
     lava = np.zeros((N, N), bool)
     for (pu, pv), pr in pools:
         rr = np.hypot(UU - pu, VV - pv) + (fbm(UU / 8.0, VV / 8.0, 2, 21) - .5) * 6
@@ -295,16 +344,22 @@ def build_quarry(seed=0):
     seam = (ridge < 0.011) & (corridor < 0.5) & (dpath > 16)
     # rim wall (the quarry bowl)
     rim = smooth(RE * 0.97, RE * 1.06, RR)
-    H += rim * (50 + 22 * fbm(UU / 30.0, VV / 30.0, 2, 41))
+    nearw = smooth(20, 90, w)      # 0 at the back and middle, 1 toward the camera: the near rim is only a low berm
+    rim_scale = 1.0 - 0.9 * nearw
+    H += rim * (50 + 22 * fbm(UU / 30.0, VV / 30.0, 2, 41)) * rim_scale
     outer = smooth(RE * 1.06, RE * 1.5, RR)
-    H += outer * 40
+    H += outer * 40 * rim_scale
     sc.H = H
     slope = np.hypot(*np.gradient(blur(H, 1)))
     M = np.full((N, N), M_FLOOR, np.int32)
     M[slope > 0.9] = M_WALL
     M[rim > 0.35] = M_WALL
     M[seam & (M == M_FLOOR)] = M_SEAM
-    M[(dpath < 6.2) & (slope < 0.95) & (rim < .2)] = M_PATH
+    hub_u, hub_v = wd_uv(*HUB_WD)
+    gate_u, gate_v = wd_uv(*GATE_WD)
+    arch_u, arch_v = wd_uv(*ARCH_WD)
+    plaza = (np.hypot(UU - hub_u, VV - hub_v) < 15.5) | (np.hypot(UU - gate_u, VV - gate_v) < 14.0) | (np.hypot(UU - arch_u, VV - arch_v) < 14.0)
+    M[((dpath < 6.2) | plaza) & (slope < 0.95) & (rim < .2)] = M_PATH
     M[lava] = M_LAVA
     vents = [wd_uv(*v) for v in VENTS_WD]
     for vu, vv in vents:
@@ -330,7 +385,7 @@ def pad_clear(sc, wd, r=14):
 
 def populate_quarry(sc, rng):
     path_pts, vents = sc.paths
-    dpath = polyline_dist(UU, VV, path_pts)
+    dpath = paths_dist(PATHS_WD)
     anchor_pts = [wd_uv(*p) for p in PADS_WD + VENTS_WD + [GATE_WD, SPAWN_WD]]
 
     def free(u, v, r, pad=14, vent=11, pathgap=9, lavagap=3):
@@ -413,19 +468,53 @@ def populate_quarry(sc, rng):
         for off in (-1, 1):
             u, v = (pu + qu) / 2 + off * 9, (pv + qv) / 2 - off * 9
             post(u, v)
-    # gate arch: two tall pillars and a lintel
+    # gate arch: drawn in code by world/texel_gate.gd (ZoneDef.gate_art "forge"); here only its footprint is blocked
     gu, gv = wd_uv(*GATE_WD)
-    sc.prop('gate_pillar', gu - 13, gv + 13, P_SPIRE, tall=True, shape='box', r=3.2, height=46)
-    sc.prop('gate_pillar', gu + 13, gv - 13, P_SPIRE, tall=True, shape='box', r=3.2, height=46)
-    for j in range(-3, 4):
-        sc.prop('lintel', gu + j * 3.5, gv - j * 3.5, P_BLOCK, tall=True, shape='box', r=2.2, height=6, base=sc.H[int(gu), int(gv)] + 46)
     blocked_disc(sc, gu - 13, gv + 13, 5); blocked_disc(sc, gu + 13, gv - 13, 5)
+    au, av = wd_uv(*ARCH_WD)   # the way back: same arch footprint at the south end of the road
+    blocked_disc(sc, au - 13, av + 13, 5); blocked_disc(sc, au + 13, av - 13, 5)
 
 
 def finalize_props_walk(sc):
     for p in sc.props:
         if p['kind'] in ('spire', 'boulder', 'crystal', 'block', 'gate_pillar'):
             blocked_disc(sc, p['u'], p['v'], 4.5 if p['kind'] != 'boulder' else 5.2)
+
+
+def visible_walk(sc, margin=6):
+    """Cells whose top surface is actually visible from the camera, eroded by `margin` cells. The quarry's near
+    rim wall hides the lowest tier, so a cell can be flat and walkable in the height map and still sit on the
+    dark cliff face on screen. Pads, the spawn and props are only placed on these cells."""
+    S, Mat, F, ID, DR, aux = sc.render(skip_tall=True)
+    top_h = aux[0]
+    vis = np.zeros((N, N), bool)
+    us, vs = np.nonzero(sc.walk)
+    xs = (320 + us - vs + OX).astype(int)
+    ys = np.floor(4 + (us + vs) / 2.0 - top_h[us, vs] + OY).astype(int)
+    ok = (xs >= 0) & (xs < GW) & (ys >= 0) & (ys < GH)
+    hit = np.zeros(len(us), bool)
+    hit[ok] = F[ys[ok], xs[ok]] == 0
+    vis[us[hit], vs[hit]] = True
+    out = vis.copy()
+    for du in range(-margin, margin + 1):
+        for dv in range(-margin, margin + 1):
+            if du * du + dv * dv <= margin * margin:
+                out &= np.roll(np.roll(vis, du, 0), dv, 1)
+    return out
+
+
+def snap_to(vis, wd, avoid=(), gap=26.0):
+    """Nearest cell of `vis` to the (w, d) point, as (w, d), at least `gap` cells from each point in `avoid`."""
+    u0, v0 = wd_uv(*wd)
+    far = all(math.hypot(u0 - au, v0 - av) >= gap for au, av in avoid)
+    if far and vis[int(round(u0)), int(round(v0))]:
+        return wd
+    us, vs = np.nonzero(vis)
+    d2 = (us - u0) ** 2 + (vs - v0) ** 2
+    for au, av in avoid:
+        d2 = np.where(np.hypot(us - au, vs - av) < gap, 1e18, d2)
+    k = int(np.argmin(d2))
+    return ((us[k] + vs[k]) / 2.0 - 200, float(us[k] - vs[k]))
 
 
 def screen_of(sc, u, v):
@@ -436,6 +525,19 @@ def screen_of(sc, u, v):
 def bake_quarry(outdir, preview=None):
     rng = np.random.default_rng(7)
     sc = build_quarry()
+    inner = visible_walk(sc, 14)
+    vis3 = visible_walk(sc, 3)
+    global SPAWN_WD
+    SPAWN_WD = snap_to(inner, SPAWN_WD)
+    keep = [wd_uv(*SPAWN_WD)]
+    for i, p in enumerate(PADS_WD):
+        PADS_WD[i] = snap_to(inner, p, keep)
+        keep.append(wd_uv(*PADS_WD[i]))
+    for i, p in enumerate(VENTS_WD):
+        VENTS_WD[i] = snap_to(inner, p, keep, gap=16.0)
+        keep.append(wd_uv(*VENTS_WD[i]))
+    sc = build_quarry()   # the vent glow is painted from VENTS_WD, so rebuild with the snapped positions
+    sc.walk &= vis3
     populate_quarry(sc, rng)
     finalize_props_walk(sc)
     os.makedirs(os.path.join(outdir, 'sprites'), exist_ok=True)
@@ -492,6 +594,8 @@ def bake_quarry(outdir, preview=None):
         anchors.append(dict(kind='pad', state='ready', u=u, v=v, sx=round(sx, 1), sy=round(sy, 1)))
     gu, gv = wd_uv(*GATE_WD); sx, sy = screen_of(sc, gu, gv)
     anchors.append(dict(kind='gate', u=gu, v=gv, sx=round(sx, 1), sy=round(sy, 1)))
+    au, av = wd_uv(*ARCH_WD); sx, sy = screen_of(sc, au, av)
+    anchors.append(dict(kind='arch', u=au, v=av, sx=round(sx, 1), sy=round(sy, 1)))
     su, sv = wd_uv(*SPAWN_WD); sx, sy = screen_of(sc, su, sv)
     anchors.append(dict(kind='player_spawn', u=su, v=sv, sx=round(sx, 1), sy=round(sy, 1)))
     for wd in VENTS_WD:
