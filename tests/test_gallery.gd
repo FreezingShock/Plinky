@@ -35,6 +35,8 @@ func run(t: Object) -> void:
 	t.eq(GalleryTile.lift_px(0.0), 0, "a resting tile is not lifted")
 	t.eq(GalleryTile.lift_px(1.0), GalleryTile.LIFT, "a hovered tile lifts fully")
 	t.eq(GalleryTile.lift_px(2.0), GalleryTile.LIFT, "lift is clamped")
+	t.ok(not GalleryTile.dither_lit(0, 0, 0.0), "zero density lights nothing")
+	t.ok(GalleryTile.dither_lit(1, 1, 1.0), "full density lights every cell")
 
 	var entries: Array[Dictionary] = BuildInfo.parse_changelog("## Unreleased\n- later\n\n## 0.5.0 - 2026-11-23\n- Added the hamburger\n- Fixed menus\n\n## 0.4.0\n- Older\n")
 	var rows: Array[Dictionary] = UpdateLogPanel.rows_from(entries)

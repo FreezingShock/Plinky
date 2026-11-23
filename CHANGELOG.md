@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.37.8 - 2026-11-23
+## 0.37.9 - 2026-11-23
 - Zone panel is more compact: narrower (152 px), tighter padding, description clamped to two lines (full text in its tooltip), three pads before "N more...".
+
+## 0.37.8 - 2026-11-23
+- Menu: every tile always shows its name, the grid is 3 wide (3x3, no orphan row), and hovering a tile plays a light-dither sweep in its section colour plus a one-texel icon bob on top of the lift. Reduced motion and reduced flashing turn the sweep, bob and lift off.
 
 ## 0.37.7 - 2026-11-23
 - Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.

@@ -1,6 +1,6 @@
 class_name GalleryMenu
 extends PanelContainer
-## The hamburger menu, which is also the Esc / pause menu: a gallery of icon tiles (labels type in on hover), one per section, with the build version in the header.
+## The hamburger menu, which is also the Esc / pause menu: a gallery of icon tiles (every tile always shows its name), one per section, with the build version in the header.
 ## Picking a tile emits `chosen(kind)`; Main routes it through MenuRouter (so the gallery closes and the section
 ## opens) and the shared CloseX closes this one. Tiles are ordinary focusable buttons, so arrows, d-pad, Enter and
 ## pad A all work, and Main's menu focus drops focus onto the first tile when it opens.
@@ -11,7 +11,7 @@ signal resume_requested
 signal quit_to_title_requested
 signal quit_game_requested
 
-const COLUMNS: int = 4
+const COLUMNS: int = 3
 const GAP: int = 4
 ## kind, label, icon file under assets/icons/big/
 const ENTRIES: Array = [
