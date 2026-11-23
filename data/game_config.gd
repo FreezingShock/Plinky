@@ -2,6 +2,8 @@ class_name GameConfig
 extends Resource
 ## Global rules and tunables. Single file: content/config/game.tres.
 
+## Locked "???" rows the travel menu shows below the top-level areas.
+@export var travel_teased_rows: int = 2
 @export var tick_rate: int = 10
 @export var max_ticks_per_frame: int = 50
 @export var autosave_seconds: float = 30.0
