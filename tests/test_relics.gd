@@ -71,3 +71,38 @@ func run(t: SceneTree) -> void:
 	t.ok(div.rarity.weight == 0.0, "Divine never random")
 
 	t.ok(inv.rarity_of(&"r_crit") == &"epic" and inv.rarity_of(&"nope") == &"", "rarity_of")
+
+	# Sort, filter, compare (Relics menu refresh)
+	var q := RelicInventory.new(cfg, defs)
+	q.add_relic(&"r_cash", 5); q.add_relic(&"r_rate", 2); q.add_relic(&"r_crit"); q.add_relic(&"r_mult", 9)
+	q.equip(&"r_cash"); q.equip(&"r_crit")
+	var qr := RelicQuery.new()
+	var by_rarity: Array[RelicDef] = qr.apply(q)
+	t.ok(by_rarity[0].id == &"r_crit" and by_rarity[by_rarity.size() - 1].id == &"r_cash", "default sort is rarity high to low")
+	qr.sort = RelicQuery.Sort.STACKS
+	t.ok(qr.apply(q)[0].id == &"r_mult", "stacks sort puts the biggest stack first")
+	qr.sort = RelicQuery.Sort.NAME
+	t.ok(qr.apply(q)[0].display_name == "Gold Purse", "name sort is alphabetical")
+	qr.sort = RelicQuery.Sort.EQUIPPED
+	t.ok(q.is_equipped(qr.apply(q)[0].id), "equipped sort leads with equipped relics")
+	qr.reset()
+	qr.scope = RelicQuery.Scope.EQUIPPED
+	t.ok(qr.apply(q).size() == 2, "equipped filter keeps 2")
+	qr.scope = RelicQuery.Scope.UNEQUIPPED
+	t.ok(qr.apply(q).size() == 2, "unequipped filter keeps 2")
+	qr.reset()
+	qr.cycle_rarity(q)
+	t.ok(qr.rarity_rank == 3, "first rarity step is the highest owned (Epic), got %d" % qr.rarity_rank)
+	t.ok(qr.apply(q).size() == 1 and qr.rarity_name(q) == "Epic", "rarity filter shows only that tier")
+	for i in 5:
+		qr.cycle_rarity(q)
+	t.ok(qr.rarity_rank == -1, "rarity filter cycles back to All")
+	t.ok(q.sorted_owned().size() == 4, "sorted_owned keeps every owned relic")
+
+	t.ok(q.active_bonuses().size() == 2, "two active bonus kinds")
+	var gain: Array[Dictionary] = q.preview_change(&"r_mult")
+	t.ok(gain.size() == 1 and is_equal_approx(float(gain[0]["before"]), 0.0) and float(gain[0]["after"]) > 0.0, "equip preview shows the gain")
+	t.ok(q.equipped.size() == 2 and not q.is_equipped(&"r_mult"), "preview changes nothing")
+	var sw: Array[Dictionary] = q.preview_change(&"r_rate", &"r_cash")
+	t.ok(sw.size() == 2, "swap preview lists both effects")
+	t.ok(RelicDef.effect_name(RelicDef.Effect.CASH_MULT) == "Cash Income", "effect names are Title Case")

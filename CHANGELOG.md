@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.19.0 - 2026-11-23
+- Relics menu refresh: relics are now rarity-framed cards (exact rarity-colour outline, name in the rarity colour, stack count, Equipped mark) in a scrolling collection, with Sort (Rarity, Name, Stacks, Equipped), Show (All, Equipped, Unequipped) and Rarity filter buttons, an Active bonuses readout under the slots, and compare-on-hover: a relic's tooltip shows how your bonuses would change if you equipped it or swapped it in.
+
 ## 0.18.1 - 2026-11-23
 - The SPRINTING HELD / ENABLED label now has a dark backing plate so the ground no longer shows through its letters.
 
