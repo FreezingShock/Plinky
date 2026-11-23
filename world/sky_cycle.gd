@@ -29,7 +29,12 @@ var sway_material: ShaderMaterial
 var rain_layer: SkyRain
 var shadows: SkyShadows                 # set by MeadowScene before this node enters the tree
 var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
-var atmosphere: bool = true             # false: no mountain haze or mist (they are placed for the onboarding meadow)
+var atmosphere: bool = true             # false: no mountain haze or mist
+## Where haze and mist are drawn, in world texels. Empty = the whole sky box (the meadow). Larkmoor gives the
+## mountain strip, the sea band under it, and one small rect for each pond, so the shader only runs where it shows.
+var haze_rects: Array[Rect2] = []
+## Shader parameters for the haze placement (horizon_y, band_half, island_half, island, ground_origin): see sky_haze.gdshader.
+var haze_params: Dictionary = {}
 var ground_texture: Texture2D           # backdrop, so the haze shader can tell water from land
 var ponds: Array = []                   # [Vector4(cx, cy, rx, ry)] for the lake and ponds
 var _haze_mat: ShaderMaterial
@@ -51,19 +56,23 @@ func _ready() -> void:
 	if _config == null:
 		_config = SkyConfig.new()
 	_apply_config()
-	var haze := ColorRect.new()
-	haze.name = "Haze"
-	haze.visible = atmosphere
-	haze.position = AREA.position
-	haze.size = AREA.size
-	haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_haze_mat = ShaderMaterial.new()
 	_haze_mat.shader = HAZE_SHADER
 	if ground_texture != null:
 		_haze_mat.set_shader_parameter("ground", ground_texture)
 	_haze_mat.set_shader_parameter("ponds", _pond_array())
-	haze.material = _haze_mat
-	add_child(haze)
+	for k: String in haze_params:
+		_haze_mat.set_shader_parameter(k, haze_params[k])
+	var rects: Array[Rect2] = haze_rects if not haze_rects.is_empty() else [AREA]
+	for i in rects.size():
+		var haze := ColorRect.new()
+		haze.name = "Haze" if i == 0 else "Haze%d" % (i + 1)
+		haze.visible = atmosphere
+		haze.position = rects[i].position
+		haze.size = rects[i].size
+		haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		haze.material = _haze_mat
+		add_child(haze)
 	var rays := ColorRect.new()
 	rays.name = "Rays"
 	rays.position = area.position

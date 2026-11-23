@@ -81,10 +81,30 @@ func _add_sky() -> void:
 	_sky.name = "Sky"
 	_sky.area = world_rect.grow(10.0)
 	_sky.shadows = _shadows
-	_sky.atmosphere = false   # the haze and mist are placed for the onboarding meadow
 	_sky.ground_texture = _ground.texture
+	_place_atmosphere()
 	add_child(_sky)
 	_add_lights()
+
+
+## Haze over the mountain strip along the top of the backdrop (all the way across: there is no island in front of
+## it), mist over the sea band under it, and over Heronmere lake and the pond. The rects keep the shader to
+## about a fifth of the world instead of all of it.
+func _place_atmosphere() -> void:
+	var ponds: Array = []
+	for a: Dictionary in _data.anchors:
+		if String(a.kind) == "water":
+			ponds.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
+	_sky.ponds = ponds
+	var rects: Array[Rect2] = [Rect2(world_rect.position.x - 130.0, 30.0, world_rect.size.x + 260.0, 170.0)]
+	for p: Vector4 in ponds:
+		rects.append(Rect2(p.x - p.z * 1.3, p.y - p.w * 1.3, p.z * 2.6, p.w * 2.6))
+	_sky.haze_rects = rects
+	_sky.haze_params = {
+		"ground_origin": Vector2(float(_data.bleed.ground_offset[0]), float(_data.bleed.ground_offset[1])),
+		"horizon_y": 92.0, "band_half": 46.0, "island_half": -600.0,   # negative: haze is full strength at every x
+		"island": Vector4(705.0, 445.0, 560.0, 300.0),
+	}
 
 
 ## Light pools: the gate and arch, the pads, the lanterns (added with the props), and a small one around the walker.

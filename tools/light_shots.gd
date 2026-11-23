@@ -1,7 +1,7 @@
 extends SceneTree
 ## Lighting review shots of the real game view into shots/: a full 640x360 meadow at zoom 1 with the HUD hidden, at
 ## dawn, noon, golden hour, dusk, midnight, and dawn and dusk in rain. Needs a renderer (xvfb + lavapipe works).
-## Run: godot --path . --script tools/light_shots.gd -- [prefix] [zoom 1..4] [hud 0|1] [larkmoor]
+## Run: godot --path . --script tools/light_shots.gd -- [prefix] [zoom 1..4] [hud 0|1] [larkmoor] [north|lake]
 ## Write PNGs to shots/<prefix>_<name>.png
 
 const SHOTS: Array = [
@@ -34,6 +34,12 @@ func _run() -> void:
 			await process_frame
 	main.camera.zoom_level = zoom
 	main.camera.auto_return = true
+	if args.size() > 4 and args[4] == "north":   # look at the mountain strip along the top of Larkmoor
+		main.camera.auto_return = false
+		main.camera.pan = Vector2(0.0, -420.0)
+	elif args.size() > 4 and args[4] == "lake":
+		main.camera.auto_return = false
+		main.camera.pan = Vector2(-220.0, 60.0)
 	main.hud.visible = show_hud
 	for shot: Array in SHOTS:
 		SkyCycle.debug_phase = float(shot[1])
