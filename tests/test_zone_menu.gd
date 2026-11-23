@@ -43,6 +43,29 @@ func run(t: Object) -> void:
 	t.eq(panel.view_area(), &"emberwatch", "walking into a district moves the card")
 	panel.set_district(&"forge")
 	t.eq(panel.view_area(), &"emberwatch", "an area of another zone is ignored")
+	# Long pad lists fold behind a "N more..." line and unfold again.
+	var long_area: StringName = &""
+	for a: AreaDef in sim.area_defs.values():
+		if a.pad_buttons.size() > ZonePanel.PADS_FOLD:
+			long_area = a.id
+	if long_area != &"":
+		var la: AreaDef = sim.area_defs[long_area] as AreaDef
+		sim.gates_open[&"zone1"] = true
+		sim.gates_open[&"larkmoor"] = true
+		panel._go(la.zone, long_area)
+		panel.refresh()
+		var shown: int = 0
+		for l: Label in panel._pad_rows.values():
+			shown += 1 if l.visible else 0
+		t.eq(shown, ZonePanel.PADS_SHOWN, "a long pad list shows only the first few")
+		t.ok(panel._pads_more.visible and panel._pads_more.text.ends_with("more..."), "and a greyed N more... line")
+		panel._pads_expanded = true
+		panel._layout_pads()
+		shown = 0
+		for l: Label in panel._pad_rows.values():
+			shown += 1 if l.visible else 0
+		t.eq(shown, la.pad_buttons.size(), "expanding shows every pad")
+		t.ok(panel._pads_scroll.custom_minimum_size.y <= ZonePanel.PADS_MAX_PX, "the expanded list is height-capped")
 	panel.free()
 	_banner_checks(t, sim)
 
