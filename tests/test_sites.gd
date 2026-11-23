@@ -36,6 +36,8 @@ func run(t: Object) -> void:
 	var a: Node = (load("res://audio/audio.gd") as GDScript).new() as Node
 	a.name = "AudioUnderTest"
 	(t as SceneTree).root.add_child(a)
+	if a.get("_shore") == null:
+		a.call("_ready")   # tests run inside _init, before the tree has readied its nodes
 	t.ok(a != null, "Audio instance built")
 	if a != null:
 		a.set_surroundings(0.9, 0.0)
