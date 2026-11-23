@@ -189,6 +189,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Menus without a mouse: while a panel is open the walker stands still and focus lands on its first control.
 ## Arrows, d-pad or stick move focus, Enter/Space/pad A press, Esc or pad B closes (all via Godot ui_* actions).
+var _menu_was_open: bool = false
+
+
 func _menu_focus() -> void:
 	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, hud.upgrades_panel()]
 	var open: Control = null
@@ -198,8 +201,10 @@ func _menu_focus() -> void:
 			break
 	PadInput.menu_open = open != null
 	var owner_ctl: Control = get_viewport().gui_get_focus_owner()
+	var just_closed: bool = _menu_was_open and open == null
+	_menu_was_open = open != null
 	if open == null:
-		if owner_ctl != null:
+		if PadInput.should_release_focus(just_closed, owner_ctl != null):
 			owner_ctl.release_focus()
 	elif owner_ctl == null or not open.is_ancestor_of(owner_ctl):
 		var first: Control = PadInput.first_focusable(open)

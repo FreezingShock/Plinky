@@ -198,3 +198,6 @@ monitor's native size (taller than the usable area, so the window hung under the
 `set_resolution` now returns to windowed first, clamps to the usable area, and re-applies the size after the mode
 change settles. The last option is the biggest window the monitor holds, labelled "(native)" or "(max)".
 Not run in-engine from the cloud; the PC test thread should confirm.
+
+## 2026-11-23: HUD buttons ate mouse clicks
+`Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
