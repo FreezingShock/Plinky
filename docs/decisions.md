@@ -677,6 +677,7 @@ PRs add a `changelog.d/<slug>.patch|minor.md` fragment instead of bumping `core/
 ## 2026-11-23 Menu tiles always show their names
 Nathan wanted the hamburger menu words visible, not only on the focused tile. Tiles now always draw their name; a locked tile still says "Locked" while hovered. Grid is 3 columns (nine tiles fill 3x3) and tiles are 96 wide. New hover: a slanted band of 4x4 Bayer dither in the section colour sweeps across once (0.4 s), the icon bobs one texel, plus the existing lift. All off under reduced motion / flashing. Tooltips unchanged. Not run in-engine from the cloud.
 
+- Offline Sunlight uses the same `income_per_second` as the live tick, at idle factor 1 (Dewdrop boost, relics, Bloom and Sun-rate bonuses all included). Only Momentum is absent, because it is zero at load. A QA reading of 0.25/s against 0.88/s on a fresh save came from Dewdrops being 0 at load and later pressed; the new test pins offline rate / live rate = 1.
 ## Popup banners (Banner autoload)
 - `Banner.announce({title, lines, icon, color, duration, key, interrupt})` (ui/banner.gd, logic in core/banner_queue.gd). `show` is taken by CanvasLayer, so the call is `announce`.
 - Bottom-middle, typed from the centre outward and collapsed back to it. The panel is a fixed size for the whole banner, so it never jitters. Queue holds 4, same key is a duplicate, a repeat within 6 s is dropped, `skip()` ends early.
@@ -716,6 +717,14 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
 - Not run in engine: no Godot in the cloud. CI runs the headless tests.
 
+## 2026-11-23 Zone banner on zone entry only, area card swaps in place
+- Nathan: the full banner plays when entering each zone, not each subarea. Walking into a district (Old Oak Crossing and so on) no longer calls `Banner.announce`; `ZonePanel.set_district` changes the top-right area card instead, with a crossfade of SWAP_OUT 0.1 s then SWAP_IN 0.2 s, stepped in quarters so it dithers. The fade is skipped when "Still banners" (FxConfig.reduce_motion) is on.
+- Larkmoor is a zone (its own ZoneDef, scene and arch), so it gets a zone banner on arrival. This was the one case that used to get none. Its districts get none. If Nathan wants Larkmoor treated as part of the Meadow instead, change `_announce_zone_arrival` only.
+- Zone banner styling: the border and title use the zone's palette role (`ZoneDef.theme_role`), and the panel fill uses the zone palette's ink (index 0) through a new optional `fill` key on the banner spec. Season tint is dropped for zone banners so Meadow and Larkmoor (same palette, different role) read apart. Hold 3 s (`ZONE_BANNER_HOLD`).
+- `ui/district_banner.gd` is no longer used by anything. Left in place for a later cleanup PR.
+- PC QA fixes in the same PR: Banner rebuilds its panel if the HUD that held it was freed (Quit to Title), so a later banner never touches a freed node, and `_tl` starts as a full timeline so no key can be missing. Tip cards hold while a banner shows and the next tip waits for it, so the Welcome card no longer covers a zone banner at 640x360.
+- Not run in-engine from the cloud: the crossfade, the banner palette and the 640x360 overlap need a PC check.
+
 ## 2026-11-23 Repo trim for faster, cheaper threads
 - Removed 10 unreferenced GDScript files (`world/player.gd`, `world/button_pad.gd`, `ui/district_banner.gd`, `ui/fx/counter_tick.gd`, and six tool scripts with no scene, test or doc reference). Reasoning: each had zero references (class names and paths checked); git history keeps them.
 - Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
@@ -727,3 +736,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Candidates compared at 16 px with the 2 px outline: a filled-corner descender and a stair tail both read as lowercase q, so the detached diagonal was chosen.
 - QA finding 2: "1.5e15" shown as "+30d" at 3x. Not reproduced in the cloud. `NumberFormat.short(1.5e15)` gives "1.5Qd" (checked against a Python mirror of the formatter and now pinned in tests/test_format.gd), and the popup path (`PopupNumber.spawn`, `PressPopups._format`, `FxBus.bonus_popup`) passes the value straight through with no truncation. Nothing in the popup code produces a "d" suffix; the only "d" output is the skip duration in core/dev_commands.gd. Likely a probe or input mismatch. The PC probe should print the label's `.text` to settle it.
 - Not run in engine: no Godot in the cloud. PC QA should check "+100QnVg!" and "+1.5Qd" at 1x and 3x, and "Quarry" in a popup.
+- Offline credit now uses the day or night income rate you left with (the calendar advances after crediting), so offline Sunlight per second equals the live rate; before, advancing the clock first made the rate depend on when you came back (a test caught 1.08x). Verified with the headless suite (4393 checks, 0 failed).
