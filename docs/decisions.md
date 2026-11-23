@@ -465,6 +465,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Title Case is applied at display time** (`DisplayPanel.title_case`), not by editing registry strings, so rows added by other threads (Access, QoL, rebind screen) are covered automatically. Words with capitals or digits (VSync) are kept.
 - **Layout untouched.** Rows still come from SettingsRegistry; only visuals changed, so parallel threads adding rows do not conflict.
 - Not run in the cloud: the engine. The PC pass judges the colours and spacing.
+## 2026-11-23 Quality-of-life bundle (v0.21.0)
+- **Rebind with modifiers.** A binding is a keycode OR-ed with `KEY_MASK_SHIFT/CTRL/ALT/META`, so old saves (plain keycodes) still load. A modifier alone (Shift, Ctrl) binds when released with no other key pressed. Sprint (Shift) and Sprint lock (Ctrl) are now rebindable actions. A binding's modifiers must be held; extra held modifiers are tolerated, so Shift+C still crouches-slides while sprinting.
+- **Save indicator.** "Saved" fades after each save, beside the Menu chip; a failed write shows red "Save failed" even with the indicator off (`EventBus.save_failed`). Setting: Gameplay > Save indicator.
+- **Welcome Back card** replaces the 5 s toast: time away, each gain in its stat colour, a note when the offline cap was hit. Shown only after 1 minute or more away. Stays until Collect.
+- **Rebirth confirm** card shows the Prestige and Rebirth Points you will get. Setting: Gameplay > Confirm rebirth (default on).
+- Buy max and Buy x10 were dropped from this bundle at Nathan's request.
+- Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges card placement and the indicator.
 ## Ambient soundscape (23 Nov, v0.20.0)
 | Date | Decision | Why |
 |---|---|---|

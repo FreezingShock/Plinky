@@ -25,6 +25,7 @@ var _hint: Label
 var _title: Label
 var _refreshers: Array[Callable] = []
 var _capture: StringName = &""        # key action waiting for a keypress
+var _cap_mod: int = 0                 # a modifier key held down while a key is being captured
 var _armed: StringName = &""          # confirm action pressed once
 
 
@@ -380,17 +381,32 @@ func _input(event: InputEvent) -> void:
 	if _capture == &"" or not (event is InputEventKey):
 		return
 	var k: InputEventKey = event
-	if not k.pressed or k.echo:
+	if k.echo:
 		return
 	get_viewport().set_input_as_handled()
-	if k.keycode in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]:
+	if Keybinds.is_modifier(int(k.keycode)):
+		# A modifier alone (Shift, Ctrl) binds when it is released with no other key pressed in between;
+		# pressed with another key it becomes part of that combo (Shift+C).
+		if k.pressed:
+			_cap_mod = int(k.keycode)
+		elif _cap_mod == int(k.keycode):
+			_finish_capture(_cap_mod)
 		return
-	var action: StringName = _capture
-	_capture = &""
+	if not k.pressed:
+		return
 	if k.keycode == KEY_ESCAPE:
+		_capture = &""
+		_cap_mod = 0
 		refresh()
 		return
-	var swapped: StringName = Keybinds.set_key(action, k.keycode)
+	_finish_capture(Keybinds.code_of(k))
+
+
+func _finish_capture(code: int) -> void:
+	var action: StringName = _capture
+	_capture = &""
+	_cap_mod = 0
+	var swapped: StringName = Keybinds.set_key(action, code)
 	if swapped != &"":
 		_hint.text = "%s now uses %s's old key." % [Keybinds.label_for(swapped), Keybinds.label_for(action)]
 	else:

@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.21.0 - 2026-11-23
+## 0.22.0 - 2026-11-23
 - Settings and the Esc menu now match the gallery: every tab and menu tile has its own colour (coloured outlines, matching labels), each setting sits on its own outlined card, and all labels and buttons show in Title Case.
+
+## 0.21.0 - 2026-11-23
+- Quality of life: a small "Saved" note after each save (red "Save failed" if a write fails), a Welcome Back card with what you earned while away, a confirm card before Rebirth, and rebinding that accepts Shift, Ctrl and Alt combos plus new Sprint and Sprint lock keys. Settings > Gameplay can turn off the Saved note and the rebirth confirm.
 
 ## 0.20.0 - 2026-11-23
 - Ambient soundscape: six layered loops (day wind, night wind, winter wind, crickets, autumn leaves, forge crackle) fade with the time of day, the season and the zone. Birdsong thins at night and in winter and swells at dawn; the Ambience slider scales it all.
