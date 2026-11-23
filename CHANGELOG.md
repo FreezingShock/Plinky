@@ -12,6 +12,9 @@ under a new version heading and updates the version everywhere.
 ## 0.24.0 - 2026-11-23
 - New press popups: one pooled node draws every number, rolls a motion, easing and size per press, stacks held presses into one number, merges quick clicks and keeps numbers off each other. Escalating streak tiers (Gold, Ice, Rainbow, Chroma, Galaxy) change colour, sparkles, pad ripple and sound. Relic pulses now ripple outward as echoes with spark links and their own sound. Twelve new sounds. Respects Quiet pad clicks, Reduce flashing and Calm camera.
 
+## 0.23.1 - 2026-11-23
+- **Pond stays water in autumn.** The ground shader's seasonal recolour treated the water ramp's green (47,107,85) as grass and dyed the pond orange/brown with the grass patches. Water and foam texels (material codes 107, 108) now skip the recolour in every season, in the meadow and Larkmoor. Light water-only snow/frost is left for a later pass.
+
 ## 0.23.0 - 2026-11-23
 - World life follows the calendar: up to six butterflies by day in spring and summer (a few in autumn, none in winter, at night or in rain), each with its own wing colours, and fireflies fade out of winter.
 - The Ember Quarry has its own air: embers rise and cool off the heat vents and ash drifts across the floor.
