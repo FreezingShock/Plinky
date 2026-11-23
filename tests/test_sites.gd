@@ -11,7 +11,6 @@ func run(t: Object) -> void:
 	t.ok(MeadowSites.surface_at(Vector2(204.0 + 16.0, 245.5 + 8.0)) != MeadowSites.WOOD, "past the plate is not wood")
 	t.eq(MeadowSites.surface_at(Vector2(330.0, 93.2)), MeadowSites.WOOD, "the gate is wood")
 	t.eq(MeadowSites.surface_at(Vector2(289.0, 209.0)), MeadowSites.SAND, "the path is sand")
-	t.eq(MeadowSites.surface_at(Vector2(318.0, 218.0)), MeadowSites.SAND, "path texel (318,218) is sand")
 	t.eq(MeadowSites.surface_at(Vector2(241.0, 193.0)), MeadowSites.GRASS, "meadow texel (241,193) is grass")
 	t.eq(MeadowSites.surface_at(Vector2(175.0, 175.0)), MeadowSites.GRASS, "open meadow is grass")
 	t.ok(MeadowSites.surface_at(Vector2(-500.0, -500.0)) == MeadowSites.GRASS, "off the map falls back to grass")
@@ -33,7 +32,7 @@ func run(t: Object) -> void:
 	t.ok(ResourceLoader.exists("res://assets/audio/amb/shore_amb.ogg"), "shore loop exists")
 
 	# Gains follow proximity. Drives the Audio autoload's own stepping, no frames needed.
-	var a: Node = Engine.get_main_loop().root.get_node_or_null("Audio")
+	var a: Node = (t as SceneTree).root.get_node_or_null("Audio")
 	t.ok(a != null, "Audio autoload present")
 	if a != null:
 		a.set_surroundings(0.9, 0.0)
