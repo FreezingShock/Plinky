@@ -12,6 +12,9 @@ under a new version heading and updates the version everywhere.
 ## 0.35.0 - 2026-11-23
 - Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
 
+## 0.34.2 - 2026-11-23
+- Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
+
 ## 0.34.1 - 2026-11-23
 - Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
 
