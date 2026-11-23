@@ -12,6 +12,9 @@ under a new version heading and updates the version everywhere.
 ## 0.38.0 - 2026-11-23
 - Ember Quarry rework: a 1400x760 terraced world with room between every pad row, mesas, craters and ember seams, lava rivers with falls, pools and a moat crossed by a bridge (not walkable), lava glow baked onto the ground and props, animated lava and embers, mountain ranges filling the edges so the camera never sees empty space, and the pads and props redrawn as detailed front-facing 2D sprites.
 
+## 0.37.6 - 2026-11-23
+- Toasts (relic drops and achievements) now draw above open menu panels, so an open Ledger or Relics window never covers them.
+
 ## 0.37.5 - 2026-11-23
 - Larkmoor noon no longer reads lime-flat: the high-sun light pass takes a per-scene boost (1.7 in Larkmoor) for exposure, contrast and saturation, plus a warm cast that pulls green out of the bright ground. The meadow is unchanged.
 
