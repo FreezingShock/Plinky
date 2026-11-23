@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.34.3 - 2026-11-23
+- Zone panel: areas with more than five pads show four and fold the rest behind a greyed, underlined "N more..." line (click to expand, scrolls past 8 rows); open Travel shows the full area description and the panel shrinks back instead of leaving empty space.
+
 ## 0.34.2 - 2026-11-23
 - Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
 
