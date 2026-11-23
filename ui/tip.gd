@@ -70,7 +70,7 @@ static func show_free(tree: SceneTree, spec: Variant, at: Vector2, exact: bool =
 static func show_beside(tree: SceneTree, spec: Variant, anchor: Rect2) -> void:
 	var h: TipHost = host(tree)
 	h.show_free(spec, anchor.position, true)
-	h.set_anchor(anchor)
+	h.set_beside(anchor)
 
 
 ## `tree` may be null (a tooltip owner already out of the tree); the shown host is hidden anyway.

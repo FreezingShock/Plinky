@@ -94,7 +94,7 @@ var _anchor: Rect2 = Rect2()
 const AVOID_GROUP: StringName = &"tip_avoid"
 
 
-func set_anchor(r: Rect2) -> void:
+func set_beside(r: Rect2) -> void:
 	_anchor = r
 	if visible:
 		_place()

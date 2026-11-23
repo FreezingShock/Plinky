@@ -88,7 +88,7 @@ func run(t: Object) -> void:
 	wall.size = Vector2(300, 300)
 	root.add_child(wall)
 	h.show_free({"body": "Short"}, Vector2(10, 100), true)
-	h.set_anchor(Rect2(10, 100, 20, 20))
+	h.set_beside(Rect2(10, 100, 20, 20))
 	h._process(TipHost.HOVER_DELAY + 0.01)
 	t.ok(not Rect2(h.position, h.size).intersects(Rect2(wall.position, wall.size)), "a tooltip beside a slot stays off avoid panels")
 	h.hide_free()
