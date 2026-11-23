@@ -195,7 +195,7 @@ func _model_time(t: float) -> float:
 
 func _update(t: float) -> void:
 	var mt: float = _model_time(t)
-	_shade_mat.set_shader_parameter("night", model.night(mt))
+	_shade_mat.set_shader_parameter("night", clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * _config.night_shade)
 	var ramp: float = model.ramp(mt)
 	if _config.grade_tint != null:
 		_shade_mat.set_shader_parameter("grade_col", _config.grade_tint.sample(ramp))

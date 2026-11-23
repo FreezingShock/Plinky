@@ -233,5 +233,5 @@ First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far ga
 PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.
 
 ## Lighting overhaul, stage 3: real night (23 Nov)
-- Night shade was a light dither (80% of texels, mid-blue). Now night_strength 0.97 with darker tints (night 0.34/0.42/0.72, deep 0.16/0.20/0.42) and 60% of shaded texels take the deep tint, so night is genuinely dark. Light pools are about 1.5x wider so shrine, gate, pads and the walker clear the dark and read as light sources.
+- Night shade was a light dither (80% of texels, mid-blue). Now a separate night_shade 0.97 (night_strength stays 0.8, test_sky needs smooth steps) with darker tints (night 0.34/0.42/0.72, deep 0.16/0.20/0.42) and 60% of shaded texels take the deep tint, so night is genuinely dark. Light pools are about 1.5x wider so shrine, gate, pads and the walker clear the dark and read as light sources.
 - Not run in-engine; PC pass to judge darkness and readability of pads and the HUD-adjacent scene.
