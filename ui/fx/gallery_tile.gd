@@ -19,6 +19,7 @@ var lift_t: float = 0.0
 ## 0 label hidden .. 1 fully typed in. Read by tests.
 var label_t: float = 0.0
 var _settle: float = 0.0
+var _select: AsciiBox = AsciiBox.make(AsciiBox.Kind.SELECT, 0.0, 0.0)
 
 
 func _ready() -> void:
@@ -26,6 +27,8 @@ func _ready() -> void:
 	text = ""
 	custom_minimum_size = Vector2(W, H)
 	clip_text = true
+	# Hover is a solid lifted panel (no dither wash behind the icon and label); focus draws the same panel.
+	add_theme_stylebox_override("hover", _select)
 
 
 static func lift_px(t: float) -> int:
@@ -49,6 +52,9 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	var mode: int = get_draw_mode()
+	if has_focus() and not disabled and mode != DRAW_HOVER and mode != DRAW_PRESSED and mode != DRAW_HOVER_PRESSED:
+		_select.draw(get_canvas_item(), Rect2(Vector2.ZERO, size))
 	super._draw()
 	var lift: int = lift_px(lift_t)
 	var ix: float = floorf((size.x - ICON) * 0.5)

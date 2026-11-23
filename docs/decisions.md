@@ -363,3 +363,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Nathan's Larkmoor night screenshot: a blue checkerboard of two strongly different tints (night_tint and deep_tint) over about 80% of texels buried the scene, and the walker lantern was a noisy dot blob.
 - day_night.gdshader now multiplies a solid cool tint (mix to night_tint at 0.62) at full dark. A three-rung ladder (clear, soft 0.3, full 0.62) picks the rung by Bayer only where the dark is changing, so neighbouring rungs differ by about 0.15 and read as a gradient, not a pattern. The warm lantern cast uses the same ladder. deep_tint is no longer used; the uniform is kept so nothing that sets it breaks.
 - Night still reads dark (blue multiply to about 0.6 to 0.8 of colour) but props keep their shapes. Not run in engine: needs night captures at Larkmoor on the PC.
+
+## Hamburger tiles: solid hover, crisp accent text
+- Nathan's screenshot: the Update Log tile hover used the button dither wash (cream dots over the whole tile), so the label and icon sat on noise. New AsciiBox.Kind.SELECT: ink tinted 22% toward the edge green, accent border, one dotted row under the bottom border as the only dither. Used for tile hover and keyboard focus; pressed stays the accent fill with ink text.
+- Menu text buttons (Close menu, Quit to title, Quit game): the ">" marker was positioned at half-texel steps and touched the first letter. It is now right-aligned ARROW_GAP (4) texels before the text on whole texels. The Pixelify Sans FontFile had default import settings (grey anti-aliasing, light hinting; *.import files are not committed), so CrispFont.apply sets AA off, normal hinting and no subpixel positioning in code.
+- Not run in engine; needs a PC capture at zoom 1 and 3.

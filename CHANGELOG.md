@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.7 - 2026-11-23
+- Hamburger menu polish: tiles hover and focus as a solid lifted panel (dither only as one dotted row under the border) so labels read cleanly; the ">" marker on Close menu, Quit to title and Quit game sits a fixed gap before the first letter on whole texels; Pixelify Sans renders without grey anti-aliasing.
+
 ## 0.10.6 - 2026-11-23
 - Night is a solid cool tint instead of a blue checkerboard: the shade only dithers between two close tints where it thins (light pool edges, dusk, dawn), so props stay readable. Lantern and pool glow use the same soft ladder instead of a noisy dot blob.
 
