@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 Which version introduced which implementation. Format and rules: docs/versioning.md.
 Scheme is MAJOR.MINOR.PATCH, starting at 0.1.0. MINOR = medium changes (features), PATCH = small
