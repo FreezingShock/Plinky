@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.34.2 - 2026-11-23
+- Number format tests pin 1e80 ("100QnVg") and the e-notation fallback past the last suffix.
+
 ## 0.34.1 - 2026-11-23
 - Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
 
