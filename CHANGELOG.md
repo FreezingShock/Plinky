@@ -9,10 +9,14 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.34.1 - 2026-11-23
+## 0.34.2 - 2026-11-23
 - Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.
 
+## 0.34.1 - 2026-11-23
+- Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
+
 ## 0.34.0 - 2026-11-23
+- Ember Quarry: Cash and Multiplier are removed from the zone. Cash became Embers (the passive trickle that feeds the forge) and the Multiplier became Cinder, the first forge row, so the ladder reads Embers, Cinder, Ore, Slag, Ingot, Alloy, Emberheart with the same numbers. The old stats are parked in `content/parked/` for a later liminal zone. Saves move over one for one (save ladder 3); new Embers and Cinder icons, colours and tooltips.
 - **Simpler travel map.** The Travel menu now lists only top-level areas (Meadow, Ember Quarry) plus locked "???" rows for what comes next. Larkmoor and its districts stay in the world but leave the list; the Meadow row lands in Larkmoor once the Meadow gate is open.
 
 ## 0.33.0 - 2026-11-23

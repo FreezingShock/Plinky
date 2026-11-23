@@ -3,7 +3,7 @@ extends RefCounted
 ## Admin and dev commands for the console (ui/dev_console.gd). Pure logic over a Sim: no nodes, no autoloads,
 ## so tests can drive it. Node-level commands (teleport, speed, ...) are added by the console with register().
 ##   var cmds := DevCommands.new(sim)
-##   print(cmds.run("give cash 1e12"))
+##   print(cmds.run("give embers 1e12"))
 ## run() always returns a one-or-more line reply and never throws on bad input.
 
 const MAX_SKIP_SECONDS: float = 7.0 * 86400.0
