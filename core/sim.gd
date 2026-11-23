@@ -32,6 +32,8 @@ var area_defs: Dictionary = {}       # StringName -> AreaDef (zone menu grouping
 var relics: RelicInventory
 ## Pad XP and levels. Replaced by ContentLoader with the content's config.
 var mastery: Mastery = Mastery.new()
+## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
+var calendar: GameCalendar = GameCalendar.new()
 
 # State
 var stats: Dictionary = {}           # StringName -> BigNum
@@ -119,6 +121,7 @@ func new_game() -> void:
 	rebirth_count = 0
 	relic_drops = 0
 	mastery.clear()
+	calendar.reset()
 	ui_flags = {}
 	momentum = 0.0
 	heat = 0.0
@@ -462,6 +465,7 @@ func _roll_relic_drop() -> StringName:
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
 func step(dt: float) -> void:
 	play_seconds += dt
+	calendar.advance(dt)
 	momentum = maxf(0.0, momentum - config.momentum_decay_per_second * dt)
 	if heat > 0.0:
 		var zd: ZoneDef = current_zone()
@@ -598,6 +602,7 @@ func apply_offline(seconds: float) -> float:
 	var secs: float = clampf(seconds, 0.0, offline_cap_seconds())
 	if secs <= 0.0:
 		return 0.0
+	calendar.advance(secs)   # the world keeps turning while you are away
 	var gains: Dictionary = {}
 	var sb: BigNum = BigNum.from_float(secs)
 	for s: StatDef in stat_defs.values():
@@ -662,6 +667,7 @@ func to_dict() -> Dictionary:
 		"ui_flags": ui_flags.duplicate(true),
 		"relics": relics.to_dict(),
 		"mastery": mastery.to_dict(),
+		"calendar": calendar.to_dict(),
 	}
 
 
@@ -707,5 +713,6 @@ func from_dict(d: Dictionary) -> bool:
 		relics.from_dict(rd)
 	relics.set_rebirths(rebirth_count)
 	mastery.from_dict(d.get("mastery", {}), button_defs)
+	calendar.from_dict(d.get("calendar", {}))
 	_dirty.clear()
 	return true

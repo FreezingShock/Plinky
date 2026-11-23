@@ -187,6 +187,7 @@ func light_config() -> SkyConfig:
 func _apply_config() -> void:
 	model.day_seconds = _config.day_seconds
 	model.start_phase = _config.start_phase
+	model.daylight_fraction = _config.daylight_fraction
 	model.night_strength = _config.night_strength
 	model.dusk_strength = _config.dusk_strength
 	model.rain_period_a = _config.rain_period_a

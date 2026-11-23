@@ -18,11 +18,39 @@ var wind_calm: float = 0.2
 var wind_rain_boost: float = 0.3
 var gust_period_a: float = 23.0
 var gust_period_b: float = 37.0
+## Share of the day the sun is up (sunrise to sunset). 0.5 is the plain cosine; 0.6 gives 3 min of day and 2 of night
+## on a 5 minute day. The clock runs linearly (midnight 0, noon 0.5); only the sun's phase is stretched to fit.
+var daylight_fraction: float = 0.5
 
 
 ## Position in the day, 0..1.
 func phase(t: float) -> float:
-	return fposmod(start_phase + t / maxf(day_seconds, 1.0), 1.0)
+	if absf(daylight_fraction - 0.5) < 0.0001:
+		return fposmod(start_phase + t / maxf(day_seconds, 1.0), 1.0)
+	return phase_of_clock(fposmod(clock_of_phase(start_phase) + t / maxf(day_seconds, 1.0), 1.0))
+
+
+## Sun phase for a linear clock fraction (0 midnight, 0.5 noon). Sunrise sits at (1 - daylight) / 2 on the clock.
+func phase_of_clock(c: float) -> float:
+	var d: float = clampf(daylight_fraction, 0.2, 0.8)
+	var rise: float = (1.0 - d) * 0.5
+	var set_c: float = rise + d
+	if c >= rise and c < set_c:
+		return 0.25 + (c - rise) / d * 0.5
+	var n: float = (c - set_c) if c >= set_c else (c + 1.0 - set_c)    # clock time since sunset
+	return fposmod(0.75 + n / (1.0 - d) * 0.5, 1.0)
+
+
+## Inverse of phase_of_clock.
+func clock_of_phase(p: float) -> float:
+	var d: float = clampf(daylight_fraction, 0.2, 0.8)
+	var rise: float = (1.0 - d) * 0.5
+	var set_c: float = rise + d
+	var pp: float = fposmod(p, 1.0)
+	if pp >= 0.25 and pp < 0.75:
+		return rise + (pp - 0.25) / 0.5 * d
+	var n: float = (pp - 0.75) if pp >= 0.75 else (pp + 0.25)    # phase since sunset
+	return fposmod(set_c + n / 0.5 * (1.0 - d), 1.0)
 
 
 ## Sun height from phase: -1 at midnight, +1 at noon.
