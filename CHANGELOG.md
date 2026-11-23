@@ -13,6 +13,9 @@ under a new version heading and updates the version everywhere.
 - Title screen after boot (Play or Continue, Settings, Quit, version in the corner). Dev and test launches skip it with `-- --skip-title` or PLINKY_SKIP_TITLE; the CI boot smoke test uses it.
 - Esc in game now opens the hamburger menu as the pause menu (it still closes any open menu first). The menu gets text actions Close menu, Quit to title and Quit game with an animated accent hover, and its icon tiles show their label only on hover, typing in like the bottom bar chips.
 
+## 0.9.1 - 2026-11-23
+- Calendar uses plain season names (Spring, Summer, Autumn, Winter) and months (Early Spring, Late Spring, and so on). The window title bar shows the day count and in-game time in the middle.
+
 ## 0.9.0 - 2026-11-23
 - Upgrades menu overhaul: real stat values as "now -> next" (current greyed, next lit), level pips, green/red costs, an animated Buy (squash, cost flies to Prestige, numbers tick up, pip pop, rising click), and three new upgrades unlocked by Rebirths (Crit power at 3, Quick study at 5, Pad yield at 10) with padlock rows for locked ones.
 
