@@ -371,6 +371,7 @@ func refresh() -> void:
 		_rebuild_card()
 	_title.text = z.display_name
 	_title.add_theme_color_override("font_color", zone_colour(z))
+	_fit_title()
 	for zid: StringName in _zone_rows:
 		var zd: ZoneDef = sim.zone_defs[zid] as ZoneDef
 		var row: ListRow = _zone_rows[zid]
@@ -392,6 +393,17 @@ func refresh() -> void:
 	_mastery_label.add_theme_color_override("font_color", RelicStyle.text)
 	_mastery_bar.value = float(ms[2])
 	_gate_text(z)
+
+
+## Long zone names ("Ember Quarry") drop to the small title size instead of running under the Travel button.
+func _fit_title() -> void:
+	var font: Font = _title.get_theme_font("font")
+	var avail: float = INNER - _travel_btn.get_combined_minimum_size().x - 4.0
+	var big: int = _title.get_theme_font_size("font_size")
+	_title.remove_theme_font_size_override("font_size")
+	big = _title.get_theme_font_size("font_size")
+	if font != null and font.get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, big).x > avail:
+		_title.add_theme_font_size_override("font_size", 12)
 
 
 func _gate_text(z: ZoneDef) -> void:
