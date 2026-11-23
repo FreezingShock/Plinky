@@ -27,6 +27,13 @@ func run(t: Object) -> void:
 		var gh: Image = Image.load_from_file(dir2 + "ground_h.png")
 		t.ok(g != null and gn != null and gh != null and g.get_size() == gn.get_size() and g.get_size() == gh.get_size(),
 				"%s: ground G-buffer (normal and height) matches the ground art size" % dir2)
+	for dir3: String in SCENES:
+		var gfull: Image = Image.load_from_file(dir3 + "ground.png")
+		var gfg: Image = Image.load_from_file(dir3 + "ground_fg.png")
+		var far: Image = Image.load_from_file(dir3 + "backdrop_far.png")
+		t.ok(gfull != null and gfg != null and far != null and gfg.get_size() == gfull.get_size()
+				and far.get_width() == gfull.get_width() + 128 and far.get_height() < gfull.get_height(),
+				"%s: parallax layers (cut-out ground, wide far backdrop) match the ground art" % dir3)
 	var inc: String = FileAccess.get_file_as_string("res://render/shaders/prop_ramps.gdshaderinc")
 	var pal: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 	var first: Color = pal[0]
