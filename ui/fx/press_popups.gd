@@ -16,6 +16,7 @@ const MAX_PARTS: int = 220
 const MAX_LINKS: int = 8
 const MAX_RINGS: int = 8
 const MERGE_WINDOW: float = 1.2           ## a press this soon after a popup's last one folds into it
+const MAX_WIDTH: float = 150.0             ## widest a popup's text may be, in pixels
 const MERGE_NEAR: float = 40.0            ## pixels: popups of the same stat this close are one stack
 const LIFE: float = 0.95
 const HOLD_LINGER: float = 0.5
@@ -581,8 +582,16 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 	var idx: int = p.size_idx + (1 if (p.since_bump < 0.07 and not calm) else 0)
 	var fs: int = PopupStyle.SIZES[clampi(idx, 0, PopupStyle.SIZES.size() - 1)]
 	_layout(p, fs)
+	# A long label never grows past MAX_WIDTH: step the font down until it fits (12 is the floor).
+	while p.w > MAX_WIDTH and idx > 0:
+		idx -= 1
+		fs = PopupStyle.SIZES[idx]
+		_layout(p, fs)
 	var icon_w: float = 10.0 if p.pulse else 0.0
 	var x0: float = p.anchor.x + p.lane.x + off.x - (p.w + icon_w) * 0.5
+	# And it stays on screen: slide it back inside the view rather than letting it run off an edge.
+	var view_w: float = get_viewport_rect().size.x
+	x0 = clampf(x0, 4.0, maxf(view_w - p.w - icon_w - 4.0, 4.0))
 	var y: float = p.anchor.y + p.lane.y + off.y
 	var fade: float = ceilf(clampf((1.0 - prog) / 0.3, 0.0, 1.0) * 4.0) / 4.0
 	var n: int = p.text.length()
