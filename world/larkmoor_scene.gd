@@ -11,6 +11,8 @@ const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
 const DISTRICT_RADIUS: float = 110.0   # texels; the banner shows the nearest district inside this
 
+const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
+
 ## main.gd reads these to frame the zone (camera and walker bounds, walk mask, footstep and ambience lookups).
 var world_rect: Rect2 = Rect2(130.0, 20.0, 1260.0, 810.0)
 var mask_offset: Vector2i = Vector2i.ZERO
@@ -25,6 +27,8 @@ var react: LifeReact
 var _sky: SkyCycle
 var _shadows: SkyShadows
 var _ground: Sprite2D
+## Material for the pad plates (main.gd assigns it): they take the same cast shadows as the ground.
+var pad_material: ShaderMaterial
 var districts: Array[Dictionary] = []   # {id, name, pos}
 
 
@@ -90,6 +94,7 @@ func _add_sky() -> void:
 	_sky.shadows = _shadows
 	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
 	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
+	pad_material = _sky.pad_material(load(DIR + "ground_h.png") as Texture2D, _ground.position)
 	_place_atmosphere()
 	add_child(_sky)
 	_add_lights()
@@ -124,7 +129,8 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
-				_shadows.add_blob(Vector2(a.sx, a.sy), 26.0, 18.0)
+				_shadows.add_pad(Vector2(a.sx, a.sy).round())   # before the casters, so their shadows get a copy above the plate
+				_shadows.add_blob(Vector2(a.sx, a.sy), PAD_SHADOW.x, PAD_SHADOW.y)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 

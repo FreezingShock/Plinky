@@ -13,8 +13,8 @@ func run(t: Object) -> void:
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
-	t.eq(z.pad_buttons.size(), 12, "twelve pads: four rows of three")
-	var rows: Dictionary = {&"thistle": &"sunlight", &"heather": &"thistle", &"foxglove": &"heather", &"starbloom": &"foxglove"}
+	t.eq(z.pad_buttons.size(), 18, "eighteen pads: six rows of three")
+	var rows: Dictionary = {&"lark_sprout": &"sunlight", &"lark_clover": &"dewdrop", &"thistle": &"sunlight", &"heather": &"thistle", &"foxglove": &"heather", &"starbloom": &"foxglove"}
 	for row: StringName in rows:
 		var last: float = 0.0
 		for i in 3:
@@ -26,6 +26,12 @@ func run(t: Object) -> void:
 			t.ok(b.base_cost > last, "%s costs more than the pad before it" % id)
 			last = b.base_cost
 	t.eq(z.gate_stat, &"starbloom", "the far gate opens on Starbloom Petals")
+	# the Sprout and Clover rows open the district before Thistle (common, then uncommon, then rare), and they stand on the meadow flowers
+	t.ok(sim.is_tier_open(&"lark_sprout") and not sim.is_tier_open(&"lark_clover") and not sim.is_tier_open(&"thistle"), "Larkmoor opens on the Sprout row, then Clover, then Thistle")
+	t.eq(sim.next_tier(&"lark_sprout").id, &"lark_clover", "the Sprout row opens Clover")
+	t.eq(sim.next_tier(&"lark_clover").id, &"thistle", "the Clover row opens Thistle")
+	t.eq(TexelPad.FLOWER_OF.get(&"lark_clover"), &"clover", "the Larkmoor Clover row draws the meadow Clover flower")
+	t.eq(TexelPad.FLOWER_OF.get(&"lark_sprout"), &"sprout", "the Larkmoor Sprout row draws the meadow Sprout flower")
 
 	# the scene: one pad anchor per pad, the gates, the spawn, districts, and every one of them reachable on foot
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "placements3d.json")) as Dictionary
@@ -80,6 +86,8 @@ func run(t: Object) -> void:
 			if String(an.kind) == "pad":
 				shadow_pads += 1
 		t.eq(shadows._items.size(), sprites.size() + shadow_pads, "Larkmoor registers a cast shadow for every prop, landmark and pad")
+		t.eq(shadows._pads.size(), shadow_pads, "Larkmoor tells its shadows where every pad is")
+		t.ok(shadows._overlay != null and shadows._overlay.get_child_count() > 0, "prop shadows get a clipped copy above the pads")
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
 	t.ok(lanterns > 0 and sky._lights.size() >= lanterns + 1, "lanterns and the walker get light pools (%d lights)" % sky._lights.size())

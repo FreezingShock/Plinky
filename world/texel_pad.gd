@@ -39,13 +39,19 @@ const FLOWERS: Dictionary = {
 }
 ## The Ember Quarry rows stand on their plate as small isometric voxel objects (tools/art/gen_quarry_ladder.py), three flicker
 ## frames each. Tier id -> art name.
+## Larkmoor rows with their own tiers (so their unlocks stay apart from the meadow) that stand on a meadow flower.
+const FLOWER_OF: Dictionary = {&"lark_sprout": &"sprout", &"lark_clover": &"clover"}
 const FORGE_ART: Dictionary = {&"cinder": "cinder", &"ore": "ore", &"slagrow": "slag", &"ingot": "ingot", &"alloy": "alloy", &"emberheart": "ember"}
 const FORGE_DIR: String = "res://assets/art/zone2/ladder/"
 const FLICKER_MS: int = 260
 static var _forge_tex: Dictionary = {}   # "name_f" -> Texture2D
+## Pad 2's side sprouts (x, y from the plate base, kind): a small bloom on a stem.
+const BUD: Array[Vector3i] = [Vector3i(0, -4, 0), Vector3i(-1, -3, 0), Vector3i(1, -3, 0), Vector3i(0, -3, 2), Vector3i(0, -2, 3), Vector3i(0, -1, 3), Vector3i(-1, -1, 3), Vector3i(1, -2, 3)]
 const LEAF: Color = Color("3d9a45")
 const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
 var tier_row: StringName = &""
+## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
+var flower_row: StringName = &""
 var locked: bool = false
 var _bloom_t: float = 0.0   # 1 -> 0 after the tier opens: the flower rises and bursts into petals
 var rarity: RarityDef
@@ -91,6 +97,7 @@ func _ready() -> void:
 	if b != null:
 		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
+		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
 	hold = HoldPress.new()
@@ -247,7 +254,7 @@ func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
 		| _level_step() << 24 | int(locked) << 26 | int(_bloom_t * 10.0) << 27 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18
-		| _forge_frame() << 32)
+		| _forge_frame() << 32 | _twinkle() << 36)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -353,7 +360,7 @@ func _draw() -> void:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
 	if FORGE_ART.has(tier_row):
 		_draw_forge(top, ink)
-	elif FLOWERS.has(tier_row):
+	elif FLOWERS.has(flower_row):
 		_draw_flowers(top, ink)
 	else:
 		_draw_emblem(top, ink)
@@ -373,6 +380,13 @@ func _draw() -> void:
 		_outline(0.38, top, palette[7])
 
 
+## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
+func _twinkle() -> int:
+	if not FLOWERS.has(flower_row) or MeadowLife.reduce_motion or locked:
+		return 0
+	return (Time.get_ticks_msec() / 400) % 3
+
+
 ## 0..2: which flicker frame the forge object is on (always 0 under Reduce motion). Part of the redraw signature.
 func _forge_frame() -> int:
 	if not FORGE_ART.has(tier_row) or MeadowLife.reduce_motion or locked:
@@ -380,17 +394,22 @@ func _forge_frame() -> int:
 	return (Time.get_ticks_msec() / FLICKER_MS) % 3
 
 
-static func forge_texture(art: String, frame: int) -> Texture2D:
-	var key: String = "%s_%d" % [art, frame]
+## stage 1..3: pad 1 is the plain version, pad 2 adds to it, pad 3 is the grand one.
+static func forge_texture(art: String, stage: int, frame: int) -> Texture2D:
+	var key: String = "%s_%d_%d" % [art, stage, frame]
 	if not _forge_tex.has(key):
-		_forge_tex[key] = load("%s%s_game_f%d.png" % [FORGE_DIR, art, frame]) as Texture2D
+		_forge_tex[key] = load("%s%s_s%d_game_f%d.png" % [FORGE_DIR, art, stage, frame]) as Texture2D
 	return _forge_tex[key] as Texture2D
 
 
 ## A forge row's object, bottom-centre on the plate. Locked: a flat dark silhouette. Opening: it rises out of the plate
 ## row by row and throws the same ring of sparks as a flower.
 func _draw_forge(top: int, _ink: Color) -> void:
-	var tex: Texture2D = forge_texture(String(FORGE_ART[tier_row]), _forge_frame())
+	var stage: int = 3
+	var sd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
+	if sd != null:
+		stage = clampi(sd.row_index + 1, 1, 3)
+	var tex: Texture2D = forge_texture(String(FORGE_ART[tier_row]), stage, _forge_frame())
 	if tex == null:
 		return
 	var w: int = tex.get_width()
@@ -418,13 +437,29 @@ func _draw_forge(top: int, _ink: Color) -> void:
 ## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier
 ## opens it rises row by row and throws a ring of petals. One pip per pad position (1..3) sits at the front corner.
 func _draw_flowers(top: int, ink: Color) -> void:
-	var rows: Array = FLOWERS[tier_row]
+	var rows: Array = FLOWERS[flower_row]
 	var n: int = rows.size()
 	var base: int = top - 1
 	var shown: int = 3 if locked else n
 	if _bloom_t > 0.0:
 		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
 	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
+	var stage: int = 3
+	var sbd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
+	if sbd != null:
+		stage = clampi(sbd.row_index + 1, 1, 3)
+	if not locked and _bloom_t <= 0.0 and stage >= 2:
+		for side in [-1, 1]:
+			if stage == 2:   # pad 2: two small sprouts beside the flower
+				for bc: Vector3i in BUD:
+					cells.append(Vector3i(bc.x * 1 + side * 9, base + bc.y, bc.z))
+			else:            # pad 3: two half-height flowers of the same tier, so the row reads as a bed
+				for k in 7:
+					var ml: String = rows[k] if k < 4 else rows[n - 7 + k]   # the bloom's top four rows over the stem's last three
+					for rx in range(4, 9):
+						var mc: String = ml[rx]
+						if mc != ".":
+							cells.append(Vector3i(rx - 6 + side * 10, base - 6 + k, "#dcgW".find(mc)))
 	for k in shown:
 		var line: String = rows[n - 1 - k]
 		for rx in 13:
@@ -450,6 +485,12 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			var ang: float = float(i) / 10.0 * TAU
 			var q: Vector2 = Vector2(cos(ang) * 14.0, sin(ang) * 7.0) * r
 			draw_rect(Rect2(roundf(q.x), roundf(top - 4 + q.y), 1, 1), Color.WHITE if i % 2 == 0 else stat_color)
+	if stage == 3 and not locked and _bloom_t <= 0.0 and not MeadowLife.reduce_motion:   # twinkling petal glints over the bed
+		var tw: int = (Time.get_ticks_msec() / 400) % 3
+		for gi in 3:
+			var gp: Vector2i = [Vector2i(-9, -13), Vector2i(8, -14), Vector2i(0, -20)][gi]
+			if (gi + tw) % 3 == 0:
+				draw_rect(Rect2(gp.x, base + gp.y + 3, 1, 1), Color.WHITE)
 	var pips: int = 1
 	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if bd != null:

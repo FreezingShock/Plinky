@@ -12,6 +12,12 @@ global uniform float world_scale;
 
 uniform vec3 shade : source_color = vec3(0.28, 0.38, 0.56);
 uniform float strength = 1.0;          // 0..1 overall
+// Pad overlay copy: when `clip` is set this material is drawn ABOVE the pad plates and only paints inside a pad's
+// diamond, so a prop's shadow falls across the plate instead of stopping at its edge.
+uniform bool clip = false;
+uniform int clip_count = 0;
+uniform vec2 clip_pads[24];            // pad centres in world texels
+uniform vec2 clip_half = vec2(15.0, 8.0);
 uniform float density_foot = 0.85;
 uniform float density_tip = 0.25;
 
@@ -35,7 +41,18 @@ void fragment() {
 	// solid body, dithered rim and tip: anything above 0.6 is fully shadowed, the rest ramps through the Bayer matrix
 	dens = clamp(dens / 0.6, 0.0, 1.0);
 	float thr = bayer4(ivec2(floor(wpos)));
-	if (dens < 1.0 && thr >= dens) {
+	bool on_pad = !clip;
+	if (clip) {
+		for (int i = 0; i < 24; i++) {
+			if (i < clip_count) {
+				vec2 d = wpos - (clip_pads[i] + vec2(0.0, -1.0));
+				if (abs(d.x) / clip_half.x + abs(d.y) / clip_half.y <= 1.0) {
+					on_pad = true;
+				}
+			}
+		}
+	}
+	if (!on_pad || (dens < 1.0 && thr >= dens)) {
 		COLOR = vec4(1.0, 1.0, 1.0, 0.0);
 	} else {
 		COLOR = vec4(shade, 1.0);
