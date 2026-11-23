@@ -63,11 +63,12 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	l2.add_theme_constant_override("separation", 4)
 	l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(l2)
-	l2.add_child(_label("x%d" % p_stacks, RelicStyle.text))
+	# Rarity by name (not colour alone), then a short state mark: On = equipped, Swap = waiting for a slot.
+	l2.add_child(_label(def.rarity.display_name, RelicStyle.dim))
 	if p_picked:
-		l2.add_child(_label("Swapping", RelicStyle.accent))
+		l2.add_child(_label("Swap", RelicStyle.accent))
 	elif p_equipped:
-		l2.add_child(_label("Equipped", RelicStyle.good))
+		l2.add_child(_label("On", RelicStyle.good))
 	_restyle()
 
 

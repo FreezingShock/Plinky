@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.26.4 - 2026-11-23
+- Relics menu: the rarity name is back on each card (small, dim) with an On or Swap mark, bonuses wrap whole instead of mid-phrase, and the collection shows three card rows.
+
 ## 0.26.3 - 2026-11-23
 - Relics menu: shorter collection so the panel fits 640x360, wider cards (less name truncation), bonuses on one wrapped line, and the card's second line shows only the stack count and Equipped or Swapping.
 
