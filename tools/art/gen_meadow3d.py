@@ -5,8 +5,12 @@ ink outline per object id, cast shadows. Pure numpy + Pillow.
 Run: python3 gen_meadow3d.py [--fast]  ->  meadow3d-1x.png (640x360), meadow3d.png (3x), placements3d.json"""
 import numpy as np, math, random, json, os, sys, time
 from PIL import Image
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import depth_pass
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAST = '--fast' in sys.argv
+DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
+DEPTH = None
 T0 = time.time()
 def log(*a): print('[%5.1fs]' % (time.time() - T0), *a, flush=True)
 
@@ -276,16 +280,29 @@ def make_mush(rng):
         return d, m
     return f, (8, 8), 10, 6.0
 def make_flower(rng):
-    h = rng.uniform(4.5, 8.5); lx, ly = rng.uniform(-1.2, 1.2), rng.uniform(-1.2, 1.2); pm = rng.choice((M_PETA, M_PETB, M_PETA))
+    """Layered bloom: two leaves on the stem, a ring of cupped outer petals (darker underside), a raised inner ring
+    in a second tint, and a centre. Each layer is a different height and material so the depth pass can separate them."""
+    h = rng.uniform(5.0, 9.0); lx, ly = rng.uniform(-1.2, 1.2), rng.uniform(-1.2, 1.2)
+    outer, inner = rng.choice(((M_PETB, M_PETA), (M_PETA, M_PETA), (M_PETB, M_PAPER), (M_PETA, M_PAPER)))
+    ph = rng.uniform(0, 6.28); np_ = rng.randint(5, 7); leaf = [rng.uniform(0, 6.28) for _ in range(2)]
     def f(x, y, z):
         d = sdf_capsule(x, y, z, (0, 0, 0), (lx, ly, h), .45); m = np.full(x.shape, M_STEM, np.int16)
-        c = (lx, ly, h + .6)
-        for k in range(5):
-            a_ = k * 1.2566; dp = sdf_sphere(x, y, z, (c[0] + math.cos(a_) * 1.5, c[1] + math.sin(a_) * 1.5, c[2]), 1.05)
-            m = np.where(dp < d, pm, m); d = np.minimum(d, dp)
-        dc = sdf_sphere(x, y, z, c, 1.0); m = np.where(dc < d, M_PAPER, m); d = np.minimum(d, dc)
+        for k, a_ in enumerate(leaf):                       # leaves: flat blades that arc out and down from the stem
+            t = .35 + .2 * k; bx, by, bz = lx * t, ly * t, h * t
+            dl = sdf_capsule(x, y, z, (bx, by, bz), (bx + math.cos(a_) * 3.6, by + math.sin(a_) * 3.6, bz + 1.6 - k), .55, .12)
+            m = np.where(dl < d, M_GRASS, m); d = np.minimum(d, dl)
+        c = (lx, ly, h + .5)
+        for k in range(np_):                                # outer ring: petals splay out and cup up
+            a_ = ph + k * 6.2832 / np_; ca, sa = math.cos(a_), math.sin(a_)
+            dp = sdf_capsule(x, y, z, (c[0] + ca * .6, c[1] + sa * .6, c[2] - .2), (c[0] + ca * 2.3, c[1] + sa * 2.3, c[2] + .9), .85, .6)
+            m = np.where(dp < d, outer, m); d = np.minimum(d, dp)
+        for k in range(4):                                  # inner ring: smaller, raised, rotated half a step
+            a_ = ph + .8 + k * 1.5708; ca, sa = math.cos(a_), math.sin(a_)
+            dp = sdf_capsule(x, y, z, (c[0] + ca * .3, c[1] + sa * .3, c[2] + .5), (c[0] + ca * 1.1, c[1] + sa * 1.1, c[2] + 1.5), .7, .5)
+            m = np.where(dp < d, inner, m); d = np.minimum(d, dp)
+        dc = sdf_sphere(x, y, z, (c[0], c[1], c[2] + 1.2), .8); m = np.where(dc < d, M_PAPER, m); d = np.minimum(d, dc)
         return d, m
-    return f, (4, 4), h + 3, 2.0
+    return f, (5, 5), h + 4, 2.4
 def make_tuft(rng):
     bl = [(rng.uniform(-2.2, 2.2), rng.uniform(-2.2, 2.2), rng.uniform(4.5, 9), rng.uniform(-2.2, 2.2), rng.uniform(-2.2, 2.2)) for _ in range(rng.randint(5, 8))]
     def f(x, y, z):
@@ -553,6 +570,7 @@ def render_scene(keep):
     img_l = np.zeros((H, W)); img_l[py, px] = light[win]
     img_aux = np.zeros((H, W)); img_aux[py, px] = allp['aux'][win]
     img_sh = np.zeros((H, W), bool); img_sh[py, px] = shadow[win]
+    img_z = np.zeros((H, W)); img_z[py, px] = z_[win]
     for _pass in range(2):          # close pin-holes left by steep surfaces (empty pixel with 3+ filled neighbours)
         emp = img_id == -1
         cnt = np.zeros((H, W), int); src = [None]
@@ -560,13 +578,23 @@ def render_scene(keep):
             nbm = np.roll(np.roll(img_id, dx, 1), dy, 0) != -1; cnt += nbm
         fillm = emp & (cnt >= 3)
         fillm[0, :] = fillm[-1, :] = False; fillm[:, 0] = fillm[:, -1] = False
-        for arr in (img_id, img_mat, img_l, img_aux, img_sh):
+        for arr in (img_id, img_mat, img_l, img_aux, img_sh, img_z):
             got = np.zeros_like(arr)
             done = np.zeros((H, W), bool)
             for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nb_ = np.roll(np.roll(arr, dx, 1), dy, 0); nid = np.roll(np.roll(img_id, dx, 1), dy, 0)
                 take = fillm & ~done & (nid != -1); got = np.where(take, nb_, got); done |= take
             arr[fillm] = got[fillm]
+    # depth pass (tools/art/depth_pass.py): AO, rim and relief from the z-buffer of the FULL scene, cached so the
+    # ground-only render and the prop sprites agree (props then leave contact shadows on the ground around them)
+    global DEPTH
+    if DEPTH is None:
+        sun = np.array([LDIR[0] - LDIR[1], (LDIR[0] + LDIR[1]) / 2 - LDIR[2]]); sun /= np.linalg.norm(sun)
+        DEPTH = depth_pass.compute(img_z, img_id, sun) + (img_id.copy(),)
+    if DEPTH_ON:
+        # where the full scene had a prop, only the prop's own render takes the terms (the ground beneath it is hidden)
+        own = (DEPTH[3] < 10) | (img_id == DEPTH[3])
+        img_l = img_l + np.where(own, -DEPTH[0] + DEPTH[1] + DEPTH[2], 0)
     YY, XX = np.mgrid[0:H, 0:W]
     bay = (BAYER[YY & 3, XX & 3] + .5) / 16
     def dith(ramp, l, mask):
