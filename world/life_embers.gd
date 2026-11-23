@@ -24,11 +24,11 @@ var _step: int = -1
 var _view: Rect2 = Rect2()
 
 
-## Vent positions are the Vent0.. anchors of the zone scene.
+## Ember sources are the Vent0.. anchors of the zone scene and its Lava0.. spots (the middle of a pool).
 func setup(anchors: Node) -> void:
 	vents.clear()
 	for c: Node in anchors.get_children():
-		if String(c.name).begins_with("Vent"):
+		if String(c.name).begins_with("Vent") or String(c.name).begins_with("Lava"):
 			vents.append((c as Marker2D).position)
 	queue_redraw()
 
