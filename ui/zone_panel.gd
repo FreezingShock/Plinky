@@ -3,7 +3,7 @@ extends PanelContainer
 ## Top-right zone panel: where you are (name, gate progress), a foldable travel menu of every location with its
 ## areas, and the card of the area you are viewing (description, pads, mastery). While the travel menu is open the
 ## card folds down to a dithered stub; closed, it shows in full. Every row is a focusable button, so keyboard and pad
-## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and glyph).
+## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and icon).
 ## The mastery row sums the area's pads from `sim.mastery`.
 
 const WIDTH: float = 176.0
@@ -150,7 +150,8 @@ func _build_list(list: VBoxContainer) -> void:
 			var aid: StringName = a.id
 			var ar := ListRow.new()
 			ar.tint = area_colour(a)
-			ar.text = "  %s %s" % [a.glyph, a.display_name]
+			ar.text = "   " + a.display_name
+			ar.icon = a.icon
 			ar.pressed.connect(func() -> void: _go(zid, aid))
 			_bind(ar, func() -> Array: return _area_tip(aid))
 			box.add_child(ar)
