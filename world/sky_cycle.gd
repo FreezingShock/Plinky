@@ -340,7 +340,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var fog_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
-			gm.set_shader_parameter("relight", _config.ground_relight * (0.55 + 0.45 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
+			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
 			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
@@ -364,7 +364,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var fog_amt: float = _config.fog_ground * model.mist(mt, rain01) * (1.0 - 0.5 * clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0))
 	_fog_rect.visible = atmosphere and fog_amt > 0.01
 	_fog_mat.set_shader_parameter("amount", fog_amt)
-	_fog_mat.set_shader_parameter("fog_col", haze_col)
+	_fog_mat.set_shader_parameter("fog_col", Color(0.62, 0.7, 0.66).lerp(haze_col, 0.3))   # pale and cool: a dawn haze colour painted the fog orange-red
 	_fog_mat.set_shader_parameter("drift", 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 520.0))
 	# god rays: sun point sits above the frame on the side the sun is on
 	var ray_amt: float = _config.ray_strength * model.rays(mt, rain01)

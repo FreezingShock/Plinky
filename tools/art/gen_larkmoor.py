@@ -650,6 +650,28 @@ BAKED_SHADOW = .2   # fraction of the old cast-shadow darkening kept; the runtim
 light = np.where(shadow, light * (1 - .45 * BAKED_SHADOW) - .03 * BAKED_SHADOW, light)
 sd_water = shadow & (mat_ == T_WATER)
 log('shaded')
+
+def far_layer(pad, hor0, skyd, ranges, farh):
+    """The far backdrop (sky and mountains) as its own image, `pad` texels wider than the scene each side, for the
+    runtime parallax layer. Same maths as the surroundings block of render_scene, rows above the horizon only."""
+    xs = np.arange(-pad, W + pad)
+    Yf, Xf = np.mgrid[0:farh, -pad:W + pad]
+    bayf = (BAYER[Yf & 3, Xf & 3] + .5) / 16
+    def dithf(ramp, l):
+        r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
+        hi = (f > bayf) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    HORf = hor0 + 3 * np.sin(Xf * .05)
+    res = dithf([0, 1, 1, 2], .15 + .75 * (Yf / float(skyd)) ** 1.2)
+    for k, (base, amp, fr, ramp, sd) in enumerate(ranges):
+        rid = 1 - np.abs(2 * fbm2(xs / float(fr) + k * 17, np.zeros(len(xs)), 4, sd) - 1)
+        top_ = base - amp * rid ** 1.3 - 14
+        below = Yf >= top_[None, :]
+        slope_ = np.roll(top_, -2) - np.roll(top_, 2)
+        lit = np.clip(.45 - slope_[None, :] * .09 + (vn2(Xf / 5.0, Yf / 4.0, sd + 3) - .5) * .35 + (Yf - top_[None, :]) * -.004, 0, .99)
+        res = np.where(below & (Yf < HORf), dithf(ramp, lit), res)
+    return res, HORf
+
+
 def render_scene(keep):
     global mat_
     order_pix = sy * W + sx
@@ -746,6 +768,7 @@ def render_scene(keep):
         wat = np.where((wat <= 2) & (YY % 4 == 0) & (vn2(XX / 3.0, YY / 1.0, 61) > .86), 3, wat)
         wat = np.where((vn2(XX / 3.0, YY / 1.2, 62) > .93) & (YY % 3 == 0), 4, wat)
         res = np.where(YY >= HOR, wat, res)
+        global FAR_CUT; FAR_CUT = emp & (YY < HOR)   # texels the runtime far layer draws (sky and mountains)
         out[emp] = res[emp]
     rgb = np.zeros((H, W, 3), np.uint8); rgb[:] = COLS[0]
     have = out >= 0; rgb[have] = COLS[out[have]]
@@ -758,6 +781,15 @@ AUX_FULL = LAST_AUX
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(OUT, 'ground.png'))
+# parallax layers: the far backdrop on its own (wider than the scene), and the ground with those texels cut to transparent
+_FARPAD = 64
+_far_idx, _ = far_layer(_FARPAD, 118, 118, ((122, 52, 70, [1, 2], 5), (126, 38, 48, [2, 2, 3], 6), (130, 24, 34, [2, 3, 3, 4], 7)), 128)
+_far_rgb = COLS[_far_idx].astype(np.uint8)
+Image.fromarray(_far_rgb).save(os.path.join(OUT, 'backdrop_far.png'))
+_fg = np.dstack([rgb_gnd, np.full(rgb_gnd.shape[:2], 255, np.uint8)])
+_fg[FAR_CUT, 3] = 0
+Image.fromarray(_fg).save(os.path.join(OUT, 'ground_fg.png'))
+
 # ground G-buffer (same contract as gen_meadow3d.py): normal + material + baked light, and world height
 depth_pass.write_relight_data(os.path.join(OUT, 'ground_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(OUT, 'ground_h.png'), AUX_GND['z'], id_gnd >= 0)
