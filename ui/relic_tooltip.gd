@@ -27,10 +27,11 @@ func show_text(title: String, body: String, anchor: Rect2) -> void:
 
 func _show(spec: Dictionary, anchor: Rect2) -> void:
 	visible = true
-	Tip.show_beside(get_tree(), spec, anchor)
+	if is_inside_tree():
+		Tip.show_beside(get_tree(), spec, anchor)
 
 
 func hide_tip() -> void:
 	if visible:
 		visible = false
-		Tip.hide_free(get_tree())
+		Tip.hide_free(get_tree() if is_inside_tree() else null)

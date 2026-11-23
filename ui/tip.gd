@@ -73,7 +73,8 @@ static func show_beside(tree: SceneTree, spec: Variant, anchor: Rect2) -> void:
 	h.set_anchor(anchor)
 
 
-static func hide_free(tree: SceneTree) -> void:
+## `tree` may be null (a tooltip owner already out of the tree); the shown host is hidden anyway.
+static func hide_free(_tree: SceneTree) -> void:
 	if _host != null and is_instance_valid(_host):
 		_host.hide_free()
 

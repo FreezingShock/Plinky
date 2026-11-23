@@ -13,13 +13,14 @@ func show_for(sim: Sim, button_id: StringName, at: Vector2) -> void:
 		hide_tip()
 		return
 	visible = true
-	Tip.show_free(get_tree(), spec, at)
+	if is_inside_tree():
+		Tip.show_free(get_tree(), spec, at)
 
 
 func hide_tip() -> void:
 	if visible:
 		visible = false
-		Tip.hide_free(get_tree())
+		Tip.hide_free(get_tree() if is_inside_tree() else null)
 
 
 ## {title, body, hint, color} for a pad, or {} if the button is unknown.
