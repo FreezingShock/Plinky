@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Which version introduced which implementation. Format and rules: docs/versioning.md.
 Scheme is MAJOR.MINOR.PATCH, starting at 0.1.0. MINOR = medium changes (features), PATCH = small
@@ -8,6 +8,9 @@ Every PR adds a line under **Unreleased**. `python3 tools/bump_version.py minor|
 under a new version heading and updates the version everywhere.
 
 ## Unreleased
+
+## 0.18.2 - 2026-11-23
+- Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
 
 ## 0.18.1 - 2026-11-23
 - The SPRINTING HELD / ENABLED label now has a dark backing plate so the ground no longer shows through its letters.
