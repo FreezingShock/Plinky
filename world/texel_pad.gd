@@ -34,21 +34,33 @@ enum PadState { FAR, CLOSE, READY }
 const THICK: int = 3                 # slab thickness in texels at rest
 const FAR_BELOW: float = 0.1         # under this share of the cost the pad looks inert (stone, no gauge)
 const PUNCH_TIME: float = 0.16       # sink recovers in whole-texel steps over this long
+const LEVEL_TIME: float = 0.8
 const RING_TIME: float = 0.3         # the ripple that leaves the pad on a press
 const NEAR_TEXELS: float = 40.0      # the approach cue starts this far from the pad (vertical doubled)
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 var _timer: float = 0.0
 var _punch_t: float = 0.0   # 1 -> 0 after a press
+var _lvl_t: float = 0.0     # 1 -> 0 after a mastery level-up
 var _ring_t: float = 1.0    # 0 -> 1 ripple; 1 = idle
 var _progress_t: float = 0.0
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
+## The GameState autoload, looked up by path so this script also compiles under --script (tests have no autoloads).
+func _gs() -> Node:
+	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameState")
+
+
+func _sim() -> Sim:
+	var g: Node = _gs()
+	return g.get("sim") as Sim if g != null else null
+
+
 func _ready() -> void:
 	emblem_bits = absi(String(button_id).hash()) & 0x7FFF
-	rarity = load("res://content/rarities/%s.tres" % GameState.sim.pad_rarity(button_id)) as RarityDef
-	var b: ButtonDef = GameState.sim.button_defs.get(button_id) as ButtonDef
+	rarity = load("res://content/rarities/%s.tres" % _sim().pad_rarity(button_id)) as RarityDef
+	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if b != null:
 		stat_color = STAT_COLORS.get(b.reward_stat, stat_color)
 	hold = HoldPress.new()
@@ -58,7 +70,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	var sim: Sim = GameState.sim
+	var sim: Sim = _sim()
 	var d: Vector2 = walker.position - position
 	var inside: bool = (d.x * d.x) / (HALF.x * HALF.x) + (d.y * d.y) / (HALF.y * HALF.y) <= 1.0
 	if inside and not standing:
@@ -70,6 +82,7 @@ func _physics_process(delta: float) -> void:
 		_progress_t = 0.2
 		_refresh_progress(sim)
 	_punch_t = maxf(_punch_t - delta / PUNCH_TIME, 0.0)
+	_lvl_t = maxf(_lvl_t - delta / LEVEL_TIME, 0.0)
 	if _ring_t < 1.0:
 		_ring_t = minf(_ring_t + delta / RING_TIME, 1.0)
 	if inside:
@@ -84,7 +97,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _press() -> void:
-	GameState.try_press(button_id, Vector3(global_position.x, global_position.y, 0.0))
+	_gs().try_press(button_id, Vector3(global_position.x, global_position.y, 0.0))
 
 
 ## Click a pad to press it; hold to repeat (HoldPress speeds up while held).
@@ -112,6 +125,16 @@ func hit(p: Vector2, slack: float = 1.3) -> bool:
 func punch() -> void:
 	_punch_t = 1.0
 	_ring_t = 0.0
+
+
+## Mastery level-up: two gold rings spread from the plate (hard steps, no blending). Quiet under reduce flashing.
+func level_flash() -> void:
+	_lvl_t = 1.0
+	_sig = -1
+
+
+func _level_step() -> int:
+	return 0 if _lvl_t <= 0.0 else 1 + int((1.0 - _lvl_t) * 7.0)
 
 
 func _refresh_progress(sim: Sim) -> void:
@@ -165,7 +188,7 @@ func _pulse_step() -> int:
 func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
-		| int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
+		| _level_step() << 24 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -203,6 +226,11 @@ func _draw() -> void:
 		var g: float = 1.0 + 0.45 * float(rs + 1) / 6.0
 		var rc: Color = palette[7] if rs < 4 else palette[4]
 		draw_polyline(_diamond(g), rc, 1.0)
+	var ls: int = _level_step()
+	if ls > 0:
+		for k in 2:
+			var g2: float = 1.0 + 0.2 * float(ls) + 0.35 * float(k)
+			draw_polyline(_diamond(g2), palette[7] if ((ls + k) % 2 == 0 and not FxConfig.reduce_flashing) else palette[5], 1.0)
 	# Ink silhouette (rule 6: one outline in palette 0) around the whole slab.
 	for k in range(0, th + 1):
 		_rows(0, top + k, hx + 1, hy + 1, ink, ink)

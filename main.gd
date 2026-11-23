@@ -126,6 +126,7 @@ func _ready() -> void:
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
+	bus.mastery_leveled.connect(_on_mastery_leveled)
 	bus.gate_opened.connect(func(_id: StringName) -> void: Juice.milestone())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
@@ -463,6 +464,13 @@ func _on_bonus_gained(kind: StringName, gains: Dictionary) -> void:
 	var at: Vector2 = critter.position if (kind == &"critter" and critter != null) else walker.position
 	PopupNumber.spawn(world, at + Vector2(0.0, -14.0), g.to_float(), true)
 	Juice.milestone()
+
+
+## Pad mastery level-up: a gold double ring on the plate and an "LV n" pop.
+func _on_mastery_leveled(button_id: StringName, level: int) -> void:
+	var pad: TexelPad = pads.get(button_id) as TexelPad
+	if pad != null:
+		Juice.level_up(pad, pad.position, level)
 
 
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
