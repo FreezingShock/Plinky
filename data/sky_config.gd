@@ -65,7 +65,7 @@ extends Resource
 ## 1 texel edge light on the sun side of trees, bushes and rocks, 0..1.
 @export var rim_strength: float = 0.85
 
-## Share of texels the night shade covers at full night, 0..1. Kept apart from night_strength so the model stays smooth.
+## Night shade scale, 0..1 (full night = 0.8 reaches the solid tint). Kept apart from night_strength so the model stays smooth.
 @export var night_shade: float = 0.8
 
 @export_group("Atmosphere")

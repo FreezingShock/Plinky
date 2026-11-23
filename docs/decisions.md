@@ -358,3 +358,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - PC pan diff at zoom 3 (clock paused, calm, still): 41% match with Reduce screen effects off (best shift 32 px, not a whole texel), 96.7% on. The edge shade and the full-frame light pass were the remaining non-rigid layers.
 - Vignette: dropped its private `w_origin` / `w_scale` (derived from a node transform in ScreenLight._process, so it could trail the camera) for the `world_origin` / `world_scale` globals. Both passes now evaluate their smooth fields (edge distance, sun-side gradient) at the texel centre, so every screen pixel of a texel gets the same value.
 - Not run in engine; needs the same zoom-3 diff with Reduce screen effects off.
+
+## Night is a solid tint, not a two-tone dither
+- Nathan's Larkmoor night screenshot: a blue checkerboard of two strongly different tints (night_tint and deep_tint) over about 80% of texels buried the scene, and the walker lantern was a noisy dot blob.
+- day_night.gdshader now multiplies a solid cool tint (mix to night_tint at 0.62) at full dark. A three-rung ladder (clear, soft 0.3, full 0.62) picks the rung by Bayer only where the dark is changing, so neighbouring rungs differ by about 0.15 and read as a gradient, not a pattern. The warm lantern cast uses the same ladder. deep_tint is no longer used; the uniform is kept so nothing that sets it breaks.
+- Night still reads dark (blue multiply to about 0.6 to 0.8 of colour) but props keep their shapes. Not run in engine: needs night captures at Larkmoor on the PC.
