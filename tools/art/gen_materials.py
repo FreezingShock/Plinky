@@ -105,6 +105,14 @@ def main():
             fn(s)
             s.outline()
             s.image().save(os.path.join(folder, name + '.png'))
+    extra = os.path.join(OUT, 'materials')
+    os.makedirs(extra, exist_ok=True)
+    for name, fn in ICONS:
+        for size in (8, 12, 16, 24, 32):
+            s = K.Sk(size)
+            fn(s)
+            s.outline()
+            s.image().save(os.path.join(extra, '%s_%d.png' % (name, size)))
     print('wrote', len(ICONS), 'icons x 2 sizes')
 
 
