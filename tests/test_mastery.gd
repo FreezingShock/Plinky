@@ -39,8 +39,12 @@ func run(t: Object) -> void:
 	t.near(sim.press_gain_preview(&"m1").to_float(), base * (1.0 + cfg.max_level * cfg.yield_per_level), 1e-9, "max mastery pays the full yield bonus")
 	t.ok(sim.mastery.yield_mult(&"m1") <= 2.0, "mastery yield stays a modest bonus")
 	var before: float = sim.get_stat(&"mult").to_float()
+	var last_crit: Array[bool] = []
+	sim.button_pressed.connect(func(_id: StringName, _p: Vector3, _g: BigNum, crit: bool) -> void: last_crit.append(crit))
 	sim.try_press(&"m1")
-	t.near(sim.get_stat(&"mult").to_float() - before, base * sim.mastery.yield_mult(&"m1"), 1e-9, "a press at max mastery pays the boosted gain")
+	# Max mastery adds crit chance, so the press may crit; the pay is the boosted gain times the crit multiplier then.
+	var mult: float = sim.crit_damage(&"m1") if (last_crit.size() > 0 and last_crit[0]) else 1.0
+	t.near(sim.get_stat(&"mult").to_float() - before, base * sim.mastery.yield_mult(&"m1") * mult, 1e-9, "a press at max mastery pays the boosted gain")
 
 	# Crit stats
 	t.near(sim.crit_chance(), sim.effect_total(&"crit_chance"), 1e-9, "global crit chance ignores pad mastery")

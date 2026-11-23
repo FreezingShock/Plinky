@@ -206,8 +206,10 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - One window (ui/index_panel.gd) with two tabs, opened by two icon-only HUD buttons, keys I (Stats) and O (Attributes), pad Back and Left-stick click. Read only: buying stays in Upgrades.
 - Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage is `sim.crit_damage()`; Pad mastery is the sum of `sim.mastery.level(id)` over all pads.
 - Open and close are a stepped 6 level Bayer wipe (ui/fx/dither_reveal.gd) plus an 8 texel slide; the header icon plays a 4 frame sheet. Reduce flashing turns the wipe off.
-- Tooltips use RelicTooltip.show_text for now; swap to the shared `Tip` once PR #73 is in.
+- Tooltips use the shared `Tip`.
 - New 16x16 icons (tools/art/gen_index_icons.py): stats_menu, attrs_menu (+4 frame sheets), crit_dmg, mastery, presses, clock; heat.png copied from the library set.
+## 2026-11-23: Shared tooltip system (`Tip`)
+`Tip.bind(control, spec)` gives any Control a themed tooltip (hover delay 0.35 s following the cursor, focus 0.08 s anchored, instant inside a 0.3 s grace window, clamped on screen). The host panel is created lazily under the scene root instead of an autoload, so project.godot is untouched. Existing PadTooltip and RelicTooltip stay as they are (they show richer rows); new UI uses `Tip`. API in docs/tooltips.md. Not run in-engine from the cloud; CI runs tests/test_tooltips.gd.
 ## 2026-11-23: Pad mastery and crits
 - Every press gives the pad `xp_per_press` XP. Level n+1 needs `first_level_xp * xp_growth^n` XP; cap `max_level`. Each level adds `yield_per_level` to that pad's reward multiplier, `crit_chance_per_level` to its crit chance and `crit_damage_per_level` to its crit multiplier (added to `GameConfig.crit_multiplier`, then relic crit damage multiplies it). All numbers are in `content/config/mastery.tres`.
 - Mastery is permanent: rebirth keeps it, `new_game` clears it. It sits on the pad, not the stat, so a stat index can still show the global crit chance (attribute only) and the per-pad value separately.
@@ -216,3 +218,22 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - Save version 2 adds `game.mastery` as `{pad id: [level, xp_in_level]}`. The v1 migration adds an empty one. Unknown ids drop, levels clamp to the cap.
 - Crit popup: a crit number ends in "!" and takes the crit gold (`PopupNumber.CRIT_COLOR`), on top of the existing 24 px size, hit-stop, burst and shake.
 - Balance: the starting curve (12 XP, x1.35, cap 25, +1.5% yield per level) gives +15% yield, +3% crit chance and +0.4 crit damage on a pad after roughly 650 presses on it (level 10). Not yet measured against the 61 minute Larkmoor pacing; `tools/sim_larkmoor.gd` now prints the mastery reached by the far gate, to run on the PC.
+## 2026-11-23 Pad plates and press feel
+- The old pad was only a 1px outline (the meadow art bakes no pads by design; TexelPad drew the ring). Not a render glitch.
+- Pads are now a raised plate drawn live in palette indices: ink outline, earth side faces (lit left, shadow right), dithered lit rim, glow inlay.
+- Three states, because pads have no hard lock: Far (<10% of cost: stone, empty inlay), Close (gauge fills bottom-up with progress), Ready (inlay in the multiplier glow colour, one-step pulse, none under reduce flashing).
+- Press = whole-texel sink (2), ripple ring, particles in the zone palette, existing number pop and sound. The pad animates itself via TexelPad.punch(), so spam-pressing restarts one timer instead of stacking tweens. Particle bursts are capped at 10 live.
+- Colour-blind cue: ink tick on Ready, X otherwise. Hover lifts 1 texel and lights the rim; the walker approaching brightens it. The pad redraws only when its signature changes.
+- Not yet run in-engine; PC thread to verify and capture before/after.
+- Nathan, 23 Nov: pads are unique, green when affordable and red when not, with a secondary colour for the stat. Buy-state green/red are fixed hex (not palette) so they read in every zone; stat colours: mult blue, reb violet, slag amber. Each pad gets one of four inlay motifs from its id, and four stat-colour gems on the plate corners.
+
+## Lighting overhaul, stage 1 (23 Nov)
+- The scene is baked 2D plus canvas overlays (the 3D viewport is mostly empty), so a deferred normal-buffer light pass is not available. Instead a full-frame pass (render/shaders/light_grade.gdshader) reads the finished picture and re-lights every texel: sun-side lift, away-side cool or magenta shade, highlight and shadow split by luminance. All changes are Bayer-stepped, so it stays dither.
+- Retuned content/config/sky.tres so light is readable at a glance: grade amount, vignette 0.6, haze 0.85, mist 0.75, rays 1.0, pools 1.0, rim 1.0. New knobs: light_side, light_split, light_lift.
+- Dusk colour: orange fading to magenta (the away-side shade lerps to magenta as the sun gets low).
+- Not yet run in-engine: PC pass needed for screenshots and perf (hint_screen_texture costs a screen copy per frame).
+## 2026-11-23: Mastery retuned after the PC sim
+First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far gate at 51.9 min instead of 61 (best pad level 10, 22 of 250 area levels). Crit chance counts too: at x5 damage, +3% chance is about +12% expected yield, so it pushed as hard as the yield did. Now +0.2% yield and +0.1% crit chance per level (best pad at level 10: about +6% expected on that pad). Estimate only, about 59 min; the PC sim still has to confirm.
+
+## 2026-11-23: Mastery yield cut again
+PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.

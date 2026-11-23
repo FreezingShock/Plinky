@@ -29,8 +29,6 @@ var _scroll: ScrollContainer
 var _list: VBoxContainer
 var _hint: Label
 var _reveal: DitherReveal
-var _tip: RelicTooltip
-var _tip_row: IndexRow
 var _rows: Dictionary = {}     # row id -> IndexRow
 var _key: String = ""
 var _clock: float = 0.0
@@ -93,9 +91,6 @@ func _init() -> void:
 	_reveal = DitherReveal.new()
 	_reveal.top_level = true
 	add_child(_reveal)
-	_tip = RelicTooltip.new()
-	_tip.top_level = true
-	add_child(_tip)
 
 
 func bind(p_sim: Sim) -> void:
@@ -131,7 +126,7 @@ func set_tab(t: int) -> void:
 		return
 	tab = t
 	_key = ""
-	_tip.hide_tip()
+	Tip.hide_all()
 	_refresh(true)
 	_sync_tabs()
 	_play_icon()
@@ -142,7 +137,7 @@ func close_panel() -> void:
 	if not visible or _closing:
 		return
 	_closing = true
-	_tip.hide_tip()
+	Tip.hide_all()
 	if FxConfig.reduce_flashing:
 		_finish_close()
 		return
@@ -225,7 +220,6 @@ func _refresh(force: bool = false) -> void:
 	else:
 		for r: Dictionary in rows:
 			(_rows[r["id"]] as IndexRow).set_data(r)
-		_refresh_tip()
 	_sub.text = "Prestige to spend: %s" % sim.prestige_available().format() if tab == Tab.ATTRIBUTES else ""
 
 
@@ -236,7 +230,6 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 		keep = (owner_ctl as IndexRow).data.get("id", &"")
 	_key = key
 	_rows.clear()
-	_tip_row = null
 	for c in _list.get_children():
 		_list.remove_child(c)
 		c.queue_free()
@@ -250,10 +243,7 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 			_list.add_child(h)
 		var row := IndexRow.new(WIDTH - 12.0)
 		row.set_data(r)
-		row.mouse_entered.connect(_on_row_tip.bind(row))
-		row.focus_entered.connect(_on_row_tip.bind(row))
-		row.mouse_exited.connect(_on_row_untip.bind(row))
-		row.focus_exited.connect(_on_row_untip.bind(row))
+		Tip.bind(row, func() -> Variant: return {"title": row.data["name"], "body": row.data["tip"]})
 		_list.add_child(row)
 		_rows[r["id"]] = row
 	var tail := Control.new()   # keeps the last row clear of the scroll edge
@@ -270,30 +260,6 @@ func _focus_first_row() -> void:
 		if c is IndexRow:
 			(c as IndexRow).call_deferred("grab_focus")
 			return
-
-
-func _on_row_tip(row: IndexRow) -> void:
-	_tip_row = row
-	_refresh_tip()
-
-
-func _on_row_untip(row: IndexRow) -> void:
-	if _tip_row == row:
-		_tip_row = null
-		_tip.hide_tip()
-
-
-var _tip_text: String = ""
-
-func _refresh_tip() -> void:
-	if _tip_row == null or not is_instance_valid(_tip_row):
-		return
-	var d: Dictionary = _tip_row.data
-	var body: String = String(d["tip"])
-	if _tip_text == body and _tip.visible:
-		return
-	_tip_text = body
-	_tip.show_text(String(d["name"]), body, Rect2(global_position.x, _tip_row.global_position.y, size.x, _tip_row.size.y))
 
 
 # ---------------------------------------------------------------- frame

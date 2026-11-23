@@ -185,7 +185,7 @@ func _build_bottom() -> void:
 		var nm: String = ["Stats", "Attributes"][t]
 		var act: StringName = [&"stats", &"attributes"][t]
 		ib.icon = load("res://assets/icons/%s.png" % ["stats_menu", "attrs_menu"][t]) as Texture2D
-		ib.tooltip_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
+		Tip.bind(ib, {"title": nm, "body": "Open the %s list." % nm.to_lower(), "hint": "Key: %s" % Keybinds.key_name(act)})
 		ib.pressed.connect(func() -> void: index_requested.emit(t))
 		h.add_child(ib)
 		gate(ib, Onboarding.F_MULT if t == 0 else Onboarding.F_UPGRADES)
