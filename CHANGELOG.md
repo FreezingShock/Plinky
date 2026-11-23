@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.33.1 - 2026-11-23
+## 0.34.1 - 2026-11-23
 - Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
+
+## 0.34.0 - 2026-11-23
+- **Simpler travel map.** The Travel menu now lists only top-level areas (Meadow, Ember Quarry) plus locked "???" rows for what comes next. Larkmoor and its districts stay in the world but leave the list; the Meadow row lands in Larkmoor once the Meadow gate is open.
 
 ## 0.33.0 - 2026-11-23
 - The HUD stat strip is customizable and saved per game. Right-click a row to hide it, or press the pencil under the strip for edit mode: move rows up and down, hide them, add stats from icon-only chips (instant tooltip names each one), up to 10 rows, and Reset to the zone's Default layout. Each zone keeps its own layout (flower ladder, Ember Quarry), stats met in other zones can be pinned, older saves start on Default. Settings > Gameplay gets Edit Stat Strip, Reset Stat Strip, Strip Gain Rates, Strip Unearned Rows and Right-click Hides a Row. New `tools/hud_shot.tscn -- edit` fixture.
