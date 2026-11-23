@@ -24,7 +24,7 @@ Process: docs/workflow.md (cloud PR per task, one PC QA thread, QA findings rout
 - Do not use the word "Plinko" in game text, store copy, or file names. No literal "Button" in player-facing text.
 
 ## Versioning
-Every code PR adds a CHANGELOG.md line and bumps the version with `python3 tools/bump_version.py patch|minor` (small = patch, feature = minor). MAJOR only when Nathan asks. See docs/versioning.md.
+Every code PR adds one changelog fragment, `changelog.d/<slug>.patch.md` or `.minor.md` (small = patch, feature = minor), and does NOT bump the version or edit CHANGELOG.md; the Release workflow stamps the version on merge. MAJOR only when Nathan asks. See docs/versioning.md.
 
 ## Git and CI
 - Branch from main, open a PR, never push to main. CI (.github/workflows/ci.yml) runs the headless Godot tests and the sim on every PR; keep it green. Draft or conflicting PRs do not run CI: merge main in and mark ready.

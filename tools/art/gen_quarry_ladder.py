@@ -1,213 +1,191 @@
 #!/usr/bin/env python3
-"""Ember Quarry ladder art, v2: isometric voxel renders, one colour ramp per tier (tier colour follows rarity).
-Every object is a 16^3 voxel model rendered 2:1 isometric with three face tones, a smooth ramp height gradient (dither only at the band edge),
-emissive glow voxels and a 1 px ink outline. Output per tier:
-  <tier>_hero.png   full model (about 64 px wide), 3 flicker frames <tier>_hero_f0..2.png
-  <tier>_game.png   model halved to an 8^3 lattice (about 32 px wide), pad size, 3 frames <tier>_game_f0..2.png
-  <tier>_32.png <tier>_16.png <tier>_8.png  UI icons, fitted from the game render
+"""Ember Quarry ladder art, v3: front-facing detailed 2D sprites (Nathan: "more detailed 2D, facing the screen", not
+isometric voxels). One object per tier, viewed straight on and lit from the top left, built with tools/art/qs.py:
+faceted rock, crystals, a crucible, stacked bars, an anvil and a heart gem, each with its tier colour ramp (tier
+colour follows rarity) and a hot glow ramp that flickers over 3 frames. Output per tier, same names as before:
+  <tier>_hero.png + _hero_f0..2   2x the pad sprite
+  <tier>_game.png + _game_f0..2   the pad sprite (about 34 px wide)
+  <tier>_32.png <tier>_16.png <tier>_8.png   UI icons fitted from the game sprite
 Usage: python3 tools/art/gen_quarry_ladder.py [outdir]"""
-import sys, os, math
+import math, os, sys
+import numpy as np
 from PIL import Image
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from qs import Spr, rgb, h2
 
-def rgb(h): return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-# ramp: 5 body tones dark->light, 'c' secondary body ramp, 'a' glow ramp (dark->white-hot, 4)
 TIERS = {
- "cinder": dict(name="Cinder", rarity="common",
-   body=["1a1416","332a2c","54484a","7e7070","b8a89c"], sec=["14100f","2a2220","443836","665655","8e7c74"],
-   glow=["8a2a1e","d0602f","e9a845","f8e0a0"]),
- "ore": dict(name="Ore", rarity="uncommon",
-   body=["0e2218","1d4630","2f7a4a","5fb26a","b8f0a0"], sec=["0a1810","15301f","224f35","357a50","58a870"],
-   glow=["8a4a1e","c8793a","f0b060","fff0c0"]),
- "slag": dict(name="Slag", rarity="rare",
-   body=["0c1428","1a3260","2c5fa0","58a8e0","c0eeff"], sec=["080e1c","121e3c","1e3a6a","305a98","4a82c0"],
-   glow=["a0301c","f0602a","ffb040","fff0b0"]),
- "ingot": dict(name="Ingot", rarity="epic",
-   body=["1a0e2e","3a2866","6a4ca8","a07ee0","e6d2ff"], sec=["120a22","271a48","44307a","6a52ac","9a86d0"],
-   glow=["6a2a8a","b060e0","f0a0ff","ffffff"]),
- "alloy": dict(name="Alloy", rarity="legendary",
-   body=["2a1808","68420e","b07a1c","e8b43a","fff0a0"], sec=["1a1008","3a3438","68646c","9c98a4","d0ccd8"],
-   glow=["c04010","f08020","ffd060","ffffff"]),
- "ember": dict(name="Emberheart", rarity="mythic",
-   body=["2a0618","701040","c02070","ff5aa0","ffd0e8"], sec=["1a0410","3e0a28","7a1a50","b02e78","d85aa0"],
-   glow=["c01848","ff4060","ffa0b0","fffff0"]),
+ "cinder": dict(body=["1a1416","332a2c","54484a","7e7070","b8a89c"], sec=["14100f","2a2220","443836","665655","8e7c74"], glow=["8a2a1e","d0602f","e9a845","f8e0a0"]),
+ "ore": dict(body=["0e2218","1d4630","2f7a4a","5fb26a","b8f0a0"], sec=["0a1810","15301f","224f35","357a50","58a870"], glow=["8a4a1e","c8793a","f0b060","fff0c0"]),
+ "slag": dict(body=["0c1428","1a3260","2c5fa0","58a8e0","c0eeff"], sec=["080e1c","121e3c","1e3a6a","305a98","4a82c0"], glow=["a0301c","f0602a","ffb040","fff0b0"]),
+ "ingot": dict(body=["1a0e2e","3a2866","6a4ca8","a07ee0","e6d2ff"], sec=["120a22","271a48","44307a","6a52ac","9a86d0"], glow=["6a2a8a","b060e0","f0a0ff","ffffff"]),
+ "alloy": dict(body=["2a1808","68420e","b07a1c","e8b43a","fff0a0"], sec=["1a1008","3a3438","68646c","9c98a4","d0ccd8"], glow=["c04010","f08020","ffd060","ffffff"]),
+ "ember": dict(body=["2a0618","701040","c02070","ff5aa0","ffd0e8"], sec=["1a0410","3e0a28","7a1a50","b02e78","d85aa0"], glow=["c01848","ff4060","ffa0b0","fffff0"]),
 }
-N = 16
-def ellipsoid(vox, c, r, mat, zmin=0):
-    for x in range(N):
-        for y in range(N):
-            for z in range(zmin, N):
-                if ((x-c[0])/r[0])**2 + ((y-c[1])/r[1])**2 + ((z-c[2])/r[2])**2 <= 1: vox[(x,y,z)] = mat
-def box(vox, x0, x1, y0, y1, z0, z1, mat):
-    for x in range(x0, x1+1):
-        for y in range(y0, y1+1):
-            for z in range(z0, z1+1): vox[(x,y,z)] = mat
-def h(x, y, z): return ((x*73856093) ^ (y*19349663) ^ (z*83492791)) & 0xffff
-def surface(vox):
-    return [k for k in vox if any((k[0]+d[0], k[1]+d[1], k[2]+d[2]) not in vox for d in ((1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(0,0,1)))]
+W, H = 38, 40
 
-def m_cinder():
-    v = {}
-    # a heap of angular charcoal chunks, a glowing seam down the front corner, sparks drifting up
-    for c, r, m in (((8,8,3),(6.4,6.4,3.4),'c'), ((5,6,5),(3.6,3.4,3.6),'b'), ((11,7,5),(3.4,3.4,3.4),'c'), ((8,11,6),(3.8,3.8,3.8),'b'), ((7,7,8),(3.2,3.2,3.2),'c'), ((11,11,3),(2.6,2.6,2.6),'b'), ((4,11,2),(2.2,2.2,2.2),'c')):
-        ellipsoid(v, c, r, m)
-    for k in list(v):
-        if (k[0] + k[1]) % 7 == 0 and k[2] > 5 and h(*k) % 2: del v[k]
-    for k in surface(v):
-        x, y, z = k
-        if z <= 6 and 17 <= x + y <= 19 and h(*k) % 4: v[k] = 'a'
-        elif z <= 3 and h(*k) % 9 == 0: v[k] = 'a'
-        elif z > 4 and h(*k) % 13 == 0: v[k] = 'b'
-    for p in ((8,8,12),(10,9,14),(7,10,15),(9,7,13)): v[p] = 'w'
-    return v
-def m_ore():
-    v = {}; ellipsoid(v, (8,8,6), (6.5,5.5,6), 'b')
-    for k in list(v):                       # chisel flat facets
-        if k[0]+k[2] > 17 or k[1]-k[2] > 6 or k[0]-k[1] > 9: del v[k]
-    for k in surface(v):
-        if (k[0]+2*k[1]+k[2]) % 7 == 0 and h(*k) % 3: v[k] = 'a'
-    ellipsoid(v, (3,11,2), (2.2,2.2,2.2), 'c'); ellipsoid(v, (12,4,1), (2,2,1.6), 'c')
-    for (x, y, z0, z1) in ((11,11,0,5),(12,10,0,3),(4,4,0,4)):
-        for z in range(z0, z1+1): v[(x,y,z)] = 'w' if z == z1 else 'b'
-    return v
-def m_slag():
-    v = {}
-    # a crusted pool: dark rim, sunken glowing lava with crust cracks, two bubbles, spatter lumps
-    for x in range(N):
-        for y in range(N):
-            d = math.hypot(x - 8, y - 8)
-            if d <= 7.4:
-                for z in range(0, 3 if d > 5 else 1): v[(x, y, z)] = 'c'
-                if d <= 5: v[(x, y, 1)] = 'a'
-    for k in list(v):
-        if v[k] == 'c' and k[2] == 2 and h(*k) % 3 == 0: del v[k]
-    for k in list(v):
-        if v[k] == 'a' and ((k[0] * 2 + k[1] * 3) % 8 < 1): v[k] = 'c'
-    ellipsoid(v, (7, 9, 3), (2.4, 2.4, 2.4), 'a'); ellipsoid(v, (10, 6, 2), (1.8, 1.8, 1.8), 'a')
-    for p in ((7,9,5),(6,9,4),(10,6,3),(9,6,3)): v[p] = 'w'
-    for p in ((1,7),(14,9),(8,1),(8,14),(3,12),(13,3)): box(v, p[0], p[0]+1, p[1], p[1]+1, 0, 1, 'b')
-    return v
-def m_ingot():
-    v = {}
-    def bar(x0, y0, z0, mat):
-        for x in range(x0, x0+7):
-            for y in range(y0, y0+4):
-                for z in range(z0, z0+3):
-                    inset = 1 if z == z0+2 else 0
-                    if x0+inset <= x <= x0+6-inset and y0+(inset and 0) <= y <= y0+3: v[(x,y,z)] = mat
-    bar(1,2,0,'b'); bar(8,2,0,'b'); bar(1,9,0,'b'); bar(8,9,0,'b'); bar(4,5,3,'c'); bar(1,5,3,'b'); bar(8,5,3,'b')
-    for x in range(4, 11):
-        for y in range(5, 9): v[(x,y,6)] = 'b'
-    box(v, 5, 9, 6, 7, 6, 7, 'b'); box(v, 6, 8, 6, 7, 8, 8, 'a')
-    for p in ((3,3,2),(10,3,2),(3,10,2),(10,10,2)): v[p] = 'a'
-    return v
-def m_alloy():
-    v = {}
-    box(v, 4, 11, 5, 10, 0, 2, 'c'); box(v, 6, 9, 6, 9, 3, 5, 'c')
-    box(v, 3, 12, 4, 11, 6, 8, 'b');
-    for i, x in enumerate((2, 1, 0)):
-        box(v, x, x, 6, 9, 7 - i if i < 2 else 7, 7, 'b')
-    box(v, 2, 3, 5, 10, 6, 7, 'b')
-    box(v, 5, 11, 7, 8, 9, 10, 'a'); box(v, 6, 10, 7, 8, 11, 11, 'w')
-    for p in ((4,4,6),(11,11,6)): v[p] = 'w'
-    for p in ((8,3,6),(8,12,6)): v[p] = 'a'
-    return v
-def m_ember():
-    v = {}
-    box(v, 4, 11, 4, 11, 0, 1, 'c'); box(v, 5, 10, 5, 10, 2, 2, 'c')
-    cx, cz = 7.5, 8.2
-    for x in range(N):
-        for z in range(3, N):
-            X = (x - cx) / 5.6; Z = (z - cz) / 5.2
-            f = (X*X + Z*Z - 1)**3 - X*X*Z**3
-            if f <= 0:
-                half = 3 - (1 if f > -0.05 else 0)
-                for y in range(8 - half, 8 + half):
-                    v[(x, y, z)] = 'b'
-    for k in surface(v):
-        if k[2] > 3 and ((k[0]*2 + k[2]*3) % 11 == 0): v[k] = 'a'
-    for p in ((6,5,10),(6,5,9),(7,5,8),(9,5,11)):
-        if p in v: v[p] = 'w'
-    return v
-MODELS = {"cinder": m_cinder, "ore": m_ore, "slag": m_slag, "ingot": m_ingot, "alloy": m_alloy, "ember": m_ember}
 
-BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]
-def lattice_half(vox):
-    out = {}
-    cnt = {}
-    for (x, y, z), m in vox.items():
-        k = (x//2, y//2, z//2); cnt.setdefault(k, []).append(m)
-    for k, ms in cnt.items():
-        if len(ms) < 3: continue
-        for pick in ('w', 'a', 'c', 'b'):
-            if pick in ms and (pick in ('w', 'a') or ms.count(pick) >= 2): out[k] = pick; break
-        else: out[k] = max(set(ms), key=ms.count)
-    return out
-def render(vox, tier, frame, n):
-    t = TIERS[tier]
-    B = [rgb(c) for c in t["body"]]; C = [rgb(c) for c in t["sec"]]; G = [rgb(c) for c in t["glow"]]
-    W = 4*n + 8; H = 4*n + 10
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0)); P = img.load()
-    ox, oy = W//2, H - 4 - 2*n - 2
-    def setpx(x, y, col):
-        if 0 <= x < W and 0 <= y < H: P[x, y] = col + (255,)
-    for (x, y, z) in sorted(vox, key=lambda k: (k[0]+k[1], k[2], k[0])):
-        m = vox[(x, y, z)]
-        sx = ox + (x - y)*2; sy = oy + (x + y) - z*2
-        g = z / (n - 1)
-        for py in range(sy - 1, sy + 4):
-            for px in range(sx - 2, sx + 2):
-                dx = px - sx + 0.5; dy = py - sy + 0.5
-                if abs(dx)/2 + abs(dy) <= 1: face = 0
-                elif dx < 0 and dy > (dx + 2)/2 - 0.0 and dy <= 2 + (dx + 2)/2 - 0.0 - 0: face = 1
-                elif dx >= 0 and dy > 1 - dx/2 and dy <= 3 - dx/2: face = 2
-                else: continue
-                bay = BAYER[py & 3][px & 3] / 16.0
-                up = 1 if g > 0.5 + (bay - 0.5)*0.12 else 0  # hard band; dither only in a thin transition
-                if m in 'bc':
-                    ramp = B if m == 'b' else C
-                    base = (3, 2, 1)[face]
-                    col = ramp[min(4, base + up)] if face != 2 or g > 0.35 else ramp[base]
-                    
-                elif m == 'a':
-                    flick = 1 if ((x*3 + y*5 + z + frame*2) % 4 == 0 and bay < 0.7) else 0
-                    col = G[min(3, (2, 1, 0)[face] + 1 + flick) if face == 0 else min(3, (2, 1, 0)[face] + flick)]
-                else:
-                    col = G[3] if (frame + x + y) % 3 else G[2]
-                setpx(px, py, col)
-    ink = B[0]; out = img.copy(); Q = out.load()
-    for y in range(H):
-        for x in range(W):
-            if P[x, y][3] == 0:
-                for dx, dy in ((1,0),(-1,0),(0,1),(0,-1)):
-                    nx, ny = x + dx, y + dy
-                    if 0 <= nx < W and 0 <= ny < H and P[nx, ny][3]: Q[x, y] = ink + (255,); break
-    return out.crop(out.getbbox())
+def ramps(s, t):
+    T = TIERS[t]
+    return s.ramp([rgb(c) for c in T["body"]]), s.ramp([rgb(c) for c in T["sec"]]), s.ramp([rgb(c) for c in T["glow"]])
+
+
+def sparks(s, g, pts, frame):
+    for i, (x, y) in enumerate(pts):
+        yy = y - ((frame + i) % 3)
+        if 0 <= yy < s.h and 0 <= x < s.w:
+            s.R[yy, x] = g; s.V[yy, x] = 0.95 if (frame + i) % 2 else 0.6; s.O[yy, x] = 99; s.G[yy, x] = False
+
+
+def cinder(frame):
+    s = Spr(W, H, 11); b, c, g = ramps(s, "cinder")
+    s.poly([(3, 38), (2, 30), (6, 24), (12, 22), (16, 27), (17, 38)], c, 0.55, 0.2)          # back left lump
+    s.rock(12, 36, 11, 14, b, 3, 7, glow_ramp=g, crack_p=0.30)                              # main heap, left
+    s.rock(26, 36, 10, 12, c, 5, 6, glow_ramp=g, crack_p=0.34)                              # right heap
+    s.rock(19, 28, 8, 12, b, 9, 6, glow_ramp=g, crack_p=0.42, bright=0.06)                  # top chunk
+    s.rock(7, 38, 4, 5, c, 2, 3); s.rock(33, 38, 3, 4, b, 6, 3)                              # pebbles
+    # an ember bed glowing between the lumps
+    m = s.ell_mask(19, 36.5, 7, 2.2) & (s.R >= 0)
+    s.paint(m, g, 0.45 + 0.45 * np.where((s.xx + frame) % 3 == 0, 1, 0.3), glow=True, obj=False)
+    sparks(s, g, [(15, 18), (22, 14), (18, 9), (26, 20)], frame)
+    return s.finish(frame)
+
+
+def ore(frame):
+    s = Spr(W, H, 21); b, c, g = ramps(s, "ore")
+    s.rock(17, 38, 15, 15, c, 4, 8)                                        # dark host rock
+    s.rock(28, 38, 8, 8, c, 8, 5)
+    for (x, y, w, h, lean, tip) in ((9, 29, 6, 17, -2, 1), (17, 27, 8, 24, 1, 2), (24, 30, 6, 15, 3, 1), (13, 33, 4, 9, -1, 0), (29, 33, 4, 8, 2, 0)):
+        s.crystal(x, y, w, h, b, lean, tip, seed=x, gl=False)
+    # gold flecks in the host rock and a lit seam
+    for (x, y) in ((6, 35), (12, 36), (21, 36), (30, 36), (8, 32), (26, 34)):
+        if s.R[y, x] >= 0:
+            s.R[y, x] = g; s.V[y, x] = 0.7 + 0.3 * ((frame + x) % 2); s.G[y, x] = True
+    s.paint(s.poly_mask([(15, 29), (17, 14), (18, 14), (18, 29)]) & (s.R == b), g, 0.5, glow=True, obj=False)
+    sparks(s, g, [(17, 10), (20, 7)], frame)
+    return s.finish(frame)
+
+
+def slag(frame):
+    s = Spr(W, H, 31); b, c, g = ramps(s, "slag")
+    s.poly([(7, 38), (5, 31), (9, 18), (29, 18), (33, 31), (31, 38)], b, 0.7, 0.18)          # crucible body
+    s.poly([(4, 18), (4, 14), (34, 14), (34, 18)], c, 0.75, 0.35)                           # lip
+    s.poly([(5, 40), (5, 36), (11, 36), (11, 40)], c, 0.5, 0.2)                              # feet
+    s.poly([(27, 40), (27, 36), (33, 36), (33, 40)], c, 0.5, 0.2)
+    for y in (22, 29):                                                                       # riveted bands
+        s.paint(s.poly_mask([(6, y), (32, y), (32, y + 2), (6, y + 2)]) & (s.R >= 0), c, 0.28, obj=False)
+        for x in range(8, 31, 4):
+            s.R[y + 1, x] = b; s.V[y + 1, x] = 0.95
+    # molten slag over the lip, drips down the front
+    s.paint(s.poly_mask([(6, 13), (32, 13), (30, 11), (8, 11)]), g, 0.7, glow=True)
+    for (x, ln) in ((10, 8), (17, 14), (23, 6), (28, 10)):
+        s.paint(s.poly_mask([(x, 14), (x + 2, 14), (x + 2, 14 + ln), (x + 1, 15 + ln), (x, 14 + ln - 1)]), g, 0.5 + 0.1 * (x % 3), glow=True, obj=False)
+    sparks(s, g, [(12, 8), (19, 5), (26, 8)], frame)
+    # blue flame licking up behind the lip
+    for i, x in enumerate((11, 15, 19, 23, 27)):
+        hh = 3 + ((frame + i) % 3) + (i % 2) * 2
+        s.paint(s.poly_mask([(x - 1, 11), (x + 1, 11), (x, 11 - hh)]) & (s.R < 0), b, 0.9 - 0.1 * (i % 2), obj=False)
+    return s.finish(frame)
+
+
+def ingot(frame):
+    s = Spr(W, H, 41); b, c, g = ramps(s, "ingot")
+
+    def bar(x0, y0, w, h, ramp=b, hot=False):
+        ins = 3
+        s.poly([(x0, y0 + h), (x0 + ins, y0), (x0 + w - ins, y0), (x0 + w, y0 + h)], ramp, 0.62, 0.18)
+        s.paint(s.poly_mask([(x0 + ins + 1, y0 + 1), (x0 + w - ins - 1, y0 + 1), (x0 + w - ins - 1, y0 + 2), (x0 + ins + 1, y0 + 2)]) & (s.R >= 0), ramp, 0.95, obj=False)
+        if hot:
+            s.paint(s.poly_mask([(x0 + ins + 1, y0 + 1), (x0 + w - ins - 1, y0 + 1), (x0 + w - ins - 1, y0 + 3), (x0 + ins + 1, y0 + 3)]), g, 0.8, glow=True, obj=False)
+    bar(1, 31, 17, 8); bar(20, 31, 17, 8)
+    bar(8, 24, 22, 8, c)
+    bar(2, 17, 16, 8, c) if False else None
+    bar(11, 17, 16, 8, b)
+    bar(13, 10, 13, 8, b, hot=True)
+    for (x, y) in ((8, 35), (28, 35), (19, 28), (19, 21)):                                    # stamped marks
+        s.paint(s.poly_mask([(x, y), (x + 2, y), (x + 2, y + 2), (x, y + 2)]) & (s.R >= 0), c, 0.15, obj=False)
+    sparks(s, g, [(17, 6), (21, 4), (14, 7)], frame)
+    return s.finish(frame)
+
+
+def alloy(frame):
+    s = Spr(W, H, 51); b, c, g = ramps(s, "alloy")
+    s.poly([(7, 39), (9, 33), (29, 33), (31, 39)], c, 0.55, 0.15)                              # base
+    s.poly([(12, 33), (14, 25), (24, 25), (26, 33)], c, 0.5, 0.2)                              # waist
+    s.poly([(2, 24), (5, 17), (36, 17), (36, 20), (30, 25), (6, 25)], c, 0.9, 0.35)           # face and horn
+    s.poly([(2, 24), (6, 22), (6, 25)], c, 0.4)                                                 # horn underside
+    s.paint(s.poly_mask([(8, 17), (30, 17), (30, 18), (8, 18)]) & (s.R >= 0), c, 1.0, obj=False)  # polished face
+    s.poly([(10, 17), (11, 13), (27, 13), (28, 17)], b, 0.85, 0.35)                            # the alloy bar on the face
+    s.paint(s.poly_mask([(11, 13), (27, 13), (27, 15), (11, 15)]), g, 0.75, glow=True, obj=False)
+    s.paint(s.poly_mask([(15, 14), (23, 14), (23, 14.9), (15, 14.9)]), g, 1.0, glow=True, obj=False)
+    sparks(s, g, [(12, 10), (19, 7), (25, 9), (31, 12), (7, 12)], frame)
+    return s.finish(frame)
+
+
+def ember(frame):
+    s = Spr(W, H, 61); b, c, g = ramps(s, "ember")
+    # iron cradle: three prongs and a ring
+    s.poly([(6, 39), (9, 29), (11, 29), (9, 39)], c, 0.4, 0.08)
+    s.poly([(32, 39), (29, 29), (27, 29), (29, 39)], c, 0.4, 0.08)
+    s.poly([(17, 39), (18, 31), (21, 31), (22, 39)], c, 0.35, 0.08)
+    s.poly([(7, 31), (8, 28), (30, 28), (31, 31)], c, 0.62, 0.2)
+    # heart gem, faceted
+    cx, cy = 19.0, 15.5
+    pts = []
+    for i in range(48):
+        t = i / 48 * math.tau
+        x = 16 * math.sin(t) ** 3; y = 13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)
+        pts.append((cx + x * 0.58, cy - y * 0.64))
+    m = s.poly_mask(pts)
+    rng = np.random.default_rng(7)
+    cs = np.array([[cx + (rng.random() * 2 - 1) * 9, cy + (rng.random() * 2 - 1) * 8] for _ in range(9)])
+    d = (s.xx[..., None] + .5 - cs[:, 0]) ** 2 + (s.yy[..., None] + .5 - cs[:, 1]) ** 2
+    fid = np.argmin(d, -1)
+    tone = np.array([float(np.clip(0.5 + 0.45 * ((cs[k, 0] - cx) * -0.06 + (cs[k, 1] - cy) * -0.05) + (rng.random() - .5) * .2, 0, 1)) for k in range(9)])
+    s.paint(m, b, tone[fid] * 0.85 + 0.1)
+    core = ((s.xx + .5 - cx) ** 2 + ((s.yy + .5 - cy) * 1.2) ** 2 < 14 + 3 * ((frame % 3) - 1)) & m
+    s.paint(core, g, 0.55 + 0.1 * frame, glow=True, obj=False)
+    s.paint(((s.xx + .5 - cx) ** 2 + ((s.yy + .5 - cy) * 1.2) ** 2 < 4.5) & m, g, 1.0, glow=True, obj=False)
+    sparks(s, g, [(6, 12), (32, 10), (19, 3), (10, 5), (28, 5)], frame)
+    return s.finish(frame)
+
+
+MODELS = {"cinder": cinder, "ore": ore, "slag": slag, "ingot": ingot, "alloy": alloy, "ember": ember}
+
+
 def fit(im, size):
-    w, h_ = im.size; s = min((size-2)/w, (size-2)/h_)
-    nw, nh = max(1, round(w*s)), max(1, round(h_*s))
+    w, h_ = im.size; sc = min((size - 2) / w, (size - 2) / h_)
+    nw, nh = max(1, round(w * sc)), max(1, round(h_ * sc))
     r = im.resize((nw, nh), Image.NEAREST)
-    c = Image.new("RGBA", (size, size), (0, 0, 0, 0)); c.paste(r, ((size-nw)//2, size-nh-1), r); return c
+    c = Image.new("RGBA", (size, size), (0, 0, 0, 0)); c.paste(r, ((size - nw) // 2, size - nh - 1), r); return c
+
+
 def main(out):
     os.makedirs(out, exist_ok=True)
-    names = list(MODELS)
+    # the pad draws every frame bottom-centre, so all three frames of a tier share one crop box
     rows = []
-    for n in names:
-        full = MODELS[n](); half = lattice_half(full)
-        hero = [render(full, n, f, 16) for f in range(3)]
-        game = [render(half, n, f, 8) for f in range(3)]
+    for n, fn in MODELS.items():
+        fr = [fn(f) for f in range(3)]
+        box = fr[0].getbbox()
+        for f in fr[1:]:
+            bb = f.getbbox(); box = (min(box[0], bb[0]), min(box[1], bb[1]), max(box[2], bb[2]), max(box[3], bb[3]))
+        game = [f.crop(box) for f in fr]
+        hero = [g.resize((g.width * 2, g.height * 2), Image.NEAREST) for g in game]
         for f in range(3):
-            hero[f].save(f"{out}/{n}_hero_f{f}.png"); game[f].save(f"{out}/{n}_game_f{f}.png")
-        hero[0].save(f"{out}/{n}_hero.png"); game[0].save(f"{out}/{n}_game.png")
-        for s in (32, 16, 8): fit(game[0] if s < 32 else hero[0], s).save(f"{out}/{n}_{s}.png")
-        rows.append((n, hero, game))
-    pv = Image.new("RGB", (len(names)*150, 330), (26, 17, 22))
-    for i, (n, hero, game) in enumerate(rows):
-        x0 = i*150 + 6
-        pv.paste(hero[0], (x0, 8), hero[0])
-        for f in range(3): pv.paste(game[f], (x0 + f*34, 90), game[f])
-        for j, s in enumerate((32, 16, 8)):
-            ic = Image.open(f"{out}/{n}_{s}.png"); pv.paste(ic, (x0 + (0, 36, 56)[j], 132), ic)
-        big = game[0].resize((game[0].width*3, game[0].height*3), Image.NEAREST); pv.paste(big, (x0, 170), big)
+            game[f].save(f"{out}/{n}_game_f{f}.png"); hero[f].save(f"{out}/{n}_hero_f{f}.png")
+        game[0].save(f"{out}/{n}_game.png"); hero[0].save(f"{out}/{n}_hero.png")
+        for sz in (32, 16, 8):
+            fit(game[0], sz).save(f"{out}/{n}_{sz}.png")
+        rows.append((n, game))
+    pv = Image.new("RGB", (len(rows) * 120, 250), (26, 17, 22))
+    for i, (n, game) in enumerate(rows):
+        x0 = i * 120 + 6
+        for f in range(3):
+            pv.paste(game[f], (x0 + f * 38, 6), game[f])
+        big = game[0].resize((game[0].width * 3, game[0].height * 3), Image.NEAREST); pv.paste(big, (x0, 60), big)
+        for j, sz in enumerate((32, 16, 8)):
+            ic = Image.open(f"{out}/{n}_{sz}.png"); pv.paste(ic, (x0 + (0, 36, 56)[j], 200), ic)
     pv.save(f"{out}/ladder_preview.png")
+
+
 if __name__ == "__main__":
     main(sys.argv[1] if len(sys.argv) > 1 else "assets/art/zone2/ladder")

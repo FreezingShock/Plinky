@@ -6,11 +6,14 @@ extends PanelContainer
 ## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and icon).
 ## The mastery row sums the area's pads from `sim.mastery`.
 
-const WIDTH: float = 176.0
-const INNER: float = WIDTH - 16.0
+const WIDTH: float = 152.0
+const PAD_X: float = 5.0
+const PAD_Y: float = 3.0
+const INNER: float = WIDTH - PAD_X * 2.0
+const DESC_LINES: int = 2   ## the description shows this many lines; the full text is in its tooltip
 const PEEK: float = 3.5   ## seconds the area card stays open after you walk into an area
-const PADS_SHOWN: int = 4      ## pads listed when an area has more than PADS_FOLD of them; the rest fold behind "N more..."
-const PADS_FOLD: int = 5
+const PADS_SHOWN: int = 3      ## pads listed when an area has more than PADS_FOLD of them; the rest fold behind "N more..."
+const PADS_FOLD: int = 4
 const PADS_MAX_PX: float = 96.0   ## tallest the expanded pad list grows before it scrolls, so the panel never leaves the screen
 
 signal travel_toggled(open: bool)
@@ -43,7 +46,7 @@ var _gated: Array[Control] = []     # parts that wait for the rebirth row to unl
 
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", AsciiBox.panel())
+	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, PAD_X, PAD_Y))
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# A panel only ever grows by itself; let it shrink back when the card folds so no empty space is left below.
 	minimum_size_changed.connect(func() -> void: set_deferred("size", Vector2(size.x, 0.0)))
@@ -182,12 +185,25 @@ func _build_list(list: VBoxContainer) -> void:
 
 ## Height of the folded card: the title row and the whole (wrapped) description, so no line is cut through.
 func _stub_px() -> float:
+	return _card_title.get_combined_minimum_size().y + 2.0 + _desc_px() + 3.0   # +3 keeps descenders (g, p, y) whole
+
+
+## Height of the wrapped description. A wrapping Label reports a stale one-line minimum until its width settles, which
+## cut the text with an ellipsis ("paid in Sunligh..."), so the height is measured here and pinned on the label.
+func _desc_px() -> float:
 	var font: Font = _card_desc.get_theme_font("font")
 	var fs: int = _card_desc.get_theme_font_size("font_size")
-	var h: float = _card_desc.get_line_height()
+	var line: float = _card_desc.get_line_height()
+	var h: float = line
 	if font != null:
 		h = maxf(h, font.get_multiline_string_size(_card_desc.text, HORIZONTAL_ALIGNMENT_LEFT, INNER, fs).y)
-	return _card_title.get_combined_minimum_size().y + 2.0 + h + 3.0   # +3 keeps descenders (g, p, y) whole
+	return minf(h, line * DESC_LINES)
+
+
+func _fit_desc() -> void:
+	_card_desc.custom_minimum_size.y = ceilf(_desc_px())
+	if travel_open:
+		_card.floor_px = _stub_px()
 
 
 func set_travel_open(on: bool, animate: bool = true) -> void:
@@ -259,6 +275,10 @@ func _build_card(card: VBoxContainer) -> void:
 	_card_desc = Label.new()
 	_card_desc.custom_minimum_size.x = INNER
 	_card_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_card_desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_card_desc.max_lines_visible = DESC_LINES
+	_card_desc.mouse_filter = Control.MOUSE_FILTER_STOP
+	_bind(_card_desc, func() -> Array: return [_card_title.text, _card_desc.text])
 	_card_desc.add_theme_color_override("font_color", RelicStyle.text)
 	card.add_child(_card_desc)
 	_pads_scroll = ScrollContainer.new()
@@ -340,12 +360,14 @@ func _rebuild_card() -> void:
 		var z: ZoneDef = sim.current_zone()
 		_card_title.text = z.display_name if z != null else ""
 		_card_desc.text = z.description if z != null else ""
+		_fit_desc()
 		_layout_pads()
 		return
 	var col: Color = area_colour(a)
 	_card_title.text = a.display_name
 	_card_title.add_theme_color_override("font_color", col)
 	_card_desc.text = a.blurb
+	_fit_desc()
 	_mastery_bar.fill = col
 	for bid in a.pad_buttons:
 		var l := Label.new()
@@ -484,7 +506,7 @@ func _gate_text(z: ZoneDef) -> void:
 	_gate_bar.visible = true
 	if sim.is_gate_open(z.id):
 		_gate_bar.value = 1.0
-		_gate_label.text = "Gate open! Walk in." if z.next_zone != &"" else "Gate open! Nothing past it yet."
+		_gate_label.text = "Gate open! Walk in." if z.next_zone != &"" else "Gate open!"
 		return
 	var have: float = minf(sim.get_stat(z.gate_stat).to_float(), z.gate_threshold)
 	_gate_bar.value = have / z.gate_threshold

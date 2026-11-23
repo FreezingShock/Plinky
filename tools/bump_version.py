@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Bump the Plinky version. Usage: python3 tools/bump_version.py patch|minor|major|set X.Y.Z [--dry-run]
+"""Bump the Plinky version. Usage: python3 tools/bump_version.py patch|minor|major|set X.Y.Z|release [--dry-run]
+
+`release` is what CI runs on main (docs/versioning.md): it folds every changelog.d/<slug>.<patch|minor>.md
+fragment into CHANGELOG.md, bumps by the biggest fragment (minor beats patch), and deletes the fragments.
+PRs add a fragment instead of bumping, so they never conflict on the version files.
 
 Updates core/build_info.gd (the source of truth), export_presets.cfg, and moves the CHANGELOG.md
 "Unreleased" lines under a new dated heading. MAJOR only when Nathan asks.
@@ -18,6 +22,26 @@ def move_unreleased(log: str, new: str, date: str) -> str:
     return re.sub(r"## Unreleased[ \t]*\n+", f"## Unreleased\n\n## {new} - {date}\n", log, count=1)
 
 
+FRAGMENTS = ROOT / "changelog.d"
+FRAGMENT_RE = re.compile(r"^.+\.(patch|minor)\.md$")
+
+
+def collect_fragments(directory: pathlib.Path) -> tuple[str, list[str], list[pathlib.Path]]:
+    """Read changelog.d fragments. Returns (bump, note lines, files). Bump is "" when there are none.
+    A fragment is named <slug>.patch.md or <slug>.minor.md; each non-empty line is one note ("- " added if missing)."""
+    files = sorted(f for f in directory.glob("*.md") if FRAGMENT_RE.match(f.name))
+    bump, notes = "", []
+    for f in files:
+        kind = FRAGMENT_RE.match(f.name).group(1)
+        if kind == "minor" or not bump:
+            bump = kind
+        for line in f.read_text().splitlines():
+            line = line.strip()
+            if line:
+                notes.append(line if line.startswith("- ") else "- " + line)
+    return bump, notes, files
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if a != "--dry-run"]
     dry = "--dry-run" in sys.argv
@@ -30,6 +54,14 @@ def main() -> int:
         print("VERSION not found in core/build_info.gd")
         return 1
     maj, mi, pa = (int(x) for x in m.groups())
+    fragment_files: list[pathlib.Path] = []
+    fragment_notes: list[str] = []
+    if args[0] == "release":
+        bump, fragment_notes, fragment_files = collect_fragments(FRAGMENTS)
+        if not bump:
+            print("no changelog fragments; nothing to release")
+            return 0
+        args = [bump]
     if args[0] == "patch":
         pa += 1
     elif args[0] == "minor":
@@ -51,6 +83,10 @@ def main() -> int:
     p = re.sub(r'(application/(?:short_)?version=")[^"]*(")', rf"\g<1>{new}\2", p)
     PRESETS.write_text(p)
     log = LOG.read_text()
+    if fragment_notes:
+        log = re.sub(r"## Unreleased[ \t]*\n+", "## Unreleased\n\n" + "\n".join(fragment_notes) + "\n", log, count=1)
+    for f in fragment_files:
+        f.unlink()
     LOG.write_text(move_unreleased(log, new, str(datetime.date.today())))
     return 0
 
