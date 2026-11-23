@@ -110,6 +110,12 @@ static func life_count(full: int) -> int:
 	return maxi(1, roundi(float(full) * LIFE_DENSITY[level]))
 
 
+## `full` scaled by the life density, and 0 stays 0 (rain can clear the air of fireflies).
+static func life_scaled(full: int) -> int:
+	load_settings()
+	return roundi(float(full) * LIFE_DENSITY[level])
+
+
 ## The part of `node`'s local space that is on screen, grown by CULL_MARGIN. An empty Rect2 (no culling)
 ## when the node is outside the tree. Cheap enough to call once per redraw, not once per element.
 static func visible_local_rect(node: CanvasItem) -> Rect2:

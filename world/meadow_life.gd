@@ -13,6 +13,12 @@ static var reduce_motion: bool = false
 ## Wind strength 0..1, written by SkyCycle each frame. LifeGround leans the grass tips further in a gust.
 static var wind: float = 0.2
 
+## Time of day and weather, written by SkyCycle each frame so the air layer can tune itself: fireflies come out at
+## dusk and stay through the night, pollen and dust motes belong to the day and catch the low sun.
+static var night: float = 0.0      # 0 day .. 1 deep night
+static var low_sun: float = 0.0    # 1 at golden hour, sunrise and sunset
+static var rain: float = 0.0       # 0..1
+
 ## 4x4 Bayer matrix, art-bible section 2. Threshold for index i is (BAYER[i] + 0.5) / 16.
 const BAYER: Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
