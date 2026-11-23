@@ -12,7 +12,7 @@ extends Resource
 @export var blend_days: float = 1.0
 
 @export var season_ids: PackedStringArray = PackedStringArray(["spring", "summer", "autumn", "winter"])
-@export var season_names: PackedStringArray = PackedStringArray(["Bloomtide", "Sunreach", "Amberfall", "Hushfrost"])
+@export var season_names: PackedStringArray = PackedStringArray(["Spring", "Summer", "Autumn", "Winter"])
 @export var season_blurbs: PackedStringArray = PackedStringArray([])
 ## Two per season, in order.
 @export var month_names: PackedStringArray = PackedStringArray([])

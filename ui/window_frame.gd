@@ -87,8 +87,27 @@ func _sync() -> void:
 			_bar.queue_redraw()
 
 
+var _clock_acc: float = 1.0
+
+
+## Day count and in-game time in the middle of the bar, from the Calendar autoload; redrawn only when the text changes.
+func _sync_clock(delta: float) -> void:
+	_clock_acc += delta
+	if _clock_acc < 0.25 or _bar == null or not _bar.visible:
+		return
+	_clock_acc = 0.0
+	var cal: Node = get_tree().root.get_node_or_null("Calendar")
+	if cal == null:
+		return
+	var n: Dictionary = cal.call("now")
+	if n.is_empty():
+		return
+	_bar.set_clock("Day %d" % int(n["total_day"]), String(n["clock_text"]))
+
+
 func _process(_delta: float) -> void:
 	_sync()
+	_sync_clock(_delta)
 	# Watchdog: a switch that has not finished in 3 s (window manager hiccup) must never leave the screen covered.
 	if _queue.busy and Time.get_ticks_msec() - _busy_since > 3000:
 		_queue.reset()
@@ -253,6 +272,14 @@ class TitleBar extends Control:
 
 	var win: Window
 	var _hover: int = Hit.NONE
+	var _day_text: String = ""
+	var _time_text: String = ""
+
+	func set_clock(day_text: String, time_text: String) -> void:
+		if day_text != _day_text or time_text != _time_text:
+			_day_text = day_text
+			_time_text = time_text
+			queue_redraw()
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
@@ -328,6 +355,14 @@ class TitleBar extends Control:
 		var font: Font = get_theme_default_font()
 		var fs: int = get_theme_default_font_size()
 		draw_string(font, Vector2(14, 9), "PLINKY", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, txt)
+		# Day count and in-game time, centred; whole texels so it stays crisp. Skipped when the bar is too narrow.
+		if not _day_text.is_empty() and w >= 220.0:
+			var gap: float = 6.0
+			var dw: float = font.get_string_size(_day_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var tw: float = font.get_string_size(_time_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var x0: float = floorf((w - (dw + gap + tw)) * 0.5)
+			draw_string(font, Vector2(x0, 9), _day_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, RelicStyle.dim)
+			draw_string(font, Vector2(x0 + dw + gap, 9), _time_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, accent)
 		# Buttons, right to left: close, maximise, minimise.
 		_button(Hit.CLOSE, w - WindowFrame.BTN_W, accent, ink)
 		_button(Hit.MAX, w - WindowFrame.BTN_W * 2, edge, ink)

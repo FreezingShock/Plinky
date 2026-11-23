@@ -36,7 +36,7 @@ static func _migrate_step(d: Dictionary) -> Dictionary:
 				(d["game"] as Dictionary)["mastery"] = {}
 			d["version"] = 2
 		2:
-			# v3 adds the calendar. Older saves start on the first morning of Bloomtide, Year 1.
+			# v3 adds the calendar. Older saves start on the first morning of Spring, Year 1.
 			if d.get("game") is Dictionary and not (d["game"] as Dictionary).has("calendar"):
 				(d["game"] as Dictionary)["calendar"] = {}
 			d["version"] = 3
