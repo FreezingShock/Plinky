@@ -232,7 +232,7 @@ func _earned(sid: StringName) -> bool:
 
 ## Big jumps in a stat float up beside its counter. The first stat is left out: every press already pops its own number.
 func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
-	if sid == &"sunlight" or sid == &"cash":
+	if sid == &"sunlight" or sid == &"embers":
 		return
 	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
 	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
@@ -293,7 +293,7 @@ func _on_rebirth_pressed() -> void:
 		GameState.try_rebirth()
 		return
 	var lines: Array = [
-		["Resets your Cash and pads.", StatStyle.PAPER],
+		["Resets your income stats and pads.", StatStyle.PAPER],
 		["+%s Prestige" % sim.prestige_gain_preview().format(), StatStyle.color(&"prestige")],
 		["+%d Rebirth Points" % sim.rp_gain_preview(), StatStyle.color(&"rp")],
 	]
@@ -651,7 +651,7 @@ func gate(node: CanvasItem, feature: StringName) -> void:
 
 ## A gated stat row also has to belong to the current zone; any other gated node always does.
 func _gated_in_zone(node: CanvasItem) -> bool:
-	if node == _rebirth:   # Rebirth lives where Cash and Multiplier do; the meadow has Bloom
+	if node == _rebirth:   # Rebirth lives in the quarry; the meadow has Bloom
 		return sim.rebirth_here()
 	for sid: StringName in _gated_rows:
 		if _row_boxes.get(sid) == node:

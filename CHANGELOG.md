@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.33.0 - 2026-11-23
+- Ember Quarry: Cash and Multiplier are removed from the zone. Cash became Embers (the passive trickle that feeds the forge) and the Multiplier became Cinder, the first forge row, so the ladder reads Embers, Cinder, Ore, Slag, Ingot, Alloy, Emberheart with the same numbers. The old stats are parked in `content/parked/` for a later liminal zone. Saves move over one for one (save ladder 3); new Embers and Cinder icons, colours and tooltips.
+
 ## 0.32.1 - 2026-11-23
 - HUD strip: more room between the gain text and the value so long suffixes never touch it.
 

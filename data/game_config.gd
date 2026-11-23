@@ -18,10 +18,10 @@ extends Resource
 @export var prestige_push_threshold: float = 9.0
 @export var prestige_push_exponent: float = 0.5
 ## Rebirth Points: each rebirth pays rp_base, plus rp_growth for every rebirth already done (rounded down).
-## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; rebirths still only boost Multiplier gain.
+## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; Rebirth Prestige multiplies passive income (Embers in the quarry).
 @export var rp_stat: StringName = &"rp"
 ## The currency the History graph tracks (income per second). Content swaps this when the economy changes.
-@export var income_stat: StringName = &"cash"
+@export var income_stat: StringName = &"embers"
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
 ## Bloom: the meadow's reset. Opens once `bloom_gate_zone`'s gate is open and `bloom_source_stat` reaches the first payout. The reference amount is that gate's threshold (bloom_seed_ref is only the fallback).

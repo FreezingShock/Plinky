@@ -29,7 +29,7 @@ func _run(frames: int, reduce: bool, bare: bool) -> void:
 		await process_frame  # settle the first palette and layout
 	if not bare:
 		var sim: Object = root.get_node("/root/GameState").sim
-		sim.stats[&"cash"] = BigNum.from_float(5000.0)
+		sim.stats[&"embers"] = BigNum.from_float(5000.0)
 	var tag: String = ("meadow" if bare else "game") + ("_reduce" if reduce else "")
 	for i in frames:
 		for j in 15:

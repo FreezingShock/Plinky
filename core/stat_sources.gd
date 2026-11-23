@@ -5,7 +5,7 @@ extends RefCounted
 ##   amount  its contribution as display text ("+80%", "x1.40", "Lv 3")
 ##   how_to  one line on how to get more from it
 ##   kind    which kind of thing it is: base, attribute, relic, mastery, prestige, zone, action, total
-## `id` is a stat id from StatIndex (cash, crit_chance, ...), or an attribute id when `is_attribute` is true (attribute
+## `id` is a stat id from StatIndex (embers, crit_chance, ...), or an attribute id when `is_attribute` is true (attribute
 ## ids such as crit_chance and luck match stat ids, so the caller says which one it means). Unknown ids give an empty list.
 ## Pure data, no nodes. Sim.stat_sources forwards here.
 
@@ -68,7 +68,7 @@ static func of(sim: Sim, id: StringName, is_attribute: bool = false) -> Array[Di
 # ---------------------------------------------------------------- stats
 
 ## Any stat that is not Prestige or Rebirth Points: where its income or its press rewards come from. Read from the
-## StatDef, so the flower stats, Cash, Multiplier and Slag all use this one.
+## StatDef, so the flower and forge stats all use this one.
 static func _stat(sim: Sim, d: StatDef, rows: Array[Dictionary]) -> void:
 	var z: ZoneDef = sim.current_zone()
 	if d.passive:

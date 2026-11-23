@@ -24,7 +24,7 @@ var progress: float = 0.0
 const STAT_COLORS: Dictionary = {
 	&"dewdrop": Color("e4f1ff"), &"clover": Color("6be86b"), &"thistle": Color("7f9bff"),
 	&"heather": Color("c27cff"), &"foxglove": Color("ffb62e"), &"starbloom": Color("ff7bff"),
-	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("5fb0e0"), &"ironore": Color("5fb26a"),
+	&"cinder": Color("d6cfc4"), &"reb": Color("c77dff"), &"slag": Color("5fb0e0"), &"ironore": Color("5fb26a"),
 	&"ingot": Color("a07ee0"), &"alloy": Color("e8b43a"), &"emberheart": Color("ff5aa0"),
 }
 ## One standing flower per tier, 13 texels wide, drawn bottom-up from the plate centre: # petal (stat colour), d shaded

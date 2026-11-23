@@ -583,3 +583,12 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Open:** pacing is from `tools/sim_bloom.gd`, a greedy floor with no walking, relics or attributes. Taste call: Bloom may want to reset Sprout and Clover progress too (it does, as stats), and the first-time teach tip text.
 
 - 2026-11-23: Golden-hour pass. 08:08 spring looked best because the grade, long shadows and tint were all at once; low_sun() ended at elevation 0.62. Added SkyModel.golden() (floor 0.35 at noon, reach 0.95) driving rim, ground relight, shadow length (elevation squared), light-pass side/split, new sat/contrast in light_grade, wider god rays (zero at noon) and a haze bump. All costs stay at one full-frame pass already present; rays skip at noon. Pond water untouched. Not run in-engine from the cloud.
+
+
+## 2026-11-23 Cash and Multiplier leave the Ember Quarry (0.33.0)
+- **Nathan's call:** Cash and Multiplier are removed from the quarry and will return in a later nostalgic, liminal zone. They are parked, not deleted: `content/parked/stats/cash.tres` and `mult.tres` (not loaded), the `cash.png` and `mult.png` icons, and the `CASH_MULT` and `MULT_GAIN` relic effects stay.
+- **Embers** replace Cash as the quarry's passive trickle (the Sunlight counterpart): orange, `embers`, start 10, boosted by Cinder, Prestige and income relics. Chosen over Heat because Heat is already the vent mechanic, and over Kindling to keep the Ember Quarry name in play.
+- **Cinder** replaces the Multiplier as the first forge stat (row 1, Common, `cinder`), so the six rows read Cinder, Ore, Slag, Ingot, Alloy, Emberheart with the same chain: Embers pay Cinder, Cinder pays Ore. All costs, rewards, the 190 Embers arrival purse and the buff rule are unchanged, so the quarry balance (#180) still applies one for one.
+- **Rebirth stays in the quarry until Reforge.** It never needed the Multiplier: it banks Ingots as Prestige, Prestige multiplies Embers income and buys Attributes, and Rebirth Points buy perks. The Reforge ZoneReset (PR #183 framework) should replace it as its own follow-up, with a forge-themed currency and menu.
+- **Saves:** `ladder = 3`. Saves from before it move `cash` to `embers` and `mult` to `cinder` on load (`Sim._rename_quarry_stats`). Older saves still go through the flower and quarry ladder migrations first.
+- Not run in the cloud: the engine (tests and screenshots are CI and the PC tester).

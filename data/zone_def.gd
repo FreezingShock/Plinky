@@ -19,7 +19,7 @@ extends Resource
 @export var boost_stat: StringName = &""
 ## The first time the walker arrives here, each stat listed in entry_grants gets (value x the entry_source_stat you hold),
 ## or just the value when entry_source_stat is empty (a flat starter purse).
-## It is how the meadow hands its Starbloom Petals over to the Ember Quarry's own Cash and Multiplier. Latched in the save.
+## It is how the meadow hands its Starbloom Petals over to the Ember Quarry's own Embers. Latched in the save.
 @export var entry_source_stat: StringName = &""
 ## The stat Rebirth banks into Prestige in this zone. Empty = GameConfig.prestige_source_stat (Clover Leaves in the meadow).
 @export var prestige_source_stat: StringName = &""

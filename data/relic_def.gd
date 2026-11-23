@@ -56,8 +56,8 @@ static func _pct(v: float) -> String:
 ## Title Case name of an effect, for the panel's bonus lines and compare rows.
 static func effect_name(e: Effect) -> String:
 	match e:
-		Effect.CASH_MULT: return "Cash Income"
-		Effect.MULT_GAIN: return "Multiplier Gain"
+		Effect.CASH_MULT: return "Passive Income"
+		Effect.MULT_GAIN: return "Press Gain"
 		Effect.PRESS_RATE: return "Presses Per Second"
 		Effect.CRIT_DAMAGE: return "Crit Damage"
 		Effect.DOUBLE_CHANCE: return "Double Press Chance"
