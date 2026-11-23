@@ -21,8 +21,16 @@ func setup(p_sim: Sim) -> void:
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(h)
 	var cap := Label.new()
-	cap.text = "Momentum"
-	cap.modulate = Color(1, 1, 1, 0.7)
+	# The display face used on item titles, in capitals and emboldened, so the meter reads as a title at the bottom.
+	var face := FontVariation.new()
+	face.base_font = preload("res://fonts/PixelifySans.ttf")
+	face.variation_embolden = 0.6
+	cap.text = "MOMENTUM"
+	cap.add_theme_font_override("font", face)
+	cap.add_theme_font_size_override("font_size", 14)
+	cap.add_theme_color_override("font_color", Color("f6efd9"))
+	cap.add_theme_color_override("font_outline_color", Color("14161c"))
+	cap.add_theme_constant_override("outline_size", 2)
 	h.add_child(cap)
 	var bar_box := CenterContainer.new()
 	bar_box.mouse_filter = Control.MOUSE_FILTER_IGNORE

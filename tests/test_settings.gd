@@ -71,4 +71,12 @@ func run(t: Object) -> void:
 	t.near(s.value, 0.0, 0.0001, "slider clamps low")
 	s.free()
 
+	# Pad click limit: on by default, five clicks, 1 to 10.
+	SettingsFile.persist = false
+	t.eq(SettingsRegistry.value(&"click_limit"), true, "quiet pad clicks is on by default")
+	t.near(float(SettingsRegistry.value(&"click_limit_count")), 5.0, 0.0001, "the click limit defaults to 5")
+	var lim: Dictionary = SettingsRegistry.find(&"click_limit_count")
+	t.ok(float(lim["min"]) == 1.0 and float(lim["max"]) == 10.0, "the click limit slider runs 1 to 10")
+	t.eq(lim["tab"], "Audio", "the click limit lives in the Audio tab")
+
 	SettingsFile.persist = true

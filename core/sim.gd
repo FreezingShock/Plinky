@@ -187,6 +187,12 @@ func income_per_second(stat_id: StringName) -> BigNum:
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
+## Rarity id of a pad (&"common" when unknown).
+func pad_rarity(button_id: StringName) -> StringName:
+	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
+	return b.rarity if b != null else &"common"
+
+
 func can_afford(button_id: StringName) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null:

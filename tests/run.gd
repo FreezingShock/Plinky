@@ -19,6 +19,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_lighting.gd",
 	"res://tests/test_walk.gd",
 	"res://tests/test_pad_input.gd",
+	"res://tests/test_pad_plate.gd",
 	"res://tests/test_focus_rows.gd",
 	"res://tests/test_zone2.gd",
 	"res://tests/test_onboarding.gd",
@@ -36,6 +37,9 @@ const SUITES: Array[String] = [
 	"res://tests/test_larkmoor.gd",
 	"res://tests/test_hud_click.gd",
 	"res://tests/test_zone_menu.gd",
+	"res://tests/test_stat_index.gd",
+	"res://tests/test_index_panel.gd",
+	"res://tests/test_tooltips.gd",
 	"res://tests/test_mastery.gd",
 ]
 
@@ -43,7 +47,11 @@ const SUITES: Array[String] = [
 func _init() -> void:
 	for path in SUITES:
 		_context = path.get_file()
-		var suite: RefCounted = (load(path) as GDScript).new()
+		var script: GDScript = load(path) as GDScript
+		if script == null or not script.can_instantiate():
+			ok(false, "suite failed to load or compile")  # a broken suite must not pass silently
+			continue
+		var suite: RefCounted = script.new()
 		suite.run(self)
 	print("%d checks, %d failed" % [checks, failures])
 	quit(1 if failures > 0 else 0)

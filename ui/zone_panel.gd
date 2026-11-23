@@ -21,7 +21,6 @@ var _gate_bar: DitherBar
 var _gate_label: Label
 var _travel_btn: PixelButton
 var _travel: RevealBox
-var _tip: HintTip
 var _zone_rows: Dictionary = {}     # zone id -> ListRow
 var _zone_toggles: Dictionary = {}  # zone id -> ListRow
 var _zone_areas: Dictionary = {}    # zone id -> RevealBox
@@ -44,8 +43,6 @@ func _init() -> void:
 
 func setup(p_sim: Sim) -> void:
 	sim = p_sim
-	_tip = HintTip.new()
-	add_child(_tip)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	add_child(v)
@@ -59,7 +56,7 @@ func setup(p_sim: Sim) -> void:
 	_travel_btn = PixelButton.new()
 	_travel_btn.text = "Travel +"
 	_travel_btn.pressed.connect(func() -> void: set_travel_open(not travel_open))
-	_tip.attach(_travel_btn, func() -> Array: return ["Travel", "Pick a place to go, or look at another area. Hide the menu to read the full area card."])
+	_bind(_travel_btn, func() -> Array: return ["Travel", "Pick a place to go, or look at another area. Hide the menu to read the full area card."])
 	head.add_child(_travel_btn)
 	_gate_box = VBoxContainer.new()
 	_gate_box.add_theme_constant_override("separation", 2)
@@ -68,7 +65,7 @@ func setup(p_sim: Sim) -> void:
 	_gate_box.add_child(_gate_bar)
 	_gate_label = Label.new()
 	_gate_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	_tip.attach(_gate_label, _gate_tip)
+	_bind(_gate_label, _gate_tip)
 	_gate_box.add_child(_gate_label)
 	_gated = [_gate_box, _travel_btn]
 	_travel = RevealBox.new()
@@ -86,6 +83,15 @@ func setup(p_sim: Sim) -> void:
 	_card.add_child(card)
 	v.add_child(_card)
 	_build_card(card)
+
+
+## Binds a shared tooltip whose text comes from `provider` ([title, body], or empty for none) each time it shows.
+func _bind(ctrl: Control, provider: Callable) -> void:
+	Tip.bind(ctrl, func() -> Variant:
+		var a: Array = provider.call() as Array
+		if a.is_empty():
+			return null
+		return {"title": String(a[0]), "body": String(a[1]) if a.size() > 1 else ""})
 
 
 func gated_parts() -> Array[Control]:
@@ -125,14 +131,14 @@ func _build_list(list: VBoxContainer) -> void:
 		tog.custom_minimum_size.x = 18
 		tog.tint = zone_colour(z)
 		tog.pressed.connect(func() -> void: _toggle_zone(zid))
-		_tip.attach(tog, func() -> Array: return ["Areas", "Show or hide the areas inside %s." % z.display_name])
+		_bind(tog, func() -> Array: return ["Areas", "Show or hide the areas inside %s." % z.display_name])
 		head.add_child(tog)
 		_zone_toggles[zid] = tog
 		var row := ListRow.new()
 		row.tint = zone_colour(z)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.pressed.connect(func() -> void: _go(zid, &""))
-		_tip.attach(row, func() -> Array: return _zone_tip(zid))
+		_bind(row, func() -> Array: return _zone_tip(zid))
 		head.add_child(row)
 		_zone_rows[zid] = row
 		var reveal := RevealBox.new()
@@ -147,7 +153,7 @@ func _build_list(list: VBoxContainer) -> void:
 			ar.tint = area_colour(a)
 			ar.text = "  %s %s" % [a.glyph, a.display_name]
 			ar.pressed.connect(func() -> void: _go(zid, aid))
-			_tip.attach(ar, func() -> Array: return _area_tip(aid))
+			_bind(ar, func() -> Array: return _area_tip(aid))
 			box.add_child(ar)
 			_area_rows[aid] = ar
 		reveal.set_open(zid == sim.zone_id, false)
@@ -182,7 +188,7 @@ func set_travel_open(on: bool, animate: bool = true) -> void:
 		_card.amount = minf(_stub_px() / full, 1.0)
 		_card.set_open(true, animate)
 	_travel_btn.text = "Travel -" if on else "Travel +"
-	_tip.hide_tip()
+	Tip.hide_all()
 	travel_toggled.emit(on)
 
 
@@ -226,7 +232,7 @@ func _build_card(card: VBoxContainer) -> void:
 	card.add_child(_card_pads)
 	_mastery_label = Label.new()
 	_mastery_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	_tip.attach(_mastery_label, _mastery_tip)
+	_bind(_mastery_label, _mastery_tip)
 	card.add_child(_mastery_label)
 	_mastery_bar = DitherBar.new(INNER)
 	card.add_child(_mastery_bar)
@@ -252,7 +258,7 @@ func _rebuild_card() -> void:
 		var l := Label.new()
 		l.mouse_filter = Control.MOUSE_FILTER_STOP
 		var id: StringName = StringName(bid)
-		_tip.attach(l, func() -> Array: return _pad_tip(id))
+		_bind(l, func() -> Array: return _pad_tip(id))
 		_card_pads.add_child(l)
 		_pad_rows[id] = l
 

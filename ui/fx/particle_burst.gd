@@ -5,7 +5,13 @@ extends Node2D
 
 var _p: Array[Dictionary] = []
 
+const MAX_LIVE: int = 10   # spam-pressing never piles up more bursts than this
+static var _live: int = 0
+
 static func spawn(parent: Node, pos: Vector2, colors: Array[Color], count := -1) -> void:
+	if _live >= MAX_LIVE:
+		return
+	_live += 1
 	var b := ParticleBurst.new()
 	b.position = FxConfig.snap(pos)
 	b.z_index = 90
@@ -31,6 +37,9 @@ func _process(delta: float) -> void:
 	queue_redraw()
 	if not alive:
 		queue_free()
+
+func _exit_tree() -> void:
+	_live = maxi(_live - 1, 0)
 
 func _draw() -> void:
 	for q in _p:
