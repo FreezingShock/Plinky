@@ -12,6 +12,15 @@ under a new version heading and updates the version everywhere.
 ## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
 
+## 0.26.4 - 2026-11-23
+- Relics menu: the rarity name is back on each card (small, dim) with an On or Swap mark, bonuses wrap whole instead of mid-phrase, and the collection shows three card rows.
+
+## 0.26.3 - 2026-11-23
+- Relics menu: shorter collection so the panel fits 640x360, wider cards (less name truncation), bonuses on one wrapped line, and the card's second line shows only the stack count and Equipped or Swapping.
+
+## 0.26.2 - 2026-11-23
+- Fixed the Larkmoor transition stall (one 330 ms frame at the wipe): the zone scene loads on a worker thread, the prop sprites are built over several frames under the wipe, and CI now fails on any frame over 150 ms (300 ms for the covered zone swap) in the headless bench.
+
 ## 0.26.1 - 2026-11-23
 - Sound subtitles sit on a dark plate so they read on bright ground, and up to four show at once.
 

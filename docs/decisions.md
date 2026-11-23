@@ -524,6 +524,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 ## Pond keeps its own palette in every season (2026-11-23)
 - **Cause:** `season_recolor` picks "green" texels by `g - max(r,b)`; the water ramp's main colour (47,107,85) scores 22/255, past the 0.015..0.09 smoothstep, so the pond was recoloured with the grass patches (and would be snow-covered in winter).
 - **Decision:** `ground_light.gdshader` skips the seasonal recolour and snow for material codes 107 (water) and 108 (foam). Water stays blue-green all year; no extra dither added. A subtle seasonal sky tint or winter ice is an open taste item, not built.
+| 2026-11-23 | The Larkmoor "sunset hitch" was the zone swap, fixed by threaded scene prefetch and sliced prop spawning (0.26.2); CI gets a 150 ms frame budget | PC profiling: 0 new pipelines, 1.5 ms script, hitch at +771 ms = swap time + stall. Stage trace: load 36, ready 22, occluders 170 ms. Earlier shader and audio warm-ups were guesses and are harmless but were not the cause. |
 
 ## Meadow flower ladder (2026-11-23)
 - **Decision (Nathan):** the meadow is six tiers, each a line of three pads that pay one statistic: Sprout (Dewdrops, Common), Clover (Clover Leaves, Uncommon), Thistle (Thistle Down, Rare), Heather (Heather Sprigs, Epic), Foxglove (Foxglove Bells, Legendary), Starbloom (Starbloom Petals, Mythic). Cash, Multiplier and Rebirth are replaced here and return in Zone 2. Passive income is a new stat, Sunlight.
