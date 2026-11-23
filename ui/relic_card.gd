@@ -87,7 +87,7 @@ func _restyle() -> void:
 	var lit: bool = _hover or has_focus()
 	var kind: AsciiBox.Kind = AsciiBox.Kind.SELECT if (lit or equipped) else AsciiBox.Kind.BUTTON
 	var b := AsciiBox.make(kind, 4.0, 3.0)
-	b.edge_override = RelicStyle.accent if picked else relic.rarity.color
+	b.edge_override = RelicStyle.accent if picked else relic.rarity.tint()
 	add_theme_stylebox_override("panel", b)
 	queue_redraw()
 
