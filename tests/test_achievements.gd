@@ -103,7 +103,6 @@ func run(t: Object) -> void:
 
 	# The toast queues unlocks and can be held back.
 	var toast := AchievementToast.new()
-	(t.root as Node).add_child(toast)
 	var held: Array = [false]
 	toast.enabled = func() -> bool: return not held[0]
 	toast.bind(sim)

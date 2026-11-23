@@ -99,6 +99,8 @@ func _next() -> void:
 	modulate.a = 0.0
 	if _tween:
 		_tween.kill()
+	if not is_inside_tree():   # tools and tests that build a toast off-tree still get the content and the queue
+		return
 	await get_tree().process_frame   # let the labels report their new size before fitting the card to them
 	if not is_inside_tree():
 		return
