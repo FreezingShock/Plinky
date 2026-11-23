@@ -434,3 +434,5 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Cards take StatStyle colour via row["color_id"] (attribute effect, or rp for perks). Card labels use row["short"] (SHORT dict, max 12 chars); a test enforces it. Perks are grouped by currency == rp. Icons rest/lore/fortune added to gen_icons_v3.py. RP value floors to a whole number.
 
 - Larkmoor sway tips regenerated: `python3 tools/art/gen_life_anchors.py --backdrop assets/art/zone1b/larkmoor/ground.png --placements assets/art/zone1b/larkmoor/placements3d.json --out world/larkmoor_life.json --bounds 190,110,1340,725 --sway-count 420`. Only `sway` and `drift` change. `tests/test_life.gd` now checks Larkmoor tips sit on palette 4 texels. Not run in engine.
+
+- **Grass style A locked (2026-11-23, Nathan: "I like A baked the most").** Blade tufts gathering into clumps, baked into the ground by tools/art/grass_tex.py (default `GRASS=a`) for the meadow and Larkmoor. B, C, D stay in the module as alternatives only; do not change the default without Nathan.
