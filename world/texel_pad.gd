@@ -59,6 +59,7 @@ func _sim() -> Sim:
 
 
 func _ready() -> void:
+	position = position.round()  # anchors are fractional; a plate drawn between texels would not sit on the world's grid
 	emblem_bits = absi(String(button_id).hash()) & 0x7FFF
 	rarity = load("res://content/rarities/%s.tres" % _sim().pad_rarity(button_id)) as RarityDef
 	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
@@ -230,12 +231,12 @@ func _draw() -> void:
 	if rs >= 0:
 		var g: float = 1.0 + 0.45 * float(rs + 1) / 6.0
 		var rc: Color = palette[7] if rs < 4 else palette[4]
-		draw_polyline(_diamond(g), rc, 1.0)
+		_outline(g, 0, rc)
 	var ls: int = _level_step()
 	if ls > 0:
 		for k in 2:
 			var g2: float = 1.0 + 0.2 * float(ls) + 0.35 * float(k)
-			draw_polyline(_diamond(g2), palette[7] if ((ls + k) % 2 == 0 and not FxConfig.reduce_flashing) else palette[5], 1.0)
+			_outline(g2, 0, palette[7] if ((ls + k) % 2 == 0 and not FxConfig.reduce_flashing) else palette[5])
 	# Ink silhouette (rule 6: one outline in palette 0) around the whole slab.
 	for k in range(0, th + 1):
 		_rows(0, top + k, hx + 1, hy + 1, ink, ink)
@@ -260,7 +261,7 @@ func _draw() -> void:
 		rim = rim.lerp(Color.WHITE, 0.4)
 	if hovered:
 		rim = palette[7]
-	draw_polyline(_diamond_at(1.0, top), rim, 1.0)
+	_outline(1.0, top, rim)
 	# Inset: green when buyable, red when not, with a green gauge filling as you earn the cost. Each pad has its own motif.
 	var ihx: int = 10
 	var ihy: int = 5
@@ -301,9 +302,9 @@ func _draw() -> void:
 		glyph.assign([Vector2i(-1, -1), Vector2i(1, -1), Vector2i(0, 0), Vector2i(-1, 1), Vector2i(1, 1)])
 	for q: Vector2i in glyph:
 		draw_rect(Rect2(q.x, top + q.y, 1, 1), ink)
-	draw_polyline(_diamond_at(0.6, top), ink, 1.0)
+	_outline(0.6, top, ink)
 	if standing:
-		draw_polyline(_diamond_at(0.38, top), palette[7], 1.0)
+		_outline(0.38, top, palette[7])
 
 
 ## Unique 5x5 emblem per pad (mirrored, so it reads as a badge), projected onto the 2:1 plate. The centre stays clear
@@ -326,6 +327,18 @@ func _draw_emblem(top: int, ink: Color) -> void:
 			draw_rect(Rect2(x - 1, top + y, 2, 1), stat_color if spine else ink)
 
 
+## A 1 texel diamond outline built from whole-texel rects. draw_polyline's diagonals are anti-aliased and finer than
+## the world's pixel grid, which made the plate look like a high-res overlay on the chunky scene.
+func _outline(scale: float, y: int, col: Color) -> void:
+	var rx: float = HALF.x * scale
+	var ry: float = HALF.y * scale
+	for x in range(-roundi(rx), roundi(rx) + 1):
+		var dy: int = roundi(ry * (1.0 - absf(float(x)) / rx))
+		draw_rect(Rect2(x, y - dy, 1, 1), col)
+		if dy != 0:
+			draw_rect(Rect2(x, y + dy, 1, 1), col)
+
+
 func _dashed_diamond(scale: float, y: int, col: Color) -> void:
 	var rx: float = HALF.x * scale
 	var ry: float = HALF.y * scale
@@ -336,15 +349,3 @@ func _dashed_diamond(scale: float, y: int, col: Color) -> void:
 		draw_rect(Rect2(x, y - dy, 1, 1), col)
 		if dy != 0:
 			draw_rect(Rect2(x, y + dy, 1, 1), col)
-
-
-func _diamond_at(scale: float, y: int) -> PackedVector2Array:
-	var pts: PackedVector2Array = _diamond(scale)
-	for i in pts.size():
-		pts[i].y += float(y)
-	return pts
-
-
-func _diamond(scale: float) -> PackedVector2Array:
-	var h: Vector2 = HALF * scale
-	return PackedVector2Array([Vector2(-h.x, 0), Vector2(0, -h.y), Vector2(h.x, 0), Vector2(0, h.y), Vector2(-h.x, 0)])
