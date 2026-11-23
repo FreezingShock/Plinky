@@ -1,0 +1,25 @@
+class_name StatStyle
+extends RefCounted
+## One colour per stat, shared by every tooltip so Cash always reads gold and Multiplier always reads blue.
+## Fixed hex like the buy colours and rarity colours: they read the same in every zone. No node or autoload use.
+
+const BUY_GREEN: Color = Color("5fd068")   ## affordable, a gain
+const BUY_RED: Color = Color("d8483c")     ## not affordable
+const COLORS: Dictionary = {
+	&"cash": Color("f2c94c"), &"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
+	&"prestige": Color("f08fb0"), &"crit_chance": Color("ff6b5a"), &"crit_damage": Color("ffae42"),
+	&"luck": Color("7be08a"), &"press_rate": Color("6fd6e8"), &"walk_speed": Color("a3d96a"),
+	&"offline_cap": Color("8aa6ff"), &"mastery": Color("ffd166"),
+}
+const PAPER: Color = Color("f6efd9")
+## Attribute effect id -> the stat id whose colour it uses.
+const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap"}
+
+
+static func color(id: StringName) -> Color:
+	return COLORS.get(EFFECT_STAT.get(id, id), PAPER) as Color
+
+
+## Green when the player can afford a cost, red when not.
+static func buy(can: bool) -> Color:
+	return BUY_GREEN if can else BUY_RED
