@@ -396,3 +396,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Saves: three slots. Slot 1 is user://save.json (existing saves keep working), slots 2 and 3 are user://save_2.json and save_3.json; the last used slot is in user://slot.txt. SaveSlots holds the pure file helpers; the Save autoload holds the active slot and has a `paused` flag the title sets, so nothing autosaves (or writes an empty save) while browsing or deleting. Continue loads the active slot, else the newest save. New Game takes the first empty slot, or opens Saves when all three are full. Delete is two presses within 3 seconds.
 - Credits panel lists Godot, Pixelify Sans (OFL) and Spleen (BSD 2-Clause). Names Nathan only as the maker; change the line if a different credit is wanted.
 - Run in a software GL (Mesa llvmpipe, gl_compatibility) for captures, so the look is confirmed for the 2D title; the real Forward+ run on the PC is still the check for frame timing.
+
+## Gallery PC-pass fixes (index panel)
+- Cards use the SELECT solid style (as the hamburger tiles). The detail page hides the hover strip and uses DETAIL_H (230) instead of the grid's 150, since nothing sits under it. Panel centring uses the combined minimum size. All index focus grabs are quiet (no tooltip on open or page change).

@@ -19,10 +19,10 @@ func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.BUTTON, 2.0, 2.0))
-	add_theme_stylebox_override("hover", AsciiBox.make(AsciiBox.Kind.HOVER, 2.0, 2.0))
+	add_theme_stylebox_override("hover", AsciiBox.make(AsciiBox.Kind.SELECT, 2.0, 2.0))   # solid, so the label never sits on dither
 	add_theme_stylebox_override("pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, 2.0, 2.0))
 	add_theme_stylebox_override("hover_pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, 2.0, 2.0))
-	add_theme_stylebox_override("focus", AsciiBox.make(AsciiBox.Kind.HOVER, 2.0, 2.0))
+	add_theme_stylebox_override("focus", AsciiBox.make(AsciiBox.Kind.SELECT, 2.0, 2.0))
 	_icon = TextureRect.new()
 	_icon.position = Vector2((W - 32) / 2, 5)
 	_icon.custom_minimum_size = Vector2(32, 32)

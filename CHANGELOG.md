@@ -9,6 +9,8 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.13.1 - 2026-11-23
+- Stats and Attributes gallery fixes from the PC pass: focused and hovered cards use a solid fill; the detail page hides the grid strip and gets more height so Next level, the sources and Buy fit; Back no longer pops a tooltip on open; the Prestige-to-spend header clears the close X; the panel recentres at wide sizes.
 ## 0.13.0 - 2026-11-23
 - Stats and Attributes are now a gallery: 32 px icon cards, hover info strip, and a detail page per stat with its sources (where it comes from, how to get more). New clean symmetric icon set, and `sim.stat_sources`. Attribute detail pages let you buy the next level.
 

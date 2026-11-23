@@ -21,6 +21,7 @@ const KIND_ICONS: Dictionary = {
 	"base": "presses", "attribute": "attrs_menu", "relic": "relics/r_double", "mastery": "mastery",
 	"prestige": "prestige", "zone": "walk", "action": "reb", "total": "clock",
 }
+const DETAIL_H: float = 230.0
 const HINT: String = "Hover a card for details. Click it to see where it comes from."
 
 ## Debug: F7 slows the open, close and page wipes 5x so they can be checked by eye.
@@ -80,6 +81,9 @@ func _init() -> void:
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_sub.add_theme_color_override("font_color", RelicStyle.dim)
 	head.add_child(_sub)
+	var x_room := Control.new()   # the close X sits over the top right corner
+	x_room.custom_minimum_size = Vector2(18, 1)
+	head.add_child(x_room)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 4)
 	v.add_child(bar)
@@ -277,6 +281,7 @@ func open_detail(id: StringName) -> void:
 		_grid_box.visible = false
 		_detail_box.visible = true
 		_back.visible = true
+		_strip.visible = false
 		_scroll.scroll_vertical = 0
 		_strip_idle()
 		_grab.call_deferred(_back))
@@ -330,6 +335,7 @@ func _sync_tabs() -> void:
 		_tabs[i].set_pressed_no_signal(i == tab)
 	_title.text = TITLES[tab]
 	_back.visible = detail_open()
+	_strip.visible = not detail_open()
 
 
 func _data() -> Array[Dictionary]:
@@ -341,6 +347,7 @@ func _show_grid_now() -> void:
 	_detail_box.visible = false
 	_grid_box.visible = true
 	_back.visible = false
+	_strip.visible = true
 	_key = ""
 	_refresh(true)
 	_strip_idle()
@@ -492,7 +499,7 @@ func _focus_first(quiet: bool = false) -> void:
 		return
 
 
-func _grab(c: Control, quiet: bool = false) -> void:
+func _grab(c: Control, quiet: bool = true) -> void:
 	if is_instance_valid(c) and c.is_inside_tree() and c.is_visible_in_tree() and is_open():
 		if quiet:
 			Tip.grab_quiet(c)
@@ -506,12 +513,14 @@ func _layout() -> void:
 	var host: Control = get_parent_control()
 	if host == null:
 		return
-	var avail: float = host.size.y - 170.0
-	var h: float = clampf(avail, 56.0, SCROLL_H)
+	# The detail page has no info strip under it, so it gets that height too and can grow taller than the grid.
+	var detail: bool = detail_open()
+	var h: float = clampf(host.size.y - (130.0 if detail else 170.0), 56.0, DETAIL_H if detail else SCROLL_H)
 	if _scroll.custom_minimum_size.y != h:
 		_scroll.custom_minimum_size.y = h
 		reset_size()
-	position = ((host.size - size) * 0.5).floor() + Vector2(0.0, float(get_meta(&"menu_slide", 0.0)))
+	var psz: Vector2 = size.max(get_combined_minimum_size())
+	position = ((host.size - psz) * 0.5).floor() + Vector2(0.0, float(get_meta(&"menu_slide", 0.0)))
 
 
 func _process(delta: float) -> void:
