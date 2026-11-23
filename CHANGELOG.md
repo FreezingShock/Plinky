@@ -1,0 +1,43 @@
+# Changelog
+
+Which version introduced which implementation. Format and rules: docs/versioning.md.
+Scheme is MAJOR.MINOR.PATCH, starting at 0.1.0. MINOR = medium changes (features), PATCH = small
+changes (fixes, tweaks). MAJOR changes only when Nathan asks. Any number can pass 9.
+
+Every PR adds a line under **Unreleased**. `python3 tools/bump_version.py minor|patch` moves those lines
+under a new version heading and updates the version everywhere.
+
+## Unreleased
+
+## 0.5.0 - 2026-11-23
+- Single source of truth for the game version (`core/build_info.gd`), shown small on the boot screen, with `BuildInfo.string()` and `BuildInfo.changelog()` for the Update Log tile.
+- `tools/bump_version.py`, `tests/test_version.gd`, this changelog and docs/versioning.md.
+
+## 0.4.0 - 2026-11-23 (#71-#95)
+- HUD click fix on world switch (#71). Pad plates with green/red buy state and per-stat colours (#72). Shared Tip tooltips (#73).
+- Pad mastery XP, levels and crit bonuses (#74), retuned twice to keep Larkmoor near 61 min (#79, #81).
+- Zone menu with themed locations, areas and a foldable travel list (#75, #92, #93).
+- Stats and Attributes index with dither wipe (#76, #85, #86). Pad art: emblems, rarity frames, bold Momentum label (#78). Pad outlines on the texel grid (#88).
+- Lighting overhaul: full-frame light pass (#80), ground G-buffer and relight (#82, #83, #87), pad shadows (#89), ground fog, real midnight and noon grade (#91), backdrop parallax layer (#94).
+- Bottom bar icon chips that expand to a typewriter label (#84). Spam-safe menus and an animated close X (#95).
+
+## 0.3.0 - 2026-11-23 (#47-#70)
+- Larkmoor, the big meadow past the onboarding gate (#49), with its own lighting, shadows, haze and mist (#54, #59, #60).
+- Lighting and atmosphere overhaul: sun shadows, light pools, haze, god rays, grade, vignette (#47).
+- Prop depth: baked AO and rim, layered flowers, runtime relight (#63, #68). Rebirth wipe on the full-window overlay (#53).
+- Perf passes: bench rows, shader warm-up, sound preload (#55-#57, #61, #66, #67). Larkmoor pad costs tuned for a 60-90 minute first run (#70).
+- Pad arrow and window fixes (#50, #51, #65, #69).
+
+## 0.2.0 - 2026-11-22 (#32-#46)
+- Custom windowed frame and fullscreen dither wipe (#40). Settings menu, window size and monitor, dev console (#43). Keyboard and gamepad navigation (#36).
+- Day/night cycle, light rain and wind sway (#41). Zone 2 Ember Quarry blockout with Slag and Heat (#42).
+- Onboarding with staged unlocks (#39). Camera polish (#32), GUI consistency pass (#33), world reacts to the walker (#34).
+- Juicier number feedback and Momentum meter (#37). Footsteps and shore ambience (#38). Meadow surface pass (#45). Perf overlay and Graphics quality (#46).
+- Shareable test build workflow and feedback form (#35). macOS export fix (#44).
+
+## 0.1.0 - 2026-11-22 (#3-#31)
+- Core simulation, content, save, number formatter (#3). Atomic saves and CI on Godot 4.7 headless (#13).
+- 3D zone 1 meadow with y-sorted occluders and life layers (#4, #19). Dither renderer, UI juice, HUD frames and icons (#18).
+- Walker as the player, click-to-walk marker, depth layering, walkable mask (#10-#12, #25, #27). Pad tooltips (#8).
+- Procedural audio (#16, #24, #29). Momentum, streaks, golden critter, rebirth push (#17). Relics with eight rarities (#5).
+- Boot screen with threaded loading (#20). Screens at every size, Wide view bleed (#21, #23, #26, #30, #31). App icon and export presets (#14).
