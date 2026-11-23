@@ -8,7 +8,6 @@ extends PanelContainer
 
 const WIDTH: float = 176.0
 const INNER: float = WIDTH - 16.0
-const CARD_STUB: float = 26.0
 
 signal travel_toggled(open: bool)
 
@@ -165,17 +164,22 @@ func _sync_toggles() -> void:
 		(_zone_toggles[zid] as ListRow).text = "-" if (_zone_areas[zid] as RevealBox)._target else "+"
 
 
+## Height of the folded card: the title row and exactly one description line, so no line is cut through.
+func _stub_px() -> float:
+	return _card_title.get_combined_minimum_size().y + 2.0 + _card_desc.get_line_height()
+
+
 func set_travel_open(on: bool, animate: bool = true) -> void:
 	travel_open = on
 	_travel.set_open(on, animate)
 	if on:
-		_card.floor_px = CARD_STUB
+		_card.floor_px = _stub_px()
 		_card.set_open(false, animate)
 	else:
 		var b: Control = _card.body()
 		var full: float = maxf(b.get_combined_minimum_size().y, 1.0) if b != null else 1.0
 		_card.floor_px = 0.0
-		_card.amount = minf(CARD_STUB / full, 1.0)
+		_card.amount = minf(_stub_px() / full, 1.0)
 		_card.set_open(true, animate)
 	_travel_btn.text = "Travel -" if on else "Travel +"
 	_tip.hide_tip()
@@ -341,7 +345,7 @@ func refresh() -> void:
 		var zd: ZoneDef = sim.zone_defs[zid] as ZoneDef
 		var row: ListRow = _zone_rows[zid]
 		var open: bool = sim.is_zone_unlocked(zid)
-		row.text = zd.display_name if open else "Locked"
+		row.text = zd.display_name if open else "??? (locked)"
 		row.disabled = not open
 		row.marked = zid == sim.zone_id
 		(_zone_toggles[zid] as ListRow).disabled = not open
