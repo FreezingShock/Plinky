@@ -237,3 +237,14 @@ First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far ga
 
 ## 2026-11-23: Mastery yield cut again
 PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.
+
+## Lighting overhaul, stage 3: real night (23 Nov)
+- Night shade was a light dither (80% of texels, mid-blue). Now a separate night_shade 0.97 (night_strength stays 0.8, test_sky needs smooth steps) with darker tints (night 0.34/0.42/0.72, deep 0.16/0.20/0.42) and 60% of shaded texels take the deep tint, so night is genuinely dark. Light pools are about 1.5x wider so shrine, gate, pads and the walker clear the dark and read as light sources.
+- Not run in-engine; PC pass to judge darkness and readability of pads and the HUD-adjacent scene.
+
+## Lighting overhaul, stage 2a (redo) and the real cause of "barely visible" (23 Nov)
+- Cause: terrain materials are codes 100..109 but the relight data and shader only accepted 10..47, so only ~11.7k of ~124k ground texels (props and flowers) were ever relit. The ground was effectively untouched. Now accepted range is < 110 (write_relight_data, write_ramp_include, both shaders); 122k of 124k ground texels carry a material code.
+- Ground G-buffer: ground_n.png (normal, material, baked light) and ground_h.png (height) beside ground.png, written by gen_meadow3d.py; ground.png is byte-identical.
+- ground_light.gdshader: N.L relight, height-march cast shadows (flowers, tufts, rocks, slopes), cool shadow tint (multiplied), contact occlusion, depth fog. Pushed hard on purpose: relight 2.2, shadow 1.2, AO 0.5, step length 1.6 texels at noon to 3.4 at low sun. Tune down in content/config/sky.tres from here.
+- Debug: F6 cycles the ground view: off, albedo, normal, height, shadow only.
+- Process note: the first stage 2a push never carried the code (a denied command was never run, then a hard reset dropped the edits). This commit is the first one that actually contains it.
