@@ -18,8 +18,9 @@ var _last_key: String = ""
 var _last_time: float = -1000.0
 
 
-## Fills defaults and clamps. Spec keys: title, lines, icon (area icon id), color (Color or null), duration, key,
-## interrupt (drop everything and show now).
+## Fills defaults and clamps. Spec keys: title, lines, icon (area icon id), color (Color or null, tints the border and
+## title), fill (Color or null, the panel background; a zone uses its own palette ink), duration, key, interrupt (drop
+## everything and show now).
 static func normalize(spec: Dictionary) -> Dictionary:
 	var lines: Array[String] = []
 	for l: Variant in spec.get("lines", []) as Array:
@@ -35,6 +36,7 @@ static func normalize(spec: Dictionary) -> Dictionary:
 		"lines": lines,
 		"icon": str(spec.get("icon", "")),
 		"color": spec.get("color", null),
+		"fill": spec.get("fill", null),
 		"duration": clampf(float(spec.get("duration", DEFAULT_DURATION)), MIN_DURATION, MAX_DURATION),
 		"key": key,
 		"interrupt": bool(spec.get("interrupt", false)),

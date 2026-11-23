@@ -1,0 +1,1 @@
+The full area banner now shows only when you enter a zone (Meadow, Larkmoor, Ember Quarry), in that zone's own palette. Walking into a subarea changes the area card in the top-right panel with a short dithered crossfade, and shows no banner. Reduce Motion ("Still banners") turns the crossfade off, and tip cards wait while a banner is up.
