@@ -5,16 +5,18 @@ extends RefCounted
 ## Grass and path are walkable; water, cliffs, mountains, tree trunks, rocks and crystals are not.
 
 const PATH: String = "res://assets/art/zone1/meadow3d/walkable.png"   # the meadow, used when a zone names no mask
-const OFFSET: Vector2i = Vector2i(100, 60)
+const OFFSET: Vector2i = Vector2i(100, 60)   # the meadow's; other zones pass their own to use()
 
 static var path: String = PATH
+static var offset: Vector2i = OFFSET
 static var _img: Image = null
 static var _tried: bool = false
 
 
 ## Switches to another zone's mask (an empty path means the meadow). The mask loads on first use.
-static func use(mask_path: String) -> void:
+static func use(mask_path: String, mask_offset: Vector2i = OFFSET) -> void:
 	var p: String = PATH if mask_path == "" else mask_path
+	offset = mask_offset
 	if p == path:
 		return
 	path = p
@@ -40,8 +42,8 @@ static func walkable(p: Vector2) -> bool:
 	var im: Image = image()
 	if im == null:
 		return true
-	var x: int = int(floorf(p.x)) + OFFSET.x
-	var y: int = int(floorf(p.y)) + OFFSET.y
+	var x: int = int(floorf(p.x)) + offset.x
+	var y: int = int(floorf(p.y)) + offset.y
 	if x < 0 or y < 0 or x >= im.get_width() or y >= im.get_height():
 		return false
 	return im.get_pixel(x, y).r > 0.5

@@ -14,6 +14,14 @@ var heat_vents: HeatVents
 var relic_bar: RelicBar
 var _scene_path: String = ""
 var _clear_spawn_pending: bool = false
+var _world_rect: Variant = null   ## Rect2 when the zone scene is bigger than the 640x360 frame (Larkmoor), else null
+var _arch: Marker2D = null        ## the way back to the previous zone, when the scene has one
+var _arch_lock: float = 0.0
+var _crossing: bool = false
+var _prev_zone: StringName = &""
+var banner: DistrictBanner
+var _district_id: String = ""
+var _district_t: float = 0.0
 var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
 var walker: TexelWalker
 var gate: TexelGate
@@ -62,10 +70,10 @@ func _ready() -> void:
 	world.y_sort_enabled = true
 	add_child(world)
 	_scene_path = _zone_scene_path(sim.zone_id)
-	WalkMask.use(_zone_mask_path(sim.zone_id))
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
 	meadow.call("spawn_occluders", world)
+	_apply_scene_frame(sim.zone_id)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
 	var anchors: Node = meadow.get_node("Anchors")
@@ -85,6 +93,7 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	camera.bounds = _camera_bounds()
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
 
 	# 3. Juice (autoload) gets its targets.
@@ -110,6 +119,8 @@ func _ready() -> void:
 	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
+	banner = DistrictBanner.new()
+	hud.add_child(banner)
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
@@ -119,6 +130,8 @@ func _ready() -> void:
 	bus.bonus_gained.connect(_on_bonus_gained)
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
+	_prev_zone = _previous_zone(sim.zone_id)
+	camera.snap()
 	Audio.start(sim.zone_id)
 
 
@@ -126,7 +139,7 @@ func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
-	if sim.zone_id != _shown_zone:
+	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)
 		if _clear_spawn_pending:
@@ -135,6 +148,8 @@ func _process(_delta: float) -> void:
 	if relic_bar != null:
 		relic_bar.position.y = ceilf(hud.stats_bottom()) + 4.0
 	_update_tooltip()
+	_update_district(_delta)
+	_update_arch(_delta)
 
 
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
@@ -204,7 +219,7 @@ func _layout_frame() -> void:
 	size = frame
 	camera.frame = frame
 	camera.frame_origin = origin
-	camera.bounds = Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+	camera.bounds = _camera_bounds()
 	hud.frame = frame
 
 
@@ -294,12 +309,13 @@ func _zone_mask_path(zone_id: StringName) -> String:
 	return z.walk_mask_path if z != null else ""
 
 
-## Zones with their own scene (zone 2) replace the meadow: backdrop, tall props, anchors and walk mask.
-## The walker restarts at the new scene's Walker anchor and the gate moves to its Gate anchor.
+## Zones with their own scene replace the meadow: backdrop, tall props, anchors and walk mask. Going forward the
+## walker restarts at the new scene's Walker anchor; going back it appears just inside the Gate anchor, so the
+## zone you left is behind you and the gate does not fire again at once.
 func _swap_zone_scene(zone_id: StringName) -> void:
 	var path: String = _zone_scene_path(zone_id)
-	WalkMask.use(_zone_mask_path(zone_id))
 	if path == _scene_path:
+		_apply_scene_frame(zone_id)
 		return
 	_scene_path = path
 	for c: Node in world.get_children():
@@ -309,15 +325,84 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 	meadow = (load(path) as PackedScene).instantiate()
 	world.add_child(meadow)
 	meadow.call("spawn_occluders", world)
+	_apply_scene_frame(zone_id)
 	var anchors: Node = meadow.get_node("Anchors")
+	var going_back: bool = _going_back
 	var spawn: Marker2D = anchors.get_node_or_null("Walker") as Marker2D
-	if spawn != null:
+	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
+	if going_back and gate_marker != null:
+		walker.position = gate_marker.position + Vector2(0.0, 36.0)
+		walker.stop()
+	elif spawn != null:
 		walker.position = spawn.position
 		walker.stop()
-	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
 	if gate_marker != null:
 		gate.position = gate_marker.position
 	_clear_spawn_pending = true
+	camera.snap()
+
+
+var _going_back: bool = false
+
+
+## Frames the zone scene: the walker, the walk mask and the footstep lookups follow its size, and the camera is
+## kept inside it. Scenes that do not say (the meadow, the quarry) use the 640x360 frame with its bleed.
+func _apply_scene_frame(zone_id: StringName) -> void:
+	var rect: Variant = meadow.get("world_rect")
+	_world_rect = rect if rect is Rect2 else null
+	TexelWalker.bounds = _world_rect as Rect2 if _world_rect != null else TexelWalker.BOUNDS
+	var off: Variant = meadow.get("mask_offset")
+	WalkMask.use(_zone_mask_path(zone_id), off as Vector2i if off is Vector2i else WalkMask.OFFSET)
+	var pp: Variant = meadow.get("placements_path")
+	var gp: Variant = meadow.get("ground_path")
+	MeadowSites.use(String(pp) if pp is String else "", String(gp) if gp is String else "", off as Vector2i if off is Vector2i else MeadowSites.MEADOW_OFFSET)
+	var anchors: Node = meadow.get_node("Anchors")
+	_arch = anchors.get_node_or_null("Arch") as Marker2D
+	_district_id = ""
+	if camera != null:
+		camera.bounds = _camera_bounds()
+
+
+func _camera_bounds() -> Rect2:
+	if _world_rect != null:
+		return _world_rect as Rect2
+	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
+	return Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+
+
+## The zone whose next_zone is this one: where the Arch leads back to.
+func _previous_zone(zone_id: StringName) -> StringName:
+	for z: ZoneDef in sim.zone_defs.values():
+		if z.next_zone == zone_id:
+			return z.id
+	return &""
+
+
+## Walking into the Arch goes back through the zone crossing. A short lock after any crossing stops ping-pong.
+func _update_arch(delta: float) -> void:
+	_arch_lock = maxf(_arch_lock - delta, 0.0)
+	if _arch == null or _crossing or _arch_lock > 0.0 or _prev_zone == &"":
+		return
+	if walker.position.distance_to(_arch.position) <= ARCH_RADIUS:
+		_going_back = true
+		GameState.enter_zone(_prev_zone)
+
+
+const ARCH_RADIUS: float = 16.0
+
+
+## Names the district the walker is in, once per entry.
+func _update_district(delta: float) -> void:
+	_district_t -= delta
+	if _district_t > 0.0 or not meadow.has_method("district_at"):
+		return
+	_district_t = 0.25
+	var d: Dictionary = meadow.call("district_at", walker.position)
+	var id: String = String(d.get("id", ""))
+	if id != _district_id:
+		_district_id = id
+		if id != "":
+			banner.show_name(String(d.get("name", "")))
 
 
 ## Zone 2 vents: present only when the zone scene has Vent anchors.
@@ -337,11 +422,27 @@ func _build_vents(cols: PackedColorArray) -> void:
 
 
 func _on_zone_entered(zone_id: StringName) -> void:
-	_enter_zone_visuals(zone_id)
-	if _clear_spawn_pending:
-		_clear_spawn_pending = false
-		_clear_spawn()
-	Juice.zone_enter()
+	var cross: bool = _zone_scene_path(zone_id) != _scene_path
+	if not cross:
+		_enter_zone_visuals(zone_id)
+		Juice.zone_enter()
+		_after_crossing(zone_id)
+		return
+	_crossing = true
+	walker.stop()
+	await transitions.cross_zone(func() -> void:
+		_enter_zone_visuals(zone_id)
+		if _clear_spawn_pending:
+			_clear_spawn_pending = false
+			_clear_spawn())
+	_crossing = false
+	_after_crossing(zone_id)
+
+
+func _after_crossing(zone_id: StringName) -> void:
+	_going_back = false
+	_arch_lock = 1.5
+	_prev_zone = _previous_zone(zone_id)
 
 
 ## Streak and critter payouts float up as a gold popup at the walker or the critter.

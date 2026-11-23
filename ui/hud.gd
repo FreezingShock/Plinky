@@ -289,7 +289,7 @@ func _refresh() -> void:
 	var slag_box: Control = _row_boxes.get(&"slag") as Control
 	if slag_box != null:
 		var cz: ZoneDef = sim.current_zone()
-		slag_box.visible = (cz != null and cz.order > 0) or not sim.get_stat(&"slag").is_zero()
+		slag_box.visible = (cz != null and cz.id == &"zone2") or not sim.get_stat(&"slag").is_zero()
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()

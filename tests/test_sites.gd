@@ -5,7 +5,7 @@ func run(t: Object) -> void:
 	var c: Dictionary = MeadowSites.counts()
 	t.ok(bool(c["ground"]), "ground.png loads for surface lookups")
 	t.ok(int(c["wood"]) >= 6 and int(c["water"]) >= 2 and int(c["trees"]) >= 10, "pads, gate, water and trees are read from placements")
-	WalkMask.use("")
+	MeadowSites.use("", "", MeadowSites.MEADOW_OFFSET)
 	t.eq(MeadowSites.surface_at(Vector2(204.0, 245.5)), MeadowSites.WOOD, "a pad is wood")
 	t.eq(MeadowSites.surface_at(Vector2(204.0 + 12.0, 245.5)), MeadowSites.WOOD, "the pad's edge is still wood (TexelPad.HALF)")
 	t.ok(MeadowSites.surface_at(Vector2(204.0 + 16.0, 245.5 + 8.0)) != MeadowSites.WOOD, "past the plate is not wood")
