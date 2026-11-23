@@ -473,6 +473,15 @@ func buy_attribute(attr_id: StringName) -> bool:
 	return true
 
 
+## Saves from before Larkmoor: players who had walked on to zone 2 keep it. Larkmoor's far gate is latched open for them
+## (and the onboarding gate with it), so zone 2 stays unlocked. Players still in the onboarding meadow are untouched:
+## their gate now leads to Larkmoor.
+func _migrate_zones() -> void:
+	if zone_id == &"zone2" and zone_defs.has(&"larkmoor"):
+		gates_open[&"larkmoor"] = true
+		gates_open[&"zone1"] = true
+
+
 func is_zone_unlocked(z_id: StringName) -> bool:
 	if not zone_defs.has(z_id):
 		return false
@@ -588,6 +597,7 @@ func from_dict(d: Dictionary) -> bool:
 			var gid: StringName = StringName(str(k))
 			if zone_defs.has(gid):
 				gates_open[gid] = true
+	_migrate_zones()
 	var a: Variant = d.get("attributes", {})
 	if a is Dictionary:
 		for k: Variant in (a as Dictionary):

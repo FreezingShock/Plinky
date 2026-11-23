@@ -72,3 +72,14 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
 - Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
 
+
+## Larkmoor, the big meadow (23 Nov)
+- The small meadow (`zone1`) is now the onboarding area. Its gate (9 Rebirths, unchanged) leads to a new zone, **Larkmoor** (`larkmoor`, order 1). Zone 2 (Ember Quarry) moves to order 2 and sits behind Larkmoor's far gate. `zone1.next_zone = larkmoor`, `larkmoor.next_zone = zone2`.
+- Larkmoor is one 1520x920 canvas (about 4x the area of the onboarding island), rendered by `tools/art/gen_larkmoor.py` from the same 3D pipeline, palette and props as zone 1. Layout data is in `tools/art/larkmoor_layout.py`; `larkmoor_map.py` draws the layout mockup. Texel coordinates are canvas pixels (no 640x360 bleed offset).
+- Seven districts (Gatehouse Green, Heronmere, Thistle Rise, Old Oak Crossing, Cairnfold, Lanternwood, Emberwatch), a main road with a west and an east loop, a footbridge over the stream, a windmill, a jetty, a ring of standing stones, an elder oak, and two stone gateways (onboarding arch in the south, far gate in the north). A banner names the district on entry.
+- Ten pads: Multiplier row g1..t2 (6 pads, cost Cash 2e4 x12 per step, +24 x8 per step) and Rebirth row o1..e1 (4 pads, cost Multiplier 3e5 x40 per step, +6 x10 per step). Far gate opens at 1500 Rebirths. **Provisional.** `tools/sim_larkmoor.gd` (greedy, no rebirths) reaches the gate about 3 hours after arriving. It is a rough check, not tuning.
+- Scenes can say how big they are: `world_rect` (camera and walker bounds), `mask_offset`, `placements_path`, `ground_path`. main.gd reads them on zone entry; `WalkMask.use(path, offset)`, `MeadowSites.use(...)` and `TexelWalker.bounds` follow the active zone. Scenes that say nothing keep the 640x360 frame with bleed.
+- Crossing zones uses the existing transitions layer: `Transitions.cross_zone()` runs the dither wipe to ASCII, swaps the scene while covered, then clears. The camera snaps to the walker. Going forward you arrive at the new zone's Walker anchor; going back (Arch in Larkmoor leads to the meadow) you appear just inside the Gate anchor.
+- Save migration: a save that was already in zone 2 stays there, and Larkmoor's gate (and the onboarding gate) are latched open for it. A save in the onboarding meadow with its gate open now walks into Larkmoor.
+- Larkmoor reuses `meadow` palette and the meadow life layers (grass sway, fireflies) with its own anchors from `gen_life_anchors.py --bounds ... --sway-count ...`.
+- Open: day/night and weather (PR #41) and walker reactions (PR #34) are not wired to the Larkmoor scene yet; both read the scene's ground, so they should work once merged. Pad colours, names and numbers are Nathan's call.

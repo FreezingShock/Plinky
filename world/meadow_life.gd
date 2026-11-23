@@ -14,8 +14,8 @@ static var reduce_motion: bool = false
 const BAYER: Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 
-static func load_data() -> Dictionary:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DATA_PATH))
+static func load_data(path: String = DATA_PATH) -> Dictionary:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	return parsed as Dictionary if parsed is Dictionary else {}
 
 

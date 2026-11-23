@@ -24,6 +24,8 @@ func run(t: Object) -> void:
 	sim.feed_heat(5.0)
 	t.near(sim.heat, 0.0, 1e-9, "no Heat in zone 1")
 	t.ok(not sim.is_hot(), "zone 1 is never Hot")
+	t.ok(not sim.enter_zone(&"zone2"), "zone 2 is locked until Larkmoor's far gate opens")
+	sim.gates_open[&"larkmoor"] = true
 	t.ok(sim.enter_zone(&"zone2"), "enter zone 2")
 	t.near(sim.heat, 0.0, 1e-9, "Heat starts at 0")
 	var hot_events: Array = []

@@ -26,6 +26,21 @@ func invert_flash() -> void:
 		await get_tree().process_frame
 	_set_u("invert", 0.0)
 
+## Zone crossing: the dither wipe takes the picture to ASCII, `swap` runs while it is covered, then it clears.
+## Awaiting it returns once the new zone is fully visible.
+func cross_zone(swap: Callable, cover := 0.45, hold := 0.12, clear := 0.55) -> void:
+	if FxConfig.reduce_flashing or rect == null or rect.material == null:
+		swap.call()
+		return
+	var t := create_tween()
+	t.tween_method(func(v: float): _set_u("ascii", v), 0.0, 1.0, cover)
+	await t.finished
+	swap.call()
+	await get_tree().create_timer(hold).timeout
+	var t2 := create_tween()
+	t2.tween_method(func(v: float): _set_u("ascii", v), 1.0, 0.0, clear)
+	await t2.finished
+
 ## Rebirth: dither-wipe to ASCII and back.
 func rebirth_ascii(hold := 0.6) -> void:
 	var t := create_tween()
