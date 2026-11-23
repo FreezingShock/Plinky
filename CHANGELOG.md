@@ -9,8 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.27.2 - 2026-11-23
+## 0.28.1 - 2026-11-23
 - Press popups now stack: a press folds into any live number of the same stat on the same pad or within 40 px (up to 1.2 s apart), so nearby numbers become one rising total instead of overlapping. Each number carries its stat name centred underneath in the stat's own colour (the number keeps the streak colour). The old floating "+N Stat" text beside the stats panel is gone, and streak and critter payouts use the same popup field.
+
 ## 0.28.0 - 2026-11-23
 - Higher flower tiers now buff several lower stats at once (Thistle and Heather 1.25x, Foxglove and Starbloom 1.5x, data-driven). New Settings option for multipliers as a factor (x1.5) or a percent (150%). Locked pads are clearly darker and buyable pads glow green. Larkmoor gate retuned to 2000 Starbloom Petals.
 
