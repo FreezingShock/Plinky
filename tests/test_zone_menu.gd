@@ -45,8 +45,10 @@ func run(t: Object) -> void:
 	sim.gates_open[&"zone1"] = true
 	panel._go(&"larkmoor", &"oak")
 	t.eq(sim.zone_id, &"larkmoor", "clicking an area travels to its zone")
-	sim.enter_zone(&"zone1")
-	t.eq(panel.destination(&"zone1"), &"larkmoor", "once the gate is open the Meadow row lands in Larkmoor")
+	sim.gates_open[&"larkmoor"] = true
+	sim.enter_zone(&"zone2")
+	t.eq(panel.destination(&"zone1"), &"larkmoor", "from outside, the Meadow row lands in Larkmoor once its gate is open")
+	t.eq(panel.destination(&"zone2"), &"zone2", "the row of the zone you are in stays put")
 	panel._go(&"larkmoor", &"oak")
 	t.eq(panel.view_area(), &"oak", "and views that area")
 	panel.set_district(&"emberwatch")
