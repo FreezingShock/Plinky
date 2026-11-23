@@ -746,3 +746,7 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Pacing (`tools/sim.gd`, median of 8 seeds, active profile):** far gate 51.6 to 51.8 min; idle 114.8 to 117.7 min (idle about 2.3x active). Rejected: meadow-scale Clover costs (3000/12000/48000 Dewdrops) gave 62.8 min, and Sunlight costs of 100/1000/10000 with Dewdrops 1000/3000/9000 gave 79.5 min.
 - **Flag:** the hold profile (4 presses/s, a fast clicker) falls from 30.1 to 16.2 min to the Larkmoor gate. Left as is; a taste call for Nathan whether to raise the new costs.
 - Not run in the engine: the pad art and placement (screenshots need a GPU; the headless sim and tests did run).
+
+## 2026-11-23 Node budget 1300 to 1350 (Larkmoor pads, Nathan's call)
+- **Why:** the Larkmoor Dewdrop and Clover rows add 61 nodes (six pads with their anchors and holds, and six props from the regenerated layout). Main's Larkmoor is 1266, so the scene reached 1327 and CI's `play` frame budget failed.
+- **Chosen by Nathan (decision card):** raise the active-zone node ceiling to 1350 rather than trimming props or optimising pads first. Set in `.github/workflows/ci.yml` (frame budget 150/300/250/1350), `docs/ci.md` and `docs/perf.md`.
