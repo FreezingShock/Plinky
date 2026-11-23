@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.37.4 - 2026-11-23
+## 0.37.5 - 2026-11-23
 - Toasts (relic drops and achievements) now draw above open menu panels, so an open Ledger or Relics window never covers them.
+
+## 0.37.4 - 2026-11-23
+- Zone panel: the area description is measured and pinned so it never cuts off with an ellipsis (Larkmoor "paid in Sunligh...") while Travel is open.
 
 ## 0.37.3 - 2026-11-23
 - Number suffixes use a lowercase q (qd, qn, qdDc...) so a Q is never read as a 0 at popup size; popups keep a wider right margin so the "!" is not clipped.
