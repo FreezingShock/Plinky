@@ -459,3 +459,9 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Balance numbers** (`sprint_mult` 1.55, `crouch_mult`, slide and jump-boost values) live in `GameConfig` / `content/config/game.tres`. Gravity, jump velocity and ease rates are feel constants in `WalkerMotion`. Sprint and jumps raise momentum charge simply because it is fed by distance walked.
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
+
+## Settings and Esc menu refresh
+- **Colours.** Each Settings tab and each Esc menu tile takes one fixed stat colour (Audio cyan, Display blue, Gameplay gold, Access green, Controls purple, Data pink; Stats gold, Attributes blue, Upgrades green, Relics purple, Travel cyan, Settings paper, Update Log mint). Panel border, title, row labels and tab outlines use it, like the gallery's stat cards.
+- **Title Case is applied at display time** (`DisplayPanel.title_case`), not by editing registry strings, so rows added by other threads (Access, QoL, rebind screen) are covered automatically. Words with capitals or digits (VSync) are kept.
+- **Layout untouched.** Rows still come from SettingsRegistry; only visuals changed, so parallel threads adding rows do not conflict.
+- Not run in the cloud: the engine. The PC pass judges the colours and spacing.

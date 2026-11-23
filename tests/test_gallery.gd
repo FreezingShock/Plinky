@@ -22,7 +22,14 @@ func run(t: Object) -> void:
 	for i in 20:
 		g.tile(&"stats").pressed.emit()
 	t.eq(got.size(), 20, "every tile press is reported (spam safe, no state of its own)")
+	for k: StringName in kinds:
+		t.ok(GalleryMenu.COLORS.has(k) and g.tile(k).accent.a > 0.0, "the %s tile has its own section colour" % k)
 	g.free()
+
+	t.eq(DisplayPanel.title_case("Mute all"), "Mute All", "settings labels display in Title Case")
+	t.eq(DisplayPanel.title_case("VSync on 60 fps"), "VSync On 60 Fps", "words with capitals or digits are left alone")
+	for tab: String in SettingsRegistry.tabs():
+		t.ok(DisplayPanel.TAB_COLORS.has(tab), "the %s tab has a colour" % tab)
 
 	t.eq(GalleryTile.lift_px(0.0), 0, "a resting tile is not lifted")
 	t.eq(GalleryTile.lift_px(1.0), GalleryTile.LIFT, "a hovered tile lifts fully")
