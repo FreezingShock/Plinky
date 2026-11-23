@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.3 - 2026-11-23
+- `tools/bump_version.py` no longer glues the first changelog note onto the new version heading; covered by `tests/test_bump_version.py`, which CI now runs.
+
 ## 0.10.2 - 2026-11-23
 - Lighting: the edge shade is now anchored to the world instead of the screen, so nothing follows the camera. Night and light-split veil turned down. New Access setting "Reduce screen effects".
 
