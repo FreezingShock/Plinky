@@ -80,6 +80,9 @@ func run(t: Object) -> void:
 
 	# Offline progress is capped at 2 h
 	sim.new_game()
+	_offline_extras(t)
+	sim.config.offline_tend_fraction = 0.0   # the plain income check below is about passive cash only
+	sim.config.offline_relic_roll_fraction = 0.0
 	t.near(sim.apply_offline(10.0 * 3600.0), 7200.0, 1e-9, "offline capped at 2 h")
 	t.near(sim.get_stat(&"sunlight").to_float(), 10.0 + 0.25 * 7200.0, 1e-6, "offline cash (10 start plus 2 h of income)")
 
@@ -200,3 +203,29 @@ func run(t: Object) -> void:
 	for i in 3000:
 		sim.step(0.1)
 	t.ok(sim.critter_left <= sim.config.critter_lifetime, "an uncaught critter times out and the next one is scheduled")
+
+
+## Offline catch-up v2: tending spends and earns like presses, mastery follows, relic rolls are capped.
+func _offline_extras(t: Object) -> void:
+	var sim: Sim = t.make_sim()
+	sim.stats[&"sunlight"] = BigNum.from_float(1000.0)
+	var before_dew: float = sim.get_stat(&"dewdrop").to_float()
+	sim.apply_offline(3600.0)
+	var tend: Dictionary = sim.last_offline["tend"]
+	t.ok(tend.has(&"sprout"), "offline tends the open Sprout pad")
+	t.ok(sim.get_stat(&"dewdrop").to_float() > before_dew, "tending paid Dewdrops")
+	t.ok(sim.mastery.level(&"sprout_3") > 0 or sim.mastery.xp(&"sprout_3") > 0.0, "tending earned mastery XP")
+	t.ok(not tend.has(&"clover"), "locked tiers are not tended")
+	t.ok((sim.last_offline["relics"] as Array).size() <= sim.config.offline_relic_max_drops, "relic drops capped")
+	var sim3: Sim = t.make_sim()
+	sim3.attr_levels[&"bloom_dusk"] = 4
+	sim3.attr_levels[&"rp_rest"] = 2
+	var per_dusk: float = (sim3.attribute_defs[&"bloom_dusk"] as AttributeDef).per_level
+	var per_rest: float = (sim3.attribute_defs[&"rp_rest"] as AttributeDef).per_level
+	t.near(sim3.offline_cap_seconds(), (sim3.config.offline_base_cap_hours + 4.0 * per_dusk + 2.0 * per_rest) * 3600.0, 1e-6, "Long dusk and Deep sleep stack on the offline cap")
+	var sim2: Sim = t.make_sim()
+	sim2.stats[&"sunlight"] = BigNum.zero()
+	sim2.config.offline_tend_fraction = 0.0
+	sim2.config.offline_relic_roll_fraction = 0.0
+	sim2.apply_offline(3600.0)
+	t.ok((sim2.last_offline["tend"] as Dictionary).is_empty() and (sim2.last_offline["relics"] as Array).is_empty(), "extras switch off")

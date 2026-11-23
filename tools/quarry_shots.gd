@@ -35,7 +35,7 @@ func _ready() -> void:
 	sim.zone_id = &"zone2"
 	if not locked:
 		sim.dev_open_tiers()
-	for k: StringName in [&"cash", &"mult", &"ironore", &"slag", &"ingot", &"alloy", &"emberheart"]:
+	for k: StringName in [&"embers", &"cinder", &"ironore", &"slag", &"ingot", &"alloy", &"emberheart"]:
 		sim.stats[k] = BigNum.from_float(1.0e5)
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)

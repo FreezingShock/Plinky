@@ -51,6 +51,10 @@ extends Resource
 @export var golden_sat: float = 0.16
 @export var golden_contrast: float = 0.1
 @export var night_sat: float = 0.1
+## High sun (elevation above about 0.7): exposure drop, extra contrast and saturation, so noon is not bleached.
+@export var noon_exposure: float = 0.12
+@export var noon_contrast: float = 0.16
+@export var noon_sat: float = 0.1
 
 @export_group("Shadows")
 ## Cast shadow length in object heights at noon, with the sun low, and under the moon.
