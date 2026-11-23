@@ -4,6 +4,9 @@ extends PanelContainer
 ## body). Never takes mouse input. Positioned in the 640x360 stretch view, so it follows UI scale for free,
 ## and clamped to the visible rect so it never leaves the screen.
 
+const BODY_FONT: String = "res://fonts/spleen-6x12.fnt"
+const TITLE_FONT: String = "res://fonts/PixelifySans.ttf"
+const THEME_FALLBACK: String = "res://theme/plinky_theme.tres"
 const MAX_WIDTH: int = 150
 const HOVER_DELAY: float = 0.35     ## seconds before a mouse hover shows
 const FOCUS_DELAY: float = 0.08     ## keyboard / pad focus shows almost at once
@@ -25,6 +28,7 @@ func _init() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 200
+	theme = load(THEME_FALLBACK) as Theme   # replaced by the live HUD theme when there is one
 	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
@@ -32,6 +36,8 @@ func _init() -> void:
 	add_child(v)
 	_title = _label(v)
 	_title.theme_type_variation = &"TitleLabel"
+	_title.add_theme_font_override(&"font", load(TITLE_FONT) as Font)
+	_title.add_theme_font_size_override(&"font_size", 16)
 	_body = _label(v)
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.custom_minimum_size.x = MAX_WIDTH
@@ -44,6 +50,8 @@ func _init() -> void:
 func _label(parent: Node) -> Label:
 	var l := Label.new()
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.add_theme_font_override(&"font", load(BODY_FONT) as Font)   # explicit: never depend on inheritance
+	l.add_theme_font_size_override(&"font_size", 12)
 	l.add_theme_color_override("font_color", RelicStyle.text)
 	l.add_theme_color_override("font_outline_color", RelicStyle.ink)
 	parent.add_child(l)

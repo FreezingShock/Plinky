@@ -40,6 +40,12 @@ func run(t: Object) -> void:
 
 	var h := TipHost.new()
 	root.add_child(h)
+	var body: Font = h._body.get_theme_font(&"font")
+	t.ok(body != null and body.resource_path == TipHost.BODY_FONT, "tooltip body uses Spleen 6x12, not the default font")
+	t.eq(h._body.get_theme_font_size(&"font_size"), 12, "tooltip body is 12 px, native size")
+	var ttl: Font = h._title.get_theme_font(&"font")
+	t.ok(ttl != null and ttl.resource_path == TipHost.TITLE_FONT, "tooltip title uses Pixelify Sans")
+	t.ok(h.theme != null, "tooltip has a theme even before it borrows the HUD's")
 	var th := Theme.new()
 	var themed := Control.new()
 	themed.theme = th
