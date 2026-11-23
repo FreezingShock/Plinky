@@ -113,4 +113,4 @@ func run(t: Object) -> void:
 	t.ok(sim3.from_dict(old["game"]), "migrated save loads")
 	t.eq(sim3.press_count, 3, "migration keeps existing fields")
 	t.eq(sim3.mastery.level(&"m1"), 0, "migrated save starts at level 0")
-	t.eq(SaveCodec.CURRENT_VERSION, 2, "save version is 2")
+	t.ok(SaveCodec.CURRENT_VERSION >= 2, "save version includes mastery (v2 and later)")

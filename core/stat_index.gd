@@ -12,7 +12,7 @@ const STAT_TIPS: Dictionary = {
 }
 const ATTR_ICONS: Dictionary = {
 	&"walk_speed": "walk", &"press_rate": "rate", &"crit_chance": "crit", &"luck": "luck",
-	&"offline_hours": "offline", &"crit_damage": "crit_dmg",
+	&"offline_hours": "offline", &"crit_damage": "crit_dmg", &"mastery_xp": "mastery", &"pad_yield": "cash",
 }
 const ATTR_TIPS: Dictionary = {
 	&"walk_speed": "How fast the walker moves between pads.",
@@ -21,6 +21,8 @@ const ATTR_TIPS: Dictionary = {
 	&"luck": "Better odds that a press drops a relic.",
 	&"offline_hours": "Hours of income you collect while the game is closed.",
 	&"crit_damage": "How much extra a critical hit pays.",
+	&"mastery_xp": "Pads earn Mastery XP faster, so they level sooner.",
+	&"pad_yield": "Every press pays more, on every pad.",
 }
 
 
@@ -73,7 +75,9 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		var lv: int = sim.attr_level(aid)
 		var now: String = effect_text(a, float(lv) * a.per_level)
 		var tip: String = String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
-		if lv >= a.cap:
+		if not sim.attr_unlocked(aid):
+			tip += "\n%s." % UpgradeText.lock_text(a)
+		elif lv >= a.cap:
 			tip += "\nMaxed out."
 		else:
 			tip += "\nNext level: %s\nCost: %s Prestige" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format()]
@@ -91,6 +95,8 @@ static func effect_text(a: AttributeDef, amount: float) -> String:
 		&"crit_chance": return "%s%% crit chance" % _trim(amount * 100.0)
 		&"crit_damage": return "+%s%% crit damage" % _trim(amount * 100.0)
 		&"luck": return "+%s%% luck" % _trim(amount * 100.0)
+		&"mastery_xp": return "+%s%% pad XP" % _trim(amount * 100.0)
+		&"pad_yield": return "+%s%% pad yield" % _trim(amount * 100.0)
 		&"offline_hours": return "+%s h offline cap" % _trim(amount)
 	return "+%s%%" % _trim(amount * 100.0)
 

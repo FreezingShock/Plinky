@@ -16,6 +16,7 @@ uniform vec3 rim_col : source_color = vec3(1.0, 0.95, 0.75);
 // each texel's light by the change in N.L between the baked sun and `sun_dir`, then re-picks the colour from the
 // material's ramp with a Bayer dither, so props are lit from wherever the sun is. relight = 0 is off.
 #include "res://render/shaders/prop_ramps.gdshaderinc"
+#include "res://render/shaders/season.gdshaderinc"
 uniform sampler2D nrm_tex : filter_nearest;
 uniform vec3 sun_dir = vec3(-0.45, 0.45, 0.85);
 uniform float relight = 0.0;
@@ -67,6 +68,9 @@ void fragment() {
 				c.rgb = PAL[RAMP_IDX[RAMP_START[code] + step_i]];
 			}
 		}
+	}
+	if (c.a > 0.5 && (season_amt > 0.0 || season_snow > 0.0)) {
+		c.rgb = season_recolor(c.rgb, wpos);
 	}
 	if (rim_amount > 0.0 && c.a > 0.5 && lum(c.rgb) > 0.2) {
 		vec2 px = TEXTURE_PIXEL_SIZE;

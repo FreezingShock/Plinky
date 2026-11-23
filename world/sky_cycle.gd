@@ -62,6 +62,15 @@ var _rim_key: Array = []
 var _ground_mats: Array[ShaderMaterial] = []
 var _debug_view: int = 0
 var _relight_key: Vector4 = Vector4(-99.0, 0.0, 0.0, 0.0)
+## Seasons (core/game_calendar.gd, core/season_look.gd). The calendar clock drives the sun, so the sky and the HUD
+## clock agree; with no calendar (tests, previews) the session clock runs as before and the look stays at spring.
+var _cal: GameCalendar
+var _cal_cfg: CalendarConfig
+var _season: SeasonLook = SeasonLook.new()
+var _season_key: Vector4 = Vector4(-99.0, 0.0, 0.0, 0.0)
+var particles: SeasonParticles
+## Debug and screenshot override: -1 off, else 0..3 pins the season (tools/screenshot).
+static var debug_season: int = -1
 
 
 func _ready() -> void:
@@ -70,6 +79,7 @@ func _ready() -> void:
 	if _config == null:
 		_config = SkyConfig.new()
 	_apply_config()
+	_find_calendar()
 	_haze_mat = ShaderMaterial.new()
 	_haze_mat.shader = HAZE_SHADER
 	if ground_texture != null:
@@ -138,6 +148,12 @@ func _ready() -> void:
 	rain_layer.area = area
 	rain_layer.drops = int(round(float(_config.rain_drops) * minf(area.get_area() / AREA.get_area(), 2.0)))   # denser over a bigger field, capped for cost
 	add_child(rain_layer)
+	particles = SeasonParticles.new()
+	particles.name = "SeasonParticles"
+	particles.z_index = 6
+	particles.area = area
+	particles.config = _cal_cfg
+	add_child(particles)
 	sway_material = ShaderMaterial.new()
 	sway_material.shader = SWAY_SHADER
 	sway_material.set_shader_parameter("max_texels", _config.sway_max_texels)
@@ -189,6 +205,7 @@ func light_config() -> SkyConfig:
 func _apply_config() -> void:
 	model.day_seconds = _config.day_seconds
 	model.start_phase = _config.start_phase
+	model.daylight_fraction = _config.daylight_fraction
 	model.night_strength = _config.night_strength
 	model.dusk_strength = _config.dusk_strength
 	model.rain_period_a = _config.rain_period_a
@@ -211,16 +228,63 @@ func _process(delta: float) -> void:
 ## Time to feed the model: a debug phase pins the time of day, otherwise session time runs.
 func _model_time(t: float) -> float:
 	if debug_phase >= 0.0:
-		return (debug_phase - model.start_phase) * model.day_seconds
+		return (model.clock_of_phase(debug_phase) - model.clock_of_phase(model.start_phase)) * model.day_seconds
+	if _cal != null:
+		return (_cal.elapsed_days - model.clock_of_phase(model.start_phase)) * model.day_seconds
 	return t
+
+
+func _find_calendar() -> void:
+	_cal_cfg = load("res://content/config/calendar.tres") as CalendarConfig
+	var gs: Node = get_node_or_null("/root/GameState") if is_inside_tree() else null
+	if gs != null and gs.get("sim") is Sim:
+		_cal = (gs.get("sim") as Sim).calendar
+		if _cal != null:
+			_cal_cfg = _cal.config
+	if _cal_cfg == null:
+		_cal_cfg = CalendarConfig.new()
+
+
+## Mix the four seasons by their weights and push the result to every ground and prop material.
+func _update_season() -> void:
+	var w: Array[float] = [1.0, 0.0, 0.0, 0.0]
+	if debug_season >= 0:
+		w = [0.0, 0.0, 0.0, 0.0]
+		w[clampi(debug_season, 0, 3)] = 1.0
+	elif _cal != null:
+		w = _cal.season_weights()
+	_season = SeasonLook.blend(_cal_cfg, w)
+	var key: Vector4 = _season.key()
+	if key == _season_key:
+		return
+	_season_key = key
+	for gm: ShaderMaterial in _ground_mats:
+		_push_season(gm, true)
+	for pm: ShaderMaterial in _prop_mats:
+		_push_season(pm, false)
+	_push_season(sway_material, false)
+	_push_season(rim_material, false)
+	if particles != null:
+		particles.weights = _season.weights
+
+
+func _push_season(m: ShaderMaterial, ground: bool) -> void:
+	if m == null:
+		return
+	m.set_shader_parameter("season_col", _season.ground_col if ground else _season.prop_col)
+	m.set_shader_parameter("season_col2", _season.ground_col2 if ground else _season.prop_col2)
+	m.set_shader_parameter("season_amt", _season.ground_amt if ground else _season.prop_amt)
+	m.set_shader_parameter("season_snow", _season.ground_snow if ground else _season.prop_snow)
 
 
 func _update(t: float) -> void:
 	var mt: float = _model_time(t)
+	_update_season()
 	_shade_mat.set_shader_parameter("night", clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * _config.night_shade)
 	var ramp: float = model.ramp(mt)
 	if _config.grade_tint != null:
-		_shade_mat.set_shader_parameter("grade_col", _config.grade_tint.sample(ramp))
+		var gc: Color = _config.grade_tint.sample(ramp)
+		_shade_mat.set_shader_parameter("grade_col", Color(gc.r * _season.grade.r, gc.g * _season.grade.g, gc.b * _season.grade.b, 1.0))
 	if _config.grade_amount != null:
 		_shade_mat.set_shader_parameter("grade_amount", _config.grade_amount.sample(ramp).r)
 	_shade_mat.set_shader_parameter("pool_strength", _config.pool_strength)
@@ -231,7 +295,11 @@ func _update(t: float) -> void:
 	_shade_mat.set_shader_parameter("rain", rain)
 	MeadowLife.wind = 0.0 if MeadowLife.reduce_motion else wind
 	rain_layer.visible = not MeadowLife.reduce_motion
-	rain_layer.intensity = rain / maxf(model.rain_max, 0.001)
+	var snow_w: float = _season.weights[3]
+	rain_layer.intensity = rain / maxf(model.rain_max, 0.001) * (1.0 - snow_w)   # winter precipitation is snow
+	if particles != null:
+		particles.snow_precip = rain / maxf(model.rain_max, 0.001) * snow_w
+		particles.wind = wind
 	rain_layer.wind = wind
 	_update_light(t, mt, rain)
 	var s: int = int(t / SWAY_STEP)
@@ -256,6 +324,7 @@ func prop_material(sways: bool, nrm: Texture2D) -> ShaderMaterial:
 	var m: ShaderMaterial = base.duplicate() as ShaderMaterial
 	m.set_shader_parameter("nrm_tex", nrm)
 	_prop_mats.append(m)
+	_season_key = Vector4(-99.0, 0.0, 0.0, 0.0)
 	_relight_key = Vector4(-99.0, 0.0, 0.0, 0.0)   # push the sun and rim to the new material on the next update
 	_rim_key = []
 	return m
@@ -268,6 +337,7 @@ func ground_material(nrm: Texture2D, height: Texture2D) -> ShaderMaterial:
 	m.set_shader_parameter("nrm_tex", nrm)
 	m.set_shader_parameter("h_tex", height)
 	_ground_mats.append(m)
+	_season_key = Vector4(-99.0, 0.0, 0.0, 0.0)
 	_relight_key = Vector4(-99.0, 0.0, 0.0, 0.0)
 	return m
 
@@ -339,7 +409,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	if not _ground_mats.is_empty():
 		var sun_px := Vector2(clampf(az * 1.2, -1.0, 1.0), -0.6)    # toward the sun on screen, texels per march step
 		var shadow_k: float = _config.ground_shadow * (1.0 - 0.8 * rain01) * (1.0 - night_k * 0.6)
-		var fog_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
+		var fog_col: Color = _season.tint_haze(_config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7))
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
 			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
@@ -348,7 +418,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
 			gm.set_shader_parameter("fog_col", fog_col)
-			gm.set_shader_parameter("fog_amt", _config.ground_fog * (0.5 + 0.5 * model.mist(mt, rain01)))
+			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
 	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
 	if rim_key != _rim_key:
 		_rim_key = rim_key
@@ -356,14 +426,14 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		_each_prop_material(&"rim_amount", rim_amt)
 		_each_prop_material(&"rim_col", rim_col)
 	# haze over the mountains, mist over the water
-	var haze_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
+	var haze_col: Color = _season.tint_haze(_config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7))
 	_haze_mat.set_shader_parameter("haze_col", haze_col)
 	_haze_mat.set_shader_parameter("haze", _config.haze_strength * (0.55 + 0.45 * model.mist(mt, rain01)))
-	_haze_mat.set_shader_parameter("mist", _config.mist_strength * model.mist(mt, rain01))
+	_haze_mat.set_shader_parameter("mist", _config.mist_strength * _season.fog_mult * model.mist(mt, rain01))
 	var drift: float = 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 860.0)
 	_haze_mat.set_shader_parameter("drift", drift)
 	# ground fog: thickest at dawn and dusk, heavier in rain, drifting sideways; world-anchored dither
-	var fog_amt: float = _config.fog_ground * model.mist(mt, rain01) * (1.0 - 0.5 * clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0))
+	var fog_amt: float = _config.fog_ground * _season.fog_mult * model.mist(mt, rain01) * (1.0 - 0.5 * clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0))
 	_fog_rect.visible = atmosphere and fog_amt > 0.01
 	_fog_mat.set_shader_parameter("amount", fog_amt)
 	_fog_mat.set_shader_parameter("fog_col", Color(0.62, 0.7, 0.66).lerp(haze_col, 0.3))   # pale and cool: a dawn haze colour painted the fog orange-red

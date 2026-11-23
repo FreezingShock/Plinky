@@ -73,11 +73,6 @@ func _init() -> void:
 		b.pressed.connect(set_tab.bind(i))
 		bar.add_child(b)
 		_tabs.append(b)
-	var close := PixelButton.new()
-	close.text = "Close"
-	close.size_flags_horizontal = Control.SIZE_SHRINK_END | Control.SIZE_EXPAND
-	close.pressed.connect(close_panel)
-	bar.add_child(close)
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
@@ -280,7 +275,7 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 			_list.add_child(h)
 		var row := IndexRow.new(WIDTH - 12.0)
 		row.set_data(r)
-		Tip.bind(row, func() -> Variant: return {"title": row.data["name"], "body": row.data["tip"]})
+		Tip.bind_all(row, func() -> Variant: return TipText.index_row(row.data))
 		_list.add_child(row)
 		_rows[r["id"]] = row
 	var tail := Control.new()   # keeps the last row clear of the scroll edge

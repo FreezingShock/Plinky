@@ -1,43 +1,104 @@
 class_name TipText
 extends RefCounted
-## Words for the tooltips on existing UI, in one place so they stay consistent. Specs for Tip.bind.
-## No numbers that belong to balance: live values are passed in by the caller.
+## Words and layout for the tooltips on existing UI, in one place so they stay consistent. Specs for Tip.bind.
+## Colour rules (docs/tooltips.md): stat names in their stat colour (StatStyle), numbers green when they are a
+## gain or affordable and red when not, rarity in its rarity colour. No balance numbers: live values come from the caller.
 
 const STATS: Dictionary = {
-	&"cash": {"title": "Cash", "body": "What pads cost and pay. Walk and press pads to earn it.", "hint": "Resets when you rebirth."},
-	&"mult": {"title": "Multiplier", "body": "Boosts your Cash income and press rewards.", "hint": "Grows from pads. Rebirths make it grow faster."},
-	&"reb": {"title": "Rebirths", "body": "Times you have started over. Each one speeds up Multiplier gain.", "hint": "Use the Rebirth button once you can afford it."},
-	&"slag": {"title": "Slag", "body": "Quarry currency, made by the pads there.", "hint": "Spend it on quarry pads."},
-	&"prestige": {"title": "Prestige", "body": "Earned by rebirthing. Spend it on permanent upgrades.", "hint": "Open Upgrades to spend it."},
+	&"cash": {"body": "What pads cost and pay. Walk and press pads to earn it.", "hint": "Resets when you rebirth."},
+	&"mult": {"body": "Boosts your Cash income and press rewards.", "hint": "Grows from pads. Rebirths make it grow faster."},
+	&"reb": {"body": "Times you have started over. Each one speeds up Multiplier gain.", "hint": "Use the Rebirth button once you can afford it."},
+	&"slag": {"body": "Quarry currency, made by the pads there.", "hint": "Spend it on quarry pads."},
+	&"prestige": {"body": "Earned by rebirthing. Spend it on permanent upgrades.", "hint": "Open Upgrades to spend it."},
 }
 
+const ATTR_ICONS: Dictionary = {
+	&"walk_speed": "walk", &"press_rate": "rate", &"crit_chance": "crit", &"luck": "luck",
+	&"offline_hours": "offline", &"crit_damage": "crit_dmg",
+}
 const ATTRS: Dictionary = {
 	&"walk_speed": "Walk faster between pads.",
 	&"press_rate": "Hold-to-press repeats faster.",
 	&"crit_chance": "A bigger chance for a press to crit.",
+	&"crit_damage": "A critical hit pays more.",
 	&"luck": "Better odds on relic drops.",
 	&"offline_hours": "Earn for more hours while you are away.",
 }
 
 
-static func stat(sid: StringName, display_name: String) -> Dictionary:
-	return STATS.get(sid, {"title": display_name, "body": ""}) as Dictionary
+## Stat tooltip. `have` and `per_second` are optional live values (already formatted) for the HUD rows.
+static func stat(sid: StringName, display_name: String, have: String = "", per_second: String = "") -> Dictionary:
+	var base: Dictionary = STATS.get(sid, {"body": ""}) as Dictionary
+	var c: Color = StatStyle.color(sid)
+	var lines: Array = []
+	if have != "":
+		lines.append(["You have ", Tip.icon(String(sid)), Tip.seg(have, c)])
+	if per_second != "":
+		lines.append(["Income ", Tip.seg("+%s/s" % per_second, StatStyle.BUY_GREEN)])
+	return {"title": display_name, "title_color": c, "color": c, "icon": String(sid),
+		"body": base.get("body", ""), "lines": lines, "hint": base.get("hint", "")}
 
 
 static func attribute(a: AttributeDef, level: int, cost_text: String, can_afford: bool) -> Dictionary:
-	var hint: String = "Max level." if level >= a.cap else ("Costs %s Prestige." % cost_text if can_afford else "Need %s Prestige." % cost_text)
-	return {
-		"title": "%s %d/%d" % [a.display_name, level, a.cap],
-		"body": ATTRS.get(a.effect, ""),
-		"hint": hint,
-	}
+	var c: Color = StatStyle.color(a.effect)
+	var maxed: bool = level >= a.cap
+	var lines: Array = [["Level ", Tip.seg("%d/%d" % [level, a.cap], c)]]
+	lines.append(["Now ", Tip.seg(StatIndex.effect_text(a, float(level) * a.per_level), StatStyle.BUY_GREEN)])
+	if not maxed:
+		lines.append(["Next ", Tip.seg(StatIndex.effect_text(a, float(level + 1) * a.per_level), StatStyle.BUY_GREEN)])
+		lines.append(["Costs ", Tip.icon("prestige"), Tip.seg(cost_text, StatStyle.buy(can_afford)), " ", Tip.seg("Prestige", StatStyle.color(&"prestige"))])
+	return {"title": a.display_name, "title_color": c, "color": c, "icon": String(ATTR_ICONS.get(a.effect, "prestige")),
+		"body": ATTRS.get(a.effect, ""), "lines": lines,
+		"hint": "Max level." if maxed else ("Click Buy to upgrade." if can_afford else "Need more Prestige."),
+		"hint_color": StatStyle.BUY_GREEN if (maxed or can_afford) else StatStyle.BUY_RED}
 
 
 static func rebirth(can: bool, gain_text: String) -> Dictionary:
+	var pc: Color = StatStyle.color(&"prestige")
 	if can:
-		return {"title": "Rebirth", "body": "Reset your Cash and pads for +%s Prestige and a Rebirth." % gain_text, "hint": "Prestige and relics are kept."}
-	return {"title": "Rebirth", "body": "Start over for Prestige and a faster Multiplier.", "hint": "Not available yet."}
+		return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
+			"body": "Reset your Cash and pads for a Rebirth.",
+			"lines": [["Gives ", Tip.icon("prestige"), Tip.seg("+%s" % gain_text, StatStyle.BUY_GREEN), " ", Tip.seg("Prestige", pc)]],
+			"hint": "Prestige and relics are kept.", "hint_color": StatStyle.BUY_GREEN}
+	return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
+		"body": "Start over for Prestige and a faster Multiplier.", "hint": "Not available yet.", "hint_color": StatStyle.BUY_RED}
 
 
 static func zone_button(display_name: String) -> Dictionary:
-	return {"title": display_name, "body": "Travel there. Your progress here is kept.", "hint": "Zones you have opened are listed."}
+	return {"title": display_name, "body": "Travel there. Your progress here is kept."}
+
+
+## Row in the Stats / Attributes index: {id, name, icon, value, note, tip}.
+static func index_row(d: Dictionary) -> Dictionary:
+	var id: StringName = StringName(str(d["id"]))
+	var c: Color = StatStyle.color(id)
+	var lines: Array = []
+	if str(d.get("value", "")) != "":
+		lines.append(["Now ", Tip.seg(str(d["value"]), c)])
+	if str(d.get("note", "")) != "":
+		lines.append([Tip.seg(str(d["note"]), StatStyle.BUY_GREEN)])
+	return {"title": str(d["name"]), "title_color": c, "color": c, "icon": str(d.get("icon", "")),
+		"body": str(d["tip"]), "lines": lines}
+
+
+## A relic in a slot. `owned` stacks, `is_equipped` whether it counts right now, `hint` what a click does.
+static func relic(def: RelicDef, owned: int, is_equipped: bool, hint: String) -> Dictionary:
+	var rc: Color = def.rarity.readable_color(RelicStyle.ink)
+	var lines: Array = [rarity_tag(def.rarity, "relic", rc)]
+	lines.append(["Owned ", Tip.seg("%d%s" % [owned, " (max)" if def.is_capped(owned) else ""], RelicStyle.accent)])
+	if owned > 0 and not is_equipped:
+		lines.append([Tip.seg("Not equipped: no effect", StatStyle.BUY_RED)])
+	elif not def.is_capped(owned):
+		lines.append(["Next stack ", Tip.seg("+%s" % RelicDef._pct(def.value_for(owned + 1) - def.value_for(owned)), StatStyle.BUY_GREEN)])
+	return {"title": def.display_name, "title_color": rc, "color": rc, "body": def.describe(maxi(owned, 1)),
+		"lines": lines, "hint": hint, "beside": true}
+
+
+static func slot_note(title: String, body: String) -> Dictionary:
+	return {"title": title, "body": body, "beside": true}
+
+
+## The one rarity line every tooltip uses: all caps, bold display face, rarity colour, rarity then type
+## ("UNCOMMON PAD", "RARE RELIC", "COMMON UPGRADE"). `c` is the readable rarity colour.
+static func rarity_tag(rarity: RarityDef, kind: String, c: Color) -> Array:
+	return [Tip.tag("%s %s" % [rarity.display_name, kind], c)]

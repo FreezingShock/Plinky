@@ -9,8 +9,35 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.5.1 - 2026-11-23
+## 0.10.2 - 2026-11-23
 - Lighting: the edge shade is now anchored to the world instead of the screen, so nothing follows the camera. Night and light-split veil turned down. New Access setting "Reduce screen effects".
+
+## 0.10.1 - 2026-11-23
+
+- Rarity tag on every tooltip is now one all-caps line in the bold display face, rarity then type (UNCOMMON BUTTON, RARE RELIC); the relic drop toast matches.
+
+## 0.10.0 - 2026-11-23
+- Title screen after boot (Play or Continue, Settings, Quit, version in the corner). Dev and test launches skip it with `-- --skip-title` or PLINKY_SKIP_TITLE; the CI boot smoke test uses it.
+- Esc in game now opens the hamburger menu as the pause menu (it still closes any open menu first). The menu gets text actions Close menu, Quit to title and Quit game with an animated accent hover, and its icon tiles show their label only on hover, typing in like the bottom bar chips.
+
+## 0.9.1 - 2026-11-23
+- Calendar uses plain season names (Spring, Summer, Autumn, Winter) and months (Early Spring, Late Spring, and so on). The window title bar shows the day count and in-game time in the middle.
+
+## 0.9.0 - 2026-11-23
+- Upgrades menu overhaul: real stat values as "now -> next" (current greyed, next lit), level pips, green/red costs, an animated Buy (squash, cost flies to Prestige, numbers tick up, pip pop, rising click), and three new upgrades unlocked by Rebirths (Crit power at 3, Quick study at 5, Pad yield at 10) with padlock rows for locked ones.
+
+## 0.8.0 - 2026-11-23
+- In-game calendar (5-day months, 10-day seasons), HUD clock, outdoor seasons (blossom, lush, amber, snow) with season particles, 3 min day / 2 min night, save v3.
+
+## 0.7.0 - 2026-11-23
+- Tooltip rework: one rich tooltip system (stat icons and colours, green/red cost, tooltips on every stat and attribute, hover that stays up), relic slots moved onto it.
+
+## 0.6.0 - 2026-11-23
+- Bottom bar buttons no longer move: labels float above the button instead of widening it, open after a short hover intent (instantly on focus), linger briefly, and the hit areas fill the gaps. New setting Access > Bottom bar labels (On hover / Always / Never); number keys 1 to 5 press Upgrades, Relics, Stats, Attributes and Menu.
+- Hamburger menu at the bottom right: a gallery of big icon tiles (Stats, Attributes, Upgrades, Relics, Travel, Settings, Update Log) with the version shown; Settings moves into it.
+- Fixed the close X: it now draws a full 13 texel frame with arms and clicks reliably; the Stats, Settings and Feedback windows no longer have text Close buttons.
+- Update Log tile shows this changelog in the game.
+- Menus close and switch reliably when spammed, with an animated close X on every panel; bottom bar buttons expand to icon plus label.
 
 ## 0.5.0 - 2026-11-23
 - Single source of truth for the game version (`core/build_info.gd`), shown small on the boot screen, with `BuildInfo.string()` and `BuildInfo.changelog()` for the Update Log tile.

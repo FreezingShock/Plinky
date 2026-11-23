@@ -28,12 +28,12 @@ static func bind(c: Control, spec: Variant) -> void:
 	if c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
 		c.mouse_filter = Control.MOUSE_FILTER_PASS   # needs to see the mouse; still lets clicks through
 	c.mouse_entered.connect(_on_enter.bind(c, false))
-	c.mouse_exited.connect(_on_exit.bind(c))
 	c.focus_entered.connect(_on_enter.bind(c, true))
 	c.focus_exited.connect(_on_exit.bind(c))
 	c.tree_exiting.connect(_on_exit.bind(c))
 	if c is BaseButton:
 		(c as BaseButton).button_down.connect(_on_exit.bind(c))
+	# No mouse_exited hook: the host watches which control is under the mouse and hides after a short grace.
 
 
 ## Bind the same spec to a container and every Control directly inside it (a row of icon, label and value).
@@ -96,16 +96,34 @@ static func host(tree: SceneTree) -> TipHost:
 	return _host
 
 
-## Turn a spec into {title, body, hint, color}. Missing parts are empty strings.
+## A segment of a rich line: text in a colour, or an inline 16 px stat icon (a file name under assets/icons).
+static func seg(text: String, c: Color = Color(0, 0, 0, 0)) -> Dictionary:
+	return {"t": text, "c": c}
+
+
+## An all-caps tag in the bold display face (rarity + type, e.g. UNCOMMON PAD).
+static func tag(text: String, c: Color = Color(0, 0, 0, 0)) -> Dictionary:
+	return {"t": text.to_upper(), "c": c, "tag": true}
+
+
+static func icon(name: String) -> Dictionary:
+	return {"icon": name}
+
+
+## Turn a spec into {title, title_color, icon, body, lines, hint, hint_color, color, empty}.
+## `lines` is an Array of rich lines; a line is an Array of segments (String, seg(), or icon()).
+## A null or blank spec comes back with empty = true and shows nothing.
 static func normalize(spec: Variant) -> Dictionary:
 	if spec is Callable:
 		spec = (spec as Callable).call()
-	var d: Dictionary = {"title": "", "body": "", "hint": "", "color": Color(0, 0, 0, 0)}
+	var d: Dictionary = {"title": "", "title_color": Color(0, 0, 0, 0), "icon": "", "body": "", "lines": [],
+		"hint": "", "hint_color": Color(0, 0, 0, 0), "color": Color(0, 0, 0, 0)}
 	if spec is Dictionary:
 		for k: Variant in (spec as Dictionary):
 			d[str(k)] = (spec as Dictionary)[k]
 	elif spec != null:
 		d["body"] = str(spec)
+	d["empty"] = str(d["title"]) == "" and str(d["body"]) == "" and str(d["hint"]) == "" and (d["lines"] as Array).is_empty()
 	return d
 
 
@@ -116,5 +134,5 @@ static func _on_enter(c: Control, by_focus: bool) -> void:
 
 
 static func _on_exit(c: Control) -> void:
-	if _host != null and is_instance_valid(_host) and _host.target == c:
-		_host.dismiss()
+	if _host != null and is_instance_valid(_host):
+		_host.on_exit(c)

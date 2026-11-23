@@ -5,6 +5,8 @@ extends Resource
 
 ## Real seconds for one full day (midnight to midnight).
 @export var day_seconds: float = 720.0
+## Share of the day the sun is up. 0.5 is an even split; 0.6 is three minutes of day and two of night on a five minute day.
+@export var daylight_fraction: float = 0.5
 ## Where in the day a new session starts: 0 midnight, 0.25 sunrise, 0.5 noon, 0.75 sunset.
 @export var start_phase: float = 0.32
 ## How dark midnight gets, 0..1. Density of the dithered shade layer, so 1.0 would shade every texel.

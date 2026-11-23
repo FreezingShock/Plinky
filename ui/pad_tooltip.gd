@@ -23,7 +23,8 @@ func hide_tip() -> void:
 		Tip.hide_free(get_tree() if is_inside_tree() else null)
 
 
-## {title, body, hint, color} for a pad, or {} if the button is unknown.
+## Rich spec for a pad, or {} if the button is unknown. Cost number green if affordable and red if not, the
+## gain green, stat names in their stat colour, the rarity line in its rarity colour.
 static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 	var b: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
 	if b == null:
@@ -32,16 +33,23 @@ static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 	var reward_def: StatDef = sim.stat_defs[b.reward_stat] as StatDef
 	var cost: BigNum = Formulas.button_cost(b)
 	var have: BigNum = sim.get_stat(b.cost_stat)
-	var lines: PackedStringArray = []
-	var color := Color(0, 0, 0, 0)
+	var can: bool = have.gte(cost)
+	var rc: Color = StatStyle.color(b.reward_stat)
+	var lines: Array = []
+	var edge: Color = rc
 	var rar: RarityDef = _rarity(sim, button_id)
+	var body: String = ""
 	if rar != null:
-		color = rar.readable_color(RelicStyle.ink)
-		lines.append("Rarity: %s" % rar.display_name)
-	lines.append("Costs %s %s" % [cost.format(), cost_def.display_name])
-	lines.append("Gives +%s %s" % [sim.press_gain_preview(button_id).format(), reward_def.display_name])
-	var hint: String = "Ready. Stand here or hold click." if have.gte(cost) else "Need %s more" % cost.sub(have).format()
-	return {"title": "%s %d" % [String(b.row).capitalize(), b.row_index + 1], "body": "\n".join(lines), "hint": hint, "color": color}
+		edge = rar.readable_color(RelicStyle.ink)
+		lines.append(TipText.rarity_tag(rar, "button", edge))
+	lines.append(["Costs ", Tip.icon(String(b.cost_stat)), Tip.seg(cost.format(), StatStyle.buy(can)), " ", Tip.seg(cost_def.display_name, StatStyle.color(b.cost_stat))])
+	lines.append(["Gives ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % sim.press_gain_preview(button_id).format(), StatStyle.BUY_GREEN), " ", Tip.seg(reward_def.display_name, rc)])
+	return {
+		"title": "%s %d" % [String(b.row).capitalize(), b.row_index + 1], "title_color": rc, "color": edge,
+		"icon": String(b.reward_stat), "body": body, "lines": lines,
+		"hint": "Ready. Stand here or hold click." if can else "Need %s more" % cost.sub(have).format(),
+		"hint_color": StatStyle.buy(can),
+	}
 
 
 ## The pad's rarity when the sim has one and it is above common; null otherwise.
