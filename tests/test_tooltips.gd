@@ -25,7 +25,8 @@ func run(t: Object) -> void:
 	var bid: StringName = sim.button_defs.keys()[0]
 	var ps: Dictionary = PadTooltip.spec_for(sim, bid)
 	t.ok(str(ps["body"]).contains("Costs") and str(ps["body"]).contains("Gives"), "pad tooltip lists cost and reward")
-	t.ok(not str(ps["body"]).contains("Rarity"), "no rarity line while the sim has no pad_rarity or it is common")
+	var rid: StringName = sim.call(&"pad_rarity", bid) if sim.has_method(&"pad_rarity") else &"common"
+	t.eq(str(ps["body"]).contains("Rarity:"), rid != &"" and rid != &"common", "the rarity line shows exactly when the pad is above common")
 	t.ok(PadTooltip.spec_for(sim, &"nope").is_empty(), "unknown pad gives an empty spec")
 
 	var root: Node = (t as SceneTree).root
@@ -82,10 +83,10 @@ func run(t: Object) -> void:
 	t.ok(not h.visible, "hide_free hides it")
 
 	# Beside a slot: skips a spot that would cover an avoid panel.
-	var wall := Rect2(60, 0, 300, 300)
+	var wall := Rect2(430, 0, 200, 300)
 	h.avoid_extra = [wall]
-	h.show_free({"body": "Short"}, Vector2(10, 100), true)
-	h.set_beside(Rect2(10, 100, 20, 20))
+	h.show_free({"body": "Short"}, Vector2(400, 100), true)
+	h.set_beside(Rect2(400, 100, 20, 20))
 	h._process(TipHost.HOVER_DELAY + 0.01)
 	t.ok(not Rect2(h.position, h.size).intersects(wall), "a tooltip beside a slot stays off avoid panels")
 	h.hide_free()

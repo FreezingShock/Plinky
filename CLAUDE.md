@@ -15,6 +15,9 @@ Full spec: docs/SPEC.md. Art values: docs/art-bible.md. Interfaces: docs/interfa
 - Do not copy assets, names, or number tables from any existing game.
 - Do not use the word "Plinko" in game text, store copy, or file names.
 
+## Versioning
+Every PR adds a CHANGELOG.md line and bumps the version with `python3 tools/bump_version.py patch|minor` (small = patch, feature = minor). MAJOR only when Nathan asks. See docs/versioning.md.
+
 ## After every change
 1. godot --headless --script tests/run.gd
 2. godot --path . tools/screenshot.tscn, then look at the PNG

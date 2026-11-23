@@ -203,7 +203,7 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
 
 ## 2026-11-23: Zone menu, areas and the zone card
-- New `AreaDef` (content/areas/*.tres, loaded into `sim.areas_in_zone()`): a named sub-area of a zone with a glyph, a palette role and the pads it lists. Larkmoor's seven districts reuse the district ids from the scene (so the walker entering a district moves the card), the Meadow has Starting Clearing and Standing Stones (invented names), the Quarry has Forge Floor. `ZoneDef` gained `description` and `theme_role`.
+- New `AreaDef` (content/areas/*.tres, loaded into `sim.areas_in_zone()`): a named sub-area of a zone with a 7x7 pixel icon (ui/area_icons.gd), a palette role and the pads it lists. Larkmoor's seven districts reuse the district ids from the scene (so the walker entering a district moves the card), the Meadow has Starting Clearing and Standing Stones (invented names), the Quarry has Forge Floor. `ZoneDef` gained `description` and `theme_role`.
 - `ZonePanel` replaces the gate panel, the Go buttons and the Pads list: title, gate bar, a foldable Travel menu (every location with its areas, each in its zone palette colour, locked zones shown as Locked), and the current area card (description, every pad with cost, mastery). With Travel open the card folds to a one-line dithered stub (title plus one description line); closed it shows in full. Folding is `RevealBox` (8 steps, 0.22 s). Rows are focusable `ListRow`s with the marching-dot ring.
 - Clicking a location or an area in another zone travels there and shows that area. Clicking an area in the current zone only views it; walking into a district moves the card back.
 - Mastery row sums `sim.mastery` level, progress and crit bonuses over the area's pads. Tooltips use the shared `Tip.bind`.
@@ -275,3 +275,33 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Not run in-engine: check the vignette dots scroll with the ground at zoom 1-4, and Larkmoor F6 views.
 ## 2026-11-23 Pad outlines on the texel grid
 - Nathan: the pad outline looked sharp, finer than the world's pixels. draw_polyline diagonals are anti-aliased and sub-texel. Every pad outline, ring and ripple is now whole-texel rects (TexelPad._outline), and the pad snaps its position to whole texels in _ready (marker anchors are fractional, e.g. 245.5).
+
+## Lighting overhaul, stages 4 and 5 (23 Nov)
+- Stage 4: ground_fog.gdshader, a drifting two-band fog over the land, thicker toward the top of the frame, scaled by the existing mist curve (dawn, dusk, rain, night). The Bayer dither is in world texels (wpos), so it moves with the ground. Knob: fog_ground in sky.tres. Drawn only while amount > 0.01 and atmosphere is on, so it costs nothing at noon.
+- Stage 5: the time-of-day grade now has a real midnight (cool blue, 0.6 coverage) and a warm noon (0.25 coverage) instead of an almost-white day and a no-grade night. Dusk stays orange fading to magenta.
+- Not run in-engine. Parallax is still open: the far backdrop is baked into ground.png and needs a generator split.
+- PC pass fixes: vignette dither used a rounded origin, which slipped against the ground when the camera offset was fractional (Larkmoor zoom 3, 30% match). It now uses the exact origin. Pad shadow stretches from 18 texels (was 9) so it reads. Larkmoor noon was overexposed: ground relight now scales 0.55 at noon to 1.0 at a low sun, light_lift 0.22 to 0.12, the full-frame highlight lift only starts at lum 0.66, and the noon grade covers 0.15 instead of 0.25.
+
+## Backdrop parallax and PC pass tuning (23 Nov)
+- The far backdrop (sky and mountains) is now its own image per zone (backdrop_far.png, 64 texels wider each side) and ground_fg.png is the ground with those texels transparent. Both generators write them; compositing them reproduces ground.png exactly (0 mismatching pixels), and ground.png itself is unchanged, so haze, mist, walk masks and the G-buffer keep working. FarLayer (world/far_layer.gd) follows the camera by parallax_far = 0.1 of its travel in whole texels. The water band stays in the ground art so the shoreline never slips.
+- Tuning from the PC pass: ground fog halved (0.4) and tinted pale and cool instead of the dawn haze colour, god rays 1.0 to 0.6, Larkmoor noon down another step (ground relight 0.4 at noon, light_lift 0.06, light_split 0.4).
+- Not run in-engine: check the seam where the far layer meets the ground at zoom 1 to 4 and while panning to the edge of the bleed.
+## 2026-11-23: Bottom bar chips (ExpandChip)
+- Bottom-bar buttons (Rebirth, Upgrades, Relics, Settings) are icon-only at rest and open to icon + label on hover or focus. `ui/fx/expand_chip.gd`, extends PixelButton so focus ring, press sink and AsciiBox frame carry over.
+- One eased progress value, no tweens, so spamming hover is continuous. Label types in with 3 scrambled trailing glyphs (ASCII noise at ~22 Hz) and a short settle flicker. Width grows in whole texels; the HBox slides neighbours aside. Reduce motion snaps with no noise.
+- Each chip has a Tip tooltip so the icon-only state is named. New 16x16 `assets/icons/settings.png` (meadow palette). Stat rows and panel headers not changed: Nathan scoped this to the bottom bar.
+
+## 2026-11-23: Menus and the bottom bar
+- Chips stay clickable while a menu is open: Main raises the bottom bar above every panel, and `_menu_focus` no longer pulls focus out of the bar (that yank cancelled clicks, same class of bug as #71). Opening a menu from the bar still puts focus in the new menu.
+- One menu at a time (`Main._close_others`): a chip opens its menu and closes the others; the same chip closes its own. Upgrades goes through `Hud.toggle_upgrades` and `menu_opened`.
+- Upgrades and Relics panels are centred in the free area above the bottom bar (`Hud.keep_centered`). `PanelDivider` (dotted 1 texel rule with air) separates sections. Tooltips untouched: the tooltips thread owns them.
+
+## 2026-11-23: MenuRouter and the shared close X
+- Nathan could not close menus with the bottom buttons. Every opener (chips, hotkeys, the X, Esc, Feedback row) now goes through `MenuRouter` (ui/menu_router.gd): toggle closes an open menu, opening one closes the rest, Stats and Attributes share a group so switching tabs flips the window instead of closing it. Pure RefCounted, tested with stubs.
+- Spam safety: the index window's wipe now starts from its current progress (`_t`) and only plays the distance left, so reversing mid-animation never jumps or sticks. The X and chips use per-frame eased values, not tweens. `tests/test_menus.gd` spams 20 and 21 toggles and asserts the end state.
+- `CloseX` (ui/fx/close_x.gd): one animated X for the top right of Upgrades, Relics, Stats/Attributes, Settings and Feedback. Floats over the corner (top_level), arms grow out in steps each open, hover reaches one texel further and thickens, press sinks with an accent fill. Reduce motion / flashing shows it grown and still. The zone panel is a permanent HUD panel with its own Travel fold, so it has no X.
+
+## 2026-11-23: Game version and changelog
+- Version is MAJOR.MINOR.PATCH in `core/build_info.gd` (already existed at 0.1.0). MINOR = features, PATCH = fixes and tweaks, MAJOR only when Nathan asks. Rules in docs/versioning.md; CHANGELOG.md has history backfilled from #3-#95 grouped into 0.1.0 to 0.4.0, and this change is 0.5.0.
+- Shown small on the boot screen. Nathan wants it less tucked away than a Settings row, so the Update Log tile in the bottom-bar hamburger gallery will show it via `BuildInfo.string()` and `BuildInfo.changelog()`. No Settings About row.
+- Not run in-engine: boot label placement, CHANGELOG.md in the export (include_filter added).

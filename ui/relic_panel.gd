@@ -28,6 +28,7 @@ func _init() -> void:
 	_slots_row = HBoxContainer.new()
 	_slots_row.add_theme_constant_override("separation", GAP)
 	v.add_child(_slots_row)
+	v.add_child(PanelDivider.new(2))
 	var sep := Label.new()
 	sep.text = "Collection"
 	sep.add_theme_color_override("font_color", RelicStyle.dim)

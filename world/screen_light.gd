@@ -31,8 +31,9 @@ func _process(_delta: float) -> void:
 	if world_ref != null and is_instance_valid(world_ref):
 		var xf: Transform2D = world_ref.get_global_transform_with_canvas()
 		var sc: float = maxf(xf.x.length(), 0.001)
-		# snap to whole texels so the pattern steps with the camera and never shimmers
-		_mat.set_shader_parameter("w_origin", Vector2(roundf(xf.origin.x), roundf(xf.origin.y)))
+		# exact origin: rounding it to whole screen pixels slipped the pattern against the ground when the camera
+		# offset is fractional (Larkmoor at zoom 3), so the shader floors in world texels instead
+		_mat.set_shader_parameter("w_origin", xf.origin)
 		_mat.set_shader_parameter("w_scale", sc)
 
 

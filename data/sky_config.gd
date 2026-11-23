@@ -77,9 +77,13 @@ extends Resource
 ## Full-frame light pass (light_grade.gdshader): sun-side lift and away-side shade across the whole frame, 0..1.
 @export var light_side: float = 0.6
 ## Highlight-warm / shadow-cool split by luminance, 0..1.
-@export var light_split: float = 0.55
+@export var light_split: float = 0.4
 ## How much brighter a lit texel gets, 0..1.
-@export var light_lift: float = 0.22
+@export var light_lift: float = 0.06
+## Drifting fog over the land (ground_fog.gdshader), 0..1. Scaled by the mist curve: thickest at dawn and dusk and in rain.
+@export var fog_ground: float = 0.4
+## Share of the camera movement the far backdrop (sky and mountains) follows, 0 = fixed to the ground.
+@export var parallax_far: float = 0.1
 ## Horizon haze density over the far mountains, 0..1.
 @export var haze_strength: float = 0.6
 ## Drifting mist over the water, 0..1.

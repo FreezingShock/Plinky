@@ -5,6 +5,8 @@ extends Node2D
 ## coordinates are canvas pixels. Extra anchors: Arch (the way back to the onboarding meadow) and District_<id>
 ## markers that carry the district name for the banner.
 const DIR: String = "res://assets/art/zone1b/larkmoor/"
+const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1b/larkmoor/backdrop_far.png")
+const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg.png")
 const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
 const DISTRICT_RADIUS: float = 110.0   # texels; the banner shows the nearest district inside this
@@ -34,7 +36,11 @@ func _ready() -> void:
 	var bleed: Dictionary = _data.bleed
 	var ground := Sprite2D.new()
 	ground.name = "Ground"
-	ground.texture = GROUND
+	var far := FarLayer.new()
+	far.texture = FAR_BACKDROP
+	far.base = Vector2(float(bleed.ground_offset[0]) - 64.0, float(bleed.ground_offset[1]))
+	add_child(far)
+	ground.texture = GROUND_FG
 	ground.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ground.centered = false
 	ground.position = Vector2(bleed.ground_offset[0], bleed.ground_offset[1])
@@ -81,7 +87,7 @@ func _add_sky() -> void:
 	_sky.name = "Sky"
 	_sky.area = world_rect.grow(10.0)
 	_sky.shadows = _shadows
-	_sky.ground_texture = _ground.texture
+	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
 	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
 	_place_atmosphere()
 	add_child(_sky)
@@ -117,7 +123,7 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
-				_shadows.add_blob(Vector2(a.sx, a.sy), 22.0, 9.0)
+				_shadows.add_blob(Vector2(a.sx, a.sy), 26.0, 18.0)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 
