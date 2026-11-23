@@ -504,7 +504,7 @@ func _place() -> void:
 		if _momentum.position != mp:
 			_momentum.position = mp
 	for cp2: Control in _centered:
-		if cp2.visible:
+		if is_instance_valid(cp2) and cp2.visible:
 			var free_h: float = frame.y - (_bottom.size.y if _bottom != null else 0.0) - 8.0
 			var psz: Vector2 = cp2.size.max(cp2.get_combined_minimum_size())
 			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)) + float(cp2.get_meta(&"menu_slide", 0.0)))
