@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"crit_power"
+display_name = "Crit power"
+effect = &"crit_damage"
+per_level = 0.05
+cap = 20
+base_cost = 8.0
+cost_growth = 1.4
+unlock_rebirths = 3
+order = 6
