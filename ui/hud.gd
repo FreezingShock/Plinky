@@ -409,6 +409,14 @@ func _place() -> void:
 			_gate_panel.position = gp
 		if _clock_widget != null:
 			_place_clock(gp.x)
+	if _offline != null and _offline.visible:
+		# Centred in the upper third, clear of the bottom-left momentum panel and the corner panels.
+		var ow: float = minf(440.0, frame.x - 16.0)
+		_offline.custom_minimum_size.x = ow
+		_offline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var op := Vector2(roundf((frame.x - ow) * 0.5), roundf(frame.y * 0.2))
+		if _offline.position != op:
+			_offline.position = op
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
