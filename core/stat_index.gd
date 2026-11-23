@@ -18,7 +18,7 @@ const ATTR_ICONS: Dictionary = {
 ## Attribute id -> its own icon, where an attribute should not share its effect's icon.
 const ID_ICONS: Dictionary = {&"rp_rest": "rest", &"rp_lore": "lore", &"rp_fortune": "fortune"}
 ## Card labels for names too long for a card (12 characters at 6 px). The full name stays on the detail page.
-const SHORT: Dictionary = {"Rebirth Points": "Rebirth Pts"}
+const SHORT: Dictionary = {"Rebirth Points": "Rebirth Pts", "Rebirths Done": "Rebirths"}
 const MAX_LABEL: int = 12
 
 const ATTR_TIPS: Dictionary = {
