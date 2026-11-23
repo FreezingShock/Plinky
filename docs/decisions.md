@@ -237,3 +237,4 @@ First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far ga
 
 ## 2026-11-23: Mastery yield cut again
 PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.
+- Dither wipe is drawn from tiled 4x4 textures (no shader) and is inked before the first frame; the shader version showed opaque on frame 1 on the PC.
