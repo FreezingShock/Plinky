@@ -161,6 +161,7 @@ func _animate(opening: bool) -> void:
 	if FxConfig.reduce_flashing:
 		_set_t(1.0)
 		return
+	_set_t(0.0 if opening else 1.0)   # cover now, so the first drawn frame is already wiping, not opaque
 	_tween = create_tween()
 	var from: float = 0.0 if opening else 1.0
 	var to: float = 1.0 if opening else 0.0
