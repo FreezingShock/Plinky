@@ -100,8 +100,6 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 		Audio.pad_press(big, held, tier)
 	if rose:
 		_tier_up(field, anchor, tier)
-	if shake and not pulse:
-		shake.add(0.45 if big else 0.1)
 	if big and not pulse and pad is TexelPad:
 		var hs := PressSquash.new()
 		pad.add_child(hs)
@@ -116,7 +114,7 @@ func _pad_feedback(pad: CanvasItem, pos: Vector2, tier: int, tint: Color, big: b
 		cols = PopupStyle.spark_colors(tier, PopupStack.zone)
 	if pad is TexelPad:
 		# The pad animates itself (whole-texel sink and ripple), so rapid presses never stack tweens.
-		(pad as TexelPad).punch(tint)
+		(pad as TexelPad).punch(tint, 0 if pulse else (1 if big else 0) + (1 if tier >= 3 else 0))
 		if tier == 0:
 			cols = Array([(pad as TexelPad).palette[5], (pad as TexelPad).palette[6]], TYPE_COLOR, "", null)
 	else:
@@ -136,12 +134,10 @@ func _pad_feedback(pad: CanvasItem, pos: Vector2, tier: int, tint: Color, big: b
 	ParticleBurst.spawn(fx_root, pos, cols, n)
 
 
-## A new streak tier: no text (Nathan: the tier shows only as the colour of the number), just a ring, a burst, a thump and the chime.
+## A new streak tier: no text and no camera shake (Nathan): just a ring, a burst and the chime. The pad itself presses harder.
 func _tier_up(field: PressPopups, anchor: Vector2, tier: int) -> void:
 	field.burst(anchor, tier, 1.6 + 0.25 * float(tier))
 	field.ring(anchor + Vector2(0.0, -6.0), tier, 30.0 + 8.0 * float(tier))
-	if shake:
-		shake.add(0.08 + 0.05 * float(tier))
 	Audio.tier_up(tier)
 
 
