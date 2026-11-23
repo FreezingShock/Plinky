@@ -2,44 +2,51 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
+# A new push to a PR cancels that PR's superseded run. Runs on main are never cancelled, so every merge is checked.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   GODOT_VERSION: "4.7-stable"
 
 jobs:
-  test:
+  # Docs-, changelog- and markdown-only PRs cannot change game behaviour: skip the engine jobs for them.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!changelog.d/**'
+              - '!**/*.md'
+
+  # The three engine jobs run in parallel; each pays only its own import and Godot start-up.
+  unit:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache Godot binary
-        id: godot-cache
-        uses: actions/cache@v4
+      - uses: ./.github/actions/setup-godot
         with:
-          path: ~/godot
-          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+          version: ${{ env.GODOT_VERSION }}
 
-      - name: Install Godot
-        if: steps.godot-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/godot
-          curl -fsSL -o /tmp/godot.zip \
-            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
-          unzip -q /tmp/godot.zip -d ~/godot
-          mv ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot/godot
-          chmod +x ~/godot/godot
-
-      - name: Import project
-        run: ~/godot/godot --headless --path . --import
-
-      - name: Version bump script tests
+      - name: Version script tests
         run: python3 tests/test_bump_version.py
 
       - name: Unit tests (tests/run.gd)
@@ -49,11 +56,41 @@ jobs:
           # A script that fails to parse can still exit 0, so also fail on engine script errors.
           ! grep -E "SCRIPT ERROR|Parse Error" /tmp/tests.log
 
+      # Autoloads don't exist under --script, so main.gd can't be compiled by the unit tests. Boot the real
+      # project for a couple of seconds and fail on script errors. Gating: it catches runtime script errors the unit tests miss.
+      - name: Boot smoke test (loads main.gd)
+        run: |
+          set -o pipefail
+          timeout 90 ~/godot/godot --headless --path . --quit-after 180 -- --skip-title 2>&1 | tee /tmp/boot.log || true
+          ! grep -E "SCRIPT ERROR|Parse Error" /tmp/boot.log
+
+  sim:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ env.GODOT_VERSION }}
+
       - name: Balance sim (tools/sim.gd)
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --script tools/sim.gd 2>&1 | tee /tmp/sim.log
           ! grep -E "SCRIPT ERROR|Parse Error|NOT reached" /tmp/sim.log
+
+  play:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ env.GODOT_VERSION }}
 
       # Plays the real main scene through the meadow, Larkmoor, every sky state and pad presses, and fails on any
       # script or shader error (a per-frame error in a layer shows up as a "fast" frame time, not a crash).
@@ -68,10 +105,14 @@ jobs:
       - name: Frame budget (shots/bench.json)
         run: python3 tools/check_frame_budget.py shots/bench.json 150 300 250 1200
 
-      # Autoloads don't exist under --script, so main.gd can't be compiled by the unit tests. Boot the real
-      # project for a couple of seconds and fail on script errors. Gating: it catches runtime script errors the unit tests miss.
-      - name: Boot smoke test (loads main.gd)
+  # One stable check name for the whole pipeline ("test"). Skipped engine jobs (docs-only PRs) count as passing.
+  test:
+    needs: [changes, unit, sim, play]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: All jobs passed or were skipped
         run: |
-          set -o pipefail
-          timeout 90 ~/godot/godot --headless --path . --quit-after 180 -- --skip-title 2>&1 | tee /tmp/boot.log || true
-          ! grep -E "SCRIPT ERROR|Parse Error" /tmp/boot.log
+          echo '${{ toJSON(needs) }}'
+          ! echo '${{ join(needs.*.result, ' ') }}' | grep -E "failure|cancelled"

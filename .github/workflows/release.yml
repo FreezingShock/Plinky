@@ -1,0 +1,57 @@
+name: Release
+
+# Stamps the version after a PR merges. PRs add a changelog.d fragment instead of bumping (docs/versioning.md);
+# this folds the fragments into CHANGELOG.md, bumps core/build_info.gd and export_presets.cfg, and pushes one
+# "Release vX.Y.Z" commit to main. Runs are serialised so two quick merges never race for the same number.
+
+on:
+  push:
+    branches: [main]
+    paths: ["changelog.d/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          # RELEASE_TOKEN (optional repo secret): a PAT from a repo admin, which a main ruleset can let bypass via the
+          # "Repository admin" role. Without it the default token is used, which only works if the ruleset lets Actions bypass.
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+
+      - name: Fold fragments and bump
+        id: bump
+        run: |
+          python3 tests/test_bump_version.py
+          python3 tools/bump_version.py release | tee /tmp/bump.log
+          if grep -q "nothing to release" /tmp/bump.log; then echo "changed=false" >> "$GITHUB_OUTPUT"; else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+$' /tmp/bump.log | tail -1)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.bump.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release v${{ steps.bump.outputs.version }} [skip ci]"
+          # Main may have moved while this ran; only version files and fragments are touched here, so rebasing is safe.
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main
+          done
+          # Rejected by a ruleset (or lost every race): leave the fragments in place. They are folded into the next
+          # release, so nothing is lost; the version just does not advance until the bypass is set up.
+          echo "::warning::Release push to main was refused. Add the RELEASE_TOKEN secret or a ruleset bypass (docs/versioning.md)."
+          exit 0
