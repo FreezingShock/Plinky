@@ -4,8 +4,8 @@ extends Control
 ## and an accent tick under each rebirth. Draws only; HistoryPanel feeds it RunStats.samples.
 
 const BAR_W: int = 2
-const BAR_GAP: int = 1
-const HEIGHT: int = 56
+const BAR_GAP: int = 0
+const HEIGHT: int = 72
 
 var samples: PackedFloat32Array = PackedFloat32Array():
 	set(v):
@@ -64,7 +64,7 @@ func _draw() -> void:
 	var first: int = samples.size() - shown
 	var inner: int = h - 4
 	var hs: Array[int] = bar_heights(samples.slice(first), inner)
-	var x0: int = w - 1 - shown * (BAR_W + BAR_GAP)   # newest bar sits at the right edge
+	var x0: int = 1   # bars grow in from the left, so a young session is not a packed right edge
 	for i in shown:
 		var bx: int = x0 + i * (BAR_W + BAR_GAP)
 		var bh: int = hs[i]

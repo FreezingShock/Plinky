@@ -4,8 +4,8 @@ extends PanelContainer
 ## lifetime totals. Read only: it shows Sim and RunStats and never changes them. Same window style as the Stats and
 ## Attributes gallery (title, divider, close X, scrolling body); opens through MenuRouter with the shared dither wipe.
 
-const WIDTH: float = 396.0
-const SCROLL_H: float = 190.0
+const WIDTH: float = 316.0
+const SCROLL_H: float = 172.0
 const REFRESH: float = 0.5
 
 var sim: Sim
@@ -95,12 +95,13 @@ func refresh() -> void:
 		_body.remove_child(c)
 		c.queue_free()
 	var rs: RunStats = sim.run_stats
-	_body.add_child(_heading("Income, last 10 minutes"))
+	var sd: StatDef = sim.stat_defs.get(sim.config.income_stat) as StatDef
+	_body.add_child(_heading("%s per second, last 10 minutes" % (sd.display_name if sd != null else "Income")))
 	_graph = HistoryGraph.new(WIDTH - 14.0)
 	_graph.samples = rs.samples
 	_graph.marks = rs.rebirth_marks
 	_body.add_child(_graph)
-	_graph_note = _line("Bars are Cash per second on a log scale. Gold lines mark rebirths.", RelicStyle.dim)
+	_graph_note = _line("Log scale. Gold lines mark rebirths.", RelicStyle.dim)
 	if rs.samples.size() < 2:
 		_graph_note.text = "Collecting data. A bar is added every %d seconds." % int(RunStats.SAMPLE_EVERY)
 	_body.add_child(_graph_note)
