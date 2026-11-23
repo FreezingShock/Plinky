@@ -12,6 +12,9 @@ under a new version heading and updates the version everywhere.
 ## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
 
+## 0.26.5 - 2026-11-23
+- Stat counters punch with an overshoot when a big gain lands (stepped, skipped under Reduce motion).
+
 ## 0.26.4 - 2026-11-23
 - Relics menu: the rarity name is back on each card (small, dim) with an On or Swap mark, bonuses wrap whole instead of mid-phrase, and the collection shows three card rows.
 
