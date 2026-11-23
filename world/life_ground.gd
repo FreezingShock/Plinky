@@ -15,6 +15,10 @@ const LEAN_2_AT: float = 0.85          # wave level for a two-texel lean
 var backdrop: Texture2D
 var origin: Vector2i = Vector2i.ZERO   # where the backdrop's texel (0, 0) sits in the 640x360 frame
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
+## Group of the node the grass bends away from (the walker). Empty = no bending.
+var pusher_group: StringName = &""
+const BEND_RADIUS: float = 16.0
+var _push: Node2D
 var _tips: Array[Vector2i] = []
 var _t: float = 0.0
 var _step: int = -1
@@ -34,14 +38,33 @@ func _process(delta: float) -> void:
 	if MeadowLife.reduce_motion:
 		return
 	_t += delta
+	if pusher_group != &"" and (_push == null or not is_instance_valid(_push)):
+		_push = get_tree().get_first_node_in_group(pusher_group) as Node2D
 	var s: int = int(_t / STEP)
 	if s != _step:
 		_step = s
 		queue_redraw()
 
 
+## Lean away from the walker: 2 texels inside half the radius, 1 inside the radius, else 0 (wind rules).
+## Tips beside the walker's feet (same column) stay upright.
+static func bend(tip: Vector2i, pusher: Vector2) -> int:
+	if pusher == Vector2.INF:
+		return 0
+	var d: Vector2 = Vector2(tip) - pusher
+	d.y *= 2.0  # the ground is a 2:1 isometric plane, so one texel down is two across
+	var dist: float = d.length()
+	if dist > BEND_RADIUS or absf(d.x) < 1.0:
+		return 0
+	var mag: int = 2 if dist < BEND_RADIUS * 0.5 else 1
+	return mag if d.x > 0.0 else -mag
+
+
 ## Lean of one tip this step, in texels: -2 .. +2.
 func _lean(p: Vector2i, t: float) -> int:
+	var b: int = bend(p, _push.position if _push != null else Vector2.INF)
+	if b != 0:
+		return b
 	var phase: float = float(p.x) * WAVE_PER_TEXEL - t * WAVE_SPEED + float(p.y) * 0.011
 	var w: float = sin(phase) + 0.35 * sin(phase * 2.3 + 1.7)
 	w *= 0.7 + 0.9 * MeadowLife.wind   # a gust leans the grass further, a calm spell less (wind 0.2 is the old look)

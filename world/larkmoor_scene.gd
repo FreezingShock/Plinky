@@ -19,6 +19,7 @@ var ground_path: String = DIR + "ground.png"
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 
 var _data: Dictionary = {}
+var react: LifeReact
 var _sky: SkyCycle
 var districts: Array[Dictionary] = []   # {id, name, pos}
 
@@ -103,10 +104,17 @@ func _add_life(ground: Sprite2D) -> void:
 	air.z_index = 10
 	add_child(air)
 	air.setup(life, ground)
+	react = LifeReact.new()  # bushes rustle, birds scatter, shore ripples, grass bends (world/life_react.gd)
+	react.name = "LifeReact"
+	react.z_index = 10
+	add_child(react)
+	react.setup(life, life.get("sway", []) as Array, 14)  # a bigger meadow, more birds
+	lg.pusher_group = &"walker"
 
 
 ## Each tall prop is its own sprite at its foot, so the walker sorts behind or in front of it.
 func spawn_occluders(parent: Node2D) -> void:
+	var bush_sprites: Array = []
 	for s: Dictionary in _data.sprites:
 		var sp := Sprite2D.new()
 		sp.name = "Occ_" + String(s.file).get_file().get_basename()
@@ -120,3 +128,7 @@ func spawn_occluders(parent: Node2D) -> void:
 			sp.offset.x -= float(SkyCycle.SWAY_PAD)
 			sp.material = _sky.sway_material
 		parent.add_child(sp)
+		if String(s.kind) == "bush":
+			bush_sprites.append(sp)
+	if react != null:
+		react.set_bushes(bush_sprites)

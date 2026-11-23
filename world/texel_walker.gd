@@ -30,6 +30,7 @@ const SQUASH_TIME: float = 0.18
 
 
 func _ready() -> void:
+	add_to_group(&"walker")
 	_sprite = Sprite2D.new()
 	_sprite.texture = ATLAS
 	_sprite.centered = false
