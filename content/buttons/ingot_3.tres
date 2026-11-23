@@ -4,13 +4,13 @@
 
 [resource]
 script = ExtResource("1")
-id = &"f3"
+id = &"ingot_3"
 rarity = &"epic"
 zone = &"zone2"
-row = &"forge"
+row = &"ingot"
 row_index = 2
-cost_stat = &"cash"
-base_cost = 1000000.0
+cost_stat = &"slag"
+base_cost = 40000
 cost_growth = 10.0
-reward_stat = &"slag"
-reward = 64.0
+reward_stat = &"ingot"
+reward = 64
