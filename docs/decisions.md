@@ -119,3 +119,4 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
 - Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
 
+| 2026-11-23 | Window placement (core/window_place.gd, DisplaySettings.place_window): first launch centres the window on the screen under the cursor (else primary), 90% of that screen at most. Every later start, and every return from fullscreen, clamps the window wholly onto the one screen that holds most of it, shrinking if needed. Dead zones between monitors of different sizes pull it to the nearest screen | The exe opened across the gap on a 3840x1483 two-monitor desktop. Pure Rect2i math with tests: straddling, dead zone, off-screen, oversized, negative coordinates, tiny screens. |

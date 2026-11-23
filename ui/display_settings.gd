@@ -174,6 +174,8 @@ static func commit_fullscreen(win: Window, on: bool) -> void:
 	if not on and resolution != Vector2i.ZERO:
 		_ignore_resize_until_ms = Time.get_ticks_msec() + 800
 		win.set_deferred("size", resolution)
+	if not on:
+		place_window.call_deferred(win, false)  # after the size above, so the window is never off-screen or across a gap
 
 
 static func toggle_fullscreen(win: Window) -> void:
@@ -294,6 +296,39 @@ static func apply_startup(win: Window) -> void:
 			resolution = Vector2i.ZERO
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = fps_cap
+	place_window(win, resolution == Vector2i.ZERO and screen < 0)
+
+
+## Usable rect (taskbar and menu bar excluded) of every screen, in desktop coordinates.
+static func usable_screens() -> Array[Rect2i]:
+	var out: Array[Rect2i] = []
+	for i in screen_count():
+		out.append(DisplayServer.screen_get_usable_rect(i))
+	return out
+
+
+## Put a windowed window wholly on one screen. `first_launch` centres it on the screen under the cursor (else the
+## primary), since the OS may have opened it across the dead zone between monitors of different sizes. Otherwise
+## the current rect is clamped onto the screen that holds most of it. Does nothing in fullscreen or maximised.
+static func place_window(win: Window, first_launch: bool) -> void:
+	if fullscreen or win.mode != Window.MODE_WINDOWED:
+		return
+	var screens: Array[Rect2i] = usable_screens()
+	if screens.is_empty():
+		return
+	var want: Rect2i
+	if first_launch:
+		var idx: int = WindowPlace.screen_at(DisplayServer.mouse_get_position(), screens)
+		if idx < 0:
+			idx = clampi(DisplayServer.get_primary_screen(), 0, screens.size() - 1)
+		want = WindowPlace.centered(screens[idx], win.size, BASE)
+	else:
+		want = WindowPlace.fit(Rect2i(win.position, win.size), screens, BASE)
+	if want.position == win.position and want.size == win.size:
+		return
+	_ignore_resize_until_ms = Time.get_ticks_msec() + 800
+	win.size = want.size
+	win.position = want.position
 
 
 static func set_momentum_meter(on: bool) -> void:
