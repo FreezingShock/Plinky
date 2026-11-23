@@ -53,6 +53,30 @@ Add a row here when you add one.
 6. Pool anything spawned per press (popups, particle bursts) once presses can come faster than 10 a second.
 7. Check Low and High with the benchmark before merging a visual PR, and paste the table in the PR.
 
+## Budgets (benchmarked on an RTX 3060 Ti, 1080p, vsync off; main at a4219f2)
+Measured: meadow and Larkmoor both sit at about 2000 to 2150 fps (about 0.5 ms) in every sky state; Larkmoor costs
+about the same as the meadow. Presses at High are about 1040 fps (about 1 ms). Rain had 4.9 to 5.3 ms spike frames.
+A 3060 Ti hides integrated-GPU costs, so the budgets keep a wide margin. Integrated graphics is assumed 8 to 15 times
+slower on the post pass and fill; that ratio is an estimate, not a measurement. Get one real integrated-GPU run when a
+machine is available.
+
+| Budget (3060 Ti, High, 1080p) | Limit | Why |
+|---|---|---|
+| Whole frame, idle, any sky state | avg 0.7 ms (about 1400 fps), p99 1.5 ms | 1 ms here is 8 to 15 ms on integrated, inside 16.7 |
+| Whole frame, pad presses | avg 1.2 ms, p99 2.5 ms, worst 4 ms | a spike above 4 ms here is a visible hitch on a slow GPU |
+| One new visual system (a layer, a shader pass) | at most 0.1 ms avg | there are about 8 such systems in flight |
+| Whole frame on Low | at least 25% under High | Low exists for slow GPUs |
+| Draw calls | under 250 | High peaks near 200 now |
+| Nodes in the active zone | under 700 | Larkmoor is about 414 headless |
+
+A PR that adds a visual system pastes the `tools/bench.gd` table (Low and High) and states the delta against these.
+
+## Rain spikes
+SkyRain is stateless (no pooling to do): every drop is a pure function of time, redrawn at 12 fps. The 5 ms spikes
+were that 12 fps redraw landing on one frame: about 150 drops times three `sin()` hashes plus the rects. Two of the
+three hashes per drop are constant, so they are now cached once, and Low and Medium draw 40% and 70% of the drops.
+Spike frames on a real GPU after this change: not yet measured.
+
 ## Open
 - No GPU numbers yet. A real-hardware run of tools/bench.gd is needed to find the actual hot spot; the CPU
   side is cheap enough that the post shader and window fill rate at 4K may matter more.

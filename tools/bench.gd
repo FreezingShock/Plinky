@@ -9,12 +9,14 @@ extends SceneTree
 ## Headless (no GPU: draw calls, objects and VRAM read 0, frame time is script and engine overhead only,
 ## still useful to catch a script regression):
 ##   godot --headless --path . --script tools/bench.gd -- --quality=high
-## Phases: idle (just the world life), presses (a pad press every 6 frames: ripples, popups, particles),
-## zoom4 (idle at 4x zoom, the camera's closest level).
+## Per zone (meadow, then Larkmoor) and quality: idle at noon, sunset, night and in rain, then presses (a pad
+## press every 6 frames: ripples, popups, particles) and zoom4 (idle at 4x zoom, the camera's closest level).
 
 const WARMUP_FRAMES: int = 90
 const DEFAULT_FRAMES: int = 300
 const PRESS_EVERY: int = 6
+## [name, SkyCycle phase (0 midnight, 0.25 sunrise, 0.5 noon, 0.75 sunset), rain 0..1]
+const SKY_STATES: Array = [["noon", 0.5, 0.0], ["sunset", 0.75, 0.0], ["night", 0.0, 0.0], ["rain", 0.5, 1.0]]
 
 var frames: int = DEFAULT_FRAMES
 var results: Array[Dictionary] = []
@@ -30,23 +32,55 @@ func _init() -> void:
 			var q: int = GraphicsQuality.parse(a.trim_prefix("--quality="))
 			if q >= 0:
 				levels = [q]
-	# True cost, not a vsync-clamped 16.7 ms.
-	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	Engine.max_fps = 0
-
 	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main  # Juice parents its popup layer to the current scene
+	_uncap()
 	await _frames(WARMUP_FRAMES)
+	_uncap()  # main and the saved settings turn vsync back on, so force it off again after they have run
 
 	for level: int in levels:
 		GraphicsQuality.set_level(level, false)
 		await _frames(30)  # let the level take effect
-		results.append(await _phase(level, "idle", main, false, 2))
-		results.append(await _phase(level, "presses", main, true, 2))
-		results.append(await _phase(level, "zoom4", main, false, 4))
+		await _zone_runs(level, main, "meadow")
+	# Larkmoor last: it needs the meadow gate open, and there is no way back worth timing.
+	var sim: Sim = main.get("sim") as Sim
+	for z: ZoneDef in sim.zone_defs.values():
+		if z.next_zone == &"larkmoor":
+			sim.gates_open[z.id] = true
+	if sim.enter_zone(&"larkmoor"):
+		await _frames(180)  # the zone transition plays out
+		_uncap()
+		for level: int in levels:
+			GraphicsQuality.set_level(level, false)
+			await _frames(30)
+			await _zone_runs(level, main, "larkmoor")
+	SkyCycle.debug_phase = -1.0
+	SkyCycle.debug_rain = -1.0
 	_report()
 	quit(0)
+
+
+## Real cost, not a vsync- or cap-clamped 16.7 ms. Saved settings default vsync on.
+func _uncap() -> void:
+	DisplaySettings.vsync = false
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+
+
+## One zone at one quality: the sky states first (the lighting and rain cost), then presses and 4x zoom
+## (presses are the heaviest thing the player does).
+func _zone_runs(level: int, main: Node, zone: String) -> void:
+	for st: Array in SKY_STATES:
+		SkyCycle.debug_phase = float(st[1])
+		SkyCycle.debug_rain = float(st[2])
+		await _frames(20)
+		results.append(await _phase(level, zone + "/" + String(st[0]), main, false, 2))
+	SkyCycle.debug_phase = SKY_STATES[0][1]
+	SkyCycle.debug_rain = SKY_STATES[0][2]
+	await _frames(20)
+	results.append(await _phase(level, zone + "/presses", main, true, 2))
+	results.append(await _phase(level, zone + "/zoom4", main, false, 4))
 
 
 func _frames(n: int) -> void:
@@ -85,9 +119,9 @@ func _phase(level: int, phase: String, main: Node, press: bool, zoom: int) -> Di
 
 
 func _report() -> void:
-	print("quality  phase    fps    avg ms  p95    p99    max    >16.7ms  draws  objs  nodes")
+	print("quality  phase             fps    avg ms  p95    p99    max    >16.7ms  draws  objs  nodes")
 	for r: Dictionary in results:
-		print("%-8s %-8s %-6d %-7.2f %-6.2f %-6.2f %-6.2f %-8s %-6d %-5d %d" % [
+		print("%-8s %-17s %-6d %-7.2f %-6.2f %-6.2f %-6.2f %-8s %-6d %-5d %d" % [
 			r.quality, r.phase, roundi(float(r.fps)), float(r.avg), float(r.p95), float(r.p99), float(r.max),
 			"%d%%" % roundi(float(r.over_budget) * 100.0), int(r.draw_calls_max), int(r.objects_max), int(r.nodes_max)])
 	var out_dir: String = ProjectSettings.globalize_path("res://shots")
