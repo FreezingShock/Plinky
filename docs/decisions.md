@@ -220,3 +220,6 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - Colour-blind cue: ink tick on Ready, X otherwise. Hover lifts 1 texel and lights the rim; the walker approaching brightens it. The pad redraws only when its signature changes.
 - Not yet run in-engine; PC thread to verify and capture before/after.
 - Nathan, 23 Nov: pads are unique, green when affordable and red when not, with a secondary colour for the stat. Buy-state green/red are fixed hex (not palette) so they read in every zone; stat colours: mult blue, reb violet, slag amber. Each pad gets one of four inlay motifs from its id, and four stat-colour gems on the plate corners.
+
+## 2026-11-23: Mastery retuned after the PC sim
+First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far gate at 51.9 min instead of 61 (best pad level 10, 22 of 250 area levels). Crit chance counts too: at x5 damage, +3% chance is about +12% expected yield, so it pushed as hard as the yield did. Now +0.2% yield and +0.1% crit chance per level (best pad at level 10: about +6% expected on that pad). Estimate only, about 59 min; the PC sim still has to confirm.

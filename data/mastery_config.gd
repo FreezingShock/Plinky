@@ -9,8 +9,8 @@ extends Resource
 @export var xp_growth: float = 1.35
 @export var max_level: int = 25
 ## Press reward is multiplied by (1 + level * yield_per_level).
-@export var yield_per_level: float = 0.015
+@export var yield_per_level: float = 0.002
 ## Added to the global crit chance (a fraction, 0.003 = 0.3 percent) on this pad's presses.
-@export var crit_chance_per_level: float = 0.003
+@export var crit_chance_per_level: float = 0.001
 ## Added to GameConfig.crit_multiplier on this pad's crits (before relic crit damage).
 @export var crit_damage_per_level: float = 0.04
