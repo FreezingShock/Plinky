@@ -48,7 +48,7 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 		if big:
 			sq.hitstop(FxConfig.HITSTOP_MS * 2)
 	ParticleBurst.spawn(fx_root, pos, cols, randi_range(10, 14) if big else -1)
-	PopupStack.spawn(_popup_parent(), _to_screen(pos) + Vector2(-8, -30), amount, big, held)
+	PopupStack.spawn(_popup_parent(), _to_screen(pos) + Vector2(-8, -30), amount, big, held, big)
 	if shake: shake.add(0.45 if big else 0.1)
 	Audio.pad_press(big, held)
 

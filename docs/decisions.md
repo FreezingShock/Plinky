@@ -202,6 +202,14 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
 
+## 2026-11-23: Pad mastery and crits
+- Every press gives the pad `xp_per_press` XP. Level n+1 needs `first_level_xp * xp_growth^n` XP; cap `max_level`. Each level adds `yield_per_level` to that pad's reward multiplier, `crit_chance_per_level` to its crit chance and `crit_damage_per_level` to its crit multiplier (added to `GameConfig.crit_multiplier`, then relic crit damage multiplies it). All numbers are in `content/config/mastery.tres`.
+- Mastery is permanent: rebirth keeps it, `new_game` clears it. It sits on the pad, not the stat, so a stat index can still show the global crit chance (attribute only) and the per-pad value separately.
+- Crit chance and crit damage already existed (Crit chance attribute, Crit Damage relic, `crit_multiplier` 5). Added `Sim.crit_chance(button_id)` and `Sim.crit_damage(button_id)`; no argument gives the global value.
+- Data API for UI threads: `Sim.mastery` (`level`, `xp`, `xp_for_next`, `progress`, `yield_mult`, `crit_chance_bonus`, `crit_damage_bonus`), `Sim.area_mastery(zone)` -> `{pads, level_sum, level_cap, fraction, maxed}`, EventBus `mastery_changed(button_id, level, xp)` (every press) and `mastery_leveled(button_id, level)`.
+- Save version 2 adds `game.mastery` as `{pad id: [level, xp_in_level]}`. The v1 migration adds an empty one. Unknown ids drop, levels clamp to the cap.
+- Crit popup: a crit number ends in "!" and takes the crit gold (`PopupNumber.CRIT_COLOR`), on top of the existing 24 px size, hit-stop, burst and shake.
+- Balance: the starting curve (12 XP, x1.35, cap 25, +1.5% yield per level) gives +15% yield, +3% crit chance and +0.4 crit damage on a pad after roughly 650 presses on it (level 10). Not yet measured against the 61 minute Larkmoor pacing; `tools/sim_larkmoor.gd` now prints the mastery reached by the far gate, to run on the PC.
 ## 2026-11-23 Pad plates and press feel
 - The old pad was only a 1px outline (the meadow art bakes no pads by design; TexelPad drew the ring). Not a render glitch.
 - Pads are now a raised plate drawn live in palette indices: ink outline, earth side faces (lit left, shadow right), dithered lit rim, glow inlay.

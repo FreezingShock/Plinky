@@ -17,6 +17,9 @@ signal critter_spawned()
 signal critter_gone()
 ## Heat crossed the zone's hot line (see ZoneDef.heat_hot_at).
 signal heat_hot_changed(hot: bool)
+## A press gave a pad XP. level and xp are the pad's after the press.
+signal mastery_changed(button_id: StringName, level: int, xp: float)
+signal mastery_leveled(button_id: StringName, level: int)
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -26,6 +29,8 @@ var zone_defs: Dictionary = {}       # StringName -> ZoneDef
 var attribute_defs: Dictionary = {}  # StringName -> AttributeDef
 ## Owned and equipped relics. Built by ContentLoader. Always non-null after load.
 var relics: RelicInventory
+## Pad XP and levels. Replaced by ContentLoader with the content's config.
+var mastery: Mastery = Mastery.new()
 
 # State
 var stats: Dictionary = {}           # StringName -> BigNum
@@ -103,6 +108,7 @@ func new_game() -> void:
 	press_count = 0
 	rebirth_count = 0
 	relic_drops = 0
+	mastery.clear()
 	ui_flags = {}
 	momentum = 0.0
 	heat = 0.0
@@ -183,7 +189,7 @@ func press_gain_preview(button_id: StringName) -> BigNum:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null:
 		return BigNum.zero()
-	return Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), 1.0)
+	return Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), 1.0).mul(BigNum.from_float(mastery.yield_mult(button_id)))
 
 
 ## MULT_GAIN relics apply to rewards that go into a stat flagged relics_boost_gain.
@@ -227,8 +233,28 @@ func walk_speed_mult() -> float:
 	return 1.0 + effect_total(&"walk_speed")
 
 
-func crit_chance() -> float:
-	return clampf(effect_total(&"crit_chance"), 0.0, 1.0)
+## Crit chance, 0 to 1. Pass a button id to include that pad's mastery bonus.
+func crit_chance(button_id: StringName = &"") -> float:
+	var c: float = effect_total(&"crit_chance")
+	if button_id != &"":
+		c += mastery.crit_chance_bonus(button_id)
+	return clampf(c, 0.0, 1.0)
+
+
+## What a crit multiplies the reward by: base + pad mastery, then relic crit damage.
+func crit_damage(button_id: StringName = &"") -> float:
+	var base: float = config.crit_multiplier
+	if button_id != &"":
+		base += mastery.crit_damage_bonus(button_id)
+	return base * (relics.multiplier(RelicDef.Effect.CRIT_DAMAGE) if relics != null else 1.0)
+
+
+## Mastery rollup for a zone's pads (see Mastery.area). Empty zone gives zeros.
+func area_mastery(z_id: StringName) -> Dictionary:
+	var ids: Array = []
+	for b: ButtonDef in buttons_in_zone(z_id):
+		ids.append(b.id)
+	return mastery.area(ids)
 
 
 ## Seconds between repeat presses while standing on a pad.
@@ -260,23 +286,27 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 		return false
 	if not god_mode:
 		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
-	var chance: float = crit_chance()
+	var chance: float = crit_chance(button_id)
 	var crit: bool = chance > 0.0 and rng.randf() < chance
 	var crit_mult: float = 1.0
 	if crit:
-		crit_mult = config.crit_multiplier * relics.multiplier(RelicDef.Effect.CRIT_DAMAGE)
+		crit_mult = crit_damage(button_id)
 	var presses: int = 1
 	var dbl: float = relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE)
 	if dbl > 0.0 and rng.randf() < dbl:
 		presses = 2
-	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses)))
+	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id)))
 	if is_hot():
 		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
+	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press)
 	_check_gates()
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
+	mastery_changed.emit(button_id, mastery.level(button_id), mastery.xp(button_id))
+	if levels_up > 0:
+		mastery_leveled.emit(button_id, mastery.level(button_id))
 	if allow_pulse:
 		_update_streak(b)
 		var drop: StringName = _roll_relic_drop()
@@ -605,6 +635,7 @@ func to_dict() -> Dictionary:
 		"last_drop_at": _last_drop_at,
 		"ui_flags": ui_flags.duplicate(true),
 		"relics": relics.to_dict(),
+		"mastery": mastery.to_dict(),
 	}
 
 
@@ -649,5 +680,6 @@ func from_dict(d: Dictionary) -> bool:
 	if rd is Dictionary:
 		relics.from_dict(rd)
 	relics.set_rebirths(rebirth_count)
+	mastery.from_dict(d.get("mastery", {}), button_defs)
 	_dirty.clear()
 	return true
