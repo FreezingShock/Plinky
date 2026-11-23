@@ -14,7 +14,7 @@ const HIT: Rect2 = Rect2(-34.0, -56.0, 68.0, 62.0)
 
 var zone_id: StringName
 var art: StringName = &""
-var walker: TexelWalker
+var walker: Node2D   ## typed loosely: TexelWalker reads the GameState autoload, which --script tests cannot compile
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _t: float = 0.0
 var _inside: bool = false
