@@ -68,4 +68,15 @@ static func counters() -> Dictionary:
 		"vram_mb": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0,
 		"script_ms": Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 		"physics_ms": Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+		"pipelines": pipeline_compiles(),
 	}
+
+
+## Total render pipelines the driver has compiled so far (canvas, mesh, surface, draw, specialization). A frame where
+## this rises is a shader or pipeline compile stall; a hitch where it stays flat is something else.
+static func pipeline_compiles() -> int:
+	return int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_CANVAS)) \
+		+ int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_MESH)) \
+		+ int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_SURFACE)) \
+		+ int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_DRAW)) \
+		+ int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_SPECIALIZATION))
