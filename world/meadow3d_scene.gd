@@ -10,6 +10,7 @@ const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 
 var _data: Dictionary = {}
+var react: LifeReact
 var _sky: SkyCycle
 
 
@@ -66,6 +67,12 @@ func _add_life(ground: Sprite2D) -> void:
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
 	add_child(air)
 	air.setup(life, ground)
+	react = LifeReact.new()
+	react.name = "LifeReact"
+	react.z_index = 10
+	add_child(react)
+	react.setup(life, life.get("sway", []) as Array)
+	lg.pusher_group = &"walker"
 
 
 ## Day/night shade, rain and wind (world/sky_cycle.gd). Added after the life layers; its own z indices place it.
@@ -78,6 +85,7 @@ func _add_sky() -> void:
 ## Adds each tall prop as its own sprite under `parent`, which must have y_sort_enabled. The sprite sits at the
 ## prop's foot, so anything south of the foot draws over it and anything behind it is covered by it.
 func spawn_occluders(parent: Node2D) -> void:
+	var bush_sprites: Array = []
 	for s: Dictionary in _data.sprites:
 		var sp := Sprite2D.new()
 		sp.name = "Occ_" + String(s.file).get_file().get_basename()
@@ -91,3 +99,7 @@ func spawn_occluders(parent: Node2D) -> void:
 			sp.offset.x -= float(SkyCycle.SWAY_PAD)
 			sp.material = _sky.sway_material
 		parent.add_child(sp)
+		if String(s.kind) == "bush":
+			bush_sprites.append(sp)
+	if react != null:
+		react.set_bushes(bush_sprites)
