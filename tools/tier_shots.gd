@@ -38,7 +38,7 @@ func _tour(zone: StringName, tag: String) -> void:
 		var pad: Node2D = main.pads.get(ids[i]) as Node2D
 		if pad == null:
 			continue
-		await _goto(pad.position + Vector2(0, 14), 3)
+		await _goto(pad.position + Vector2(34, 18), 4)
 		await _shot("%s_%d" % [tag, i])
 	main.queue_free()
 	await _wait(5)
@@ -48,9 +48,14 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
 	var sim: Sim = GameState.sim
 	sim.gates_open[&"zone1"] = true
-	sim.dev_open_tiers()
+	if not "locked" in OS.get_cmdline_user_args():
+		sim.dev_open_tiers()
 	for k: StringName in [&"sunlight", &"dewdrop", &"clover", &"thistle", &"heather", &"foxglove", &"starbloom"]:
 		sim.stats[k] = BigNum.from_float(1.0e5)
-	await _tour(&"zone1", "t1")
-	await _tour(&"larkmoor", "t2")
+	await _tour(&"zone1", "t1" + tag_suffix())
+	await _tour(&"larkmoor", "t2" + tag_suffix())
 	get_tree().quit(0)
+
+
+func tag_suffix() -> String:
+	return "_locked" if "locked" in OS.get_cmdline_user_args() else ""

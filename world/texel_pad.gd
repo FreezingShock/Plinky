@@ -26,17 +26,21 @@ const STAT_COLORS: Dictionary = {
 	&"heather": Color("c27cff"), &"foxglove": Color("ffb62e"), &"starbloom": Color("ff7bff"),
 	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
 }
-## One 5x3 flower per tier (# = petal in the stat colour, c = bright heart), drawn on both wings of the plate.
+## One standing flower per tier, 13 texels wide, drawn bottom-up from the plate centre: # petal (stat colour), d shaded
+## petal, c bright heart, g stem and leaf. Each has its own silhouette so the six tiers read apart at 1x.
 const FLOWERS: Dictionary = {
-	&"sprout": ["#...#", ".#.#.", "..c.."],
-	&"clover": ["##.##", "#####", "..c.."],
-	&"thistle": ["#.#.#", ".#c#.", "..#.."],
-	&"heather": ["#.#.#", "#.#.#", "..c.."],
-	&"foxglove": ["..c..", ".###.", "#####"],
-	&"starbloom": ["..#..", "##c##", ".#.#."],
+	&"sprout": ["......c......", ".....ccc.....", "....ccWcc....", ".....ccc.....", "......g......", "..gg..g..gg..", ".gggg.g.gggg.", ".ggggggggggg.", "..ggg.g.ggg..", "......g......"],
+	&"clover": ["..###...###..", ".#####.#####.", ".##d##.##d##.", "..###.c.###..", "...d.#g#.d...", "..###.g.###..", ".#####g#####.", ".##d##g##d##.", "..###.g.###..", "......g......"],
+	&"thistle": ["#..#..#..#..#", ".#.#.#.#.#.#.", "..###ccc###..", "..d#######d..", "..d#######d..", "...ddd#ddd...", "..g..ggg..g..", ".gg...g...gg.", "..ggg.g.ggg..", "......g......"],
+	&"heather": ["......#......", ".....#d#.....", "....#d.d#....", ".....#d#.....", "...#d.g.d#...", "..#d#.g.#d#..", "...d..g..d...", "..#d#.g.#d#..", ".....ggg.....", "......g......"],
+	&"foxglove": ["......#......", ".....###.....", ".....#c#.....", "....#####....", "....#d.d#....", "...#######...", "...#d...d#...", "..#########..", "..#d.ggg.d#..", "....g.g.g...."],
+	&"starbloom": ["......#......", ".....###.....", "....#####....", "#############", ".###########.", "..####c####..", "...#######...", "..###...###..", ".###..g..###.", "......g......"],
 }
+const LEAF: Color = Color("3d9a45")
+const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
 var tier_row: StringName = &""
 var locked: bool = false
+var _bloom_t: float = 0.0   # 1 -> 0 after the tier opens: the flower rises and bursts into petals
 var rarity: RarityDef
 var emblem_bits: int = 0  # 15 bits: the unique pattern for this pad
 var stat_color: Color = Color("f6efd9")
@@ -80,12 +84,19 @@ func _ready() -> void:
 	if b != null:
 		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
+	if b != null and _sim().has_signal(&"tier_opened"):
+		_sim().tier_opened.connect(_on_tier_opened)
 	hold = HoldPress.new()
 	add_child(hold)
 	hold.tick.connect(_press)
 	hold.released.connect(func() -> void:
 		holding = false
 		left.emit())
+
+
+func _on_tier_opened(tier_id: StringName) -> void:
+	if tier_id == tier_row:
+		_bloom_t = 1.0
 
 
 func _physics_process(delta: float) -> void:
@@ -107,6 +118,7 @@ func _physics_process(delta: float) -> void:
 		_refresh_progress(sim)
 	_punch_t = maxf(_punch_t - delta / PUNCH_TIME, 0.0)
 	_lvl_t = maxf(_lvl_t - delta / LEVEL_TIME, 0.0)
+	_bloom_t = maxf(_bloom_t - delta / BLOOM_TIME, 0.0)
 	if _shake_t > 0.0:
 		_shake_t = maxf(_shake_t - delta / 0.2, 0.0)
 		queue_redraw()
@@ -227,7 +239,7 @@ func _pulse_step() -> int:
 func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
-		| _level_step() << 24 | int(locked) << 26 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
+		| _level_step() << 24 | int(locked) << 26 | int(_bloom_t * 10.0) << 27 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -346,29 +358,47 @@ func _draw() -> void:
 		_outline(0.38, top, palette[7])
 
 
-## The tier flower on both wings of the plate, one more petal-dot per pad in the row (1..3) above the centre.
-## Locked pads show a closed bud in dull stone until the tier below opens.
+## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier
+## opens it rises row by row and throws a ring of petals. One pip per pad position (1..3) sits at the front corner.
 func _draw_flowers(top: int, ink: Color) -> void:
 	var rows: Array = FLOWERS[tier_row]
-	var petal: Color = palette[3] if locked else stat_color
-	var heart: Color = palette[4] if locked else Color.WHITE
-	for side: int in [-1, 1]:
-		var cx: int = side * 7
-		for ry in 3:
-			var line: String = rows[ry]
-			if locked and ry < 2:
-				continue   # a bud: only the lowest row shows
-			for rx in 5:
-				var ch: String = line[rx]
-				if ch == ".":
-					continue
-				draw_rect(Rect2(cx - 2 + rx, top + ry - 1, 1, 1), heart if ch == "c" else petal)
-	var n: int = 1
-	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
-	if b != null:
-		n = b.row_index + 1
-	for i in n:
-		draw_rect(Rect2(i * 2 - (n - 1), top - 4, 1, 1), ink if locked else petal)
+	var n: int = rows.size()
+	var base: int = top - 1
+	var shown: int = 3 if locked else n
+	if _bloom_t > 0.0:
+		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
+	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
+	for k in shown:
+		var line: String = rows[n - 1 - k]
+		for rx in 13:
+			var ch: String = line[rx]
+			if ch == ".":
+				continue
+			if locked and ch != "g":
+				ch = "g"
+			cells.append(Vector3i(rx - 6, base - k, "#dcgW".find(ch)))
+	for c: Vector3i in cells:
+		for o: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+			draw_rect(Rect2(c.x + o.x, c.y + o.y, 1, 1), ink)
+	for c: Vector3i in cells:
+		var col: Color = stat_color
+		match c.z:
+			1: col = stat_color.darkened(0.35)
+			2, 4: col = Color.WHITE
+			3: col = palette[3] if locked else LEAF
+		draw_rect(Rect2(c.x, c.y, 1, 1), col)
+	if _bloom_t > 0.0 and _bloom_t < 0.7:
+		var r: float = (0.7 - _bloom_t) / 0.7
+		for i in 10:
+			var ang: float = float(i) / 10.0 * TAU
+			var q: Vector2 = Vector2(cos(ang) * 14.0, sin(ang) * 7.0) * r
+			draw_rect(Rect2(roundf(q.x), roundf(top - 4 + q.y), 1, 1), Color.WHITE if i % 2 == 0 else stat_color)
+	var pips: int = 1
+	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
+	if bd != null:
+		pips = bd.row_index + 1
+	for i in pips:
+		draw_rect(Rect2(i * 2 - (pips - 1), top + 4, 1, 1), ink if locked else stat_color)
 
 
 ## Unique 5x5 emblem per pad (mirrored, so it reads as a badge), projected onto the 2:1 plate. The centre stays clear

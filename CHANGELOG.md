@@ -10,7 +10,7 @@ under a new version heading and updates the version everywhere.
 ## Unreleased
 
 ## 0.27.0 - 2026-11-23
-- The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, per-tier pad flowers and locked buds, re-spaced pad rows.
+- The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
 
 ## 0.26.1 - 2026-11-23
 - Sound subtitles sit on a dark plate so they read on bright ground, and up to four show at once.
