@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.37.3 - 2026-11-23
+- Larkmoor noon no longer reads lime-flat: the high-sun light pass takes a per-scene boost (1.7 in Larkmoor) for exposure, contrast and saturation, plus a warm cast that pulls green out of the bright ground. The meadow is unchanged.
+
 ## 0.37.2 - 2026-11-23
 - Ember Quarry balance pass: the 18 forge pads cost 40% less (greedy-floor gate about 40 min after arrival, was about 66; idle about 2x that), and each quarry rebirth pays 25% more Prestige for every quarry rebirth already done (`ZoneDef.prestige_per_rebirth_bonus`), so attribute buys keep pace with their 1.4x cost growth.
 

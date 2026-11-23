@@ -19,6 +19,7 @@ uniform float side_amount = 0.0;                 // sun-side lift / away-side sh
 uniform float split_amount = 0.0;                // highlight warm / shadow cool by luminance
 uniform float sat = 1.0;                         // saturation about luminance, richer in the golden hours
 uniform float contrast = 1.0;                    // about a dark-mid pivot, so shadows deepen and highlights open
+uniform vec3 noon_tint = vec3(1.0);              // pulls the green out of a bright high-sun frame
 uniform float exposure = 1.0;                    // below 1 at high noon, where the frame reads bleached
 uniform float lift = 0.22;                       // how much brighter a lit texel gets
 
@@ -50,7 +51,7 @@ void fragment() {
 	float lo = (1.0 - smoothstep(0.12, 0.45, lum)) * split_amount;
 	c = c * mix(vec3(1.0), (1.0 + lift * 0.6) * mix(vec3(1.0), light_col * 1.2, 0.7), hi * 0.6);
 	c *= mix(vec3(1.0), shade_col * 0.9, lo * 0.6);
-	c *= exposure;
+	c *= exposure * noon_tint;
 	float l2 = dot(c, vec3(0.299, 0.587, 0.114));
 	c = mix(vec3(l2), c, sat);
 	c = (c - 0.42) * contrast + 0.42;
