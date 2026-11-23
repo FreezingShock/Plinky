@@ -2,6 +2,8 @@ class_name GameConfig
 extends Resource
 ## Global rules and tunables. Single file: content/config/game.tres.
 
+## Locked "???" rows the travel menu shows below the top-level areas.
+@export var travel_teased_rows: int = 2
 @export var tick_rate: int = 10
 @export var max_ticks_per_frame: int = 50
 @export var autosave_seconds: float = 30.0
@@ -18,10 +20,10 @@ extends Resource
 @export var prestige_push_threshold: float = 9.0
 @export var prestige_push_exponent: float = 0.5
 ## Rebirth Points: each rebirth pays rp_base, plus rp_growth for every rebirth already done (rounded down).
-## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; rebirths still only boost Multiplier gain.
+## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; Rebirth Prestige multiplies passive income (Embers in the quarry).
 @export var rp_stat: StringName = &"rp"
 ## The currency the History graph tracks (income per second). Content swaps this when the economy changes.
-@export var income_stat: StringName = &"cash"
+@export var income_stat: StringName = &"embers"
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
 ## Rebirth, Prestige and Rebirth Points show only in these zones. Every other zone runs on its own ZoneResetDef (content/resets).
