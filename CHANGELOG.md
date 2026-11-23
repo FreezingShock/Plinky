@@ -8,10 +8,15 @@ Every PR adds a line under **Unreleased**. `python3 tools/bump_version.py minor|
 under a new version heading and updates the version everywhere.
 
 ## Unreleased
-- Docs only: docs/workflow.md writes down the five-step working process and the PC pitfalls; linked from README and CLAUDE.md.
+
+## 0.37.0 - 2026-11-23
+- Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
+
+## 0.36.0 - 2026-11-23
+- Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
 
 ## 0.35.0 - 2026-11-23
-- Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
+- Docs only: docs/workflow.md writes down the five-step working process and the PC pitfalls; linked from README and CLAUDE.md.
 
 ## 0.34.3 - 2026-11-23
 - Zone panel: areas with more than five pads show four and fold the rest behind a greyed, underlined "N more..." line (click to expand, scrolls past 8 rows); open Travel shows the full area description and the panel shrinks back instead of leaving empty space.
