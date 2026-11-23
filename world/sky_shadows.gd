@@ -61,6 +61,7 @@ func add_caster(src: Sprite2D, kind: String, size: Vector2) -> void:
 
 ## Sun state from SkyCycle: light x (-1 left .. +1 right), shadow length in object heights, strength 0..1.
 func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> void:
+	visible = strength > 0.004   # no caster quads in the draw list while the shadows are faded out (rain at dusk, the horizon crossing)
 	mat.set_shader_parameter("strength", strength)
 	mat.set_shader_parameter("density_foot", float(p.foot))
 	mat.set_shader_parameter("density_tip", float(p.tip))
