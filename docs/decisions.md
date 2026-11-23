@@ -472,6 +472,12 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Rebirth confirm** card shows the Prestige and Rebirth Points you will get. Setting: Gameplay > Confirm rebirth (default on).
 - Buy max and Buy x10 were dropped from this bundle at Nathan's request.
 - Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges card placement and the indicator.
+## 2026-11-23: History screen
+- **What.** New menu tile and window, History, opened through MenuRouter with the shared dither wipe and close X, in the same panel style as the Stats gallery. Sections: Income (last 10 minutes), Bests, Totals, Time in each zone.
+- **Data.** `core/run_stats.gd` (`Sim.run_stats`) samples Cash per second every 5 s into a 120-sample ring (the session graph, not saved). Saved with the game, no save version bump because missing keys default: time per zone, longest pad chain, chains finished, highest Momentum stage, crits, best income.
+- **Graph.** Log scale (income spans many orders of magnitude), 2 px bars, dotted quarter lines, a gold line under each rebirth. Pure sizing in `HistoryGraph.bar_heights`.
+- **Best streak.** The streak tiers (Plain to Galaxy) in PR #144 are not on main yet, so "best streak" is the longest pad chain plus the highest Momentum stage. When #144 merges, swap or add its tier name to the Bests rows in `HistoryPanel.rows_for`.
+- **Unlock.** Same gate as Stats (after the first press). Not run in the cloud: Godot itself; CI runs the headless tests, the PC pass checks the look.
 ## Ambient soundscape (23 Nov, v0.20.0)
 | Date | Decision | Why |
 |---|---|---|
