@@ -30,13 +30,24 @@ func _to_screen(world_pos: Vector2) -> Vector2:
 const PARTICLE_COLORS: Array[Color] = [Color("f2e6a0"), Color("c2784e")]
 
 func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := false) -> void:
-	var sq := PressSquash.new()
-	pad.add_child(sq)
-	sq.play(pad)
-	sq.finished.connect(sq.queue_free)
-	if big:
-		sq.hitstop(FxConfig.HITSTOP_MS * 2)
-	ParticleBurst.spawn(fx_root, pos, PARTICLE_COLORS, randi_range(10, 14) if big else -1)
+	var cols: Array[Color] = PARTICLE_COLORS
+	if pad is TexelPad:
+		# The pad animates itself (whole-texel sink and ripple), so rapid presses never stack tweens.
+		(pad as TexelPad).punch()
+		cols = [(pad as TexelPad).palette[5], (pad as TexelPad).palette[6]]
+		if big:
+			var hs := PressSquash.new()
+			pad.add_child(hs)
+			await hs.hitstop(FxConfig.HITSTOP_MS * 2)  # the node must outlive the freeze or time_scale never resets
+			hs.queue_free()
+	else:
+		var sq := PressSquash.new()
+		pad.add_child(sq)
+		sq.play(pad)
+		sq.finished.connect(sq.queue_free)
+		if big:
+			sq.hitstop(FxConfig.HITSTOP_MS * 2)
+	ParticleBurst.spawn(fx_root, pos, cols, randi_range(10, 14) if big else -1)
 	PopupStack.spawn(_popup_parent(), _to_screen(pos) + Vector2(-8, -30), amount, big, held)
 	if shake: shake.add(0.45 if big else 0.1)
 	Audio.pad_press(big, held)

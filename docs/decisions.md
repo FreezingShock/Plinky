@@ -201,3 +201,11 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
+
+## 2026-11-23 Pad plates and press feel
+- The old pad was only a 1px outline (the meadow art bakes no pads by design; TexelPad drew the ring). Not a render glitch.
+- Pads are now a raised plate drawn live in palette indices: ink outline, earth side faces (lit left, shadow right), dithered lit rim, glow inlay.
+- Three states, because pads have no hard lock: Far (<10% of cost: stone, empty inlay), Close (gauge fills bottom-up with progress), Ready (inlay in the multiplier glow colour, one-step pulse, none under reduce flashing).
+- Press = whole-texel sink (2), ripple ring, particles in the zone palette, existing number pop and sound. The pad animates itself via TexelPad.punch(), so spam-pressing restarts one timer instead of stacking tweens. Particle bursts are capped at 10 live.
+- Hover lifts 1 texel and lights the rim; the walker approaching brightens it. The pad redraws only when its signature changes.
+- Not yet run in-engine; PC thread to verify and capture before/after.
