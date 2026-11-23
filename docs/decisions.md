@@ -711,3 +711,7 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - The dial reads the palette of the current zone (Palettes.for_zone) and recolours within a tenth of a second of a zone change. Meadow stays green.
 - Ember Quarry's sun uses the amber role (4), not the dusty rose role (5), so it reads as ember. Other zones keep role 5.
 - Not verified in-engine. The PC QA thread should check the dial in the meadow and in Ember Quarry, by day and at night.
+## 2026-11-23 Capital Qd and Qn again
+- Nathan asked for Qd and Qn capitalised. This reverses the lowercase q from PR #193, which QA raised because a Q in "+100QnVg" read as a 0 at popup size. Only Qd and Qn change (`N_SMALL`, `UNITS`, tests). qg, qq, qe and qi stay lowercase, so compound names now mix cases (a name with Qd next to one with qg). Taste call to revisit: capitalise the rest too, or keep the split.
+- Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
+- Not run in engine: no Godot in the cloud. CI runs the headless tests.
