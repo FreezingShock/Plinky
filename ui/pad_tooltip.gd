@@ -17,6 +17,16 @@ func show_for(sim: Sim, button_id: StringName, at: Vector2) -> void:
 		Tip.show_free(get_tree(), spec, at)
 
 
+## Show a ready-made spec (the gate's) near `at`.
+func show_spec(spec: Dictionary, at: Vector2) -> void:
+	if spec.is_empty():
+		hide_tip()
+		return
+	visible = true
+	if is_inside_tree():
+		Tip.show_free(get_tree(), spec, at)
+
+
 func hide_tip() -> void:
 	if visible:
 		visible = false
