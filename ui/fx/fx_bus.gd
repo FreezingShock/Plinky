@@ -57,8 +57,11 @@ func _process(_delta: float) -> void:
 
 func _popup_field() -> PressPopups:
 	if not is_instance_valid(_popups):
+		_popup_parent()   # borrows the theme for the popup font
 		_popups = PressPopups.new()
-		_popup_parent().add_child(_popups)
+		_popups.world = fx_root as CanvasItem
+		# A child of Main (z 95): above the world, below the HUD, so no menu or panel is ever covered by a popup.
+		fx_root.get_parent().add_child(_popups)
 	return _popups
 
 
@@ -78,8 +81,8 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 	var pulse: bool = pulse_from != Vector2.INF
 	var key: StringName = (pad as TexelPad).button_id if pad is TexelPad else StringName(str(pad.get_instance_id()))
 	var field: PressPopups = _popup_field()
-	var anchor: Vector2 = _to_screen(pos) + POPUP_LIFT
-	_last_anchor = anchor
+	var anchor: Vector2 = pos
+	_last_anchor = _to_screen(pos) + POPUP_LIFT
 	var tint: Color = Color(0.0, 0.0, 0.0, 0.0)
 	if tier > 0:
 		tint = PopupStyle.accent_color(tier, now * 6.0, PopupStack.zone)
@@ -88,7 +91,13 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 		var echo: float = sim.config.pulse_echo_delay
 		field.link(_to_screen(pulse_from) + POPUP_LIFT * 0.4, _to_screen(pos) + POPUP_LIFT * 0.4, tier, echo * float(pulse_order))
 		delay = echo * float(pulse_order) + 0.16
-	field.press(key, anchor, amount, tier, big, held, pulse, delay)
+	var stat_name: String = ""
+	var stat_col: Color = Color.WHITE
+	var def: ButtonDef = sim.button_defs.get(key) as ButtonDef
+	if def != null and sim.stat_defs.has(def.reward_stat):
+		stat_name = (sim.stat_defs[def.reward_stat] as StatDef).display_name
+		stat_col = StatStyle.color(def.reward_stat)
+	field.press(key, anchor, amount, tier, big, held, pulse, delay, stat_name, stat_col)
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
 		if not is_instance_valid(pad):
@@ -157,15 +166,21 @@ func _pad_feedback(pad: CanvasItem, pos: Vector2, tier: int, tint: Color, big: b
 
 ## A new streak tier: no text and no camera shake (Nathan): just a ring, a burst and the chime. The pad itself presses harder.
 func _tier_up(field: PressPopups, anchor: Vector2, tier: int) -> void:
-	field.burst(anchor, tier, 1.6 + 0.25 * float(tier))
-	field.ring(anchor + Vector2(0.0, -6.0), tier, 30.0 + 8.0 * float(tier))
+	var at: Vector2 = _to_screen(anchor) + POPUP_LIFT
+	field.burst(at, tier, 1.6 + 0.25 * float(tier))
+	field.ring(at + Vector2(0.0, -6.0), tier, 30.0 + 8.0 * float(tier))
 	Audio.tier_up(tier)
+
+
+## A streak or critter payout floats up in the same popup field as presses (gold, no overlap with them).
+func bonus_popup(pos: Vector2, amount: float) -> void:
+	_popup_field().label(&"bonus", pos, "+" + NumberFormat.short(amount), 1)
 
 
 ## Mastery level-up: ring flash on the plate and a big "LV n" popup above it.
 func level_up(pad: TexelPad, pos: Vector2, level: int) -> void:
 	pad.level_flash()
-	_popup_field().label(&"level", _to_screen(pos) + Vector2(0.0, -34.0), "LV %d" % level, 1)
+	_popup_field().label(&"level", pos, "LV %d" % level, 1, false, 0.0, 16.0)
 	if shake: shake.add(0.2)
 	Audio.relic(&"rare")
 

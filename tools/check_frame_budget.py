@@ -2,7 +2,7 @@
 """Fails when shots/bench.json (written by tools/bench.gd) holds a frame over the hitch budget.
 
 CI runs the bench headless, so this catches script-side stalls (a synchronous load, a big build in one frame), not GPU
-cost. On real hardware use the full bench (docs/perf.md). Usage: check_frame_budget.py [bench.json] [max_ms] [swap_max_ms]
+cost. On real hardware use the full bench (docs/perf.md). Usage: check_frame_budget.py [bench.json] [max_ms] [swap_max_ms] [max_draws] [max_nodes]
 
 A zone swap happens under the fully covering transition wipe, so its first rendered frame (about 100 ms on the PC,
 133 to 165 ms on a CI runner) is allowed up to swap_max_ms (default 300). The pre-fix swap was one 330 ms frame on a
@@ -25,6 +25,14 @@ for h in data.get("hitches", []):
 for r in data.get("results", []):
     if float(r["max"]) > limit:
         bad.append("%s %s: worst frame %.1f ms" % (r["quality"], r["phase"], float(r["max"])))
+# Content ceilings (docs/perf.md): a new visual system must not quietly blow the node or draw-call budget.
+MAX_DRAWS = float(sys.argv[4]) if len(sys.argv) > 4 else 250.0
+MAX_NODES = float(sys.argv[5]) if len(sys.argv) > 5 else 1200.0
+for r in data.get("results", []):
+    if float(r.get("draw_calls_max", 0)) > MAX_DRAWS:
+        bad.append("%s %s: %d draw calls (limit %d)" % (r["quality"], r["phase"], r["draw_calls_max"], MAX_DRAWS))
+    if float(r.get("nodes_max", 0)) > MAX_NODES:
+        bad.append("%s %s: %d nodes (limit %d)" % (r["quality"], r["phase"], r["nodes_max"], MAX_NODES))
 if bad:
     print("Frame budget: %d frame(s) over %.0f ms" % (len(bad), limit))
     for b in bad:

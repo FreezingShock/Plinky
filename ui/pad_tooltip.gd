@@ -56,7 +56,7 @@ static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 	lines.append(["Gives ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % sim.press_gain_preview(button_id).format(), StatStyle.gain()), " ", Tip.seg(reward_def.display_name, rc)])
 	var avg: BigNum = sim.press_gain_average(button_id)
 	if avg.cmp(sim.press_gain_preview(button_id)) > 0:
-		lines.append(["Average ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % avg.format(), StatStyle.gain()), " ", "with crits"])
+		lines.append(["Avg   ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % avg.format(), StatStyle.gain()), " ", "with crits"])
 	var hint: String = "Ready. Stand here or hold click." if can else "Need %s more" % cost.sub(have).format()
 	var hint_color: Color = StatStyle.buy(can)
 	if sim.is_pad_locked(button_id):

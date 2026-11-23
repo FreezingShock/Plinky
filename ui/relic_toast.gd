@@ -4,6 +4,8 @@ extends PanelContainer
 ## Add to the HUD, bind() once. The pad flash is Fx's job: on EventBus.relic_gained it should flash
 ## the pressed pad with RarityDef.color (see docs/relics.md).
 
+## Above every menu panel (the HUD sits at 100) and below tip cards and modals (150), so an open Ledger never hides a toast.
+const TOAST_Z: int = 130
 const LIFETIME: float = 2.4
 
 var _icon: TextureRect
@@ -14,6 +16,7 @@ var _tween: Tween
 func _init() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	z_index = TOAST_Z
 	add_theme_stylebox_override("panel", AsciiBox.panel())
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
