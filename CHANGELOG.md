@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.14.6 - 2026-11-23
+- Stats and Attributes window is centred by the HUD, so it stays centred at Wide and other view sizes; the detail header keeps a minimum width for the value so a long name can't clip it.
+
 ## 0.14.5 - 2026-11-23
 - The Welcome back toast now sits centred in the upper third, clear of the momentum panel, and the momentum tooltip is trimmed to charge, income, next stage, sources and hold/drain.
 
