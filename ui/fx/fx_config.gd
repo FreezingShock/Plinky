@@ -14,6 +14,9 @@ const ROLL_HZ := 30.0
 const BIG_GAIN_RATIO := 0.15
 const BIG_GAIN_FLASH := 0.35
 const SMALL_GAIN_FLASH := 0.12
+## Counter punch on a big gain: scale per step (overshoots, then settles on 1.0), seconds per step.
+const PUNCH_STEPS: Array[float] = [1.25, 1.15, 0.95, 1.0]
+const PUNCH_STEP_TIME := 0.05
 const SHAKE_DECAY := 6.0
 const SHAKE_MAX_TEXELS := 3.0
 const FLASH_FRAMES := 3
