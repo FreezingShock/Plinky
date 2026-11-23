@@ -98,7 +98,8 @@ func _ready() -> void:
 		bus.rebirth_done.connect(func(_p: BigNum) -> void: play(&"rebirth", 1.0, 0.0, BUS_SFX, false))
 		bus.button_denied.connect(func(_id: StringName) -> void: play(&"ui_back", 0.8, -4.0, BUS_UI))
 		bus.offline_gained.connect(func(_s: float, _g: Dictionary) -> void: play(&"relic_uncommon", 1.0, -6.0))
-	get_tree().node_added.connect(_on_node_added)
+	if is_inside_tree():   # a private instance under test is not in the tree yet
+		get_tree().node_added.connect(_on_node_added)
 
 
 ## Music and ambience start with the first zone. Main calls zone_entered on load, but this covers a
