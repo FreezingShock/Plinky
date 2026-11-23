@@ -18,7 +18,7 @@ func begin() -> void:
 
 func end() -> void:
 	_held = false
-	PopupStack.release(get_tree())
+	PressPopups.release_runs()
 	released.emit()
 
 func _process(delta: float) -> void:

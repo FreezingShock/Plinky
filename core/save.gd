@@ -24,6 +24,7 @@ func _ready() -> void:
 	var bus: Node = get_node("/root/EventBus")
 	bus.zone_entered.connect(func(_z: StringName) -> void: save_game())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: save_game())
+	bus.bloom_done.connect(func(_n: int) -> void: save_game())
 	slot = SaveSlots.read_active_slot()
 	load_game()
 
@@ -53,6 +54,7 @@ func save_game() -> bool:
 		get_node("/root/EventBus").game_saved.emit()
 	else:
 		push_warning("Save: could not write " + SaveSlots.path_for(slot))
+		get_node("/root/EventBus").save_failed.emit()
 	return ok
 
 

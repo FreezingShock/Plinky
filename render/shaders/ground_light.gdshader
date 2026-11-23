@@ -82,7 +82,11 @@ void fragment() {
 			}
 		}
 	}
-	if (c.a > 0.5 && debug_view == 0 && (season_amt > 0.0 || season_snow > 0.0)) {
+	// Water (material 107) and its foam (108) keep their own palette in every season: the water ramp's greens
+	// (47,107,85) pass the "green texel" test in season_recolor and were dyed orange like the grass.
+	int mat_code = int(texture(nrm_tex, UV).b * 255.0 + 0.5);
+	bool is_water = mat_code == 107 || mat_code == 108;
+	if (c.a > 0.5 && debug_view == 0 && !is_water && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
 	}
 	// depth fog: the far (top) rows fade toward the haze colour, dithered

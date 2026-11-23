@@ -10,5 +10,5 @@ display_name = "Cairnfold"
 order = 4
 icon = "cairn"
 theme_role = 7
-blurb = "Piled stones and a ring of menhirs on the high ground."
-pad_buttons = PackedStringArray("c1")
+blurb = "Rocky foothills and a ring of standing stones. No pads here yet."
+pad_buttons = PackedStringArray()

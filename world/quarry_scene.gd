@@ -5,6 +5,10 @@ extends Node2D
 const DIR: String = "res://assets/art/zone2/quarry/"
 const GROUND: Texture2D = preload("res://assets/art/zone2/quarry/ground.png")
 
+## Read by main.gd so footsteps and ambience look up this zone's ground, not the meadow's (world/meadow_sites.gd).
+var placements_path: String = DIR + "placements3d.json"
+var ground_path: String = DIR + "ground.png"
+
 var _data: Dictionary = {}
 
 
@@ -33,6 +37,8 @@ func _ready() -> void:
 				pad_i += 1
 			"gate":
 				m.name = "Gate"
+			"arch":
+				m.name = "Arch"
 			"player_spawn":
 				m.name = "Walker"
 			"vent":
@@ -42,6 +48,11 @@ func _ready() -> void:
 			_:
 				continue
 		anchors.add_child(m)
+	var embers := LifeEmbers.new()   # embers off the vents, drifting ash (world/life_embers.gd)
+	embers.name = "LifeEmbers"
+	embers.z_index = 10
+	add_child(embers)
+	embers.setup(anchors)
 
 
 ## Same as the meadow: each tall prop is a sprite at its foot, so the walker sorts behind or in front of it.

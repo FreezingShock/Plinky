@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="StatDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/stat_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"thistle"
+display_name = "Thistle Down"
+tier = 3
+start = 0.0
+zones = PackedStringArray("larkmoor")
+passive = false
+income_boost_stat = &""
+income_factor_per_unit = 1.0
+gain_boost_stat = &"heather"
+prestige_boosts_income = false
+resets_on_rebirth = true
+resets_on_bloom = true
+relics_boost_income = false
+relics_boost_gain = false
+buff_stats = PackedStringArray("dewdrop", "clover")
+buff_factor = 1.25

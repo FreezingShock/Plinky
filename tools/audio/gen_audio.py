@@ -3,7 +3,7 @@
 audio, so there is nothing to license. Output: assets/audio/{sfx,music,amb}/*.ogg (Vorbis, via ffmpeg).
 
     python3 tools/audio/gen_audio.py            # all
-    python3 tools/audio/gen_audio.py sfx        # just sfx (also: music, amb, world)
+    python3 tools/audio/gen_audio.py sfx        # just sfx (also: music, amb, world, scape, cinder)
     python3 tools/audio/gen_audio.py --wav      # keep wav next to ogg (for quick listening)
 
 Style: "soft synth" (sines, light harmonics, gentle reverb). Pitches stay on C major pentatonic so
@@ -170,6 +170,62 @@ def sfx():
     buf = reverb(buf, 1.0, 0.25); loop = fold(buf, int(dur * SR))
     write(f"{d}/loading_loop.ogg", norm(loop, 0.5))
 
+
+# ---------------------------------------------------------------- PRESS TIERS
+def sfx_press():
+    """Press streak tiers (Plain, Gold, Ice, Rainbow, Chroma, Galaxy). Each tier keeps the signature C5 plink that
+    Audio.gd shifts up the pentatonic ladder, and adds one layer. Runs last, so the other sounds are untouched."""
+    d = os.path.join(ROOT, "sfx")
+    def fm(midi, dur, ratio=1.5, depth=3.0, decay=0.2):
+        t = t_(dur); f = hz(midi)
+        return np.sin(2 * np.pi * f * t + depth * np.exp(-t / (decay * 0.5)) * np.sin(2 * np.pi * f * ratio * t)) * np.exp(-t / decay) * np.minimum(t / 0.002, 1)
+    def air(dur, lo, hi, decay):
+        t = t_(dur); return fft_filter(rng.standard_normal(len(t)), lo=lo, hi=hi) * np.exp(-t / decay)
+    def mix(*xs):
+        out = np.zeros(max(len(x) for x in xs))
+        for x in xs: out[:len(x)] += x
+        return out
+    def later(x, secs): return np.pad(x, (int(secs * SR), 0))
+    # Per-tier press click: base plink plus a layer
+    base = plink(72, 0.45)
+    gold = mix(base, 0.5 * plink(84, 0.45, decay=0.22), 0.2 * plink(79, 0.45, decay=0.3))
+    ice = mix(plink(79, 0.45, bright=2.2, decay=0.2), 0.4 * plink(91, 0.3, decay=0.07), 0.25 * air(0.45, 5000, 14000, 0.012))
+    rainbow = mix(base, later(0.8 * plink(76, 0.4, decay=0.14), 0.045), later(0.7 * plink(79, 0.4, decay=0.14), 0.09))
+    chroma = mix(base * 0.7, 0.8 * fm(72, 0.45, 1.5, 3.2, 0.2), 0.3 * fm(84, 0.3, 2.0, 2.0, 0.1))
+    t = t_(0.45)
+    galaxy = mix(base * 0.8, 0.4 * np.sin(2 * np.pi * 36 * t) * np.exp(-t / 0.18), 0.5 * pad_tone(79, 0.45, 0.04, 0.3), 0.25 * air(0.45, 3000, 12000, 0.08))
+    for k, x in enumerate((gold, ice, rainbow, chroma, galaxy), start=1):
+        write(f"{d}/pad_press_{k}.ogg", norm(reverb(x, 0.5, 0.14), 0.65))
+    # Tier-up flourishes: longer and richer every tier
+    def run(notes, step, dec=0.25, br=1.0, gain=1.0, dur=None):
+        dur = dur or (len(notes) * step + 0.9)
+        buf = np.zeros(int(dur * SR))
+        for i, m in enumerate(notes): place(buf, plink(m, 0.9, bright=br, decay=dec) * gain, i * step)
+        return buf
+    write(f"{d}/tier_up_1.ogg", norm(reverb(run([72, 76, 79, 84], 0.07, 0.3), 0.9, 0.2), 0.75))
+    ice_up = run([84, 88, 91, 96, 100], 0.05, 0.22, 2.4)
+    place(ice_up, air(0.7, 6000, 15000, 0.09) * 0.3, 0.02)
+    write(f"{d}/tier_up_2.ogg", norm(reverb(ice_up, 1.2, 0.3), 0.75))
+    write(f"{d}/tier_up_3.ogg", norm(reverb(mix(run([72, 74, 76, 79, 81, 84, 86, 88, 91], 0.05, 0.22), 0.35 * run([60, 67], 0.2, 0.5, dur=9 * 0.05 + 0.9)), 1.0, 0.22), 0.8))
+    t = t_(1.6); riser = fft_filter(rng.standard_normal(len(t)), lo=500, hi=7000) * np.minimum(t / 0.6, 1) ** 2 * np.exp(-np.maximum(t - 0.6, 0) / 0.25) * 0.35
+    chroma_up = riser.copy()
+    for k, m in enumerate((60, 67, 72, 76, 79, 84)): place(chroma_up, fm(m, 1.0, 1.5 + 0.02 * k, 3.0, 0.3) * 0.7, 0.55 + k * 0.03)
+    place(chroma_up, plink(96, 0.8, bright=2.0, decay=0.3) * 0.5, 0.6)
+    write(f"{d}/tier_up_4.ogg", norm(reverb(chroma_up, 1.4, 0.28), 0.82))
+    t = t_(2.6); gal = np.zeros(len(t))
+    for m in (48, 55, 60, 67, 72, 79): place(gal, pad_tone(m, 2.2, 0.35, 1.4) * 1.3, 0.05)
+    place(gal, np.sin(2 * np.pi * (60 * np.exp(-t[:int(0.8 * SR)] * 4) + 30) * t[:int(0.8 * SR)]) * np.exp(-t[:int(0.8 * SR)] / 0.25) * 0.9, 0.0)
+    shower = np.random.default_rng(5150)
+    for k in range(18):
+        place(gal, plink(int(shower.choice([91, 96, 100, 103, 108])), 0.5, bright=2.0, decay=0.1) * 0.32, 0.25 + k * 0.07 + shower.uniform(0, 0.04))
+    write(f"{d}/tier_up_5.ogg", norm(reverb(gal, 2.0, 0.34), 0.88))
+    # Relic pulse: a soft double ping (Audio.gd steps it up per neighbour)
+    pe = np.zeros(int(0.5 * SR)); place(pe, plink(79, 0.4, decay=0.1), 0.0); place(pe, plink(86, 0.4, decay=0.12) * 0.7, 0.07)
+    write(f"{d}/pulse_echo.ogg", norm(reverb(pe, 0.5, 0.18), 0.55))
+    # Streak lost: a small falling sigh
+    sg = np.zeros(int(0.7 * SR)); place(sg, plink(67, 0.5, decay=0.12), 0.0); place(sg, plink(62, 0.5, decay=0.16) * 0.8, 0.11)
+    write(f"{d}/streak_lost.ogg", norm(fft_filter(reverb(sg, 0.6, 0.15), hi=2600), 0.45))
+
 # ---------------------------------------------------------------- MUSIC
 SECTION = [0.35, 1.0, 0.6, 1.0]   # melody density per chord group: verse/bridge feel, not a flat wall
 
@@ -294,10 +350,95 @@ def world():
     xf = int(2 * SR); out = wave[:n - xf].copy(); out[:xf] = out[:xf] * np.linspace(0, 1, xf) + wave[n - xf:] * np.linspace(1, 0, xf)
     write(f"{ROOT}/amb/shore_amb.ogg", norm(out, 0.2), q=3)
 
+# ---------------------------------------------------------------- SCAPE (ambient soundscape layers)
+# Own RNG again, so none of the older files change. Every layer is a seamless loop; the game mixes them by zone,
+# time of day and season (core/ambient_mix.gd, audio/ambient_scape.gd).
+srng = np.random.default_rng(24112026)
+
+def loop_xf(x, secs=2.0):
+    """Make a buffer loop with no click: its tail fades into its head."""
+    xf = int(secs * SR); n = len(x) - xf
+    out = x[:n].copy(); out[:xf] = out[:xf] * np.linspace(0, 1, xf) + x[n:] * np.linspace(1, 0, xf)
+    return out
+
+def swells(n, dur, count, width, floor):
+    t = np.arange(n) / SR; s = np.full(n, floor)
+    for c in np.linspace(0, dur, count, endpoint=False):
+        s += np.exp(-((t - (c + srng.uniform(0, dur / count * 0.6))) / width) ** 2) * srng.uniform(0.6, 1.0)
+    return s
+
+def scape():
+    dur = 24.0; n = int((dur + 2) * SR); t = np.arange(n) / SR
+    # Day wind: soft breath with slow swells, a little leaf hush on top.
+    w = fft_filter(srng.standard_normal(n), lo=140, hi=950) * swells(n, dur, 5, 1.8, 0.35)
+    w += fft_filter(srng.standard_normal(n), lo=1800, hi=5200) * swells(n, dur, 4, 1.2, 0.05) * 0.10
+    write(f"{ROOT}/amb/wind_day.ogg", norm(loop_xf(w), 0.2), q=3)
+    # Night wind: lower, slower, hollow.
+    w = fft_filter(srng.standard_normal(n), lo=70, hi=520) * swells(n, dur, 3, 2.6, 0.3)
+    write(f"{ROOT}/amb/wind_night.ogg", norm(loop_xf(reverb(w, 1.2, 0.25)[:n]), 0.2), q=3)
+    # Winter wind: thin, higher, with a faint whistle that drifts.
+    w = fft_filter(srng.standard_normal(n), lo=380, hi=1500) * swells(n, dur, 6, 1.5, 0.2)
+    drift = 760 + 140 * np.sin(2 * np.pi * t / 12.0) + 60 * np.sin(2 * np.pi * t / 5.0)
+    w += np.sin(2 * np.pi * np.cumsum(drift) / SR) * swells(n, dur, 4, 1.6, 0.0) * 0.05
+    write(f"{ROOT}/amb/wind_winter.ogg", norm(loop_xf(w), 0.2), q=3)
+    # Autumn leaves: dry rustle bursts, some long, some short.
+    r = np.zeros(n)
+    for _ in range(46):
+        m = int(srng.uniform(0.15, 0.7) * SR); at = srng.uniform(0, dur - 0.5)
+        b = fft_filter(srng.standard_normal(m), lo=1800, hi=6500) * np.hanning(m) ** 1.5
+        place(r, b * srng.uniform(0.25, 1.0), at)
+    r += fft_filter(srng.standard_normal(n), lo=900, hi=3000) * swells(n, dur, 5, 2.0, 0.1) * 0.12
+    write(f"{ROOT}/amb/leaves.ogg", norm(loop_xf(r), 0.2), q=3)
+    # Crickets: three voices of fast pulsed trills. Pulse counts divide the loop so it stays seamless.
+    L = 16.0; m = int(L * SR); tt = np.arange(m) / SR; c = np.zeros(m)
+    for f0, rate, amp in [(4300, 17.0, 1.0), (3900, 13.0, 0.8), (4800, 21.0, 0.55)]:
+        rate = round(rate * L) / L
+        carrier = np.sin(2 * np.pi * f0 * tt + 0.8 * np.sin(2 * np.pi * 6.0 * tt))
+        pulse = np.maximum(0, np.sin(2 * np.pi * rate * tt)) ** 3
+        phrase = np.clip(np.sin(2 * np.pi * tt / L * round(srng.uniform(2, 4)) + srng.uniform(0, 6)) * 2.2, 0, 1)
+        c += carrier * pulse * phrase * amp
+    c = reverb(c, 0.9, 0.2)[:m]
+    write(f"{ROOT}/amb/crickets.ogg", norm(c, 0.2), q=3)
+    # Forge embers: a low warm bed with soft pops and the odd bigger crack.
+    d2 = 24.0; n2 = int((d2 + 2) * SR); t2 = np.arange(n2) / SR
+    e = fft_filter(srng.standard_normal(n2), lo=60, hi=420) * (0.5 + 0.2 * np.sin(2 * np.pi * t2 / 6.0)) * 0.5
+    for _ in range(130):
+        k = int(srng.uniform(0.004, 0.02) * SR); at = srng.uniform(0, d2 - 0.1)
+        pop = fft_filter(srng.standard_normal(k), lo=800, hi=5200) * np.exp(-np.arange(k) / SR / 0.004)
+        place(e, pop * srng.uniform(0.1, 0.5), at)
+    for _ in range(9):
+        k = int(0.09 * SR); at = srng.uniform(0, d2 - 0.2); tk = np.arange(k) / SR
+        crack = fft_filter(srng.standard_normal(k), lo=300, hi=3200) * np.exp(-tk / 0.02) + 0.4 * np.sin(2 * np.pi * srng.uniform(110, 190) * tk) * np.exp(-tk / 0.05)
+        place(e, crack * srng.uniform(0.5, 0.9), at)
+    write(f"{ROOT}/amb/crackle.ogg", norm(loop_xf(e), 0.2), q=3)
+
+# ---------------------------------------------------------------- CINDER (Ember Quarry footsteps)
+# Own RNG again, so these never shift the bytes of anything above.
+crng = np.random.default_rng(23112027)
+
+def cinder():
+    d = os.path.join(ROOT, "sfx")
+    for i in range(4):
+        # Cinder: loose, dry rock. Fewer, harder grains than sand (lower band, longer), a clink or two, a dull thud.
+        t = t_(0.2); x = np.zeros(len(t))
+        for k in range(int(crng.integers(4, 7))):
+            m = int(crng.uniform(0.006, 0.016) * SR)
+            g = fft_filter(crng.standard_normal(m), lo=900, hi=4200) * np.hanning(m)
+            place(x, g * crng.uniform(0.4, 1.0), crng.uniform(0, 0.1))
+        for k in range(int(crng.integers(1, 3))):   # small stones knocking together
+            tt = t_(0.03); f = crng.uniform(1900, 3400)
+            place(x, np.sin(2 * np.pi * f * tt) * np.exp(-tt / 0.006) * crng.uniform(0.15, 0.3), crng.uniform(0.01, 0.09))
+        x += fft_filter(crng.standard_normal(len(t)), lo=300, hi=1800) * np.exp(-t / 0.04) * 0.3
+        x += np.sin(2 * np.pi * (72 + 5 * i) * t) * np.exp(-t / 0.04) * 0.5
+        write(f"{d}/step_cinder_{i}.ogg", norm(fade(x, 3), 0.34))
+
 if __name__ == "__main__":
-    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world"]
+    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world", "scape", "cinder", "press"]
+    if "cinder" in what: cinder()
     if "sfx" in what: sfx()
     if "music" in what: music_all()
     if "amb" in what: amb()
     if "world" in what: world()
+    if "press" in what: sfx_press()
+    if "scape" in what: scape()
     print("done ->", os.path.normpath(ROOT))

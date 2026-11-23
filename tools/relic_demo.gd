@@ -50,15 +50,11 @@ func _ready() -> void:
 		if args.has("--full"):
 			inv.set_rebirths(5)
 			inv.equip(&"r_pulse")
-			for c in panel._grid.get_children():
-				if (c as RelicSlot).relic.id == &"r_crit":
-					panel._on_pressed(c, false)
+			panel._on_pressed(inv.defs[&"r_crit"], false)
 			await get_tree().process_frame
 		if hover >= 0:
-			var grid_slots: Array = panel._grid.get_children()
-			(grid_slots[hover] as RelicSlot).hovered.emit(grid_slots[hover])
-			(grid_slots[hover] as RelicSlot)._hover = true
-			(grid_slots[hover] as RelicSlot).queue_redraw()
+			var cards: Array = panel._grid.get_children()
+			(cards[hover] as RelicCard).mouse_entered.emit()
 		for k in 4:
 			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png(args[i + 1])

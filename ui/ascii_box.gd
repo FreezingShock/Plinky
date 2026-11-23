@@ -14,6 +14,8 @@ const BUTTON_PAD := Vector2(8.0, 4.0)
 var kind: Kind = Kind.PANEL
 ## Optional border colour (rarity edges on tooltips and toasts). Alpha 0 means use the palette edge.
 var edge_override: Color = Color(0, 0, 0, 0)
+## Optional fill colour (zone-themed cards). Alpha 0 means the palette ink.
+var fill_override: Color = Color(0, 0, 0, 0)
 ## Hover ripple phase, advanced by PixelButton while hovered (texels the wash drifts).
 static var phase: int = 0
 
@@ -54,7 +56,7 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	var w: float = floorf(rect.size.x)
 	var h: float = floorf(rect.size.y)
 	var edge: Color = RelicStyle.edge if edge_override.a == 0.0 else edge_override
-	var fill: Color = RelicStyle.ink
+	var fill: Color = RelicStyle.ink if fill_override.a == 0.0 else fill_override
 	match kind:
 		Kind.HOVER:
 			edge = RelicStyle.accent
@@ -63,8 +65,8 @@ func _draw(ci: RID, rect: Rect2) -> void:
 			fill = RelicStyle.accent
 		Kind.DISABLED:
 			edge = RelicStyle.ink.lerp(RelicStyle.edge, 0.3)
-		Kind.SELECT:   # tiles: a solid lifted panel in accent, so the label never sits on noise
-			edge = RelicStyle.accent
+		Kind.SELECT:   # tiles: a solid lifted panel in accent (or the edge override), so the label never sits on noise
+			edge = RelicStyle.accent if edge_override.a == 0.0 else edge_override
 			fill = RelicStyle.ink.lerp(RelicStyle.edge, 0.22)
 	_px(ci, x, y, w, h, fill)
 	# 1 texel border with the corners notched.

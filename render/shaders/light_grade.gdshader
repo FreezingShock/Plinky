@@ -17,6 +17,8 @@ uniform vec3 light_col : source_color = vec3(1.0, 0.88, 0.62);
 uniform vec3 shade_col : source_color = vec3(0.62, 0.68, 0.88);
 uniform float side_amount = 0.0;                 // sun-side lift / away-side shade across the frame
 uniform float split_amount = 0.0;                // highlight warm / shadow cool by luminance
+uniform float sat = 1.0;                         // saturation about luminance, richer in the golden hours
+uniform float contrast = 1.0;                    // about a dark-mid pivot, so shadows deepen and highlights open
 uniform float lift = 0.22;                       // how much brighter a lit texel gets
 
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
@@ -47,5 +49,8 @@ void fragment() {
 	float lo = (1.0 - smoothstep(0.12, 0.45, lum)) * split_amount;
 	c = c * mix(vec3(1.0), (1.0 + lift * 0.6) * mix(vec3(1.0), light_col * 1.2, 0.7), hi * 0.6);
 	c *= mix(vec3(1.0), shade_col * 0.9, lo * 0.6);
+	float l2 = dot(c, vec3(0.299, 0.587, 0.114));
+	c = mix(vec3(l2), c, sat);
+	c = (c - 0.42) * contrast + 0.42;
 	COLOR = vec4(clamp(c, 0.0, 1.0), 1.0);
 }

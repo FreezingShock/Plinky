@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="StatDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/stat_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"alloy"
+display_name = "Alloys"
+tier = 5
+start = 0.0
+zones = PackedStringArray("zone2")
+passive = false
+income_boost_stat = &""
+income_factor_per_unit = 0.0
+gain_boost_stat = &"emberheart"
+prestige_boosts_income = false
+resets_on_rebirth = true
+relics_boost_income = false
+relics_boost_gain = false
+buff_stats = PackedStringArray("mult", "ironore", "slag", "ingot")
+buff_factor = 1.5
