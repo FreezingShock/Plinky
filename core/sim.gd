@@ -9,8 +9,8 @@ signal button_denied(button_id: StringName)
 signal zone_entered(zone_id: StringName)
 signal gate_opened(gate_id: StringName)
 signal rebirth_done(prestige_gained: BigNum)
-## A Bloom was done; the argument is the Seeds it paid.
-signal bloom_done(seeds_gained: int)
+## A zone reset (Bloom, ...) was done: its id and the currency it paid.
+signal reset_done(reset_id: StringName, gained: int)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)
 ## Streak or critter payout. kind is &"streak" or &"critter"; gains is StringName -> BigNum.
@@ -35,6 +35,7 @@ var button_defs: Dictionary = {}     # StringName -> ButtonDef
 var zone_defs: Dictionary = {}       # StringName -> ZoneDef
 var attribute_defs: Dictionary = {}  # StringName -> AttributeDef
 var area_defs: Dictionary = {}       # StringName -> AreaDef (zone menu grouping only)
+var reset_defs: Dictionary = {}      # StringName -> ZoneResetDef (the zone resets, content/resets)
 var tier_defs: Dictionary = {}       # StringName -> TierDef (the flower rows, content/tiers)
 ## Owned and equipped relics. Built by ContentLoader. Always non-null after load.
 var relics: RelicInventory
@@ -46,6 +47,8 @@ var run_stats: RunStats = RunStats.new()
 var achievements: Achievements = Achievements.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
+## The current season's light event (core/seasonal_events.gd). Set up by ContentLoader; no config means no events.
+var events: SeasonalEvents = SeasonalEvents.new()
 
 # State
 var stats: Dictionary = {}           # StringName -> BigNum
@@ -57,7 +60,13 @@ var zones_entered: Dictionary = {}   # zone id -> true once its entry grants wer
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
-var bloom_count: int = 0    # Blooms done: each adds a permanent bonus to every pad reward
+## Every stat as it stood just before the last zone reset (stat id -> BigNum). The reset animation counts down from it.
+var bloom_before: Dictionary = {}
+## True while an automatic press (Dew Sprites, Wildflower) is running, so the UI can skip momentum and the press streak.
+var auto_press_active: bool = false
+var _auto_acc: float = 0.0
+var _wild_acc: float = 0.0
+var reset_counts: Dictionary = {}    # reset id -> times done (ZoneResetDef); each adds its bonus to every pad reward
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 ## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
 ## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
@@ -147,6 +156,18 @@ func validate() -> PackedStringArray:
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
+	for r: ZoneResetDef in reset_defs.values():
+		for key: StringName in [r.currency, r.source_stat]:
+			if not stat_defs.has(key):
+				errs.append("reset %s: unknown stat %s" % [r.id, key])
+		for sid: String in r.resets:
+			if not stat_defs.has(StringName(sid)):
+				errs.append("reset %s: resets unknown stat %s" % [r.id, sid])
+		if not zone_defs.has(r.gate_zone):
+			errs.append("reset %s: unknown gate zone %s" % [r.id, r.gate_zone])
+		for zid: String in r.zones:
+			if not zone_defs.has(StringName(zid)):
+				errs.append("reset %s: unknown zone %s" % [r.id, zid])
 	var known: Dictionary = achievement_counters()
 	for a: AchievementDef in achievements.sorted:
 		if Achievements.category_index(a.category) >= Achievements.CATEGORIES.size():
@@ -159,7 +180,7 @@ func validate() -> PackedStringArray:
 	for z: ZoneDef in zone_defs.values():
 		if z.prestige_source_stat != &"" and not stat_defs.has(z.prestige_source_stat):
 			errs.append("zone %s: unknown prestige_source_stat %s" % [z.id, z.prestige_source_stat])
-	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat, config.bloom_stat, config.bloom_source_stat]:
+	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat]:
 		if not stat_defs.has(key):
 			errs.append("config: unknown stat %s" % key)
 	return errs
@@ -177,7 +198,7 @@ func new_game() -> void:
 	play_seconds = 0.0
 	press_count = 0
 	rebirth_count = 0
-	bloom_count = 0
+	reset_counts.clear()
 	relic_drops = 0
 	mastery.clear()
 	run_stats.clear()
@@ -190,6 +211,9 @@ func new_game() -> void:
 	momentum_hold = 0.0
 	_momentum_tier = 0
 	heat = 0.0
+	bloom_before.clear()
+	_auto_acc = 0.0
+	_wild_acc = 0.0
 	critter_active = false
 	critter_left = 0.0
 	_streak_row = &""
@@ -252,6 +276,7 @@ func income_per_second(stat_id: StringName) -> BigNum:
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
 	rm = rm.mul(BigNum.from_float((1.0 + momentum_bonus()) * (1.0 + effect_total(&"sun_rate"))))
+	rm = rm.mul(BigNum.from_float(events.day_income_mult(calendar.season_index(), calendar.is_day())))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
@@ -347,9 +372,14 @@ func press_gain_preview(button_id: StringName) -> BigNum:
 ## Expected reward per press: the preview times the average crit and double-press boosts.
 func press_gain_average(button_id: StringName) -> BigNum:
 	var chance: float = crit_chance(button_id)
-	var dbl: float = relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE) if relics != null else 0.0
+	var dbl: float = _double_chance()
 	var boost: float = (1.0 + chance * (crit_damage(button_id) - 1.0)) * (1.0 + clampf(dbl, 0.0, 1.0))
 	return press_gain(button_id).mul(BigNum.from_float(boost))
+
+
+## Chance a press counts twice: relics plus the Twin Petals gift.
+func _double_chance() -> float:
+	return (relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE) if relics != null else 0.0) + effect_total(&"double_chance")
 
 
 ## MULT_GAIN relics apply to rewards that go into a stat flagged relics_boost_gain.
@@ -403,13 +433,18 @@ func luck_level() -> int:
 
 ## Multiplier on every press reward from the Pad yield attribute.
 func pad_yield_mult() -> float:
-	return 1.0 + effect_total(&"pad_yield") + float(bloom_count) * config.bloom_reward_per_bloom
+	return 1.0 + effect_total(&"pad_yield") + reset_bonus()
 
 
 ## True once the player has rebirthed enough times for this attribute to be bought. Levels bought stay when saves load.
 func attr_unlocked(attr_id: StringName) -> bool:
 	var a: AttributeDef = attribute_defs.get(attr_id) as AttributeDef
-	return a != null and rebirth_count >= a.unlock_rebirths
+	if a == null or rebirth_count < a.unlock_rebirths:
+		return false
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = reset_for_currency(a.currency)
+		return r != null and reset_count(r.id) >= a.unlock_resets
+	return true
 
 
 func walk_speed_mult() -> float:
@@ -464,15 +499,19 @@ func try_press(button_id: StringName, world_pos: Vector3 = Vector3.ZERO) -> bool
 	return _press(button_id, world_pos, true)
 
 
-func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> bool:
+## `free` presses cost nothing (the Wildflower gift). The pad must still be open.
+func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: bool = false) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null or b.zone != zone_id:
 		return false
-	if not can_afford(button_id):
+	if free:
+		if is_pad_locked(button_id):
+			return false
+	elif not can_afford(button_id):
 		if allow_pulse:
 			button_denied.emit(button_id)
 		return false
-	if not god_mode:
+	if not god_mode and not free:
 		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
 	var chance: float = crit_chance(button_id)
 	var crit: bool = chance > 0.0 and rng.randf() < chance
@@ -480,7 +519,7 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 	if crit:
 		crit_mult = crit_damage(button_id)
 	var presses: int = 1
-	var dbl: float = relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE)
+	var dbl: float = _double_chance()
 	if dbl > 0.0 and rng.randf() < dbl:
 		presses = 2
 	var gain: BigNum = press_gain(button_id, crit_mult, presses)
@@ -603,7 +642,7 @@ func _sync_momentum_tier() -> void:
 
 func _schedule_critter() -> void:
 	if config != null:
-		_critter_next = rng.randf_range(config.critter_min_interval, config.critter_max_interval)
+		_critter_next = rng.randf_range(config.critter_min_interval, config.critter_max_interval) * events.critter_interval_mult(calendar.season_index())
 
 
 func _step_critter(dt: float) -> void:
@@ -674,7 +713,7 @@ func _update_streak(b: ButtonDef) -> void:
 ## One drop roll per roll_interval of play time, with a guaranteed first drop and a pity timer.
 func _roll_relic_drop() -> StringName:
 	var rc: RelicConfig = relics.config
-	if play_seconds - _last_roll_at < rc.roll_interval:
+	if play_seconds - _last_roll_at < rc.roll_interval * events.relic_roll_mult(calendar.season_index()):
 		return &""
 	_last_roll_at = play_seconds
 	var due: float = rc.first_drop_seconds if relic_drops == 0 else rc.pity_seconds
@@ -684,6 +723,63 @@ func _roll_relic_drop() -> StringName:
 		relic_drops += 1
 		_last_drop_at = play_seconds
 	return drop
+
+
+## The pad an automatic press picks: the best open one (highest tier, then furthest along the row). `affordable` limits it
+## to pads whose cost is in stock; the Wildflower gift picks among the pads of the highest open tier instead (random).
+func auto_pick(affordable: bool) -> StringName:
+	var best: ButtonDef = null
+	var best_key: int = -1
+	var pool: Array[ButtonDef] = []
+	for b: ButtonDef in buttons_in_zone(zone_id):
+		if is_pad_locked(b.id) or (affordable and not can_afford(b.id)):
+			continue
+		var t: TierDef = tier_of(b.id)
+		var key: int = (t.order if t != null else 0) * 100 + b.row_index
+		if affordable:
+			if key > best_key:
+				best_key = key
+				best = b
+		else:
+			var tier_key: int = (t.order if t != null else 0) * 100
+			if tier_key > best_key:
+				best_key = tier_key
+				pool.clear()
+			if tier_key == best_key:
+				pool.append(b)
+	if affordable:
+		return best.id if best != null else &""
+	return pool[rng.randi() % pool.size()].id if not pool.is_empty() else &""
+
+
+## Dew Sprites press the best affordable pad on their own; the Wildflower blooms a pad for free now and then.
+func _step_auto(dt: float) -> void:
+	if zone_id == &"":
+		return
+	var sprites: float = effect_total(&"auto_press")
+	if sprites > 0.0:
+		_auto_acc = minf(_auto_acc + sprites * dt, 3.0)
+		while _auto_acc >= 1.0:
+			_auto_acc -= 1.0
+			var id: StringName = auto_pick(true)
+			if id == &"":
+				_auto_acc = 0.0
+				break
+			auto_press_active = true
+			_press(id, Vector3.ZERO, false)
+			auto_press_active = false
+	var wild: float = effect_total(&"wild_bloom")
+	if wild > 0.0:
+		_wild_acc = minf(_wild_acc + wild * dt, 3.0)
+		while _wild_acc >= 1.0:
+			_wild_acc -= 1.0
+			var wid: StringName = auto_pick(false)
+			if wid == &"":
+				_wild_acc = 0.0
+				break
+			auto_press_active = true
+			_press(wid, Vector3.ZERO, false, true)
+			auto_press_active = false
 
 
 ## Seconds between achievement checks while playing.
@@ -745,12 +841,13 @@ func step(dt: float) -> void:
 	if momentum_hold > 0.0:
 		momentum_hold = maxf(0.0, momentum_hold - dt)
 	elif momentum > 0.0:
-		momentum = maxf(0.0, momentum - config.momentum_decay_per_second * dt)
+		momentum = maxf(0.0, momentum - config.momentum_decay_per_second * events.momentum_decay_mult(calendar.season_index()) * dt)
 		_sync_momentum_tier()
 	if heat > 0.0:
 		var zd: ZoneDef = current_zone()
 		_set_heat(heat - (zd.heat_decay_per_second if zd != null else heat) * dt)
 	_step_critter(dt)
+	_step_auto(dt)
 	var dtb: BigNum = BigNum.from_float(dt)
 	for s: StatDef in stat_defs.values():
 		if s.passive:
@@ -796,53 +893,118 @@ func rebirth_here() -> bool:
 	return String(zone_id) in config.rebirth_zones
 
 
-## Bloom opens with the Larkmoor gate, and pays once the source stat is high enough for the first payout.
-func bloom_unlocked() -> bool:
-	return bool(gates_open.get(config.bloom_gate_zone, false))
+## Times a zone reset has been done.
+func reset_count(reset_id: StringName) -> int:
+	return int(reset_counts.get(reset_id, 0))
 
 
-## The Starbloom a first payout is measured against: the Bloom gate's own threshold, so Bloom follows the gate when it moves.
-func bloom_ref() -> float:
-	var z: ZoneDef = zone_defs.get(config.bloom_gate_zone) as ZoneDef
-	return z.gate_threshold if z != null and z.gate_threshold > 0.0 else config.bloom_seed_ref
+## What every reset done adds to every pad's reward (0.05 = +5%).
+func reset_bonus() -> float:
+	var total: float = 0.0
+	for r: ZoneResetDef in reset_defs.values():
+		total += float(reset_count(r.id)) * (r.bonus_per_use + (effect_total(r.bonus_effect) if r.bonus_effect != &"" else 0.0))
+	return total
 
 
-## Seeds a Bloom would pay now (0 until it is available).
-func bloom_gain_preview() -> int:
-	if not bloom_unlocked():
+## The reset that belongs to a zone (the current zone by default), or null.
+func reset_for_zone(z_id: StringName = &"") -> ZoneResetDef:
+	var zid: String = String(zone_id if z_id == &"" else z_id)
+	var best: ZoneResetDef = null
+	for r: ZoneResetDef in reset_defs.values():
+		if zid in r.zones and (best == null or r.order < best.order):
+			best = r
+	return best
+
+
+## The reset a currency stat is paid by, or null (Prestige and Rebirth Points have none).
+func reset_for_currency(currency: StringName) -> ZoneResetDef:
+	for r: ZoneResetDef in reset_defs.values():
+		if r.currency == currency:
+			return r
+	return null
+
+
+## Resets in menu order.
+func resets_ordered() -> Array[ZoneResetDef]:
+	var out: Array[ZoneResetDef] = []
+	for r: ZoneResetDef in reset_defs.values():
+		out.append(r)
+	out.sort_custom(func(a: ZoneResetDef, b: ZoneResetDef) -> bool: return a.order < b.order if a.order != b.order else String(a.id) < String(b.id))
+	return out
+
+
+## A reset opens with its gate zone's gate.
+func reset_unlocked(reset_id: StringName) -> bool:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	return r != null and bool(gates_open.get(r.gate_zone, false))
+
+
+## The source amount the next payout is measured against: the gate zone's own threshold (so the reset follows the gate),
+## shrunk a little by every use already done.
+func reset_ref(reset_id: StringName) -> float:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	if r == null:
+		return 1.0
+	var z: ZoneDef = zone_defs.get(r.gate_zone) as ZoneDef
+	var base: float = z.gate_threshold if z != null and z.gate_threshold > 0.0 else r.ref_fallback
+	return base * maxf(r.ref_floor, pow(r.ref_shrink_per_use, float(reset_count(reset_id))))
+
+
+## What a reset would pay now (0 until it is available).
+func reset_gain(reset_id: StringName) -> int:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	if r == null or not reset_unlocked(reset_id):
 		return 0
-	var v: float = maxf(0.0, get_stat(config.bloom_source_stat).to_float())
-	var n: int = int(floorf(config.bloom_seed_scale * sqrt(v / bloom_ref())))
-	return n if float(n) >= config.bloom_min_seeds else 0
+	var v: float = maxf(0.0, get_stat(r.source_stat).to_float())
+	var n: int = int(floorf(r.pay_scale * sqrt(v / reset_ref(reset_id))))
+	if float(n) < r.min_pay:
+		return 0
+	if r.pay_effect != &"":
+		n = int(floorf(float(r.pay_scale * sqrt(v / reset_ref(reset_id))) * (1.0 + effect_total(r.pay_effect))))
+	return n
 
 
-func can_bloom() -> bool:
-	return bloom_gain_preview() > 0
+func can_reset(reset_id: StringName) -> bool:
+	return reset_gain(reset_id) > 0
 
 
-## Sunlight a run starts with after a Bloom: the stat's start plus the Head start gift.
-func bloom_start_sunlight() -> BigNum:
-	return BigNum.from_float((stat_defs[&"sunlight"] as StatDef).start + effect_total(&"head_start"))
+## What a stat restarts at after a reset: its start, plus the reset's gift total for its start stat.
+func reset_start_value(reset_id: StringName, stat_id: StringName) -> BigNum:
+	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
+	var d: StatDef = stat_defs.get(stat_id) as StatDef
+	var extra: float = effect_total(r.start_effect) if r != null and r.start_stat == stat_id and r.start_effect != &"" else 0.0
+	return BigNum.from_float((d.start if d != null else 0.0) + extra)
 
 
-## Resets every stat flagged resets_on_bloom, pays Seeds and counts the Bloom. Gates, tiers, relics, mastery, RP and old
-## Prestige stay.
-func try_bloom() -> bool:
-	if not can_bloom():
+## Resets the stats the def lists, pays its currency and counts the use. Gates, tiers, relics, mastery and every other
+## currency stay.
+func try_reset(reset_id: StringName) -> bool:
+	if not can_reset(reset_id):
 		return false
-	var gained: int = bloom_gain_preview()
-	for s: StatDef in stat_defs.values():
-		if s.resets_on_bloom:
-			_set_stat(s.id, BigNum.from_float(s.start))
-	if stat_defs.has(&"sunlight"):
-		_set_stat(&"sunlight", bloom_start_sunlight())
-	_set_stat(config.bloom_stat, get_stat(config.bloom_stat).add(BigNum.from_float(float(gained))))
-	bloom_count += 1
+	var r: ZoneResetDef = reset_defs[reset_id] as ZoneResetDef
+	var gained: int = reset_gain(reset_id)
+	bloom_before = stats.duplicate()   # what the reset animation counts down from (BloomRitual)
+	var keep: int = int(floorf(effect_total(r.keep_effect))) if r.keep_effect != &"" else 0
+	for sid: String in r.resets:
+		if StringName(sid) != r.start_stat and keep > 0:
+			keep -= 1   # a kept flower: the gift saves the lowest ones listed
+			continue
+		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
+	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
+	reset_counts[reset_id] = reset_count(reset_id) + 1
 	_set_heat(0.0)
 	_flush()
 	run_stats.mark_rebirth()
-	bloom_done.emit(gained)
+	reset_done.emit(reset_id, gained)
 	return true
+
+
+## True once any zone reset has been done or could be done now (opens the Upgrades menu).
+func resets_started() -> bool:
+	for r: ZoneResetDef in reset_defs.values():
+		if reset_count(r.id) > 0 or can_reset(r.id):
+			return true
+	return false
 
 
 ## The stat Rebirth banks in the current zone: the zone's own (Ingots in the quarry) or the game's (Clover Leaves).
@@ -920,8 +1082,8 @@ func rp_available() -> BigNum:
 
 ## What an attribute is paid with, as a balance: Prestige earned and not yet spent, or Rebirth Points.
 func attribute_available(a: AttributeDef) -> BigNum:
-	if a.currency == config.bloom_stat:
-		return get_stat(config.bloom_stat)
+	if reset_for_currency(a.currency) != null:
+		return get_stat(a.currency)
 	return rp_available() if a.currency == config.rp_stat else prestige_available()
 
 
@@ -946,8 +1108,8 @@ func buy_attribute(attr_id: StringName) -> bool:
 		return false
 	if a.currency == config.rp_stat:
 		_set_stat(config.rp_stat, rp_available().sub(cost).max_zero())
-	elif a.currency == config.bloom_stat:
-		_set_stat(config.bloom_stat, get_stat(config.bloom_stat).sub(cost).max_zero())
+	elif reset_for_currency(a.currency) != null:
+		_set_stat(a.currency, get_stat(a.currency).sub(cost).max_zero())
 	else:
 		prestige_spent = prestige_spent.add(cost)
 	attr_levels[attr_id] = attr_level(attr_id) + 1
@@ -1016,16 +1178,30 @@ func apply_offline(seconds: float) -> float:
 	last_offline = {}
 	if secs <= 0.0:
 		return 0.0
-	calendar.advance(secs)   # the world keeps turning while you are away
+	last_offline["spent"] = {}
 	var gains: Dictionary = {}
-	var sb: BigNum = BigNum.from_float(secs)
-	for s: StatDef in stat_defs.values():
-		if s.passive:
-			var g: BigNum = income_per_second(s.id).mul(sb)
-			_set_stat(s.id, get_stat(s.id).add(g))
-			gains[s.id] = g
-	last_offline["tend"] = _offline_tend(secs, gains)
+	var tend: Dictionary = {}
+	# Slices keep income and tending in step: what tending pays in one slice (Dewdrops and up) raises the next slice's
+	# income, as it would if you were pressing, instead of the whole stretch paying at the rate you left with.
+	var slices: int = maxi(1, config.offline_slices)
+	var slice_secs: float = secs / float(slices)
+	var sb: BigNum = BigNum.from_float(slice_secs * config.offline_income_fraction)
+	for i in slices:
+		for s: StatDef in stat_defs.values():
+			if s.passive:
+				var g: BigNum = income_per_second(s.id).mul(sb)
+				_set_stat(s.id, get_stat(s.id).add(g))
+				gains[s.id] = (gains[s.id] as BigNum).add(g) if gains.has(s.id) else g
+		var part: Dictionary = _offline_tend(slice_secs, gains)
+		for tid: StringName in part:
+			var r: Dictionary = part[tid]
+			if tend.has(tid):
+				r["presses"] = int(r["presses"]) + int((tend[tid] as Dictionary)["presses"])
+				r["levels"] = int(r["levels"]) + int((tend[tid] as Dictionary)["levels"])
+			tend[tid] = r
+	last_offline["tend"] = tend
 	last_offline["relics"] = _offline_relics(secs)
+	calendar.advance(secs)   # the world keeps turning while you are away; after crediting, so the rate is the one you left with
 	_check_gates()
 	_flush()
 	offline_gained.emit(secs, gains)
@@ -1058,6 +1234,8 @@ func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
 		var nb: BigNum = BigNum.from_float(n)
 		var reward: BigNum = press_gain_preview(pad.id).mul(nb)
 		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
+		var paid: BigNum = cost.mul(nb)
+		last_offline["spent"][pad.cost_stat] = (last_offline["spent"][pad.cost_stat] as BigNum).add(paid) if (last_offline["spent"] as Dictionary).has(pad.cost_stat) else paid
 		_set_stat(pad.reward_stat, get_stat(pad.reward_stat).add(reward))
 		gains[pad.reward_stat] = (gains[pad.reward_stat] as BigNum).add(reward) if gains.has(pad.reward_stat) else reward
 		press_count += int(n)
@@ -1142,7 +1320,7 @@ func to_dict() -> Dictionary:
 		"play_seconds": play_seconds,
 		"press_count": press_count,
 		"rebirth_count": rebirth_count,
-		"bloom_count": bloom_count,
+		"reset_counts": reset_counts.duplicate(),
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
 		"ui_flags": ui_flags.duplicate(true),
@@ -1207,7 +1385,13 @@ func from_dict(d_in: Dictionary) -> bool:
 	play_seconds = float(d.get("play_seconds", 0.0))
 	press_count = int(d.get("press_count", 0))
 	rebirth_count = int(d.get("rebirth_count", 0))
-	bloom_count = maxi(0, int(d.get("bloom_count", 0)))
+	var rc: Variant = d.get("reset_counts", {})
+	if rc is Dictionary:
+		for k: Variant in (rc as Dictionary):
+			if reset_defs.has(StringName(str(k))):
+				reset_counts[StringName(str(k))] = maxi(0, int((rc as Dictionary)[k]))
+	if int(d.get("bloom_count", 0)) > 0 and reset_defs.has(&"bloom") and reset_count(&"bloom") == 0:   # saves from 0.31 kept the count on its own
+		reset_counts[&"bloom"] = int(d.get("bloom_count", 0))
 	relic_drops = int(d.get("relic_drops", 0))
 	_last_drop_at = float(d.get("last_drop_at", play_seconds))
 	var uf: Variant = d.get("ui_flags", {})

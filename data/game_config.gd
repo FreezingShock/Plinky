@@ -10,6 +10,11 @@ extends Resource
 @export var offline_base_cap_hours: float = 2.0
 ## While away the meadow is tended at this fraction of your press rate: each open tier presses its top unlocked pad,
 ## paying the same cost and reward as a real press, limited by what the tier below left in stock. 0 turns it off.
+## Offline time is credited in this many slices so tending feeds the income of the next slice.
+## Idle should take about twice as long as active play (locked rule), so away time pays this fraction of the live
+## income rate. Tending can't compound it: with one slice the whole stretch is priced at the rate you left with.
+@export var offline_income_fraction: float = 0.5
+@export var offline_slices: int = 1
 @export var offline_tend_fraction: float = 0.1
 ## Relic drop rolls run at this fraction of the awake rate (same chance, luck and pity rules), at most
 ## offline_relic_max_drops per return. 0 turns offline drops off.
@@ -33,16 +38,7 @@ extends Resource
 @export var income_stat: StringName = &"embers"
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
-## Bloom: the meadow's reset. Opens once `bloom_gate_zone`'s gate is open and `bloom_source_stat` reaches the first payout. The reference amount is that gate's threshold (bloom_seed_ref is only the fallback).
-## Pays floor(bloom_seed_scale * sqrt(source / bloom_seed_ref)) Seeds (at least bloom_min_seeds), and every Bloom done adds
-## bloom_reward_per_bloom to every pad's reward. Rebirth, Prestige and RP only show in `rebirth_zones`.
-@export var bloom_stat: StringName = &"seeds"
-@export var bloom_source_stat: StringName = &"starbloom"
-@export var bloom_gate_zone: StringName = &"larkmoor"
-@export var bloom_seed_ref: float = 250.0
-@export var bloom_seed_scale: float = 2.0
-@export var bloom_min_seeds: float = 2.0
-@export var bloom_reward_per_bloom: float = 0.05
+## Rebirth, Prestige and Rebirth Points show only in these zones. Every other zone runs on its own ZoneResetDef (content/resets).
 @export var rebirth_zones: PackedStringArray = PackedStringArray(["zone2"])
 ## Momentum: walking charges it (pressing nudges it), then it holds a moment and falls. Income gets
 ## x(1 + momentum * momentum_max_bonus + the kickers of every stage reached). Stages: Idle, then one per threshold.

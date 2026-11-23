@@ -1,0 +1,12 @@
+# Binary art and audio: never diffed or merged as text.
+*.png binary
+*.gif binary
+*.ogg binary
+*.wav binary
+*.ttf binary
+*.ico binary
+*.icns binary
+# Generated data: collapse in GitHub diffs.
+assets/art/**/placements3d.json linguist-generated=true
+world/*_life.json linguist-generated=true
+CHANGELOG.md linguist-generated=true

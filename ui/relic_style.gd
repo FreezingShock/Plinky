@@ -10,6 +10,11 @@ static var good: Color = Color("#b7d978")     ## role 4
 static var accent: Color = Color("#f2e6a0")   ## role 5
 static var text: Color = Color("#f6efd9")     ## role 7
 
+## Secondary text that stays readable on the dark panels: `dim` lifted halfway to the main text colour.
+static func soft() -> Color:
+	return dim.lerp(text, 0.5)
+
+
 ## colors: the 8 palette entries, index 0 to 7 (art bible section 3).
 static func set_palette(colors: PackedColorArray) -> void:
 	if colors.size() < 8:

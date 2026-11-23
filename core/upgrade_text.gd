@@ -17,6 +17,11 @@ static func amount_at(a: AttributeDef, level: int) -> float:
 
 ## "+120%" or "+5 h". Same string the tooltip and the stats index use for the number.
 static func value(a: AttributeDef, amount: float) -> String:
+	match a.value_kind:
+		&"flat", &"count":
+			return "+%s" % _trim(amount)
+		&"rate":
+			return "+%s/s" % _trim(amount)
 	if a.effect == &"offline_hours":
 		return "+%s h" % _trim(amount)
 	if a.effect == &"head_start":
@@ -24,32 +29,64 @@ static func value(a: AttributeDef, amount: float) -> String:
 	return "+%s%%" % _trim(amount * 100.0)
 
 
-## Name of the stat an upgrade is paid in.
-const CURRENCY_NAMES: Dictionary = {&"prestige": "Prestige", &"rp": "Rebirth Points", &"seeds": "Seeds"}
-## Menu order of the upgrade groups, and the heading each group wears (Prestige upgrades have none).
-const CURRENCY_RANK: Dictionary = {&"prestige": 0, &"rp": 1, &"seeds": 2}
-const GROUP_HEADS: Dictionary = {&"rp": "REBIRTH PERKS", &"seeds": "BLOOM GIFTS"}
+## Name of the stat an upgrade is paid in (Prestige and Rebirth Points; a zone reset's currency is named by its stat).
+const CURRENCY_NAMES: Dictionary = {&"prestige": "Prestige", &"rp": "Rebirth Points"}
+const RP_HEAD: String = "REBIRTH PERKS"
 
 
-## True when the group paid in `currency` shows here: Bloom gifts always, Prestige and Rebirth Point upgrades in the
-## zones that run Rebirth (the meadow does not).
+## Menu order of the upgrade groups: Prestige, Rebirth Points, then each zone reset's gifts in the reset's own order.
+static func rank(sim: Sim, currency: StringName) -> int:
+	if currency == &"prestige":
+		return 0
+	if currency == &"rp":
+		return 1
+	var r: ZoneResetDef = sim.reset_for_currency(currency)
+	return 2 + (r.order if r != null else 99)
+
+
+## The small heading above a group (Prestige upgrades have none).
+static func group_head(sim: Sim, currency: StringName) -> String:
+	if currency == &"rp":
+		return RP_HEAD
+	var r: ZoneResetDef = sim.reset_for_currency(currency)
+	return r.menu_title.to_upper() if r != null and r.menu_title != "" else String(currency).to_upper()
+
+
+## Every currency the Upgrades header and menu know, in menu order.
+static func currencies(sim: Sim) -> Array[StringName]:
+	var out: Array[StringName] = [&"prestige", &"rp"]
+	for r: ZoneResetDef in sim.resets_ordered():
+		out.append(r.currency)
+	out.sort_custom(func(a: StringName, b: StringName) -> bool: return rank(sim, a) < rank(sim, b))
+	return out
+
+
+## True when the group paid in `currency` shows here: a zone reset's gifts once it is open, used or paid, Prestige and
+## Rebirth Point upgrades in the zones that run Rebirth.
 static func group_shown(sim: Sim, currency: StringName) -> bool:
-	if currency == &"seeds":
-		return sim.bloom_count > 0 or sim.bloom_unlocked() or not sim.get_stat(&"seeds").is_zero()
+	var r: ZoneResetDef = sim.reset_for_currency(currency)
+	if r != null:
+		return sim.reset_count(r.id) > 0 or sim.reset_unlocked(r.id) or not sim.get_stat(currency).is_zero()
 	if currency == &"rp":
 		return sim.rebirth_here() and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
 	return sim.rebirth_here()
 
 
 static func currency_name(a: AttributeDef) -> String:
-	return String(CURRENCY_NAMES.get(a.currency, "Prestige"))
+	return String(CURRENCY_NAMES.get(a.currency, String(a.currency).capitalize()))
 
 
 static func unit(a: AttributeDef) -> String:
+	if a.unit_text != "":
+		return a.unit_text
 	return String(UNITS.get(a.effect, a.display_name.to_lower()))
 
 
-static func lock_text(a: AttributeDef) -> String:
+static func lock_text(a: AttributeDef, sim: Sim = null) -> String:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency) if sim != null else null
+		var nm: String = r.display_name if r != null else "resets"
+		return "Unlocks after %d %s" % [a.unlock_resets, nm + ("s" if a.unlock_resets != 1 and r != null else "")]
 	return "Unlocks at %d Rebirths" % a.unlock_rebirths
 
 
@@ -60,9 +97,11 @@ static func ordered(sim: Sim) -> Array[AttributeDef]:
 		out.append(a)
 	out.sort_custom(func(x: AttributeDef, y: AttributeDef) -> bool:
 		if x.currency != y.currency:
-			return int(CURRENCY_RANK.get(x.currency, 9)) < int(CURRENCY_RANK.get(y.currency, 9))
+			return rank(sim, x.currency) < rank(sim, y.currency)
 		if x.unlock_rebirths != y.unlock_rebirths:
 			return x.unlock_rebirths < y.unlock_rebirths
+		if x.unlock_resets != y.unlock_resets:
+			return x.unlock_resets < y.unlock_resets
 		if x.order != y.order:
 			return x.order < y.order
 		return String(x.id) < String(y.id))
@@ -81,14 +120,21 @@ static func state(sim: Sim, a: AttributeDef) -> Dictionary:
 		"now": value(a, amount_at(a, lv)),
 		"next": "" if maxed else value(a, amount_at(a, lv + 1)),
 		"cost_text": cost.format(), "can_afford": not maxed and not sim.attribute_available(a).lt(cost),
-		"currency": a.currency, "currency_name": currency_name(a),
-		"lock": lock_text(a), "rebirths": sim.rebirth_count, "need": a.unlock_rebirths,
+		"currency": a.currency, "currency_name": currency_name(a), "blurb": a.blurb,
+		"lock": lock_text(a, sim), "rebirths": _have_for_lock(sim, a), "need": a.unlock_rebirths,
 	}
+
+
+static func _have_for_lock(sim: Sim, a: AttributeDef) -> int:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency)
+		return sim.reset_count(r.id) if r != null else 0
+	return sim.rebirth_count
 
 
 ## Tooltip for a row: what it does, the real totals, and why it can or can't be bought. Same dictionary shape as Tip.
 static func tip(s: Dictionary, effect: StringName) -> Dictionary:
-	var body: String = String(StatIndex.ATTR_TIPS.get(effect, "A permanent upgrade."))
+	var body: String = String(s["blurb"]) if String(s.get("blurb", "")) != "" else String(StatIndex.ATTR_TIPS.get(effect, "A permanent upgrade."))
 	var hint: String
 	if not bool(s["unlocked"]):
 		hint = "%s. You have %d." % [s["lock"], s["rebirths"]]

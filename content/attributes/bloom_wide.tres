@@ -5,11 +5,15 @@
 [resource]
 script = ExtResource("1")
 id = &"bloom_wide"
-display_name = "Wide bloom"
+display_name = "Wide Bloom"
 effect = &"pad_yield"
-per_level = 0.03
+per_level = 0.06
 cap = 10
 base_cost = 3.0
 cost_growth = 1.5
 order = 3
 currency = &"seeds"
+unlock_resets = 0
+blurb = "Every pad pays more on every press."
+icon = &"cash"
+unit_text = "pad reward"

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ZoneResetDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/zone_reset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bloom"
+display_name = "Bloom"
+zones = PackedStringArray("zone1", "larkmoor")
+order = 1
+currency = &"seeds"
+source_stat = &"starbloom"
+gate_zone = &"larkmoor"
+ref_fallback = 250.0
+pay_scale = 2.0
+min_pay = 2.0
+ref_shrink_per_use = 0.85
+ref_floor = 0.3
+bonus_per_use = 0.25
+resets = PackedStringArray("sunlight", "thistle", "heather", "foxglove", "starbloom")
+start_stat = &"sunlight"
+start_effect = &"head_start"
+keep_effect = &"keep_flowers"
+pay_effect = &"seed_pay"
+bonus_effect = &"bloom_bonus"
+menu_title = "Bloom Gifts"
+button_hint = "Reset the meadow for Seeds."
+tip_body = "Let the meadow reset and bloom again. Your flowers start over."
+resets_text = "Resets your Sunlight and the Larkmoor flowers, Thistle to Starbloom."
+keeps_text = "Gates, relics, mastery, Seeds and your first flowers are kept."
+teach_text = "The meadow can Bloom now. It resets Sunlight and the Larkmoor flowers and pays Seeds, and every pad pays more for good. Spend Seeds on Bloom gifts in Upgrades [Tab]. Open gates stay open."

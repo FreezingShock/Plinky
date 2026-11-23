@@ -48,7 +48,7 @@ func _set_flash(v: float) -> void:
 
 func _draw() -> void:
 	var w: int = pip_width()
-	var empty: Color = RelicStyle.edge.lerp(RelicStyle.ink, 0.65)
+	var empty: Color = RelicStyle.edge.lerp(RelicStyle.ink, 0.3)   # readable on the dark panel (was 0.65)
 	var full: Color = RelicStyle.good if maxed else RelicStyle.accent
 	for i: int in cap:
 		var x: float = float(i * (w + GAP))

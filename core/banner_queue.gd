@@ -18,8 +18,9 @@ var _last_key: String = ""
 var _last_time: float = -1000.0
 
 
-## Fills defaults and clamps. Spec keys: title, lines, icon (area icon id), color (Color or null), duration, key,
-## interrupt (drop everything and show now).
+## Fills defaults and clamps. Spec keys: title, lines, icon (area icon id), color (Color or null, tints the border and
+## title), fill (Color or null, the panel background; a zone uses its own palette ink), duration, key, interrupt (drop
+## everything and show now).
 static func normalize(spec: Dictionary) -> Dictionary:
 	var lines: Array[String] = []
 	for l: Variant in spec.get("lines", []) as Array:
@@ -35,6 +36,8 @@ static func normalize(spec: Dictionary) -> Dictionary:
 		"lines": lines,
 		"icon": str(spec.get("icon", "")),
 		"color": spec.get("color", null),
+		"fill": spec.get("fill", null),
+		"resolve": spec.get("resolve", Callable()),
 		"duration": clampf(float(spec.get("duration", DEFAULT_DURATION)), MIN_DURATION, MAX_DURATION),
 		"key": key,
 		"interrupt": bool(spec.get("interrupt", false)),
@@ -46,7 +49,8 @@ static func normalize(spec: Dictionary) -> Dictionary:
 ## (see `take_interrupt`).
 func push(spec: Dictionary, now: float) -> bool:
 	var s: Dictionary = normalize(spec)
-	if s["title"] == "" and (s["lines"] as Array).is_empty():
+	var lazy: bool = (s["resolve"] as Callable).is_valid()   # built when it shows, so it may have no text yet
+	if not lazy and s["title"] == "" and (s["lines"] as Array).is_empty():
 		return false
 	var key: String = s["key"]
 	if s["interrupt"]:
@@ -55,7 +59,7 @@ func push(spec: Dictionary, now: float) -> bool:
 		return true
 	if not current.is_empty() and current["key"] == key:
 		return false
-	if key == _last_key and now - _last_time < REPEAT_WINDOW:
+	if is_repeat(key, now):
 		return false
 	for p: Dictionary in pending:
 		if p["key"] == key:
@@ -64,6 +68,25 @@ func push(spec: Dictionary, now: float) -> bool:
 		pending.remove_at(0)
 	pending.append(s)
 	return true
+
+
+## True when a banner with this key finished within REPEAT_WINDOW of `now`.
+func is_repeat(key: String, now: float) -> bool:
+	return key == _last_key and now - _last_time < REPEAT_WINDOW
+
+
+## Where the bottom edge of a banner of `banner` size sits, as a distance above the bottom of `host`. It stays at
+## `margin` unless the banner would cover `avoid` (a HUD rect, in host coordinates) while both overlap vertically
+## and horizontally. Then it lifts clear of that rect by `gap`.
+static func bottom_clearance(host: Vector2, banner: Vector2, avoid: Rect2, margin: float, gap: float) -> float:
+	var x0: float = (host.x - banner.x) * 0.5
+	var h_overlap: bool = x0 < avoid.position.x + avoid.size.x and x0 + banner.x > avoid.position.x
+	var av_top: float = host.y - avoid.position.y
+	var av_bottom: float = host.y - (avoid.position.y + avoid.size.y)
+	var v_overlap: bool = av_bottom < margin + banner.y and av_top > margin
+	if h_overlap and v_overlap:
+		return maxf(margin, av_top + gap)
+	return margin
 
 
 ## True when the head of the queue wants the current banner gone now.

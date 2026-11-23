@@ -10,7 +10,8 @@ const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd). Rocks and crystals stay put.
 ## Cast shadow of a pad slab: width in texels and the height it stretches from (the slab is about 3 texels thick).
-const PAD_SHADOW: Vector2 = Vector2(26.0, 18.0)
+## The slab is 3 texels thick and 28 wide: its shadow is short and as wide as the slab, in the global sun direction.
+const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 
 var _data: Dictionary = {}
@@ -18,6 +19,8 @@ var react: LifeReact
 var _sky: SkyCycle
 var _shadows: SkyShadows
 var _ground: Sprite2D
+## Material for the pad plates (main.gd assigns it): they take the same cast shadows as the ground.
+var pad_material: ShaderMaterial
 
 
 func _ready() -> void:
@@ -96,6 +99,7 @@ func _add_sky() -> void:
 	_sky.shadows = _shadows
 	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
 	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
+	pad_material = _sky.pad_material(load(DIR + "ground_h.png") as Texture2D, _ground.position)
 	var water: Array = []
 	for a: Dictionary in _data.anchors:
 		if String(a.kind) == "water":
@@ -119,6 +123,7 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+				_shadows.add_pad(Vector2(a.sx, a.sy).round())   # before the casters, so their shadows get a copy above the plate
 				_shadows.add_blob(Vector2(a.sx, a.sy), PAD_SHADOW.x, PAD_SHADOW.y)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 

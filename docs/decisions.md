@@ -145,6 +145,10 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
 - Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
 
+| 2026-11-23 | PC audio check fixes: ambience gains now step in `Audio.world_step(delta)` (called by _process, callable in tests) and shore/birds default on until a quarry zone turns them off | Probe saw gains stuck at 0 with proximity 0.9+. Cause was not provable without a run; the default removes any dependence on set_zone having fired, and the test now drives gains from proximity. |
+| 2026-11-23 | Wood plate = TexelPad.HALF (14x7) instead of 11x5.5 | The walker triggers a pad anywhere inside 14x7, so a step inside the pad must read wood. |
+| 2026-11-23 | (318,218) is sand and (241,193) is grass in ground.png (checked pixel by pixel); the PC probe's guesses were off, now pinned in tests | Surface classification itself was right. |
+| 2026-11-23 | MeadowSites per-zone data uses `MeadowSites.use(placements, ground, offset)` (set by main on zone entry, from the Larkmoor work) | Zones without placements fall back to grass. |
 
 ## Larkmoor, the big meadow (23 Nov)
 - The small meadow (`zone1`) is now the onboarding area. Its gate (9 Rebirths, unchanged) leads to a new zone, **Larkmoor** (`larkmoor`, order 1). Zone 2 (Ember Quarry) moves to order 2 and sits behind Larkmoor's far gate. `zone1.next_zone = larkmoor`, `larkmoor.next_zone = zone2`.
@@ -548,6 +552,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
+## Seasonal events (2026-11-23)
+- **Decision (Nathan approved the audit pick; picks are mine):** one small event per season, read off the calendar, all numbers in `content/config/seasonal_events.tres`. Spring **Petal Shower**: golden critter wait x0.7. Summer **Long Light**: passive income +8% while the sun is up (about +2% averaged over a year). Autumn **Seed Fall**: relic roll interval x0.75. Winter **Frost Pads**: momentum decays at half speed.
+- **Why these:** each touches a system that already exists (critter, income, relic rolls, momentum), so nothing new to balance and no swing over a few percent. Plain names, no streak-tier words.
+- **Surface:** `core/seasonal_events.gd` (pure), `Sim.events`, arrival banner on `season_changed` (`DistrictBanner.show_event`), event line in the clock tooltip. Water and recolour untouched; no new dither.
+- **Visible:** each event thickens its own season's particles (x2.4 petals, x2.6 sun motes, x2.2 leaves and seeds, x1.8 snow, `particle_boost`). Not done: frosted pad meshes and a warmer summer grade (need the engine to tune). Not run in the cloud: the engine; CI runs tests, the PC pass checks the look.
+
+
 ## Balance sim: three play profiles, meadow pacing checked (2026-11-23)
 - **Why:** the sim had one greedy press rate, so it could not show how much the pacing depends on how often the player presses. Idle, active and hold now run over 8 seeded runs each, and the table shows the median and the range.
 - **Profiles are content:** `content/config/sim_profiles.tres` (`data/sim_profiles.gd`) holds the presses per second (idle 0.2, active 0.5, hold 4.0) and the seed count. They are harness assumptions for pacing, not game balance. Active is the zone's `press_rate`, which already includes walking between pads.
@@ -564,7 +575,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Menu:** `Ledger` is a gallery tile after History (gold accent), a MenuRouter window like History, locked until Dewdrops unlock. Rows rebuild only when something changed.
 - Verified: 2838 headless checks, 0 failed, and the boot smoke test is clean. Screenshots rendered in the cloud on software OpenGL (`tools/ledger_shots.tscn`); the real look is for the PC pass.
 
-## Offline catch-up v2 (v0.35.0)
+## Offline catch-up v2 
 - Away time still caps at offline_base_cap_hours plus Deep Sleep levels. Within it: passive Sunlight at full rate; flower tending at `offline_tend_fraction` (0.1) of the press rate, one top unlocked pad per open tier, lowest tier first, paying real cost and reward and limited by stock (so it can never invent resources); mastery XP follows from those presses with Pad Lore applied; relic rolls at `offline_relic_roll_fraction` (0.25) of the awake rate with normal luck and pity, at most 3 drops per return. All numbers in content/config/game.tres. Zone 2 has no tiers yet, so it gets passive income only. Welcome Back lists tending and mastery in the mastery colour and found relics in their rarity colour. Untested in engine: no Godot in the cloud; CI runs the new tests. Balance threads may retune the three fractions.
 ## Tier buffs, multiplier display, clearer pad states (2026-11-23)
 - **Decision (Nathan):** stats from the 3rd tier up buff several lower stats, not just the one below. `StatDef.buff_stats` and `buff_factor` (data, reusable by the Ember Quarry ladder): while a stat is held (>= 1), rewards into each listed stat are multiplied by the factor, and buffs from different stats stack. Meadow: Thistle Down and Heather Sprigs 1.25x, Foxglove Bells and Starbloom Petals 1.5x, each on every stat below it. This is flat, not per unit, so it stays predictable; the per-unit chain (`gain_boost_stat`) is unchanged.
@@ -584,7 +595,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Result (active, median of 8 seeds):** Heather opens 11.4 min, Foxglove 22.5, Starbloom 33.9, far gate 51.6 (range 38.6 to 64.2). Before: 11.4, 27.4, 40.7, 58.4. Idle gate 114.8 (2.2x active). Hold 30.1.
 - **Still open:** the far gate is about 5 min short of the 57 to 61 target. The gate is a weak lever: raising the threshold to 5000 moved it about 3 min, and Starbloom 3 costs from 3000 to 12000 changed nothing. The next lever is Foxglove income (its rewards or the Heather costs), which slows the middle tiers too. Nathan to choose: accept about 52 min as faster progression, or slow the Foxglove economy to hit 57 to 61.
 - **HUD currency panel is a compact strip (v0.29.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
-- **HUD currency panel is a compact strip (v0.35.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
+- **HUD currency panel is a compact strip .** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
 
 ## Ember Quarry forge ladder (2026-11-23, v0.30.0)
 - **Decision (Nathan):** the quarry gets a 6-row stat ladder like the meadow's, with custom isometric art. Rows bottom to top: **Cinder** (pays Multiplier, costs the passive Cash), **Ore** (Iron Ore), **Slag**, **Ingot** (Ingots), **Alloy** (Alloys), **Emberheart** (Emberhearts), rarities Common to Mythic. Cash stays the zone's passive trickle, Multiplier is the first row's stat. Data: `content/tiers/{cinder,ore,slagrow,ingot,alloy,emberheart}.tres` (the Slag row id is `slagrow` so it never clashes with the stat), 18 pads `<row>_1..3` (+1/+8/+64), stats in `content/stats`.
@@ -612,6 +623,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 
 - 2026-11-23: Golden-hour pass. 08:08 spring looked best because the grade, long shadows and tint were all at once; low_sun() ended at elevation 0.62. Added SkyModel.golden() (floor 0.35 at noon, reach 0.95) driving rim, ground relight, shadow length (elevation squared), light-pass side/split, new sat/contrast in light_grade, wider god rays (zero at noon) and a haze bump. All costs stay at one full-frame pass already present; rays skip at noon. Pond water untouched. Not run in-engine from the cloud.
 
+## STANDING RULE: every zone has its own reset 
+- 2026-11-23, Nathan: global Prestige is retired as the main loop. Every zone gets its own rebirth/ascension with its own currency and its own themed upgrade menu, in the same menu style as Upgrades. Meadow = Bloom (Seeds, Bloom Gifts). Ember Quarry = Reforge later. Keep layers modest.
+- Built as `ZoneResetDef` (data/zone_reset_def.gd), one .tres per zone in content/resets/. A new zone needs: the def, a currency stat, an icon at 8/16/24/32 px, a colour in StatStyle.COLORS, and gift attributes with `currency` set to it.
+- Bloom repeat pacing: resets only Sunlight and Larkmoor's flowers (not Dewdrops or Clover Leaves), +25% pad reward per use, requirement shrinks 15% per use down to 30%. Unmeasured in-engine; run tools/sim_bloom.gd on the PC.
 ## 2026-11-23: Ember Quarry balance pass (v0.37.2)
 - **Pad costs x0.6** (from the shipped values) on all 18 quarry pads (`content/buttons/cinder_*` to `emberheart_*`). Rewards unchanged. Greedy floor (no walking, momentum, relics, heat or attributes), from the arrival purse: active gate about 40 min after arrival, was about 66. Idle (0.2 presses/s, the idle profile from #174) gate about 78 min, ratio about 2.0. **The greedy floor is erratic here:** x0.58 gives active 29 min and idle 105 min (ratio 3.7), and x0.5 gives 38 and 48 (ratio 1.3). Treat the 2x ratio as a point estimate. The seeded engine sim over the profiles is what should confirm it.
 - **Prestige per quarry rebirth x (1 + 0.25 x quarry rebirths so far)**, set by `ZoneDef.prestige_per_rebirth_bonus = 0.25` on zone2 only. Counted by the `reb` stat (quarry rebirths, not reset), so meadow and Larkmoor rebirths do not inflate it. Model (one attribute track, cheapest first, rebirth at Ingot 9, 6 hours, levels 1 to 15 only since the caps stop buys there): attribute gaps, median and max, were 14 and 63 min before, 4.4 and 8.1 min with this pass. Beyond level 15 the gaps still grow with the 1.4x cost; the caps (8 to 25 levels) stop that in practice.
@@ -638,7 +653,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Look tradeoff on Low (taste call):** no sun-side lift or highlight and shadow split from the light grade, slightly coarser cast shadows. Palettes, dither and outlines are unchanged.
 - **CI ceilings:** `check_frame_budget.py` now also fails above 250 draw calls and 1200 nodes (Larkmoor is 1065 headless; the old 700 in perf.md was stale).
 - **Result:** Low is 10 to 13% faster than before on the stand-in, High unchanged. Short of the 25% budget; real iGPU numbers still wanted from the PC thread. Not run on a real GPU.
-## 2026-11-23 Travel menu lists top-level areas only (v0.35.0)
+## 2026-11-23 Travel menu lists top-level areas only 
 
 ## 2026-11-23 Cash and Multiplier leave the Ember Quarry (0.34.0)
 - **Nathan's call:** Cash and Multiplier are removed from the quarry and will return in a later nostalgic, liminal zone. They are parked, not deleted: `content/parked/stats/cash.tres` and `mult.tres` (not loaded), the `cash.png` and `mult.png` icons, and the `CASH_MULT` and `MULT_GAIN` relic effects stay.
@@ -647,7 +662,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Rebirth stays in the quarry until Reforge.** It never needed the Multiplier: it banks Ingots as Prestige, Prestige multiplies Embers income and buys Attributes, and Rebirth Points buy perks. The Reforge ZoneReset (PR #183 framework) should replace it as its own follow-up, with a forge-themed currency and menu.
 - **Saves:** `ladder = 3`. Saves from before it move `cash` to `embers` and `mult` to `cinder` on load (`Sim._rename_quarry_stats`). Older saves still go through the flower and quarry ladder migrations first.
 - Not run in the cloud: the engine (tests and screenshots are CI and the PC tester).
-## 2026-11-23 Travel menu lists top-level areas only (v0.34.0)
+## 2026-11-23 Travel menu lists top-level areas only
 Travel shows Meadow and Ember Quarry plus two locked "???" teaser rows (`travel_teased_rows` in game.tres). Larkmoor is inside the Meadow (`ZoneDef.travel_parent`), so its districts leave the list. The Meadow row lands in the furthest unlocked zone of the Meadow (Larkmoor once the first gate is open), or stays put if you are already inside it. Sub-area expand toggles removed.
 
 ## Ember Quarry rework: roomy terraced world, lava, front-facing 2D art (2026-11-23)
@@ -662,16 +677,90 @@ PRs add a `changelog.d/<slug>.patch|minor.md` fragment instead of bumping `core/
 ## 2026-11-23 Menu tiles always show their names
 Nathan wanted the hamburger menu words visible, not only on the focused tile. Tiles now always draw their name; a locked tile still says "Locked" while hovered. Grid is 3 columns (nine tiles fill 3x3) and tiles are 96 wide. New hover: a slanted band of 4x4 Bayer dither in the section colour sweeps across once (0.4 s), the icon bobs one texel, plus the existing lift. All off under reduced motion / flashing. Tooltips unchanged. Not run in-engine from the cloud.
 
+- Offline Sunlight uses the same `income_per_second` as the live tick, at idle factor 1 (Dewdrop boost, relics, Bloom and Sun-rate bonuses all included). Only Momentum is absent, because it is zero at load. A QA reading of 0.25/s against 0.88/s on a fresh save came from Dewdrops being 0 at load and later pressed; the new test pins offline rate / live rate = 1.
 ## Popup banners (Banner autoload)
 - `Banner.announce({title, lines, icon, color, duration, key, interrupt})` (ui/banner.gd, logic in core/banner_queue.gd). `show` is taken by CanvasLayer, so the call is `announce`.
 - Bottom-middle, typed from the centre outward and collapsed back to it. The panel is a fixed size for the whole banner, so it never jitters. Queue holds 4, same key is a duplicate, a repeat within 6 s is dropped, `skip()` ends early.
 - Reduced motion: new Access toggle "Still banners" (`FxConfig.reduce_motion`): banners show whole with no typing or collapse.
 - Replaces the old DistrictBanner. Area arrival (core/area_banner.gd): name, then season/date from `/root/Calendar.now()` when that autoload exists, then time; with no calendar it shows the sky clock and period only. `ZoneDef.outdoor` (default true) turns it off for indoor zones. Larkmoor shows district banners, other zones show a zone banner on arrival and at boot.
 - Calendar keys read: season (name or 0-3), month, day, hour, minute, period. Not wired: season_changed banner (waiting on the calendar thread's signal names).
+## 2026-11-23 Staged (multi-resolution) icons 
+- Nathan: "better and more staged art for rebirth points, and everything else", meaning a hand-drawn variant per size, not scaled copies. Sizes: 8, 12, 16, 24, 32 (square, palette indices, nearest filter, no blur).
+- Source of truth is `tools/art/staged/<name>.txt` (one ASCII grid per size, optional mirrored left half); `tools/art/gen_icons_staged.py` compiles them to `assets/icons/s8|s12/`, `s24/`, the existing 16 px path and `big/` (32 px), plus the contact sheet `docs/img/icons_staged.png`. `ui/icon_set.gd` (`IconSet.get_icon(name, slot_px)`) picks the largest staged size that fits a slot.
+- Rebirth Points redrawn: a faceted green gem with a two-leaf sprout (a rebirth seed), distinct from the Rebirth ring-arrow, Prestige crown and Luck clover. Pale table, light girdle, deep pavilion, the sprout carries the "new life" read at 8 px.
+- Audit before this change: stats, attributes, perks (19 icons) had 16 and 32 px only, both rendered from one shared geometry. Relics (6) have 16 px only, menu tile glyphs 9 px, area glyphs 7 px, rarity frames 20 px, hamburger and gallery menu icons 32 px. Now done: the 19 stat/attribute/perk icons have all five sizes; the 8 px and 12 px versions started from a reduction of the 16 px art and were redrawn by hand where it read badly (clock, book, Rebirth). Not done yet: relics, gallery menu icons.
+- Not run in engine: no Godot in the cloud; CI runs the headless tests, the PC pass should judge the icons at 1x/3x in the HUD and gallery.
+
+## 2026-11-23 Staged icons, second pass
+- Same five sizes (8, 12, 16, 24, 32) for the flower and quarry stats (Sunlight, Dewdrop, Seeds, Clover, Thistle, Heather, Foxglove, Starbloom, Embers, Cinder, Ironore, Ingot, Alloy, Emberheart, Slag), the 6 relic icons and the 9 gallery menu icons. Relic files sit in `assets/icons/relics/` (16 px) with `s8 s12 s24 s32` folders beside them; menu icons at 32 px stay in `big/`, their 16 px is `assets/icons/menu_*.png`.
+- These were seeded by `tools/art/seed_staged.py` (majority-colour reduction with a rebuilt outline; Scale2x for 16 to 32 on relics), not drawn from blank. Their 8 and 12 px versions are the weakest and are the first to polish by hand. Icons that need colours beyond the 8 zone roles list them in the .txt (`%a=#rrggbb`).
+- Skipped on purpose: Rebirth and Prestige polish (the quarry reset is being replaced), the hamburger glyph (16 px only), menu tile glyphs (9 px) and area glyphs (7 px).
+
+## 2026-11-23 Clock chip centred, season shown once, zone title unclipped
+- The clock chip centres on the screen (between the stats panel and the zone card, clamped to both). Squeeze levels are unchanged.
+- The season appears once: the month line reads "Early Summer · Day 2" in the season accent, and the season accent is also the dial's bottom texel row. The separate "Summer" line is gone.
+- The dial fills the chip's full inner height (1 texel inside the frame top and bottom) and sizes itself to the text height. Art: dithered sky, a rising and falling horizon with grass tufts, a sun or moon on its arc, twinkling stars at night.
+- The zone card's Travel button moved to its own full-width row under the title. A 152 px card cannot fit "Ember Quarry" beside the button. Titles that still overflow drop to the small size.
+- Not verified in-engine: cloud threads cannot run Godot. The PC QA thread should check the chip at 640x360 and at a wide frame, plus the Ember Quarry card.
+## Pads receive cast shadows
+- Pads are plates drawn above the baked ground, so the ground's height-march shadow stopped at their edge and the pad stayed fully lit inside a shadow. New `pad_shadow.gdshader`: the same march from the plate's own top (ground height under the fragment plus `pad_lift`, 6 encoded units, about 2 world units), with the sun, slope, reach and strength SkyCycle already feeds the ground. SkyCycle owns it (`pad_material`, `_pad_mats`); each zone scene exposes `pad_material` and main.gd assigns it to the pads it builds (one line).
+- The pad's own drop shadow blob was sized like a tree (26 x 18); it is now 22 x 4, the slab's width and thickness, in the same sun direction and softness as the other casters.
+- Moving prop shadows (SkyShadows) are drawn beneath the pads, so they used to stop at the plate. Each caster within 220 texels of a pad now also gets a copy in a `PadOverlay` node at z 1 (above the plates), using the same shader with `clip` on: it only paints inside a pad's diamond (15 x 8 around the plate centre, up to 24 pads), so the shadow carries across the plate and nowhere else. Scenes call `add_pad` for every pad anchor.
+- Not run in engine. PC: Larkmoor at golden hour, zoomed on a pad next to a tree.
+
+## 2026-11-23 Clock dial follows the zone palette
+- The dial reads the palette of the current zone (Palettes.for_zone) and recolours within a tenth of a second of a zone change. Meadow stays green.
+- Ember Quarry's sun uses the amber role (4), not the dusty rose role (5), so it reads as ember. Other zones keep role 5.
+- Not verified in-engine. The PC QA thread should check the dial in the meadow and in Ember Quarry, by day and at night.
+## 2026-11-23 Capital Qd and Qn again
+- Nathan asked for Qd and Qn capitalised. This reverses the lowercase q from PR #193, which QA raised because a Q in "+100QnVg" read as a 0 at popup size. Only Qd and Qn change (`N_SMALL`, `UNITS`, tests). qg, qq, qe and qi stay lowercase, so compound names now mix cases (a name with Qd next to one with qg). Taste call to revisit: capitalise the rest too, or keep the split.
+- Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
+- Not run in engine: no Godot in the cloud. CI runs the headless tests.
+
+## 2026-11-23 Zone banner on zone entry only, area card swaps in place
+- Nathan: the full banner plays when entering each zone, not each subarea. Walking into a district (Old Oak Crossing and so on) no longer calls `Banner.announce`; `ZonePanel.set_district` changes the top-right area card instead, with a crossfade of SWAP_OUT 0.1 s then SWAP_IN 0.2 s, stepped in quarters so it dithers. The fade is skipped when "Still banners" (FxConfig.reduce_motion) is on.
+- Larkmoor is a zone (its own ZoneDef, scene and arch), so it gets a zone banner on arrival. This was the one case that used to get none. Its districts get none. If Nathan wants Larkmoor treated as part of the Meadow instead, change `_announce_zone_arrival` only.
+- Zone banner styling: the border and title use the zone's palette role (`ZoneDef.theme_role`), and the panel fill uses the zone palette's ink (index 0) through a new optional `fill` key on the banner spec. Season tint is dropped for zone banners so Meadow and Larkmoor (same palette, different role) read apart. Hold 3 s (`ZONE_BANNER_HOLD`).
+- `ui/district_banner.gd` is no longer used by anything. Left in place for a later cleanup PR.
+- PC QA fixes in the same PR: Banner rebuilds its panel if the HUD that held it was freed (Quit to Title), so a later banner never touches a freed node, and `_tl` starts as a full timeline so no key can be missing. Tip cards hold while a banner shows and the next tip waits for it, so the Welcome card no longer covers a zone banner at 640x360.
+- Not run in-engine from the cloud: the crossfade, the banner palette and the 640x360 overlap need a PC check.
+
+## 2026-11-23 Repo trim for faster, cheaper threads
+- Removed 10 unreferenced GDScript files (`world/player.gd`, `world/button_pad.gd`, `ui/district_banner.gd`, `ui/fx/counter_tick.gd`, and six tool scripts with no scene, test or doc reference). Reasoning: each had zero references (class names and paths checked); git history keeps them.
+- Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
+- `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
+- Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.
+## 2026-11-23 Popup Q gets a tail; popups use a derived font
+- PC QA on v0.45.2: "+100QnVg!" read as "+1000nVg!" at popup size. Correction to the entry above: that atlas check used Spleen 6x12, but popups draw in Pixelify Sans 16 (`PopupLabel` in plinky_theme.tres). The Pixelify Q's tail sat under the bowl and the 2 px popup outline filled the gap, so it read as a 0.
+- Fix: `fonts/PixelifySans-popup.ttf`, a derived copy of Pixelify Sans whose Q has a tail detached from the bowl by the bottom-right notch. Only Q changes, advance width is the same, and the family is renamed "Pixelify Sans Popup". Pixelify Sans is OFL 1.1 with no Reserved Font Name, so the derived copy is allowed. `PopupLabel` uses it. Titles, menus and the stock Q stay as they were. Built by `tools/build_popup_font.py`.
+- Candidates compared at 16 px with the 2 px outline: a filled-corner descender and a stair tail both read as lowercase q, so the detached diagonal was chosen.
+- QA finding 2: "1.5e15" shown as "+30d" at 3x. Not reproduced in the cloud. `NumberFormat.short(1.5e15)` gives "1.5Qd" (checked against a Python mirror of the formatter and now pinned in tests/test_format.gd), and the popup path (`PopupNumber.spawn`, `PressPopups._format`, `FxBus.bonus_popup`) passes the value straight through with no truncation. Nothing in the popup code produces a "d" suffix; the only "d" output is the skip duration in core/dev_commands.gd. Likely a probe or input mismatch. The PC probe should print the label's `.text` to settle it.
+- Not run in engine: no Godot in the cloud. PC QA should check "+100QnVg!" and "+1.5Qd" at 1x and 3x, and "Quarry" in a popup.
+- Offline credit now uses the day or night income rate you left with (the calendar advances after crediting), so offline Sunlight per second equals the live rate; before, advancing the clock first made the rate depend on when you came back (a test caught 1.08x). Verified with the headless suite (4393 checks, 0 failed).
+
+## 2026-11-23 Banners build when they show; season toast lifts above the Momentum meter
+- A zone banner is queued with a `resolve` Callable (Banner, `ui/banner.gd`). It is built when it is about to show, so it names the zone the walker is in then and reads the calendar as it is then. QA saw "Meadow" with a stale date after walking into Larkmoor. The payload had been composed when it was queued, from the boot arrival path, and waited in the queue. A resolved banner that is now indoor or a repeat of one just shown is dropped.
+- The arrival at boot (1.2 s after start) goes through the same path, so it can no longer name a zone the walker has left.
+- Bottom-centre banners lift clear of the Momentum meter (bottom-left, `Banner.avoid` set by the HUD) when the two would overlap. At 640x360 a wide season toast ("Long Light") covered the meter's right half. Lifted only when it overlaps, so the usual position is unchanged. The overlap test is `BannerQueue.bottom_clearance` (pure, tested).
+- Not run in-engine from the cloud: the banner text after a Quit to Title, and the lifted position at 640x360 need a PC check.
+- Offline pay is capped by design: passive income credits at `offline_income_fraction` (0.5) of the rate you left with, in one slice, so tending cannot compound it. This restores the locked rule that idle takes about twice as long as active play. The 12-slice compounding from #197 paid about 294x on a fresh save and is off (`offline_slices = 1`).
+## 2026-11-23 Larkmoor Dewdrop and Clover rows (minor)
+- **Why the pads were tutorial-only:** the flower ladder (v0.27.0) made Sprout (Dewdrops) and Clover Leaves the meadow's first two tiers. Clover Leaves is the meadow gate stat (9 to open Larkmoor), and Larkmoor was built as Thistle, Heather, Foxglove and Starbloom. The hand-off was intended, not a bug.
+- **Added (Nathan's call):** two rows in Larkmoor, each its own tier so meadow unlocks stay apart. `lark_sprout` (Dewdrops, common) at Heronmere beside the lake path, paid in Sunlight at 10, 100, 1000 for 1, 8, 64 Dewdrops. `lark_clover` (Clover Leaves, uncommon) at Cairnfold beside the north path, paid in Dewdrops at 300, 1200, 4800 for 1, 8, 64 Clover Leaves. Larkmoor now opens on Sprout, then Clover, then Thistle, matching rarity order.
+- **Art:** pads reuse the meadow flower art through `TexelPad.FLOWER_OF`, so pad 1 is plain, pad 2 adds sprouts and pad 3 is the flower bed with glints (the #212 stages). Pad 1 is the end nearest the road.
+- **Layout:** rows placed in `tools/art/larkmoor_layout.py`, art regenerated with `gen_larkmoor.py`. Every pad passes the generator's walk-reach check. `world/larkmoor_life.json` regenerated with the arguments recorded above.
+- **Pacing (`tools/sim.gd`, median of 8 seeds, active profile):** far gate 51.6 to 51.8 min; idle 114.8 to 117.7 min (idle about 2.3x active). Rejected: meadow-scale Clover costs (3000/12000/48000 Dewdrops) gave 62.8 min, and Sunlight costs of 100/1000/10000 with Dewdrops 1000/3000/9000 gave 79.5 min.
+- **Flag:** the hold profile (4 presses/s, a fast clicker) falls from 30.1 to 16.2 min to the Larkmoor gate. Left as is; a taste call for Nathan whether to raise the new costs.
+- Not run in the engine: the pad art and placement (screenshots need a GPU; the headless sim and tests did run).
+
+## 2026-11-23 Node budget 1300 to 1350 (Larkmoor pads, Nathan's call)
+- **Why:** the Larkmoor Dewdrop and Clover rows add 61 nodes (six pads with their anchors and holds, and six props from the regenerated layout). Main's Larkmoor is 1266, so the scene reached 1327 and CI's `play` frame budget failed.
+- **Chosen by Nathan (decision card):** raise the active-zone node ceiling to 1350 rather than trimming props or optimising pads first. Set in `.github/workflows/ci.yml` (frame budget 150/300/250/1350), `docs/ci.md` and `docs/perf.md`.
+
 
 ## HUD strip polish (2026-11-23)
 - **Stable width:** the value column is 52 px and the gain column 68 px (right-aligned, clipped), so a ticking number never resizes the panel. The strip is a little wider than before when gain rates are on; turn off Strip Gain Rates to drop that column.
-- **Cap:** `HudLayout.cap_for()` is 12 or the zone's own Default if longer, so the count never reads over its cap (the quarry's Default plus Seeds was 11 against a cap of 10). Seeds now default onto the strip only where Bloom runs (not where Rebirth runs); it can still be pinned from the chips.
+- **Cap:** `HudLayout.cap_for()` is 12 or the zone's own Default if longer, so the count never reads over its cap (the quarry's Default plus Seeds was 11 against a cap of 10). A zone-reset currency (Seeds) shows by default only in its own zone (main's `reset_for_currency` rule); it can still be pinned from the chips.
 - **Edit mode:** the three boxed buttons per row became a frameless grip (drag the row, or Up and Down while the grip has focus) and a frameless hide mark, dim until the row is hovered. This drops the move up and move down buttons, so there is nothing to disable at either end.
 - **Motion:** rows glide to new places, fade out when hidden and fade in when added, the grips and footer ease open in six steps, and chips pop in. All of it snaps under Reduce Motion or Reduce Flashing.
 - Not run in-engine from the cloud; needs a PC capture.

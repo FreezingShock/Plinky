@@ -102,6 +102,13 @@ func day_fraction() -> float:
 	return fposmod(elapsed_days, 1.0)
 
 
+## True while the sun is up. Cheap; for per-frame callers that do not need the whole snapshot.
+func is_day() -> bool:
+	var f: float = day_fraction()
+	var sunrise: float = (1.0 - daylight_fraction) * 0.5
+	return f >= sunrise and f < sunrise + daylight_fraction
+
+
 func now() -> Dictionary:
 	var f: float = day_fraction()
 	var minutes_total: int = int(floorf(f * 1440.0))

@@ -87,6 +87,7 @@ func run(t: Object) -> void:
 	for r: TierDef in rows:
 		var art: String = String(TexelPad.FORGE_ART.get(r.id, ""))
 		t.ok(art != "", "row %s has pad art" % r.id)
-		for f in 3:
-			t.ok(ResourceLoader.exists("%s%s_game_f%d.png" % [TexelPad.FORGE_DIR, art, f]), "%s frame %d exists" % [art, f])
+		for stage in range(1, 4):
+			for f in 3:
+				t.ok(ResourceLoader.exists("%s%s_s%d_game_f%d.png" % [TexelPad.FORGE_DIR, art, stage, f]), "%s stage %d frame %d exists" % [art, stage, f])
 		t.ok(TexelPad.STAT_COLORS.has(r.stat) and StatStyle.COLORS.has(r.stat), "%s has a stat colour" % r.stat)

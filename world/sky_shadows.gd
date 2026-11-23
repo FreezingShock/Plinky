@@ -24,6 +24,10 @@ const WALKER_SIZE: Vector2 = Vector2(11.0, 17.0)   # width of the walker's shado
 const QUANT: float = 24.0                          # sun values are rounded to 1/QUANT so the shadows move in steps
 
 var mat: ShaderMaterial
+var _ov_mat: ShaderMaterial          # the same shader, clipped to the pad diamonds, for the copies drawn above the pads
+var _overlay: Node2D                 # z 1: above the pad plates (z 0). Holds a clipped copy of every shadow that can reach a pad
+var _pads: Array[Vector2] = []
+const PAD_REACH: float = 220.0       # a caster farther than this from every pad cannot shade one
 var _items: Array[Dictionary] = []   # {sprite: Sprite2D, foot: Vector2, w: float, h: float}
 var _blob: Sprite2D
 var _walker: Node2D
@@ -37,6 +41,9 @@ func _init() -> void:
 	RenderGlobals.ensure()
 	mat = ShaderMaterial.new()
 	mat.shader = SHADER
+	_ov_mat = ShaderMaterial.new()
+	_ov_mat.shader = SHADER
+	_ov_mat.set_shader_parameter("clip", true)
 
 
 func _ready() -> void:
@@ -62,15 +69,59 @@ func _quad(nm: String) -> Sprite2D:
 func add_caster(src: Sprite2D, kind: String, size: Vector2) -> void:
 	var k: Vector2 = KIND.get(kind, DEFAULT_KIND) as Vector2
 	var sp: Sprite2D = _quad("Sh_" + String(src.name))
-	_items.append({"sprite": sp, "foot": src.position, "w": size.x * k.x, "h": size.y * k.y})
+	_items.append({"sprite": sp, "foot": src.position, "w": size.x * k.x, "h": size.y * k.y, "ov": null})
+	_maybe_overlay(_items[_items.size() - 1])
 	_lay(_items[_items.size() - 1])
 
 
 ## A shadow for something that is not a prop sprite (a pad slab): foot position, width, and the height it stretches from.
 func add_blob(foot: Vector2, w: float, h: float) -> void:
 	var sp: Sprite2D = _quad("Sh_blob%d" % _items.size())
-	_items.append({"sprite": sp, "foot": foot, "w": w, "h": h})
+	_items.append({"sprite": sp, "foot": foot, "w": w, "h": h, "ov": null})
 	_lay(_items[_items.size() - 1])
+
+
+## A pad plate sits at `pos`. Shadows of nearby props get a clipped copy above the plates, so they cross the pad.
+func add_pad(pos: Vector2) -> void:
+	_pads.append(pos)
+	var arr := PackedVector2Array()
+	for p: Vector2 in _pads:
+		arr.append(p)
+	while arr.size() < 24:
+		arr.append(Vector2.ZERO)
+	_ov_mat.set_shader_parameter("clip_pads", arr)
+	_ov_mat.set_shader_parameter("clip_count", mini(_pads.size(), 24))
+	for it: Dictionary in _items:
+		if it.ov == null and not _is_blob(it):
+			_maybe_overlay(it)
+			if it.ov != null:
+				_lay(it)
+
+
+func _is_blob(it: Dictionary) -> bool:
+	return String((it.sprite as Sprite2D).name).begins_with("Sh_blob")
+
+
+func _near_pad(foot: Vector2) -> bool:
+	for p: Vector2 in _pads:
+		if absf(foot.x - p.x) < PAD_REACH and absf(foot.y - p.y) * 2.0 < PAD_REACH:
+			return true
+	return false
+
+
+func _maybe_overlay(it: Dictionary) -> void:
+	if it.ov != null or _pads.is_empty() or _is_blob(it) or not _near_pad(it.foot as Vector2):
+		return
+	if _overlay == null:
+		_overlay = Node2D.new()
+		_overlay.name = "PadOverlay"
+		_overlay.z_index = 1
+		add_child(_overlay)
+	var sp := _quad("Ov_" + String((it.sprite as Sprite2D).name))
+	remove_child(sp)
+	_overlay.add_child(sp)
+	sp.material = _ov_mat
+	it["ov"] = sp
 
 
 ## Sun state from SkyCycle: light x (-1 left .. +1 right), shadow length in object heights, strength 0..1.
@@ -81,6 +132,10 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 	mat.set_shader_parameter("density_foot", float(p.foot))
 	mat.set_shader_parameter("density_tip", float(p.tip))
 	mat.set_shader_parameter("shade", SHADE.lerp(SHADE_DEEP, clampf(float(p.get("low", 0.0)), 0.0, 1.0)))
+	for k: StringName in [&"strength", &"density_foot", &"density_tip", &"shade"]:
+		_ov_mat.set_shader_parameter(k, mat.get_shader_parameter(k))
+	if _overlay != null:
+		_overlay.visible = visible
 	var key := Vector2i(roundi(azimuth * QUANT), roundi(length * QUANT))
 	if key == _key:
 		return
@@ -95,6 +150,8 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 ## Lay one shadow: an oval from just behind the foot out along the shadow direction, in ground space.
 func _lay(it: Dictionary) -> void:
 	_place(it.sprite as Sprite2D, it.foot as Vector2, float(it.w), float(it.h))
+	if it.ov != null:
+		_place(it.ov as Sprite2D, it.foot as Vector2, float(it.w), float(it.h))
 
 
 func _place(sp: Sprite2D, foot: Vector2, w: float, h: float) -> void:

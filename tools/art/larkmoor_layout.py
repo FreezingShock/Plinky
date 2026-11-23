@@ -37,19 +37,21 @@ def row(cx, cy, dx, dy):
 
 ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right ("/") or falls to the right ("\\")
 
-# Districts: name, centre, pads (screen coords), landmark. Pads are four rows: Thistle at Gatehouse Green, Heather at
-# Old Oak Crossing, Foxglove at Thistle Rise, Starbloom at Emberwatch. Heronmere, Cairnfold and Lanternwood have none.
+# Districts: name, centre, pads (screen coords), landmark. Pads are six rows, listed in the order of their tiers. The
+# common and uncommon rows (Dewdrops at Heronmere, Clover Leaves at Cairnfold) open first, then Thistle, Heather,
+# Foxglove and Starbloom. Pad 1 of each row is the end nearest the road, so its row_index 0 plate is the one the walker meets first.
+# Lanternwood has none.
 DISTRICTS = [
     dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(868, 646, *ROW_STEP_UP),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[],
-         note='West lake with reed shores and a little jetty.'),
+    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(580, 562), (536, 584), (492, 606)],
+         note='West lake with reed shores and a little jetty. The Dewdrop row runs beside the lake path.'),
     dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=row(840, 534, *ROW_STEP_DOWN),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
     dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=row(1030, 580, *ROW_STEP_UP),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
-    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[],
-         note='Rocky foothills, glowing crystals, a ring of standing stones.'),
+    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[(716, 378), (672, 356), (628, 334)],
+         note='Rocky foothills, glowing crystals, a ring of standing stones. The Clover row runs along the north path.'),
     dict(id='lanternwood', name='Lanternwood', c=(960, 330), pads=[],
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
     dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=row(836, 322, *ROW_STEP_UP),
