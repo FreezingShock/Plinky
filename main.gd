@@ -151,7 +151,7 @@ func _ready() -> void:
 	bus.season_changed.connect(_on_season_changed)
 	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
 	_enter_zone_visuals(sim.zone_id)
-	get_tree().create_timer(1.2).timeout.connect(func() -> void: _announce_zone_arrival(sim.zone_id))
+	get_tree().create_timer(1.2).timeout.connect(_announce_zone_arrival)
 	_clear_spawn()
 	_prev_zone = _previous_zone(sim.zone_id)
 	camera.snap()
@@ -524,10 +524,17 @@ func _on_season_changed(season: int) -> void:
 ## zone get none; the area card in the zone panel changes instead (see _update_district).
 ## Its name, then season and date, then the time of day. Reads the Calendar autoload when it exists (now() returns a
 ## dictionary, see core/area_banner.gd) and falls back to the sky clock. The zone's own palette styles it.
-func _announce_zone_arrival(zone_id: StringName) -> void:
+func _announce_zone_arrival() -> void:
+	Banner.announce({"key": "zone_arrival", "resolve": _zone_banner})
+
+
+## Built when the banner is about to show (see Banner's `resolve`): the zone the walker is in then, and the calendar
+## as it is then. Returns {} for an indoor zone.
+func _zone_banner() -> Dictionary:
+	var zone_id: StringName = sim.zone_id
 	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
 	if z == null or not z.outdoor:
-		return
+		return {}
 	var cal: Dictionary = {}
 	var calendar: Node = get_node_or_null("/root/Calendar")
 	if calendar != null and calendar.has_method("now"):
@@ -541,7 +548,8 @@ func _announce_zone_arrival(zone_id: StringName) -> void:
 	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, phase, "", cols[clampi(z.theme_role, 0, 7)])
 	spec["fill"] = cols[0]
 	spec["duration"] = ZONE_BANNER_HOLD
-	Banner.announce(spec)
+	spec["key"] = "zone:" + String(zone_id)
+	return spec
 
 
 ## Names the district the walker is in. The zone panel's area card changes in place; no banner.
@@ -580,7 +588,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 		_enter_zone_visuals(zone_id)
 		Juice.zone_enter()
 		_after_crossing(zone_id)
-		_announce_zone_arrival(zone_id)
+		_announce_zone_arrival()
 		return
 	_crossing = true
 	walker.stop()
@@ -592,7 +600,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 			_clear_spawn())
 	_crossing = false
 	_after_crossing(zone_id)
-	_announce_zone_arrival(zone_id)
+	_announce_zone_arrival()
 
 
 func _after_crossing(zone_id: StringName) -> void:
