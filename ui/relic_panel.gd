@@ -10,12 +10,12 @@ extends PanelContainer
 const GAP: int = 5
 const COLUMNS: int = 2
 ## Rows of cards visible before the collection scrolls.
-const VISIBLE_HEIGHT: float = 92.0
+const VISIBLE_HEIGHT: float = 104.0
 
 var inventory: RelicInventory
 var query := RelicQuery.new()
 var _slots_row: HBoxContainer
-var _bonus: Label
+var _bonus: HFlowContainer
 var _grid: GridContainer
 var _hint: Label
 var _sort_btn: PixelButton
@@ -35,9 +35,9 @@ func _init() -> void:
 	_slots_row = HBoxContainer.new()
 	_slots_row.add_theme_constant_override("separation", GAP)
 	v.add_child(_slots_row)
-	_bonus = Label.new()
-	_bonus.add_theme_color_override("font_color", RelicStyle.good)
-	_bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bonus = HFlowContainer.new()
+	_bonus.add_theme_constant_override("h_separation", 10)
+	_bonus.add_theme_constant_override("v_separation", 0)
 	_bonus.custom_minimum_size.x = COLUMNS * RelicCard.W + GAP
 	v.add_child(_bonus)
 	v.add_child(PanelDivider.new(2))
@@ -119,7 +119,7 @@ func refresh() -> void:
 			s.setup(null)
 			_wire(s, true)
 			_slots_row.add_child(s)
-	_bonus.text = _bonus_text()
+	_fill_bonuses()
 	# Toolbar labels.
 	_sort_btn.text = "Sort: %s" % query.sort_name()
 	_scope_btn.text = "Show: %s" % query.scope_name()
@@ -140,13 +140,25 @@ func refresh() -> void:
 	_hint.text = _hint_text(inventory.owned.is_empty(), list.is_empty())
 
 
-## Active bonuses from the equipped relics, one per line, Title Case.
-func _bonus_text() -> String:
-	var lines: PackedStringArray = []
-	for b: Dictionary in inventory.active_bonuses():
+## Active bonuses from the equipped relics, one chip each so a bonus never breaks across lines.
+func _fill_bonuses() -> void:
+	for c in _bonus.get_children():
+		_bonus.remove_child(c)
+		c.queue_free()
+	var list: Array[Dictionary] = inventory.active_bonuses()
+	if list.is_empty():
+		_bonus.add_child(_bonus_label("No bonuses active.", RelicStyle.dim))
+		return
+	for b: Dictionary in list:
 		var e: RelicDef.Effect = b["effect"] as RelicDef.Effect
-		lines.append("%s %s" % [RelicDef.effect_name(e), RelicDef.effect_text(e, float(b["total"]))])
-	return "   ".join(lines) if not lines.is_empty() else "No bonuses active."
+		_bonus.add_child(_bonus_label("%s %s" % [RelicDef.effect_name(e), RelicDef.effect_text(e, float(b["total"]))], RelicStyle.good))
+
+
+func _bonus_label(t: String, c: Color) -> Label:
+	var l := Label.new()
+	l.text = t
+	l.add_theme_color_override("font_color", c)
+	return l
 
 
 func _hint_text(no_relics: bool, none_shown: bool) -> String:
