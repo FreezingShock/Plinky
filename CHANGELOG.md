@@ -8,14 +8,16 @@ Every PR adds a line under **Unreleased**. `python3 tools/bump_version.py minor|
 under a new version heading and updates the version everywhere.
 
 ## Unreleased
+- Docs only: docs/workflow.md writes down the five-step working process and the PC pitfalls; linked from README and CLAUDE.md.
 
 ## 0.34.2 - 2026-11-23
-- Docs only: docs/workflow.md writes down the five-step working process and the PC pitfalls; linked from README and CLAUDE.md.
+- Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
 
 ## 0.34.1 - 2026-11-23
 - Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
 
 ## 0.34.0 - 2026-11-23
+- Ember Quarry: Cash and Multiplier are removed from the zone. Cash became Embers (the passive trickle that feeds the forge) and the Multiplier became Cinder, the first forge row, so the ladder reads Embers, Cinder, Ore, Slag, Ingot, Alloy, Emberheart with the same numbers. The old stats are parked in `content/parked/` for a later liminal zone. Saves move over one for one (save ladder 3); new Embers and Cinder icons, colours and tooltips.
 - **Simpler travel map.** The Travel menu now lists only top-level areas (Meadow, Ember Quarry) plus locked "???" rows for what comes next. Larkmoor and its districts stay in the world but leave the list; the Meadow row lands in Larkmoor once the Meadow gate is open.
 
 ## 0.33.0 - 2026-11-23

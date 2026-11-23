@@ -34,7 +34,7 @@ func is_affordable() -> bool:
 	return gs != null and gs.can_afford(button_id)
 
 
-## "cost -> reward" text for the floating label, e.g. "100 Cash -> +8 Multiplier".
+## "cost -> reward" text for the floating label, e.g. "100 Embers -> +8 Cinder".
 func label_text() -> String:
 	var gs: Node = get_node_or_null("/root/GameState")
 	if gs == null:
