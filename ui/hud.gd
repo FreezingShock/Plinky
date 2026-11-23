@@ -78,6 +78,7 @@ func setup(p_sim: Sim) -> void:
 	_momentum = MomentumMeter.new()
 	add_child(_momentum)
 	_momentum.setup(sim)
+	Banner.avoid = _momentum   # a banner lifts clear of the meter rather than cover it
 	_modal = ModalCard.new()
 	add_child(_modal)
 	_save_note = SaveIndicator.new()

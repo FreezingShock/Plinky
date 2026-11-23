@@ -19,6 +19,7 @@ const BODY_FONT: Font = preload("res://fonts/spleen-6x12.fnt")
 const TITLE_SIZE: int = 16
 const BODY_SIZE: int = 12
 const BOTTOM_MARGIN: float = 34.0
+const AVOID_GAP: float = 6.0
 
 var queue := BannerQueue.new()
 var view: PanelContainer
@@ -31,6 +32,8 @@ var _clock: float = 0.0
 var _tl: Dictionary = BannerQueue.timeline(0, 0.0, true)   # always a full timeline, so no key can be missing
 var _count: int = 0
 var _active: bool = false
+## A HUD control the banner lifts clear of when it would cover it (the Momentum meter at 640x360). Set by the HUD.
+var avoid: Control = null
 
 
 ## One centred line of text. Draws the visible centred slice at the position it would have in the full string, so
@@ -154,7 +157,12 @@ func _process(delta: float) -> void:
 	if not _active:
 		if queue.pending.is_empty():
 			return
-		_begin(queue.next())
+		var resolved: Dictionary = _resolve(queue.next())
+		if resolved.is_empty():
+			queue.current = {}   # stale by the time it could show: dropped, the next one starts next frame
+			return
+		queue.current = resolved   # the repeat check and the finish record use the resolved key
+		_begin(resolved)
 	_t += delta
 	if _t >= BannerQueue.total_time(_count, _tl):
 		_end_current()
@@ -199,8 +207,35 @@ func _begin(spec: Dictionary) -> void:
 	_title.progress = 0.0 if _tl["in"] > 0.0 else 1.0
 	view.visible = true
 	view.reset_size()
+	view.offset_bottom = -_clear_bottom()
 	_active = true
 	banner_started.emit(spec["key"])
+
+
+## A spec with a `resolve` Callable is built now, when it is about to show, so a banner that waited in the queue never
+## shows what was true when it was queued. The Callable returns {} to drop the banner, and a repeat of one just shown
+## is dropped too.
+func _resolve(spec: Dictionary) -> Dictionary:
+	var fn: Callable = spec.get("resolve", Callable()) as Callable
+	if not fn.is_valid():
+		return spec
+	var fresh: Dictionary = fn.call() as Dictionary
+	if fresh.is_empty():
+		return {}
+	var out: Dictionary = BannerQueue.normalize(fresh)
+	if out["title"] == "" and (out["lines"] as Array).is_empty():
+		return {}
+	if queue.is_repeat(out["key"], _clock):
+		return {}
+	return out
+
+
+## Bottom offset for this banner: the usual margin, or lifted above `avoid` when the two would overlap.
+func _clear_bottom() -> float:
+	var host: Control = view.get_parent() as Control
+	if host == null or avoid == null or not is_instance_valid(avoid) or not avoid.is_visible_in_tree() or avoid.get_parent() != host:
+		return BOTTOM_MARGIN
+	return BannerQueue.bottom_clearance(host.size, view.size, Rect2(avoid.position, avoid.size), BOTTOM_MARGIN, AVOID_GAP)
 
 
 func _end_current() -> void:
