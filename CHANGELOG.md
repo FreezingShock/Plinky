@@ -11,7 +11,7 @@ under a new version heading and updates the version everywhere.
 
 ## 0.10.0 - 2026-11-23
 - Title screen after boot (Play or Continue, Settings, Quit, version in the corner). Dev and test launches skip it with `-- --skip-title` or PLINKY_SKIP_TITLE; the CI boot smoke test uses it.
-- Esc in game now opens the hamburger menu as the pause menu (it still closes any open menu first). The menu gets text actions Resume, Quit to title and Quit game with an animated accent hover, and its icon tiles show their label only on hover, typing in like the bottom bar chips.
+- Esc in game now opens the hamburger menu as the pause menu (it still closes any open menu first). The menu gets text actions Close menu, Quit to title and Quit game with an animated accent hover, and its icon tiles show their label only on hover, typing in like the bottom bar chips.
 
 ## 0.8.0 - 2026-11-23
 - In-game calendar (5-day months, 10-day seasons), HUD clock, outdoor seasons (blossom, lush, amber, snow) with season particles, 3 min day / 2 min night, save v3.

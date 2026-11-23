@@ -74,12 +74,12 @@ func _init() -> void:
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	actions.add_theme_constant_override("separation", 4)
 	v.add_child(actions)
-	_resume = _action("Resume", RelicStyle.good, func() -> void: resume_requested.emit())
+	_resume = _action("Close menu", RelicStyle.good, func() -> void: resume_requested.emit())
 	actions.add_child(_resume)
 	actions.add_child(_action("Quit to title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit()))
 	actions.add_child(_action("Quit game", RelicStyle.accent, func() -> void: quit_game_requested.emit()))
 	var hint := Label.new()
-	hint.text = "Esc resumes."
+	hint.text = "Esc closes the menu."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(hint)

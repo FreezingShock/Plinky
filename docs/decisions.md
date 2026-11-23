@@ -335,6 +335,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 
 ## Title screen and Esc pause menu
 - Boot now dissolves into `boot/title_screen.tscn`; `TitleScreen.game_scene` carries the preloaded game so Play is instant. Skip with `-- --skip-title` or env `PLINKY_SKIP_TITLE` (CI boot smoke test uses it). Quit to title returns to the title even when the flag is set.
-- Esc = `plinky_back`: closes open menus first, otherwise opens the hamburger gallery. The game is not hard-paused (menus never paused it; the walker already stands still while a menu is open), so "Resume" just closes the menu. Quit to title / Quit game save first.
-- Gallery tiles are icon-only at rest and type their label in on hover or focus (ExpandChip.reveal); tiles never change size. Text actions use `MenuTextButton` (Pixelify Sans, no frame, accent colour, sliding ">" and sweeping underline) so they read as different from the icon chips. Resume is green (palette 4), quits are accent (palette 5).
+- Esc = `plinky_back`: closes open menus first, otherwise opens the hamburger gallery. The game is not hard-paused (menus never paused it; the walker already stands still while a menu is open), so "Close menu" just closes the menu. Quit to title / Quit game save first.
+- Gallery tiles are icon-only at rest and type their label in on hover or focus (ExpandChip.reveal); tiles never change size. Text actions use `MenuTextButton` (Pixelify Sans, no frame, accent colour, sliding ">" and sweeping underline) so they read as different from the icon chips. Close menu (was Resume) is green (palette 4), quits are accent (palette 5).
 - Not run with a GPU from the cloud: headless tests and a scripted Esc / Play / Quit to title walk-through pass; visuals unverified.

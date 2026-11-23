@@ -36,14 +36,14 @@ func run(t: Object) -> void:
 	# Gallery: icon tiles stay, text actions are separate, and each fires its signal.
 	var g := GalleryMenu.new()
 	root.add_child(g)
-	t.ok(g.resume_button() != null, "the menu has a Resume button")
+	t.ok(g.resume_button() != null, "the menu has a Close menu button")
 	var seen: Array = []
 	g.resume_requested.connect(func() -> void: seen.append("resume"))
 	g.quit_to_title_requested.connect(func() -> void: seen.append("title"))
 	g.quit_game_requested.connect(func() -> void: seen.append("quit"))
 	var actions: Array[MenuTextButton] = []
 	_collect(g, actions)
-	t.eq(actions.size(), 3, "Resume, Quit to title and Quit game")
+	t.eq(actions.size(), 3, "Close menu, Quit to title and Quit game")
 	for a: MenuTextButton in actions:
 		a.pressed.emit()
 	t.eq(seen, ["resume", "title", "quit"], "each action emits its own signal")
