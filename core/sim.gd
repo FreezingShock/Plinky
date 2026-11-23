@@ -896,7 +896,7 @@ func reset_count(reset_id: StringName) -> int:
 func reset_bonus() -> float:
 	var total: float = 0.0
 	for r: ZoneResetDef in reset_defs.values():
-		total += float(reset_count(r.id)) * r.bonus_per_use
+		total += float(reset_count(r.id)) * (r.bonus_per_use + (effect_total(r.bonus_effect) if r.bonus_effect != &"" else 0.0))
 	return total
 
 
@@ -951,7 +951,11 @@ func reset_gain(reset_id: StringName) -> int:
 		return 0
 	var v: float = maxf(0.0, get_stat(r.source_stat).to_float())
 	var n: int = int(floorf(r.pay_scale * sqrt(v / reset_ref(reset_id))))
-	return n if float(n) >= r.min_pay else 0
+	if float(n) < r.min_pay:
+		return 0
+	if r.pay_effect != &"":
+		n = int(floorf(float(r.pay_scale * sqrt(v / reset_ref(reset_id))) * (1.0 + effect_total(r.pay_effect))))
+	return n
 
 
 func can_reset(reset_id: StringName) -> bool:
@@ -973,7 +977,12 @@ func try_reset(reset_id: StringName) -> bool:
 		return false
 	var r: ZoneResetDef = reset_defs[reset_id] as ZoneResetDef
 	var gained: int = reset_gain(reset_id)
+	bloom_before = stats.duplicate()   # what the reset animation counts down from (BloomRitual)
+	var keep: int = int(floorf(effect_total(r.keep_effect))) if r.keep_effect != &"" else 0
 	for sid: String in r.resets:
+		if StringName(sid) != r.start_stat and keep > 0:
+			keep -= 1   # a kept flower: the gift saves the lowest ones listed
+			continue
 		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
 	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
 	reset_counts[reset_id] = reset_count(reset_id) + 1
