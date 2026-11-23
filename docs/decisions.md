@@ -212,3 +212,11 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - Save version 2 adds `game.mastery` as `{pad id: [level, xp_in_level]}`. The v1 migration adds an empty one. Unknown ids drop, levels clamp to the cap.
 - Crit popup: a crit number ends in "!" and takes the crit gold (`PopupNumber.CRIT_COLOR`), on top of the existing 24 px size, hit-stop, burst and shake.
 - Balance: the starting curve (12 XP, x1.35, cap 25, +1.5% yield per level) gives +15% yield, +3% crit chance and +0.4 crit damage on a pad after roughly 650 presses on it (level 10). Not yet measured against the 61 minute Larkmoor pacing; `tools/sim_larkmoor.gd` now prints the mastery reached by the far gate, to run on the PC.
+## 2026-11-23 Pad plates and press feel
+- The old pad was only a 1px outline (the meadow art bakes no pads by design; TexelPad drew the ring). Not a render glitch.
+- Pads are now a raised plate drawn live in palette indices: ink outline, earth side faces (lit left, shadow right), dithered lit rim, glow inlay.
+- Three states, because pads have no hard lock: Far (<10% of cost: stone, empty inlay), Close (gauge fills bottom-up with progress), Ready (inlay in the multiplier glow colour, one-step pulse, none under reduce flashing).
+- Press = whole-texel sink (2), ripple ring, particles in the zone palette, existing number pop and sound. The pad animates itself via TexelPad.punch(), so spam-pressing restarts one timer instead of stacking tweens. Particle bursts are capped at 10 live.
+- Colour-blind cue: ink tick on Ready, X otherwise. Hover lifts 1 texel and lights the rim; the walker approaching brightens it. The pad redraws only when its signature changes.
+- Not yet run in-engine; PC thread to verify and capture before/after.
+- Nathan, 23 Nov: pads are unique, green when affordable and red when not, with a secondary colour for the stat. Buy-state green/red are fixed hex (not palette) so they read in every zone; stat colours: mult blue, reb violet, slag amber. Each pad gets one of four inlay motifs from its id, and four stat-colour gems on the plate corners.

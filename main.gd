@@ -159,15 +159,16 @@ func _process(_delta: float) -> void:
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
 func _update_tooltip() -> void:
 	var over: Control = get_viewport().gui_get_hovered_control()
-	if over != null and over.mouse_filter != Control.MOUSE_FILTER_IGNORE:
-		tooltip.hide_tip()
-		return
 	var m: Vector2 = world.get_local_mouse_position()
+	var blocked: bool = over != null and over.mouse_filter != Control.MOUSE_FILTER_IGNORE
+	var shown: bool = false
 	for pad: TexelPad in pads.values():
-		if pad.hit(m):
+		pad.hovered = not blocked and not shown and pad.hit(m)
+		if pad.hovered:
 			tooltip.show_for(sim, pad.button_id, get_local_mouse_position())
-			return
-	tooltip.hide_tip()
+			shown = true
+	if not shown:
+		tooltip.hide_tip()
 
 
 func _unhandled_input(event: InputEvent) -> void:

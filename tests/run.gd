@@ -43,7 +43,11 @@ const SUITES: Array[String] = [
 func _init() -> void:
 	for path in SUITES:
 		_context = path.get_file()
-		var suite: RefCounted = (load(path) as GDScript).new()
+		var script: GDScript = load(path) as GDScript
+		if script == null or not script.can_instantiate():
+			ok(false, "suite failed to load or compile")  # a broken suite must not pass silently
+			continue
+		var suite: RefCounted = script.new()
 		suite.run(self)
 	print("%d checks, %d failed" % [checks, failures])
 	quit(1 if failures > 0 else 0)
