@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.32.0 - 2026-11-23
+- Golden light holds through the day: new SkyModel.golden() curve (warm, long shadows, rim light, rays and a thin haze fade out slowly toward noon instead of ending an hour after sunrise), richer grade curves for morning, noon, dusk and night, saturation and contrast in the full-frame light pass, warmer rim and ray colours, deeper night blue with warmer lantern pools. New tools/golden_shots.tscn captures the sky at fixed times of day.
+
 ## 0.31.0 - 2026-11-23
 - Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
 
