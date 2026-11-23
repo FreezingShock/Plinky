@@ -549,3 +549,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Setting:** Settings > Gameplay > Multiplier display, Factor (x1.5) or Percent (150%), through `NumberFormat.mult()`. Used by the stat sources lists and the HUD prestige label.
 - **Pacing:** with buffs the Larkmoor gate is 2000 Starbloom Petals; `tools/sim.gd` (now seeded) lands at 58 to 61 min, with a few minutes of swing from relic drops.
 - **Pad states:** locked pads are dark with a dull bud and no buy colours; buyable pads get a green ground halo, plus the existing green inset and tick; unaffordable stays red with the X.
+
+## 2026-11-23 Docs and rules hygiene (docs only)
+- **CLAUDE.md and SPEC.md describe the real flat layout** (`core/`, `world/`, ...; no `src/`). `docs/interfaces.md` now exists (autoloads, EventBus signals, rules) instead of being a missing reference.
+- **Shader uniform rule amended, not refactored.** Gameplay never sets uniforms; `Fx` owns gameplay-driven ones; presentation scripts that own a material (sky, shadows, screen light, toon material, pixel viewport, window frame, transitions, boot and title backgrounds) set their own. Reason: about 60 sky calls would otherwise move into `Fx` for no gain.
+- **`core/` wording:** pure logic is node-free; the Node autoload shells (event_bus, game_state, save, calendar_service) are the named exception.
+- **Stale docs refreshed:** `docs/features.md` rewritten for v0.27.0; `docs/balance.md` marks sections 1 to 8 as v0 history and adds a pointer to the flower and quarry ladders; `docs/zone2-ladder.md` copied into the repo.
+
