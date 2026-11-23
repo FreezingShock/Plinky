@@ -15,6 +15,12 @@ next_zone = &""
 gate_art = &"forge"
 base_cash_per_second = 0.25
 press_rate = 0.5
+boost_stat = &"mult"
+entry_source_stat = &"starbloom"
+entry_grants = {
+"cash": 10000.0,
+"mult": 1000.0
+}
 palette_id = &"ember_quarry"
 pad_buttons = PackedStringArray("f1", "f2", "f3")
 scene_path = "res://world/quarry_scene.tscn"

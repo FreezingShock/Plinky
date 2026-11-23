@@ -152,7 +152,7 @@ func refresh(s: Dictionary) -> void:
 			_buy.text = "MAX"
 		else:
 			_buy.text = "Buy %s" % s["cost_text"]
-			var c: Color = RelicStyle.good if bool(s["can_afford"]) else RED
+			var c: Color = RelicStyle.good if bool(s["can_afford"]) else AccessOptions.tint(RED)
 			for n: String in ["font_color", "font_hover_color", "font_focus_color"]:
 				_buy.add_theme_color_override(n, c)
 	if not _ticking:
@@ -234,7 +234,7 @@ func _fly_cost(cost_text: String) -> void:
 	l.text = "-%s" % cost_text
 	l.top_level = true
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.add_theme_color_override("font_color", RED)
+	l.add_theme_color_override("font_color", AccessOptions.tint(RED))
 	l.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(l)
 	var from: Vector2 = _buy.global_position + Vector2(_buy.size.x * 0.5 - 12.0, 0.0)
