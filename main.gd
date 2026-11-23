@@ -573,7 +573,7 @@ func _on_bonus_gained(kind: StringName, gains: Dictionary) -> void:
 	if g == null:
 		return
 	var at: Vector2 = critter.position if (kind == &"critter" and critter != null) else walker.position
-	PopupNumber.spawn(world, at + Vector2(0.0, -14.0), g.to_float(), true)
+	Juice.bonus_popup(at + Vector2(0.0, -14.0), g.to_float())
 	Juice.milestone()
 
 

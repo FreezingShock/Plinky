@@ -10,6 +10,7 @@ signal gate_opened(gate_id: StringName)
 signal relic_gained(relic_id: StringName, stacks: int)
 signal buff_started(buff_id: StringName, seconds: float)
 signal rebirth_done(prestige_gained: BigNum)
+signal bloom_done(seeds_gained: int)
 # Additions to the SPEC contract (logged in docs/decisions.md):
 signal relic_equipped(relic_id: StringName)
 signal relic_unequipped(relic_id: StringName)
