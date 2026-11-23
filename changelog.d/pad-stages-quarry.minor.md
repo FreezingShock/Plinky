@@ -1,0 +1,1 @@
+Quarry pads now have three stages per row: pad 1 is the plain object, pad 2 adds to it (more crystals and gold, a pedestal, a second bar) and pad 3 is the grand version (gold nuggets, flames, a radiant Emberheart).
