@@ -9,6 +9,15 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.14.4 - 2026-11-23
+- Stat detail header: a stat with no gain line centres its value vertically against the icon and name.
+
+## 0.14.3 - 2026-11-23
+- Momentum bar no longer grows or crowds the panel border on a stage-up: the pop is now colour and frame flash only, and the stage name has fixed room.
+
+## 0.14.2 - 2026-11-23
+- Click-to-walk ring and dots now snap to the nearest walkable ground, so they no longer sit on cliff faces or water.
+
 ## 0.14.1 - 2026-11-23
 - Stats and Attributes gallery fixes from the PC pass: focused and hovered cards use a solid fill; the detail page hides the grid strip and gets more height so Next level, the sources and Buy fit; Back no longer pops a tooltip on open; the Prestige-to-spend header clears the close X; the panel recentres at wide sizes. The detail page is now a solid header (icon and name left, value and gain right) over About / Sources / Level sub-tabs, so it no longer scrolls.
 

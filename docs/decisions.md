@@ -409,3 +409,5 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Not done, on purpose, to keep it light: relic or mastery hooks. Both can add to momentum_per_press later without new systems.
 - Bar (ui/momentum_bar.gd, ui/momentum_meter.gd): 4 stage ticks that light below the bar as stages are passed, stage colour from palette roles (edge, good, accent, text), a dithered decay ghost that lingers 0.35 s then follows, a hold line under the bar, stage name on the title row, a flash and a one-size pop on a stage-up (off under Reduce flashing), Surge shimmer. Rising stages call Juice.momentum_tier (small shake, Surge pings). Tooltip is a shared Tip with exact numbers.
 - Not run in-engine: no Godot in the cloud. CI runs the headless tests and sim; the PC pass should judge the bar at 1x and 3x, the flash and the tooltip.
+
+- Fix (v0.14.1): the stage-up pop grew the stage name from 14 to 16 pt, which made the row taller and pushed the bar to the panel border. Removed; stage-ups are colour and frame flash only, and the stage label has a fixed minimum width.
