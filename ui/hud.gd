@@ -319,6 +319,7 @@ func _build_bottom() -> void:
 	for zr: ZoneResetDef in sim.resets_ordered():   # one chip per zone reset; only the current zone's shows
 		var rid: StringName = zr.id
 		var chip: ExpandChip = _chip(h, String(zr.currency), zr.display_name, zr.button_hint)
+		chip.short_text = zr.display_name
 		chip.pressed.connect(_on_zone_reset_pressed.bind(rid))
 		var cname: String = (sim.stat_defs[zr.currency] as StatDef).display_name
 		Tip.bind(chip, func() -> Variant: return TipText.zone_reset(zr, cname, sim.can_reset(rid), sim.reset_gain(rid), "Reach %s %s." % [BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[zr.source_stat] as StatDef).display_name]))
@@ -326,12 +327,14 @@ func _build_bottom() -> void:
 		_reset_chips[rid] = chip
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend what a reset pays on permanent gifts.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
+	up.short_text = "Upgrades"
 	up.pressed.connect(toggle_upgrades)
 	_key_chips.append(up)
 	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
 		var rb: ExpandChip = _chip(h, "relics/r_pulse", "Relics", "Equip relics you have found.", "Keys: %s or 2" % Keybinds.key_name(&"relics"))
 		rb.full_text = "Relics [R]"
+		rb.short_text = "Relics"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		_key_chips.append(rb)
 		gate(rb, Onboarding.F_RELICS)
@@ -340,12 +343,14 @@ func _build_bottom() -> void:
 		var act: StringName = [&"stats", &"attributes"][t]
 		var ib: ExpandChip = _chip(h, ["stats_menu", "attrs_menu"][t], nm, "Open the %s list." % nm.to_lower(), "Keys: %s or %d" % [Keybinds.key_name(act), 3 + t])
 		ib.full_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
+		ib.short_text = nm
 		ib.pressed.connect(func() -> void: index_requested.emit(t))
 		_key_chips.append(ib)
 		gate(ib, Onboarding.F_DEWDROP if t == 0 else Onboarding.F_UPGRADES)
 	# Settings and the Update Log live in the hamburger menu, at the far right of the screen.
 	_menu_chip = _chip(self, "big/menu_hamburger", "Menu", "Settings, the update log and every section.", "Keys: %s or 5" % Keybinds.key_name(&"menu"))
 	_menu_chip.full_text = "Menu [%s]" % Keybinds.key_name(&"menu")
+	_menu_chip.short_text = "Menu"
 	_menu_chip.bubble_right = true   # its label opens leftwards, away from the screen edge
 	_menu_chip.pressed.connect(func() -> void: menu_toggled.emit(&"gallery"))
 	_key_chips.append(_menu_chip)
