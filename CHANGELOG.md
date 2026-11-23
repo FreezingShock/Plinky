@@ -9,6 +9,8 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.5.1 - 2026-11-23- Lighting: the edge shade is now anchored to the world instead of the screen, so nothing follows the camera. Night and light-split veil turned down. New Access setting "Reduce screen effects".
+
 ## 0.5.0 - 2026-11-23
 - Single source of truth for the game version (`core/build_info.gd`), shown small on the boot screen, with `BuildInfo.string()` and `BuildInfo.changelog()` for the Update Log tile.
 - `tools/bump_version.py`, `tests/test_version.gd`, this changelog and docs/versioning.md.

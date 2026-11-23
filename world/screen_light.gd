@@ -1,6 +1,6 @@
 class_name ScreenLight
 extends Node2D
-## Frame-fixed light: the vignette. A multiply ColorRect over the whole 640x360 frame (or the wider bleed view),
+## World-anchored edge shade (the vignette). A multiply ColorRect over the whole 640x360 frame (or the wider bleed view),
 ## dithered in two steps toward the corners. It is a child of the main Control, above the world layers and
 ## below the HUD, so it never darkens the interface. SkyCycle adds it and keeps its strength in sync.
 
@@ -14,6 +14,17 @@ var _host: Control
 var world_ref: Node2D
 
 
+func set_area(r: Rect2) -> void:
+	if _mat == null:
+		_pending_area = r
+		return
+	_mat.set_shader_parameter("area_center", r.get_center())
+	_mat.set_shader_parameter("area_half", r.size * 0.5)
+
+
+var _pending_area: Rect2 = Rect2()
+
+
 func _ready() -> void:
 	z_index = 40   # above world layers (z 0..11), below the HUD (z 100) and ParticleBurst (z 90)
 	_rect = ColorRect.new()
@@ -24,6 +35,8 @@ func _ready() -> void:
 	_rect.material = _mat
 	add_child(_rect)
 	_fit()
+	if _pending_area.size != Vector2.ZERO:
+		set_area(_pending_area)
 
 
 func _process(_delta: float) -> void:
@@ -40,7 +53,7 @@ func _process(_delta: float) -> void:
 func set_strength(s: float) -> void:
 	if _mat != null:
 		_mat.set_shader_parameter("strength", s)
-	visible = s > 0.001
+	visible = s > 0.001 and not FxConfig.reduce_screen_fx
 
 
 func _fit() -> void:

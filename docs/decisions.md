@@ -299,3 +299,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Version is MAJOR.MINOR.PATCH in `core/build_info.gd` (already existed at 0.1.0). MINOR = features, PATCH = fixes and tweaks, MAJOR only when Nathan asks. Rules in docs/versioning.md; CHANGELOG.md has history backfilled from #3-#95 grouped into 0.1.0 to 0.4.0, and this change is 0.5.0.
 - Shown small on the boot screen. Nathan wants it less tucked away than a Settings row, so the Update Log tile in the bottom-bar hamburger gallery will show it via `BuildInfo.string()` and `BuildInfo.changelog()`. No Settings About row.
 - Not run in-engine: boot label placement, CHANGELOG.md in the export (include_filter added).
+
+## Lighting: nothing follows the camera
+- The vignette shape was frame-fixed, so its dither crawled through a stationary dark rim while panning. Its shape is now computed in world texels from the playable area, so it only darkens when you pan toward an edge. All other passes (day/night, light grade, ground light, fog) were already world-anchored.
+- Veil turned down: vignette 0.6 to 0.45, night_shade 0.97 to 0.8 (night_strength stays 0.8 for the smoothness test), light_split 0.4 to 0.3.
+- New Access toggle "Reduce screen effects" (FxConfig.reduce_screen_fx) hides the edge shade and the full-frame light pass.

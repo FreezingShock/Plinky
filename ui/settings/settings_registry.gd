@@ -372,6 +372,11 @@ static func _register_access() -> void:
 		"apply": func(v: Variant) -> void: FxConfig.reduce_shake = bool(v),
 	})
 	_add({
+		"id": &"reduce_screen_fx", "tab": "Access", "label": "Reduce screen effects", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Turns off the edge shade and the full-frame light pass. Ground, shadows and night still show.",
+		"apply": func(v: Variant) -> void: FxConfig.reduce_screen_fx = bool(v),
+	})
+	_add({
 		"id": &"calm_camera", "tab": "Access", "label": "Calm camera", "kind": Kind.TOGGLE, "default": false,
 		"hint": "No look-ahead, no crit punch, no idle drift. The camera still follows.",
 		"apply": func(v: Variant) -> void: WorldCamera.calm = bool(v),
