@@ -30,3 +30,47 @@ extends Resource
 @export var gust_period_b: float = 37.0
 ## Longest lean of a treetop at full wind, in texels.
 @export var sway_max_texels: float = 3.0
+
+@export_group("Colour grading")
+## Multiply tint by time of day, sampled along a 0..1 day ramp (0 midnight, 0.25 sunrise, 0.5 noon, 0.75 sunset).
+@export var grade_tint: Gradient
+## How many texels of the grade are tinted (Bayer density) by time of day. Same ramp.
+@export var grade_amount: Gradient
+## Haze and mist colour by time of day.
+@export var haze_color: Gradient
+## God ray colour by time of day.
+@export var ray_color: Gradient
+
+@export_group("Shadows")
+## Cast shadow length in object heights at noon, with the sun low, and under the moon.
+@export var shadow_len_noon: float = 0.22
+@export var shadow_len_low: float = 1.05
+@export var shadow_len_moon: float = 0.45
+## Darkness of the moon shadow, 0..1 (sun shadows are always full).
+@export var shadow_moon: float = 0.35
+## Dither density at the foot of a shadow and at its tip (soft edge that thins with distance).
+@export var shadow_density_foot: float = 0.85
+@export var shadow_density_tip: float = 0.25
+
+@export_group("Light pools and rim")
+## Pool radius and strength multipliers for each light kind.
+@export var pool_shrine_radius: float = 34.0
+@export var pool_gate_radius: float = 26.0
+@export var pool_walker_radius: float = 22.0
+@export var pool_pad_radius: float = 16.0
+## How much the light pools clear of night shade, 0..1.
+@export var pool_strength: float = 0.9
+## 1 texel edge light on the sun side of trees, bushes and rocks, 0..1.
+@export var rim_strength: float = 0.85
+
+@export_group("Atmosphere")
+## Vignette: how much of the frame edge is darkened, 0..1 (0 = off).
+@export var vignette_strength: float = 0.35
+## Horizon haze density over the far mountains, 0..1.
+@export var haze_strength: float = 0.6
+## Drifting mist over the water, 0..1.
+@export var mist_strength: float = 0.5
+## God rays at dawn and dusk, 0..1.
+@export var ray_strength: float = 0.5
+## Seconds for mist to drift across the view.
+@export var mist_drift_seconds: float = 90.0

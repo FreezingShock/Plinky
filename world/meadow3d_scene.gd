@@ -12,6 +12,8 @@ const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 var _data: Dictionary = {}
 var react: LifeReact
 var _sky: SkyCycle
+var _shadows: SkyShadows
+var _ground: Sprite2D
 
 
 func _ready() -> void:
@@ -48,6 +50,7 @@ func _ready() -> void:
 			_:
 				continue
 		anchors.add_child(m)
+	_ground = ground
 	_add_life(ground)
 	_add_sky()
 
@@ -77,9 +80,37 @@ func _add_life(ground: Sprite2D) -> void:
 
 ## Day/night shade, rain and wind (world/sky_cycle.gd). Added after the life layers; its own z indices place it.
 func _add_sky() -> void:
+	_shadows = SkyShadows.new()
+	_shadows.name = "Shadows"
+	add_child(_shadows)   # at z 0, after the ground and grass: above them, below every prop and the walker
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
+	_sky.shadows = _shadows
+	_sky.ground_texture = _ground.texture
+	var water: Array = []
+	for a: Dictionary in _data.anchors:
+		if String(a.kind) == "water":
+			water.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
+	_sky.ponds = water
 	add_child(_sky)
+	_add_lights()
+
+
+## Light pools (radii and strength in content/config/sky.tres): the shrine and any lantern in the life data,
+## the gate, the pads, and a small one around the walker. Pools only show against the night shade and dusk.
+func _add_lights() -> void:
+	var cfg: SkyConfig = _sky.light_config()
+	var life: Dictionary = MeadowLife.load_data()
+	for L: Variant in life.get("lights", []) as Array:
+		var d: Dictionary = L as Dictionary
+		_sky.add_light(Vector2(float(d.x), float(d.y)), cfg.pool_shrine_radius, 1.0)
+	for a: Dictionary in _data.anchors:
+		match String(a.kind):
+			"gate":
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
+			"pad":
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 
 ## Adds each tall prop as its own sprite under `parent`, which must have y_sort_enabled. The sprite sits at the
@@ -98,7 +129,11 @@ func spawn_occluders(parent: Node2D) -> void:
 			sp.texture = SkyCycle.padded(sp.texture)
 			sp.offset.x -= float(SkyCycle.SWAY_PAD)
 			sp.material = _sky.sway_material
+		elif _sky != null:
+			sp.material = _sky.rim_material
 		parent.add_child(sp)
+		if _shadows != null:
+			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
 		if String(s.kind) == "bush":
 			bush_sprites.append(sp)
 	if react != null:
