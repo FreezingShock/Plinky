@@ -170,7 +170,7 @@ func _build_stats() -> void:
 		# Compact strip: icon, then (small dim gain, value) pushed to the right edge. No names: the instant tooltip has them,
 		# and the value takes the stat's colour. The panel is only as wide as its widest visible row.
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 4)
+		h.add_theme_constant_override("separation", 8)   # 8: the long gain text ("+44.48TDo/s") must never touch the value
 		v.add_child(h)
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
