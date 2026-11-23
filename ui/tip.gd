@@ -6,14 +6,25 @@ extends RefCounted
 ##   Tip.bind(row, {"title": "Luck", "body": "Better drops.", "hint": "Rebirth to raise it."})
 ##   Tip.bind(slot, func() -> Variant: return build_spec())   # re-evaluated each time it shows
 ##
-## Mouse hover shows it after a short delay and it follows the cursor. Keyboard or pad focus shows it
-## sooner, anchored to the control. It hides on exit, click, hide or free. No autoload: the host is
-## created on first use under the scene root, so no project.godot change is needed.
+## Minecraft-style: mouse hover shows it on the same frame, with no delay or fade, and it follows the cursor.
+## Keyboard or pad focus shows it the same frame too, anchored under the control. It hides on the frame the mouse
+## leaves, on click, on hide or on free. No autoload: the host is created on first use under the scene root,
+## so no project.godot change is needed.
 
 const HOST_NAME: String = "TipLayer"
 const META: StringName = &"_tip_spec"
 const BOUND: StringName = &"_tip_bound"
 static var _host: TipHost = null
+## True after a menu opens and puts focus on its first control: that focus must not pop a tooltip. TipHost clears it
+## on the first keyboard or pad navigation input, after which focus tips show as usual. Mouse hover is never affected.
+static var focus_muted: bool = false
+
+
+## Give `c` focus without showing its tooltip (menu open). Keeps keyboard and pad navigation working.
+static func grab_quiet(c: Control) -> void:
+	focus_muted = true
+	hide_all()
+	c.grab_focus()
 
 
 ## Attach a tooltip. `spec` is a String (body only), a Dictionary (title, body, hint, color), or a
@@ -129,6 +140,8 @@ static func normalize(spec: Variant) -> Dictionary:
 
 static func _on_enter(c: Control, by_focus: bool) -> void:
 	if not is_instance_valid(c) or not c.is_inside_tree() or not c.has_meta(META):
+		return
+	if by_focus and focus_muted:
 		return
 	host(c.get_tree()).request(c, by_focus)
 

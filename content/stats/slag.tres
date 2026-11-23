@@ -8,6 +8,7 @@ id = &"slag"
 display_name = "Slag"
 tier = 3
 start = 0.0
+zones = PackedStringArray("zone2")
 passive = false
 income_boost_stat = &""
 income_factor_per_unit = 0.5

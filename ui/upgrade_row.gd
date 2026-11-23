@@ -4,6 +4,9 @@ extends HBoxContainer
 ## greyed and the next one lit, and an animated Buy button whose cost is green when you can pay it and red when you can't.
 ## Layout and text come from an UpgradeText.state() dictionary, so this node holds no game rules.
 ##
+## Hold the Buy button (mouse, Enter/Space or the pad's confirm button) to keep buying, faster the longer you hold
+## (see HoldRepeat). Repeats stop the moment the next level cannot be paid for, and play a light version of the animation.
+##
 ## Buying plays: button squash, the cost flying off toward the Prestige readout, the numbers ticking up in steps, the newest
 ## level pip popping, and a rising click. Reduce motion / reduce flashing skip the motion and keep the sound.
 
@@ -25,6 +28,8 @@ var _level: Label
 var _pips: PipBar
 var _delta: RichTextLabel
 var _buy: PixelButton
+var _hold: HoldRepeat = HoldRepeat.new()
+var _skip_pressed: bool = false   ## the press already bought on button_down, so the matching `pressed` must not buy again
 var _ticking: bool = false
 var _delta_text: String = ""
 
@@ -73,8 +78,48 @@ func setup(a: AttributeDef) -> void:
 	_buy = PixelButton.new()
 	_buy.custom_minimum_size = Vector2(84, 0)
 	_buy.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_buy.pressed.connect(_on_buy)
+	_buy.pressed.connect(_on_pressed)
+	_buy.button_down.connect(_on_down)
+	_buy.button_up.connect(_hold.end)
+	_buy.focus_exited.connect(_hold.end)
+	visibility_changed.connect(func() -> void:
+		if not is_visible_in_tree():
+			_hold.end())
 	add_child(_buy)
+	set_process(false)
+
+
+## True while a held Buy is repeating (the repeats after the first purchase).
+func is_repeating() -> bool:
+	return _hold.held and _hold.repeats > 0
+
+
+func _on_down() -> void:
+	_skip_pressed = true
+	_hold.begin()
+	set_process(true)
+	_on_buy()
+
+
+func _on_pressed() -> void:
+	if _skip_pressed:
+		_skip_pressed = false
+		return
+	_on_buy()
+
+
+func _process(delta: float) -> void:
+	if not _hold.held:
+		set_process(false)
+		return
+	for i: int in _hold.step(delta):
+		if not bool(_state.get("can_afford", false)):
+			_hold.end()
+			return
+		buy_pressed.emit(attr_id)
+		if not bool(_state.get("can_afford", false)):   # the menu refreshed the row: that was the last one we can pay for
+			_hold.end()
+			return
 
 
 func _on_buy() -> void:
@@ -107,7 +152,7 @@ func refresh(s: Dictionary) -> void:
 			_buy.text = "MAX"
 		else:
 			_buy.text = "Buy %s" % s["cost_text"]
-			var c: Color = RelicStyle.good if bool(s["can_afford"]) else RED
+			var c: Color = RelicStyle.good if bool(s["can_afford"]) else AccessOptions.tint(RED)
 			for n: String in ["font_color", "font_hover_color", "font_focus_color"]:
 				_buy.add_theme_color_override(n, c)
 	if not _ticking:
@@ -136,12 +181,17 @@ func _calm() -> bool:
 ## Called by the menu right after a successful buy, with the state from after it.
 func play_buy(after: Dictionary) -> void:
 	var before: Dictionary = _state
-	_sfx(&"ui_click", 0.9 + 0.5 * float(after["level"]) / maxf(float(after["cap"]), 1.0))
-	_sfx(&"popup_tick", 1.0 + 0.04 * float(int(after["level"]) % 12), -4.0)
+	var light: bool = is_repeating()   # held repeats: pip pop and a quiet click only, no squash, flying cost or tick
+	_sfx(&"ui_click", 0.9 + 0.5 * float(after["level"]) / maxf(float(after["cap"]), 1.0), -9.0 if light else 0.0)
+	if not light:
+		_sfx(&"popup_tick", 1.0 + 0.04 * float(int(after["level"]) % 12), -4.0)
 	if bool(after["maxed"]):
 		_sfx(&"gate_open", 1.3, -8.0)
 	refresh_keep(after)
 	_pips.pop()
+	if light:
+		_set_delta_text(_build_delta(after, String(after["now"]), String(after["next"])))
+		return
 	if _calm():
 		return
 	_squash()
@@ -184,7 +234,7 @@ func _fly_cost(cost_text: String) -> void:
 	l.text = "-%s" % cost_text
 	l.top_level = true
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.add_theme_color_override("font_color", RED)
+	l.add_theme_color_override("font_color", AccessOptions.tint(RED))
 	l.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(l)
 	var from: Vector2 = _buy.global_position + Vector2(_buy.size.x * 0.5 - 12.0, 0.0)

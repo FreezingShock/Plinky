@@ -18,6 +18,7 @@ const FRAMES: int = 4
 
 
 static func run(parent: Node) -> void:
+	RenderGlobals.ensure()
 	var layer := CanvasLayer.new()
 	layer.name = "ShaderWarm"
 	layer.layer = 126

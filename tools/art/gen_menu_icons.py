@@ -45,6 +45,17 @@ def log():
     save(im, "menu_log.png")
 
 
+def history():
+    im, d = canvas()
+    d.rectangle([4, 5, 27, 26], fill=PAPER)             # chart card
+    d.rectangle([4, 5, 27, 7], fill=BASE)
+    for i, h in enumerate([4, 6, 5, 9, 12, 15]):         # climbing bars
+        x = 7 + i * 3
+        d.rectangle([x, 24 - h, x + 1, 24], fill=DEEP if i < 5 else LIGHT)
+    d.rectangle([24, 9, 24, 24], fill=ACCENT)           # rebirth mark
+    save(im, "menu_history.png")
+
+
 def settings():
     import math
     im, d = canvas()
@@ -122,6 +133,6 @@ def hamburger():
     outline(im).save(os.path.join(OUT, "menu_hamburger.png"))
 
 
-for f in (log, settings, stats, attributes, upgrades, relics, travel, hamburger):
+for f in (history, log, settings, stats, attributes, upgrades, relics, travel, hamburger):
     f()
 print("ok")

@@ -1,5 +1,9 @@
 shader_type canvas_item;
 render_mode blend_mul;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Cast shadow on the ground: a soft oval laid on the 2:1 iso ground by SkyShadows, long and to one side when
 // the sun is low, short and close at noon. The quad is a 1x1 texture stretched into a parallelogram, so UV.y
 // runs from the shadow's tip (0) to its near end (1) and UV.x across it. The shadow is dither, never an alpha
@@ -20,7 +24,7 @@ float bayer4(ivec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {

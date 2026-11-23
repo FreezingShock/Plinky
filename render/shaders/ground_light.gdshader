@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Ground relight. The meadow ground is a baked render with a same-size G-buffer made by tools/art/gen_meadow3d.py:
 //   nrm_tex  R,G normal (u, v), B material code, A baked light (see depth_pass.write_relight_data)
 //   h_tex    world height, 1..255 over h_lo..h_hi, 0 outside the scene
@@ -30,7 +34,7 @@ float bayer4(ivec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {
@@ -66,7 +70,7 @@ void fragment() {
 				int cnt = RAMP_LEN[code] - 1;
 				float v = clamp(l, 0.0, 0.9999) * float(cnt);
 				float lo = floor(v);
-				float f = clamp((v - lo - 0.30) / 0.40, 0.0, 1.0);
+				float f = clamp((v - lo - 0.44) / 0.12, 0.0, 1.0);   // a narrow blend band: steps are solid, the dither only softens the seam
 				int step_i = int(lo) + ((f > thr && int(lo) < cnt) ? 1 : 0);
 				c.rgb = PAL[RAMP_IDX[RAMP_START[code] + step_i]];
 			}
@@ -78,13 +82,17 @@ void fragment() {
 			}
 		}
 	}
-	if (c.a > 0.5 && debug_view == 0 && (season_amt > 0.0 || season_snow > 0.0)) {
+	// Water (material 107) and its foam (108) keep their own palette in every season: the water ramp's greens
+	// (47,107,85) pass the "green texel" test in season_recolor and were dyed orange like the grass.
+	int mat_code = int(texture(nrm_tex, UV).b * 255.0 + 0.5);
+	bool is_water = mat_code == 107 || mat_code == 108;
+	if (c.a > 0.5 && debug_view == 0 && !is_water && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
 	}
 	// depth fog: the far (top) rows fade toward the haze colour, dithered
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;
-	if (c.a > 0.5 && far_k > thr) {
-		c.rgb = mix(c.rgb, fog_col, 0.6);
+	if (c.a > 0.5) {
+		c.rgb = mix(c.rgb, fog_col, clamp(far_k, 0.0, 1.0) * 0.6);
 	}
 	if (debug_view == 1) {
 		c = base;

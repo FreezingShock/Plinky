@@ -8,6 +8,7 @@ id = &"reb"
 display_name = "Rebirths"
 tier = 2
 start = 0.0
+zones = PackedStringArray("zone2")
 passive = false
 income_boost_stat = &""
 gain_boost_stat = &""

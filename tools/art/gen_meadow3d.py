@@ -6,7 +6,8 @@ Run: python3 gen_meadow3d.py [--fast]  ->  meadow3d-1x.png (640x360), meadow3d.p
 import numpy as np, math, random, json, os, sys, time
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import depth_pass
+import depth_pass, grass_tex
+GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAST = '--fast' in sys.argv
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
@@ -63,7 +64,11 @@ def pl_dist(U, V, pts):
 # ---------------- scene layout (screen px -> uv) ----------------
 PATH_S = [(112, 258), (150, 264), (190, 258), (222, 240), (252, 222), (290, 214), (334, 208), (368, 188), (378, 160), (362, 136), (338, 118), (330, 104)]
 PATH = [s2uv(*p) for p in PATH_S]
-PADS_S = [(204, 248, 'ready'), (258, 224, 'ready'), (338, 206, 'ready'), (380, 168, 'locked'), (350, 128, 'locked')]
+# Two rows of three pads, 44 texels apart on the 2:1 ground grid: Sprout climbs from the spawn, Clover climbs back
+# towards the gate (pad order = ZoneDef.pad_buttons order).
+SPROUT_ROW = [(204, 248), (248, 226), (292, 204)]
+CLOVER_ROW = [(396, 174), (352, 152), (308, 130)]
+PADS_S = [(x, y, 'ready') for (x, y) in SPROUT_ROW + CLOVER_ROW]
 GATE = s2uv(330, 96)
 STREAM = [s2uv(*p) for p in [(470, 104), (486, 130), (466, 160), (486, 192), (468, 216), (448, 240)]]
 LAKE = dict(c=s2uv(412, 262), r=46.0)
@@ -400,7 +405,15 @@ for (sx, sy, st) in PADS_S: anchors.append(dict(kind='pad', state=st, **dict(zip
 anchors.append(dict(kind='gate', u=GATE[0], v=GATE[1], sx=330, sy=96))
 anchors.append(dict(kind='player_spawn', sx=164, sy=264, u=s2uv(164, 264)[0], v=s2uv(164, 264)[1]))
 SHRINE = s2uv(572, 196); anchors.append(dict(kind='shrine', u=SHRINE[0], v=SHRINE[1], sx=572, sy=196))
-for a_ in anchors: placed.append((a_['u'], a_['v'], 12 if a_['kind'] != 'gate' else 18))
+for a_ in anchors: placed.append((a_['u'], a_['v'], 14 if a_['kind'] == 'pad' else 12 if a_['kind'] != 'gate' else 18))
+# keep the gaps between a row's pads clear, and the ground just south of each plate (a tall tree standing there would
+# hide the pad behind its crown)
+for _row in (SPROUT_ROW, CLOVER_ROW):
+    for (x0, y0), (x1, y1) in zip(_row, _row[1:]):
+        placed.append((*s2uv((x0 + x1) / 2, (y0 + y1) / 2), 12))
+    for (sx, sy) in _row:
+        for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
+            placed.append((*s2uv(sx + ox_, sy + oy_), 9))
 t_trees = FAST
 # groves: tall and short conifers, oaks, bushes, never stacked
 try_region('oak', *SC((210, 165)), 36, 4, scale_rng=(.95, 1.2)); try_region('pine', *SC((165, 180)), 34, 5, scale_rng=(.7, 1.45)); try_region('bush', *SC((225, 190)), 36, 5)
@@ -484,7 +497,8 @@ pw = 5.4 + 1.6 * (n1 - .5)
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
-lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
+else: lt = .13 + .87 * diff + (tone - .5) * .10 * (mat == T_GRASS) + (n2 - .5) * .06 * (mat != T_GRASS)    # grass detail comes from grass_tex.py
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .04 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
@@ -624,6 +638,7 @@ def render_scene(keep):
     def dith(ramp, l, mask):
         r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
+    img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
@@ -770,3 +785,5 @@ for _a in anchors:        # ground contact = screen position at the terrain heig
 anchors_out = [dict(a, u=round(a['u'], 1), v=round(a['v'], 1)) for a in anchors]
 json.dump(dict(size=[W, H], projection=dict(ox=OXS0, oy=OYS0, note='screen = (ox + u - v, oy + (u+v)/2 - h), in the 640x360 frame'), bleed=dict(left=BLX, right=BLX, top=BLY, bottom=BLY, ground_size=[W, H], ground_offset=[-BLX, -BLY], note='ground.png is 840x480; place it at (-100,-60) so the 640x360 frame lines up with the old origin. All anchors and sprite x/y/foot stay in 640x360-frame coordinates (sprite x/y may be negative).'), anchors=anchors_out, sprites=sprites), open(os.path.join(HERE, 'placements3d.json'), 'w'), indent=1)
 log('done')
+if os.environ.get('GRASS_DUMP'):    # preview hook: ground light + material + palette indices for tools/art/grass_preview.py
+    np.savez_compressed(os.environ['GRASS_DUMP'], l=AUX_GND['l'], mat=AUX_GND['mat'], out=AUX_GND['out'], fout=AUX_FULL['out'], fmat=AUX_FULL['mat'])

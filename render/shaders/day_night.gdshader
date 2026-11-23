@@ -1,9 +1,14 @@
 shader_type canvas_item;
 render_mode blend_mul;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Light and shade over the meadow. Every texel is either left alone or multiplied by one of a few tints,
 // chosen by the 4x4 Bayer matrix in world texels, so the result is dither, never a smooth blend (art bible
 // sections 2 and 4). Uniforms are densities 0..1 set by SkyCycle.
-//  - night: blue shade, two depths.
+//  - night: one smooth cool tint over the whole frame. Where it thins (the edge of a light pool, dusk and dawn)
+//    it is a smooth gradient, so night reads as a calm tone, never as a checkerboard or a grid.
 //  - grade: the time-of-day colour grade (peach at sunrise, gold in the afternoon, orange and magenta at dusk).
 //  - rain: cool grey.
 //  - lights: pools around lanterns, shrine, gate, pads and the walker. Inside a pool the night shade thins out
@@ -29,7 +34,7 @@ float bayer4(ivec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {
@@ -47,20 +52,15 @@ void fragment() {
 	}
 	pool = clamp(pool * pool_strength, 0.0, 1.0);
 	vec3 m = vec3(1.0);
-	float n = night * (1.0 - pool);
-	if (thr < n) {
-		m *= (thr < n * 0.6) ? deep_tint : night_tint;
-	}
-	// warm cast inside a pool, only while it is dark enough to matter (dither on the offset half of the matrix)
-	if (1.0 - thr < pool * (0.35 + 0.65 * night) && pool > 0.12) {
-		m *= pool_tint;
-	}
-	// grade uses the opposite half of the matrix so it reads as a second, offset pattern
-	if (1.0 - thr < grade_amount) {
-		m *= grade_col;
-	}
-	if (thr > 1.0 - rain * 0.5) {
-		m *= rain_tint;
-	}
+	// night: a smooth, solid cool multiply that thins toward the light pools. No dither at all: a pool edge or dusk
+	// is a soft gradient over many world texels, so it reads as light, never as a grid.
+	float dk = clamp(night * (1.0 - pool) / 0.8, 0.0, 1.0);
+	m *= mix(vec3(1.0), night_tint, 0.62 * dk);
+	// warm cast inside a pool, smooth the same way, so a lantern is a clean glow
+	float wk = clamp(pool * (0.35 + 0.65 * night) * 2.2, 0.0, 1.0) * smoothstep(0.05, 0.2, pool);
+	m *= mix(vec3(1.0), pool_tint, 0.8 * wk);
+	// the time-of-day grade and rain are solid tints: a smooth change over hours, never a screen-wide pattern
+	m *= mix(vec3(1.0), grade_col, clamp(grade_amount, 0.0, 1.0));
+	m *= mix(vec3(1.0), rain_tint, clamp(rain * 0.5, 0.0, 1.0));
 	COLOR = vec4(m, 1.0);
 }

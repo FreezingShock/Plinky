@@ -73,6 +73,10 @@ var particles: SeasonParticles
 static var debug_season: int = -1
 
 
+func _init() -> void:
+	RenderGlobals.ensure()   # world shaders declare the world_origin / world_scale globals
+
+
 func _ready() -> void:
 	z_index = 5
 	_config = load(CONFIG_PATH) as SkyConfig
@@ -264,6 +268,7 @@ func _update_season() -> void:
 		_push_season(pm, false)
 	_push_season(sway_material, false)
 	_push_season(rim_material, false)
+	MeadowLife.season = _season.weights
 	if particles != null:
 		particles.weights = _season.weights
 

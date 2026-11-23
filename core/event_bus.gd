@@ -19,10 +19,12 @@ signal bonus_gained(kind: StringName, gains: Dictionary)  # kind: &"streak" or &
 signal critter_spawned()
 signal critter_gone()
 signal heat_hot_changed(hot: bool)
+signal momentum_tier_changed(tier: int, rising: bool)
 signal mastery_changed(button_id: StringName, level: int, xp: float)  # every press; level and xp are the pad's after it
 signal mastery_leveled(button_id: StringName, level: int)
 signal game_loaded()
 signal game_saved()
+signal save_failed()  # a save could not be written (full disk, locked file)
 signal onboarding_complete()  # the tutorial meadow's gate just opened; the main meadow can take over from here
 # Calendar (core/game_calendar.gd). Indices are 0-based within the year; season 0 spring, 1 summer, 2 autumn, 3 winter.
 signal day_changed(day_of_year: int)

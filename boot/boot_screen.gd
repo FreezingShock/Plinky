@@ -59,6 +59,8 @@ var _tip_index: int = 0
 var _tip_timer: float = 0.0
 var _tip_blank: float = 0.0
 var _pal: PackedColorArray
+var _version: VersionLink
+var _log: PanelOverlay
 
 
 func _ready() -> void:
@@ -71,6 +73,8 @@ func _ready() -> void:
 	_motes = BootMotes.new()
 	add_child(_motes)
 	_build_column()
+	RelicStyle.set_palette(_pal)
+	_log = PanelOverlay.host(self, UpdateLogPanel.new(), _pal[0], load(THEME_PATH) as Theme)
 
 	# Threaded loads. Weights are rough file sizes. Each task reports its own progress, so the bar is honest.
 	_loader = BootLoader.new()
@@ -86,6 +90,11 @@ func _ready() -> void:
 	_tip_index = randi() % TIPS.size()
 	_tip_label.text = TIPS[_tip_index]
 	_place_walker(0.0)
+
+
+## The version number opens the Update Log over the loading screen.
+func _open_log() -> void:
+	_log.toggle()
 
 
 ## Centred column: logo, tagline, walker track, percent, status, then the tip card at the bottom.
@@ -162,15 +171,12 @@ func _build_column() -> void:
 	_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_status)
 
-	var ver := Label.new()
-	ver.text = BuildInfo.string()
-	ver.add_theme_font_override("font", BODY_FONT)
-	ver.add_theme_color_override("font_color", _pal[3])
-	ver.add_theme_color_override("font_outline_color", _pal[0])
-	ver.add_theme_constant_override("outline_size", 1)
-	ver.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ver.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 6)
-	add_child(ver)
+	_version = VersionLink.new()
+	_version.rest_color = _pal[7]
+	_version.accent_color = _pal[5]
+	_version.outline_color = _pal[0]
+	_version.pressed.connect(_open_log)
+	add_child(_version)
 
 	var flex := Control.new()
 	flex.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -248,7 +254,8 @@ func _update_loading(delta: float) -> void:
 		_status.text = "Opening the gate"
 	else:
 		_status.text = "Ready"
-	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= MIN_SHOW_SECONDS:
+	# Stays put while the Update Log is open, so reading it is never cut short.
+	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= MIN_SHOW_SECONDS and not _log.is_open():
 		_start_leave()
 
 

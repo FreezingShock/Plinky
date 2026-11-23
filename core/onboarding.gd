@@ -8,23 +8,23 @@ signal feature_unlocked(feature: StringName)
 ## Fires once per save, when the onboarding gate opens: the tutorial is done and the way on is open.
 signal completed
 
-const F_MULT: StringName = &"mult"                      ## Multiplier row and the Pads list
-const F_REBIRTH_ROW: StringName = &"rebirth_row"        ## Rebirths row and the gate panel
+const F_DEWDROP: StringName = &"dewdrop"                ## Dewdrops row, the Pads list, the clock and the stat menus
+const F_CLOVER_ROW: StringName = &"clover_row"          ## Clover Leaves row and the gate panel
 const F_REBIRTH_BUTTON: StringName = &"rebirth_button"  ## the Rebirth action in the bottom bar
 const F_UPGRADES: StringName = &"upgrades"              ## Prestige row and the Upgrades button
 const F_RELICS: StringName = &"relics"                  ## Relics button and the equipped bar
-const FEATURES: Array[StringName] = [F_MULT, F_REBIRTH_ROW, F_REBIRTH_BUTTON, F_UPGRADES, F_RELICS]
+const FEATURES: Array[StringName] = [F_DEWDROP, F_CLOVER_ROW, F_REBIRTH_BUTTON, F_UPGRADES, F_RELICS]
 
 ## Tips in priority order. urgent tips answer something that just happened, so they skip the normal gap.
 const TIPS: Array[Dictionary] = [
 	{"id": &"welcome", "title": "Welcome", "urgent": false},
-	{"id": &"first_press", "title": "Multiplier", "urgent": true},
+	{"id": &"first_press", "title": "Dewdrops", "urgent": true},
 	{"id": &"critter", "title": "Golden critter", "urgent": true},
 	{"id": &"gate_open", "title": "Gate open", "urgent": true},
 	{"id": &"rebirth_button", "title": "Rebirth", "urgent": true},
 	{"id": &"upgrades", "title": "Prestige", "urgent": true},
 	{"id": &"relic", "title": "Relic found", "urgent": true},
-	{"id": &"rebirth_row", "title": "Rebirth pads", "urgent": false},
+	{"id": &"clover_row", "title": "Clover pads", "urgent": false},
 	{"id": &"walk", "title": "Momentum", "urgent": false},
 	{"id": &"streak", "title": "Streaks", "urgent": false},
 ]
@@ -73,10 +73,10 @@ func is_unlocked(feature: StringName) -> bool:
 func _condition(feature: StringName) -> bool:
 	var rebirthed: bool = sim.rebirth_count >= 1
 	match feature:
-		F_MULT:
+		F_DEWDROP:
 			return sim.press_count >= 1 or rebirthed
-		F_REBIRTH_ROW:
-			return rebirthed or sim.can_rebirth() or sim.get_stat(&"mult").to_float() >= cfg.rebirth_reveal_mult
+		F_CLOVER_ROW:
+			return rebirthed or sim.can_rebirth() or sim.get_stat(&"dewdrop").to_float() >= cfg.clover_reveal_dewdrops
 		F_REBIRTH_BUTTON:
 			return rebirthed or sim.can_rebirth()
 		F_UPGRADES:
@@ -134,13 +134,13 @@ func _tip_ready(tip: StringName) -> bool:
 		&"welcome":
 			return sim.press_count == 0 and sim.rebirth_count == 0
 		&"first_press":
-			return _latched(F_MULT)
+			return _latched(F_DEWDROP)
 		&"walk":
 			return sim.press_count >= 1 and sim.play_seconds >= cfg.walk_tip_seconds
 		&"streak":
 			return sim.press_count >= cfg.streak_tip_presses
-		&"rebirth_row":
-			return _latched(F_REBIRTH_ROW)
+		&"clover_row":
+			return _latched(F_CLOVER_ROW)
 		&"relic":
 			return _latched(F_RELICS)
 		&"critter":
@@ -191,24 +191,24 @@ func tip_text(tip: StringName) -> String:
 	var z: ZoneDef = sim.current_zone()
 	match tip:
 		&"welcome":
-			var m1: ButtonDef = sim.button_defs.get(&"m1") as ButtonDef
-			var cost: String = Formulas.button_cost(m1).format() if m1 != null else "some"
-			return "Click the ground to walk. Stand on a pad, or hold click on it, to press it. You have %s Cash, enough for Multiplier 1. Try it." % cost
+			var p1: ButtonDef = sim.button_defs.get(&"sprout_1") as ButtonDef
+			var cost: String = Formulas.button_cost(p1).format() if p1 != null else "some"
+			return "Click the ground to walk. Stand on a pad, or hold click on it, to press it. You have %s Sunlight, enough for Sprout 1. Try it." % cost
 		&"first_press":
-			return "Multiplier boosts your Cash income, and Cash also trickles in on its own. The Pads list shows each cost. A * means you can buy it now."
+			return "Dewdrops make your Sunlight flow faster, and Sunlight also trickles in on its own. The Pads list shows each cost. A * means you can buy it now."
 		&"walk":
 			return "Walking charges momentum, up to +%d%% income while you keep moving. Standing still lets it drain." % int(roundf(sim.config.momentum_max_bonus * 100.0))
 		&"streak":
 			return "Streak bonus: press a row's pads in order, 1 then 2 then 3, each within %d seconds of the last." % int(sim.config.streak_window)
-		&"rebirth_row":
+		&"clover_row":
 			var need: int = int(z.gate_threshold) if z != null else 0
-			return "Rebirth pads cost Multiplier. Collect %d Rebirths to open the gate to the next zone." % need
+			return "Clover pads cost Dewdrops and pay Clover Leaves. Collect %d Clover Leaves to open the gate to the next zone." % need
 		&"relic":
 			return "A relic dropped! Open Relics [R] to equip it. Equipped relics boost your run."
 		&"critter":
 			return "A golden critter! Click it before it leaves for a big Cash payout."
 		&"rebirth_button":
-			return "You can Rebirth now. It resets Cash, Multiplier and Rebirths and banks them as Prestige, a permanent income boost. An open gate stays open. Pushing past %d Rebirths pays more." % int(sim.config.prestige_push_threshold)
+			return "You can Rebirth now. It resets your Sunlight, flowers and pads and banks your Clover Leaves as Prestige, a permanent income boost. An open gate stays open. Pushing past %d Clover Leaves pays more." % int(sim.config.prestige_push_threshold)
 		&"gate_open":
 			var nz: ZoneDef = sim.zone_defs.get(z.next_zone) as ZoneDef if z != null else null
 			return "The gate is open. Walk to it to enter %s." % (nz.display_name if nz != null else "the next zone")

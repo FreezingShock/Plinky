@@ -58,6 +58,10 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+	release()
+
+
+func release() -> void:
 	_edit.release_focus()
 
 

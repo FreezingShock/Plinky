@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Full-frame light pass. Unlike the multiply overlays, this reads the finished picture underneath (ground, props,
 // walker, water) and re-lights EVERY texel from it: a sun-side lift and an away-side shade across the whole frame,
 // then a luminance split (highlights pick up the light colour, shadows go cool or magenta). Every change is stepped
@@ -24,30 +28,24 @@ float bayer4(ivec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {
 	vec3 c = texture(screen_tex, SCREEN_UV).rgb;
 	ivec2 t = ivec2(floor(wpos));
-	float thr = bayer4(t);
-	float thr2 = 1.0 - thr;
 	float lum = dot(c, vec3(0.299, 0.587, 0.114));
-	vec2 q = (wpos - area_center) / area_half;
+	vec2 q = (floor(wpos) + vec2(0.5) - area_center) / area_half;   // one value per world texel
 	float side = clamp(dot(q, normalize(sun_dir)) * 0.9, -1.0, 1.0) * side_amount;
-	// sun side: lift and warm. away side: shade and cool.
-	if (side > 0.0 && thr < side) {
-		c = c * (1.0 + lift) * mix(vec3(1.0), light_col * 1.25, 0.65);
-	} else if (side < 0.0 && thr < -side) {
-		c *= shade_col;
-	}
-	// luminance split on the offset half of the matrix, so the two patterns interleave
+	// sun side: lift and warm. away side: shade and cool. A smooth wash, not a pattern.
+	float sp = max(side, 0.0);
+	float sn = max(-side, 0.0);
+	c = c * mix(vec3(1.0), (1.0 + lift) * mix(vec3(1.0), light_col * 1.25, 0.65), sp * 0.5);
+	c *= mix(vec3(1.0), shade_col, sn * 0.5);
+	// luminance split: highlights warm, shadows cool, smoothly
 	float hi = smoothstep(0.66, 0.95, lum) * split_amount;
 	float lo = (1.0 - smoothstep(0.12, 0.45, lum)) * split_amount;
-	if (thr2 < hi) {
-		c = c * (1.0 + lift * 0.6) * mix(vec3(1.0), light_col * 1.2, 0.7);
-	} else if (thr < lo) {
-		c *= shade_col * 0.9;
-	}
+	c = c * mix(vec3(1.0), (1.0 + lift * 0.6) * mix(vec3(1.0), light_col * 1.2, 0.7), hi * 0.6);
+	c *= mix(vec3(1.0), shade_col * 0.9, lo * 0.6);
 	COLOR = vec4(clamp(c, 0.0, 1.0), 1.0);
 }
