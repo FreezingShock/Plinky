@@ -8,7 +8,7 @@ extends RefCounted
 ##   now()                    a Dictionary snapshot, see below
 ##   season_weights()         4 floats that sum to 1 (crossfade at season edges), for looks that must not pop
 ##   seconds_to_next_season() real seconds
-## now() keys: year, day (of month, 1-based), day_of_year (1-based), month (0..7), month_name, season (0..3),
+## now() keys: year, day (of month, 1-based), day_of_year (1-based), total_day (days since the start, 1-based), month (0..7), month_name, season (0..3),
 ##   season_id, season_name, hour, minute, clock_text ("07:12"), day_fraction (0 midnight .. 1), is_day,
 ##   elapsed_days, days_left_in_season.
 
@@ -116,6 +116,7 @@ func now() -> Dictionary:
 		"year": year(),
 		"day": doy % dpm + 1,
 		"day_of_year": doy + 1,
+		"total_day": day_index() + 1,
 		"days_in_month": dpm,
 		"month": mo,
 		"month_name": _pick(config.month_names, mo, "Month %d" % (mo + 1)),
