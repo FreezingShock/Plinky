@@ -215,6 +215,6 @@ func _timeline(t: Object) -> void:
 ## The first-pad arrow is a child of the pad, so it shares its position. Its tip must hover just above the pad
 ## (the pad is 7 texels tall each way), at every point of the bob, not 30 texels off (the first version).
 func _pointer(t: Object) -> void:
-	for bob: float in [0.0, 1.0, 2.0, PadPointer.BOB_PX]:
-		var tip: float = PadPointer.tip_y(bob)
-		t.ok(tip <= -TexelPad.HALF.y and tip >= -TexelPad.HALF.y - 8.0, "arrow tip hovers within 8 texels above the pad (bob %.0f, tip %.0f)" % [bob, tip])
+	for bob: float in [0.0, 1.0, 2.0, PadPointerShape.BOB_PX]:
+		var tip: float = PadPointerShape.tip_y(bob)
+		t.ok(tip <= -PadPointerShape.PAD_HALF_HEIGHT and tip >= -PadPointerShape.PAD_HALF_HEIGHT - 8.0, "arrow tip hovers within 8 texels above the pad (bob %.0f, tip %.0f)" % [bob, tip])
