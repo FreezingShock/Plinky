@@ -202,6 +202,12 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
 
+## Stats and Attributes index (2026-11-23)
+- One window (ui/index_panel.gd) with two tabs, opened by two icon-only HUD buttons, keys I (Stats) and O (Attributes), pad Back and Left-stick click. Read only: buying stays in Upgrades.
+- Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage is `sim.crit_damage()`; Pad mastery is the sum of `sim.mastery.level(id)` over all pads.
+- Open and close are a stepped 6 level Bayer wipe (ui/fx/dither_reveal.gd) plus an 8 texel slide; the header icon plays a 4 frame sheet. Reduce flashing turns the wipe off.
+- Tooltips use the shared `Tip`.
+- New 16x16 icons (tools/art/gen_index_icons.py): stats_menu, attrs_menu (+4 frame sheets), crit_dmg, mastery, presses, clock; heat.png copied from the library set.
 ## 2026-11-23: Shared tooltip system (`Tip`)
 `Tip.bind(control, spec)` gives any Control a themed tooltip (hover delay 0.35 s following the cursor, focus 0.08 s anchored, instant inside a 0.3 s grace window, clamped on screen). The host panel is created lazily under the scene root instead of an autoload, so project.godot is untouched. Existing PadTooltip and RelicTooltip stay as they are (they show richer rows); new UI uses `Tip`. API in docs/tooltips.md. Not run in-engine from the cloud; CI runs tests/test_tooltips.gd.
 ## 2026-11-23: Pad mastery and crits
