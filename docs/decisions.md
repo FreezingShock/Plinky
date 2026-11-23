@@ -524,6 +524,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 ## Pond keeps its own palette in every season (2026-11-23)
 - **Cause:** `season_recolor` picks "green" texels by `g - max(r,b)`; the water ramp's main colour (47,107,85) scores 22/255, past the 0.015..0.09 smoothstep, so the pond was recoloured with the grass patches (and would be snow-covered in winter).
 - **Decision:** `ground_light.gdshader` skips the seasonal recolour and snow for material codes 107 (water) and 108 (foam). Water stays blue-green all year; no extra dither added. A subtle seasonal sky tint or winter ice is an open taste item, not built.
+
+## 2026-11-23: Popup stacking and stat caption (v0.24.2, Nathan: numbers still overlapped)
+- A press now folds into ANY live number of the same stat that sits on the same pad or within 40 px of it and was last bumped under 1.2 s ago (was: same pad, 0.35 s). Different stats still take separate free lanes (now 10, including above and below). The carried float offset is capped at 90% of the rise, so a long run of presses keeps one number hovering instead of climbing away.
+- Under each number, centred: the stat's display name in 12 px Pixelify, in the stat's own colour (StatStyle), outlined; while a hold stacks, " xN" follows it in the streak colour. The number keeps the streak colour. The caption sits 9 px plus 14% of the number's size below the baseline, so it holds up as the number grows through the font sizes.
 | 2026-11-23 | The Larkmoor "sunset hitch" was the zone swap, fixed by threaded scene prefetch and sliced prop spawning (0.26.2); CI gets a 150 ms frame budget | PC profiling: 0 new pipelines, 1.5 ms script, hitch at +771 ms = swap time + stall. Stage trace: load 36, ready 22, occluders 170 ms. Earlier shader and audio warm-ups were guesses and are harmless but were not the cause. |
 
 ## Meadow flower ladder (2026-11-23)
@@ -544,5 +548,44 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
-## 2026-11-23 Travel menu lists top-level areas only (v0.28.0)
+## Tier buffs, multiplier display, clearer pad states (2026-11-23)
+- **Decision (Nathan):** stats from the 3rd tier up buff several lower stats, not just the one below. `StatDef.buff_stats` and `buff_factor` (data, reusable by the Ember Quarry ladder): while a stat is held (>= 1), rewards into each listed stat are multiplied by the factor, and buffs from different stats stack. Meadow: Thistle Down and Heather Sprigs 1.25x, Foxglove Bells and Starbloom Petals 1.5x, each on every stat below it. This is flat, not per unit, so it stays predictable; the per-unit chain (`gain_boost_stat`) is unchanged.
+- **Setting:** Settings > Gameplay > Multiplier display, Factor (x1.5) or Percent (150%), through `NumberFormat.mult()`. Used by the stat sources lists and the HUD prestige label.
+- **Pacing:** with buffs the Larkmoor gate is 2000 Starbloom Petals; `tools/sim.gd` (now seeded) lands at 58 to 61 min, with a few minutes of swing from relic drops.
+- **Pad states:** locked pads are dark with a dull bud and no buy colours; buyable pads get a green ground halo, plus the existing green inset and tick; unaffordable stays red with the X.
+
+## 2026-11-23 Docs and rules hygiene (docs only)
+- **CLAUDE.md and SPEC.md describe the real flat layout** (`core/`, `world/`, ...; no `src/`). `docs/interfaces.md` now exists (autoloads, EventBus signals, rules) instead of being a missing reference.
+- **Shader uniform rule amended, not refactored.** Gameplay never sets uniforms; `Fx` owns gameplay-driven ones; presentation scripts that own a material (sky, shadows, screen light, toon material, pixel viewport, window frame, transitions, boot and title backgrounds) set their own. Reason: about 60 sky calls would otherwise move into `Fx` for no gain.
+- **`core/` wording:** pure logic is node-free; the Node autoload shells (event_bus, game_state, save, calendar_service) are the named exception.
+- **Stale docs refreshed:** `docs/features.md` rewritten for v0.27.0; `docs/balance.md` marks sections 1 to 8 as v0 history and adds a pointer to the flower and quarry ladders; `docs/zone2-ladder.md` copied into the repo.
+
+- **HUD currency panel is a compact strip (v0.29.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
+
+## Ember Quarry forge ladder (2026-11-23, v0.30.0)
+- **Decision (Nathan):** the quarry gets a 6-row stat ladder like the meadow's, with custom isometric art. Rows bottom to top: **Cinder** (pays Multiplier, costs the passive Cash), **Ore** (Iron Ore), **Slag**, **Ingot** (Ingots), **Alloy** (Alloys), **Emberheart** (Emberhearts), rarities Common to Mythic. Cash stays the zone's passive trickle, Multiplier is the first row's stat. Data: `content/tiers/{cinder,ore,slagrow,ingot,alloy,emberheart}.tres` (the Slag row id is `slagrow` so it never clashes with the stat), 18 pads `<row>_1..3` (+1/+8/+64), stats in `content/stats`.
+- **Buffs:** reuses `StatDef.buff_stats` / `buff_factor`: Slag 1.25x on Multiplier and Iron Ore, Ingots 1.25x on those and Slag, Alloys 1.5x, Emberhearts 1.5x, each on everything below. The `gain_boost_stat` chain still runs one step down (Iron Ore boosts Multiplier, Slag boosts Iron Ore, and so on). Rebirths no longer boost Multiplier (there are no Rebirth pads any more); the quarry's Rebirths stat is now a count that rises by 1 per rebirth.
+- **Rebirth is zone scoped (balance thread's soft-lock finding):** `ZoneDef.prestige_source_stat` (quarry: Ingots, otherwise Clover Leaves), `Sim.prestige_source()`; a rebirth resets only stats live in the zone it was done in; Cash restarts at 10 and the first Cinder pad costs 10, so there is no dead end.
+- **Arrival grant:** flat. With `entry_source_stat` empty, `entry_grants` pay the plain value: 190 Cash on top of the start 10. Before, it scaled with Starbloom and bought the gate in 2 s.
+- **Gate:** 600 Emberhearts. `tools/sim.gd` now plays the quarry: rows open at +3, +6, +15, +26 and +48 min after arrival, gate at about +64 min (greedy floor, seeded; the balance thread tunes from here).
+- **Saves:** `ladder = 2`. Old quarry saves keep Cash, Multiplier, Slag, Rebirths; Forge pad mastery f1..f3 moves to `slagrow_1..3`; rows up to Slag open, and all rows open if the old gate was already beaten.
+- **Layout:** `tools/art/place_quarry_pads.py` puts 18 pads on the visible terraces (a row per terrace strip, zig-zagging up toward the gate) and rewrites the pad anchors in `placements3d.json`. Vents, gate and spawn are unchanged; two rows sit close to the spawn and road.
+- **Art:** `tools/art/gen_quarry_ladder.py` renders 16^3 voxel models (coal pile, ore chunk, slag pool, ingot stack, anvil, ember heart) in 2:1 isometric with a ramp per tier colour (matching rarity), smooth tone bands (dither only at band edges), ink outline and 3 flicker frames; outputs hero, pad-size (`_game`) and 32/16/8 px icons into `assets/art/zone2/ladder/`. Pads draw the `_game` frames (`TexelPad._draw_forge`); locked rows are a dark silhouette, opening rows rise with the same spark ring as a flower.
+- Not run in the cloud: real-hardware engine look. Tests (2862 checks) and the sim run headless here.
+
+- **HUD currency panel is a compact strip (v0.30.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
+
+
+## 2026-11-23 Bloom: the meadow's reset layer (0.31.0)
+- **Bloom replaces Rebirth in the meadow.** It opens once Larkmoor's far gate has opened and Starbloom Petals reach the gate threshold (`Sim.bloom_ref()` reads it from the zone, so Bloom follows the gate). Nathan wanted a modest layer: one reset after Rebirth, no Transcendence or Infinity.
+- **Currency is Seeds, not Petals** (Petals clashes with Starbloom Petal). Icon: a plump peach-gold seed with no sprout so it never reads as the RP gem (`tools/art/gen_seed_icon.py`, 8, 16, 24 and 32 px).
+- **Pays** floor(2 x sqrt(Starbloom Petals / gate threshold)) Seeds, at least 2 (`bloom_seed_scale`, `bloom_min_seeds`). Every Bloom also adds 5% to every pad's reward for good (`bloom_reward_per_bloom`, via `pad_yield_mult`).
+- **Resets** every stat flagged `resets_on_bloom`: Sunlight, Dewdrops, Clover Leaves, Thistle Down, Heather Sprigs, Foxglove Bells, Starbloom Petals. Keeps gates, open tiers, relics, mastery, Seeds, RP and old Prestige.
+- **Buys four gifts** in Upgrades (BLOOM GIFTS): Head start (starting Sunlight), Deep soil (Sunlight income), Wide bloom (pad yield), Long dusk (offline hours). All in `content/attributes/bloom_*.tres`.
+- **Rebirth, Prestige and RP are hidden outside `rebirth_zones` (Zone 2).** UI only: the button, stat rows, Upgrades groups and the Rebirth tip. Balances, levels and saves are untouched; they return with Zone 2. `Sim.try_rebirth` still works (dev console, tests).
+- **Saves:** `bloom_count` is new and defaults to 0, so no save version bump. Seeds is a stat and loads as 0.
+- **Open:** pacing is from `tools/sim_bloom.gd`, a greedy floor with no walking, relics or attributes. Taste call: Bloom may want to reset Sprout and Clover progress too (it does, as stats), and the first-time teach tip text.
+
+- 2026-11-23: Golden-hour pass. 08:08 spring looked best because the grade, long shadows and tint were all at once; low_sun() ended at elevation 0.62. Added SkyModel.golden() (floor 0.35 at noon, reach 0.95) driving rim, ground relight, shadow length (elevation squared), light-pass side/split, new sat/contrast in light_grade, wider god rays (zero at noon) and a haze bump. All costs stay at one full-frame pass already present; rays skip at noon. Pond water untouched. Not run in-engine from the cloud.
+## 2026-11-23 Travel menu lists top-level areas only (v0.33.0)
 Travel shows Meadow and Ember Quarry plus two locked "???" teaser rows (`travel_teased_rows` in game.tres). Larkmoor is inside the Meadow (`ZoneDef.travel_parent`), so its districts leave the list. The Meadow row lands in the furthest unlocked zone of the Meadow (Larkmoor once the first gate is open), or stays put if you are already inside it. Sub-area expand toggles removed.

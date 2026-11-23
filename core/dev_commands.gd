@@ -31,6 +31,7 @@ func help_lines() -> PackedStringArray:
 		"prestige <amount>         set the prestige stat",
 		"rebirths <n>              set the rebirth count (unlocks relic slots)",
 		"rebirth                   do a rebirth now if allowed",
+		"bloom                     do a Bloom now if allowed",
 		"relic <id> [stacks]       give a relic; 'relic all' or 'relic rarity <tier>' gives a set",
 		"relics                    list relics and rarities",
 		"zone <id>                 jump to a zone (opens the gate that leads there)",
@@ -70,6 +71,8 @@ func run(line: String) -> String:
 			return _rebirths(args)
 		"rebirth":
 			return "Rebirth done." if sim.try_rebirth() else "Not enough yet to rebirth."
+		"bloom":
+			return "Bloom done." if sim.try_bloom() else "Not enough yet to Bloom."
 		"relic":
 			return _relic(args)
 		"relics":

@@ -202,30 +202,34 @@ The simulation is plain GDScript with no scene-tree or rendering dependencies, s
 ```
 project.godot
 CLAUDE.md
-docs/        SPEC.md  interfaces.md  decisions.md  art-bible.md
-src/core/    bignum.gd  game_state.gd  formulas.gd  tick.gd  save.gd  event_bus.gd
-src/data/    stat_def.gd  button_def.gd  zone_def.gd  relic_def.gd  attribute_def.gd
-src/world/   player.gd  button_pad.gd  gate.gd  shrine.gd  zone.gd
-src/render/  pixel_viewport.tscn  iso_camera.gd  fx_driver.gd  shaders/  palettes/
-src/ui/      hud.tscn  stat_panel.gd  popup_number.gd  relic_bar.gd  theme.tres
-content/     stats/  buttons/  zones/  relics/  attributes/     (.tres files)
-assets/      models/  fonts/  audio/
-tests/       run.gd  test_bignum.gd  test_formulas.gd  test_save.gd
-tools/       screenshot.gd  sim.gd
+docs/        SPEC.md  interfaces.md  decisions.md  art-bible.md  theme.md  balance.md  ...
+core/        bignum.gd  formulas.gd  sim.gd  tick.gd  save_codec.gd  mastery.gd ...  (pure logic)
+             event_bus.gd  game_state.gd  save.gd  calendar_service.gd  (autoload shells)
+data/        stat_def.gd  button_def.gd  zone_def.gd  relic_def.gd  attribute_def.gd  tier_def.gd ...
+world/       player.gd  button_pad.gd  gate.gd  zone scenes, sky and light scripts
+render/      pixel_viewport.gd  iso_camera.gd  fx_driver.gd  toon_material.gd  shaders/  palettes/
+ui/          hud, menus, panels, ui/fx/ (Juice: popups, transitions)
+boot/ audio/ theme/ fonts/ assets/
+content/     stats/ buttons/ tiers/ zones/ areas/ relics/ rarities/ attributes/ config/   (.tres files)
+tests/       run.gd  test_*.gd   (every suite is registered in run.gd)
+tools/       screenshot.gd  sim.gd  bench.gd  bump_version.py ...
 ```
 
 ### Autoloads
 
 | Name | File | Job |
 | --- | --- | --- |
-| `EventBus` | `src/core/event_bus.gd` | Signals only, no state |
-| `GameState` | `src/core/game_state.gd` | Owns all stats, relics, attributes, and the tick |
-| `Save` | `src/core/save.gd` | Load, save, migrate, offline progress |
-| `Fx` | `src/render/fx_driver.gd` | Turns events into global shader uniforms |
+| `EventBus` | `core/event_bus.gd` | Signals only, no state |
+| `GameState` | `core/game_state.gd` | Owns all stats, relics, attributes, and the tick |
+| `Save` | `core/save.gd` | Load, save, migrate, offline progress |
+| `Fx` | `render/fx_driver.gd` | Turns gameplay events into global shader uniforms |
+| `Calendar` | `core/calendar_service.gd` | Day, season and year clock |
+| `Juice` | `ui/fx/fx_bus.gd` | UI effects: popups, counters, banners |
+| `Audio` | `audio/audio.gd` | Music, SFX, subtitles |
 
 ### Interface contract
 
-Write this to `docs/interfaces.md` before any parallel work starts. Changing it needs the main session's approval.
+The live contract is `docs/interfaces.md` (autoloads, EventBus signals, who may do what). Changing it needs the main session's approval.
 
 ```
 # EventBus signals
@@ -271,8 +275,8 @@ buy_attribute(attribute_id) -> bool
 ### Code rules
 
 - Static typing on every variable, parameter, and return value.
-- `src/core/` never references nodes, scenes, or `src/render/`, `src/world/`, `src/ui/`.
-- Gameplay never sets shader values directly. It emits an event and `Fx` responds.
+- Pure logic in `core/` never references nodes, scenes, or `render/`, `world/`, `ui/`. Autoload shells in `core/` are the only exception.
+- Gameplay never sets shader values directly. It emits an event and `Fx` responds. Presentation scripts that own their material (sky, shadows, screen light, toon material, pixel viewport, window frame, transitions, boot and title backgrounds) set that material's own uniforms.
 - No numbers in scripts that belong in `content/`.
 
 ## 6. Milestones
@@ -364,7 +368,7 @@ The agent runs this after every change, without waiting for Nathan:
 
 1. Check scripts parse: `godot --headless --check-only --script <file>`.
 2. Run tests: `godot --headless --script tests/run.gd`. Godot documents [headless mode for use with `--script`](https://docs.godotengine.org/en/4.7/tutorials/editor/command_line_tutorial.html).
-3. Capture the look: `godot --path . tools/screenshot.tscn`, which renders 30 frames, saves a PNG, and quits.
+3. Capture the look: `godot --path . tools/play_shots.tscn` (gameplay) or `tools/hud_shot.tscn -- early|late` (HUD panel), which save PNGs and quit.
 4. Open the PNG, compare it with the goal, and fix what is wrong.
 5. Commit with a one-line message once tests pass.
 
@@ -412,7 +416,7 @@ Full spec: docs/SPEC.md. Interfaces: docs/interfaces.md. Log: docs/decisions.md.
 
 ## After every change
 1. godot --headless --script tests/run.gd
-2. godot --path . tools/screenshot.tscn, then look at the PNG
+2. godot --path . tools/play_shots.tscn (gameplay) or tools/hud_shot.tscn (HUD panel, `-- early|late`), then look at the PNG
 3. Commit only when tests pass
 
 ## Parallel work
