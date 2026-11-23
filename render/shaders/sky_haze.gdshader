@@ -51,12 +51,12 @@ void fragment() {
 	float away = smoothstep(island_half - 40.0, island_half + 110.0, abs(p.x - island_x));
 	float land = smoothstep(0.22, 0.34, dot(texture(ground, (p - ground_origin) / vec2(textureSize(ground, 0))).rgb, vec3(0.299, 0.587, 0.114)));
 	dens = haze * band * away * land;
-	// mist: over water only (dark green backdrop texels), streaky: stretched along x, drifting
+	// mist: over water only (dark green backdrop texels), streaky: stretched along x, drifting.
+	// The noise is the expensive part and the island and the sky have no mist, so it only runs where mist can show.
 	vec2 gp = (p - ground_origin) / vec2(textureSize(ground, 0));
 	vec3 g = texture(ground, gp).rgb;
 	float water = 1.0 - smoothstep(0.30, 0.42, dot(g, vec3(0.299, 0.587, 0.114)));
 	float below = smoothstep(horizon_y - 10.0, horizon_y + 30.0, p.y);
-	float n = vnoise(vec2((p.x - drift) * 0.045, p.y * 0.22)) * 0.65 + vnoise(vec2((p.x - drift * 1.7) * 0.11 + 7.0, p.y * 0.5)) * 0.35;
 	vec2 iq = (p - island.xy) / island.zw;
 	float sea = smoothstep(1.0, 1.1, length(iq));
 	float on_pond = 0.0;
@@ -66,7 +66,12 @@ void fragment() {
 			on_pond = max(on_pond, 1.0 - smoothstep(0.7, 1.15, length((p - pd.xy) / pd.zw)));
 		}
 	}
-	float m = mist * max(water * below * sea, on_pond * 0.8) * smoothstep(0.38, 0.8, n);
+	float cover = max(water * below * sea, on_pond * 0.8);
+	float m = 0.0;
+	if (mist > 0.0 && cover > 0.0) {
+		float n = vnoise(vec2((p.x - drift) * 0.045, p.y * 0.22)) * 0.65 + vnoise(vec2((p.x - drift * 1.7) * 0.11 + 7.0, p.y * 0.5)) * 0.35;
+		m = mist * cover * smoothstep(0.38, 0.8, n);
+	}
 	// mist is the cool, pale part: the haze colour pulled toward grey so a sunset does not paint the water orange
 	vec3 mist_col = mix(vec3(dot(haze_col, vec3(0.299, 0.587, 0.114))), haze_col, 0.3);
 	float mist_d = m * 0.7;

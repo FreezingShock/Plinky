@@ -15,11 +15,25 @@ extends SceneTree
 const WARMUP_FRAMES: int = 90
 const DEFAULT_FRAMES: int = 300
 const PRESS_EVERY: int = 6
+const HITCH_MS: float = 40.0   # a frame this slow is logged as a HITCH line, whatever the averages say
 ## [name, SkyCycle phase (0 midnight, 0.25 sunrise, 0.5 noon, 0.75 sunset), rain 0..1]
 const SKY_STATES: Array = [["noon", 0.5, 0.0], ["sunset", 0.75, 0.0], ["night", 0.0, 0.0], ["rain", 0.5, 1.0]]
 
 var frames: int = DEFAULT_FRAMES
 var results: Array[Dictionary] = []
+var _log: ErrorLog = ErrorLog.new()
+var hitches: Array[String] = []
+var total_frames: int = 0
+
+
+## Collects script and shader errors from the engine log. A bench that logged one is a failed bench: a broken
+## layer can make frames cheaper (it stops drawing), so fast numbers next to an error mean nothing.
+class ErrorLog extends Logger:
+	var errors: Array[String] = []
+
+	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type == Logger.ERROR_TYPE_SCRIPT or error_type == Logger.ERROR_TYPE_SHADER:
+			errors.append("%s:%d %s %s" % [file, line, code, rationale])
 
 
 func _init() -> void:
@@ -32,6 +46,7 @@ func _init() -> void:
 			var q: int = GraphicsQuality.parse(a.trim_prefix("--quality="))
 			if q >= 0:
 				levels = [q]
+	OS.add_logger(_log)
 	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main  # Juice parents its popup layer to the current scene
@@ -65,7 +80,7 @@ func _init() -> void:
 		if z.next_zone == &"larkmoor":
 			sim.gates_open[z.id] = true
 	if sim.zone_id == &"larkmoor" or sim.enter_zone(&"larkmoor"):
-		await _frames(180)  # the zone transition plays out
+		await _frames(180, "after entering Larkmoor")  # the zone transition plays out
 		_uncap()
 		for level: int in levels:
 			GraphicsQuality.set_level(level, false)
@@ -77,7 +92,13 @@ func _init() -> void:
 	SkyCycle.debug_phase = -1.0
 	SkyCycle.debug_rain = -1.0
 	_report()
-	quit(0)
+	OS.remove_logger(_log)
+	var seen: Dictionary = {}
+	for e: String in _log.errors:
+		seen[e] = int(seen.get(e, 0)) + 1
+	for e: String in seen:
+		printerr("bench: SCRIPT ERROR x%d: %s" % [seen[e], e])
+	quit(1 if not seen.is_empty() else 0)
 
 
 ## Real cost, not a vsync- or cap-clamped 16.7 ms. Saved settings default vsync on.
@@ -116,9 +137,16 @@ func _layers(main: Node) -> Array[Node]:
 	return out
 
 
-func _frames(n: int) -> void:
+func _frames(n: int, label: String = "settle") -> void:
+	var last: int = Time.get_ticks_usec()
 	for i: int in n:
 		await process_frame
+		var now: int = Time.get_ticks_usec()
+		var ms: float = float(now - last) / 1000.0
+		last = now
+		if ms > HITCH_MS and total_frames > 0:
+			hitches.append("HITCH %s: frame %d of %d (%d since the run began), %.1f ms" % [label, i, n, total_frames, ms])
+		total_frames += 1
 
 
 func _phase(level: int, phase: String, main: Node, press: bool, zoom: int) -> Dictionary:
@@ -136,7 +164,14 @@ func _phase(level: int, phase: String, main: Node, press: bool, zoom: int) -> Di
 			get_root().get_node("EventBus").button_pressed.emit(pad_ids[(i / PRESS_EVERY) % pad_ids.size()], Vector3.ZERO, BigNum.one(), i % 4 == 0)
 		await process_frame
 		var now: int = Time.get_ticks_usec()
-		stats.push(float(now - last) / 1000.0)
+		var ms: float = float(now - last) / 1000.0
+		stats.push(ms)
+		if ms > HITCH_MS:
+			# Enough to tell a one-time compile or load from a steady cost: where it fell, and what the engine held then.
+			var c0: Dictionary = PerfStats.counters()
+			hitches.append("HITCH %s %s: frame %d of the phase (%d since the run began), %.1f ms, nodes %d, objects %d, draws %d, vram %.0f MB" % [
+				GraphicsQuality.LABELS[level], phase, i, total_frames, ms, int(c0.nodes), int(c0.objects), int(c0.draw_calls), float(c0.vram_mb)])
+		total_frames += 1
 		last = now
 		var c: Dictionary = PerfStats.counters()
 		draw_calls = maxi(draw_calls, int(c.draw_calls))
@@ -157,6 +192,8 @@ func _report() -> void:
 		print("%-8s %-22s %-6d %-7.2f %-6.2f %-6.2f %-6.2f %-8s %-6d %-5d %d" % [
 			r.quality, r.phase, roundi(float(r.fps)), float(r.avg), float(r.p95), float(r.p99), float(r.max),
 			"%d%%" % roundi(float(r.over_budget) * 100.0), int(r.draw_calls_max), int(r.objects_max), int(r.nodes_max)])
+	for h: String in hitches:
+		print(h)
 	var out_dir: String = ProjectSettings.globalize_path("res://shots")
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var f: FileAccess = FileAccess.open(out_dir + "/bench.json", FileAccess.WRITE)
@@ -164,5 +201,5 @@ func _report() -> void:
 		f.store_string(JSON.stringify({
 			"date": Time.get_datetime_string_from_system(), "gpu": RenderingServer.get_video_adapter_name(),
 			"window": DisplayServer.window_get_size(), "headless": DisplayServer.get_name() == "headless",
-			"results": results}, "\t"))
+			"hitches": hitches, "results": results}, "\t"))
 		print("wrote ", out_dir, "/bench.json")
