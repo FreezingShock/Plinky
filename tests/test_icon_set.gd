@@ -2,7 +2,10 @@ extends RefCounted
 ## Staged icons: five sizes per stat icon, each exactly its own size, and the picker chooses by slot size.
 
 const NAMES: Array[String] = ["rp", "cash", "mult", "reb", "prestige", "slag", "heat", "crit", "crit_dmg", "rate", "luck",
-	"offline", "walk", "mastery", "presses", "clock", "rest", "lore", "fortune"]
+	"offline", "walk", "mastery", "presses", "clock", "rest", "lore", "fortune",
+	"alloy", "cinder", "clover", "dewdrop", "emberheart", "embers", "foxglove", "heather", "ingot", "ironore", "seeds",
+	"starbloom", "sunlight", "thistle", "r_cash", "r_crit", "r_double", "r_mult", "r_pulse", "r_rate", "menu_stats",
+	"menu_attributes", "menu_upgrades", "menu_relics", "menu_travel", "menu_settings", "menu_history", "menu_ledger", "menu_log"]
 
 
 func run(t: Object) -> void:
