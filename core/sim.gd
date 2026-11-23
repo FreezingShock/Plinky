@@ -218,7 +218,7 @@ func press_gain_preview(button_id: StringName) -> BigNum:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null:
 		return BigNum.zero()
-	return Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), 1.0).mul(BigNum.from_float(mastery.yield_mult(button_id)))
+	return Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), 1.0).mul(BigNum.from_float(mastery.yield_mult(button_id) * pad_yield_mult()))
 
 
 ## MULT_GAIN relics apply to rewards that go into a stat flagged relics_boost_gain.
@@ -258,6 +258,17 @@ func luck_level() -> int:
 	return n
 
 
+## Multiplier on every press reward from the Pad yield attribute.
+func pad_yield_mult() -> float:
+	return 1.0 + effect_total(&"pad_yield")
+
+
+## True once the player has rebirthed enough times for this attribute to be bought. Levels bought stay when saves load.
+func attr_unlocked(attr_id: StringName) -> bool:
+	var a: AttributeDef = attribute_defs.get(attr_id) as AttributeDef
+	return a != null and rebirth_count >= a.unlock_rebirths
+
+
 func walk_speed_mult() -> float:
 	return 1.0 + effect_total(&"walk_speed")
 
@@ -272,7 +283,7 @@ func crit_chance(button_id: StringName = &"") -> float:
 
 ## What a crit multiplies the reward by: base + pad mastery, then relic crit damage.
 func crit_damage(button_id: StringName = &"") -> float:
-	var base: float = config.crit_multiplier
+	var base: float = config.crit_multiplier + effect_total(&"crit_damage")
 	if button_id != &"":
 		base += mastery.crit_damage_bonus(button_id)
 	return base * (relics.multiplier(RelicDef.Effect.CRIT_DAMAGE) if relics != null else 1.0)
@@ -324,12 +335,12 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 	var dbl: float = relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE)
 	if dbl > 0.0 and rng.randf() < dbl:
 		presses = 2
-	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id)))
+	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
 	if is_hot():
 		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
-	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press)
+	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * (1.0 + effect_total(&"mastery_xp")))
 	_check_gates()
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
@@ -553,7 +564,7 @@ func attribute_cost(attr_id: StringName) -> BigNum:
 
 func buy_attribute(attr_id: StringName) -> bool:
 	var a: AttributeDef = attribute_defs.get(attr_id) as AttributeDef
-	if a == null or attr_level(attr_id) >= a.cap:
+	if a == null or attr_level(attr_id) >= a.cap or not attr_unlocked(attr_id):
 		return false
 	var cost: BigNum = attribute_cost(attr_id)
 	if prestige_available().lt(cost):

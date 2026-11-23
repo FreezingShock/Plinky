@@ -11,3 +11,4 @@ per_level = 0.01
 cap = 25
 base_cost = 3.0
 cost_growth = 1.4
+order = 2
