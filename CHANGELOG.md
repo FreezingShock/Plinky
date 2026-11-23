@@ -11,7 +11,7 @@ under a new version heading and updates the version everywhere.
 
 ## 0.9.2 - 2026-11-23
 
-- Rarity tag on every tooltip is now one all-caps line in the bold display face, rarity then type (UNCOMMON PAD, RARE RELIC); the relic drop toast matches.
+- Rarity tag on every tooltip is now one all-caps line in the bold display face, rarity then type (UNCOMMON BUTTON, RARE RELIC); the relic drop toast matches.
 
 ## 0.9.1 - 2026-11-23
 - Calendar uses plain season names (Spring, Summer, Autumn, Winter) and months (Early Spring, Late Spring, and so on). The window title bar shows the day count and in-game time in the middle.
