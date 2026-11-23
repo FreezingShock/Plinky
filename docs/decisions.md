@@ -223,3 +223,6 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 
 ## 2026-11-23: Mastery retuned after the PC sim
 First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far gate at 51.9 min instead of 61 (best pad level 10, 22 of 250 area levels). Crit chance counts too: at x5 damage, +3% chance is about +12% expected yield, so it pushed as hard as the yield did. Now +0.2% yield and +0.1% crit chance per level (best pad at level 10: about +6% expected on that pad). Estimate only, about 59 min; the PC sim still has to confirm.
+
+## 2026-11-23: Mastery yield cut again
+PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.
