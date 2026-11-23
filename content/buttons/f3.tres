@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"f3"
+rarity = &"epic"
 zone = &"zone2"
 row = &"forge"
 row_index = 2

@@ -26,8 +26,8 @@ const BUY_RED: Color = Color("d8483c")
 const STAT_COLORS: Dictionary = {
 	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
 }
-## Unique inlay motif per pad, picked from its id: 0 solid, 1 quartered, 2 ring, 3 stripes.
-var variant: int = 0
+var rarity: RarityDef
+var emblem_bits: int = 0  # 15 bits: the unique pattern for this pad
 var stat_color: Color = Color("f6efd9")
 
 enum PadState { FAR, CLOSE, READY }
@@ -46,7 +46,8 @@ var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
 func _ready() -> void:
-	variant = absi(String(button_id).hash()) % 4
+	emblem_bits = absi(String(button_id).hash()) & 0x7FFF
+	rarity = load("res://content/rarities/%s.tres" % GameState.sim.pad_rarity(button_id)) as RarityDef
 	var b: ButtonDef = GameState.sim.button_defs.get(button_id) as ButtonDef
 	if b != null:
 		stat_color = STAT_COLORS.get(b.reward_stat, stat_color)
@@ -228,8 +229,8 @@ func _draw() -> void:
 		rim = palette[7]
 	draw_polyline(_diamond_at(1.0, top), rim, 1.0)
 	# Inset: green when buyable, red when not, with a green gauge filling as you earn the cost. Each pad has its own motif.
-	var ihx: int = 8
-	var ihy: int = 4
+	var ihx: int = 10
+	var ihy: int = 5
 	var buy: Color = BUY_GREEN
 	if st == PadState.READY:
 		if glow != null and glow.flash_t > 0.0:
@@ -249,17 +250,13 @@ func _draw() -> void:
 					continue
 				var w: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5)))
 				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), BUY_GREEN.darkened(0.2))
-	# Unique motif cut into the inlay in ink, so every pad has its own face.
-	match variant:
-		1:
-			draw_rect(Rect2(-ihx + 2, top, ihx * 2 - 3, 1), ink)
-			draw_rect(Rect2(0, top - ihy + 1, 1, ihy * 2 - 1), ink)
-		2:
-			draw_polyline(_diamond_at(0.3, top), ink, 1.0)
-		3:
-			for dy in [-2, 0, 2]:
-				var w2: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5))) - 2
-				draw_rect(Rect2(-w2, top + dy, w2 * 2 + 1, 1), ink)
+	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Legendary adds corner studs.
+	if rarity != null and rarity.rank > 0:
+		draw_polyline(_diamond_at(0.86, top), rarity.color, 1.0)
+		if rarity.rank >= 4:
+			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
+				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
+	_draw_emblem(top, ink)
 	# Stat colour: a gem on each corner of the plate plus a centre pip.
 	for g: Vector2i in [Vector2i(-hx + 2, 0), Vector2i(hx - 2, 0), Vector2i(0, -hy + 1), Vector2i(0, hy - 1)]:
 		draw_rect(Rect2(g.x - 1, top + g.y, 3 if g.y == 0 else 3, 1), stat_color)
@@ -274,6 +271,26 @@ func _draw() -> void:
 	draw_polyline(_diamond_at(0.6, top), ink, 1.0)
 	if standing:
 		draw_polyline(_diamond_at(0.38, top), palette[7], 1.0)
+
+
+## Unique 5x5 emblem per pad (mirrored, so it reads as a badge), projected onto the 2:1 plate. The centre stays clear
+## for the buy-state tick or X; the spine in the stat colour.
+func _draw_emblem(top: int, ink: Color) -> void:
+	var bit: int = 0
+	for v in 5:
+		for u in 5:
+			var uu: int = mini(u, v)
+			var vv: int = maxi(u, v)
+			var idx: int = ((vv * (vv + 1)) >> 1) + uu   # 0..14 over the triangle
+			var on: bool = (emblem_bits >> idx) & 1 == 1
+			var spine: bool = u == v
+			if not on and not spine:
+				continue
+			var x: int = (u - v) * 2
+			var y: int = u + v - 4
+			if absi(x) <= 3 and absi(y) <= 1:
+				continue
+			draw_rect(Rect2(x - 1, top + y, 2, 1), stat_color if spine else ink)
 
 
 func _diamond_at(scale: float, y: int) -> PackedVector2Array:
