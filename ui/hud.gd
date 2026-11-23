@@ -305,7 +305,7 @@ func _on_rebirth_pressed() -> void:
 		GameState.try_rebirth()
 		return
 	var lines: Array = [
-		["Resets your Cash and pads.", StatStyle.PAPER],
+		["Resets your income stats and pads.", StatStyle.PAPER],
 		["+%s Prestige" % sim.prestige_gain_preview().format(), StatStyle.color(&"prestige")],
 		["+%d Rebirth Points" % sim.rp_gain_preview(), StatStyle.color(&"rp")],
 	]
@@ -648,6 +648,18 @@ func _on_offline(seconds: float, gains: Dictionary) -> void:
 		if g.is_zero():
 			continue
 		lines.append(["+%s %s" % [g.format(), (sim.stat_defs[sid] as StatDef).display_name], StatStyle.color(sid)])
+	var tend: Dictionary = sim.last_offline.get("tend", {})
+	for tid: StringName in tend:
+		var r: Dictionary = tend[tid]
+		var tier: TierDef = sim.tier_defs.get(tid) as TierDef
+		var what: String = "%s pad tended x%d" % [tier.display_name if tier != null else str(tid), int(r["presses"])]
+		if int(r["levels"]) > 0:
+			what += ", mastery +%d (Lv %d)" % [int(r["levels"]), int(r["level"])]
+		lines.append([what, StatStyle.color(&"mastery")])
+	for rid: StringName in sim.last_offline.get("relics", []):
+		var rd: RelicDef = sim.relics.defs.get(rid) as RelicDef
+		if rd != null:
+			lines.append(["Found %s" % rd.display_name, rd.rarity.color])
 	if seconds >= sim.offline_cap_seconds() - 1.0:
 		lines.append(["That is the most you can bank offline.", RelicStyle.dim])
 	if lines.size() < 2:
@@ -915,7 +927,7 @@ func gate(node: CanvasItem, feature: StringName) -> void:
 
 ## A gated stat row also has to belong to the current zone; any other gated node always does.
 func _gated_in_zone(node: CanvasItem) -> bool:
-	if node == _rebirth:   # Rebirth lives where Cash and Multiplier do; the meadow has Bloom
+	if node == _rebirth:   # Rebirth lives in the quarry; the meadow has Bloom
 		return sim.rebirth_here()
 	for sid: StringName in _gated_rows:
 		if _row_boxes.get(sid) == node:
@@ -957,7 +969,7 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open   # tips never cover an open menu
+	_tip_card.held = PadInput.menu_open or Tip.is_showing()   # tips never cover an open menu or a tooltip
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

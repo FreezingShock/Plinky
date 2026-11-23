@@ -9,6 +9,8 @@ main is the source of truth. The design library (specs, art, longer docs) lives 
 core/ data/ world/ render/ ui/ ui/fx/ boot/ audio/ theme/ fonts/ content/ assets/ tests/ tools/ docs/ .github/workflows/
 Autoloads (project.godot): EventBus, GameState, Calendar, Save, Fx (render/fx_driver.gd), Juice (ui/fx/fx_bus.gd), Audio.
 
+Process: docs/workflow.md (cloud PR per task, one PC QA thread, QA findings routed by the coordinator).
+
 ## Rules
 - Read docs/SPEC.md, docs/art-bible.md, docs/theme.md and docs/decisions.md before starting work.
 - Static typing everywhere.

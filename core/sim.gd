@@ -804,7 +804,7 @@ func _prestige_gain() -> BigNum:
 
 
 ## Resets stats flagged resets_on_rebirth and banks the source stat into Prestige.
-## Rebirths therefore only boost Multiplier gain (via gain_boost_stat). Gates stay open.
+## Prestige then multiplies passive income (Embers in the quarry). Gates stay open.
 func try_rebirth() -> bool:
 	if not can_rebirth():
 		return false
@@ -935,9 +935,15 @@ func is_gate_open(z_id: StringName) -> bool:
 	return bool(gates_open.get(z_id, false))
 
 
-## Credits passive income for time away. Capped by offline_cap_seconds(). Returns seconds credited.
+## What the last apply_offline gave beyond stat income: {"relics": Array[StringName], "tend": {tier id: {"presses", "levels", "level"}}}.
+var last_offline: Dictionary = {}
+
+
+## Credits time away, capped by offline_cap_seconds(): passive income, flower tending (reduced-rate presses that also
+## earn mastery XP), and reduced-rate relic drop rolls. Returns seconds credited.
 func apply_offline(seconds: float) -> float:
 	var secs: float = clampf(seconds, 0.0, offline_cap_seconds())
+	last_offline = {}
 	if secs <= 0.0:
 		return 0.0
 	calendar.advance(secs)   # the world keeps turning while you are away
@@ -948,13 +954,72 @@ func apply_offline(seconds: float) -> float:
 			var g: BigNum = income_per_second(s.id).mul(sb)
 			_set_stat(s.id, get_stat(s.id).add(g))
 			gains[s.id] = g
+	last_offline["tend"] = _offline_tend(secs, gains)
+	last_offline["relics"] = _offline_relics(secs)
 	_check_gates()
 	_flush()
 	offline_gained.emit(secs, gains)
 	return secs
 
 
-# ---------------------------------------------------------------- internals
+## Each open tier of the zone (lowest first, so its yield can feed the next) presses its top unlocked pad at a fraction
+## of the press rate, as many times as the stock allows. Adds rewards to `gains` and returns per-tier results.
+func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if config.offline_tend_fraction <= 0.0:
+		return out
+	var target: float = floorf(secs * config.offline_tend_fraction / press_interval())
+	if target < 1.0:
+		return out
+	for t: TierDef in tiers_in_zone(zone_id):
+		if not is_tier_open(t.id):
+			continue
+		var pad: ButtonDef = null
+		for b: ButtonDef in buttons_in_zone(zone_id):
+			if b.row == t.id and not is_pad_locked(b.id) and (pad == null or b.row_index > pad.row_index):
+				pad = b
+		if pad == null:
+			continue
+		var cost: BigNum = Formulas.button_cost(pad)
+		var afford: float = floorf(get_stat(pad.cost_stat).div(cost).to_float()) if not cost.is_zero() else target
+		var n: float = minf(target, afford)
+		if n < 1.0:
+			continue
+		var nb: BigNum = BigNum.from_float(n)
+		var reward: BigNum = press_gain_preview(pad.id).mul(nb)
+		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
+		_set_stat(pad.reward_stat, get_stat(pad.reward_stat).add(reward))
+		gains[pad.reward_stat] = (gains[pad.reward_stat] as BigNum).add(reward) if gains.has(pad.reward_stat) else reward
+		press_count += int(n)
+		var levels: int = mastery.add_xp(pad.id, mastery.config.xp_per_press * n * (1.0 + effect_total(&"mastery_xp")))
+		out[t.id] = {"presses": int(n), "levels": levels, "level": mastery.level(pad.id)}
+	return out
+
+
+## Drop rolls for the time away, at offline_relic_roll_fraction of the awake rate, with the pity timer running on that
+## slower clock. Returns the relic ids found (at most offline_relic_max_drops).
+func _offline_relics(secs: float) -> Array[StringName]:
+	var found: Array[StringName] = []
+	var rc: RelicConfig = relics.config
+	if config.offline_relic_roll_fraction <= 0.0 or config.offline_relic_max_drops <= 0 or rc.roll_interval <= 0.0:
+		return found
+	var step_s: float = rc.roll_interval / config.offline_relic_roll_fraction
+	var now: float = play_seconds
+	var last_drop: float = _last_drop_at
+	var t: float = step_s
+	while t <= secs and found.size() < config.offline_relic_max_drops:
+		var due: float = rc.first_drop_seconds if relic_drops == 0 else rc.pity_seconds
+		var drop: StringName = relics.roll_drop(rng, luck_level(), now + t - last_drop >= due)
+		if drop != &"":
+			relics.add_relic(drop)
+			relic_drops += 1
+			last_drop = now + t
+			found.append(drop)
+		t += step_s
+	if not found.is_empty():
+		_last_drop_at = play_seconds
+	return found
+
 
 func _set_stat(stat_id: StringName, value: BigNum) -> void:
 	stats[stat_id] = value
@@ -982,7 +1047,7 @@ func _check_gates() -> void:
 # ---------------------------------------------------------------- save format
 
 ## Save format of the flower ladder (the meadow's Sunlight to Starbloom economy). Older saves are migrated on load.
-const LADDER_SAVE: int = 2
+const LADDER_SAVE: int = 3   # 3: the quarry's Cash and Multiplier became Embers and Cinder
 
 func to_dict() -> Dictionary:
 	var s: Dictionary = {}
@@ -1029,6 +1094,8 @@ func from_dict(d_in: Dictionary) -> bool:
 	var old_quarry: bool = save_ladder < 2   # before the Ember Quarry ladder (Cinder to Emberheart)
 	if old_ladder or old_quarry:
 		d = _ladder_save_ids(d)
+	if save_ladder < 3:
+		d = _rename_quarry_stats(d)
 	var s: Variant = d.get("stats", {})
 	if s is Dictionary:
 		for k: Variant in (s as Dictionary):
@@ -1111,8 +1178,8 @@ func old_pre_ladder(d: Dictionary) -> bool:
 
 
 ## A save from before the quarry ladder. A player who already was in the quarry (or had Slag, Forge mastery or an open
-## quarry gate) gets the rows they already played opened, so nothing locks behind a tier they got past. Their Cash,
-## Multiplier, Rebirths and Slag are kept as they are; the new stats start at zero.
+## quarry gate) gets the rows they already played opened, so nothing locks behind a tier they got past. Their Embers,
+## Cinder, Rebirths and Slag are kept as they are; the new stats start at zero.
 func _migrate_to_quarry_ladder() -> void:
 	var played: bool = zone_id == &"zone2" or bool(zones_entered.get(&"zone2", false)) or not get_stat(&"slag").is_zero()
 	for b: ButtonDef in button_defs.values():
@@ -1126,6 +1193,20 @@ func _migrate_to_quarry_ladder() -> void:
 	if gates_open.get(&"zone2", false):   # the old gate (9 Slag) was beaten: keep every row open for the new one
 		for t: TierDef in tiers_in_zone(&"zone2"):
 			tiers_open[t.id] = true
+
+
+## Saves from before Cash and Multiplier left the quarry (ladder < 3): the Cash stock becomes Embers and the Multiplier
+## stock becomes Cinder, one for one, so a quarry run carries on exactly as it was. (The old stats are parked in
+## content/parked/.) A copy of the save; the stats of every older zone are rewritten by _migrate_to_ladder afterwards.
+func _rename_quarry_stats(d: Dictionary) -> Dictionary:
+	var out: Dictionary = d.duplicate(true)
+	var st: Variant = out.get("stats")
+	if st is Dictionary:
+		for pair: Array in [["cash", "embers"], ["mult", "cinder"]]:
+			if (st as Dictionary).has(pair[0]):
+				(st as Dictionary)[pair[1]] = (st as Dictionary)[pair[0]]
+				(st as Dictionary).erase(pair[0])
+	return out
 
 
 ## A copy of a pre-ladder save with its mastery keys renamed to the new pad ids.
@@ -1153,7 +1234,7 @@ func _ladder_save_ids(d: Dictionary) -> Dictionary:
 	return out
 
 
-## A save from before the flower ladder. Cash, Multiplier and Rebirths now only live in the Ember Quarry, so a player who
+## A save from before the flower ladder. Cash, Multiplier and Rebirths then only lived in the Ember Quarry, so a player who
 ## has left the meadow gets their progress as the matching flower stock instead: the old Multiplier becomes Thistle Down
 ## (it was the income multiplier Larkmoor ran on) and the old Rebirths become Heather Sprigs. Tiers and arrivals the
 ## player already got past are opened and latched, so nothing locks behind them.
@@ -1178,7 +1259,7 @@ func _migrate_to_ladder(old: Dictionary) -> void:
 	if zone_id == &"zone2" or zone_id == &"":
 		for t: TierDef in tier_defs.values():
 			tiers_open[t.id] = true
-		return   # still in the quarry: Cash, Multiplier and Rebirths carry on as they were
+		return   # still in the quarry: Embers, Cinder and Rebirths carry on as they were
 	_set_stat(&"sunlight", old_cash)
 	if z != null and z.order > zone_defs[first].order:
 		_set_stat(&"dewdrop", BigNum.from_float(64.0))
@@ -1189,8 +1270,8 @@ func _migrate_to_ladder(old: Dictionary) -> void:
 	else:
 		_set_stat(&"dewdrop", old_mult)
 		_set_stat(&"clover", old_reb)
-	for id: StringName in [&"cash", &"mult", &"reb"]:
-		_set_stat(id, BigNum.from_float((stat_defs[id] as StatDef).start) if id == &"cash" else BigNum.zero())
+	for id: StringName in [&"embers", &"cinder", &"reb"]:   # the quarry's own stock starts fresh
+		_set_stat(id, BigNum.from_float((stat_defs[id] as StatDef).start) if id == &"embers" else BigNum.zero())
 	for t: TierDef in tier_defs.values():   # any pad the player had practised opens its own tier and the one under it
 		for b: ButtonDef in button_defs.values():
 			if b.row == t.id and mastery.xp(b.id) > 0.0:

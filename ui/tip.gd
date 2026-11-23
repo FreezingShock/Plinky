@@ -90,6 +90,11 @@ static func hide_free(_tree: SceneTree) -> void:
 		_host.hide_free()
 
 
+## True while the tooltip panel is on screen. Tip cards use it to step aside so the two never overlap.
+static func is_showing() -> bool:
+	return _host != null and is_instance_valid(_host) and _host.visible
+
+
 static func hide_all() -> void:
 	if _host != null and is_instance_valid(_host):
 		_host.dismiss()

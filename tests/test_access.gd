@@ -30,7 +30,7 @@ func run(t: Object) -> void:
 	# Blue-yellow safe leaves the buy pair alone and changes the stat blues.
 	AccessOptions.set_color_mode(AccessOptions.MODE_BLUE_YELLOW)
 	t.eq(StatStyle.gain(), StatStyle.BUY_GREEN, "by: buy green stays")
-	t.ok(StatStyle.color(&"mult") != Color("55aaff"), "by: Multiplier blue is swapped")
+	t.ok(StatStyle.color(&"prestige") != Color("f08fb0"), "by: the Prestige pink is swapped")
 	AccessOptions.set_color_mode("nonsense")
 	t.eq(AccessOptions.color_mode, AccessOptions.MODE_OFF, "an unknown mode falls back to off")
 

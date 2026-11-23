@@ -548,6 +548,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
+## Offline catch-up v2 (v0.35.0)
+- Away time still caps at offline_base_cap_hours plus Deep Sleep levels. Within it: passive Sunlight at full rate; flower tending at `offline_tend_fraction` (0.1) of the press rate, one top unlocked pad per open tier, lowest tier first, paying real cost and reward and limited by stock (so it can never invent resources); mastery XP follows from those presses with Pad Lore applied; relic rolls at `offline_relic_roll_fraction` (0.25) of the awake rate with normal luck and pity, at most 3 drops per return. All numbers in content/config/game.tres. Zone 2 has no tiers yet, so it gets passive income only. Welcome Back lists tending and mastery in the mastery colour and found relics in their rarity colour. Untested in engine: no Godot in the cloud; CI runs the new tests. Balance threads may retune the three fractions.
 ## Tier buffs, multiplier display, clearer pad states (2026-11-23)
 - **Decision (Nathan):** stats from the 3rd tier up buff several lower stats, not just the one below. `StatDef.buff_stats` and `buff_factor` (data, reusable by the Ember Quarry ladder): while a stat is held (>= 1), rewards into each listed stat are multiplied by the factor, and buffs from different stats stack. Meadow: Thistle Down and Heather Sprigs 1.25x, Foxglove Bells and Starbloom Petals 1.5x, each on every stat below it. This is flat, not per unit, so it stays predictable; the per-unit chain (`gain_boost_stat`) is unchanged.
 - **Setting:** Settings > Gameplay > Multiplier display, Factor (x1.5) or Percent (150%), through `NumberFormat.mult()`. Used by the stat sources lists and the HUD prestige label.
@@ -560,7 +562,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **`core/` wording:** pure logic is node-free; the Node autoload shells (event_bus, game_state, save, calendar_service) are the named exception.
 - **Stale docs refreshed:** `docs/features.md` rewritten for v0.27.0; `docs/balance.md` marks sections 1 to 8 as v0 history and adds a pointer to the flower and quarry ladders; `docs/zone2-ladder.md` copied into the repo.
 
-- **HUD currency panel is a compact strip (v0.29.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
+- **HUD currency panel is a compact strip (v0.35.0).** Names removed (instant tooltips carry them); value takes the stat colour; gain is 8 px dim text left of the value; rows show only once the stat has been held (latched per session) and only in the current zone. Chosen over a "headline + fold" panel because every earned currency stays glanceable and it needs no extra click. Collapse toggle left for later.
 
 ## Ember Quarry forge ladder (2026-11-23, v0.30.0)
 - **Decision (Nathan):** the quarry gets a 6-row stat ladder like the meadow's, with custom isometric art. Rows bottom to top: **Cinder** (pays Multiplier, costs the passive Cash), **Ore** (Iron Ore), **Slag**, **Ingot** (Ingots), **Alloy** (Alloys), **Emberheart** (Emberhearts), rarities Common to Mythic. Cash stays the zone's passive trickle, Multiplier is the first row's stat. Data: `content/tiers/{cinder,ore,slagrow,ingot,alloy,emberheart}.tres` (the Slag row id is `slagrow` so it never clashes with the stat), 18 pads `<row>_1..3` (+1/+8/+64), stats in `content/stats`.
@@ -598,10 +600,21 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Side fix:** the strip panel now shrinks back when rows are hidden (it only ever grew before, because nothing resets a top-level PanelContainer's size).
 - Not run in the cloud: the engine look of the pencil, glyphs and chips. `tools/hud_shot.tscn -- edit` captures it on the PC.
 
-## 2026-11-23 Weak-hardware pass: Low really scales down (0.33.1)
+## 2026-11-23 Weak-hardware pass: Low really scales down (0.36.1)
 - **Measured first.** A software Vulkan rasteriser (lavapipe) in the cloud stands in for a weak GPU (`tools/bench_weak.sh`). Before this change Low was no faster than High there (about 21.5 vs 20.9 ms).
 - **Low now:** ground relight march 6 taps at double stride (same reach) and 2 occlusion taps; the light grade pass, the only shader that reads the screen texture, is skipped. Medium sits between on the march. High is the full look.
 - **No-cost wins at every level:** the ground shader skips its shadow march when no cast shadow applies and its occlusion taps when `ao_amt` is 0 (identical output). ShaderWarm also compiles ground_light, ground_fog and light_grade at start, so the first Larkmoor frames do not compile them.
 - **Look tradeoff on Low (taste call):** no sun-side lift or highlight and shadow split from the light grade, slightly coarser cast shadows. Palettes, dither and outlines are unchanged.
 - **CI ceilings:** `check_frame_budget.py` now also fails above 250 draw calls and 1200 nodes (Larkmoor is 1065 headless; the old 700 in perf.md was stale).
 - **Result:** Low is 10 to 13% faster than before on the stand-in, High unchanged. Short of the 25% budget; real iGPU numbers still wanted from the PC thread. Not run on a real GPU.
+## 2026-11-23 Travel menu lists top-level areas only (v0.35.0)
+
+## 2026-11-23 Cash and Multiplier leave the Ember Quarry (0.34.0)
+- **Nathan's call:** Cash and Multiplier are removed from the quarry and will return in a later nostalgic, liminal zone. They are parked, not deleted: `content/parked/stats/cash.tres` and `mult.tres` (not loaded), the `cash.png` and `mult.png` icons, and the `CASH_MULT` and `MULT_GAIN` relic effects stay.
+- **Embers** replace Cash as the quarry's passive trickle (the Sunlight counterpart): orange, `embers`, start 10, boosted by Cinder, Prestige and income relics. Chosen over Heat because Heat is already the vent mechanic, and over Kindling to keep the Ember Quarry name in play.
+- **Cinder** replaces the Multiplier as the first forge stat (row 1, Common, `cinder`), so the six rows read Cinder, Ore, Slag, Ingot, Alloy, Emberheart with the same chain: Embers pay Cinder, Cinder pays Ore. All costs, rewards, the 190 Embers arrival purse and the buff rule are unchanged, so the quarry balance (#180) still applies one for one.
+- **Rebirth stays in the quarry until Reforge.** It never needed the Multiplier: it banks Ingots as Prestige, Prestige multiplies Embers income and buys Attributes, and Rebirth Points buy perks. The Reforge ZoneReset (PR #183 framework) should replace it as its own follow-up, with a forge-themed currency and menu.
+- **Saves:** `ladder = 3`. Saves from before it move `cash` to `embers` and `mult` to `cinder` on load (`Sim._rename_quarry_stats`). Older saves still go through the flower and quarry ladder migrations first.
+- Not run in the cloud: the engine (tests and screenshots are CI and the PC tester).
+## 2026-11-23 Travel menu lists top-level areas only (v0.34.0)
+Travel shows Meadow and Ember Quarry plus two locked "???" teaser rows (`travel_teased_rows` in game.tres). Larkmoor is inside the Meadow (`ZoneDef.travel_parent`), so its districts leave the list. The Meadow row lands in the furthest unlocked zone of the Meadow (Larkmoor once the first gate is open), or stays put if you are already inside it. Sub-area expand toggles removed.
