@@ -22,6 +22,15 @@ func run(t: Object) -> void:
 	t.ok(panel._d_sources.get_child_count() > 0, "the detail page lists sources")
 	t.ok(panel.back_or_close() and not panel.detail_open() and panel.is_open(), "back returns to the gallery, still open")
 	t.ok(panel.back_or_close() and not panel.is_open(), "back again closes the window")
+	# buying from the Attributes detail page goes through the buyer callable and updates the page
+	var bought: Array[StringName] = []
+	panel.buyer = func(id: StringName) -> bool:
+		bought.append(id)
+		return true
+	panel.open_tab(IndexPanel.Tab.ATTRIBUTES)
+	panel.open_detail(&"luck")
+	panel._on_buy()
+	t.ok(bought == [&"luck"], "the buy button buys the attribute on show")
 	FxConfig.reduce_flashing = false
 	panel.toggle_tab(IndexPanel.Tab.STATS)
 	panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)

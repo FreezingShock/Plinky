@@ -46,6 +46,7 @@ var _d_total: Label
 var _d_buff: Label
 var _d_tip: Label
 var _d_bar: DitherBar
+var _buy: PixelButton
 var _d_sources: HFlowContainer
 var _back: PixelButton
 var _strip: VBoxContainer
@@ -60,6 +61,8 @@ var _slide: float = 0.0
 var _tween: Tween
 var _closing: bool = false
 var _busy: bool = false                  ## a page wipe is running
+## Set by Main: buys the next level of an attribute (GameState.buy_attribute), so there is one purchase path.
+var buyer: Callable = Callable()
 
 
 func _init() -> void:
@@ -166,6 +169,12 @@ func _build_detail() -> void:
 	top.add_child(bar_row)
 	_d_bar = DitherBar.new(160.0)
 	bar_row.add_child(_d_bar)
+	_buy = PixelButton.new()
+	_buy.pressed.connect(_on_buy)
+	Tip.bind(_buy, {"title": "Buy level", "body": "Spend Prestige on the next level."})
+	var buy_row := CenterContainer.new()
+	buy_row.add_child(_buy)
+	top.add_child(buy_row)
 	var cap := Label.new()
 	cap.text = "SOURCES"
 	cap.add_theme_color_override("font_color", RelicStyle.accent)
@@ -457,11 +466,39 @@ func _fill_detail(d: Dictionary) -> void:
 	_d_bar.visible = d.has("cap")
 	if d.has("cap"):
 		_d_bar.value = float(d["level"]) / maxf(float(d["cap"]), 1.0)
+	_buy.get_parent().visible = tab == Tab.ATTRIBUTES
+	if tab == Tab.ATTRIBUTES:
+		var lv: int = int(d["level"])
+		var maxed: bool = lv >= int(d["cap"])
+		var cost: BigNum = sim.attribute_cost(d["id"])
+		var ok: bool = not maxed and not sim.prestige_available().lt(cost)
+		_buy.text = "MAX" if maxed else "Buy  %s" % cost.format()
+		_buy.disabled = not ok
+		var col: Color = RelicStyle.good if ok else Color(0.86, 0.35, 0.3)
+		for k: String in ["font_color", "font_hover_color", "font_disabled_color", "font_pressed_color", "font_focus_color"]:
+			_buy.add_theme_color_override(k, col)
 	for c in _d_sources.get_children():
 		_d_sources.remove_child(c)
 		c.queue_free()
 	for s: Dictionary in sim.stat_sources(d["id"], tab == Tab.ATTRIBUTES):
 		_d_sources.add_child(_source_card(s))
+
+
+func _on_buy() -> void:
+	if not buyer.is_valid() or not detail_open() or not bool(buyer.call(detail_id)):
+		return
+	_refresh()
+	if FxConfig.reduce_flashing:
+		return
+	var t := create_tween()    # blink the total and hop the icon: stepped, like the other HUD pops
+	for i in 3:
+		t.tween_property(_d_total, "modulate", Color(2.0, 2.0, 1.5), 0.0)
+		t.tween_interval(0.08)
+		t.tween_property(_d_total, "modulate", Color.WHITE, 0.0)
+		t.tween_interval(0.08)
+	_d_icon.pivot_offset = _d_icon.size / 2.0
+	_d_icon.position.y -= 4.0
+	t.tween_callback(func() -> void: _d_icon.position.y += 4.0)
 
 
 func _source_card(s: Dictionary) -> Control:
