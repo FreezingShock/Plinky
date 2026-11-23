@@ -78,8 +78,7 @@ func _typing() -> bool:
 
 
 func _key_down(action: StringName) -> bool:
-	var k: int = Keybinds.key_for(action)
-	return k != KEY_NONE and Input.is_key_pressed(k as Key)
+	return Keybinds.held(action)
 
 
 func _process(delta: float) -> void:
@@ -101,7 +100,7 @@ func _process(delta: float) -> void:
 		_has_target = false
 	motion.cfg = GameState.sim.config
 	motion.tick(delta, dir != Vector2.ZERO,
-		not blocked and Input.is_physical_key_pressed(KEY_SHIFT),
+		not blocked and _key_down(&"sprint"),
 		not blocked and _key_down(&"crouch"),
 		not blocked and (_key_down(&"jump") or Input.is_action_pressed(&"plinky_jump")))
 	speed_factor = motion.speed_factor
@@ -253,8 +252,7 @@ func _animate(delta: float, dir: Vector2) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and not PadInput.menu_open:
-		var k: InputEventKey = event
-		if k.pressed and not k.echo and (k.keycode == KEY_CTRL or k.physical_keycode == KEY_CTRL):
+		if Keybinds.matches(&"sprint_lock", event):
 			motion.toggle_sprint_lock()
 			return
 		if Keybinds.matches(&"jump", event) or event.is_action_pressed(&"plinky_jump"):

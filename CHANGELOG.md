@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.21.0 - 2026-11-23
+## 0.22.0 - 2026-11-23
 - New press popups: one pooled node draws every number, rolls a motion, easing and size per press, stacks held presses into one number, merges quick clicks and keeps numbers off each other. Escalating streak tiers (Gold, Ice, Rainbow, Chroma, Galaxy) change colour, sparkles, pad ripple and sound. Relic pulses now ripple outward as echoes with spark links and their own sound. Twelve new sounds. Respects Quiet pad clicks, Reduce flashing and Calm camera.
+
+## 0.21.0 - 2026-11-23
+- Quality of life: a small "Saved" note after each save (red "Save failed" if a write fails), a Welcome Back card with what you earned while away, a confirm card before Rebirth, and rebinding that accepts Shift, Ctrl and Alt combos plus new Sprint and Sprint lock keys. Settings > Gameplay can turn off the Saved note and the rebirth confirm.
 
 ## 0.20.0 - 2026-11-23
 - Ambient soundscape: six layered loops (day wind, night wind, winter wind, crickets, autumn leaves, forge crackle) fade with the time of day, the season and the zone. Birdsong thins at night and in winter and swells at dawn; the Ambience slider scales it all.

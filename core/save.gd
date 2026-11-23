@@ -53,6 +53,7 @@ func save_game() -> bool:
 		get_node("/root/EventBus").game_saved.emit()
 	else:
 		push_warning("Save: could not write " + SaveSlots.path_for(slot))
+		get_node("/root/EventBus").save_failed.emit()
 	return ok
 
 
