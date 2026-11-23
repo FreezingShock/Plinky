@@ -5,7 +5,8 @@ extends Node2D
 
 const BOB_PX: float = 3.0
 const BOB_HZ: float = 2.0
-const HEIGHT: float = 30.0  # texels above the pad anchor
+const ARROW_H: float = 7.0   # rows of the arrow, tip at the bottom
+const TIP_GAP: float = 9.0   # texels from the pad centre up to the arrow tip at rest (the pad is 14 wide, 7 tall each way)
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _t: float = 0.0
@@ -27,11 +28,16 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+## Y of the arrow tip relative to the pad centre, for a bob of 0 to BOB_PX texels (up is negative).
+static func tip_y(bob: float) -> float:
+	return -TIP_GAP - bob
+
+
 func _draw() -> void:
 	var bob: float = roundf(sin(_t * TAU * BOB_HZ) * BOB_PX * 0.5 + BOB_PX * 0.5)
 	var ink: Color = palette[0] if palette.size() > 0 else Color.BLACK
 	var fill: Color = palette[5] if palette.size() > 5 else Color.WHITE
-	var y: float = -HEIGHT - bob
+	var y: float = tip_y(bob) - ARROW_H
 	# Down-pointing arrow, 9 wide, drawn row by row with a 1 texel outline.
 	for row in 7:
 		var half: int = 6 - row

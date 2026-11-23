@@ -9,6 +9,7 @@ func run(t: Object) -> void:
 	_stages(t, cfg)
 	_saving(t, cfg)
 	_old_save_and_off(t, cfg)
+	_pointer(t)
 	_timeline(t)
 
 
@@ -209,3 +210,11 @@ func _timeline(t: Object) -> void:
 		if not ob.is_urgent(tips[i][0]):
 			t.ok(gap >= cfg.tip_gap_seconds - 0.15, "tip %s respects the normal gap" % tips[i][0])
 	print("onboarding timeline (min): ", when, " tips: ", tips.map(func(p: Array) -> String: return "%s@%.0fs" % [p[0], p[1]]))
+
+
+## The first-pad arrow is a child of the pad, so it shares its position. Its tip must hover just above the pad
+## (the pad is 7 texels tall each way), at every point of the bob, not 30 texels off (the first version).
+func _pointer(t: Object) -> void:
+	for bob: float in [0.0, 1.0, 2.0, PadPointer.BOB_PX]:
+		var tip: float = PadPointer.tip_y(bob)
+		t.ok(tip <= -TexelPad.HALF.y and tip >= -TexelPad.HALF.y - 8.0, "arrow tip hovers within 8 texels above the pad (bob %.0f, tip %.0f)" % [bob, tip])
