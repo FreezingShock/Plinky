@@ -81,7 +81,7 @@ static func spec_for(sim: Sim, z_id: StringName) -> Dictionary:
 	var sname: String = sd.display_name if sd != null else String(z.gate_stat)
 	if not open:
 		spec["body"] = "Sealed behind an iron grate."
-		spec["lines"] = [["Needs ", Tip.icon(String(z.gate_stat)), Tip.seg(need.format(), StatStyle.BUY_GREEN), " ", Tip.seg(sname, StatStyle.color(z.gate_stat))]]
+		spec["lines"] = [["Needs ", Tip.icon(String(z.gate_stat)), Tip.seg(need.format(), StatStyle.gain()), " ", Tip.seg(sname, StatStyle.color(z.gate_stat))]]
 		spec["hint"] = "Need %s more" % need.sub(have).format()
 		spec["hint_color"] = StatStyle.buy(false)
 	elif z.next_zone != &"":

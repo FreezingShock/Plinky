@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TierDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/tier_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ingot"
+display_name = "Ingot"
+order = 4
+zone = &"zone2"
+stat = &"ingot"
+rarity = &"epic"
+blurb = "A stack of violet ingots. Costs Slag, pays Ingots."

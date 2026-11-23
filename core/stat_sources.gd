@@ -17,11 +17,11 @@ static func of(sim: Sim, id: StringName, is_attribute: bool = false) -> Array[Di
 			return rows
 		return _attribute(sim, sim.attribute_defs[id] as AttributeDef)
 	match id:
-		&"cash": _cash(sim, rows)
-		&"mult": _mult(sim, rows)
-		&"reb": _reb(sim, rows)
-		&"slag": _pads_paying(sim, &"slag", rows)
 		&"prestige": _prestige(sim, rows)
+		&"seeds":
+			rows.append(_r("Next Bloom", "+%d" % sim.bloom_gain_preview(), "Bloom pays more the higher your %s got." % (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name, "action"))
+			rows.append(_r("Blooms done", str(sim.bloom_count), "Each Bloom makes every pad pay %d%% more for good." % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), "total"))
+			rows.append(_r("To spend", sim.get_stat(&"seeds").format(), "Spend it on Bloom gifts in Upgrades.", "total"))
 		&"rp":
 			rows.append(_r("Next rebirth", "+%d" % sim.rp_for_rebirth(sim.rebirth_count), "Each rebirth pays a little more than the last.", "action"))
 			rows.append(_r("To spend", sim.rp_available().format(), "Spend it on Rebirth perks in Upgrades.", "total"))
@@ -58,44 +58,61 @@ static func of(sim: Sim, id: StringName, is_attribute: bool = false) -> Array[Di
 			rows.append(_r("Press drops", str(sim.relic_drops), "Pads sometimes drop a relic. Luck makes it likelier.", "total"))
 		&"play_time":
 			rows.append(_r("This save", StatIndex.clock_text(sim.play_seconds), "Time passes while you play.", "total"))
+		_:
+			var sd: StatDef = sim.stat_defs.get(id) as StatDef
+			if sd != null:
+				_stat(sim, sd, rows)
 	return rows
 
 
 # ---------------------------------------------------------------- stats
 
-static func _cash(sim: Sim, rows: Array[Dictionary]) -> void:
+## Any stat that is not Prestige or Rebirth Points: where its income or its press rewards come from. Read from the
+## StatDef, so the flower stats, Cash, Multiplier and Slag all use this one.
+static func _stat(sim: Sim, d: StatDef, rows: Array[Dictionary]) -> void:
 	var z: ZoneDef = sim.current_zone()
-	rows.append(_r("This zone", "%s/s" % BigNum.from_float(z.base_cash_per_second if z != null else 0.0).format(), "Each zone pays its own base income.", "zone"))
-	rows.append(_r("Multiplier", "x%s" % sim.get_stat(&"mult").add(BigNum.one()).format(), "Press the Multiplier pads.", "base"))
-	rows.append(_r("Prestige", "x%s" % sim.prestige_mult().format(), "Rebirth to earn Prestige.", "prestige"))
-	rows.append(_r("Equipped relics", "x%.2f" % _relic(sim, RelicDef.Effect.CASH_MULT), "Equip a relic that boosts cash.", "relic"))
-	rows.append(_r("Momentum", "x%.2f" % (1.0 + sim.momentum_bonus()), "Keep walking to fill the momentum meter.", "action"))
-	_pads_paying(sim, &"cash", rows)
-
-
-static func _mult(sim: Sim, rows: Array[Dictionary]) -> void:
-	_pads_paying(sim, &"mult", rows)
-	rows.append(_r("Rebirths", "x%s" % sim.get_stat(&"reb").add(BigNum.one()).format(), "Each rebirth makes Multiplier presses pay more.", "action"))
-	rows.append(_r("Equipped relics", "x%.2f" % _relic(sim, RelicDef.Effect.MULT_GAIN), "Equip a relic that boosts Multiplier gain.", "relic"))
-
-
-static func _reb(sim: Sim, rows: Array[Dictionary]) -> void:
-	_pads_paying(sim, &"reb", rows)
+	if d.passive:
+		rows.append(_r("This zone", "%s/s" % BigNum.from_float(z.base_cash_per_second if z != null and d.in_zone(z.id) else 0.0).format(), "Each zone pays its own base income.", "zone"))
+		if d.income_boost_stat != &"":
+			var bd: StatDef = sim.stat_defs.get(d.income_boost_stat) as StatDef
+			rows.append(_r(bd.display_name if bd != null else String(d.income_boost_stat), NumberFormat.mult(sim.get_stat(d.income_boost_stat).add(BigNum.one())), "Press the pads that pay %s." % (bd.display_name if bd != null else "it"), "base"))
+		for o: StatDef in sim.stat_defs.values():
+			if o.income_factor_per_unit > 0.0 and o.id != d.id and (z == null or o.in_zone(z.id)):
+				rows.append(_r(o.display_name, NumberFormat.mult(sim.get_stat(o.id).mul(BigNum.from_float(o.income_factor_per_unit)).add(BigNum.one())), "Press the pads that pay %s." % o.display_name, "base"))
+		if d.prestige_boosts_income:
+			rows.append(_r("Prestige", NumberFormat.mult(sim.prestige_mult()), "Rebirth to earn Prestige.", "prestige"))
+		if d.relics_boost_income:
+			rows.append(_r("Equipped relics", NumberFormat.mult_f(_relic(sim, RelicDef.Effect.CASH_MULT)), "Equip a relic that boosts income.", "relic"))
+		rows.append(_r("Momentum", NumberFormat.mult_f(1.0 + sim.momentum_bonus()), "Keep walking to fill the momentum meter.", "action"))
+	_pads_paying(sim, d.id, rows)
+	if d.gain_boost_stat != &"":
+		var gd: StatDef = sim.stat_defs.get(d.gain_boost_stat) as StatDef
+		var gname: String = gd.display_name if gd != null else String(d.gain_boost_stat)
+		rows.append(_r(gname, NumberFormat.mult(sim.get_stat(d.gain_boost_stat).add(BigNum.one())), "Each %s makes %s presses pay more." % [gname, d.display_name], "base"))
+	for o: StatDef in sim.stat_defs.values():
+		if o.buff_stats.has(String(d.id)):
+			rows.append(_r(o.display_name, NumberFormat.mult_f(o.buff_factor) if sim.get_stat(o.id).gte(BigNum.one()) else "-", "Hold 1 %s to buff %s presses." % [o.display_name, d.display_name], "base"))
+	if d.relics_boost_gain:
+		rows.append(_r("Equipped relics", NumberFormat.mult_f(_relic(sim, RelicDef.Effect.MULT_GAIN)), "Equip a relic that boosts %s gain." % d.display_name, "relic"))
 
 
 static func _prestige(sim: Sim, rows: Array[Dictionary]) -> void:
 	rows.append(_r("Next rebirth", "+%s" % sim.prestige_gain_preview().format(), "Rebirth when the gate is ready.", "action"))
 	rows.append(_r("To spend", sim.prestige_available().format(), "Spend it on Attributes in Upgrades.", "total"))
-	rows.append(_r("Income bonus", "x%s" % sim.prestige_mult().format(), "More Prestige multiplies all income.", "prestige"))
+	rows.append(_r("Income bonus", NumberFormat.mult(sim.prestige_mult()), "More Prestige multiplies all income.", "prestige"))
 
 
 static func _pads_paying(sim: Sim, reward: StringName, rows: Array[Dictionary]) -> void:
 	var n: int = 0
+	var tier_name: String = ""
 	for b: ButtonDef in sim.button_defs.values():
 		if b.reward_stat == reward:
 			n += 1
+			var t: TierDef = sim.tier_of(b.id)
+			if t != null:
+				tier_name = t.display_name
 	if n > 0:
-		rows.append(_r("Pads that pay it", str(n), "Walk to a pad and stand on it. Higher mastery pays more.", "zone"))
+		rows.append(_r("Pads that pay it", "%d%s" % [n, " (%s row)" % tier_name if tier_name != "" else ""], "Walk to a pad and stand on it. Higher mastery pays more.", "zone"))
 
 
 # ---------------------------------------------------------------- attributes

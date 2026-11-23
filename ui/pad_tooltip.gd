@@ -53,12 +53,25 @@ static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 		edge = rar.readable_color(RelicStyle.ink)
 		lines.append(TipText.rarity_tag(rar, "button", edge))
 	lines.append(["Costs ", Tip.icon(String(b.cost_stat)), Tip.seg(cost.format(), StatStyle.buy(can)), " ", Tip.seg(cost_def.display_name, StatStyle.color(b.cost_stat))])
-	lines.append(["Gives ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % sim.press_gain_preview(button_id).format(), StatStyle.BUY_GREEN), " ", Tip.seg(reward_def.display_name, rc)])
+	lines.append(["Gives ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % sim.press_gain_preview(button_id).format(), StatStyle.gain()), " ", Tip.seg(reward_def.display_name, rc)])
+	var avg: BigNum = sim.press_gain_average(button_id)
+	if avg.cmp(sim.press_gain_preview(button_id)) > 0:
+		lines.append(["Average ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % avg.format(), StatStyle.gain()), " ", "with crits"])
+	var hint: String = "Ready. Stand here or hold click." if can else "Need %s more" % cost.sub(have).format()
+	var hint_color: Color = StatStyle.buy(can)
+	if sim.is_pad_locked(button_id):
+		var below: TierDef = null
+		for t: TierDef in sim.tiers_in_zone(sim.tier_of(button_id).zone):
+			if sim.next_tier(t.id) == sim.tier_of(button_id):
+				below = t
+		hint = "Locked. Press the last %s pad once to open it." % (below.display_name if below != null else "previous")
+		hint_color = StatStyle.cant()
+	var row_tier: TierDef = sim.tier_of(button_id)
+	var row_name: String = row_tier.display_name if row_tier != null else String(b.row).capitalize()
 	return {
-		"title": "%s %d" % [String(b.row).capitalize(), b.row_index + 1], "title_color": rc, "color": edge,
+		"title": "%s %d" % [row_name, b.row_index + 1], "title_color": rc, "color": edge,
 		"icon": String(b.reward_stat), "body": body, "lines": lines,
-		"hint": "Ready. Stand here or hold click." if can else "Need %s more" % cost.sub(have).format(),
-		"hint_color": StatStyle.buy(can),
+		"hint": hint, "hint_color": hint_color,
 	}
 
 

@@ -20,8 +20,21 @@ extends Resource
 ## Rebirth Points: each rebirth pays rp_base, plus rp_growth for every rebirth already done (rounded down).
 ## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; rebirths still only boost Multiplier gain.
 @export var rp_stat: StringName = &"rp"
+## The currency the History graph tracks (income per second). Content swaps this when the economy changes.
+@export var income_stat: StringName = &"cash"
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
+## Bloom: the meadow's reset. Opens once `bloom_gate_zone`'s gate is open and `bloom_source_stat` reaches the first payout. The reference amount is that gate's threshold (bloom_seed_ref is only the fallback).
+## Pays floor(bloom_seed_scale * sqrt(source / bloom_seed_ref)) Seeds (at least bloom_min_seeds), and every Bloom done adds
+## bloom_reward_per_bloom to every pad's reward. Rebirth, Prestige and RP only show in `rebirth_zones`.
+@export var bloom_stat: StringName = &"seeds"
+@export var bloom_source_stat: StringName = &"starbloom"
+@export var bloom_gate_zone: StringName = &"larkmoor"
+@export var bloom_seed_ref: float = 250.0
+@export var bloom_seed_scale: float = 2.0
+@export var bloom_min_seeds: float = 2.0
+@export var bloom_reward_per_bloom: float = 0.05
+@export var rebirth_zones: PackedStringArray = PackedStringArray(["zone2"])
 ## Momentum: walking charges it (pressing nudges it), then it holds a moment and falls. Income gets
 ## x(1 + momentum * momentum_max_bonus + the kickers of every stage reached). Stages: Idle, then one per threshold.
 ## Full bar = max_bonus + sum(tier_bonus) = +40%.
@@ -35,6 +48,15 @@ extends Resource
 @export var momentum_per_crit: float = 0.05      ## extra charge on a crit
 @export var momentum_per_unit: float = 0.0055    ## charge per texel walked (about 180 texels fills it)
 @export var momentum_decay_per_second: float = 0.1
+## Press streak tiers (PressStreak, ui/fx/press_popups.gd). Presses closer together than popup_streak_gap seconds chain.
+## Score = chain length x (1 + momentum stage x popup_momentum_weight); each threshold reached is one tier:
+## Plain, Gold, Ice, Rainbow, Chroma, Galaxy. Pure presentation: tiers never change income.
+@export var popup_streak_gap: float = 1.6
+@export var popup_tier_thresholds: PackedFloat32Array = PackedFloat32Array([8.0, 20.0, 45.0, 90.0, 180.0])
+@export var popup_tier_names: PackedStringArray = PackedStringArray(["Plain", "Gold", "Ice", "Rainbow", "Chroma", "Galaxy"])
+@export var popup_momentum_weight: float = 0.35
+## A relic pulse hits each neighbour this many seconds after the one before it, so the chain reads as a ripple.
+@export var pulse_echo_delay: float = 0.09
 ## Walker movement (WalkerMotion). Multipliers on the walk speed, so Attribute levels still scale everything.
 @export var sprint_mult: float = 1.55            ## Shift held, or Ctrl locked
 @export var crouch_mult: float = 0.5             ## C held on the ground

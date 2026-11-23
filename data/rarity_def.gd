@@ -16,10 +16,15 @@ extends Resource
 ## 20x20 frame art (art/icons/rarity). A 16x16 icon sits inside at offset (2, 2).
 @export var frame: Texture2D
 
+## The tier colour as drawn: swapped for a colour-safe one when that option is on (core/access_options.gd).
+func tint() -> Color:
+	return AccessOptions.tint(color)
+
+
 ## The tier colour, lightened toward white until it reaches `min_ratio` contrast on `bg`.
 ## Rare (#5555FF) and Epic (#AA00AA) are too dark for text on the ink panel, so text uses this; frames keep the exact colour.
 func readable_color(bg: Color, min_ratio: float = 4.5) -> Color:
-	var c: Color = color
+	var c: Color = tint()
 	for i in 12:
 		if _contrast(c, bg) >= min_ratio:
 			return c

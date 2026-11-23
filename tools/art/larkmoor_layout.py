@@ -28,22 +28,32 @@ MERE = dict(c=(1120, 392), rx=70, ry=36)
 STREAM = [(430, 330), (520, 372), (610, 430), (700, 452), (800, 458), (900, 450), (990, 438), (1060, 420)]
 BRIDGE = (762, 454)           # where the main path crosses the stream
 
-# Districts: name, centre, pads (screen coords), landmark. Pad order = order in ZoneDef.pad_buttons.
+# Pad rows: a tier is a straight line of three pads on the 2:1 ground grid, 44 texels apart (a 28 wide plate plus a gap
+# the walker can cross). `row(centre, step)` lists them from the first to the last; the order is the order of the tier's
+# pads in ZoneDef.pad_buttons, and the anchors come out in the order the districts are listed below.
+def row(cx, cy, dx, dy):
+    return [(cx - dx, cy - dy), (cx, cy), (cx + dx, cy + dy)]
+
+
+ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right ("/") or falls to the right ("\\")
+
+# Districts: name, centre, pads (screen coords), landmark. Pads are four rows: Thistle at Gatehouse Green, Heather at
+# Old Oak Crossing, Foxglove at Thistle Rise, Starbloom at Emberwatch. Heronmere, Cairnfold and Lanternwood have none.
 DISTRICTS = [
-    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=[(716, 664), (810, 648)],
-         note='Arrival lawn. Two starter pads either side of the road, lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(560, 640), (448, 600)],
-         note='West lake with reed shores. Pads on the shoreline, a little jetty.'),
-    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=[(1020, 590), (940, 536)],
-         note='East rolling flower fields. Windmill on the rise.'),
-    dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=[(716, 470)],
-         note='The hub. A great old oak, the footbridge over the stream, a fork north.'),
-    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[(612, 372)],
+    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(868, 646, *ROW_STEP_UP),
+         note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
+    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[],
+         note='West lake with reed shores and a little jetty.'),
+    dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=row(840, 534, *ROW_STEP_DOWN),
+         note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
+    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=row(1030, 580, *ROW_STEP_UP),
+         note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
+    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[],
          note='Rocky foothills, glowing crystals, a ring of standing stones.'),
-    dict(id='lanternwood', name='Lanternwood', c=(960, 330), pads=[(930, 350)],
+    dict(id='lanternwood', name='Lanternwood', c=(960, 330), pads=[],
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
-    dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=[(716, 316)],
-         note='Last plaza before the quarry. The far gate sits in the cliff.'),
+    dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=row(836, 322, *ROW_STEP_UP),
+         note='Last plaza before the quarry. The Starbloom row, and the far gate set in the cliff.'),
 ]
 LANDMARKS = [
     dict(id='elder_oak', kind='elder_oak', at=(790, 444)),
@@ -59,9 +69,9 @@ LANDMARKS = [
 ]
 # Tall-prop groves: kind, centre, radius, count
 GROVES = [
-    ('oak', (640, 590), 60, 4), ('oak', (880, 640), 60, 4), ('oak', (1180, 480), 70, 5), ('oak', (400, 460), 40, 3),
-    ('pine', (980, 340), 80, 14), ('pine', (1120, 330), 60, 8), ('pine', (420, 380), 60, 6), ('pine', (900, 280), 60, 6),
-    ('bush', (700, 560), 70, 6), ('bush', (860, 580), 70, 6), ('bush', (640, 420), 60, 5), ('bush', (880, 420), 60, 5),
+    ('oak', (640, 590), 60, 4), ('oak', (960, 690), 60, 4), ('oak', (1180, 480), 70, 5), ('oak', (400, 460), 40, 3),
+    ('pine', (1040, 330), 70, 14), ('pine', (1120, 330), 60, 8), ('pine', (420, 380), 60, 6), ('pine', (960, 250), 60, 6),
+    ('bush', (700, 560), 70, 6), ('bush', (900, 620), 70, 6), ('bush', (640, 420), 60, 5), ('bush', (880, 420), 60, 5),
     ('rock', (580, 300), 60, 5), ('rock', (480, 300), 50, 3), ('rock', (1200, 400), 60, 4), ('rock', (760, 360), 50, 3),
     ('crystals', (520, 340), 40, 2), ('crystals', (640, 296), 40, 2), ('crystals', (1100, 300), 40, 1),
 ]

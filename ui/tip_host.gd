@@ -39,6 +39,7 @@ var _lines: VBoxContainer
 var _hint: Label
 var _body_font: Font
 var _title_font: Font
+var _text_rev: int = 0
 
 
 func _init() -> void:
@@ -78,14 +79,30 @@ func _label(parent: Node, title: bool) -> Label:
 	if title:
 		l.theme_type_variation = &"TitleLabel"
 		l.add_theme_font_override(&"font", _title_font)
-		l.add_theme_font_size_override(&"font_size", 16)
+		l.add_theme_font_size_override(&"font_size", AccessOptions.title_size())
 	else:
-		l.add_theme_font_override(&"font", _body_font)   # explicit: never depend on inheritance
-		l.add_theme_font_size_override(&"font_size", 12)
+		l.add_theme_font_override(&"font", _text_font())   # explicit: never depend on inheritance
+		l.add_theme_font_size_override(&"font_size", AccessOptions.body_size())
 	l.add_theme_color_override("font_color", RelicStyle.text)
 	l.add_theme_color_override("font_outline_color", RelicStyle.ink)
 	parent.add_child(l)
 	return l
+
+
+## Body face: Spleen normally, Pixelify Sans at 16 when Large text is on (Settings > Access).
+func _text_font() -> Font:
+	return _title_font if AccessOptions.large_text else _body_font
+
+
+## Re-type the three long-lived labels when the text size option changed since they were made.
+func _sync_text_size() -> void:
+	if _text_rev == AccessOptions.revision:
+		return
+	_text_rev = AccessOptions.revision
+	_title.add_theme_font_size_override(&"font_size", AccessOptions.title_size())
+	for l: Label in [_body, _hint]:
+		l.add_theme_font_override(&"font", _text_font())
+		l.add_theme_font_size_override(&"font_size", AccessOptions.body_size())
 
 
 ## A bound control was entered or focused. Starts the delay (or shows at once inside the grace window or when
@@ -229,6 +246,7 @@ func _show() -> void:
 
 ## Build the panel from a spec. False when the spec is empty (nothing to show).
 func _fill(spec: Variant) -> bool:
+	_sync_text_size()
 	var d: Dictionary = Tip.normalize(spec)
 	if bool(d["empty"]):
 		return false
@@ -264,7 +282,7 @@ func _prose(l: Label, text: String, c: Color) -> void:
 	l.add_theme_color_override("font_color", c)
 	var widest: float = 0.0
 	for part: String in text.split("\n"):
-		widest = maxf(widest, _body_font.get_string_size(part, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x)
+		widest = maxf(widest, _text_font().get_string_size(part, HORIZONTAL_ALIGNMENT_LEFT, -1, AccessOptions.body_size()).x)
 	if widest > MAX_WIDTH:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size.x = MAX_WIDTH

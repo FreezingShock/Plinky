@@ -6,6 +6,7 @@ extends RefCounted
 const UNITS: Dictionary = {
 	&"walk_speed": "walk speed", &"press_rate": "press rate", &"crit_chance": "crit chance", &"luck": "luck",
 	&"offline_hours": "offline cap", &"crit_damage": "crit damage", &"mastery_xp": "pad XP", &"pad_yield": "pad yield",
+	&"head_start": "starting Sunlight", &"sun_rate": "Sunlight income",
 }
 
 
@@ -18,11 +19,26 @@ static func amount_at(a: AttributeDef, level: int) -> float:
 static func value(a: AttributeDef, amount: float) -> String:
 	if a.effect == &"offline_hours":
 		return "+%s h" % _trim(amount)
+	if a.effect == &"head_start":
+		return "+%s" % _trim(amount)
 	return "+%s%%" % _trim(amount * 100.0)
 
 
 ## Name of the stat an upgrade is paid in.
-const CURRENCY_NAMES: Dictionary = {&"prestige": "Prestige", &"rp": "Rebirth Points"}
+const CURRENCY_NAMES: Dictionary = {&"prestige": "Prestige", &"rp": "Rebirth Points", &"seeds": "Seeds"}
+## Menu order of the upgrade groups, and the heading each group wears (Prestige upgrades have none).
+const CURRENCY_RANK: Dictionary = {&"prestige": 0, &"rp": 1, &"seeds": 2}
+const GROUP_HEADS: Dictionary = {&"rp": "REBIRTH PERKS", &"seeds": "BLOOM GIFTS"}
+
+
+## True when the group paid in `currency` shows here: Bloom gifts always, Prestige and Rebirth Point upgrades in the
+## zones that run Rebirth (the meadow does not).
+static func group_shown(sim: Sim, currency: StringName) -> bool:
+	if currency == &"seeds":
+		return sim.bloom_count > 0 or sim.bloom_unlocked() or not sim.get_stat(&"seeds").is_zero()
+	if currency == &"rp":
+		return sim.rebirth_here() and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
+	return sim.rebirth_here()
 
 
 static func currency_name(a: AttributeDef) -> String:
@@ -44,7 +60,7 @@ static func ordered(sim: Sim) -> Array[AttributeDef]:
 		out.append(a)
 	out.sort_custom(func(x: AttributeDef, y: AttributeDef) -> bool:
 		if x.currency != y.currency:
-			return x.currency == &"prestige"
+			return int(CURRENCY_RANK.get(x.currency, 9)) < int(CURRENCY_RANK.get(y.currency, 9))
 		if x.unlock_rebirths != y.unlock_rebirths:
 			return x.unlock_rebirths < y.unlock_rebirths
 		if x.order != y.order:

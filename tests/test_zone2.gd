@@ -8,9 +8,9 @@ func run(t: Object) -> void:
 	var sim: Sim = t.make_sim()
 	var z2: ZoneDef = sim.zone_defs.get(&"zone2") as ZoneDef
 	t.ok(z2 != null and z2.heat_cap > 0.0, "zone 2 has Heat")
-	t.eq(Array(z2.pad_buttons), ["f1", "f2", "f3"], "zone 2 pads are the Forge row")
-	for id: StringName in [&"f1", &"f2", &"f3"]:
-		t.ok(sim.button_defs.has(id), "button %s exists" % id)
+	t.eq(z2.pad_buttons.size(), 18, "zone 2 has six rows of three pads")
+	for id: String in z2.pad_buttons:
+		t.ok(sim.button_defs.has(StringName(id)), "button %s exists" % id)
 
 	# Slag multiplies cash income as its own factor and stacks with Multiplier
 	sim.stats[&"mult"] = BigNum.from_float(3.0)
@@ -19,7 +19,6 @@ func run(t: Object) -> void:
 	t.near(sim.income_per_second(&"cash").to_float(), base * (1.0 + 4.0 * 0.5), 1e-9, "slag adds a (1 + slag / 2) factor")
 
 	# Heat only exists in zone 2
-	sim.stats[&"reb"] = BigNum.from_float(9.0)
 	sim.step(0.1)
 	sim.feed_heat(5.0)
 	t.near(sim.heat, 0.0, 1e-9, "no Heat in zone 1")
@@ -43,14 +42,16 @@ func run(t: Object) -> void:
 
 	# a Hot press pays heat_hot_mult times as much as a cold one
 	sim.stats[&"cash"] = BigNum.from_float(1.0e7)
-	var cold: BigNum = sim.press_gain_preview(&"f1")
-	var before: float = sim.get_stat(&"slag").to_float()
-	t.ok(sim.try_press(&"f1"), "press f1 while Hot")
-	t.near(sim.get_stat(&"slag").to_float() - before, cold.to_float() * z2.heat_hot_mult, 1e-9, "Hot press pays double")
+	var hot_gain: BigNum = sim.press_gain_preview(&"cinder_1")   # the preview includes Heat
+	var before: float = sim.get_stat(&"mult").to_float()
+	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while Hot")
+	t.near(sim.get_stat(&"mult").to_float() - before, hot_gain.to_float(), 1e-9, "Hot press pays what the tooltip preview says")
 	sim.heat = 0.0
-	before = sim.get_stat(&"slag").to_float()
-	t.ok(sim.try_press(&"f1"), "press f1 while cold")
-	t.near(sim.get_stat(&"slag").to_float() - before, cold.to_float(), 1e-9, "cold press pays the base reward")
+	var cold: BigNum = sim.press_gain_preview(&"cinder_1")
+	t.near(hot_gain.to_float(), cold.to_float() * z2.heat_hot_mult, 1e-9, "Hot preview is heat_hot_mult times the cold one")
+	before = sim.get_stat(&"mult").to_float()
+	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while cold")
+	t.near(sim.get_stat(&"mult").to_float() - before, cold.to_float(), 1e-9, "cold press pays the base reward")
 
 	# decay runs out, hot flips back off, rebirth and zone entry clear Heat
 	sim.feed_heat(100.0)
@@ -59,21 +60,22 @@ func run(t: Object) -> void:
 	t.ok(not sim.is_hot(), "Heat falls below the hot line")
 	t.eq(hot_events.back(), false, "heat_hot_changed fired on the way down")
 	sim.feed_heat(100.0)
-	sim.stats[&"reb"] = BigNum.from_float(2.0)
+	sim.stats[&"ingot"] = BigNum.from_float(2.0)
 	t.ok(sim.try_rebirth(), "rebirth in zone 2")
 	t.near(sim.heat, 0.0, 1e-9, "rebirth clears Heat")
 	sim.feed_heat(100.0)
 	sim.enter_zone(&"zone1")
 	t.near(sim.heat, 0.0, 1e-9, "zone entry clears Heat")
 
-	# Gate: Slag 9 opens it
+	# Gate: the top row's stat opens it
 	sim.enter_zone(&"zone2")
-	sim.stats[&"slag"] = BigNum.from_float(8.0)
+	var gate_at: float = z2.gate_threshold
+	sim.stats[&"emberheart"] = BigNum.from_float(gate_at - 1.0)
 	sim.step(0.1)
-	t.ok(not sim.is_gate_open(&"zone2"), "zone 2 gate closed at 8 slag")
-	sim.stats[&"slag"] = BigNum.from_float(9.0)
+	t.ok(not sim.is_gate_open(&"zone2"), "zone 2 gate closed one Emberheart short")
+	sim.stats[&"emberheart"] = BigNum.from_float(gate_at)
 	sim.step(0.1)
-	t.ok(sim.is_gate_open(&"zone2"), "zone 2 gate opens at 9 slag")
+	t.ok(sim.is_gate_open(&"zone2"), "zone 2 gate opens at its Emberheart threshold")
 
 	# A save made in zone 2 loads back into zone 2 with its scene, mask and pads resolvable
 	var saved: Dictionary = sim.to_dict()
@@ -82,7 +84,7 @@ func run(t: Object) -> void:
 	t.eq(fresh.zone_id, &"zone2", "loaded save is in zone 2")
 	t.ok(fresh.is_gate_open(&"zone2"), "zone 2 gate stays latched across a save")
 	var lz: ZoneDef = fresh.current_zone()
-	t.ok(lz != null and lz.scene_path != "" and lz.pad_buttons.size() == 3, "loaded zone has its scene and Forge pads")
+	t.ok(lz != null and lz.scene_path != "" and lz.pad_buttons.size() == 18, "loaded zone has its scene and forge pads")
 	fresh.heat = 0.0
 	t.ok(not fresh.is_hot(), "Heat is not saved")
 
