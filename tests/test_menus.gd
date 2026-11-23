@@ -71,9 +71,9 @@ func _index_spam(t: Object) -> void:
 	panel.bind(t.make_sim())
 	for i in 20:
 		panel.toggle_tab(IndexPanel.Tab.STATS)
-		t.ok(not (panel._closing and not panel.visible), "mid-spam the window is never closing while hidden")
+		t.ok(not (panel._anim.closing and not panel.visible), "mid-spam the window is never closing while hidden")
 	t.ok(not panel.is_open(), "20 quick toggles of the Stats tab end closed")
-	panel._finish_close()
+	panel._anim._finish()
 	t.ok(not panel.visible, "and it is hidden once the close finishes")
 	for i in 21:
 		panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)
