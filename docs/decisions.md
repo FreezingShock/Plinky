@@ -305,6 +305,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Version is MAJOR.MINOR.PATCH in `core/build_info.gd` (already existed at 0.1.0). MINOR = features, PATCH = fixes and tweaks, MAJOR only when Nathan asks. Rules in docs/versioning.md; CHANGELOG.md has history backfilled from #3-#95 grouped into 0.1.0 to 0.4.0, and this change is 0.5.0.
 - Shown small on the boot screen. Nathan wants it less tucked away than a Settings row, so the Update Log tile in the bottom-bar hamburger gallery will show it via `BuildInfo.string()` and `BuildInfo.changelog()`. No Settings About row.
 - Not run in-engine: boot label placement, CHANGELOG.md in the export (include_filter added).
+
+## 2026-11-23: Tooltip rework (one system, rich lines, polled hover)
+- Hover is now found by polling `gui_get_hovered_control()` instead of trusting `mouse_entered`/`mouse_exited`/a rect check; the old rect check could hide a tip under the stretch scale and some rows never fired. A tip hides 0.10 s after the mouse leaves, never on a timer.
+- Specs gained `icon`, `title_color`, `lines` (coloured segments and inline 16 px icons), `hint_color`, `beside`. Colours come from `StatStyle`: stat names in stat colour, cost green/red by affordability, gains green.
+- `RelicTooltip` is gone (relic slots use `Tip.bind` with `beside`); `PadTooltip` stays a thin wrapper for the world pads only. Every Stats and Attributes index row, HUD stat and upgrade row has a tooltip.
+- Taste call: icons are the existing 16 px stat icons (no 8 px set exists; scaling would blur). Used in the title and on cost/gain lines. If Nathan wants 8 px icons they need new art.
+- Not run in-engine from the cloud.
 ## 2026-11-23: Hamburger gallery menu
 - Nathan: the bottom bar should not be the only home for sections, but must not go empty. Bar keeps Rebirth, Upgrades, Relics, Stats and Attributes; Travel stays in the zone panel. A hamburger chip at the bottom right (key M, rebindable) opens `GalleryMenu`: big 32 texel tiles for Stats, Attributes, Upgrades, Relics, Travel, Settings and Update Log, with the build version in the header. Settings and Update Log live only here (F10 still opens Settings).
 - Tiles lift in steps on hover or focus, are normal focusable buttons (keyboard and pad), and show Locked until the tutorial unlocks that section. Picking one goes through `MenuRouter` (gallery closes, section opens); Travel closes the gallery and opens the zone panel's Travel list. Gallery and Update Log both get the shared `CloseX`.

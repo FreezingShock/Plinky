@@ -9,6 +9,10 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.7.0 - 2026-11-23
+
+- Tooltip rework: one rich tooltip system (stat icons and colours, green/red cost, tooltips on every stat and attribute, hover that stays up), relic slots moved onto it.
+
 ## 0.6.0 - 2026-11-23
 
 - Bottom bar buttons no longer move: labels float above the button instead of widening it, open after a short hover intent (instantly on focus), linger briefly, and the hit areas fill the gaps. New setting Access > Bottom bar labels (On hover / Always / Never); number keys 1 to 5 press Upgrades, Relics, Stats, Attributes and Menu.
