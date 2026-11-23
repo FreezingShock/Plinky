@@ -166,30 +166,54 @@ func _add_life(ground: Sprite2D) -> void:
 func spawn_occluders(parent: Node2D) -> void:
 	var bush_sprites: Array = []
 	for s: Dictionary in _data.sprites:
-		var sp := Sprite2D.new()
-		sp.name = "Occ_" + String(s.file).get_file().get_basename()
-		sp.texture = load(DIR + String(s.file)) as Texture2D
-		sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		sp.centered = false
-		sp.position = Vector2(s.foot[0], s.foot[1])
-		sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
-		if _sky != null and String(s.kind) in SWAY_KINDS:
-			sp.texture = SkyCycle.padded(sp.texture)
-			sp.offset.x -= float(SkyCycle.SWAY_PAD)
-			sp.material = _sky.sway_material
-			if s.has("nrm"):
-				sp.material = _sky.prop_material(true, SkyCycle.padded(load(DIR + String(s.nrm)) as Texture2D))
-		elif _sky != null:
-			sp.material = _sky.rim_material
-			if s.has("nrm"):
-				sp.material = _sky.prop_material(false, load(DIR + String(s.nrm)) as Texture2D)
-		parent.add_child(sp)
-		if _shadows != null:
-			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
-		if _sky != null and String(s.kind) == "lantern":
-			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
-					_sky.light_config().pool_shrine_radius * 0.7, 0.9)
-		if String(s.kind) == "bush":
-			bush_sprites.append(sp)
+		_spawn_one(parent, s, bush_sprites)
 	if react != null:
 		react.set_bushes(bush_sprites)
+
+
+## Same result as spawn_occluders, but yields to the next frame whenever `budget_ms` of a frame is used up. A zone swap
+## under the transition wipe uses it: the 400-odd texture loads and padded copies cost about 170 ms in one go, which
+## was a visible stall at the wipe's peak.
+func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
+	var bush_sprites: Array = []
+	var start: int = Time.get_ticks_usec()
+	var i: int = 0
+	for s: Dictionary in _data.sprites:
+		i += 1
+		_spawn_one(parent, s, bush_sprites)
+		if float(Time.get_ticks_usec() - start) / 1000.0 >= budget_ms:
+			var yielded: int = Time.get_ticks_usec()
+			await get_tree().process_frame
+			start = Time.get_ticks_usec()
+			if PerfStats.tracing and float(start - yielded) / 1000.0 > 25.0:
+				PerfStats.trace.append("slice frame gap %.1f ms (after %d props)" % [float(start - yielded) / 1000.0, i])
+	if react != null:
+		react.set_bushes(bush_sprites)
+
+
+func _spawn_one(parent: Node2D, s: Dictionary, bush_sprites: Array) -> void:
+	var sp := Sprite2D.new()
+	sp.name = "Occ_" + String(s.file).get_file().get_basename()
+	sp.texture = load(DIR + String(s.file)) as Texture2D
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sp.centered = false
+	sp.position = Vector2(s.foot[0], s.foot[1])
+	sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
+	if _sky != null and String(s.kind) in SWAY_KINDS:
+		sp.texture = SkyCycle.padded(sp.texture)
+		sp.offset.x -= float(SkyCycle.SWAY_PAD)
+		sp.material = _sky.sway_material
+		if s.has("nrm"):
+			sp.material = _sky.prop_material(true, SkyCycle.padded(load(DIR + String(s.nrm)) as Texture2D))
+	elif _sky != null:
+		sp.material = _sky.rim_material
+		if s.has("nrm"):
+			sp.material = _sky.prop_material(false, load(DIR + String(s.nrm)) as Texture2D)
+	parent.add_child(sp)
+	if _shadows != null:
+		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
+	if _sky != null and String(s.kind) == "lantern":
+		_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
+				_sky.light_config().pool_shrine_radius * 0.7, 0.9)
+	if String(s.kind) == "bush":
+		bush_sprites.append(sp)

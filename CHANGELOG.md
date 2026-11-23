@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.26.2 - 2026-11-23
+## 0.26.3 - 2026-11-23
 - Relics menu: shorter collection so the panel fits 640x360, wider cards (less name truncation), bonuses on one wrapped line, and the card's second line shows only the stack count and Equipped or Swapping.
+
+## 0.26.2 - 2026-11-23
+- Fixed the Larkmoor transition stall (one 330 ms frame at the wipe): the zone scene loads on a worker thread, the prop sprites are built over several frames under the wipe, and CI now fails on any frame over 150 ms (300 ms for the covered zone swap) in the headless bench.
 
 ## 0.26.1 - 2026-11-23
 - Sound subtitles sit on a dark plate so they read on bright ground, and up to four show at once.
