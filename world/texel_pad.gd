@@ -263,7 +263,11 @@ func _draw() -> void:
 	# Stat colour: a gem on each corner of the plate plus a centre pip.
 	for g: Vector2i in [Vector2i(-hx + 2, 0), Vector2i(hx - 2, 0), Vector2i(0, -hy + 1), Vector2i(0, hy - 1)]:
 		draw_rect(Rect2(g.x - 1, top + g.y, 3 if g.y == 0 else 3, 1), stat_color)
-	draw_rect(Rect2(0, top, 1, 1), stat_color)
+	# Shape cue for colour-blind players: a tick when buyable, an X when not.
+	var glyph: Array[Vector2i] = [Vector2i(-2, 0), Vector2i(-1, 1), Vector2i(0, 0), Vector2i(1, -1), Vector2i(2, -2)] \
+		if st == PadState.READY else [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(0, 0), Vector2i(-1, 1), Vector2i(1, 1)]
+	for q: Vector2i in glyph:
+		draw_rect(Rect2(q.x, top + q.y, 1, 1), ink)
 	draw_polyline(_diamond_at(0.6, top), ink, 1.0)
 	if standing:
 		draw_polyline(_diamond_at(0.38, top), palette[7], 1.0)
