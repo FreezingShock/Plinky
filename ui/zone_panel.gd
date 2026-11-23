@@ -1,7 +1,7 @@
 class_name ZonePanel
 extends PanelContainer
-## Top-right zone panel: where you are (name, gate progress), a foldable travel menu of every location with its
-## areas, and the card of the area you are viewing (description, pads, mastery). While the travel menu is open the
+## Top-right zone panel: where you are (name, gate progress), a foldable travel menu of the top-level areas (Meadow,
+## Ember Quarry) plus a few locked teasers for what comes next, and the card of the district you are viewing (description, pads, mastery). While the travel menu is open the
 ## card folds down to a dithered stub; closed, it shows in full. Every row is a focusable button, so keyboard and pad
 ## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and icon).
 ## The mastery row sums the area's pads from `sim.mastery`.
@@ -25,10 +25,8 @@ var _gate_bar: DitherBar
 var _gate_label: Label
 var _travel_btn: PixelButton
 var _travel: RevealBox
-var _zone_rows: Dictionary = {}     # zone id -> ListRow
-var _zone_toggles: Dictionary = {}  # zone id -> ListRow
-var _zone_areas: Dictionary = {}    # zone id -> RevealBox
-var _area_rows: Dictionary = {}     # area id -> ListRow
+var _zone_rows: Dictionary = {}     # top-level zone id -> ListRow
+var _teaser_rows: Array[ListRow] = []
 var _card: RevealBox
 var _card_title: Label
 var _card_desc: Label
@@ -129,55 +127,57 @@ func area_colour(a: AreaDef) -> Color:
 	return palette_of(a.zone)[clampi(a.theme_role, 0, 7)]
 
 
-func _build_list(list: VBoxContainer) -> void:
+## The top-level area a zone belongs to: Larkmoor is part of the Meadow, so it has no row of its own.
+func top_of(zid: StringName) -> StringName:
+	var cur: StringName = zid
+	for _i in 8:
+		var z: ZoneDef = sim.zone_defs.get(cur) as ZoneDef
+		if z == null or z.travel_parent == &"" or not sim.zone_defs.has(z.travel_parent):
+			break
+		cur = z.travel_parent
+	return cur
+
+
+## Top-level areas in travel order.
+func top_zones() -> Array[ZoneDef]:
+	var out: Array[ZoneDef] = []
 	for z in _zones_sorted():
+		if top_of(z.id) == z.id:
+			out.append(z)
+	return out
+
+
+## Where a click on a top-level row lands: the furthest unlocked zone inside it (the Meadow row opens Larkmoor once
+## the Meadow gate is open), or the zone you are already in.
+func destination(top: StringName) -> StringName:
+	if top_of(sim.zone_id) == top:
+		return sim.zone_id
+	var best: StringName = top
+	for z in _zones_sorted():
+		if top_of(z.id) == top and sim.is_zone_unlocked(z.id):
+			best = z.id
+	return best
+
+
+func _build_list(list: VBoxContainer) -> void:
+	for z in top_zones():
 		var zid: StringName = z.id
-		var head := HBoxContainer.new()
-		head.add_theme_constant_override("separation", 0)
-		list.add_child(head)
-		var tog := ListRow.new()
-		tog.text = "+"
-		tog.custom_minimum_size.x = 18
-		tog.tint = zone_colour(z)
-		tog.pressed.connect(func() -> void: _toggle_zone(zid))
-		_bind(tog, func() -> Array: return ["Areas", "Show or hide the areas inside %s." % z.display_name])
-		head.add_child(tog)
-		_zone_toggles[zid] = tog
 		var row := ListRow.new()
 		row.tint = zone_colour(z)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.pressed.connect(func() -> void: _go(zid, &""))
+		row.pressed.connect(func() -> void: _go(destination(zid), &""))
 		_bind(row, func() -> Array: return _zone_tip(zid))
-		head.add_child(row)
+		list.add_child(row)
 		_zone_rows[zid] = row
-		var reveal := RevealBox.new()
-		var box := VBoxContainer.new()
-		box.add_theme_constant_override("separation", 0)
-		reveal.add_child(box)
-		list.add_child(reveal)
-		_zone_areas[zid] = reveal
-		for a in sim.areas_in_zone(zid):
-			var aid: StringName = a.id
-			var ar := ListRow.new()
-			ar.tint = area_colour(a)
-			ar.text = "   " + a.display_name
-			ar.area_icon = a.icon
-			ar.pressed.connect(func() -> void: _go(zid, aid))
-			_bind(ar, func() -> Array: return _area_tip(aid))
-			box.add_child(ar)
-			_area_rows[aid] = ar
-		reveal.set_open(zid == sim.zone_id, false)
-
-
-func _toggle_zone(zid: StringName, animate: bool = true) -> void:
-	var r: RevealBox = _zone_areas[zid]
-	r.set_open(not r._target, animate)
-	_sync_toggles()
-
-
-func _sync_toggles() -> void:
-	for zid: StringName in _zone_toggles:
-		(_zone_toggles[zid] as ListRow).text = "-" if (_zone_areas[zid] as RevealBox)._target else "+"
+	for i in sim.config.travel_teased_rows:
+		var t := ListRow.new()
+		t.text = "??? (soon)"
+		t.tint = RelicStyle.dim
+		t.disabled = true
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_bind(t, func() -> Array: return ["Locked", "A new area is on the way."])
+		list.add_child(t)
+		_teaser_rows.append(t)
 
 
 ## Height of the folded card: the title row and the whole (wrapped) description, so no line is cut through.
@@ -404,17 +404,18 @@ func _zone_tip(zid: StringName) -> Array:
 		var prev: String = ""
 		for o: ZoneDef in sim.zone_defs.values():
 			if o.next_zone == zid:
-				prev = o.display_name
+				prev = top_name_of(o.id)
 		return ["Locked", "Open the gate in %s to come here." % prev]
-	var n_pads: int = z.pad_buttons.size()
-	var state: String = "You are here." if zid == sim.zone_id else "Click to travel."
-	return [z.display_name, "%s\n%d areas, %d pads." % [state, sim.areas_in_zone(zid).size(), n_pads]]
+	var n_pads: int = 0
+	for o in _zones_sorted():
+		if top_of(o.id) == zid:
+			n_pads += o.pad_buttons.size()
+	var state: String = "You are here." if top_of(sim.zone_id) == zid else "Click to travel."
+	return [z.display_name, "%s\n%d pads." % [state, n_pads]]
 
 
-func _area_tip(aid: StringName) -> Array:
-	var a: AreaDef = sim.area_defs[aid] as AreaDef
-	var here: String = " You are in this zone." if a.zone == sim.zone_id else " Click to travel there."
-	return [a.display_name, "%s\n%d pads.%s" % [a.blurb, a.pad_buttons.size(), here]]
+func top_name_of(zid: StringName) -> String:
+	return (sim.zone_defs[top_of(zid)] as ZoneDef).display_name
 
 
 func _gate_tip() -> Array:
@@ -436,24 +437,19 @@ func refresh() -> void:
 		var areas: Array[AreaDef] = sim.areas_in_zone(z.id)
 		if not sim.area_defs.has(_view_area) or (sim.area_defs[_view_area] as AreaDef).zone != z.id:
 			_view_area = areas[0].id if not areas.is_empty() else &""
-		for zid: StringName in _zone_areas:
-			(_zone_areas[zid] as RevealBox).set_open(zid == z.id)
-		_sync_toggles()
 	if _card_area != _view_area or _pad_rows.is_empty() and _view_area != &"":
 		_rebuild_card()
 	_title.text = z.display_name
 	_title.add_theme_color_override("font_color", zone_colour(z))
 	_fit_title()
+	var here: StringName = top_of(sim.zone_id)
 	for zid: StringName in _zone_rows:
 		var zd: ZoneDef = sim.zone_defs[zid] as ZoneDef
 		var row: ListRow = _zone_rows[zid]
 		var open: bool = sim.is_zone_unlocked(zid)
-		row.text = ("%s (here)" % zd.display_name if zid == sim.zone_id else zd.display_name) if open else "??? (locked)"
+		row.text = ("%s (here)" % zd.display_name if zid == here else zd.display_name) if open else "??? (locked)"
 		row.disabled = not open
-		(_zone_toggles[zid] as ListRow).disabled = not open
-		(_zone_areas[zid] as RevealBox).visible = open
-	for aid: StringName in _area_rows:
-		(_area_rows[aid] as ListRow).marked = aid == _view_area
+		row.marked = zid == here
 	for bid: StringName in _pad_rows:
 		var b: ButtonDef = sim.button_defs[bid]
 		var ready: bool = sim.can_afford(bid)
