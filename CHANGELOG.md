@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.8 - 2026-11-23
+- Much less dither: the time-of-day grade, rain, sun-side light wash, edge shade, fog, haze, mist, god rays and depth fog are now smooth tints and soft alpha instead of checker patterns. Relit surfaces step through the palette with only a narrow dithered seam, and the season change spreads in coarse patches instead of a texel mosaic.
+
 ## 0.10.7 - 2026-11-23
 - Hamburger menu polish: tiles hover and focus as a solid lifted panel (dither only as one dotted row under the border) so labels read cleanly; the ">" marker on Close menu, Quit to title and Quit game sits a fixed gap before the first letter on whole texels; Pixelify Sans renders without grey anti-aliasing.
 

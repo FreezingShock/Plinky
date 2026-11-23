@@ -72,12 +72,8 @@ void fragment() {
 	} else if (wr > 0.5) {
 		m *= mix(vec3(1.0), pool_tint, 0.4);
 	}
-	// grade uses the opposite half of the matrix so it reads as a second, offset pattern
-	if (1.0 - thr < grade_amount) {
-		m *= grade_col;
-	}
-	if (thr > 1.0 - rain * 0.5) {
-		m *= rain_tint;
-	}
+	// the time-of-day grade and rain are solid tints: a smooth change over hours, never a screen-wide pattern
+	m *= mix(vec3(1.0), grade_col, clamp(grade_amount, 0.0, 1.0));
+	m *= mix(vec3(1.0), rain_tint, clamp(rain * 0.5, 0.0, 1.0));
 	COLOR = vec4(m, 1.0);
 }
