@@ -1088,7 +1088,6 @@ func apply_offline(seconds: float) -> float:
 	last_offline = {}
 	if secs <= 0.0:
 		return 0.0
-	calendar.advance(secs)   # the world keeps turning while you are away
 	last_offline["spent"] = {}
 	var gains: Dictionary = {}
 	var tend: Dictionary = {}
@@ -1112,6 +1111,7 @@ func apply_offline(seconds: float) -> float:
 			tend[tid] = r
 	last_offline["tend"] = tend
 	last_offline["relics"] = _offline_relics(secs)
+	calendar.advance(secs)   # the world keeps turning while you are away; after crediting, so the rate is the one you left with
 	_check_gates()
 	_flush()
 	offline_gained.emit(secs, gains)

@@ -722,3 +722,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
 - `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
 - Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.
+- Offline credit now uses the day or night income rate you left with (the calendar advances after crediting), so offline Sunlight per second equals the live rate; before, advancing the clock first made the rate depend on when you came back (a test caught 1.08x). Verified with the headless suite (4393 checks, 0 failed).
