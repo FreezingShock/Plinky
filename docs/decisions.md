@@ -716,6 +716,14 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
 - Not run in engine: no Godot in the cloud. CI runs the headless tests.
 
+## 2026-11-23 Zone banner on zone entry only, area card swaps in place
+- Nathan: the full banner plays when entering each zone, not each subarea. Walking into a district (Old Oak Crossing and so on) no longer calls `Banner.announce`; `ZonePanel.set_district` changes the top-right area card instead, with a crossfade of SWAP_OUT 0.1 s then SWAP_IN 0.2 s, stepped in quarters so it dithers. The fade is skipped when "Still banners" (FxConfig.reduce_motion) is on.
+- Larkmoor is a zone (its own ZoneDef, scene and arch), so it gets a zone banner on arrival. This was the one case that used to get none. Its districts get none. If Nathan wants Larkmoor treated as part of the Meadow instead, change `_announce_zone_arrival` only.
+- Zone banner styling: the border and title use the zone's palette role (`ZoneDef.theme_role`), and the panel fill uses the zone palette's ink (index 0) through a new optional `fill` key on the banner spec. Season tint is dropped for zone banners so Meadow and Larkmoor (same palette, different role) read apart. Hold 3 s (`ZONE_BANNER_HOLD`).
+- `ui/district_banner.gd` is no longer used by anything. Left in place for a later cleanup PR.
+- PC QA fixes in the same PR: Banner rebuilds its panel if the HUD that held it was freed (Quit to Title), so a later banner never touches a freed node, and `_tl` starts as a full timeline so no key can be missing. Tip cards hold while a banner shows and the next tip waits for it, so the Welcome card no longer covers a zone banner at 640x360.
+- Not run in-engine from the cloud: the crossfade, the banner palette and the 640x360 overlap need a PC check.
+
 ## 2026-11-23 Repo trim for faster, cheaper threads
 - Removed 10 unreferenced GDScript files (`world/player.gd`, `world/button_pad.gd`, `ui/district_banner.gd`, `ui/fx/counter_tick.gd`, and six tool scripts with no scene, test or doc reference). Reasoning: each had zero references (class names and paths checked); git history keeps them.
 - Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
