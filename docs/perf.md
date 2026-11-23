@@ -88,7 +88,7 @@ copies of every swaying prop and a material per prop). The bench showed it in th
 frames are tiny, so the swap's frame landed inside that row (+771 ms after entry = 450 ms cover + the stalled frame).
 Fix: `main.gd` prefetches the scene with `ResourceLoader.load_threaded_request`, and `spawn_occluders_sliced` builds the
 props over several frames (8 ms each) under the fully covering wipe. `PerfStats.lap()` and the bench's `TRACE` lines time
-each stage. CI runs `tools/check_frame_budget.py`: no frame over 150 ms in the headless bench.
+each stage. After the fix the swap is a 99 ms first rendered frame plus 22 ms of `_ready`, under the fully covering wipe (330 ms to about 120 ms on the PC; props build over about 200 ms of 8 ms slices). CI runs `tools/check_frame_budget.py`: no frame over 150 ms in the headless bench, 300 ms for the covered swap frame.
 
 ## Open
 - No GPU numbers yet. A real-hardware run of tools/bench.gd is needed to find the actual hot spot; the CPU
