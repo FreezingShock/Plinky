@@ -7,7 +7,7 @@ extends PanelContainer
 
 signal pressed(card: RelicCard)
 
-const W: float = 118.0
+const W: float = 126.0
 
 var relic: RelicDef
 var stacks: int = 0
@@ -68,8 +68,6 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 		l2.add_child(_label("Swapping", RelicStyle.accent))
 	elif p_equipped:
 		l2.add_child(_label("Equipped", RelicStyle.good))
-	else:
-		l2.add_child(_label(def.rarity.display_name, RelicStyle.dim))
 	_restyle()
 
 
