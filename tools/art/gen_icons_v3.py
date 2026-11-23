@@ -38,19 +38,25 @@ def mult(sk):
 
 
 def reb(sk):
-    ring = (sk.circle(16, 16, 12) - sk.circle(16, 16, 7)) - sk.rect(16, 0, 32, 16)
-    head = sk.poly([(14, 2), (14, 12), (24, 7)])
+    ring = (sk.circle(16, 18, 10) - sk.circle(16, 18, 6)) - sk.rect(16, 0, 32, 18)
+    head = sk.poly([(14, 4), (14, 16), (26, 10)])
     sk.body(ring, 3, 4, 2)
     sk.body(head, 5, 7, 6)
+    if sk.S >= 32:                       # sprout in the middle: what a rebirth grows
+        stem = sk.rect(15, 18, 17, 26)
+        leaves = sk.poly([(17, 20), (23, 14), (23, 20)]) | sk.poly([(15, 22), (9, 16), (9, 22)])
+        sk.fill(stem | leaves, 4)
     sk.outline()
 
 
 def slag(sk):
-    rock = sk.poly([(4, 24), (4, 16), (10, 8), (22, 8), (28, 16), (28, 24), (22, 28), (10, 28)])
+    rock = sk.poly([(4, 22), (6, 14), (12, 8), (20, 8), (26, 14), (28, 22), (28, 24), (24, 28), (8, 28), (4, 24)])
     sk.body(rock, 6, 5, 1)
-    w = 2 if sk.S >= 32 else 4
-    crack = sk.line((16, 10), (16, 16), w) | sk.line((16, 16), (22, 22), w) | sk.line((16, 16), (10, 22), w)
-    sk.fill(sk.clean(crack & rock), 5)
+    crack = (sk.line((16, 8), (16, 14), 2) | sk.line((16, 14), (12, 18), 2) | sk.line((12, 18), (12, 26), 2)
+             | sk.line((16, 14), (20, 18), 2) | sk.line((20, 18), (20, 22), 2) | sk.line((20, 22), (24, 26), 2))
+    sk.fill(crack & rock, 5)
+    if sk.S >= 32:
+        sk.fill(sk.rect(15, 10, 17, 14) | sk.rect(11, 20, 13, 24) | sk.rect(19, 18, 21, 20), 7)
     sk.outline()
 
 
@@ -91,11 +97,15 @@ def rate(sk):
 
 
 def luck(sk):
-    r = 6 if sk.S >= 32 else 5
-    leaves = sk.circle(11, 11, r) | sk.circle(21, 11, r) | sk.circle(11, 21, r) | sk.circle(21, 21, r) | sk.circle(16, 16, 5 if sk.S >= 32 else 3)
-    sk.body(leaves, 3, 4, 2)
-    sk.fill(sk.rect(15, 12, 17, 20) | sk.rect(12, 15, 20, 17), 2)
-    sk.fill(sk.line((20, 22), (28, 30), 4) & sk.rect(0, 0, 30, 30), 2)
+    leaves = sk.circle(10, 10, 5) | sk.circle(22, 10, 5) | sk.circle(10, 22, 5) | sk.circle(22, 22, 5)
+    if sk.S >= 32:
+        leaves = leaves - (sk.rect(15, 0, 17, 32) | sk.rect(0, 15, 32, 17))      # the cross parts the four lobes
+        sk.body(leaves | sk.circle(16, 16, 3), 3, 4, 2)
+    else:                                                                       # at 16 px the lobes merge; a dark vein cross parts them
+        leaves = sk.circle(10, 10, 6) | sk.circle(22, 10, 6) | sk.circle(10, 22, 6) | sk.circle(22, 22, 6)
+        sk.body(leaves, 3, 4, 2)
+        sk.fill(leaves & (sk.rect(15, 4, 17, 28) | sk.rect(4, 15, 28, 17)), 2)
+    sk.fill(sk.line((17, 19), (27, 29), 3) & sk.rect(0, 0, 30, 30), 2)
     sk.outline()
 
 
@@ -116,10 +126,13 @@ def walk(sk):
 
 
 def heat(sk):
-    flame = sk.circle(16, 20, 10) | sk.poly([(6, 18), (16, 2), (26, 18)])
-    sk.body(flame, 6, 5, 1)
-    inner = sk.circle(16, 22, 5) | sk.poly([(11, 20), (16, 12), (21, 20)])
-    sk.body(inner, 5, 7, 4)
+    outer = sk.poly([(16, 2), (20, 10), (26, 16), (26, 24), (20, 30), (12, 30), (6, 24), (6, 16), (12, 10)])
+    outer = outer | sk.poly([(22, 6), (26, 14), (24, 18), (20, 14)]) | sk.poly([(8, 12), (12, 16), (8, 20)])   # flicker tongues
+    mid = sk.poly([(16, 10), (20, 14), (22, 22), (20, 26), (12, 26), (10, 22), (12, 14)])
+    core = sk.poly([(16, 18), (19, 22), (19, 26), (13, 26), (13, 22)])
+    sk.body(outer, 6, 5, 2)
+    sk.fill(mid, 5)
+    sk.fill(core, 7)
     sk.outline()
 
 
