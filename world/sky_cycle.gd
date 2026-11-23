@@ -14,6 +14,7 @@ const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
 const GROUND_SHADER: Shader = preload("res://render/shaders/ground_light.gdshader")
+const FOG_SHADER: Shader = preload("res://render/shaders/ground_fog.gdshader")
 const LIGHT_SHADER: Shader = preload("res://render/shaders/light_grade.gdshader")
 const MAX_LIGHTS: int = 24
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
@@ -47,6 +48,8 @@ var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
+var _fog_mat: ShaderMaterial          # drifting ground fog (ground_fog.gdshader)
+var _fog_rect: ColorRect
 var _light_mat: ShaderMaterial          # full-frame light pass (light_grade.gdshader)
 var _config: SkyConfig
 var _t: float = 0.0
@@ -94,6 +97,19 @@ func _ready() -> void:
 	rays.material = _rays_mat
 	_rays_rect = rays
 	add_child(rays)
+	var fog := ColorRect.new()
+	fog.name = "GroundFog"
+	fog.position = area.position
+	fog.size = area.size
+	fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fog_mat = ShaderMaterial.new()
+	_fog_mat.shader = FOG_SHADER
+	_fog_mat.set_shader_parameter("top_y", area.position.y)
+	_fog_mat.set_shader_parameter("span_y", area.size.y)
+	fog.material = _fog_mat
+	_fog_rect = fog
+	fog.visible = atmosphere
+	add_child(fog)
 	var shade := ColorRect.new()
 	shade.name = "Shade"
 	shade.position = area.position
@@ -324,7 +340,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var fog_col: Color = _config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7)
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
-			gm.set_shader_parameter("relight", _config.ground_relight * (1.0 - 0.5 * night_k))
+			gm.set_shader_parameter("relight", _config.ground_relight * (0.55 + 0.45 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
 			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
@@ -344,6 +360,12 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_haze_mat.set_shader_parameter("mist", _config.mist_strength * model.mist(mt, rain01))
 	var drift: float = 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 860.0)
 	_haze_mat.set_shader_parameter("drift", drift)
+	# ground fog: thickest at dawn and dusk, heavier in rain, drifting sideways; world-anchored dither
+	var fog_amt: float = _config.fog_ground * model.mist(mt, rain01) * (1.0 - 0.5 * clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0))
+	_fog_rect.visible = atmosphere and fog_amt > 0.01
+	_fog_mat.set_shader_parameter("amount", fog_amt)
+	_fog_mat.set_shader_parameter("fog_col", haze_col)
+	_fog_mat.set_shader_parameter("drift", 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 520.0))
 	# god rays: sun point sits above the frame on the side the sun is on
 	var ray_amt: float = _config.ray_strength * model.rays(mt, rain01)
 	# The rays are only lit at dawn and dusk. Skip the full-area atan and sin pass the rest of the day.

@@ -117,7 +117,7 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
-				_shadows.add_blob(Vector2(a.sx, a.sy), 22.0, 9.0)
+				_shadows.add_blob(Vector2(a.sx, a.sy), 26.0, 18.0)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 

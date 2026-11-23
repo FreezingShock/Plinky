@@ -8,7 +8,7 @@ const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd). Rocks and crystals stay put.
 ## Cast shadow of a pad slab: width in texels and the height it stretches from (the slab is about 3 texels thick).
-const PAD_SHADOW: Vector2 = Vector2(22.0, 9.0)
+const PAD_SHADOW: Vector2 = Vector2(26.0, 18.0)
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 
 var _data: Dictionary = {}
