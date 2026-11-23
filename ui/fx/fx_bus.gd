@@ -147,6 +147,11 @@ func _tier_up(field: PressPopups, anchor: Vector2, tier: int) -> void:
 	Audio.tier_up(tier)
 
 
+## A streak or critter payout floats up in the same popup field as presses (gold, no overlap with them).
+func bonus_popup(pos: Vector2, amount: float) -> void:
+	_popup_field().label(&"bonus", _to_screen(pos), "+" + NumberFormat.short(amount), 1)
+
+
 ## Mastery level-up: ring flash on the plate and a big "LV n" popup above it.
 func level_up(pad: TexelPad, pos: Vector2, level: int) -> void:
 	pad.level_flash()

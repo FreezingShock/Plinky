@@ -181,7 +181,6 @@ func _build_stats() -> void:
 		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(rate)
 		var val := RollValue.new()
-		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
 		val.custom_minimum_size.x = 90
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -218,20 +217,6 @@ static func hud_stat_ids(sim: Sim) -> Array[StringName]:
 func _row_in_zone(sid: StringName) -> bool:
 	var d: StatDef = sim.stat_defs.get(sid) as StatDef
 	return d == null or sid == &"prestige" or sid == &"rp" or d.in_zone(sim.zone_id)
-
-
-## Big jumps in a stat float up beside its counter. The first stat is left out: every press already pops its own number.
-func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringName) -> void:
-	if sid == &"sunlight" or sid == &"cash":
-		return
-	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
-	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
-	var text: String = "+%s %s" % [amount.format(), stat_name]
-	if PressPopups.instance != null:
-		# The shared popup field keeps stat floats off each other (and off press numbers) by taking a free lane.
-		PressPopups.instance.label(StringName("stat_" + String(sid)), global_position + at + Vector2(40.0, 12.0), text, 0)
-	else:
-		PopupNumber.spawn_text(self, at, text, true)
 
 
 func _build_gate() -> void:
