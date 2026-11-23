@@ -34,20 +34,9 @@ void vertex() {
 
 void fragment() {
 	vec4 c = texture(TEXTURE, UV);
+	vec4 base = c;
 	vec2 px = TEXTURE_PIXEL_SIZE;
 	float thr = bayer4(ivec2(floor(wpos)));
-	if (debug_view == 1) {
-		COLOR = c;
-		return;
-	}
-	if (debug_view == 2) {
-		COLOR = vec4(texture(nrm_tex, UV).rg, 0.5, c.a);
-		return;
-	}
-	if (debug_view == 3) {
-		COLOR = vec4(vec3(texture(h_tex, UV).r), c.a);
-		return;
-	}
 	if (relight > 0.0 && c.a > 0.5) {
 		vec4 d = texture(nrm_tex, UV);
 		int code = int(d.b * 255.0 + 0.5);
@@ -92,6 +81,13 @@ void fragment() {
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;
 	if (c.a > 0.5 && far_k > thr) {
 		c.rgb = mix(c.rgb, fog_col, 0.6);
+	}
+	if (debug_view == 1) {
+		c = base;
+	} else if (debug_view == 2) {
+		c = vec4(texture(nrm_tex, UV).rg, 0.5, base.a);
+	} else if (debug_view == 3) {
+		c = vec4(vec3(texture(h_tex, UV).r), base.a);
 	}
 	COLOR = c;
 }
