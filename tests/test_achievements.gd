@@ -103,6 +103,7 @@ func run(t: Object) -> void:
 
 	# The toast queues unlocks and can be held back.
 	var toast := AchievementToast.new()
+	var toast_z: int = toast.z_index
 	var held: Array = [false]
 	toast.enabled = func() -> bool: return not held[0]
 	toast.bind(sim)
@@ -115,4 +116,8 @@ func run(t: Object) -> void:
 	sim.check_achievements()
 	t.ok(toast.visible, "an unlock shows the toast")
 	t.ok(toast.queued() >= 1, "unlocks that arrive together queue behind it")
+	t.ok(toast.z_index > 100 and toast.z_index < 150, "toasts draw above menu panels but below tip cards")
 	toast.free()
+	var relic_toast := RelicToast.new()
+	t.eq(relic_toast.z_index, toast_z, "the relic toast shares the layer")
+	relic_toast.free()

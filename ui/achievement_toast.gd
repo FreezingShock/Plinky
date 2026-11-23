@@ -4,6 +4,8 @@ extends PanelContainer
 ## name, and the title it earns if any. Unlocks that arrive together queue up and show one after another.
 ## Add to the HUD (it anchors itself bottom centre) and call bind() once. Pure presentation: it never changes the game.
 
+## Above every menu panel (the HUD sits at 100) and below tip cards and modals (150), so an open Ledger never hides a toast.
+const TOAST_Z: int = 130
 const LIFETIME: float = 2.8
 const GAP: float = 0.2
 const MAX_QUEUE: int = 6
@@ -20,6 +22,7 @@ var _showing: bool = false
 func _init() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	z_index = TOAST_Z
 	set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
