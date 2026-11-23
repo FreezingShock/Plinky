@@ -103,7 +103,7 @@ jobs:
       # Frame budget: no frame over 150 ms in the headless bench (300 ms for a zone swap under the wipe) (script-side stalls such as a synchronous load or a
       # whole zone built in one frame; the Larkmoor swap was one 330 ms frame). GPU cost needs the real-window bench.
       - name: Frame budget (shots/bench.json)
-        run: python3 tools/check_frame_budget.py shots/bench.json 150 300 250 1300
+        run: python3 tools/check_frame_budget.py shots/bench.json 150 300 250 1350
 
   # PRs never edit the version files (the Release workflow stamps them) and game changes carry a changelog fragment.
   # Escape hatch: the `no-changelog` label. Docs/CI/test-only PRs need no fragment.

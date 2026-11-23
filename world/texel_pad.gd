@@ -39,6 +39,8 @@ const FLOWERS: Dictionary = {
 }
 ## The Ember Quarry rows stand on their plate as small isometric voxel objects (tools/art/gen_quarry_ladder.py), three flicker
 ## frames each. Tier id -> art name.
+## Larkmoor rows with their own tiers (so their unlocks stay apart from the meadow) that stand on a meadow flower.
+const FLOWER_OF: Dictionary = {&"lark_sprout": &"sprout", &"lark_clover": &"clover"}
 const FORGE_ART: Dictionary = {&"cinder": "cinder", &"ore": "ore", &"slagrow": "slag", &"ingot": "ingot", &"alloy": "alloy", &"emberheart": "ember"}
 const FORGE_DIR: String = "res://assets/art/zone2/ladder/"
 const FLICKER_MS: int = 260
@@ -48,6 +50,8 @@ const BUD: Array[Vector3i] = [Vector3i(0, -4, 0), Vector3i(-1, -3, 0), Vector3i(
 const LEAF: Color = Color("3d9a45")
 const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
 var tier_row: StringName = &""
+## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
+var flower_row: StringName = &""
 var locked: bool = false
 var _bloom_t: float = 0.0   # 1 -> 0 after the tier opens: the flower rises and bursts into petals
 var rarity: RarityDef
@@ -93,6 +97,7 @@ func _ready() -> void:
 	if b != null:
 		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
+		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
 	hold = HoldPress.new()
@@ -355,7 +360,7 @@ func _draw() -> void:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
 	if FORGE_ART.has(tier_row):
 		_draw_forge(top, ink)
-	elif FLOWERS.has(tier_row):
+	elif FLOWERS.has(flower_row):
 		_draw_flowers(top, ink)
 	else:
 		_draw_emblem(top, ink)
@@ -377,7 +382,7 @@ func _draw() -> void:
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
 func _twinkle() -> int:
-	if not FLOWERS.has(tier_row) or MeadowLife.reduce_motion or locked:
+	if not FLOWERS.has(flower_row) or MeadowLife.reduce_motion or locked:
 		return 0
 	return (Time.get_ticks_msec() / 400) % 3
 
@@ -432,7 +437,7 @@ func _draw_forge(top: int, _ink: Color) -> void:
 ## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier
 ## opens it rises row by row and throws a ring of petals. One pip per pad position (1..3) sits at the front corner.
 func _draw_flowers(top: int, ink: Color) -> void:
-	var rows: Array = FLOWERS[tier_row]
+	var rows: Array = FLOWERS[flower_row]
 	var n: int = rows.size()
 	var base: int = top - 1
 	var shown: int = 3 if locked else n
