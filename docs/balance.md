@@ -82,7 +82,7 @@ Each file uses the field names from SPEC section 5. Values are plain numbers. Bi
 - Zone 2 starting values.
 
 ## 9. Round 2 audit (23 Nov 2026, v1 tuning)
-Run `python3 docs/balance-sim.py`. Press rate is 1 per second here; the gate time barely moves between 0.5 and 6 presses per second because cash income is passive.
+The v1 sim that produced this table (`docs/balance-sim.py`) has been removed; its results are historical and the file is in git history before this change. Press rate was 1 per second; the gate time barely moved between 0.5 and 6 presses per second because cash income is passive.
 
 | Finding (v0) | Number | v1 change | v1 result |
 |---|---|---|---|
