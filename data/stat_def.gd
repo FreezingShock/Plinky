@@ -1,11 +1,14 @@
 class_name StatDef
 extends Resource
-## One stat in the chain (Cash, Multiplier, Rebirths, Prestige, later Slag).
+## One stat in the chain (Sunlight, Embers, Rebirths, Prestige, the ladders).
 
 @export var id: StringName
 @export var display_name: String
 @export var tier: int = 0
 @export var start: float = 0.0
+## Zones where this stat is live: its passive income runs, its income factor applies, and the HUD lists it. Empty = every
+## zone. A stat you still hold from another zone keeps its value; it just stops working and hides until it is non-zero.
+@export var zones: PackedStringArray = PackedStringArray()
 ## Earns income every tick from the current zone's base_cash_per_second.
 @export var passive: bool = false
 ## Income is multiplied by (1 + value of this stat). Empty = none.
@@ -14,11 +17,23 @@ extends Resource
 @export var income_factor_per_unit: float = 0.0
 ## Button rewards into this stat are multiplied by (1 + value of this stat). Empty = none.
 @export var gain_boost_stat: StringName = &""
+## Higher tiers buff several lower stats at once: while this stat is at least 1, button rewards into every stat listed
+## here are multiplied by buff_factor (1.25 = +25%, 1.5 = +50%). Buffs from different stats stack. Data only; the same
+## fields serve any zone's ladder.
+@export var buff_stats: PackedStringArray = PackedStringArray()
+@export var buff_factor: float = 1.5
 ## Income is also multiplied by prestige_mult.
 @export var prestige_boosts_income: bool = false
 ## Reset to start by the rebirth action.
 @export var resets_on_rebirth: bool = false
+## Reset to start by the Bloom action (the meadow flower stats).
+@export var resets_on_bloom: bool = false
 ## CASH_MULT relics multiply this stat's income.
 @export var relics_boost_income: bool = false
 ## MULT_GAIN relics multiply button rewards that go into this stat.
 @export var relics_boost_gain: bool = false
+
+
+## True when this stat is live in `zone_id` (see `zones`).
+func in_zone(zone_id: StringName) -> bool:
+	return zones.is_empty() or String(zone_id) in zones

@@ -15,11 +15,14 @@ const SOFT_CAP: int = 16            ## above this many live popups, relic pulses
 const MAX_PARTS: int = 220
 const MAX_LINKS: int = 8
 const MAX_RINGS: int = 8
-const MERGE_WINDOW: float = 0.35
+const MERGE_WINDOW: float = 1.2           ## a press this soon after a popup's last one folds into it
+const LIFT: Vector2 = Vector2(0.0, -18.0)   ## screen pixels from the pad to the number's baseline
+const MAX_WIDTH: float = 150.0             ## widest a popup's text may be, in pixels
+const MERGE_NEAR: float = 40.0            ## pixels: popups of the same stat this close are one stack
 const LIFE: float = 0.95
 const HOLD_LINGER: float = 0.5
 const FLOAT_AFTER_HOLD: float = 0.8
-const LANES: Array[Vector2] = [Vector2(0, 0), Vector2(-22, -6), Vector2(22, -6), Vector2(-42, -12), Vector2(42, -12), Vector2(0, -24), Vector2(0, 20)]
+const LANES: Array[Vector2] = [Vector2(0, 0), Vector2(-22, -6), Vector2(22, -6), Vector2(-42, -12), Vector2(42, -12), Vector2(0, -24), Vector2(0, -38), Vector2(-30, -26), Vector2(30, -26), Vector2(0, 26)]
 
 enum Kind { PIXEL, STAR, SHARD }
 
@@ -28,7 +31,8 @@ class Pop:
 	var started: bool = false
 	var key: StringName = &""
 	var text: String = ""
-	var anchor: Vector2 = Vector2.ZERO
+	var anchor: Vector2 = Vector2.ZERO     ## world position (texels) of the pad
+	var lift: Vector2 = Vector2.ZERO       ## screen pixels above the anchor where the number sits
 	var lane: Vector2 = Vector2.ZERO
 	var base: Vector2 = Vector2.ZERO       ## offset already earned before the last merge, keeps merges from jumping
 	var age: float = 0.0                   ## negative while delayed
@@ -46,6 +50,8 @@ class Pop:
 	var count: int = 1
 	var crit: bool = false
 	var pulse: bool = false
+	var stat: String = ""                 ## name of the stat earned, drawn small under the number
+	var stat_col: Color = Color.WHITE
 	var banner: bool = false
 	var running: bool = false
 	var hidden: bool = false
@@ -73,6 +79,9 @@ class Ring:
 	var col: Color = Color.WHITE
 
 static var instance: PressPopups
+## The zoomed world node. Popup anchors are WORLD positions, converted to the screen every frame, so a popup stays on its pad
+## when the camera moves or zooms.
+var world: CanvasItem
 
 var font: Font
 var _pops: Array[Pop] = []
@@ -96,7 +105,7 @@ func _ready() -> void:
 	instance = self
 	_rng.randomize()
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	z_index = 100
+	z_index = 95   # above the world (ParticleBurst is 90), below the HUD (100): menus and panels always cover popups
 	for i in MAX_POPS:
 		_pops.append(Pop.new())
 	for i in MAX_LINKS:
@@ -129,8 +138,8 @@ static func release_runs() -> void:
 
 
 # ------------------------------------------------------------------ spawning
-## One pad press. key identifies the pad (merging and hold stacking are per pad). at is the screen anchor (centre, baseline).
-func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, held: bool, pulse := false, delay := 0.0) -> void:
+## One pad press. key identifies the pad (merging and hold stacking are per pad). at is the pad's WORLD position.
+func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, held: bool, pulse := false, delay := 0.0, stat := "", stat_col := Color.WHITE) -> void:
 	if not _ensure_font():
 		return
 	if pulse and _live_count() >= SOFT_CAP:
@@ -144,12 +153,14 @@ func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, h
 			_restyle(run, tier)
 			return
 	else:
-		var m: Pop = _find_mergeable(key, pulse)
+		var m: Pop = _find_mergeable(key, at, stat)
 		if m != null:
 			_fold_in(m, amount, crit, tier)
 			return
 	var p: Pop = _alloc()
 	_init_pop(p, key, at, amount, tier, crit, pulse, delay)
+	p.stat = stat
+	p.stat_col = stat_col
 	if held:
 		p.running = true
 		p.t0 = 9999.0
@@ -161,11 +172,12 @@ func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, h
 
 
 ## A banner or plain text popup ("GOLD", "LV 3"). It still takes a free lane, so it never lands on a number.
-func label(key: StringName, at: Vector2, text: String, tier: int, banner := false, delay := 0.0) -> void:
+func label(key: StringName, at: Vector2, text: String, tier: int, banner := false, delay := 0.0, extra_lift := 0.0) -> void:
 	if not _ensure_font():
 		return
 	var p: Pop = _alloc()
 	_init_pop(p, key, at, 0.0, tier, false, false, delay)
+	p.lift = LIFT + Vector2(0.0, -extra_lift)
 	p.text = text
 	p.banner = banner
 	p.size_idx = clampi(PopupStyle.size_index(tier, true, false, 0) + (1 if banner else 0), 0, PopupStyle.SIZES.size() - 1)
@@ -294,7 +306,8 @@ func _init_pop(p: Pop, key: StringName, at: Vector2, amount: float, tier: int, c
 	p.live = true
 	p.started = false
 	p.key = key
-	p.anchor = at.round()
+	p.anchor = at
+	p.lift = LIFT
 	p.lane = Vector2.ZERO
 	p.base = Vector2.ZERO
 	p.total = amount
@@ -343,16 +356,23 @@ func _progress(p: Pop) -> float:
 	return clampf((p.age - p.t0) / maxf(p.life - p.t0, 0.01), 0.0, 1.0)
 
 
+## Where the popup's anchor is on screen right now (whole pixels).
+func _screen(p: Pop) -> Vector2:
+	if world == null or not is_instance_valid(world):
+		return p.anchor.round() + p.lift
+	return ((world.get_global_transform_with_canvas() * p.anchor) + p.lift).round()
+
+
 func _pos_of(p: Pop) -> Vector2:
-	return p.anchor + p.lane + p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+	return _screen(p) + p.lane + p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
 
 
 func _rect_of(p: Pop) -> Rect2:
 	_layout(p, _size_px(p))
 	var wide: float = p.w + (10.0 if p.pulse else 0.0) + 4.0
-	var high: float = float(_size_px(p)) + 4.0
+	var high: float = float(_size_px(p)) + 4.0 + (13.0 if p.stat != "" else 0.0)
 	var c: Vector2 = _pos_of(p)
-	return Rect2(c.x - wide * 0.5, c.y - high, wide, high)
+	return Rect2(c.x - wide * 0.5, c.y - high + (13.0 if p.stat != "" else 0.0), wide, high)
 
 
 ## First lane whose rectangle clears every other live popup; if all are taken, the least crowded one.
@@ -374,16 +394,33 @@ func _place(p: Pop) -> void:
 	p.lane = best
 
 
-func _find_mergeable(key: StringName, pulse: bool) -> Pop:
+func _screen_of(at: Vector2) -> Vector2:
+	if world == null or not is_instance_valid(world):
+		return at.round() + LIFT
+	return ((world.get_global_transform_with_canvas() * at) + LIFT).round()
+
+
+## A live number of the same stat on this pad, or on a pad close by, that a new press should fold into.
+func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
+	var best: Pop = null
+	var best_d: float = MERGE_NEAR + 1.0
 	for p in _pops:
-		if p.live and not p.running and not p.banner and p.total > 0.0 and p.key == key and p.pulse == pulse and p.since_bump >= 0.0 and p.since_bump < MERGE_WINDOW:
-			return p
-	return null
+		if not p.live or p.running or p.banner or p.total <= 0.0 or p.stat != stat:
+			continue
+		if p.since_bump < 0.0 or p.since_bump >= MERGE_WINDOW:
+			continue
+		var d: float = 0.0 if p.key == key else _screen(p).distance_to(_screen_of(at))
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
 
 
-## Fold a new press into a live popup: number adds up, it re-pops, and its float restarts from where it is.
+## Fold a new press into a live popup: the number adds up, it re-pops, and it floats on from about where it is.
+## The carried offset is capped, so a long run of presses keeps one number hovering instead of climbing off screen.
 func _fold_in(p: Pop, amount: float, crit: bool, tier: int) -> void:
-	p.base = p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+	var off: Vector2 = p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+	p.base = Vector2(clampf(off.x, -16.0, 16.0), clampf(off.y, -p.rise * 0.9, 0.0))
 	p.t0 = p.age
 	p.life = p.age + LIFE + 0.08 * float(maxi(tier, p.tier))
 	p.total += amount
@@ -565,9 +602,18 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 	var idx: int = p.size_idx + (1 if (p.since_bump < 0.07 and not calm) else 0)
 	var fs: int = PopupStyle.SIZES[clampi(idx, 0, PopupStyle.SIZES.size() - 1)]
 	_layout(p, fs)
+	# A long label never grows past MAX_WIDTH: step the font down until it fits (12 is the floor).
+	while p.w > MAX_WIDTH and idx > 0:
+		idx -= 1
+		fs = PopupStyle.SIZES[idx]
+		_layout(p, fs)
 	var icon_w: float = 10.0 if p.pulse else 0.0
-	var x0: float = p.anchor.x + p.lane.x + off.x - (p.w + icon_w) * 0.5
-	var y: float = p.anchor.y + p.lane.y + off.y
+	var sa: Vector2 = _screen(p)
+	var x0: float = sa.x + p.lane.x + off.x - (p.w + icon_w) * 0.5
+	# And it stays on screen: slide it back inside the view rather than letting it run off an edge.
+	var view_w: float = get_viewport_rect().size.x
+	x0 = clampf(x0, 4.0, maxf(view_w - p.w - icon_w - 12.0, 4.0))
+	var y: float = sa.y + p.lane.y + off.y
 	var fade: float = ceilf(clampf((1.0 - prog) / 0.3, 0.0, 1.0) * 4.0) / 4.0
 	var n: int = p.text.length()
 	var tcol: float = 0.0 if FxConfig.reduce_flashing else p.age
@@ -604,16 +650,31 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 		var col: Color = PopupStyle.STAR if flash else PopupStyle.char_color(p.tier, i, n, tcol, p.rnd, PopupStack.zone)
 		col.a = fade
 		draw_char(font, Vector2(cx, cy), p.text[i], fs, col)
-	if p.running and p.count >= 3:
-		var small: String = "x%d" % p.count
-		var sw: float = 0.0
-		for k in small.length():
-			sw += font.get_char_size(small.unicode_at(k), 12).x
-		var sc: Color = PopupStyle.accent_color(p.tier, tcol, PopupStack.zone)
+	if p.stat != "" or (p.running and p.count >= 3):
+		_draw_caption(p, x0 + icon_w + p.w * 0.5, y, fs, fade, tcol, oc)
+
+
+## Under the number, centred: the stat's name in the stat's own colour, then " xN" (streak colour) while a hold stacks.
+func _draw_caption(p: Pop, cx: float, y: float, fs: int, fade: float, tcol: float, oc: Color) -> void:
+	var count_txt: String = (" x%d" % p.count) if (p.running and p.count >= 3) else ""
+	var w_name: float = 0.0
+	for k in p.stat.length():
+		w_name += font.get_char_size(p.stat.unicode_at(k), 12).x
+	var w_cnt: float = 0.0
+	for k in count_txt.length():
+		w_cnt += font.get_char_size(count_txt.unicode_at(k), 12).x
+	var sx: float = roundf(cx - (w_name + w_cnt) * 0.5)
+	var sy: float = roundf(y + 9.0 + float(fs) * 0.14)
+	if p.stat != "":
+		var sc: Color = p.stat_col
 		sc.a = fade
-		var sx: float = roundf(p.anchor.x + p.lane.x + off.x - sw * 0.5)
-		draw_string_outline(font, Vector2(sx, roundf(y + 12.0)), small, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, 2, oc)
-		draw_string(font, Vector2(sx, roundf(y + 12.0)), small, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, sc)
+		draw_string_outline(font, Vector2(sx, sy), p.stat, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, 2, oc)
+		draw_string(font, Vector2(sx, sy), p.stat, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, sc)
+	if count_txt != "":
+		var cc: Color = PopupStyle.accent_color(p.tier, tcol, PopupStack.zone)
+		cc.a = fade
+		draw_string_outline(font, Vector2(sx + w_name, sy), count_txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, 2, oc)
+		draw_string(font, Vector2(sx + w_name, sy), count_txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, cc)
 
 
 func _draw_particles() -> void:

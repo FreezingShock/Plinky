@@ -2,6 +2,7 @@ extends RefCounted
 ## Tooltip system: spec normalising, bind bookkeeping, instant show and hide, and staying on screen.
 
 func run(t: Object) -> void:
+	test_live_gain(t)
 	var d: Dictionary = Tip.normalize("hello")
 	t.eq(d["body"], "hello", "a String spec becomes the body")
 	t.eq(d["title"], "", "a String spec has no title")
@@ -11,7 +12,7 @@ func run(t: Object) -> void:
 	d = Tip.normalize(func() -> Variant: return {"body": "live"})
 	t.eq(d["body"], "live", "a Callable spec is evaluated")
 
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+	for sid: StringName in [&"sunlight", &"dewdrop", &"clover", &"slag", &"prestige"]:
 		t.ok(str(TipText.stat(sid, "x")["body"]) != "", "stat tooltip text exists for %s" % sid)
 	var a := AttributeDef.new()
 	a.display_name = "Luck"
@@ -124,3 +125,22 @@ func run(t: Object) -> void:
 
 	c.queue_free()
 	h.queue_free()
+
+
+## The pad tooltip's gain is what a press really pays: buffs, mastery, yield, heat all included, and it tracks changes.
+func test_live_gain(t: Object) -> void:
+	var sim: Sim = t.make_sim()
+	var id: StringName = sim.buttons_in_zone(sim.zone_id)[0].id
+	var b: ButtonDef = sim.button_defs[id] as ButtonDef
+	sim.god_mode = true
+	sim.rng.seed = 1
+	sim.tiers_open[sim.tier_of(id).id] = true
+	var before: BigNum = sim.get_stat(b.reward_stat)
+	var shown: BigNum = sim.press_gain_preview(id)
+	var seg: Dictionary = ((PadTooltip.spec_for(sim, id)["lines"] as Array).back() as Array)[2] as Dictionary
+	t.eq(seg["t"], "+%s" % shown.format(), "the tooltip prints the previewed gain")
+	if sim.crit_chance(id) == 0.0 and sim.relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE) == 0.0:
+		sim.try_press(id)
+		t.eq(sim.get_stat(b.reward_stat).sub(before).format(), shown.format(), "the tooltip gain equals what an actual press pays")
+	sim.attr_levels[&"pad_yield"] = 3
+	t.ok(sim.press_gain_preview(id).format() != shown.format() or sim.pad_yield_mult() == 1.0, "the tooltip gain follows attribute changes")

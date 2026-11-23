@@ -57,7 +57,7 @@ func _ready() -> void:
 	print("scale ", _scale, " root size ", root.size, " win ", DisplayServer.window_get_size())
 	var cam: WorldCamera = main.camera
 	var ids: Array = main.pads.keys()
-	sim.stats[&"cash"] = BigNum.from_float(5000.0)
+	sim.stats[&"embers"] = BigNum.from_float(5000.0)
 	await _wait(5)
 	var pad: Node2D = main.pads[ids[0]]
 	var p: Vector2 = pad.get_global_transform_with_canvas().origin
@@ -92,13 +92,13 @@ func _ready() -> void:
 			while cam.zoom_level != z:
 				cam.zoom_step(1 if cam.zoom_level < z else -1, Vector2(320, 180))
 			await _wait(40)
-			sim.stats[&"cash"] = BigNum.from_float(1e30)
+			sim.stats[&"embers"] = BigNum.from_float(1e30)
 			p = pad.get_global_transform_with_canvas().origin
 			pad.holding = true  # synthetic mouse input is unreliable offscreen; drive the pad directly
 			pad.hold.begin()
 			pad._press()
 			await _wait(12)
-			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"m1"), " cost ", Formulas.button_cost(sim.button_defs[&"m1"]).format())
+			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"sprout_1"), " cost ", Formulas.button_cost(sim.button_defs[&"sprout_1"]).format())
 			await _shot("p_z%d_press_hold" % z)
 			await _wait(60)
 			await _shot("p_z%d_hold_long" % z)
@@ -121,11 +121,11 @@ func _ready() -> void:
 	print("tooltip visible ", main.tooltip.visible)
 	await _shot("h1_tooltip")
 	# press and hold
-	var cash0: String = sim.get_stat(&"cash").format()
+	var cash0: String = sim.get_stat(&"embers").format()
 	_btn(p, MOUSE_BUTTON_LEFT, true)
 	await _wait(90)
 	_btn(p, MOUSE_BUTTON_LEFT, false)
-	print("hold: presses ", sim.press_count, " mult ", sim.get_stat(&"mult").format(), " cash ", cash0, " -> ", sim.get_stat(&"cash").format())
+	print("hold: presses ", sim.press_count, " cinder ", sim.get_stat(&"cinder").format(), " embers ", cash0, " -> ", sim.get_stat(&"embers").format())
 	await _shot("h2_hold")
 	# camera: zoom
 	for z in 2:

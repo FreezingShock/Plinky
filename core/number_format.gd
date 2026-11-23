@@ -1,25 +1,41 @@
 class_name NumberFormat
 extends RefCounted
 ## The one canonical number formatter. BigNum.format() and every UI label call this.
-## Full digits to 999, then suffixes from suffix_for() (K M B T Qd Qn Sx Sp Oc No Dc UDc ... up to 1e3003),
+## Full digits to 999, then suffixes from suffix_for() (K M B T qd qn Sx Sp Oc No Dc UDc ... up to 1e3003),
 ## then e-notation.
 
 const SMALL: PackedStringArray = ["K", "M", "B", "T"]
 ## Short-scale -illion names, abbreviated. n = group - 1 (million = 1 ... quadrillion = 4).
-const N_SMALL: PackedStringArray = ["", "", "", "", "Qd", "Qn", "Sx", "Sp", "Oc", "No"]
-const UNITS: PackedStringArray = ["", "U", "D", "T", "Qd", "Qn", "Sx", "Sp", "Oc", "No"]
-const TENS: PackedStringArray = ["", "Dc", "Vg", "Tg", "Qg", "Qq", "Sg", "St", "Og", "Ng"]
-const HUNDREDS: PackedStringArray = ["", "Ce", "Dn", "Tc", "Qe", "Qi", "Se", "Sm", "Oe", "Ne"]
+const N_SMALL: PackedStringArray = ["", "", "", "", "qd", "qn", "Sx", "Sp", "Oc", "No"]
+const UNITS: PackedStringArray = ["", "U", "D", "T", "qd", "qn", "Sx", "Sp", "Oc", "No"]
+const TENS: PackedStringArray = ["", "Dc", "Vg", "Tg", "qg", "qq", "Sg", "St", "Og", "Ng"]
+const HUNDREDS: PackedStringArray = ["", "Ce", "Dn", "Tc", "qe", "qi", "Se", "Sm", "Oe", "Ne"]
 ## How big numbers are written. Set from the settings menu (Gameplay > Number format). Below 1000 all styles agree.
 enum Style { SUFFIX, SCIENTIFIC, ENGINEERING }
 static var style: int = Style.SUFFIX
+
+## How multipliers read: a factor ("x1.5") or a percent ("150%"). Set from Settings > Gameplay > Multiplier display.
+enum MultStyle { FACTOR, PERCENT }
+static var mult_style: int = MultStyle.FACTOR
+
+
+## A multiplier as text in the chosen style: 1.5 -> "x1.5" or "150%".
+static func mult(m: BigNum) -> String:
+	if mult_style == MultStyle.PERCENT:
+		return "%s%%" % m.mul(BigNum.from_float(100.0)).format()
+	return "x%s" % m.format()
+
+
+static func mult_f(m: float) -> String:
+	return mult(BigNum.from_float(m))
+
 
 ## Highest group with a name: n = 999, i.e. 10^3003. Past that, e-notation.
 const MAX_GROUP: int = 1000
 
 
 ## Suffix for 10^(3*group). K, M, B, T, then Conway-Wechsler-style names built from
-## units + tens + hundreds: Qd Qn Sx Sp Oc No Dc UDc DDc TDc QdDc ... Vg ... Tg ... Ce ... UDcCe ...
+## units + tens + hundreds: qd qn Sx Sp Oc No Dc UDc DDc TDc qdDc ... Vg ... Tg ... Ce ... UDcCe ...
 ## Generated, not tabulated, so it goes to 10^3003 with no list to maintain.
 static func suffix_for(group: int) -> String:
 	if group < 1 or group > MAX_GROUP:

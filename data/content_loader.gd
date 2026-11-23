@@ -14,6 +14,7 @@ static func load_into(sim: Sim, root: String = "res://content") -> bool:
 	sim.zone_defs = _collect(root.path_join("zones"), "ZoneDef")
 	sim.attribute_defs = _collect(root.path_join("attributes"), "AttributeDef")
 	sim.area_defs = _collect(root.path_join("areas"), "AreaDef")
+	sim.tier_defs = _collect(root.path_join("tiers"), "TierDef")
 	var mcfg: MasteryConfig = load(root.path_join("config/mastery.tres")) as MasteryConfig
 	sim.mastery = Mastery.new(mcfg)
 	var ccfg: CalendarConfig = load(root.path_join("config/calendar.tres")) as CalendarConfig
@@ -31,6 +32,7 @@ static func load_into(sim: Sim, root: String = "res://content") -> bool:
 	for r: Resource in _collect(root.path_join("relics"), "RelicDef").values():
 		rdefs.append(r as RelicDef)
 	sim.relics = RelicInventory.new(rcfg, rdefs)
+	sim.achievements = Achievements.new(_collect(root.path_join("achievements"), "AchievementDef").values())
 	var errors: PackedStringArray = sim.validate()
 	for err in errors:
 		push_error("ContentLoader: " + err)

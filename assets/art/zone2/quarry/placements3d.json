@@ -1,566 +1,2799 @@
 {
  "size": [
-  840,
-  480
+  1400,
+  760
  ],
- "projection": {
-  "ox": 320,
-  "oy": 4,
-  "note": "screen = (ox + u - v, oy + (u+v)/2 - h), in the 640x360 frame"
- },
+ "world": [
+  40,
+  10,
+  1320,
+  740
+ ],
  "bleed": {
-  "left": 100,
-  "right": 100,
-  "top": 60,
-  "bottom": 60,
+  "left": 0,
+  "right": 0,
+  "top": 0,
+  "bottom": 0,
   "ground_size": [
-   840,
-   480
+   1400,
+   760
   ],
   "ground_offset": [
-   -100,
-   -60
+   0,
+   0
   ]
+ },
+ "projection": {
+  "ox": 700,
+  "oy": 80,
+  "note": "canvas texels; ground is a full-size backdrop at (0, 0)"
  },
  "sprites": [
   {
-   "file": "sprites/spire_010.png",
-   "kind": "spire",
-   "x": 281,
-   "y": 6,
-   "w": 9,
-   "h": 41,
+   "file": "sprites/boulder_big_000.png",
+   "kind": "boulder_big",
+   "x": 804,
+   "y": 83,
+   "w": 49,
+   "h": 26,
    "foot": [
-    285.0,
-    46.9
+    826.5,
+    108.1
    ],
-   "sort_y": 46.9
+   "sort_y": 108.1
   },
   {
-   "file": "sprites/spire_008.png",
-   "kind": "spire",
-   "x": 278,
-   "y": 2,
-   "w": 7,
-   "h": 49,
+   "file": "sprites/boulder_001.png",
+   "kind": "boulder",
+   "x": 768,
+   "y": 100,
+   "w": 38,
+   "h": 21,
    "foot": [
-    280.9,
-    49.4
+    788.4,
+    119.6
    ],
-   "sort_y": 49.4
+   "sort_y": 119.6
   },
   {
-   "file": "sprites/spire_009.png",
-   "kind": "spire",
-   "x": 285,
-   "y": 4,
-   "w": 10,
-   "h": 47,
-   "foot": [
-    289.4,
-    49.6
-   ],
-   "sort_y": 49.6
-  },
-  {
-   "file": "sprites/spire_020.png",
-   "kind": "spire",
-   "x": 212,
-   "y": 2,
-   "w": 11,
-   "h": 56,
-   "foot": [
-    217.5,
-    56.2
-   ],
-   "sort_y": 56.2
-  },
-  {
-   "file": "sprites/spire_021.png",
-   "kind": "spire",
-   "x": 206,
-   "y": 19,
-   "w": 10,
+   "file": "sprites/iron_lamp_002.png",
+   "kind": "iron_lamp",
+   "x": 815,
+   "y": 92,
+   "w": 18,
    "h": 40,
    "foot": [
-    210.5,
-    57.3
+    821.7,
+    130.7
    ],
-   "sort_y": 57.3
+   "sort_y": 130.7
   },
   {
-   "file": "sprites/spire_037.png",
-   "kind": "spire",
-   "x": 233,
-   "y": 73,
-   "w": 7,
-   "h": 50,
+   "file": "sprites/iron_lamp_003.png",
+   "kind": "iron_lamp",
+   "x": 760,
+   "y": 99,
+   "w": 18,
+   "h": 40,
    "foot": [
-    235.9,
-    122.1
+    766.8,
+    137.9
    ],
-   "sort_y": 122.1
+   "sort_y": 137.9
   },
   {
-   "file": "sprites/spire_039.png",
-   "kind": "spire",
-   "x": 224,
-   "y": 90,
-   "w": 9,
-   "h": 34,
+   "file": "sprites/lava_rock_004.png",
+   "kind": "lava_rock",
+   "x": 467,
+   "y": 126,
+   "w": 30,
+   "h": 13,
    "foot": [
-    227.2,
-    122.4
+    480.9,
+    137.7
    ],
-   "sort_y": 122.4
+   "sort_y": 137.7
   },
   {
-   "file": "sprites/spire_026.png",
-   "kind": "spire",
-   "x": 214,
-   "y": 78,
-   "w": 9,
-   "h": 46,
+   "file": "sprites/lava_rock_005.png",
+   "kind": "lava_rock",
+   "x": 480,
+   "y": 129,
+   "w": 27,
+   "h": 20,
    "foot": [
-    217.9,
-    123.5
+    494.1,
+    147.5
    ],
-   "sort_y": 123.5
+   "sort_y": 147.5
   },
   {
-   "file": "sprites/spire_038.png",
-   "kind": "spire",
-   "x": 230,
-   "y": 89,
-   "w": 11,
-   "h": 39,
-   "foot": [
-    235.4,
-    126.1
-   ],
-   "sort_y": 126.1
-  },
-  {
-   "file": "sprites/spire_025.png",
-   "kind": "spire",
-   "x": 214,
-   "y": 84,
-   "w": 11,
-   "h": 45,
-   "foot": [
-    219.0,
-    127.4
-   ],
-   "sort_y": 127.4
-  },
-  {
-   "file": "sprites/spire_027.png",
-   "kind": "spire",
-   "x": 205,
-   "y": 85,
-   "w": 9,
-   "h": 46,
-   "foot": [
-    208.9,
-    129.9
-   ],
-   "sort_y": 129.9
-  },
-  {
-   "file": "sprites/spire_016.png",
-   "kind": "spire",
-   "x": 228,
-   "y": 78,
-   "w": 9,
-   "h": 55,
-   "foot": [
-    231.4,
-    131.2
-   ],
-   "sort_y": 131.2
-  },
-  {
-   "file": "sprites/spire_023.png",
-   "kind": "spire",
-   "x": 438,
-   "y": 81,
-   "w": 9,
-   "h": 52,
-   "foot": [
-    441.8,
-    131.5
-   ],
-   "sort_y": 131.5
-  },
-  {
-   "file": "sprites/spire_017.png",
-   "kind": "spire",
-   "x": 219,
-   "y": 98,
-   "w": 7,
-   "h": 37,
-   "foot": [
-    222.1,
-    133.1
-   ],
-   "sort_y": 133.1
-  },
-  {
-   "file": "sprites/spire_018.png",
-   "kind": "spire",
-   "x": 230,
-   "y": 88,
-   "w": 11,
-   "h": 48,
-   "foot": [
-    235.0,
-    134.3
-   ],
-   "sort_y": 134.3
-  },
-  {
-   "file": "sprites/spire_022.png",
-   "kind": "spire",
-   "x": 446,
-   "y": 85,
-   "w": 7,
-   "h": 52,
-   "foot": [
-    448.6,
-    136.1
-   ],
-   "sort_y": 136.1
-  },
-  {
-   "file": "sprites/spire_041.png",
-   "kind": "spire",
-   "x": 402,
-   "y": 101,
-   "w": 11,
-   "h": 64,
-   "foot": [
-    407.5,
-    162.5
-   ],
-   "sort_y": 162.5
-  },
-  {
-   "file": "sprites/spire_042.png",
-   "kind": "spire",
-   "x": 403,
-   "y": 121,
-   "w": 11,
-   "h": 47,
-   "foot": [
-    407.5,
-    166.0
-   ],
-   "sort_y": 166.0
-  },
-  {
-   "file": "sprites/spire_004.png",
-   "kind": "spire",
+   "file": "sprites/iron_lamp_006.png",
+   "kind": "iron_lamp",
    "x": 464,
-   "y": 158,
-   "w": 7,
-   "h": 57,
-   "foot": [
-    466.7,
-    213.5
-   ],
-   "sort_y": 213.5
-  },
-  {
-   "file": "sprites/spire_001.png",
-   "kind": "spire",
-   "x": 435,
-   "y": 153,
-   "w": 9,
-   "h": 63,
-   "foot": [
-    439.2,
-    214.0
-   ],
-   "sort_y": 214.0
-  },
-  {
-   "file": "sprites/spire_006.png",
-   "kind": "spire",
-   "x": 471,
-   "y": 175,
-   "w": 9,
-   "h": 41,
-   "foot": [
-    475.6,
-    215.2
-   ],
-   "sort_y": 215.2
-  },
-  {
-   "file": "sprites/spire_029.png",
-   "kind": "spire",
-   "x": 211,
-   "y": 164,
-   "w": 11,
-   "h": 53,
-   "foot": [
-    216.4,
-    215.0
-   ],
-   "sort_y": 215.0
-  },
-  {
-   "file": "sprites/spire_007.png",
-   "kind": "spire",
-   "x": 459,
-   "y": 169,
-   "w": 9,
-   "h": 48,
-   "foot": [
-    462.7,
-    215.5
-   ],
-   "sort_y": 215.5
-  },
-  {
-   "file": "sprites/spire_003.png",
-   "kind": "spire",
-   "x": 428,
-   "y": 178,
-   "w": 9,
+   "y": 111,
+   "w": 18,
    "h": 40,
    "foot": [
-    432.7,
-    215.9
+    471.0,
+    149.6
    ],
-   "sort_y": 215.9
+   "sort_y": 149.6
   },
   {
-   "file": "sprites/spire_005.png",
-   "kind": "spire",
-   "x": 466,
-   "y": 176,
-   "w": 9,
-   "h": 41,
+   "file": "sprites/dead_tree_007.png",
+   "kind": "dead_tree",
+   "x": 429,
+   "y": 95,
+   "w": 33,
+   "h": 60,
    "foot": [
-    469.5,
-    216.1
+    441.3,
+    154.3
    ],
-   "sort_y": 216.1
+   "sort_y": 154.3
   },
   {
-   "file": "sprites/spire_028.png",
-   "kind": "spire",
-   "x": 207,
-   "y": 158,
-   "w": 11,
-   "h": 61,
+   "file": "sprites/crystals_008.png",
+   "kind": "crystals",
+   "x": 511,
+   "y": 129,
+   "w": 33,
+   "h": 33,
    "foot": [
-    212.5,
-    217.8
+    526.5,
+    161.2
    ],
-   "sort_y": 217.8
+   "sort_y": 161.2
   },
   {
-   "file": "sprites/spire_002.png",
-   "kind": "spire",
-   "x": 441,
-   "y": 178,
-   "w": 11,
+   "file": "sprites/boulder_009.png",
+   "kind": "boulder",
+   "x": 481,
+   "y": 170,
+   "w": 33,
+   "h": 18,
+   "foot": [
+    497.7,
+    187.2
+   ],
+   "sort_y": 187.2
+  },
+  {
+   "file": "sprites/boulder_010.png",
+   "kind": "boulder",
+   "x": 550,
+   "y": 172,
+   "w": 36,
+   "h": 17,
+   "foot": [
+    568.9,
+    187.9
+   ],
+   "sort_y": 187.9
+  },
+  {
+   "file": "sprites/brazier_011.png",
+   "kind": "brazier",
+   "x": 825,
+   "y": 141,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    836,
+    182.8
+   ],
+   "sort_y": 182.8
+  },
+  {
+   "file": "sprites/dead_tree_012.png",
+   "kind": "dead_tree",
+   "x": 385,
+   "y": 122,
+   "w": 28,
+   "h": 59,
+   "foot": [
+    390.8,
+    180.5
+   ],
+   "sort_y": 180.5
+  },
+  {
+   "file": "sprites/boulder_013.png",
+   "kind": "boulder",
+   "x": 453,
+   "y": 182,
+   "w": 35,
+   "h": 20,
+   "foot": [
+    468.5,
+    200.9
+   ],
+   "sort_y": 200.9
+  },
+  {
+   "file": "sprites/columns_014.png",
+   "kind": "columns",
+   "x": 380,
+   "y": 94,
+   "w": 58,
+   "h": 73,
+   "foot": [
+    409.5,
+    166.4
+   ],
+   "sort_y": 166.4
+  },
+  {
+   "file": "sprites/lava_rock_015.png",
+   "kind": "lava_rock",
+   "x": 972,
+   "y": 190,
+   "w": 25,
+   "h": 17,
+   "foot": [
+    983.9,
+    206.0
+   ],
+   "sort_y": 206.0
+  },
+  {
+   "file": "sprites/crystals_016.png",
+   "kind": "crystals",
+   "x": 368,
+   "y": 141,
+   "w": 32,
    "h": 42,
    "foot": [
-    446.2,
-    218.2
+    384.3,
+    181.8
    ],
-   "sort_y": 218.2
+   "sort_y": 181.8
   },
   {
-   "file": "sprites/spire_035.png",
-   "kind": "spire",
-   "x": 364,
-   "y": 174,
-   "w": 7,
-   "h": 51,
+   "file": "sprites/stalag_017.png",
+   "kind": "stalag",
+   "x": 471,
+   "y": 178,
+   "w": 35,
+   "h": 34,
    "foot": [
-    367.8,
-    223.7
+    489.7,
+    212.4
    ],
-   "sort_y": 223.7
+   "sort_y": 212.4
   },
   {
-   "file": "sprites/spire_033.png",
-   "kind": "spire",
-   "x": 361,
-   "y": 189,
-   "w": 5,
-   "h": 36,
-   "foot": [
-    363.5,
-    223.5
-   ],
-   "sort_y": 223.5
-  },
-  {
-   "file": "sprites/spire_032.png",
-   "kind": "spire",
-   "x": 353,
-   "y": 161,
-   "w": 11,
-   "h": 65,
-   "foot": [
-    357.7,
-    224.0
-   ],
-   "sort_y": 224.0
-  },
-  {
-   "file": "sprites/spire_034.png",
-   "kind": "spire",
-   "x": 354,
-   "y": 194,
-   "w": 11,
-   "h": 36,
-   "foot": [
-    358.4,
-    228.6
-   ],
-   "sort_y": 228.6
-  },
-  {
-   "file": "sprites/spire_015.png",
-   "kind": "spire",
-   "x": 221,
-   "y": 176,
-   "w": 7,
-   "h": 53,
-   "foot": [
-    224.6,
-    228.8
-   ],
-   "sort_y": 228.8
-  },
-  {
-   "file": "sprites/spire_013.png",
-   "kind": "spire",
-   "x": 211,
+   "file": "sprites/crystals_018.png",
+   "kind": "crystals",
+   "x": 924,
    "y": 185,
-   "w": 9,
-   "h": 45,
+   "w": 31,
+   "h": 30,
    "foot": [
-    215.2,
+    939.5,
+    213.7
+   ],
+   "sort_y": 213.7
+  },
+  {
+   "file": "sprites/boulder_019.png",
+   "kind": "boulder",
+   "x": 1059,
+   "y": 180,
+   "w": 37,
+   "h": 17,
+   "foot": [
+    1074.8,
+    195.9
+   ],
+   "sort_y": 195.9
+  },
+  {
+   "file": "sprites/boulder_020.png",
+   "kind": "boulder",
+   "x": 406,
+   "y": 204,
+   "w": 39,
+   "h": 18,
+   "foot": [
+    427.3,
+    220.7
+   ],
+   "sort_y": 220.7
+  },
+  {
+   "file": "sprites/boulder_021.png",
+   "kind": "boulder",
+   "x": 393,
+   "y": 212,
+   "w": 34,
+   "h": 17,
+   "foot": [
+    409.3,
+    227.8
+   ],
+   "sort_y": 227.8
+  },
+  {
+   "file": "sprites/dead_tree_022.png",
+   "kind": "dead_tree",
+   "x": 938,
+   "y": 168,
+   "w": 34,
+   "h": 61,
+   "foot": [
+    956.5,
     228.4
    ],
    "sort_y": 228.4
   },
   {
-   "file": "sprites/spire_014.png",
-   "kind": "spire",
-   "x": 216,
+   "file": "sprites/lava_rock_023.png",
+   "kind": "lava_rock",
+   "x": 326,
+   "y": 216,
+   "w": 29,
+   "h": 15,
+   "foot": [
+    339.6,
+    229.9
+   ],
+   "sort_y": 229.9
+  },
+  {
+   "file": "sprites/lava_rock_024.png",
+   "kind": "lava_rock",
+   "x": 985,
+   "y": 218,
+   "w": 28,
+   "h": 20,
+   "foot": [
+    999.3,
+    237.3
+   ],
+   "sort_y": 237.3
+  },
+  {
+   "file": "sprites/brazier_025.png",
+   "kind": "brazier",
+   "x": 559,
    "y": 196,
-   "w": 11,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    570,
+    238.0
+   ],
+   "sort_y": 238.0
+  },
+  {
+   "file": "sprites/brazier_026.png",
+   "kind": "brazier",
+   "x": 839,
+   "y": 196,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    850,
+    238.3
+   ],
+   "sort_y": 238.3
+  },
+  {
+   "file": "sprites/boulder_027.png",
+   "kind": "boulder",
+   "x": 863,
+   "y": 221,
+   "w": 44,
+   "h": 21,
+   "foot": [
+    883.2,
+    240.5
+   ],
+   "sort_y": 240.5
+  },
+  {
+   "file": "sprites/lava_rock_028.png",
+   "kind": "lava_rock",
+   "x": 331,
+   "y": 226,
+   "w": 39,
+   "h": 17,
+   "foot": [
+    350.6,
+    242.0
+   ],
+   "sort_y": 242.0
+  },
+  {
+   "file": "sprites/dead_tree_029.png",
+   "kind": "dead_tree",
+   "x": 393,
+   "y": 175,
+   "w": 44,
+   "h": 74,
+   "foot": [
+    415.7,
+    247.6
+   ],
+   "sort_y": 247.6
+  },
+  {
+   "file": "sprites/stele_030.png",
+   "kind": "stele",
+   "x": 1042,
+   "y": 216,
+   "w": 31,
+   "h": 54,
+   "foot": [
+    1056.6,
+    269.2
+   ],
+   "sort_y": 269.2
+  },
+  {
+   "file": "sprites/ruin_031.png",
+   "kind": "ruin",
+   "x": 905,
+   "y": 226,
+   "w": 31,
+   "h": 27,
+   "foot": [
+    920.2,
+    251.7
+   ],
+   "sort_y": 251.7
+  },
+  {
+   "file": "sprites/ruin_032.png",
+   "kind": "ruin",
+   "x": 311,
+   "y": 240,
+   "w": 34,
+   "h": 36,
+   "foot": [
+    327.3,
+    275.3
+   ],
+   "sort_y": 275.3
+  },
+  {
+   "file": "sprites/crystals_033.png",
+   "kind": "crystals",
+   "x": 965,
+   "y": 240,
+   "w": 33,
+   "h": 40,
+   "foot": [
+    981.5,
+    279.0
+   ],
+   "sort_y": 279.0
+  },
+  {
+   "file": "sprites/ruin_034.png",
+   "kind": "ruin",
+   "x": 824,
+   "y": 252,
+   "w": 33,
+   "h": 28,
+   "foot": [
+    840.4,
+    278.8
+   ],
+   "sort_y": 278.8
+  },
+  {
+   "file": "sprites/boulder_035.png",
+   "kind": "boulder",
+   "x": 431,
+   "y": 250,
+   "w": 27,
+   "h": 15,
+   "foot": [
+    444.3,
+    263.9
+   ],
+   "sort_y": 263.9
+  },
+  {
+   "file": "sprites/brazier_036.png",
+   "kind": "brazier",
+   "x": 558,
+   "y": 233,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    569,
+    274.7
+   ],
+   "sort_y": 274.7
+  },
+  {
+   "file": "sprites/boulder_037.png",
+   "kind": "boulder",
+   "x": 929,
+   "y": 263,
+   "w": 36,
+   "h": 21,
+   "foot": [
+    944.6,
+    283.3
+   ],
+   "sort_y": 283.3
+  },
+  {
+   "file": "sprites/boulder_038.png",
+   "kind": "boulder",
+   "x": 377,
+   "y": 244,
+   "w": 38,
+   "h": 15,
+   "foot": [
+    392.8,
+    258.3
+   ],
+   "sort_y": 258.3
+  },
+  {
+   "file": "sprites/ruin_039.png",
+   "kind": "ruin",
+   "x": 1037,
+   "y": 251,
+   "w": 31,
+   "h": 36,
+   "foot": [
+    1052.1,
+    285.5
+   ],
+   "sort_y": 285.5
+  },
+  {
+   "file": "sprites/stalag_040.png",
+   "kind": "stalag",
+   "x": 895,
+   "y": 255,
+   "w": 37,
+   "h": 32,
+   "foot": [
+    914.6,
+    287.0
+   ],
+   "sort_y": 287.0
+  },
+  {
+   "file": "sprites/crystals_041.png",
+   "kind": "crystals",
+   "x": 403,
+   "y": 237,
+   "w": 34,
+   "h": 24,
+   "foot": [
+    420.6,
+    260.3
+   ],
+   "sort_y": 260.3
+  },
+  {
+   "file": "sprites/crystals_042.png",
+   "kind": "crystals",
+   "x": 854,
+   "y": 257,
+   "w": 32,
+   "h": 38,
+   "foot": [
+    870.1,
+    294.0
+   ],
+   "sort_y": 294.0
+  },
+  {
+   "file": "sprites/lava_rock_043.png",
+   "kind": "lava_rock",
+   "x": 325,
+   "y": 283,
+   "w": 31,
+   "h": 18,
+   "foot": [
+    341.1,
+    300.1
+   ],
+   "sort_y": 300.1
+  },
+  {
+   "file": "sprites/boulder_044.png",
+   "kind": "boulder",
+   "x": 1083,
+   "y": 292,
+   "w": 33,
+   "h": 18,
+   "foot": [
+    1096.5,
+    309.0
+   ],
+   "sort_y": 309.0
+  },
+  {
+   "file": "sprites/stele_045.png",
+   "kind": "stele",
+   "x": 869,
+   "y": 257,
+   "w": 31,
+   "h": 52,
+   "foot": [
+    883.9,
+    308.1
+   ],
+   "sort_y": 308.1
+  },
+  {
+   "file": "sprites/boulder_046.png",
+   "kind": "boulder",
+   "x": 521,
+   "y": 294,
+   "w": 29,
+   "h": 17,
+   "foot": [
+    534.9,
+    309.7
+   ],
+   "sort_y": 309.7
+  },
+  {
+   "file": "sprites/crystals_047.png",
+   "kind": "crystals",
+   "x": 442,
+   "y": 263,
+   "w": 35,
    "h": 37,
    "foot": [
-    221.0,
-    230.4
+    457.9,
+    298.9
    ],
-   "sort_y": 230.4
+   "sort_y": 298.9
   },
   {
-   "file": "sprites/spire_011.png",
-   "kind": "spire",
-   "x": 276,
-   "y": 257,
+   "file": "sprites/stalag_048.png",
+   "kind": "stalag",
+   "x": 900,
+   "y": 278,
+   "w": 31,
+   "h": 34,
+   "foot": [
+    918.6,
+    311.8
+   ],
+   "sort_y": 311.8
+  },
+  {
+   "file": "sprites/columns_049.png",
+   "kind": "columns",
+   "x": 365,
+   "y": 234,
+   "w": 60,
+   "h": 60,
+   "foot": [
+    393.4,
+    293.0
+   ],
+   "sort_y": 293.0
+  },
+  {
+   "file": "sprites/boulder_050.png",
+   "kind": "boulder",
+   "x": 295,
+   "y": 305,
+   "w": 44,
+   "h": 17,
+   "foot": [
+    314.4,
+    320.9
+   ],
+   "sort_y": 320.9
+  },
+  {
+   "file": "sprites/ruin_051.png",
+   "kind": "ruin",
+   "x": 469,
+   "y": 298,
+   "w": 33,
+   "h": 27,
+   "foot": [
+    485.3,
+    323.9
+   ],
+   "sort_y": 323.9
+  },
+  {
+   "file": "sprites/stalag_052.png",
+   "kind": "stalag",
+   "x": 540,
+   "y": 300,
+   "w": 32,
+   "h": 27,
+   "foot": [
+    557.0,
+    326.7
+   ],
+   "sort_y": 326.7
+  },
+  {
+   "file": "sprites/lava_rock_053.png",
+   "kind": "lava_rock",
+   "x": 1004,
+   "y": 311,
+   "w": 35,
+   "h": 18,
+   "foot": [
+    1023.1,
+    328.3
+   ],
+   "sort_y": 328.3
+  },
+  {
+   "file": "sprites/boulder_054.png",
+   "kind": "boulder",
+   "x": 923,
+   "y": 311,
+   "w": 31,
+   "h": 20,
+   "foot": [
+    939.4,
+    329.5
+   ],
+   "sort_y": 329.5
+  },
+  {
+   "file": "sprites/brazier_055.png",
+   "kind": "brazier",
+   "x": 839,
+   "y": 289,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    850,
+    331.0
+   ],
+   "sort_y": 331.0
+  },
+  {
+   "file": "sprites/boulder_056.png",
+   "kind": "boulder",
+   "x": 1081,
+   "y": 314,
+   "w": 42,
+   "h": 17,
+   "foot": [
+    1102.2,
+    330.1
+   ],
+   "sort_y": 330.1
+  },
+  {
+   "file": "sprites/boulder_057.png",
+   "kind": "boulder",
+   "x": 516,
+   "y": 315,
+   "w": 33,
+   "h": 19,
+   "foot": [
+    529.5,
+    333.0
+   ],
+   "sort_y": 333.0
+  },
+  {
+   "file": "sprites/lava_rock_058.png",
+   "kind": "lava_rock",
+   "x": 899,
+   "y": 315,
+   "w": 26,
+   "h": 18,
+   "foot": [
+    911.3,
+    331.9
+   ],
+   "sort_y": 331.9
+  },
+  {
+   "file": "sprites/stalag_059.png",
+   "kind": "stalag",
+   "x": 469,
+   "y": 303,
+   "w": 26,
+   "h": 32,
+   "foot": [
+    478.7,
+    335.2
+   ],
+   "sort_y": 335.2
+  },
+  {
+   "file": "sprites/dead_tree_060.png",
+   "kind": "dead_tree",
+   "x": 441,
+   "y": 286,
+   "w": 37,
+   "h": 53,
+   "foot": [
+    459.6,
+    337.6
+   ],
+   "sort_y": 337.6
+  },
+  {
+   "file": "sprites/lava_rock_061.png",
+   "kind": "lava_rock",
+   "x": 965,
+   "y": 323,
+   "w": 37,
+   "h": 17,
+   "foot": [
+    984.4,
+    338.7
+   ],
+   "sort_y": 338.7
+  },
+  {
+   "file": "sprites/ruin_062.png",
+   "kind": "ruin",
+   "x": 1022,
+   "y": 317,
+   "w": 32,
+   "h": 44,
+   "foot": [
+    1036.8,
+    360.4
+   ],
+   "sort_y": 360.4
+  },
+  {
+   "file": "sprites/crystals_063.png",
+   "kind": "crystals",
+   "x": 868,
+   "y": 306,
+   "w": 31,
+   "h": 40,
+   "foot": [
+    882.7,
+    344.5
+   ],
+   "sort_y": 344.5
+  },
+  {
+   "file": "sprites/boulder_064.png",
+   "kind": "boulder",
+   "x": 304,
+   "y": 331,
+   "w": 31,
+   "h": 15,
+   "foot": [
+    316.7,
+    345.1
+   ],
+   "sort_y": 345.1
+  },
+  {
+   "file": "sprites/stalag_065.png",
+   "kind": "stalag",
+   "x": 465,
+   "y": 313,
+   "w": 35,
+   "h": 32,
+   "foot": [
+    484.4,
+    345.2
+   ],
+   "sort_y": 345.2
+  },
+  {
+   "file": "sprites/ruin_066.png",
+   "kind": "ruin",
+   "x": 412,
+   "y": 318,
+   "w": 29,
+   "h": 44,
+   "foot": [
+    426.3,
+    361.4
+   ],
+   "sort_y": 361.4
+  },
+  {
+   "file": "sprites/brazier_067.png",
+   "kind": "brazier",
+   "x": 830,
+   "y": 323,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    841,
+    365.1
+   ],
+   "sort_y": 365.1
+  },
+  {
+   "file": "sprites/ruin_068.png",
+   "kind": "ruin",
+   "x": 1061,
+   "y": 330,
+   "w": 39,
+   "h": 44,
+   "foot": [
+    1080.1,
+    372.7
+   ],
+   "sort_y": 372.7
+  },
+  {
+   "file": "sprites/stele_069.png",
+   "kind": "stele",
+   "x": 458,
+   "y": 318,
+   "w": 31,
+   "h": 57,
+   "foot": [
+    473.3,
+    373.9
+   ],
+   "sort_y": 373.9
+  },
+  {
+   "file": "sprites/columns_070.png",
+   "kind": "columns",
+   "x": 933,
+   "y": 298,
+   "w": 57,
+   "h": 62,
+   "foot": [
+    960.5,
+    359.0
+   ],
+   "sort_y": 359.0
+  },
+  {
+   "file": "sprites/boulder_071.png",
+   "kind": "boulder",
+   "x": 511,
+   "y": 358,
+   "w": 31,
+   "h": 18,
+   "foot": [
+    523.8,
+    375.1
+   ],
+   "sort_y": 375.1
+  },
+  {
+   "file": "sprites/lava_rock_072.png",
+   "kind": "lava_rock",
+   "x": 1017,
+   "y": 364,
+   "w": 29,
+   "h": 16,
+   "foot": [
+    1031.4,
+    379.0
+   ],
+   "sort_y": 379.0
+  },
+  {
+   "file": "sprites/boulder_073.png",
+   "kind": "boulder",
+   "x": 324,
+   "y": 332,
+   "w": 30,
+   "h": 16,
+   "foot": [
+    339.5,
+    347.4
+   ],
+   "sort_y": 347.4
+  },
+  {
+   "file": "sprites/stele_074.png",
+   "kind": "stele",
+   "x": 441,
+   "y": 326,
+   "w": 31,
+   "h": 55,
+   "foot": [
+    456.0,
+    379.6
+   ],
+   "sort_y": 379.6
+  },
+  {
+   "file": "sprites/columns_075.png",
+   "kind": "columns",
+   "x": 259,
+   "y": 284,
+   "w": 58,
+   "h": 72,
+   "foot": [
+    289.9,
+    354.8
+   ],
+   "sort_y": 354.8
+  },
+  {
+   "file": "sprites/lava_rock_076.png",
+   "kind": "lava_rock",
+   "x": 1031,
+   "y": 375,
+   "w": 30,
+   "h": 16,
+   "foot": [
+    1046.3,
+    389.6
+   ],
+   "sort_y": 389.6
+  },
+  {
+   "file": "sprites/crystals_077.png",
+   "kind": "crystals",
+   "x": 566,
+   "y": 361,
+   "w": 32,
+   "h": 29,
+   "foot": [
+    581.9,
+    389.2
+   ],
+   "sort_y": 389.2
+  },
+  {
+   "file": "sprites/dead_tree_078.png",
+   "kind": "dead_tree",
+   "x": 297,
+   "y": 294,
+   "w": 30,
+   "h": 65,
+   "foot": [
+    309.6,
+    357.5
+   ],
+   "sort_y": 357.5
+  },
+  {
+   "file": "sprites/crystals_079.png",
+   "kind": "crystals",
+   "x": 463,
+   "y": 356,
+   "w": 33,
+   "h": 40,
+   "foot": [
+    479.4,
+    395.4
+   ],
+   "sort_y": 395.4
+  },
+  {
+   "file": "sprites/stalag_080.png",
+   "kind": "stalag",
+   "x": 541,
+   "y": 363,
+   "w": 36,
+   "h": 34,
+   "foot": [
+    558.0,
+    397.3
+   ],
+   "sort_y": 397.3
+  },
+  {
+   "file": "sprites/crystals_081.png",
+   "kind": "crystals",
+   "x": 929,
+   "y": 343,
+   "w": 34,
+   "h": 37,
+   "foot": [
+    947.2,
+    378.6
+   ],
+   "sort_y": 378.6
+  },
+  {
+   "file": "sprites/boulder_082.png",
+   "kind": "boulder",
+   "x": 274,
+   "y": 354,
+   "w": 31,
+   "h": 18,
+   "foot": [
+    287.0,
+    370.6
+   ],
+   "sort_y": 370.6
+  },
+  {
+   "file": "sprites/columns_083.png",
+   "kind": "columns",
+   "x": 287,
+   "y": 303,
+   "w": 60,
+   "h": 66,
+   "foot": [
+    316.6,
+    367.7
+   ],
+   "sort_y": 367.7
+  },
+  {
+   "file": "sprites/boulder_big_084.png",
+   "kind": "boulder_big",
+   "x": 963,
+   "y": 386,
+   "w": 42,
+   "h": 26,
+   "foot": [
+    982.3,
+    410.7
+   ],
+   "sort_y": 410.7
+  },
+  {
+   "file": "sprites/boulder_085.png",
+   "kind": "boulder",
+   "x": 1053,
+   "y": 397,
+   "w": 27,
+   "h": 18,
+   "foot": [
+    1065.5,
+    413.9
+   ],
+   "sort_y": 413.9
+  },
+  {
+   "file": "sprites/dead_tree_086.png",
+   "kind": "dead_tree",
+   "x": 1077,
+   "y": 360,
+   "w": 43,
+   "h": 56,
+   "foot": [
+    1099.0,
+    414.8
+   ],
+   "sort_y": 414.8
+  },
+  {
+   "file": "sprites/boulder_087.png",
+   "kind": "boulder",
+   "x": 453,
+   "y": 402,
+   "w": 33,
+   "h": 14,
+   "foot": [
+    470.4,
+    415.0
+   ],
+   "sort_y": 415.0
+  },
+  {
+   "file": "sprites/boulder_088.png",
+   "kind": "boulder",
+   "x": 271,
+   "y": 405,
+   "w": 31,
+   "h": 16,
+   "foot": [
+    283.6,
+    419.9
+   ],
+   "sort_y": 419.9
+  },
+  {
+   "file": "sprites/brazier_089.png",
+   "kind": "brazier",
+   "x": 559,
+   "y": 378,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    570,
+    420.0
+   ],
+   "sort_y": 420.0
+  },
+  {
+   "file": "sprites/brazier_090.png",
+   "kind": "brazier",
+   "x": 839,
+   "y": 378,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    850,
+    420.0
+   ],
+   "sort_y": 420.0
+  },
+  {
+   "file": "sprites/columns_091.png",
+   "kind": "columns",
+   "x": 305,
+   "y": 348,
+   "w": 59,
+   "h": 58,
+   "foot": [
+    333.7,
+    404.8
+   ],
+   "sort_y": 404.8
+  },
+  {
+   "file": "sprites/boulder_092.png",
+   "kind": "boulder",
+   "x": 1058,
+   "y": 405,
+   "w": 34,
+   "h": 20,
+   "foot": [
+    1073.2,
+    424.4
+   ],
+   "sort_y": 424.4
+  },
+  {
+   "file": "sprites/boulder_093.png",
+   "kind": "boulder",
+   "x": 428,
+   "y": 403,
+   "w": 32,
+   "h": 22,
+   "foot": [
+    444.1,
+    424.3
+   ],
+   "sort_y": 424.3
+  },
+  {
+   "file": "sprites/lava_rock_094.png",
+   "kind": "lava_rock",
+   "x": 397,
+   "y": 410,
+   "w": 36,
+   "h": 16,
+   "foot": [
+    415.3,
+    424.5
+   ],
+   "sort_y": 424.5
+  },
+  {
+   "file": "sprites/ore_vein_095.png",
+   "kind": "ore_vein",
+   "x": 500,
+   "y": 410,
+   "w": 37,
+   "h": 20,
+   "foot": [
+    514.7,
+    429.2
+   ],
+   "sort_y": 429.2
+  },
+  {
+   "file": "sprites/boulder_096.png",
+   "kind": "boulder",
+   "x": 1097,
+   "y": 413,
+   "w": 39,
+   "h": 18,
+   "foot": [
+    1113.8,
+    430.4
+   ],
+   "sort_y": 430.4
+  },
+  {
+   "file": "sprites/crystals_097.png",
+   "kind": "crystals",
+   "x": 274,
+   "y": 405,
+   "w": 33,
+   "h": 28,
+   "foot": [
+    289.7,
+    431.9
+   ],
+   "sort_y": 431.9
+  },
+  {
+   "file": "sprites/boulder_098.png",
+   "kind": "boulder",
+   "x": 358,
+   "y": 437,
+   "w": 37,
+   "h": 17,
+   "foot": [
+    376.6,
+    452.7
+   ],
+   "sort_y": 452.7
+  },
+  {
+   "file": "sprites/cart_099.png",
+   "kind": "cart",
+   "x": 483,
+   "y": 437,
+   "w": 35,
+   "h": 25,
+   "foot": [
+    500.0,
+    460.5
+   ],
+   "sort_y": 460.5
+  },
+  {
+   "file": "sprites/boulder_big_100.png",
+   "kind": "boulder_big",
+   "x": 527,
+   "y": 442,
+   "w": 41,
+   "h": 22,
+   "foot": [
+    547.8,
+    463.3
+   ],
+   "sort_y": 463.3
+  },
+  {
+   "file": "sprites/dead_tree_101.png",
+   "kind": "dead_tree",
+   "x": 444,
+   "y": 408,
+   "w": 39,
+   "h": 57,
+   "foot": [
+    460.1,
+    464.0
+   ],
+   "sort_y": 464.0
+  },
+  {
+   "file": "sprites/boulder_big_102.png",
+   "kind": "boulder_big",
+   "x": 934,
+   "y": 443,
+   "w": 51,
+   "h": 25,
+   "foot": [
+    960.7,
+    466.6
+   ],
+   "sort_y": 466.6
+  },
+  {
+   "file": "sprites/dead_tree_103.png",
+   "kind": "dead_tree",
+   "x": 421,
+   "y": 401,
+   "w": 35,
+   "h": 68,
+   "foot": [
+    443.2,
+    467.7
+   ],
+   "sort_y": 467.7
+  },
+  {
+   "file": "sprites/boulder_104.png",
+   "kind": "boulder",
+   "x": 304,
+   "y": 451,
+   "w": 31,
+   "h": 19,
+   "foot": [
+    319.1,
+    469.3
+   ],
+   "sort_y": 469.3
+  },
+  {
+   "file": "sprites/boulder_105.png",
+   "kind": "boulder",
+   "x": 400,
+   "y": 423,
+   "w": 41,
+   "h": 20,
+   "foot": [
+    419.9,
+    441.7
+   ],
+   "sort_y": 441.7
+  },
+  {
+   "file": "sprites/boulder_106.png",
+   "kind": "boulder",
+   "x": 911,
+   "y": 460,
+   "w": 36,
+   "h": 21,
+   "foot": [
+    927.0,
+    480.1
+   ],
+   "sort_y": 480.1
+  },
+  {
+   "file": "sprites/lava_rock_107.png",
+   "kind": "lava_rock",
+   "x": 977,
+   "y": 460,
+   "w": 27,
+   "h": 18,
+   "foot": [
+    990.6,
+    476.7
+   ],
+   "sort_y": 476.7
+  },
+  {
+   "file": "sprites/boulder_108.png",
+   "kind": "boulder",
+   "x": 1058,
+   "y": 436,
+   "w": 36,
+   "h": 16,
+   "foot": [
+    1073.2,
+    451.3
+   ],
+   "sort_y": 451.3
+  },
+  {
+   "file": "sprites/ore_vein_109.png",
+   "kind": "ore_vein",
+   "x": 838,
+   "y": 462,
+   "w": 42,
+   "h": 21,
+   "foot": [
+    857.1,
+    481.8
+   ],
+   "sort_y": 481.8
+  },
+  {
+   "file": "sprites/timber_110.png",
+   "kind": "timber",
+   "x": 272,
+   "y": 438,
+   "w": 48,
+   "h": 47,
+   "foot": [
+    294.8,
+    483.8
+   ],
+   "sort_y": 483.8
+  },
+  {
+   "file": "sprites/lava_rock_111.png",
+   "kind": "lava_rock",
+   "x": 508,
+   "y": 471,
+   "w": 31,
+   "h": 16,
+   "foot": [
+    523.4,
+    485.7
+   ],
+   "sort_y": 485.7
+  },
+  {
+   "file": "sprites/crystals_112.png",
+   "kind": "crystals",
+   "x": 943,
+   "y": 452,
+   "w": 31,
+   "h": 37,
+   "foot": [
+    958.7,
+    488.3
+   ],
+   "sort_y": 488.3
+  },
+  {
+   "file": "sprites/columns_113.png",
+   "kind": "columns",
+   "x": 347,
+   "y": 401,
+   "w": 56,
+   "h": 61,
+   "foot": [
+    375.7,
+    461.2
+   ],
+   "sort_y": 461.2
+  },
+  {
+   "file": "sprites/boulder_114.png",
+   "kind": "boulder",
+   "x": 894,
+   "y": 477,
+   "w": 43,
+   "h": 19,
+   "foot": [
+    912.8,
+    495.4
+   ],
+   "sort_y": 495.4
+  },
+  {
+   "file": "sprites/columns_115.png",
+   "kind": "columns",
+   "x": 1034,
+   "y": 410,
+   "w": 64,
+   "h": 58,
+   "foot": [
+    1065.6,
+    466.7
+   ],
+   "sort_y": 466.7
+  },
+  {
+   "file": "sprites/ore_vein_116.png",
+   "kind": "ore_vein",
+   "x": 461,
+   "y": 478,
+   "w": 39,
+   "h": 20,
+   "foot": [
+    477.5,
+    497.2
+   ],
+   "sort_y": 497.2
+  },
+  {
+   "file": "sprites/boulder_117.png",
+   "kind": "boulder",
+   "x": 304,
+   "y": 482,
+   "w": 35,
+   "h": 17,
+   "foot": [
+    320.9,
+    497.8
+   ],
+   "sort_y": 497.8
+  },
+  {
+   "file": "sprites/crystals_118.png",
+   "kind": "crystals",
+   "x": 949,
+   "y": 472,
+   "w": 31,
+   "h": 32,
+   "foot": [
+    965.1,
+    502.7
+   ],
+   "sort_y": 502.7
+  },
+  {
+   "file": "sprites/crystals_119.png",
+   "kind": "crystals",
+   "x": 849,
+   "y": 469,
+   "w": 32,
+   "h": 36,
+   "foot": [
+    863.9,
+    503.5
+   ],
+   "sort_y": 503.5
+  },
+  {
+   "file": "sprites/ore_vein_120.png",
+   "kind": "ore_vein",
+   "x": 373,
+   "y": 490,
+   "w": 40,
+   "h": 20,
+   "foot": [
+    390.0,
+    508.5
+   ],
+   "sort_y": 508.5
+  },
+  {
+   "file": "sprites/ore_vein_121.png",
+   "kind": "ore_vein",
+   "x": 422,
+   "y": 490,
+   "w": 39,
+   "h": 22,
+   "foot": [
+    438.3,
+    510.8
+   ],
+   "sort_y": 510.8
+  },
+  {
+   "file": "sprites/brazier_122.png",
+   "kind": "brazier",
+   "x": 559,
+   "y": 470,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    570,
+    512.0
+   ],
+   "sort_y": 512.0
+  },
+  {
+   "file": "sprites/brazier_123.png",
+   "kind": "brazier",
+   "x": 839,
+   "y": 470,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    850,
+    511.9
+   ],
+   "sort_y": 511.9
+  },
+  {
+   "file": "sprites/boulder_124.png",
+   "kind": "boulder",
+   "x": 340,
+   "y": 497,
+   "w": 44,
+   "h": 16,
+   "foot": [
+    358.8,
+    512.3
+   ],
+   "sort_y": 512.3
+  },
+  {
+   "file": "sprites/cart_125.png",
+   "kind": "cart",
+   "x": 452,
+   "y": 489,
+   "w": 35,
+   "h": 26,
+   "foot": [
+    468.9,
+    514.4
+   ],
+   "sort_y": 514.4
+  },
+  {
+   "file": "sprites/ore_vein_126.png",
+   "kind": "ore_vein",
+   "x": 532,
+   "y": 495,
+   "w": 39,
+   "h": 20,
+   "foot": [
+    547.6,
+    514.2
+   ],
+   "sort_y": 514.2
+  },
+  {
+   "file": "sprites/boulder_127.png",
+   "kind": "boulder",
+   "x": 1048,
+   "y": 504,
+   "w": 32,
+   "h": 14,
+   "foot": [
+    1063.1,
+    517.5
+   ],
+   "sort_y": 517.5
+  },
+  {
+   "file": "sprites/stalag_128.png",
+   "kind": "stalag",
+   "x": 315,
+   "y": 484,
+   "w": 33,
+   "h": 34,
+   "foot": [
+    329.5,
+    517.7
+   ],
+   "sort_y": 517.7
+  },
+  {
+   "file": "sprites/ore_vein_129.png",
+   "kind": "ore_vein",
+   "x": 381,
+   "y": 521,
+   "w": 42,
+   "h": 20,
+   "foot": [
+    399.7,
+    540.1
+   ],
+   "sort_y": 540.1
+  },
+  {
+   "file": "sprites/boulder_big_130.png",
+   "kind": "boulder_big",
+   "x": 835,
+   "y": 505,
+   "w": 50,
+   "h": 21,
+   "foot": [
+    855.6,
+    525.4
+   ],
+   "sort_y": 525.4
+  },
+  {
+   "file": "sprites/ore_vein_131.png",
+   "kind": "ore_vein",
+   "x": 877,
+   "y": 523,
+   "w": 41,
+   "h": 20,
+   "foot": [
+    895.2,
+    541.9
+   ],
+   "sort_y": 541.9
+  },
+  {
+   "file": "sprites/boulder_132.png",
+   "kind": "boulder",
+   "x": 349,
+   "y": 526,
+   "w": 34,
+   "h": 18,
+   "foot": [
+    366.0,
+    542.8
+   ],
+   "sort_y": 542.8
+  },
+  {
+   "file": "sprites/cart_133.png",
+   "kind": "cart",
+   "x": 325,
+   "y": 505,
+   "w": 35,
+   "h": 26,
+   "foot": [
+    342.3,
+    530.0
+   ],
+   "sort_y": 530.0
+  },
+  {
+   "file": "sprites/columns_134.png",
+   "kind": "columns",
+   "x": 948,
+   "y": 457,
+   "w": 56,
+   "h": 70,
+   "foot": [
+    975.9,
+    525.9
+   ],
+   "sort_y": 525.9
+  },
+  {
+   "file": "sprites/brazier_135.png",
+   "kind": "brazier",
+   "x": 815,
+   "y": 504,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    826,
+    545.8
+   ],
+   "sort_y": 545.8
+  },
+  {
+   "file": "sprites/ore_vein_136.png",
+   "kind": "ore_vein",
+   "x": 410,
+   "y": 530,
+   "w": 40,
+   "h": 20,
+   "foot": [
+    426.8,
+    548.8
+   ],
+   "sort_y": 548.8
+  },
+  {
+   "file": "sprites/timber_137.png",
+   "kind": "timber",
+   "x": 364,
+   "y": 511,
+   "w": 48,
+   "h": 47,
+   "foot": [
+    386.6,
+    557.3
+   ],
+   "sort_y": 557.3
+  },
+  {
+   "file": "sprites/boulder_138.png",
+   "kind": "boulder",
+   "x": 876,
+   "y": 545,
+   "w": 32,
+   "h": 16,
+   "foot": [
+    888.6,
+    559.9
+   ],
+   "sort_y": 559.9
+  },
+  {
+   "file": "sprites/stalag_139.png",
+   "kind": "stalag",
+   "x": 547,
+   "y": 530,
+   "w": 27,
+   "h": 32,
+   "foot": [
+    555.4,
+    561.8
+   ],
+   "sort_y": 561.8
+  },
+  {
+   "file": "sprites/boulder_140.png",
+   "kind": "boulder",
+   "x": 441,
+   "y": 558,
+   "w": 34,
+   "h": 18,
+   "foot": [
+    457.3,
+    575.1
+   ],
+   "sort_y": 575.1
+  },
+  {
+   "file": "sprites/timber_141.png",
+   "kind": "timber",
+   "x": 406,
+   "y": 519,
+   "w": 48,
+   "h": 47,
+   "foot": [
+    428.7,
+    564.7
+   ],
+   "sort_y": 564.7
+  },
+  {
+   "file": "sprites/crystals_142.png",
+   "kind": "crystals",
+   "x": 963,
+   "y": 504,
+   "w": 33,
+   "h": 45,
+   "foot": [
+    978.7,
+    548.0
+   ],
+   "sort_y": 548.0
+  },
+  {
+   "file": "sprites/stalag_143.png",
+   "kind": "stalag",
+   "x": 901,
+   "y": 542,
+   "w": 25,
+   "h": 31,
+   "foot": [
+    919.5,
+    572.6
+   ],
+   "sort_y": 572.6
+  },
+  {
+   "file": "sprites/stalag_144.png",
+   "kind": "stalag",
+   "x": 851,
+   "y": 542,
+   "w": 29,
+   "h": 33,
+   "foot": [
+    863.9,
+    574.6
+   ],
+   "sort_y": 574.6
+  },
+  {
+   "file": "sprites/stele_145.png",
+   "kind": "stele",
+   "x": 1048,
+   "y": 518,
+   "w": 31,
+   "h": 58,
+   "foot": [
+    1063.3,
+    574.9
+   ],
+   "sort_y": 574.9
+  },
+  {
+   "file": "sprites/crystals_146.png",
+   "kind": "crystals",
+   "x": 986,
+   "y": 546,
+   "w": 35,
+   "h": 33,
+   "foot": [
+    1003.7,
+    578.2
+   ],
+   "sort_y": 578.2
+  },
+  {
+   "file": "sprites/boulder_147.png",
+   "kind": "boulder",
+   "x": 959,
+   "y": 565,
+   "w": 28,
+   "h": 15,
+   "foot": [
+    972.6,
+    579.5
+   ],
+   "sort_y": 579.5
+  },
+  {
+   "file": "sprites/stalag_148.png",
+   "kind": "stalag",
+   "x": 570,
+   "y": 549,
+   "w": 28,
+   "h": 33,
+   "foot": [
+    585.1,
+    581.7
+   ],
+   "sort_y": 581.7
+  },
+  {
+   "file": "sprites/lava_rock_149.png",
+   "kind": "lava_rock",
+   "x": 878,
+   "y": 568,
+   "w": 38,
+   "h": 15,
+   "foot": [
+    897.2,
+    581.8
+   ],
+   "sort_y": 581.8
+  },
+  {
+   "file": "sprites/dead_tree_150.png",
+   "kind": "dead_tree",
+   "x": 374,
+   "y": 491,
+   "w": 30,
+   "h": 75,
+   "foot": [
+    390.2,
+    565.0
+   ],
+   "sort_y": 565.0
+  },
+  {
+   "file": "sprites/boulder_151.png",
+   "kind": "boulder",
+   "x": 310,
+   "y": 554,
+   "w": 38,
+   "h": 15,
+   "foot": [
+    325.7,
+    568.0
+   ],
+   "sort_y": 568.0
+  },
+  {
+   "file": "sprites/lava_rock_152.png",
+   "kind": "lava_rock",
+   "x": 976,
+   "y": 580,
+   "w": 26,
+   "h": 20,
+   "foot": [
+    989.9,
+    599.5
+   ],
+   "sort_y": 599.5
+  },
+  {
+   "file": "sprites/columns_153.png",
+   "kind": "columns",
+   "x": 386,
+   "y": 507,
+   "w": 62,
+   "h": 66,
+   "foot": [
+    418.1,
+    572.4
+   ],
+   "sort_y": 572.4
+  },
+  {
+   "file": "sprites/brazier_154.png",
+   "kind": "brazier",
+   "x": 559,
+   "y": 558,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    570,
+    600.1
+   ],
+   "sort_y": 600.1
+  },
+  {
+   "file": "sprites/brazier_155.png",
+   "kind": "brazier",
+   "x": 839,
+   "y": 558,
+   "w": 24,
+   "h": 43,
+   "foot": [
+    850,
+    599.9
+   ],
+   "sort_y": 599.9
+  },
+  {
+   "file": "sprites/lava_rock_156.png",
+   "kind": "lava_rock",
+   "x": 910,
+   "y": 589,
+   "w": 28,
+   "h": 14,
+   "foot": [
+    923.5,
+    602.0
+   ],
+   "sort_y": 602.0
+  },
+  {
+   "file": "sprites/columns_157.png",
+   "kind": "columns",
+   "x": 327,
+   "y": 507,
+   "w": 54,
+   "h": 69,
+   "foot": [
+    356.3,
+    574.7
+   ],
+   "sort_y": 574.7
+  },
+  {
+   "file": "sprites/stalag_158.png",
+   "kind": "stalag",
+   "x": 445,
+   "y": 576,
+   "w": 29,
+   "h": 34,
+   "foot": [
+    457.4,
+    609.7
+   ],
+   "sort_y": 609.7
+  },
+  {
+   "file": "sprites/dead_tree_159.png",
+   "kind": "dead_tree",
+   "x": 892,
+   "y": 544,
+   "w": 41,
+   "h": 58,
+   "foot": [
+    909.7,
+    600.9
+   ],
+   "sort_y": 600.9
+  },
+  {
+   "file": "sprites/dead_tree_160.png",
+   "kind": "dead_tree",
+   "x": 953,
+   "y": 558,
+   "w": 37,
+   "h": 60,
+   "foot": [
+    968.3,
+    617.3
+   ],
+   "sort_y": 617.3
+  },
+  {
+   "file": "sprites/boulder_161.png",
+   "kind": "boulder",
+   "x": 472,
+   "y": 603,
+   "w": 36,
+   "h": 18,
+   "foot": [
+    488.4,
+    619.6
+   ],
+   "sort_y": 619.6
+  },
+  {
+   "file": "sprites/stalag_162.png",
+   "kind": "stalag",
+   "x": 555,
+   "y": 587,
+   "w": 29,
+   "h": 32,
+   "foot": [
+    568.4,
+    619.4
+   ],
+   "sort_y": 619.4
+  },
+  {
+   "file": "sprites/stalag_163.png",
+   "kind": "stalag",
+   "x": 492,
+   "y": 591,
+   "w": 34,
+   "h": 34,
+   "foot": [
+    509.3,
+    624.8
+   ],
+   "sort_y": 624.8
+  },
+  {
+   "file": "sprites/columns_164.png",
+   "kind": "columns",
+   "x": 342,
+   "y": 534,
+   "w": 55,
+   "h": 70,
+   "foot": [
+    370.4,
+    603.2
+   ],
+   "sort_y": 603.2
+  },
+  {
+   "file": "sprites/lava_rock_165.png",
+   "kind": "lava_rock",
+   "x": 972,
+   "y": 612,
+   "w": 26,
+   "h": 18,
+   "foot": [
+    984.3,
+    628.8
+   ],
+   "sort_y": 628.8
+  },
+  {
+   "file": "sprites/columns_166.png",
+   "kind": "columns",
+   "x": 370,
+   "y": 543,
+   "w": 62,
+   "h": 69,
+   "foot": [
+    400.8,
+    611.0
+   ],
+   "sort_y": 611.0
+  },
+  {
+   "file": "sprites/dead_tree_167.png",
+   "kind": "dead_tree",
+   "x": 483,
+   "y": 572,
+   "w": 39,
+   "h": 63,
+   "foot": [
+    498.7,
+    633.8
+   ],
+   "sort_y": 633.8
+  },
+  {
+   "file": "sprites/boulder_168.png",
+   "kind": "boulder",
+   "x": 429,
+   "y": 623,
+   "w": 35,
+   "h": 14,
+   "foot": [
+    443.5,
+    635.7
+   ],
+   "sort_y": 635.7
+  },
+  {
+   "file": "sprites/columns_169.png",
+   "kind": "columns",
+   "x": 843,
+   "y": 583,
+   "w": 59,
+   "h": 55,
+   "foot": [
+    873.3,
+    637.1
+   ],
+   "sort_y": 637.1
+  },
+  {
+   "file": "sprites/boulder_170.png",
+   "kind": "boulder",
+   "x": 449,
+   "y": 622,
+   "w": 38,
+   "h": 20,
+   "foot": [
+    468.9,
+    640.9
+   ],
+   "sort_y": 640.9
+  },
+  {
+   "file": "sprites/stalag_171.png",
+   "kind": "stalag",
+   "x": 895,
+   "y": 607,
+   "w": 21,
+   "h": 34,
+   "foot": [
+    906.1,
+    641.1
+   ],
+   "sort_y": 641.1
+  },
+  {
+   "file": "sprites/iron_lamp_172.png",
+   "kind": "iron_lamp",
+   "x": 438,
+   "y": 608,
+   "w": 18,
+   "h": 40,
+   "foot": [
+    445.0,
+    647.2
+   ],
+   "sort_y": 647.2
+  },
+  {
+   "file": "sprites/boulder_big_173.png",
+   "kind": "boulder_big",
+   "x": 527,
+   "y": 627,
+   "w": 49,
+   "h": 24,
+   "foot": [
+    547.0,
+    650.0
+   ],
+   "sort_y": 650.0
+  },
+  {
+   "file": "sprites/iron_lamp_174.png",
+   "kind": "iron_lamp",
+   "x": 476,
+   "y": 613,
+   "w": 18,
+   "h": 40,
+   "foot": [
+    483.5,
+    651.8
+   ],
+   "sort_y": 651.8
+  },
+  {
+   "file": "sprites/iron_lamp_175.png",
+   "kind": "iron_lamp",
+   "x": 597,
+   "y": 613,
+   "w": 18,
+   "h": 40,
+   "foot": [
+    604.4,
+    652.0
+   ],
+   "sort_y": 652.0
+  },
+  {
+   "file": "sprites/post_176.png",
+   "kind": "post",
+   "x": 679,
+   "y": 638,
    "w": 7,
-   "h": 51,
+   "h": 21,
    "foot": [
-    278.4,
-    306.8
+    682,
+    658.0
    ],
-   "sort_y": 306.8
+   "sort_y": 658.0
   },
   {
-   "file": "sprites/spire_012.png",
-   "kind": "spire",
-   "x": 267,
-   "y": 271,
-   "w": 11,
-   "h": 39,
+   "file": "sprites/post_177.png",
+   "kind": "post",
+   "x": 715,
+   "y": 638,
+   "w": 7,
+   "h": 21,
    "foot": [
-    272.2,
-    307.6
+    718,
+    658.0
    ],
-   "sort_y": 307.6
+   "sort_y": 658.0
+  },
+  {
+   "file": "sprites/lava_rock_178.png",
+   "kind": "lava_rock",
+   "x": 809,
+   "y": 643,
+   "w": 37,
+   "h": 15,
+   "foot": [
+    827.1,
+    657.2
+   ],
+   "sort_y": 657.2
+  },
+  {
+   "file": "sprites/lava_rock_179.png",
+   "kind": "lava_rock",
+   "x": 455,
+   "y": 644,
+   "w": 27,
+   "h": 17,
+   "foot": [
+    468.1,
+    659.7
+   ],
+   "sort_y": 659.7
+  },
+  {
+   "file": "sprites/lava_rock_180.png",
+   "kind": "lava_rock",
+   "x": 729,
+   "y": 648,
+   "w": 32,
+   "h": 17,
+   "foot": [
+    746.2,
+    664.4
+   ],
+   "sort_y": 664.4
+  },
+  {
+   "file": "sprites/post_181.png",
+   "kind": "post",
+   "x": 679,
+   "y": 660,
+   "w": 7,
+   "h": 21,
+   "foot": [
+    682,
+    680.0
+   ],
+   "sort_y": 680.0
+  },
+  {
+   "file": "sprites/post_182.png",
+   "kind": "post",
+   "x": 715,
+   "y": 660,
+   "w": 7,
+   "h": 21,
+   "foot": [
+    718,
+    680.0
+   ],
+   "sort_y": 680.0
   }
  ],
  "anchors": [
   {
    "kind": "pad",
    "state": "ready",
-   "u": 196.0,
-   "v": 268.0,
-   "sx": 248.0,
-   "sy": 214.8
+   "sx": 635.5,
+   "sy": 590.0
   },
   {
    "kind": "pad",
    "state": "ready",
-   "u": 268.0,
-   "v": 196.0,
-   "sx": 392.0,
-   "sy": 214.5
+   "sx": 707.5,
+   "sy": 590.0
   },
   {
    "kind": "pad",
    "state": "ready",
-   "u": 146.0,
-   "v": 194.0,
-   "sx": 272.0,
-   "sy": 131.9
+   "sx": 779.5,
+   "sy": 590.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 623.0,
+   "sy": 502.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 695.0,
+   "sy": 502.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 767.0,
+   "sy": 502.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 630.5,
+   "sy": 410.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 702.5,
+   "sy": 410.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 774.5,
+   "sy": 410.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 633.0,
+   "sy": 321.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 705.0,
+   "sy": 321.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 777.0,
+   "sy": 321.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 630.5,
+   "sy": 228.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 702.5,
+   "sy": 228.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 774.5,
+   "sy": 228.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 550,
+   "sy": 138.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 620,
+   "sy": 138.0
+  },
+  {
+   "kind": "pad",
+   "state": "ready",
+   "sx": 690,
+   "sy": 138.0
   },
   {
    "kind": "gate",
-   "u": 106.0,
-   "v": 94.0,
-   "sx": 332.0,
-   "sy": 41.1
+   "sx": 746,
+   "sy": 102.0
   },
   {
    "kind": "arch",
-   "u": 324.0,
-   "v": 324.0,
-   "sx": 320.0,
-   "sy": 328.1
+   "sx": 700,
+   "sy": 690.0
   },
   {
    "kind": "player_spawn",
-   "u": 230.0,
-   "v": 230.0,
-   "sx": 320.0,
-   "sy": 213.1
+   "sx": 700,
+   "sy": 640.0
   },
   {
    "kind": "vent",
-   "u": 255.0,
-   "v": 265.0,
-   "sx": 310.0,
-   "sy": 247.1,
+   "sx": 796,
+   "sy": 640.2,
    "radius": 14
   },
   {
    "kind": "vent",
-   "u": 275.0,
-   "v": 238.0,
-   "sx": 357.0,
-   "sy": 239.3,
+   "sx": 510,
+   "sy": 590.8,
    "radius": 14
   },
   {
    "kind": "vent",
-   "u": 205.0,
-   "v": 171.0,
-   "sx": 354.0,
-   "sy": 149.9,
+   "sx": 890,
+   "sy": 422.8,
    "radius": 14
+  },
+  {
+   "kind": "vent",
+   "sx": 510,
+   "sy": 286.9,
+   "radius": 14
+  },
+  {
+   "kind": "vent",
+   "sx": 888,
+   "sy": 196.1,
+   "radius": 14
+  },
+  {
+   "kind": "lava",
+   "sx": 1036,
+   "sy": 620.4
+  },
+  {
+   "kind": "lava",
+   "sx": 400,
+   "sy": 402.8
+  },
+  {
+   "kind": "lava",
+   "sx": 892,
+   "sy": 330.9
+  },
+  {
+   "kind": "lava",
+   "sx": 500,
+   "sy": 488.7
+  },
+  {
+   "kind": "lava",
+   "sx": 920,
+   "sy": 193.5
+  },
+  {
+   "kind": "lava",
+   "sx": 914,
+   "sy": 594.7
+  }
+ ],
+ "lava": [
+  {
+   "file": "lava/lava_00_07.png",
+   "x": 971,
+   "y": 126,
+   "w": 3,
+   "h": 2,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_01_02.png",
+   "x": 339,
+   "y": 146,
+   "w": 45,
+   "h": 110,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_01_03.png",
+   "x": 384,
+   "y": 128,
+   "w": 128,
+   "h": 21,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_01_04.png",
+   "x": 512,
+   "y": 129,
+   "w": 12,
+   "h": 16,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_01_06.png",
+   "x": 832,
+   "y": 129,
+   "w": 38,
+   "h": 19,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_01_07.png",
+   "x": 901,
+   "y": 128,
+   "w": 123,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_01_08.png",
+   "x": 1024,
+   "y": 153,
+   "w": 10,
+   "h": 103,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_02_02.png",
+   "x": 339,
+   "y": 256,
+   "w": 45,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_02_03.png",
+   "x": 384,
+   "y": 262,
+   "w": 99,
+   "h": 122,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_02_06.png",
+   "x": 869,
+   "y": 316,
+   "w": 27,
+   "h": 21,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_02_07.png",
+   "x": 896,
+   "y": 256,
+   "w": 128,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_02_08.png",
+   "x": 1024,
+   "y": 256,
+   "w": 10,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_03_02.png",
+   "x": 357,
+   "y": 384,
+   "w": 27,
+   "h": 43,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_03_03.png",
+   "x": 384,
+   "y": 384,
+   "w": 128,
+   "h": 112,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_03_04.png",
+   "x": 512,
+   "y": 479,
+   "w": 10,
+   "h": 16,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_03_07.png",
+   "x": 981,
+   "y": 384,
+   "w": 43,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_03_08.png",
+   "x": 1024,
+   "y": 384,
+   "w": 15,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_04_07.png",
+   "x": 896,
+   "y": 512,
+   "w": 128,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_04_08.png",
+   "x": 1024,
+   "y": 512,
+   "w": 53,
+   "h": 128,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_05_03.png",
+   "x": 426,
+   "y": 663,
+   "w": 86,
+   "h": 18,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_05_04.png",
+   "x": 512,
+   "y": 663,
+   "w": 128,
+   "h": 16,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_05_05.png",
+   "x": 640,
+   "y": 664,
+   "w": 128,
+   "h": 15,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_05_06.png",
+   "x": 768,
+   "y": 664,
+   "w": 128,
+   "h": 16,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_05_07.png",
+   "x": 896,
+   "y": 640,
+   "w": 128,
+   "h": 41,
+   "frames": 6
+  },
+  {
+   "file": "lava/lava_05_08.png",
+   "x": 1024,
+   "y": 640,
+   "w": 5,
+   "h": 3,
+   "frames": 6
   }
  ]
 }

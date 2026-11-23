@@ -35,6 +35,8 @@ func run(t: Object) -> void:
 	t.eq(b.custom_minimum_size.x, w0, "hover never changes a text button's size")
 	b.free()
 
+	run_tip_card(t)
+
 	# Gallery: icon tiles stay, text actions are separate, and each fires its signal.
 	var g := GalleryMenu.new()
 	root.add_child(g)
@@ -50,12 +52,13 @@ func run(t: Object) -> void:
 		a.pressed.emit()
 	t.eq(seen, ["resume", "title", "quit"], "each action emits its own signal")
 
-	# Tiles are icon-only at rest and never change size when the label opens.
+	# Every tile carries its name, and the hover sweep never changes its size.
 	var tile: GalleryTile = g.tile(&"stats")
-	t.eq(tile.label_t, 0.0, "a resting tile shows no label")
+	t.eq(tile.label, "Stats", "a resting tile shows its name")
 	var size_before: Vector2 = tile.custom_minimum_size
-	tile.label_t = 1.0
-	t.eq(tile.custom_minimum_size, size_before, "an open tile label never shifts layout")
+	tile.sweep_t = 0.5
+	t.eq(tile.custom_minimum_size, size_before, "the hover sweep never shifts layout")
+	t.eq(tile.bob_px(), 0, "a resting tile does not bob")
 	g.free()
 
 
@@ -64,3 +67,19 @@ func _collect(n: Node, out: Array[MenuTextButton]) -> void:
 		out.append(n as MenuTextButton)
 	for c: Node in n.get_children():
 		_collect(c, out)
+
+
+func run_tip_card(t: Object) -> void:
+	var c := TipCard.new()
+	c.show_tip("Welcome", "Press a pad.", 10.0)
+	t.ok(c.visible and c.is_showing(), "a tip shows")
+	c.held = true
+	t.ok(not c.visible and c.is_showing(), "an open menu hides the tip but keeps it alive")
+	c._process(5.0)
+	t.eq(c._left, 10.0, "the tip's timer waits while hidden")
+	c.held = false
+	t.ok(c.visible, "the tip returns when the menu closes")
+	c.dismiss()
+	c.held = false
+	t.ok(not c.visible and not c.is_showing(), "a dismissed tip stays gone")
+	c.free()

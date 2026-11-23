@@ -25,6 +25,8 @@ var _log: ErrorLog = ErrorLog.new()
 var hitches: Array[String] = []
 var total_frames: int = 0
 var audio_cache: int = 0
+var pipelines: int = 0
+var skip_meadow: bool = false
 
 
 ## Collects script and shader errors from the engine log. A bench that logged one is a failed bench: a broken
@@ -43,11 +45,14 @@ func _init() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--frames="):
 			frames = maxi(30, int(a.trim_prefix("--frames=")))
+		elif a == "--skip-meadow":
+			skip_meadow = true
 		elif a.begins_with("--quality="):
 			var q: int = GraphicsQuality.parse(a.trim_prefix("--quality="))
 			if q >= 0:
 				levels = [q]
 	OS.add_logger(_log)
+	PerfStats.tracing = true   # stage timings of the zone swap, printed in the report
 	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main  # Juice parents its popup layer to the current scene
@@ -63,7 +68,8 @@ func _init() -> void:
 	for level: int in levels:
 		GraphicsQuality.set_level(level, false)
 		await _frames(30)  # let the level take effect
-		await _zone_runs(level, main, "meadow")
+		if not skip_meadow:
+			await _zone_runs(level, main, "meadow")
 	# Which layer costs what: noon at the highest level, hiding one layer at a time.
 	GraphicsQuality.set_level(GraphicsQuality.Level.HIGH, false)
 	SkyCycle.debug_phase = 0.5
@@ -175,11 +181,14 @@ func _phase(level: int, phase: String, main: Node, press: bool, zoom: int) -> Di
 		var cache_now: int = _audio_cache_size()
 		var grew: bool = cache_now > audio_cache
 		audio_cache = cache_now
+		var pipes_now: int = PerfStats.pipeline_compiles()
+		var new_pipes: int = pipes_now - pipelines
+		pipelines = pipes_now
 		if ms > HITCH_MS:
 			# Enough to tell a one-time compile or load from a steady cost: where it fell, and what the engine held then.
 			var c0: Dictionary = PerfStats.counters()
-			hitches.append("HITCH %s %s: frame %d of the phase (%d since the run began), %.1f ms, nodes %d, objects %d, draws %d, vram %.0f MB, audio cache %s" % [
-				GraphicsQuality.LABELS[level], phase, i, total_frames, ms, int(c0.nodes), int(c0.objects), int(c0.draw_calls), float(c0.vram_mb), "GREW (a sound loaded)" if grew else "unchanged"])
+			hitches.append("HITCH %s %s: frame %d of the phase (%d since the run began), %.1f ms, nodes %d, objects %d, draws %d, vram %.0f MB, audio cache %s, script %.1f ms, physics %.1f ms, new pipelines %d" % [
+				GraphicsQuality.LABELS[level], phase, i, total_frames, ms, int(c0.nodes), int(c0.objects), int(c0.draw_calls), float(c0.vram_mb), "GREW (a sound loaded)" if grew else "unchanged", float(c0.script_ms), float(c0.physics_ms), new_pipes])
 		total_frames += 1
 		last = now
 		var c: Dictionary = PerfStats.counters()
@@ -203,6 +212,8 @@ func _report() -> void:
 			"%d%%" % roundi(float(r.over_budget) * 100.0), int(r.draw_calls_max), int(r.objects_max), int(r.nodes_max)])
 	for h: String in hitches:
 		print(h)
+	for t: String in PerfStats.trace:
+		print("TRACE ", t)
 	var out_dir: String = ProjectSettings.globalize_path("res://shots")
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var f: FileAccess = FileAccess.open(out_dir + "/bench.json", FileAccess.WRITE)

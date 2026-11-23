@@ -43,6 +43,19 @@ extends Resource
 ## God ray colour by time of day.
 @export var ray_color: Gradient
 
+@export_group("Golden light")
+## How high the sun gets before the golden look is down to its floor (elevation 0..1), and how much of it is kept at noon.
+@export var golden_reach: float = 0.95
+@export var golden_floor: float = 0.35
+## Full-frame saturation and contrast added at full golden light (light_grade.gdshader), and the share kept at night.
+@export var golden_sat: float = 0.16
+@export var golden_contrast: float = 0.1
+@export var night_sat: float = 0.1
+## High sun (elevation above about 0.7): exposure drop, extra contrast and saturation, so noon is not bleached.
+@export var noon_exposure: float = 0.12
+@export var noon_contrast: float = 0.16
+@export var noon_sat: float = 0.1
+
 @export_group("Shadows")
 ## Cast shadow length in object heights at noon, with the sun low, and under the moon.
 @export var shadow_len_noon: float = 0.22

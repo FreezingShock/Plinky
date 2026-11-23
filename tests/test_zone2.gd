@@ -8,18 +8,17 @@ func run(t: Object) -> void:
 	var sim: Sim = t.make_sim()
 	var z2: ZoneDef = sim.zone_defs.get(&"zone2") as ZoneDef
 	t.ok(z2 != null and z2.heat_cap > 0.0, "zone 2 has Heat")
-	t.eq(Array(z2.pad_buttons), ["f1", "f2", "f3"], "zone 2 pads are the Forge row")
-	for id: StringName in [&"f1", &"f2", &"f3"]:
-		t.ok(sim.button_defs.has(id), "button %s exists" % id)
+	t.eq(z2.pad_buttons.size(), 18, "zone 2 has six rows of three pads")
+	for id: String in z2.pad_buttons:
+		t.ok(sim.button_defs.has(StringName(id)), "button %s exists" % id)
 
-	# Slag multiplies cash income as its own factor and stacks with Multiplier
-	sim.stats[&"mult"] = BigNum.from_float(3.0)
-	var base: float = sim.income_per_second(&"cash").to_float()
+	# Slag multiplies Embers income as its own factor and stacks with Cinder
+	sim.stats[&"cinder"] = BigNum.from_float(3.0)
+	var base: float = sim.income_per_second(&"embers").to_float()
 	sim.stats[&"slag"] = BigNum.from_float(4.0)
-	t.near(sim.income_per_second(&"cash").to_float(), base * (1.0 + 4.0 * 0.5), 1e-9, "slag adds a (1 + slag / 2) factor")
+	t.near(sim.income_per_second(&"embers").to_float(), base * (1.0 + 4.0 * 0.5), 1e-9, "slag adds a (1 + slag / 2) factor")
 
 	# Heat only exists in zone 2
-	sim.stats[&"reb"] = BigNum.from_float(9.0)
 	sim.step(0.1)
 	sim.feed_heat(5.0)
 	t.near(sim.heat, 0.0, 1e-9, "no Heat in zone 1")
@@ -42,15 +41,17 @@ func run(t: Object) -> void:
 	t.near(sim.heat, z2.heat_cap - z2.heat_decay_per_second, 1e-9, "Heat decays while away from vents")
 
 	# a Hot press pays heat_hot_mult times as much as a cold one
-	sim.stats[&"cash"] = BigNum.from_float(1.0e7)
-	var cold: BigNum = sim.press_gain_preview(&"f1")
-	var before: float = sim.get_stat(&"slag").to_float()
-	t.ok(sim.try_press(&"f1"), "press f1 while Hot")
-	t.near(sim.get_stat(&"slag").to_float() - before, cold.to_float() * z2.heat_hot_mult, 1e-9, "Hot press pays double")
+	sim.stats[&"embers"] = BigNum.from_float(1.0e7)
+	var hot_gain: BigNum = sim.press_gain_preview(&"cinder_1")   # the preview includes Heat
+	var before: float = sim.get_stat(&"cinder").to_float()
+	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while Hot")
+	t.near(sim.get_stat(&"cinder").to_float() - before, hot_gain.to_float(), 1e-9, "Hot press pays what the tooltip preview says")
 	sim.heat = 0.0
-	before = sim.get_stat(&"slag").to_float()
-	t.ok(sim.try_press(&"f1"), "press f1 while cold")
-	t.near(sim.get_stat(&"slag").to_float() - before, cold.to_float(), 1e-9, "cold press pays the base reward")
+	var cold: BigNum = sim.press_gain_preview(&"cinder_1")
+	t.near(hot_gain.to_float(), cold.to_float() * z2.heat_hot_mult, 1e-9, "Hot preview is heat_hot_mult times the cold one")
+	before = sim.get_stat(&"cinder").to_float()
+	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while cold")
+	t.near(sim.get_stat(&"cinder").to_float() - before, cold.to_float(), 1e-9, "cold press pays the base reward")
 
 	# decay runs out, hot flips back off, rebirth and zone entry clear Heat
 	sim.feed_heat(100.0)
@@ -59,21 +60,22 @@ func run(t: Object) -> void:
 	t.ok(not sim.is_hot(), "Heat falls below the hot line")
 	t.eq(hot_events.back(), false, "heat_hot_changed fired on the way down")
 	sim.feed_heat(100.0)
-	sim.stats[&"reb"] = BigNum.from_float(2.0)
+	sim.stats[&"ingot"] = BigNum.from_float(2.0)
 	t.ok(sim.try_rebirth(), "rebirth in zone 2")
 	t.near(sim.heat, 0.0, 1e-9, "rebirth clears Heat")
 	sim.feed_heat(100.0)
 	sim.enter_zone(&"zone1")
 	t.near(sim.heat, 0.0, 1e-9, "zone entry clears Heat")
 
-	# Gate: Slag 9 opens it
+	# Gate: the top row's stat opens it
 	sim.enter_zone(&"zone2")
-	sim.stats[&"slag"] = BigNum.from_float(8.0)
+	var gate_at: float = z2.gate_threshold
+	sim.stats[&"emberheart"] = BigNum.from_float(gate_at - 1.0)
 	sim.step(0.1)
-	t.ok(not sim.is_gate_open(&"zone2"), "zone 2 gate closed at 8 slag")
-	sim.stats[&"slag"] = BigNum.from_float(9.0)
+	t.ok(not sim.is_gate_open(&"zone2"), "zone 2 gate closed one Emberheart short")
+	sim.stats[&"emberheart"] = BigNum.from_float(gate_at)
 	sim.step(0.1)
-	t.ok(sim.is_gate_open(&"zone2"), "zone 2 gate opens at 9 slag")
+	t.ok(sim.is_gate_open(&"zone2"), "zone 2 gate opens at its Emberheart threshold")
 
 	# A save made in zone 2 loads back into zone 2 with its scene, mask and pads resolvable
 	var saved: Dictionary = sim.to_dict()
@@ -82,17 +84,20 @@ func run(t: Object) -> void:
 	t.eq(fresh.zone_id, &"zone2", "loaded save is in zone 2")
 	t.ok(fresh.is_gate_open(&"zone2"), "zone 2 gate stays latched across a save")
 	var lz: ZoneDef = fresh.current_zone()
-	t.ok(lz != null and lz.scene_path != "" and lz.pad_buttons.size() == 3, "loaded zone has its scene and Forge pads")
+	t.ok(lz != null and lz.scene_path != "" and lz.pad_buttons.size() == 18, "loaded zone has its scene and forge pads")
 	fresh.heat = 0.0
 	t.ok(not fresh.is_hot(), "Heat is not saved")
 
 	# Scene, mask and anchors
 	t.ok(ResourceLoader.exists(z2.scene_path), "zone 2 scene exists")
-	WalkMask.use(z2.walk_mask_path)
+	var qscene: Node = (load(z2.scene_path) as PackedScene).instantiate()
+	var qoff: Vector2i = qscene.get("mask_offset") as Vector2i
+	qscene.free()
+	WalkMask.use(z2.walk_mask_path, qoff)
 	t.ok(WalkMask.available(), "quarry walkable.png loads")
 	var im: Image = WalkMask.image()
 	if im != null:
-		t.eq(im.get_size(), Vector2i(840, 480), "quarry mask matches the ground frame")
+		t.eq(im.get_size(), Vector2i(1400, 760), "quarry mask matches the ground canvas")
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "placements3d.json")) as Dictionary
 	var pads: int = 0
 	var vents: int = 0
@@ -132,30 +137,40 @@ func run(t: Object) -> void:
 				start = WalkMask.nearest(p, 28)
 			elif str(d.get("kind", "")) in ["pad", "vent", "gate"]:
 				targets.append(WalkMask.nearest(p, 14))
-		var reached: Dictionary = _flood(im, start)
+		var reached: PackedByteArray = _flood(im, start, qoff)
 		for tp: Vector2 in targets:
-			var px: Vector2i = Vector2i(int(floorf(tp.x)) + WalkMask.OFFSET.x, int(floorf(tp.y)) + WalkMask.OFFSET.y)
-			t.ok(reached.has(px), "spawn connects to %s" % str(tp))
+			var px: Vector2i = Vector2i(int(floorf(tp.x)) + qoff.x, int(floorf(tp.y)) + qoff.y)
+			t.ok(reached[px.y * im.get_width() + px.x] == 1, "spawn connects to %s" % str(tp))
 	WalkMask.use("")   # back to the meadow mask for any later suite
 
 
-## Pixels of the mask reachable from `start` (a texel in the 640x360 frame) by 4-neighbour steps.
-func _flood(im: Image, start: Vector2) -> Dictionary:
-	var seen: Dictionary = {}
-	var first: Vector2i = Vector2i(int(floorf(start.x)) + WalkMask.OFFSET.x, int(floorf(start.y)) + WalkMask.OFFSET.y)
-	var queue: Array[Vector2i] = [first]
-	seen[first] = true
-	var head: int = 0
+## Pixels of the mask reachable from `start` (a world texel) by 4-neighbour steps: 1 per reachable pixel, row by row.
+func _flood(im: Image, start: Vector2, off: Vector2i) -> PackedByteArray:
 	var w: int = im.get_width()
 	var h: int = im.get_height()
+	var seen: PackedByteArray = PackedByteArray()
+	seen.resize(w * h)
+	var open: PackedByteArray = PackedByteArray()
+	open.resize(w * h)
+	for y in h:
+		for x in w:
+			open[y * w + x] = 1 if im.get_pixel(x, y).r > 0.5 else 0
+	var first: Vector2i = Vector2i(int(floorf(start.x)) + off.x, int(floorf(start.y)) + off.y)
+	var queue: PackedInt32Array = PackedInt32Array([first.y * w + first.x])
+	seen[first.y * w + first.x] = 1
+	var head: int = 0
 	while head < queue.size():
-		var c: Vector2i = queue[head]
+		var c: int = queue[head]
 		head += 1
-		for off: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var n: Vector2i = c + off
-			if n.x < 0 or n.y < 0 or n.x >= w or n.y >= h or seen.has(n):
+		var cx: int = c % w
+		var cy: int = c / w
+		for k in 4:
+			var nx: int = cx + (1 if k == 0 else (-1 if k == 1 else 0))
+			var ny: int = cy + (1 if k == 2 else (-1 if k == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= w or ny >= h:
 				continue
-			if im.get_pixel(n.x, n.y).r > 0.5:
-				seen[n] = true
+			var n: int = ny * w + nx
+			if seen[n] == 0 and open[n] == 1:
+				seen[n] = 1
 				queue.append(n)
 	return seen

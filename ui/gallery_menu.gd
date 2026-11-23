@@ -1,6 +1,6 @@
 class_name GalleryMenu
 extends PanelContainer
-## The hamburger menu, which is also the Esc / pause menu: a gallery of icon tiles (labels type in on hover), one per section, with the build version in the header.
+## The hamburger menu, which is also the Esc / pause menu: a gallery of icon tiles (every tile always shows its name), one per section, with the build version in the header.
 ## Picking a tile emits `chosen(kind)`; Main routes it through MenuRouter (so the gallery closes and the section
 ## opens) and the shared CloseX closes this one. Tiles are ordinary focusable buttons, so arrows, d-pad, Enter and
 ## pad A all work, and Main's menu focus drops focus onto the first tile when it opens.
@@ -11,7 +11,7 @@ signal resume_requested
 signal quit_to_title_requested
 signal quit_game_requested
 
-const COLUMNS: int = 4
+const COLUMNS: int = 3
 const GAP: int = 4
 ## kind, label, icon file under assets/icons/big/
 const ENTRIES: Array = [
@@ -22,13 +22,14 @@ const ENTRIES: Array = [
 	[&"travel", "Travel", "menu_travel"],
 	[&"settings", "Settings", "menu_settings"],
 	[&"history", "History", "menu_history"],
+	[&"ledger", "Ledger", "menu_ledger"],
 	[&"log", "Update Log", "menu_log"],
 ]
 
 ## Section colours, the same fixed stat colours the gallery cards use: Cash gold, Multiplier blue and so on.
 const COLORS: Dictionary = {
 	&"stats": Color("f2c94c"), &"attributes": Color("55aaff"), &"upgrades": Color("7be08a"), &"relics": Color("c77dff"),
-	&"travel": Color("6fd6e8"), &"settings": Color("f6efd9"), &"log": Color("9ee2c0"), &"history": Color("ff9f5a"),
+	&"travel": Color("6fd6e8"), &"settings": Color("f6efd9"), &"log": Color("9ee2c0"), &"history": Color("ff9f5a"), &"ledger": Color("f2c94c"),
 }
 
 ## Set by Main: kind -> true while that section is still locked by the tutorial.
@@ -58,7 +59,7 @@ func _init() -> void:
 	ver.add_theme_color_override("font_color", RelicStyle.dim)
 	head.add_child(ver)
 	var x_gap := Control.new()   # room for the close X floating in the corner
-	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
+	x_gap.custom_minimum_size = Vector2(CloseX.HEADER_GAP, 1.0)
 	head.add_child(x_gap)
 	v.add_child(PanelDivider.new())
 	var grid := GridContainer.new()
@@ -73,7 +74,9 @@ func _init() -> void:
 		tile.accent = COLORS.get(e[0], Color(0, 0, 0, 0)) as Color
 		tile.big_icon = load("res://assets/icons/big/%s.png" % e[2]) as Texture2D
 		var k: StringName = e[0]
-		tile.pressed.connect(func() -> void: chosen.emit(k))
+		tile.pressed.connect(func() -> void:
+			if not tile.locked:
+				chosen.emit(k))
 		grid.add_child(tile)
 		_tiles[k] = tile
 	v.add_child(PanelDivider.new(2))
@@ -91,6 +94,37 @@ func _init() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(hint)
+
+
+## Pure: the tile each arrow key goes to from tile `i` of `n` in a grid `cols` wide. Moves wrap around the edges, and a
+## short last row is skipped over, so every arrow always lands on a real tile. Returns {left, right, up, down}.
+static func neighbors(n: int, cols: int, i: int) -> Dictionary:
+	var row: int = i / cols
+	var col: int = i % cols
+	var row_end: int = mini(row * cols + cols - 1, n - 1)
+	var left: int = i - 1 if col > 0 else row_end
+	var right: int = i + 1 if i + 1 <= row_end else row * cols
+	var up: int = i - cols
+	if up < 0:
+		up = col + cols * ((n - 1 - col) / cols)
+	var down: int = i + cols if i + cols < n else col
+	return {"left": left, "right": right, "up": up, "down": down}
+
+
+## Arrows, d-pad and Tab walk the grid (locked tiles included, so you can see what is coming).
+func _ready() -> void:
+	var order: Array[GalleryTile] = []
+	for e: Array in ENTRIES:
+		order.append(_tiles[e[0]] as GalleryTile)
+	for i in order.size():
+		var nb: Dictionary = neighbors(order.size(), COLUMNS, i)
+		var t: GalleryTile = order[i]
+		t.focus_neighbor_left = t.get_path_to(order[nb["left"]])
+		t.focus_neighbor_right = t.get_path_to(order[nb["right"]])
+		t.focus_neighbor_top = t.get_path_to(order[nb["up"]])
+		t.focus_neighbor_bottom = t.get_path_to(order[nb["down"]])
+		t.focus_next = t.get_path_to(order[(i + 1) % order.size()])
+		t.focus_previous = t.get_path_to(order[posmod(i - 1, order.size())])
 
 
 func _action(text: String, accent: Color, on_press: Callable) -> MenuTextButton:
@@ -122,4 +156,4 @@ func _process(delta: float) -> void:
 		return
 	_clock = 0.0
 	for k: StringName in _tiles:
-		(_tiles[k] as GalleryTile).disabled = bool(is_locked.call(k))
+		(_tiles[k] as GalleryTile).locked = bool(is_locked.call(k))

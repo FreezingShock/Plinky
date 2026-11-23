@@ -12,6 +12,7 @@ const SIZE: float = 13.0
 const INSET: Vector2 = Vector2(5.0, 3.0)
 const GROW_SPEED: float = 5.0     ## full growth in 0.2 s
 const HOVER_SPEED: float = 10.0
+const HEADER_GAP: float = 26.0     ## width of the spacer a panel header reserves so the X never sits against its text
 const ARM: int = 3                ## arm length in texels at rest; hover adds one
 
 var grow: float = 0.0

@@ -5,7 +5,7 @@ func run(t: Object) -> void:
 	var sim: Sim = t.make_sim()
 	var rows: Array[Dictionary] = StatIndex.stats(sim)
 	var ids: Array = rows.map(func(r: Dictionary) -> Variant: return r["id"])
-	for want: StringName in [&"cash", &"mult", &"reb", &"crit_chance", &"crit_damage", &"press_rate", &"luck", &"walk_speed", &"mastery", &"presses", &"play_time"]:
+	for want: StringName in [&"sunlight", &"dewdrop", &"clover", &"crit_chance", &"crit_damage", &"press_rate", &"luck", &"walk_speed", &"mastery", &"presses", &"play_time"]:
 		t.ok(ids.has(want), "stats index lists %s" % want)
 	for r: Dictionary in rows:
 		t.ok(String(r["name"]) != "" and String(r["tip"]) != "", "%s has a name and a tooltip" % r["id"])

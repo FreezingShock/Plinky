@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"relic_10"
+display_name = "Relic Hunter"
+description = "Find 10 relics."
+category = &"relics"
+counter = &"relic_drops"
+target = 10.0
+order = 2
+title = ""

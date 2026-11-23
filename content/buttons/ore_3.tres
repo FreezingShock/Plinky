@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ButtonDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/button_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ore_3"
+rarity = &"uncommon"
+zone = &"zone2"
+row = &"ore"
+row_index = 2
+cost_stat = &"cinder"
+base_cost = 4800.0
+cost_growth = 10.0
+reward_stat = &"ironore"
+reward = 64
