@@ -21,6 +21,8 @@ const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 var _data: Dictionary = {}
 var react: LifeReact
 var _sky: SkyCycle
+var _shadows: SkyShadows
+var _ground: Sprite2D
 var districts: Array[Dictionary] = []   # {id, name, pos}
 
 
@@ -65,16 +67,36 @@ func _ready() -> void:
 			_:
 				continue
 		anchors.add_child(m)
+	_ground = ground
 	_add_life(ground)
 	_add_sky()
 
 
 ## Day/night shade, rain and wind over the whole world (world/sky_cycle.gd).
 func _add_sky() -> void:
+	_shadows = SkyShadows.new()
+	_shadows.name = "Shadows"
+	add_child(_shadows)   # z 0, after the ground and grass: above them, below every prop and the walker
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
 	_sky.area = world_rect.grow(10.0)
+	_sky.shadows = _shadows
+	_sky.atmosphere = false   # the haze and mist are placed for the onboarding meadow
+	_sky.ground_texture = _ground.texture
 	add_child(_sky)
+	_add_lights()
+
+
+## Light pools: the gate and arch, the pads, the lanterns (added with the props), and a small one around the walker.
+func _add_lights() -> void:
+	var cfg: SkyConfig = _sky.light_config()
+	for a: Dictionary in _data.anchors:
+		match String(a.kind):
+			"gate", "arch":
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
+			"pad":
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 
 ## The district whose centre is nearest the walker, or an empty dictionary when none is within DISTRICT_RADIUS.
@@ -127,7 +149,14 @@ func spawn_occluders(parent: Node2D) -> void:
 			sp.texture = SkyCycle.padded(sp.texture)
 			sp.offset.x -= float(SkyCycle.SWAY_PAD)
 			sp.material = _sky.sway_material
+		elif _sky != null:
+			sp.material = _sky.rim_material
 		parent.add_child(sp)
+		if _shadows != null:
+			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
+		if _sky != null and String(s.kind) == "lantern":
+			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
+					_sky.light_config().pool_shrine_radius * 0.7, 0.9)
 		if String(s.kind) == "bush":
 			bush_sprites.append(sp)
 	if react != null:
