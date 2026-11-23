@@ -19,7 +19,7 @@ var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows on
 var _zone_label: Label
 var _gate_label: Label
 var _zone_buttons: HBoxContainer
-var _rebirth: PixelButton
+var _rebirth: ExpandChip
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
@@ -164,25 +164,31 @@ func _build_bottom() -> void:
 	_bottom = h
 	h.add_theme_constant_override("separation", 4)
 	add_child(h)
-	_rebirth = PixelButton.new()
+	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
 	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
-	h.add_child(_rebirth)
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
-	var up := PixelButton.new()
-	up.text = "Upgrades [Tab]"
+	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.")
+	up.full_text = "Upgrades [Tab]"
 	up.pressed.connect(func() -> void: _upgrades_panel.visible = not _upgrades_panel.visible)
-	h.add_child(up)
 	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
-		var rb := PixelButton.new()
-		rb.text = "Relics [R]"
+		var rb: ExpandChip = _chip(h, "relics/r_pulse", "Relics", "Equip relics you have found.")
+		rb.full_text = "Relics [R]"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
-		h.add_child(rb)
 		gate(rb, Onboarding.F_RELICS)
-	var st := PixelButton.new()
-	st.text = "Settings [%s]" % Keybinds.key_name(&"settings")
+	var st: ExpandChip = _chip(h, "settings", "Settings", "Display, sound, keys and tips.")
+	st.full_text = "Settings [%s]" % Keybinds.key_name(&"settings")
 	st.pressed.connect(func() -> void: settings_toggled.emit(true))
-	h.add_child(st)
+
+
+## A bottom-bar chip: icon at rest, icon + label on hover or focus. Tooltip names it while it is collapsed.
+func _chip(parent: Control, icon_name: String, tip_title: String, tip_body: String) -> ExpandChip:
+	var c := ExpandChip.new()
+	c.icon = load("res://assets/icons/%s.png" % icon_name) as Texture2D
+	c.expand_icon = false
+	parent.add_child(c)
+	Tip.bind(c, {"title": tip_title, "body": tip_body})
+	return c
 
 
 func _build_pad_list() -> void:
@@ -304,7 +310,7 @@ func _refresh() -> void:
 	_zone_label.text = z.display_name if z != null else ""
 	_gate_label.text = _gate_text(z)
 	_rebirth.disabled = not sim.can_rebirth()
-	_rebirth.text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
+	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
 	_refresh_zone_buttons()
 	_pad_list.refresh(sim)
 	if _upgrades_panel.visible:
