@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.37.2 - 2026-11-23
+## 0.37.3 - 2026-11-23
 - Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.
+
+## 0.37.2 - 2026-11-23
+- Ember Quarry balance pass: the 18 forge pads cost 40% less (greedy-floor gate about 40 min after arrival, was about 66; idle about 2x that), and each quarry rebirth pays 25% more Prestige for every quarry rebirth already done (`ZoneDef.prestige_per_rebirth_bonus`), so attribute buys keep pace with their 1.4x cost growth.
 
 ## 0.37.1 - 2026-11-23
 - Low graphics quality now really lowers cost: the ground light uses fewer shadow and occlusion taps and the full-frame light grade (the one pass that copies the screen) is skipped, about 10 to 13% faster on a software-GPU stand-in. High is unchanged. The ground shader skips shadow work when no shadow applies, more shaders are pre-compiled at start, and CI now fails above 250 draw calls or 1200 nodes. New `tools/bench_weak.sh` runs the bench on a CPU rasteriser.

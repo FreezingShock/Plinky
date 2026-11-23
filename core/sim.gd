@@ -866,6 +866,9 @@ func _prestige_gain() -> BigNum:
 	var f: float = v.to_float()
 	if th > 0.0 and f > th:
 		v = v.mul(BigNum.from_float(pow(f / th, config.prestige_push_exponent)))
+	var z: ZoneDef = current_zone()
+	if z != null and z.prestige_per_rebirth_bonus > 0.0:   # the zone's own rebirth count (reb: quarry rebirths, not reset)
+		v = v.mul(BigNum.from_float(1.0 + z.prestige_per_rebirth_bonus * get_stat(&"reb").to_float()))
 	return v
 
 
