@@ -15,6 +15,7 @@ const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
 const GROUND_SHADER: Shader = preload("res://render/shaders/ground_light.gdshader")
 const FOG_SHADER: Shader = preload("res://render/shaders/ground_fog.gdshader")
+const PAD_SHADER: Shader = preload("res://render/shaders/pad_shadow.gdshader")
 const LIGHT_SHADER: Shader = preload("res://render/shaders/light_grade.gdshader")
 const MAX_LIGHTS: int = 24
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
@@ -62,6 +63,7 @@ var _sway_step: int = -1
 var _prop_mats: Array[ShaderMaterial] = []
 var _rim_key: Array = []
 var _ground_mats: Array[ShaderMaterial] = []
+var _pad_mats: Array[ShaderMaterial] = []   # pad plates: they take the ground's cast shadows (pad_shadow.gdshader)
 var _debug_view: int = 0
 var _relight_key: Vector4 = Vector4(-99.0, 0.0, 0.0, 0.0)
 ## Seasons (core/game_calendar.gd, core/season_look.gd). The calendar clock drives the sun, so the sky and the HUD
@@ -159,6 +161,7 @@ func _ready() -> void:
 	particles.z_index = 6
 	particles.area = area
 	particles.config = _cal_cfg
+	particles.boost = _event_boost()
 	add_child(particles)
 	sway_material = ShaderMaterial.new()
 	sway_material.shader = SWAY_SHADER
@@ -233,6 +236,11 @@ func _process(delta: float) -> void:
 	_update(_t)
 
 
+## Position in the day, 0 midnight to 1, as the sky shows it right now (a debug phase counts).
+func clock_phase() -> float:
+	return model.phase(_model_time(_t))
+
+
 ## Time to feed the model: a debug phase pins the time of day, otherwise session time runs.
 func _model_time(t: float) -> float:
 	if debug_phase >= 0.0:
@@ -240,6 +248,17 @@ func _model_time(t: float) -> float:
 	if _cal != null:
 		return (_cal.elapsed_days - model.clock_of_phase(model.start_phase)) * model.day_seconds
 	return t
+
+
+## Per-season air boost of the seasonal event (content/config/seasonal_events.tres): more petals in spring, motes in
+## summer, falling seeds in autumn, snow in winter. All 1.0 when there is no sim (tools, tests).
+func _event_boost() -> Array[float]:
+	var out: Array[float] = [1.0, 1.0, 1.0, 1.0]
+	var gs: Node = get_node_or_null("/root/GameState") if is_inside_tree() else null
+	if gs != null and gs.get("sim") is Sim:
+		for i in 4:
+			out[i] = (gs.get("sim") as Sim).events.particle_boost(i)
+	return out
 
 
 func _find_calendar() -> void:
@@ -351,6 +370,18 @@ func ground_material(nrm: Texture2D, height: Texture2D) -> ShaderMaterial:
 	return m
 
 
+## Material for the pad plates: the same height-march shadows as the ground, from the plate's own top. `origin` is the
+## ground sprite's position, so pad fragments find their place in the height map.
+func pad_material(height: Texture2D, origin: Vector2) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = PAD_SHADER
+	m.set_shader_parameter("h_tex", height)
+	m.set_shader_parameter("ground_origin", origin)
+	_pad_mats.append(m)
+	_relight_key = Vector4(-99.0, 0.0, 0.0, 0.0)
+	return m
+
+
 ## F6 cycles a debug view of the ground relight: off, albedo, normal, height, shadow only. Shows whether the maps are sampled.
 func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
@@ -430,6 +461,11 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
 			gm.set_shader_parameter("fog_col", fog_col)
 			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
+		for pm: ShaderMaterial in _pad_mats:
+			pm.set_shader_parameter("sun_px", sun_px)
+			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
+			pm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
+			pm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
 	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
 	if rim_key != _rim_key:
 		_rim_key = rim_key

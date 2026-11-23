@@ -229,6 +229,7 @@ func _offline_extras(t: Object) -> void:
 	flat.apply_offline(3600.0)
 	t.ok(sim.get_stat(&"sunlight").to_float() >= 0.0 and (sim.last_offline["tend"] as Dictionary).size() > 0, "tending ran in slices")
 	t.ok(flat.get_stat(&"dewdrop").to_float() <= before_dew, "no tending, no Dewdrops")
+	t.ok((sim.last_offline["spent"] as Dictionary).has(&"sunlight"), "tending records the Sunlight it spent")
 	var live: Sim = t.make_sim()
 	live.stats[&"dewdrop"] = BigNum.from_float(5.0)
 	live.stats[&"sunlight"] = BigNum.zero()

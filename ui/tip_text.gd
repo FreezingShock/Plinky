@@ -75,16 +75,17 @@ static func rebirth(can: bool, gain_text: String, rp_text: String = "") -> Dicti
 		"body": "Start over for Prestige and faster income.", "hint": "Not available yet.", "hint_color": StatStyle.cant()}
 
 
-static func bloom(can: bool, seeds: int, bonus_text: String, need_text: String) -> Dictionary:
-	var sc: Color = StatStyle.color(&"seeds")
+## Tooltip of a zone reset's button (Bloom in the meadow), skinned by its ZoneResetDef.
+static func zone_reset(r: ZoneResetDef, currency_name: String, can: bool, gain: int, need_text: String) -> Dictionary:
+	var sc: Color = StatStyle.color(r.currency)
+	var icon: String = String(r.currency)
 	if can:
-		return {"title": "Bloom", "title_color": sc, "color": sc, "icon": "seeds",
-			"body": "Let the meadow reset and bloom again. Your flowers start over.",
-			"lines": [["Gives ", Tip.icon("seeds"), Tip.seg("+%d" % seeds, StatStyle.gain()), " ", Tip.seg("Seeds", sc)],
-				["Every pad pays ", Tip.seg(bonus_text, StatStyle.gain()), " more for good"]],
-			"hint": "Gates, relics, mastery and Seeds are kept.", "hint_color": StatStyle.gain()}
-	return {"title": "Bloom", "title_color": sc, "color": sc, "icon": "seeds",
-		"body": "Reset the meadow for Seeds and a lasting boost to every pad.", "hint": need_text, "hint_color": StatStyle.cant()}
+		return {"title": r.display_name, "title_color": sc, "color": sc, "icon": icon, "body": r.tip_body,
+			"lines": [["Gives ", Tip.icon(icon), Tip.seg("+%d" % gain, StatStyle.gain()), " ", Tip.seg(currency_name, sc)],
+				["Every pad pays ", Tip.seg("+%d%%" % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()), " more for good"]],
+			"hint": r.keeps_text, "hint_color": StatStyle.gain()}
+	return {"title": r.display_name, "title_color": sc, "color": sc, "icon": icon,
+		"body": r.button_hint, "hint": need_text, "hint_color": StatStyle.cant()}
 
 
 static func zone_button(display_name: String) -> Dictionary:

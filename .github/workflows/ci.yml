@@ -105,9 +105,39 @@ jobs:
       - name: Frame budget (shots/bench.json)
         run: python3 tools/check_frame_budget.py shots/bench.json 150 300 250 1200
 
+  # PRs never edit the version files (the Release workflow stamps them) and game changes carry a changelog fragment.
+  # Escape hatch: the `no-changelog` label. Docs/CI/test-only PRs need no fragment.
+  changelog-guard:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check changelog rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          files=$(gh api --paginate "repos/${{ github.repository }}/pulls/$PR/files" --jq '.[].filename')
+          echo "$files"
+          bad=$(echo "$files" | grep -xE 'CHANGELOG.md|core/build_info.gd|export_presets.cfg' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Do not edit these in a PR (the Release workflow stamps the version): $bad. Add changelog.d/<slug>.patch.md instead (docs/versioning.md)."
+            exit 1
+          fi
+          case ",$LABELS," in *,no-changelog,*) exit 0;; esac
+          if echo "$files" | grep -qE '^(core|data|world|render|ui|boot|audio|theme|fonts|content|assets)/|^project.godot$'; then
+            if ! echo "$files" | grep -qE '^changelog\.d/.+\.(patch|minor)\.md$'; then
+              echo "::error::Game files changed but there is no changelog fragment. Add changelog.d/<slug>.patch.md (or .minor.md), see docs/versioning.md, or label the PR no-changelog."
+              exit 1
+            fi
+          fi
+
   # One stable check name for the whole pipeline ("test"). Skipped engine jobs (docs-only PRs) count as passing.
   test:
-    needs: [changes, unit, sim, play]
+    needs: [changes, unit, sim, play, changelog-guard]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 2

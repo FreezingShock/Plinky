@@ -87,9 +87,9 @@ func _init() -> void:
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_sub.add_theme_color_override("font_color", RelicStyle.dim)
 	head.add_child(_sub)
-	var x_room := Control.new()   # the close X sits over the top right corner
-	x_room.custom_minimum_size = Vector2(18, 1)
-	head.add_child(x_room)
+	var x_gap := Control.new()   # room for the close X floating in the corner
+	x_gap.custom_minimum_size = Vector2(CloseX.HEADER_GAP, 1.0)
+	head.add_child(x_gap)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 4)
 	v.add_child(bar)
@@ -441,7 +441,8 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 			group = r["group"]
 			var h := Label.new()
 			h.text = group.to_upper()
-			h.add_theme_color_override("font_color", StatStyle.color(&"rp") if group == "Rebirth Perks" else RelicStyle.accent)
+			var gc: StringName = StringName(String(r.get("group_color_id", "")))
+			h.add_theme_color_override("font_color", StatStyle.color(gc) if gc != &"" else RelicStyle.accent)
 			_grid_box.add_child(h)
 			flow = HFlowContainer.new()
 			flow.add_theme_constant_override("h_separation", 3)
