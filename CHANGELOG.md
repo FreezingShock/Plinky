@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.18.0 - 2026-11-23
+- Icons are now staged: stat, currency, attribute and perk icons are hand-drawn at 8, 12, 16, 24 and 32 px (new `IconSet` picks the size), and Rebirth Points has a new sprouting-gem icon at every size.
+
 ## 0.17.1 - 2026-11-23
 - Larkmoor grass sway tips regenerated for the new grass, so every flicking tip sits on a blade; a test now checks it.
 
