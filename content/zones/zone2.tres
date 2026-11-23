@@ -17,6 +17,7 @@ base_cash_per_second = 0.25
 press_rate = 0.5
 boost_stat = &"cinder"
 prestige_source_stat = &"ingot"
+prestige_per_rebirth_bonus = 0.25
 entry_source_stat = &""
 entry_grants = {
 "embers": 190.0

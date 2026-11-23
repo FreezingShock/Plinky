@@ -1,0 +1,1 @@
+Zone resets are data: every zone gets its own reset, currency and themed upgrade menu from a content/resets/*.tres ZoneResetDef. Bloom moves onto it and now repeats (resets only Sunlight and Larkmoor's flowers, +25% pad reward per Bloom, 15% lower requirement each time). Tips hide behind confirm cards; gift text and level pips are easier to read.
