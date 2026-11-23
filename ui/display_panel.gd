@@ -9,7 +9,12 @@ signal feedback_requested
 
 const TAB_WIDTH: float = 430.0
 const BODY_HEIGHT: float = 196.0
-const LABEL_WIDTH: float = 130.0
+const LABEL_WIDTH: float = 126.0
+## One colour per tab, from the same fixed stat colours the gallery cards wear. New tabs fall back to PAPER.
+const TAB_COLORS: Dictionary = {
+	"Audio": Color("6fd6e8"), "Display": Color("55aaff"), "Gameplay": Color("f2c94c"),
+	"Access": Color("7be08a"), "Controls": Color("c77dff"), "Data": Color("f08fb0"),
+}
 
 var _win: Window
 var _tab: String = "Audio"
@@ -17,6 +22,7 @@ var _tab_buttons: Dictionary = {}     # tab name -> PixelButton
 var _body: VBoxContainer
 var _scroll: ScrollContainer
 var _hint: Label
+var _title: Label
 var _refreshers: Array[Callable] = []
 var _capture: StringName = &""        # key action waiting for a keypress
 var _cap_mod: int = 0                 # a modifier key held down while a key is being captured
@@ -34,10 +40,11 @@ func bind(win: Window) -> void:
 	v.add_theme_constant_override("separation", 4)
 	add_child(v)
 
-	var title := Label.new()
-	title.theme_type_variation = &"TitleLabel"
-	title.text = "Settings"
-	v.add_child(title)
+	_title = Label.new()
+	_title.theme_type_variation = &"TitleLabel"
+	_title.text = "Settings"
+	v.add_child(_title)
+	v.add_child(PanelDivider.new(2))
 
 	var tab_row := HBoxContainer.new()
 	tab_row.add_theme_constant_override("separation", 2)
@@ -48,6 +55,7 @@ func bind(win: Window) -> void:
 		b.pressed.connect(show_tab.bind(t))
 		tab_row.add_child(b)
 		_tab_buttons[t] = b
+		_paint_tab(b, tab_color(t))
 
 	_scroll = ScrollContainer.new()
 	var scroll: ScrollContainer = _scroll
@@ -60,6 +68,7 @@ func bind(win: Window) -> void:
 	_body.add_theme_constant_override("separation", 4)
 	scroll.add_child(_body)
 
+	v.add_child(PanelDivider.new(2))
 	_hint = Label.new()
 	_hint.custom_minimum_size = Vector2(TAB_WIDTH, 28)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -107,12 +116,17 @@ func show_tab(tab: String) -> void:
 		_body.remove_child(c)
 		c.queue_free()
 	_refreshers.clear()
+	var col: Color = tab_color(tab)
+	add_theme_stylebox_override("panel", AsciiBox.panel(col.darkened(0.2)))
+	_title.add_theme_color_override("font_color", col)
 	for def in SettingsRegistry.entries(tab):
-		_body.add_child(_make_row(def))
+		_body.add_child(_make_card(_make_row(def, col), col))
 	_wire_focus()
 	_hint.text = ""
 	for t: String in _tab_buttons:
-		(_tab_buttons[t] as PixelButton).text = _tag(t == tab, t)
+		var tb: PixelButton = _tab_buttons[t]
+		tb.text = _tag(t == tab, t)
+		tb.add_theme_color_override("font_color", RelicStyle.text if t == tab else tab_color(t))
 	refresh()
 
 
@@ -167,13 +181,52 @@ func _on_window_changed() -> void:
 
 # ---------------------------------------------------------------- rows
 
-func _make_row(def: Dictionary) -> Control:
+## Every row sits on its own small card with a dim outline in the tab colour, like the gallery's stat cards.
+func _make_card(row: Control, col: Color) -> Control:
+	var card := PanelContainer.new()
+	var box: AsciiBox = AsciiBox.make(AsciiBox.Kind.BUTTON, 5.0, 3.0)
+	box.edge_override = col.darkened(0.45)
+	card.add_theme_stylebox_override("panel", box)
+	card.add_child(row)
+	return card
+
+
+static func tab_color(tab: String) -> Color:
+	return TAB_COLORS.get(tab, StatStyle.PAPER) as Color
+
+
+## Title Case for display: every word starts with a capital. Registry strings stay as written, so rows other
+## threads add are covered too. Keeps words already containing capitals or digits (VSync, FPS) as they are.
+static func title_case(s: String) -> String:
+	var out: PackedStringArray = PackedStringArray()
+	for w: String in s.split(" "):
+		out.append(w if w == "" or w != w.to_lower() else w.substr(0, 1).to_upper() + w.substr(1))
+	return " ".join(out)
+
+
+## Tab buttons wear their tab colour: dim outline at rest, brighter on hover, solid when picked.
+static func _paint_tab(b: PixelButton, col: Color) -> void:
+	var rest: AsciiBox = AsciiBox.make(AsciiBox.Kind.BUTTON, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y)
+	rest.edge_override = col.darkened(0.35)
+	var lit: AsciiBox = AsciiBox.make(AsciiBox.Kind.SELECT, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y)
+	lit.edge_override = col.lightened(0.2)
+	var down: AsciiBox = AsciiBox.make(AsciiBox.Kind.PRESSED, AsciiBox.BUTTON_PAD.x, AsciiBox.BUTTON_PAD.y)
+	down.edge_override = col
+	b.add_theme_stylebox_override("normal", rest)
+	b.add_theme_stylebox_override("hover", lit)
+	b.add_theme_stylebox_override("pressed", down)
+	b.add_theme_color_override("font_color", col)
+	b.add_theme_color_override("font_hover_color", col.lightened(0.2))
+
+
+func _make_row(def: Dictionary, col: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 	var kind: int = int(def["kind"])
 	if kind != SettingsRegistry.Kind.ACTION:
 		var l := Label.new()
-		l.text = String(def["label"])
+		l.text = title_case(String(def["label"]))
+		l.add_theme_color_override("font_color", col)
 		l.custom_minimum_size.x = LABEL_WIDTH
 		row.add_child(l)
 	match kind:
@@ -188,7 +241,7 @@ func _make_row(def: Dictionary) -> Control:
 		SettingsRegistry.Kind.KEY:
 			_build_key(row, def)
 	if String(def.get("hint", "")) != "":
-		Tip.bind_all(row, {"title": String(def["label"]) if kind != SettingsRegistry.Kind.ACTION else "", "body": String(def["hint"])})
+		Tip.bind_all(row, {"title": title_case(String(def["label"])) if kind != SettingsRegistry.Kind.ACTION else "", "body": String(def["hint"])})
 	return row
 
 
@@ -274,11 +327,11 @@ func _build_action(row: HBoxContainer, def: Dictionary) -> void:
 	var b := PixelButton.new()
 	b.custom_minimum_size.x = 200
 	var id: StringName = def["id"]
-	var label: String = String(def["label"])
+	var label: String = title_case(String(def["label"]))
 	b.pressed.connect(func() -> void:
 		if bool(def.get("confirm", false)) and _armed != id:
 			_armed = id
-			b.text = "Sure? Press again"
+			b.text = "Sure? Press Again"
 			_hint.text = String(def.get("hint", ""))
 			return
 		_armed = &""
