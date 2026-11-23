@@ -123,6 +123,7 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+				_shadows.add_pad(Vector2(a.sx, a.sy).round())   # before the casters, so their shadows get a copy above the plate
 				_shadows.add_blob(Vector2(a.sx, a.sy), PAD_SHADOW.x, PAD_SHADOW.y)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 

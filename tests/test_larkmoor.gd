@@ -80,6 +80,8 @@ func run(t: Object) -> void:
 			if String(an.kind) == "pad":
 				shadow_pads += 1
 		t.eq(shadows._items.size(), sprites.size() + shadow_pads, "Larkmoor registers a cast shadow for every prop, landmark and pad")
+		t.eq(shadows._pads.size(), shadow_pads, "Larkmoor tells its shadows where every pad is")
+		t.ok(shadows._overlay != null and shadows._overlay.get_child_count() > 0, "prop shadows get a clipped copy above the pads")
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
 	t.ok(lanterns > 0 and sky._lights.size() >= lanterns + 1, "lanterns and the walker get light pools (%d lights)" % sky._lights.size())
