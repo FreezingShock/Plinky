@@ -196,34 +196,80 @@ static func active_screen(win: Window) -> int:
 	return clampi(win.current_screen, 0, maxi(0, screen_count() - 1))
 
 
-## Window sizes that fit the monitor, smallest first, with the monitor's own size last.
-static func resolution_options(win: Window) -> Array[Vector2i]:
-	var idx: int = active_screen(win)
-	var usable: Vector2i = DisplayServer.screen_get_usable_rect(idx).size
-	var native: Vector2i = DisplayServer.screen_get_size(idx)
+## The largest window the monitor can hold: its own size, cut down to the usable rect so the taskbar stays clear.
+static func max_window_size(native: Vector2i, usable: Vector2i) -> Vector2i:
+	return Vector2i(mini(native.x, usable.x), mini(native.y, usable.y))
+
+
+## `sz` cut down to the usable rect, never below BASE (unless the screen itself is smaller).
+static func fit_size(sz: Vector2i, usable: Vector2i) -> Vector2i:
+	var out := Vector2i(mini(sz.x, usable.x), mini(sz.y, usable.y))
+	return Vector2i(maxi(out.x, mini(BASE.x, usable.x)), maxi(out.y, mini(BASE.y, usable.y)))
+
+
+## Window sizes that fit the monitor, smallest first, with the biggest the monitor can hold last. Pure, for tests.
+static func options_for(native: Vector2i, usable: Vector2i) -> Array[Vector2i]:
+	var top: Vector2i = max_window_size(native, usable)
 	var out: Array[Vector2i] = []
 	for sz in COMMON_SIZES:
-		if sz.x <= usable.x and sz.y <= usable.y and sz.x >= BASE.x and sz.y >= BASE.y and sz != native:
+		if sz.x <= usable.x and sz.y <= usable.y and sz.x >= BASE.x and sz.y >= BASE.y and sz != top:
 			out.append(sz)
-	if native.x >= BASE.x and native.y >= BASE.y:
-		out.append(native)
+	if top.x >= BASE.x and top.y >= BASE.y:
+		out.append(top)
 	return out
 
 
+## Window sizes that fit the monitor, smallest first, with the biggest the monitor can hold last.
+static func resolution_options(win: Window) -> Array[Vector2i]:
+	var idx: int = active_screen(win)
+	return options_for(DisplayServer.screen_get_size(idx), DisplayServer.screen_get_usable_rect(idx).size)
+
+
 static func resolution_label(sz: Vector2i, win: Window) -> String:
-	var native: Vector2i = DisplayServer.screen_get_size(active_screen(win))
-	return "%dx%d%s" % [sz.x, sz.y, " (native)" if sz == native else ""]
+	var idx: int = active_screen(win)
+	var native: Vector2i = DisplayServer.screen_get_size(idx)
+	var top: Vector2i = max_window_size(native, DisplayServer.screen_get_usable_rect(idx).size)
+	var tag: String = ""
+	if sz == top:
+		tag = " (native)" if top == native else " (max)"
+	return "%dx%d%s" % [sz.x, sz.y, tag]
 
 
-## Windowed at an exact size, centred on the monitor. Leaves fullscreen if it was on.
+## Windowed at an exact size, centred on the monitor. Leaves fullscreen and maximised if either was on.
 static func set_resolution(win: Window, sz: Vector2i) -> void:
 	load_settings()
-	resolution = Vector2i(maxi(sz.x, BASE.x), maxi(sz.y, BASE.y))
+	var usable: Vector2i = DisplayServer.screen_get_usable_rect(active_screen(win)).size
+	resolution = fit_size(sz, usable)
 	fullscreen = false
 	save_settings()
 	_ignore_resize_until_ms = Time.get_ticks_msec() + 800
+	# A maximised or fullscreen window ignores size changes, so it goes back to windowed first.
+	if win.mode != Window.MODE_WINDOWED:
+		win.mode = Window.MODE_WINDOWED
 	apply(win)
-	win.size = resolution
+	_apply_resolution(win)
+	# The OS finishes a mode change a frame or two late and can restore its old size over ours, so set it again.
+	_apply_resolution.call_deferred(win)
+	_resettle(win)
+
+
+static func _resettle(win: Window) -> void:
+	var tree: SceneTree = win.get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(0.15).timeout
+	if is_instance_valid(win) and not fullscreen and resolution != Vector2i.ZERO and win.mode == Window.MODE_WINDOWED:
+		_ignore_resize_until_ms = Time.get_ticks_msec() + 800
+		_apply_resolution(win)
+
+
+static func _apply_resolution(win: Window) -> void:
+	if fullscreen or resolution == Vector2i.ZERO or not is_instance_valid(win):
+		return
+	if win.mode != Window.MODE_WINDOWED:
+		win.mode = Window.MODE_WINDOWED
+	if win.size != resolution:
+		win.size = resolution
 	_centre(win)
 
 

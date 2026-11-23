@@ -187,3 +187,11 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 `SkyCycle` assigned an untyped array to `Array[Rect2]` (PR #60), which broke the meadow's sky on main. Larkmoor was fine, and no test loaded the meadow scene. Fixed with `.assign()`, added `run_meadow` in `test_lighting.gd` (fails with the exact engine error without the fix), and removed `continue-on-error` from the CI boot smoke test.
 | 2026-11-23 | Audio.preload_all() loads every sfx and amb stream at start; bench HITCH lines say whether the audio cache grew | The Larkmoor Low stall falls at an unpredictable frame on a still scene with flat counters, which matches a random first use, and bird chirps are on a random timer with five lazily loaded variants. A guess, labelled as one in docs/perf.md; the next bench confirms or rules it out. |
 | 2026-11-23 | Larkmoor Low stall left open and documented (docs/perf.md), audio ruled out | The bench on aa46bae still shows one 271 ms frame at frame 230 of the first Larkmoor row on Low, audio cache unchanged, counters flat, steady from run to run. Not worth more guesses without a profiler capture; one frame once per session on the lowest setting is minor. |
+
+## 2026-11-23: Window size picks work when maximised, from fullscreen, and at native size
+Picking a size in Settings > Display did nothing in three cases: the window was maximised (the custom title bar's
+maximise button), it was coming out of fullscreen (the OS restored its old size over ours), or the pick was the
+monitor's native size (taller than the usable area, so the window hung under the taskbar and the clamp reset the pick).
+`set_resolution` now returns to windowed first, clamps to the usable area, and re-applies the size after the mode
+change settles. The last option is the biggest window the monitor holds, labelled "(native)" or "(max)".
+Not run in-engine from the cloud; the PC test thread should confirm.
