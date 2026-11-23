@@ -103,6 +103,16 @@ func _draw_forge(open: bool) -> void:
 	var soot: Color = p[0]
 	var seam_on: Color = p[4] if int(_t * 5.0) % 4 != 0 else p[3]
 	var seam: Color = seam_on if open else p[2]
+	# the doorway: a dark recess in the rock, glowing from the floor up when the gate is open
+	var rx: float = -HALF_SPAN + float(PILLAR_W) * 0.5
+	var rw: float = HALF_SPAN * 2.0 - float(PILLAR_W)
+	draw_rect(Rect2(rx, -HEIGHT, rw, HEIGHT), soot)
+	if open:
+		for i in 14:
+			var gy: float = -float(i) * 1.5
+			var col: Color = p[3] if i < 5 else p[2] if i < 9 else p[1]
+			if i % 2 == 0 or i < 4:
+				draw_rect(Rect2(rx + float(i % 3), gy - 1.0, rw - float(i % 3) * 2.0, 1.5), col)
 	# ground glow under the opening when open
 	if open:
 		draw_rect(Rect2(-HALF_SPAN + 6, -2, HALF_SPAN * 2 - 12, 2), p[3])

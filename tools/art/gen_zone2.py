@@ -289,18 +289,34 @@ def to_rgba(idx, alpha, palette):
 # ---------------------------------------------------------------- Ember Quarry
 TIER_H = 21.0
 BOUNDS_W = (70.0, 10.0, -50.0)         # tier boundaries along w (near to far); tier 0 is nearest and lowest
-PATH_WD = [(128, -10), (112, -44), (92, -52), (70, -48), (52, -10), (36, 44), (14, 50), (0, 18), (-14, -40), (-34, -48),
-           (-52, -36), (-72, 0), (-98, 12)]
-PADS_WD = [(102, -46), (36, 40), (-30, -42)]
-VENTS_WD = [(92, 20), (50, 72), (-22, -4)]
+# Layout: a hub plaza at the middle of the plateau (the spawn), a main road south to north that ends at the gate, and
+# branches west, east and north-west to the three pads. Nothing rises in front of the camera: the near edge of the
+# bowl is a low berm, so the plateau reads as a whole map with ground in every direction.
+HUB_WD = (30, 0)
+MAIN_WD = [(132, 0), (104, -12), (76, 8), (52, -4), HUB_WD, (6, -10), (-20, 0), (-50, -6), (-76, 8), (-100, 12)]
+BRANCHES_WD = [
+    [HUB_WD, (38, -34), (32, -72)],       # west to pad 0
+    [HUB_WD, (26, 34), (32, 72)],         # east to pad 1
+    [(-28, -3), (-30, -26), (-30, -48)],  # north-west to pad 2
+]
+PATHS_WD = [MAIN_WD] + BRANCHES_WD + [[HUB_WD, HUB_WD]]
+PADS_WD = [(32, -72), (32, 72), (-30, -48)]
+VENTS_WD = [(62, -30), (60, 34), (-12, 34)]
 GATE_WD = (-100, 12)
-SPAWN_WD = (128, -12)
+SPAWN_WD = HUB_WD
+
+
+def paths_dist(paths):
+    best = np.full(UU.shape, 1e9)
+    for pts in paths:
+        best = np.minimum(best, polyline_dist(UU, VV, [wd_uv(w, d) for w, d in pts]))
+    return best
 
 
 def build_quarry(seed=0):
     sc = Scene('quarry')
-    path_pts = [wd_uv(w, d) for w, d in PATH_WD]
-    dpath = polyline_dist(UU, VV, path_pts)
+    path_pts = [wd_uv(w, d) for w, d in MAIN_WD]
+    dpath = paths_dist(PATHS_WD)
     corridor = blur(smooth(30, 8, dpath), 3)           # 1 on the path, 0 away from it
     w = (UU + VV) / 2 - 200
     d = UU - VV
@@ -317,7 +333,7 @@ def build_quarry(seed=0):
     # rough floors and rock noise
     H += (fbm(UU / 9.0, VV / 9.0, 3, 5) - .5) * 2.4 * (1 - corridor * .7)
     # lava pools (carved) and seams
-    pools = [(wd_uv(40, -58), 13.0), (wd_uv(-18, 62), 13.0), (wd_uv(-78, -44), 11.0)]
+    pools = [(wd_uv(-8, -66), 13.0), (wd_uv(-52, 60), 12.0), (wd_uv(-80, -44), 11.0), (wd_uv(96, 58), 12.0)]
     lava = np.zeros((N, N), bool)
     for (pu, pv), pr in pools:
         rr = np.hypot(UU - pu, VV - pv) + (fbm(UU / 8.0, VV / 8.0, 2, 21) - .5) * 6
@@ -327,16 +343,21 @@ def build_quarry(seed=0):
     seam = (ridge < 0.011) & (corridor < 0.5) & (dpath > 16)
     # rim wall (the quarry bowl)
     rim = smooth(RE * 0.97, RE * 1.06, RR)
-    H += rim * (50 + 22 * fbm(UU / 30.0, VV / 30.0, 2, 41))
+    nearw = smooth(20, 90, w)      # 0 at the back and middle, 1 toward the camera: the near rim is only a low berm
+    rim_scale = 1.0 - 0.9 * nearw
+    H += rim * (50 + 22 * fbm(UU / 30.0, VV / 30.0, 2, 41)) * rim_scale
     outer = smooth(RE * 1.06, RE * 1.5, RR)
-    H += outer * 40
+    H += outer * 40 * rim_scale
     sc.H = H
     slope = np.hypot(*np.gradient(blur(H, 1)))
     M = np.full((N, N), M_FLOOR, np.int32)
     M[slope > 0.9] = M_WALL
     M[rim > 0.35] = M_WALL
     M[seam & (M == M_FLOOR)] = M_SEAM
-    M[(dpath < 6.2) & (slope < 0.95) & (rim < .2)] = M_PATH
+    hub_u, hub_v = wd_uv(*HUB_WD)
+    gate_u, gate_v = wd_uv(*GATE_WD)
+    plaza = (np.hypot(UU - hub_u, VV - hub_v) < 15.5) | (np.hypot(UU - gate_u, VV - gate_v) < 14.0)
+    M[((dpath < 6.2) | plaza) & (slope < 0.95) & (rim < .2)] = M_PATH
     M[lava] = M_LAVA
     vents = [wd_uv(*v) for v in VENTS_WD]
     for vu, vv in vents:
@@ -362,7 +383,7 @@ def pad_clear(sc, wd, r=14):
 
 def populate_quarry(sc, rng):
     path_pts, vents = sc.paths
-    dpath = polyline_dist(UU, VV, path_pts)
+    dpath = paths_dist(PATHS_WD)
     anchor_pts = [wd_uv(*p) for p in PADS_WD + VENTS_WD + [GATE_WD, SPAWN_WD]]
 
     def free(u, v, r, pad=14, vent=11, pathgap=9, lavagap=3):

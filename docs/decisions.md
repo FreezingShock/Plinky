@@ -411,3 +411,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Not run in-engine: no Godot in the cloud. CI runs the headless tests and sim; the PC pass should judge the bar at 1x and 3x, the flash and the tooltip.
 
 - Fix (v0.14.1): the stage-up pop grew the stage name from 14 to 16 pt, which made the row taller and pushed the bar to the panel border. Removed; stage-ups are colour and frame flash only, and the stage label has a fixed minimum width.
+
+## 2026-11-23: Ember Quarry map redesign
+- Nathan: no rock in front of the camera cut off by the frame; the map should face the camera with a path and areas in all directions around the origin, and a real gate. The near rim of the bowl is now a low berm (`rim_scale` falls to 0.1 toward the camera) so the plateau shows whole; the tall rim stays at the back and sides.
+- Layout (`tools/art/gen_zone2.py`): hub plaza at the middle (spawn), main road south to north ending at a stone landing under the gate, branches west, east and north-west to the three pads, vents between. Pads, vents and spawn are still snapped to visible ground.
