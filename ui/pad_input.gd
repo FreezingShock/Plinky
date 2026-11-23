@@ -29,6 +29,8 @@ static func ensure() -> void:
 			[&"plinky_settings", [], [JOY_BUTTON_START], []],
 			[&"plinky_relics", [], [JOY_BUTTON_Y], []],
 			[&"plinky_upgrades", [], [JOY_BUTTON_X], []],
+			[&"plinky_stats", [], [JOY_BUTTON_BACK], []],
+			[&"plinky_attributes", [], [JOY_BUTTON_LEFT_STICK], []],
 			[&"plinky_tab_prev", [], [JOY_BUTTON_LEFT_SHOULDER], []],
 			[&"plinky_tab_next", [], [JOY_BUTTON_RIGHT_SHOULDER], []],
 			[&"plinky_zoom_in", [KEY_EQUAL, KEY_KP_ADD, KEY_PAGEUP], [JOY_BUTTON_RIGHT_SHOULDER], []],
