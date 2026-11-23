@@ -634,7 +634,7 @@ func _roll_relic_drop() -> StringName:
 func step(dt: float) -> void:
 	play_seconds += dt
 	if run_stats.step(dt, zone_id):
-		run_stats.record_income(income_per_second(&"cash"))
+		run_stats.record_income(income_per_second(&"sunlight"))
 	calendar.advance(dt)
 	if momentum_hold > 0.0:
 		momentum_hold = maxf(0.0, momentum_hold - dt)

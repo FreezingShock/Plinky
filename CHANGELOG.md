@@ -8,6 +8,7 @@ Every PR adds a line under **Unreleased**. `python3 tools/bump_version.py minor|
 under a new version heading and updates the version everywhere.
 
 ## Unreleased
+- The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, per-tier pad flowers and locked buds, re-spaced pad rows.
 
 ## 0.24.0 - 2026-11-23
 - New press popups: one pooled node draws every number, rolls a motion, easing and size per press, stacks held presses into one number, merges quick clicks and keeps numbers off each other. Escalating streak tiers (Gold, Ice, Rainbow, Chroma, Galaxy) change colour, sparkles, pad ripple and sound. Relic pulses now ripple outward as echoes with spark links and their own sound. Twelve new sounds. Respects Quiet pad clicks, Reduce flashing and Calm camera.

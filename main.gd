@@ -159,7 +159,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
-	var mult: float = sim.get_stat(&"mult").to_float() + 1.0
+	var boost_id: StringName = sim.current_zone().boost_stat if sim.current_zone() != null else &""
+	var mult: float = (sim.get_stat(boost_id).to_float() if boost_id != &"" else 0.0) + 1.0
 	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
 		pad_glow.multiplier = mult
 	if sim.zone_id != _shown_zone and not _crossing:
@@ -306,7 +307,7 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
-	var first: TexelPad = pads.get(&"m1") as TexelPad
+	var first: TexelPad = pads.get(&"sprout_1") as TexelPad
 	if first != null:
 		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
 		pointer = PadPointer.new()
@@ -524,7 +525,7 @@ func _after_crossing(zone_id: StringName) -> void:
 
 ## Streak and critter payouts float up as a gold popup at the walker or the critter.
 func _on_bonus_gained(kind: StringName, gains: Dictionary) -> void:
-	var g: BigNum = gains.get(&"cash") as BigNum
+	var g: BigNum = gains.get(&"sunlight") as BigNum
 	if g == null:
 		return
 	var at: Vector2 = critter.position if (kind == &"critter" and critter != null) else walker.position

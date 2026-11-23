@@ -24,8 +24,21 @@ const BUY_GREEN: Color = Color("5fd068")
 const BUY_RED: Color = Color("d8483c")
 ## Secondary colour = the stat this pad raises. Unknown stats fall back to paper.
 const STAT_COLORS: Dictionary = {
+	&"dewdrop": Color("e4f1ff"), &"clover": Color("6be86b"), &"thistle": Color("7f9bff"),
+	&"heather": Color("c27cff"), &"foxglove": Color("ffb62e"), &"starbloom": Color("ff7bff"),
 	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
 }
+## One 5x3 flower per tier (# = petal in the stat colour, c = bright heart), drawn on both wings of the plate.
+const FLOWERS: Dictionary = {
+	&"sprout": ["#...#", ".#.#.", "..c.."],
+	&"clover": ["##.##", "#####", "..c.."],
+	&"thistle": ["#.#.#", ".#c#.", "..#.."],
+	&"heather": ["#.#.#", "#.#.#", "..c.."],
+	&"foxglove": ["..c..", ".###.", "#####"],
+	&"starbloom": ["..#..", "##c##", ".#.#."],
+}
+var tier_row: StringName = &""
+var locked: bool = false
 var rarity: RarityDef
 var emblem_bits: int = 0  # 15 bits: the unique pattern for this pad
 var stat_color: Color = Color("f6efd9")
@@ -68,6 +81,7 @@ func _ready() -> void:
 	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if b != null:
 		stat_color = STAT_COLORS.get(b.reward_stat, stat_color)
+		tier_row = b.row
 	hold = HoldPress.new()
 	add_child(hold)
 	hold.tick.connect(_press)
@@ -88,6 +102,7 @@ func _physics_process(delta: float) -> void:
 		left.emit()
 	standing = inside
 	affordable = sim.can_afford(button_id)
+	locked = sim.is_pad_locked(button_id)
 	_progress_t -= delta
 	if _progress_t <= 0.0:
 		_progress_t = 0.2
@@ -214,7 +229,7 @@ func _pulse_step() -> int:
 func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
-		| _level_step() << 24 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
+		| _level_step() << 24 | int(locked) << 26 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -269,8 +284,8 @@ func _draw() -> void:
 	# Top face.
 	var face: Color = palette[6]
 	var face_r: Color = palette[6]
-	if st == PadState.FAR:
-		face = palette[2]
+	if st == PadState.FAR or locked:
+		face = palette[1] if locked else palette[2]
 		face_r = palette[2]
 	_rows(0, top, hx, hy, face, face_r)
 	if st != PadState.FAR:
@@ -313,7 +328,10 @@ func _draw() -> void:
 		if rarity.rank >= 4:
 			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
-	_draw_emblem(top, ink)
+	if FLOWERS.has(tier_row):
+		_draw_flowers(top, ink)
+	else:
+		_draw_emblem(top, ink)
 	# Stat colour: a gem on each corner of the plate plus a centre pip.
 	for g: Vector2i in [Vector2i(-hx + 2, 0), Vector2i(hx - 2, 0), Vector2i(0, -hy + 1), Vector2i(0, hy - 1)]:
 		draw_rect(Rect2(g.x - 1, top + g.y, 3 if g.y == 0 else 3, 1), stat_color)
@@ -328,6 +346,31 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
+
+
+## The tier flower on both wings of the plate, one more petal-dot per pad in the row (1..3) above the centre.
+## Locked pads show a closed bud in dull stone until the tier below opens.
+func _draw_flowers(top: int, ink: Color) -> void:
+	var rows: Array = FLOWERS[tier_row]
+	var petal: Color = palette[3] if locked else stat_color
+	var heart: Color = palette[4] if locked else Color.WHITE
+	for side: int in [-1, 1]:
+		var cx: int = side * 7
+		for ry in 3:
+			var line: String = rows[ry]
+			if locked and ry < 2:
+				continue   # a bud: only the lowest row shows
+			for rx in 5:
+				var ch: String = line[rx]
+				if ch == ".":
+					continue
+				draw_rect(Rect2(cx - 2 + rx, top + ry - 1, 1, 1), heart if ch == "c" else petal)
+	var n: int = 1
+	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
+	if b != null:
+		n = b.row_index + 1
+	for i in n:
+		draw_rect(Rect2(i * 2 - (n - 1), top - 4, 1, 1), ink if locked else petal)
 
 
 ## Unique 5x5 emblem per pad (mirrored, so it reads as a badge), projected onto the 2:1 plate. The centre stays clear
