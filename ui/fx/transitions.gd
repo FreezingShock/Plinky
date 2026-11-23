@@ -52,13 +52,13 @@ func _set_wipe(v: float) -> void:
 
 func cross_zone(swap: Callable, cover := 0.45, hold := 0.12, clear := 0.55) -> void:
 	if FxConfig.reduce_flashing:
-		swap.call()
+		await swap.call()
 		return
 	var t := create_tween()
 	t.tween_method(_set_wipe, 0.0, 1.0, cover)
 	await t.finished
 	_set_wipe(1.0)
-	swap.call()
+	await swap.call()   # may spread its work over several frames under the full-cover wipe
 	await get_tree().create_timer(hold).timeout
 	var t2 := create_tween()
 	t2.tween_method(_set_wipe, 1.0, 0.0, clear)
