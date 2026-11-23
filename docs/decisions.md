@@ -715,3 +715,9 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Nathan asked for Qd and Qn capitalised. This reverses the lowercase q from PR #193, which QA raised because a Q in "+100QnVg" read as a 0 at popup size. Only Qd and Qn change (`N_SMALL`, `UNITS`, tests). qg, qq, qe and qi stay lowercase, so compound names now mix cases (a name with Qd next to one with qg). Taste call to revisit: capitalise the rest too, or keep the split.
 - Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
 - Not run in engine: no Godot in the cloud. CI runs the headless tests.
+
+## 2026-11-23 Repo trim for faster, cheaper threads
+- Removed 10 unreferenced GDScript files (`world/player.gd`, `world/button_pad.gd`, `ui/district_banner.gd`, `ui/fx/counter_tick.gd`, and six tool scripts with no scene, test or doc reference). Reasoning: each had zero references (class names and paths checked); git history keeps them.
+- Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
+- `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
+- Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.
