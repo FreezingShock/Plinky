@@ -9,6 +9,8 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.33.0 - 2026-11-23
+- Zone resets are data: every zone gets its own reset, currency and themed upgrade menu from a content/resets/*.tres ZoneResetDef (standing rule). Bloom moves onto it and now repeats: it only resets Sunlight and Larkmoor's flowers, pays +25% pad reward per Bloom, and asks 15% less each time (floor 30%). Gifts are stronger. Tips hide behind confirm cards; gift text and level pips are easier to read. Needs tools/sim_bloom.gd run on the PC.
 ## 0.32.0 - 2026-11-23
 - Golden light holds through the day: new SkyModel.golden() curve (warm, long shadows, rim light, rays and a thin haze fade out slowly toward noon instead of ending an hour after sunrise), richer grade curves for morning, noon, dusk and night, saturation and contrast in the full-frame light pass, warmer rim and ray colours, deeper night blue with warmer lantern pools. New tools/golden_shots.tscn captures the sky at fixed times of day.
 

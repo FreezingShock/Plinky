@@ -583,3 +583,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Open:** pacing is from `tools/sim_bloom.gd`, a greedy floor with no walking, relics or attributes. Taste call: Bloom may want to reset Sprout and Clover progress too (it does, as stats), and the first-time teach tip text.
 
 - 2026-11-23: Golden-hour pass. 08:08 spring looked best because the grade, long shadows and tint were all at once; low_sun() ended at elevation 0.62. Added SkyModel.golden() (floor 0.35 at noon, reach 0.95) driving rim, ground relight, shadow length (elevation squared), light-pass side/split, new sat/contrast in light_grade, wider god rays (zero at noon) and a haze bump. All costs stay at one full-frame pass already present; rays skip at noon. Pond water untouched. Not run in-engine from the cloud.
+
+## STANDING RULE: every zone has its own reset (v0.33.0)
+- 2026-11-23, Nathan: global Prestige is retired as the main loop. Every zone gets its own rebirth/ascension with its own currency and its own themed upgrade menu, in the same menu style as Upgrades. Meadow = Bloom (Seeds, Bloom Gifts). Ember Quarry = Reforge later. Keep layers modest.
+- Built as `ZoneResetDef` (data/zone_reset_def.gd), one .tres per zone in content/resets/. A new zone needs: the def, a currency stat, an icon at 8/16/24/32 px, a colour in StatStyle.COLORS, and gift attributes with `currency` set to it.
+- Bloom repeat pacing: resets only Sunlight and Larkmoor's flowers (not Dewdrops or Clover Leaves), +25% pad reward per use, requirement shrinks 15% per use down to 30%. Unmeasured in-engine; run tools/sim_bloom.gd on the PC.
