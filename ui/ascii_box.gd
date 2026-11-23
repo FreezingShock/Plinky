@@ -3,7 +3,7 @@ extends StyleBox
 ## Notched, dithered frame drawn texel by texel (Spleen has no box-drawing glyphs).
 ## Kinds: PANEL, BUTTON, HOVER, PRESSED, DISABLED. Colours come from RelicStyle (zone palette).
 
-enum Kind { PANEL, BUTTON, HOVER, PRESSED, DISABLED }
+enum Kind { PANEL, BUTTON, HOVER, PRESSED, DISABLED, SELECT }
 
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
@@ -63,6 +63,9 @@ func _draw(ci: RID, rect: Rect2) -> void:
 			fill = RelicStyle.accent
 		Kind.DISABLED:
 			edge = RelicStyle.ink.lerp(RelicStyle.edge, 0.3)
+		Kind.SELECT:   # tiles: a solid lifted panel in accent, so the label never sits on noise
+			edge = RelicStyle.accent
+			fill = RelicStyle.ink.lerp(RelicStyle.edge, 0.22)
 	_px(ci, x, y, w, h, fill)
 	# 1 texel border with the corners notched.
 	_px(ci, x + 2, y, w - 4, 1, edge)
@@ -81,6 +84,9 @@ func _draw(ci: RID, rect: Rect2) -> void:
 		_dither(ci, Rect2(x + w - 3, y + 3, 1, h - 6), edge, 6)
 	elif kind == Kind.HOVER:
 		_dither(ci, Rect2(x + 2, y + 2, w - 4, h - 5), edge, 3, phase)
+		_px(ci, x + 2, y + h - 2, w - 4, 1, edge)
+	elif kind == Kind.SELECT:   # dither only as a quiet accent: one dotted row under the border
+		_dither(ci, Rect2(x + 3, y + h - 3, w - 6, 1), edge, 6)
 		_px(ci, x + 2, y + h - 2, w - 4, 1, edge)
 	elif kind == Kind.DISABLED:
 		_dither(ci, Rect2(x + 2, y + 2, w - 4, h - 4), edge, 3)

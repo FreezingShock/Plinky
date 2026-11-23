@@ -11,6 +11,17 @@ under a new version heading and updates the version everywhere.
 
 ## 0.11.0 - 2026-11-23
 - Stats and Attributes are now a gallery: 32 px icon cards, hover info strip, and a detail page per stat with its sources (where it comes from, how to get more). New clean symmetric icon set, and `sim.stat_sources`. Attribute detail pages let you buy the next level.
+## 0.10.9 - 2026-11-23
+- HUD currency panel: each stat name (Cash, Multiplier, Rebirths, Slag, Prestige) is drawn in Pixelify Sans in that stat's own tooltip colour instead of plain green Spleen; the name column sizes to the widest name so the numbers stay aligned.
+
+## 0.10.8 - 2026-11-23
+- Much less dither: the time-of-day grade, rain, sun-side light wash, edge shade, fog, haze, mist, god rays and depth fog are now smooth tints and soft alpha instead of checker patterns. Relit surfaces step through the palette with only a narrow dithered seam, and the season change spreads in coarse patches instead of a texel mosaic.
+
+## 0.10.7 - 2026-11-23
+- Hamburger menu polish: tiles hover and focus as a solid lifted panel (dither only as one dotted row under the border) so labels read cleanly; the ">" marker on Close menu, Quit to title and Quit game sits a fixed gap before the first letter on whole texels; Pixelify Sans renders without grey anti-aliasing.
+
+## 0.10.6 - 2026-11-23
+- Night is a solid cool tint instead of a blue checkerboard: the shade only dithers between two close tints where it thins (light pool edges, dusk, dawn), so props stay readable. Lantern and pool glow use the same soft ladder instead of a noisy dot blob.
 
 ## 0.10.5 - 2026-11-23
 - Edge shade and full-frame light pass now step on the world texel grid and read the camera transform from the shared globals, so they no longer drift against the ground at zoom 3 (PC pan diff: 41% match with them on, 96.7% off).
