@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"nucleus_hearth"
-display_name = "Banked Embers"
+display_name = "Warm Start"
 effect = &"ember_start"
 per_level = 100.0
 cap = 10

@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"nucleus_furnace"
-display_name = "Stoked Furnace"
+display_name = "Stoked Fire"
 effect = &"ember_rate"
 per_level = 0.1
 cap = 10

@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"nucleus_plates"
-display_name = "Hammered Plates"
+display_name = "Anvil Plates"
 effect = &"pad_yield"
 per_level = 0.06
 cap = 10

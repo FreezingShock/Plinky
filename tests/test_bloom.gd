@@ -100,7 +100,7 @@ func run(t: Object) -> void:
 	t.near(sim.reset_start_value(rid, &"sunlight").to_float(), (sim.stat_defs[&"sunlight"] as StatDef).start + gift.per_level, 1e-9, "Head start adds Sunlight")
 	sim.stats[&"seeds"] = BigNum.zero()
 	t.ok(not sim.buy_attribute(&"bloom_soil"), "no Seeds, no gift")
-	t.eq(UpgradeText.ordered(sim).back().currency, &"seeds", "Bloom gifts list last")
+	t.eq(UpgradeText.ordered(sim).back().currency, &"shards", "the newest reset's gifts list last")
 
 	var soil: AttributeDef = sim.attribute_defs[&"bloom_soil"]
 	sim.zone_id = &"zone1"

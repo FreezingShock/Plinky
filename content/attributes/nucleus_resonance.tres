@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"nucleus_resonance"
-display_name = "Core Resonance"
+display_name = "Core Echo"
 effect = &"nucleus_bonus"
 per_level = 0.02
 cap = 10

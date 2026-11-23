@@ -42,6 +42,7 @@ func run(t: Object) -> void:
 	t.eq(sim.reset_gain(rid), 4, "four times pays double")
 	for sid: String in rd.resets:
 		sim.stats[StringName(sid)] = BigNum.from_float(77.0)
+	sim.stats[&"emberheart"] = BigNum.from_float(sim.reset_ref(rid) * 4.0)   # the gate stat decides the payout
 	sim.stats[&"clover"] = BigNum.from_float(40.0)
 	sim.dev_open_tiers()
 	var rebirths: int = sim.rebirth_count
@@ -63,12 +64,12 @@ func run(t: Object) -> void:
 	sim.stats[&"shards"] = BigNum.from_float(500.0)
 	var hearth: AttributeDef = sim.attribute_defs[&"nucleus_hearth"]
 	var cost: float = sim.attribute_cost(hearth.id).to_float()
-	t.ok(sim.buy_attribute(hearth.id), "buy Banked Embers")
+	t.ok(sim.buy_attribute(hearth.id), "buy Warm Start")
 	t.near(sim.get_stat(&"shards").to_float(), 500.0 - cost, 1e-9, "Core Shards drop by the cost")
-	t.near(sim.reset_start_value(rid, &"embers").to_float(), (sim.stat_defs[&"embers"] as StatDef).start + hearth.per_level, 1e-9, "Banked Embers adds starting Embers")
+	t.near(sim.reset_start_value(rid, &"embers").to_float(), (sim.stat_defs[&"embers"] as StatDef).start + hearth.per_level, 1e-9, "Warm Start adds starting Embers")
 	var base_income: float = sim.income_per_second(&"embers").to_float()
 	sim.attr_levels[&"nucleus_furnace"] = 10
-	t.near(sim.income_per_second(&"embers").to_float(), base_income * (1.0 + 10.0 * 0.10), 1e-6, "Stoked Furnace raises Embers income")
+	t.near(sim.income_per_second(&"embers").to_float(), base_income * (1.0 + 10.0 * 0.10), 1e-6, "Stoked Fire raises Embers income")
 	sim.attr_levels.clear()
 	sim.stats[&"emberheart"] = BigNum.from_float(sim.reset_ref(rid) * 4.0)
 	sim.attr_levels[&"nucleus_veins"] = 10
