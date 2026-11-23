@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.26.5 - 2026-11-23
+- Balance: the four linear relics (Gold Purse, Stopwatch, Growth Crystal, Sharp Fang) now diminish, so long play tops out near +100% per relic instead of running away; Gold Purse and Growth Crystal step down to 6% and 10%. Pad yield caps at 15 (was 25), Quick study at 10 (was 20), Press rate at 15 (was 20). Larkmoor pacing, pads, mastery, Rebirth Points and Momentum are unchanged.
+
 ## 0.26.4 - 2026-11-23
 - Relics menu: the rarity name is back on each card (small, dim) with an On or Swap mark, bonuses wrap whole instead of mid-phrase, and the collection shows three card rows.
 
