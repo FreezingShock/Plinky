@@ -17,6 +17,7 @@ func run(t: Object) -> void:
 	var body := Control.new()
 	body.custom_minimum_size = Vector2(40, 80)
 	box.add_child(body)
+	t.root.add_child(box)   # minimum sizes only update inside the tree
 	t.eq(box.get_combined_minimum_size().y, 80.0, "open box shows the whole body")
 	box.set_open(false, false)
 	t.eq(box.get_combined_minimum_size().y, 0.0, "shut box has no height")
