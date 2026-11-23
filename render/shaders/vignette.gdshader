@@ -33,10 +33,8 @@ void fragment() {
 	vec2 q = (tc - area_center) / area_half;
 	float d = length(q * vec2(0.9, 1.15));
 	float v = smoothstep(0.80, 1.30, d) * strength;
-	float thr = bayer4(ivec2(floor(wt)));
-	vec3 m = vec3(1.0);
-	if (thr < v) {
-		m = (thr < v * 0.4) ? deep : tint;
-	}
+	// a smooth, quiet edge shade (no dither): toward the tint, then a little deeper at the very edge
+	vec3 m = mix(vec3(1.0), tint, clamp(v * 1.6, 0.0, 1.0));
+	m = mix(m, deep, clamp((v - 0.3) * 0.8, 0.0, 0.4));
 	COLOR = vec4(m, 1.0);
 }

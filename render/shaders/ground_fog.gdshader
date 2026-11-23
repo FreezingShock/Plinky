@@ -41,9 +41,6 @@ void fragment() {
 	float far_k = 1.0 - clamp((p.y - top_y) / span_y, 0.0, 1.0);
 	float n = vnoise(vec2((p.x - drift) * 0.018, p.y * 0.07)) * 0.6 + vnoise(vec2((p.x - drift * 1.8) * 0.045 + 11.0, p.y * 0.16)) * 0.4;
 	float dens = amount * smoothstep(0.32, 0.78, n) * (0.35 + 0.65 * far_k);
-	if (dens > bayer4(t) * 0.6 + 0.04) {
-		COLOR = vec4(fog_col, 0.55);
-	} else {
-		COLOR = vec4(0.0);
-	}
+	// soft alpha, no dither: fog is a gentle wash over the ground
+	COLOR = vec4(fog_col, clamp(dens * 0.5, 0.0, 0.5));
 }
