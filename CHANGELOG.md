@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.33.1 - 2026-11-23
+- Low graphics quality now really lowers cost: the ground light uses fewer shadow and occlusion taps and the full-frame light grade (the one pass that copies the screen) is skipped, about 10 to 13% faster on a software-GPU stand-in. High is unchanged. The ground shader skips shadow work when no shadow applies, more shaders are pre-compiled at start, and CI now fails above 250 draw calls or 1200 nodes. New `tools/bench_weak.sh` runs the bench on a CPU rasteriser.
+
 ## 0.33.0 - 2026-11-23
 - The HUD stat strip is customizable and saved per game. Right-click a row to hide it, or press the pencil under the strip for edit mode: move rows up and down, hide them, add stats from icon-only chips (instant tooltip names each one), up to 10 rows, and Reset to the zone's Default layout. Each zone keeps its own layout (flower ladder, Ember Quarry), stats met in other zones can be pinned, older saves start on Default. Settings > Gameplay gets Edit Stat Strip, Reset Stat Strip, Strip Gain Rates, Strip Unearned Rows and Right-click Hides a Row. New `tools/hud_shot.tscn -- edit` fixture.
 
