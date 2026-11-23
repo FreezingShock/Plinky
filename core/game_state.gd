@@ -41,6 +41,7 @@ func _ready() -> void:
 	sim.calendar.month_changed.connect(func(m: int) -> void: bus.month_changed.emit(m))
 	sim.calendar.season_changed.connect(func(s: int) -> void: bus.season_changed.emit(s))
 	sim.calendar.year_changed.connect(func(y: int) -> void: bus.year_changed.emit(y))
+	sim.achievement_unlocked.connect(func(id: StringName) -> void: bus.achievement_unlocked.emit(id))
 	sim.offline_gained.connect(func(s: float, g: Dictionary) -> void: bus.offline_gained.emit(s, g))
 
 

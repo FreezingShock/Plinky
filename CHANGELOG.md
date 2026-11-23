@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.36.1 - 2026-11-23
+## 0.37.1 - 2026-11-23
 - Low graphics quality now really lowers cost: the ground light uses fewer shadow and occlusion taps and the full-frame light grade (the one pass that copies the screen) is skipped, about 10 to 13% faster on a software-GPU stand-in. High is unchanged. The ground shader skips shadow work when no shadow applies, more shaders are pre-compiled at start, and CI now fails above 250 draw calls or 1200 nodes. New `tools/bench_weak.sh` runs the bench on a CPU rasteriser.
+
+## 0.37.0 - 2026-11-23
+- Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
 
 ## 0.36.0 - 2026-11-23
 - Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
