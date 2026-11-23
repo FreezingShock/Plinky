@@ -82,3 +82,29 @@ func run(t: Object) -> void:
 	rb.scare_all()
 	t.ok(rb._birds.size() == 3 and float(rb._birds[0].scared) == 0.0, "scare_all startles every perched bird")
 	rb.free()
+	_check_tips(t, "res://world/larkmoor_life.json", "res://assets/art/zone1b/larkmoor/ground.png", "Larkmoor")
+
+
+## Every sway tip in `json_path` must sit on a palette 4 texel of the backdrop at `ground_path`, through the data's origin.
+func _check_tips(t: Object, json_path: String, ground_path: String, label: String) -> void:
+	var file: FileAccess = FileAccess.open(json_path, FileAccess.READ)
+	t.ok(file != null, "%s life data opens" % label)
+	if file == null:
+		return
+	var data: Dictionary = JSON.parse_string(file.get_as_text()) as Dictionary
+	var img: Image = Image.load_from_file(ground_path)
+	t.ok(img != null, "%s backdrop loads" % label)
+	if img == null:
+		return
+	var light: Color = Palettes.colors(Palettes.MEADOW)[4]
+	var org: Array = data.get("backdrop_origin", [0, 0]) as Array
+	var bad: int = 0
+	var sway: Array = data.get("sway", []) as Array
+	for p: Variant in sway:
+		var a: Array = p as Array
+		var tx: int = int(a[0]) - int(org[0])
+		var ty: int = int(a[1]) - int(org[1])
+		if tx <= 0 or ty <= 0 or tx >= img.get_width() - 1 or ty >= img.get_height() - 1 or not img.get_pixel(tx, ty).is_equal_approx(light):
+			bad += 1
+	t.ok(sway.size() >= 60, "%s has at least 60 sway tips (got %d)" % [label, sway.size()])
+	t.eq(bad, 0, "every %s sway tip sits on a palette 4 texel of its backdrop" % label)
