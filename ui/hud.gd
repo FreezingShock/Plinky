@@ -26,7 +26,8 @@ var _upgrades_box: VBoxContainer
 var _prestige_label: Label
 var _offline: Label
 var _clock: float = 0.0
-var _attr_rows: Dictionary = {}   # attribute id -> [Label, Button]
+var _attr_rows: Dictionary = {}   # attribute id -> UpgradeRow
+const UPGRADE_LIST_HEIGHT: float = 214.0   ## about eight rows; more scroll
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -236,35 +237,34 @@ func _build_upgrades() -> void:
 	_prestige_avail.add_theme_color_override("font_color", RelicStyle.dim)
 	_upgrades_box.add_child(_prestige_avail)
 	_upgrades_box.add_child(PanelDivider.new())
-	var ids: Array = sim.attribute_defs.keys()
-	ids.sort()
-	for aid: StringName in ids:
-		var a: AttributeDef = sim.attribute_defs[aid]
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 6)
-		_upgrades_box.add_child(h)
-		var ic := TextureRect.new()
-		ic.texture = load("res://assets/icons/%s.png" % _attr_icon(a)) as Texture2D
-		ic.custom_minimum_size = Vector2(16, 16)
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_child(ic)
-		var l := Label.new()
-		l.custom_minimum_size.x = 170
-		h.add_child(l)
-		var b := PixelButton.new()
-		b.pressed.connect(func() -> void: GameState.buy_attribute(aid))
-		h.add_child(b)
-		_attr_rows[aid] = [l, b]
-		Tip.bind_all(h, func() -> Variant:
-			return TipText.attribute(a, sim.attr_level(aid), sim.attribute_cost(aid).format(), not sim.prestige_available().lt(sim.attribute_cost(aid))))
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, UPGRADE_LIST_HEIGHT)
+	scroll.follow_focus = true
+	_upgrades_box.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 4)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for a: AttributeDef in UpgradeText.ordered(sim):
+		var row := UpgradeRow.new()
+		list.add_child(row)
+		row.setup(a)
+		row.fly_target = func() -> Vector2: return _prestige_avail.global_position + Vector2(40.0, 0.0)
+		row.buy_pressed.connect(_buy_upgrade)
+		row.refresh(UpgradeText.state(sim, a))
+		var eff: StringName = a.effect
+		Tip.bind_all(row, func() -> Variant: return UpgradeText.tip(row.state(), eff))
+		_attr_rows[a.id] = row
 
 var _prestige_avail: Label
 
 
-func _attr_icon(a: AttributeDef) -> String:
-	var map: Dictionary = {&"walk_speed": "walk", &"press_rate": "rate", &"crit_chance": "crit", &"luck": "luck", &"offline_gain": "offline"}
-	return String(map.get(a.id, "prestige"))
+## A row asked to buy. The sim decides; the row plays the animation only if it went through.
+func _buy_upgrade(aid: StringName) -> void:
+	if GameState.buy_attribute(aid):
+		var row: UpgradeRow = _attr_rows[aid]
+		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))
 
 
 func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next would take Tab first
@@ -353,13 +353,7 @@ func _refresh() -> void:
 	if _upgrades_panel.visible:
 		_prestige_avail.text = "Prestige to spend: %s" % sim.prestige_available().format()
 		for aid: StringName in _attr_rows:
-			var a: AttributeDef = sim.attribute_defs[aid]
-			var lv: int = sim.attr_level(aid)
-			var row: Array = _attr_rows[aid]
-			(row[0] as Label).text = "%s  %d/%d" % [a.display_name, lv, a.cap]
-			var btn: PixelButton = row[1]
-			btn.text = "MAX" if lv >= a.cap else "Buy %s" % sim.attribute_cost(aid).format()
-			btn.disabled = lv >= a.cap or sim.prestige_available().lt(sim.attribute_cost(aid))
+			(_attr_rows[aid] as UpgradeRow).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
 
 
 func _on_offline(seconds: float, gains: Dictionary) -> void:
