@@ -63,7 +63,8 @@ func _ready() -> void:
 	_haze_mat.set_shader_parameter("ponds", _pond_array())
 	for k: String in haze_params:
 		_haze_mat.set_shader_parameter(k, haze_params[k])
-	var rects: Array[Rect2] = haze_rects if not haze_rects.is_empty() else [AREA]
+	var rects: Array[Rect2] = []
+	rects.assign(haze_rects if not haze_rects.is_empty() else [AREA])
 	for i in rects.size():
 		var haze := ColorRect.new()
 		haze.name = "Haze" if i == 0 else "Haze%d" % (i + 1)
