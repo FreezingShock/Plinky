@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.33.0 - 2026-11-23
+- The HUD stat strip is customizable and saved per game. Right-click a row to hide it, or press the pencil under the strip for edit mode: move rows up and down, hide them, add stats from icon-only chips (instant tooltip names each one), up to 10 rows, and Reset to the zone's Default layout. Each zone keeps its own layout (flower ladder, Ember Quarry), stats met in other zones can be pinned, older saves start on Default. Settings > Gameplay gets Edit Stat Strip, Reset Stat Strip, Strip Gain Rates, Strip Unearned Rows and Right-click Hides a Row. New `tools/hud_shot.tscn -- edit` fixture.
+
 ## 0.32.0 - 2026-11-23
 - Golden light holds through the day: new SkyModel.golden() curve (warm, long shadows, rim light, rays and a thin haze fade out slowly toward noon instead of ending an hour after sunrise), richer grade curves for morning, noon, dusk and night, saturation and contrast in the full-frame light pass, warmer rim and ray colours, deeper night blue with warmer lantern pools. New tools/golden_shots.tscn captures the sky at fixed times of day.
 
