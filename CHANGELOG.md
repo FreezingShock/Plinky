@@ -12,6 +12,9 @@ under a new version heading and updates the version everywhere.
 ## 0.28.0 - 2026-11-23
 - Higher flower tiers now buff several lower stats at once (Thistle and Heather 1.25x, Foxglove and Starbloom 1.5x, data-driven). New Settings option for multipliers as a factor (x1.5) or a percent (150%). Locked pads are clearly darker and buyable pads glow green. Larkmoor gate retuned to 2000 Starbloom Petals.
 
+## 0.27.1 - 2026-11-23
+- Fixed the title screen's input error (the menu pad actions are now registered before the title), and onboarding tip cards now step aside while any menu is open, so the Esc menu's buttons are never covered.
+
 ## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
 

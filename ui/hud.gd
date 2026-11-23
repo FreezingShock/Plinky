@@ -657,6 +657,7 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
+	_tip_card.held = PadInput.menu_open   # tips never cover an open menu
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():
