@@ -256,3 +256,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 
 ## 2026-11-23 Quiet pad clicks
 - Nathan: standing on a pad clicked forever. Settings > Audio now has "Quiet pad clicks" (on by default) and "Clicks before quiet" (slider 1 to 10, default 5). After that many presses in a row the pad click and hold tick go quiet. Stepping off or releasing a pad resets the count, as does a 1.5 s pause. Crit sounds always play. Settings are stored per id with defaults in settings.cfg, which has no schema version, so there was nothing to bump.
+
+## 2026-11-23 Pad outlines on the texel grid
+- Nathan: the pad outline looked sharp, finer than the world's pixels. draw_polyline diagonals are anti-aliased and sub-texel. Every pad outline, ring and ripple is now whole-texel rects (TexelPad._outline), and the pad snaps its position to whole texels in _ready (marker anchors are fractional, e.g. 245.5).
