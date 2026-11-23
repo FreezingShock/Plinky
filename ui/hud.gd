@@ -33,6 +33,8 @@ var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
 var _momentum: MomentumMeter
 var _stats_panel: PanelContainer
+var _menu_chip: ExpandChip   # hamburger, bottom right
+var _key_chips: Array[ExpandChip] = []   # number keys 1 to 5 press these, in order (Rebirth is left out on purpose)
 var _centered: Array[Control] = []   # panels kept centred in the free area above the bottom bar
 
 
@@ -75,6 +77,16 @@ func upgrades_panel() -> Control:
 
 func toggle_upgrades() -> void:
 	menu_toggled.emit(&"upgrades")
+
+
+## The hamburger chip, so Main can keep it above open menus.
+func menu_chip() -> Control:
+	return _menu_chip
+
+
+## Travel: show the zone panel's Travel list (the gallery's Travel tile calls this).
+func open_travel() -> void:
+	_zone_panel.set_travel_open(true)
 
 
 ## The bottom bar. Main keeps it above every menu so its chips stay clickable while a menu is open.
@@ -144,7 +156,9 @@ func _build_stats() -> void:
 		rate.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
-		Tip.bind_all(h, TipText.stat(sid, def.display_name))
+		Tip.bind_all(h, func() -> Variant:
+			var inc: BigNum = sim.income_per_second(sid)
+			return TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format()))
 		_row_boxes[sid] = h
 		match sid:
 			&"mult": gate(h, Onboarding.F_MULT)
@@ -189,34 +203,40 @@ func _build_bottom() -> void:
 	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
 	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format()))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
-	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.")
+	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
 	up.pressed.connect(toggle_upgrades)
+	_key_chips.append(up)
 	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
-		var rb: ExpandChip = _chip(h, "relics/r_pulse", "Relics", "Equip relics you have found.")
+		var rb: ExpandChip = _chip(h, "relics/r_pulse", "Relics", "Equip relics you have found.", "Keys: %s or 2" % Keybinds.key_name(&"relics"))
 		rb.full_text = "Relics [R]"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
+		_key_chips.append(rb)
 		gate(rb, Onboarding.F_RELICS)
 	for t: int in 2:
 		var nm: String = ["Stats", "Attributes"][t]
 		var act: StringName = [&"stats", &"attributes"][t]
-		var ib: ExpandChip = _chip(h, ["stats_menu", "attrs_menu"][t], nm, "Open the %s list." % nm.to_lower())
+		var ib: ExpandChip = _chip(h, ["stats_menu", "attrs_menu"][t], nm, "Open the %s list." % nm.to_lower(), "Keys: %s or %d" % [Keybinds.key_name(act), 3 + t])
 		ib.full_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
 		ib.pressed.connect(func() -> void: index_requested.emit(t))
+		_key_chips.append(ib)
 		gate(ib, Onboarding.F_MULT if t == 0 else Onboarding.F_UPGRADES)
-	var st: ExpandChip = _chip(h, "settings", "Settings", "Display, sound, keys and tips.")
-	st.full_text = "Settings [%s]" % Keybinds.key_name(&"settings")
-	st.pressed.connect(func() -> void: settings_toggled.emit(true))
+	# Settings and the Update Log live in the hamburger menu, at the far right of the screen.
+	_menu_chip = _chip(self, "big/menu_hamburger", "Menu", "Settings, the update log and every section.", "Keys: %s or 5" % Keybinds.key_name(&"menu"))
+	_menu_chip.full_text = "Menu [%s]" % Keybinds.key_name(&"menu")
+	_menu_chip.bubble_right = true   # its label opens leftwards, away from the screen edge
+	_menu_chip.pressed.connect(func() -> void: menu_toggled.emit(&"gallery"))
+	_key_chips.append(_menu_chip)
 
 
 ## A bottom-bar chip: icon at rest, icon + label on hover or focus. Tooltip names it while it is collapsed.
-func _chip(parent: Control, icon_name: String, tip_title: String, tip_body: String) -> ExpandChip:
+func _chip(parent: Control, icon_name: String, tip_title: String, tip_body: String, tip_hint: String = "") -> ExpandChip:
 	var c := ExpandChip.new()
 	c.icon = load("res://assets/icons/%s.png" % icon_name) as Texture2D
 	c.expand_icon = false
 	parent.add_child(c)
-	Tip.bind(c, {"title": tip_title, "body": tip_body})
+	Tip.bind(c, {"title": tip_title, "body": tip_body, "hint": tip_hint})
 	return c
 
 
@@ -289,9 +309,28 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
 			index_requested.emit(1)
 		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and _number_key_chip(event as InputEventKey) != null:
+		var nc: ExpandChip = _number_key_chip(event as InputEventKey)
+		if nc.is_visible_in_tree() and not nc.disabled:
+			nc.pressed.emit()
+		get_viewport().set_input_as_handled()
+	elif Keybinds.matches(&"menu", event):
+		menu_toggled.emit(&"gallery")
+		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_settings") or Keybinds.matches(&"settings", event):
 		settings_toggled.emit(true)
 		get_viewport().set_input_as_handled()
+
+
+## The chip a plain 1 to 5 key press maps to (no modifiers), or null: 1 Upgrades, 2 Relics, 3 Stats, 4 Attributes, 5 Menu.
+## The numbers are fixed (they match the tooltips); a chip that is not in the bar yet simply does nothing.
+func _number_key_chip(e: InputEventKey) -> ExpandChip:
+	if not e.pressed or e.echo or e.ctrl_pressed or e.alt_pressed or e.meta_pressed:
+		return null
+	var n: int = e.keycode - KEY_1
+	if n < 0 or n >= _key_chips.size():
+		return null
+	return _key_chips[n]
 
 
 func _process(delta: float) -> void:
@@ -326,6 +365,10 @@ func _place() -> void:
 			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)))
 			if cp2.position != at:
 				cp2.position = at
+	if _menu_chip != null:
+		var mc: Vector2 = Vector2(frame.x - _menu_chip.size.x - 4.0, frame.y - _menu_chip.size.y - 4.0)
+		if _menu_chip.position != mc:
+			_menu_chip.position = mc
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:

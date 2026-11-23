@@ -13,7 +13,6 @@ var inventory: RelicInventory
 var _slots_row: HBoxContainer
 var _grid: GridContainer
 var _hint: Label
-var _tip: RelicTooltip
 var _swap_from: StringName = &""   ## inventory relic waiting for a slot to swap into
 
 func _init() -> void:
@@ -43,10 +42,6 @@ func _init() -> void:
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint.custom_minimum_size.x = 6 * (RelicSlot.SIZE + GAP) - GAP
 	v.add_child(_hint)
-	_tip = RelicTooltip.new()
-
-func _ready() -> void:
-	add_child(_tip)
 
 func bind(inv: RelicInventory) -> void:
 	if inventory != null:
@@ -64,7 +59,7 @@ func refresh() -> void:
 	for c in _grid.get_children():
 		c.queue_free()
 		_grid.remove_child(c)
-	_tip.hide_tip()
+	Tip.hide_all()
 	# Equip slots: filled, empty, then locked ones with their unlock text.
 	var total: int = inventory.slot_count()
 	for i in total:
@@ -119,20 +114,14 @@ func _hint_text(no_relics: bool) -> String:
 	return "%d of %d slots used." % [inventory.equipped.size(), inventory.slot_count()]
 
 func _wire(s: RelicSlot, slot_index: int, is_equip_slot: bool) -> void:
-	s.hovered.connect(func(sl: RelicSlot) -> void: _show_tip(sl, is_equip_slot))
-	s.unhovered.connect(func(_sl: RelicSlot) -> void: _tip.hide_tip())
+	Tip.bind(s, func() -> Variant: return _tip_spec(s, is_equip_slot))
 	s.pressed.connect(func(sl: RelicSlot) -> void: _on_pressed(sl, is_equip_slot))
 
-func _rect(s: Control) -> Rect2:
-	return Rect2(Vector2(global_position.x, s.global_position.y), Vector2(size.x, s.size.y))
-
-func _show_tip(s: RelicSlot, is_equip_slot: bool) -> void:
+func _tip_spec(s: RelicSlot, is_equip_slot: bool) -> Dictionary:
 	if s.relic == null:
 		if s.locked_text != "":
-			_tip.show_text("Locked slot", s.locked_text, _rect(s))
-		else:
-			_tip.show_text("Empty slot", "Click a relic in your collection to equip it here.", _rect(s))
-		return
+			return TipText.slot_note("Locked slot", s.locked_text)
+		return TipText.slot_note("Empty slot", "Click a relic in your collection to equip it here.")
 	var id: StringName = s.relic.id
 	var hint: String
 	if is_equip_slot:
@@ -143,7 +132,7 @@ func _show_tip(s: RelicSlot, is_equip_slot: bool) -> void:
 		hint = "Click to equip."
 	else:
 		hint = "Slots full. Click, then pick a relic to swap out."
-	_tip.show_relic(s.relic, inventory.stacks_of(id), inventory.is_equipped(id), hint, _rect(s))
+	return TipText.relic(s.relic, inventory.stacks_of(id), inventory.is_equipped(id), hint)
 
 func _on_pressed(s: RelicSlot, is_equip_slot: bool) -> void:
 	if s.relic == null:

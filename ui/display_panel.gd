@@ -17,7 +17,6 @@ var _tab_buttons: Dictionary = {}     # tab name -> PixelButton
 var _body: VBoxContainer
 var _scroll: ScrollContainer
 var _hint: Label
-var _close_btn: PixelButton
 var _refreshers: Array[Callable] = []
 var _capture: StringName = &""        # key action waiting for a keypress
 var _armed: StringName = &""          # confirm action pressed once
@@ -66,9 +65,6 @@ func bind(win: Window) -> void:
 	_hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(_hint)
 
-	_close_btn = PixelButton.new()
-	_close_btn.pressed.connect(close)
-	v.add_child(_close_btn)
 
 	_win.size_changed.connect(_on_window_changed)
 	show_tab(_tab)
@@ -80,7 +76,6 @@ func _request_feedback() -> String:
 
 
 func open() -> void:
-	_close_btn.text = "Close [%s]" % Keybinds.key_name(&"settings")
 	show_tab(_tab)
 	visible = true
 	reset_size()
@@ -116,7 +111,7 @@ func show_tab(tab: String) -> void:
 
 
 ## Pad and keyboard focus. Godot's geometry search stalls inside the scroll area, so Up and Down are wired
-## explicitly: tab -> row 1 -> ... -> last row -> Close, and back. Every control in a row shares its row's links.
+## explicitly: tab -> row 1 -> ... -> last row -> tab, and back. Every control in a row shares its row's links.
 func _wire_focus() -> void:
 	var rows: Array = []   # Array of Array[Control], one per row, in order
 	for row: Node in _body.get_children():
@@ -128,9 +123,8 @@ func _wire_focus() -> void:
 				c.focus_entered.connect(_scroll.ensure_control_visible.bind(c))
 	for t: String in _tab_buttons:
 		var b: PixelButton = _tab_buttons[t]
-		b.focus_neighbor_bottom = b.get_path_to((rows[0] as Array)[0]) if not rows.is_empty() else b.get_path_to(_close_btn)
-	link_rows(rows, _tab_buttons[_tab], _close_btn)
-	_close_btn.focus_neighbor_top = _close_btn.get_path_to(((rows[rows.size() - 1] as Array)[0] if not rows.is_empty() else _tab_buttons[_tab]) as Control)
+		b.focus_neighbor_bottom = b.get_path_to((rows[0] as Array)[0]) if not rows.is_empty() else b.get_path_to(b)
+	link_rows(rows, _tab_buttons[_tab], _tab_buttons[_tab])   # the X closes; the last row wraps back to the tabs
 
 
 ## Link rows (Array of Array[Control]) top to bottom. `above` is reached from the first row going up and
@@ -339,7 +333,6 @@ func _input(event: InputEvent) -> void:
 		refresh()
 		return
 	var swapped: StringName = Keybinds.set_key(action, k.keycode)
-	_close_btn.text = "Close [%s]" % Keybinds.key_name(&"settings")
 	if swapped != &"":
 		_hint.text = "%s now uses %s's old key." % [Keybinds.label_for(swapped), Keybinds.label_for(action)]
 	else:
