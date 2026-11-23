@@ -60,6 +60,12 @@ var zones_entered: Dictionary = {}   # zone id -> true once its entry grants wer
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
+## Every stat as it stood just before the last zone reset (stat id -> BigNum). The reset animation counts down from it.
+var bloom_before: Dictionary = {}
+## True while an automatic press (Dew Sprites, Wildflower) is running, so the UI can skip momentum and the press streak.
+var auto_press_active: bool = false
+var _auto_acc: float = 0.0
+var _wild_acc: float = 0.0
 var reset_counts: Dictionary = {}    # reset id -> times done (ZoneResetDef); each adds its bonus to every pad reward
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 ## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
