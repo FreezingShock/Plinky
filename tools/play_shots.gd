@@ -147,9 +147,9 @@ func _ready() -> void:
 	await _wait(10)
 	print("pan ", cam.pan, " presses after drag ", sim.press_count)
 	await _shot("h4_pan")
-	_key(KEY_C)
+	_key(KEY_HOME)
 	await _wait(40)
-	print("after C pan ", cam.pan)
+	print("after Home pan ", cam.pan)
 	await _shot("h5_recentre")
 	# Esc closes panel
 	_key(KEY_R)

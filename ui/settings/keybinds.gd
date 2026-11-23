@@ -13,7 +13,9 @@ const ACTIONS: Array = [
 	[&"stats", "Stats", KEY_I],
 	[&"attributes", "Attributes", KEY_O],
 	[&"menu", "Menu", KEY_M],
-	[&"recenter", "Recentre camera", KEY_C],
+	[&"recenter", "Recentre camera", KEY_HOME],
+	[&"jump", "Jump", KEY_SPACE],
+	[&"crouch", "Crouch / slide", KEY_C],
 	[&"console", "Dev console", KEY_QUOTELEFT],
 ]
 
@@ -37,14 +39,27 @@ static func _load() -> void:
 
 ## Two actions on one key would fire together, so a saved clash falls back to defaults.
 static func _dedupe() -> void:
-	var seen: Dictionary = {}
-	for row: Array in ACTIONS:
-		var k: int = int(_keys[row[0]])
-		if seen.has(k):
-			for r2: Array in ACTIONS:
-				_keys[r2[0]] = int(r2[2])
+	# A clash is most often an old save (Recentre used to default to C, now Crouch does): put the earlier action back
+	# on its default first, and only reset everything if that does not clear it.
+	for pass_i: int in 2:
+		var seen: Dictionary = {}
+		var clash: bool = false
+		for row: Array in ACTIONS:
+			var k: int = int(_keys[row[0]])
+			if seen.has(k):
+				clash = true
+				if pass_i == 0:
+					var first: StringName = seen[k]
+					for r2: Array in ACTIONS:
+						if r2[0] == first:
+							_keys[first] = int(r2[2])
+				else:
+					for r3: Array in ACTIONS:
+						_keys[r3[0]] = int(r3[2])
+				break
+			seen[k] = row[0]
+		if not clash:
 			return
-		seen[k] = true
 
 
 static func key_for(action: StringName) -> int:

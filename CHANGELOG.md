@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.18.0 - 2026-11-23
+- Walker overhaul: the hooded walker is redrawn (20 poses, no baked shadow) and animated procedurally (squash, stretch, lean, hop, dust). Shift sprints, Ctrl locks the sprint, Space jumps (a jump launches you faster and the camera rises with it), C crouches or slides while sprinting. A SPRINTING HELD / SPRINTING ENABLED label sits above Momentum. Recentre camera moves from C to Home.
+
 ## 0.17.3 - 2026-11-23
 - Tooltips are instant, like Minecraft: no hover or focus delay, no grace window, and they vanish the frame the cursor leaves. The version link on the boot and title screens moved from Godot's delayed tooltip to the shared tooltip.
 
