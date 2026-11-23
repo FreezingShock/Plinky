@@ -234,6 +234,11 @@ func _process(delta: float) -> void:
 	_update(_t)
 
 
+## Position in the day, 0 midnight to 1, as the sky shows it right now (a debug phase counts).
+func clock_phase() -> float:
+	return model.phase(_model_time(_t))
+
+
 ## Time to feed the model: a debug phase pins the time of day, otherwise session time runs.
 func _model_time(t: float) -> float:
 	if debug_phase >= 0.0:

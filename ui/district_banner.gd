@@ -80,14 +80,6 @@ func show_name(text: String) -> void:
 	_present(text)
 
 
-## Season arrival: the event's name in the season's accent, its one-line effect small above.
-func show_event(event_name: String, blurb: String, col: Color) -> void:
-	_theme(PackedColorArray(), col, "")
-	_kicker.text = blurb
-	_kicker.visible = blurb != ""
-	_present(event_name)
-
-
 func _theme(cols: PackedColorArray, col: Color, icon: String) -> void:
 	var ink: Color = RelicStyle.ink
 	var edge: Color = col
