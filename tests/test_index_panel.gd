@@ -13,8 +13,8 @@ func run(t: Object) -> void:
 	panel.toggle_tab(IndexPanel.Tab.STATS)
 	t.ok(panel.is_open(), "toggle opens the Stats tab")
 	t.ok(panel.wipe_showing(), "wipe overlay is visible, sized, and above the panel the moment it opens")
-	t.ok(panel._reveal.get_parent() == host, "overlay is a sibling of the panel, not under its content")
-	t.ok(panel._reveal.size.x >= IndexPanel.WIDTH, "overlay covers the panel width")
+	t.ok(panel._anim.reveal.get_parent() == host, "overlay is a sibling of the panel, not under its content")
+	t.ok(panel._anim.reveal.size.x >= IndexPanel.WIDTH, "overlay covers the panel width")
 	# detail page: opens on a card, lists sources, and Esc steps back before it closes
 	FxConfig.reduce_flashing = true   # pages swap at once, no tween needed in a headless run
 	panel.open_detail(&"crit_chance")

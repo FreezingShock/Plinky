@@ -161,6 +161,16 @@ func dismiss() -> void:
 	_away = 0.0
 
 
+## The first navigation input after a quiet menu-open focus lets focus tooltips show again.
+func _input(event: InputEvent) -> void:
+	if not Tip.focus_muted or not event.is_pressed():
+		return
+	for a: StringName in [&"ui_up", &"ui_down", &"ui_left", &"ui_right", &"ui_focus_next", &"ui_focus_prev"]:
+		if event.is_action_pressed(a):
+			Tip.focus_muted = false
+			return
+
+
 func _process(delta: float) -> void:
 	if not visible:
 		_since_hidden += delta

@@ -15,6 +15,8 @@ var _dial: Control
 var _time: Label
 var _season: Label
 var _date: Label
+var _squeeze: int = 0
+var _widths: Array[float] = [0.0, 0.0, 0.0]
 var _acc: float = 0.0
 var _since: float = 0.0
 var _beat: int = 0
@@ -78,6 +80,34 @@ func _process(delta: float) -> void:
 	if _since >= REFRESH:
 		_since = 0.0
 		_refresh()
+
+
+## Squeeze the card when the top bar is tight: 0 full, 1 dial and time only, 2 time only. Never hides it (onboarding
+## owns visibility). The HUD picks the smallest level that clears the stats panel.
+func set_squeeze(level: int) -> void:
+	if level == _squeeze:
+		return
+	_squeeze = level
+	_dial.visible = level < 2
+	_season.visible = level < 1
+	_date.visible = level < 1
+	reset_size()
+
+
+## Width of each squeeze level as last seen; unseen levels are guessed from the full one so the first pass is safe.
+func remember_width() -> void:
+	_widths[_squeeze] = get_combined_minimum_size().x
+
+
+func width_at(level: int) -> float:
+	if _widths[level] > 0.0:
+		return _widths[level]
+	var full: float = maxf(_widths[0], get_combined_minimum_size().x)
+	return full if level == 0 else (full * 0.65 if level == 1 else full * 0.35)
+
+
+func squeeze_level() -> int:
+	return _squeeze
 
 
 func _refresh() -> void:

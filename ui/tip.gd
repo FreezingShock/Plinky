@@ -14,6 +14,16 @@ const HOST_NAME: String = "TipLayer"
 const META: StringName = &"_tip_spec"
 const BOUND: StringName = &"_tip_bound"
 static var _host: TipHost = null
+## True after a menu opens and puts focus on its first control: that focus must not pop a tooltip. TipHost clears it
+## on the first keyboard or pad navigation input, after which focus tips show as usual. Mouse hover is never affected.
+static var focus_muted: bool = false
+
+
+## Give `c` focus without showing its tooltip (menu open). Keeps keyboard and pad navigation working.
+static func grab_quiet(c: Control) -> void:
+	focus_muted = true
+	hide_all()
+	c.grab_focus()
 
 
 ## Attach a tooltip. `spec` is a String (body only), a Dictionary (title, body, hint, color), or a
@@ -129,6 +139,8 @@ static func normalize(spec: Variant) -> Dictionary:
 
 static func _on_enter(c: Control, by_focus: bool) -> void:
 	if not is_instance_valid(c) or not c.is_inside_tree() or not c.has_meta(META):
+		return
+	if by_focus and focus_muted:
 		return
 	host(c.get_tree()).request(c, by_focus)
 

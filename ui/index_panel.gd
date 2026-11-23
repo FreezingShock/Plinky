@@ -12,9 +12,6 @@ enum Tab { STATS, ATTRIBUTES }
 
 const WIDTH: float = 404.0
 const SCROLL_H: float = 150.0
-const SLIDE: float = 14.0
-const OPEN_TIME: float = 0.42
-const CLOSE_TIME: float = 0.28
 const PAGE_OUT: float = 0.16
 const PAGE_IN: float = 0.22
 const REFRESH: float = 0.1
@@ -53,13 +50,10 @@ var _strip: VBoxContainer
 var _s_head: Label
 var _s_buff: Label
 var _s_tip: Label
-var _reveal: DitherReveal
+var _anim: MenuAnim
 var _cards: Dictionary = {}              # row id -> IndexCard
 var _key: String = ""
 var _clock: float = 0.0
-var _slide: float = 0.0
-var _tween: Tween
-var _closing: bool = false
 var _busy: bool = false                  ## a page wipe is running
 ## Set by Main: buys the next level of an attribute (GameState.buy_attribute), so there is one purchase path.
 var buyer: Callable = Callable()
@@ -128,8 +122,6 @@ func _init() -> void:
 	_s_head = _strip_label(RelicStyle.text, false)
 	_s_buff = _strip_label(RelicStyle.good, false)
 	_s_tip = _strip_label(RelicStyle.dim, true)
-	_reveal = DitherReveal.new()
-	_reveal.z_index = 1   # above the panel; it is a sibling, added in bind, so nothing in the panel can cover it
 
 
 func _strip_label(c: Color, wrap: bool) -> Label:
@@ -196,14 +188,8 @@ func _centered(parent: Node, c: Color) -> Label:
 
 func bind(p_sim: Sim) -> void:
 	sim = p_sim
-	var host: Node = get_parent()
-	if host != null and _reveal.get_parent() == null:
-		host.add_child(_reveal)
-
-
-func _exit_tree() -> void:
-	if _reveal != null and _reveal.get_parent() != null and not _reveal.is_queued_for_deletion():
-		_reveal.queue_free()
+	if _anim == null:
+		_anim = MenuAnim.attach(self)   # the shared dither wipe + slide; its overlay is a sibling above the panel
 
 
 ## What Main's I and O keys and the HUD buttons call: open the tab, or close if it is already the one showing.
@@ -216,7 +202,7 @@ func toggle_tab(t: int) -> void:
 
 ## True while the window is on screen and not on its way out.
 func is_open() -> bool:
-	return visible and not _closing
+	return _anim != null and _anim.is_open()
 
 
 func detail_open() -> bool:
@@ -225,7 +211,8 @@ func detail_open() -> bool:
 
 ## True while the wipe overlay is on screen, sized to the panel, and drawn above it.
 func wipe_showing() -> bool:
-	return _reveal.visible and _reveal.size.x > 0.0 and _reveal.size.y > 0.0 and _reveal.z_index > z_index
+	var r: DitherReveal = _anim.reveal
+	return r.visible and r.size.x > 0.0 and r.size.y > 0.0 and r.z_index > z_index
 
 
 func open_tab(t: int) -> void:
@@ -238,12 +225,11 @@ func open_tab(t: int) -> void:
 	if was_open:
 		_focus_first()
 		return
-	_closing = false
-	visible = true
+	_anim.open()
 	reset_size()
 	_layout()
-	_animate(true)
-	_focus_first()
+	_play_icon()
+	_focus_first(true)
 
 
 func set_tab(t: int) -> void:
@@ -297,46 +283,11 @@ func open_detail(id: StringName) -> void:
 
 
 func close_panel() -> void:
-	if not visible or _closing:
-		return
-	_closing = true
-	Tip.hide_all()
-	if FxConfig.reduce_flashing:
-		_finish_close()
-		return
-	_animate(false)
-
-
-func _finish_close() -> void:
-	_closing = false
-	visible = false
-	_reveal.set_cover(0.0)
-	_slide = 0.0
-	closed.emit()
+	if _anim != null:
+		_anim.close()
 
 
 # ---------------------------------------------------------------- animation
-
-func _animate(opening: bool) -> void:
-	if _tween != null:
-		_tween.kill()
-	_play_icon()
-	if FxConfig.reduce_flashing:
-		_set_t(1.0)
-		return
-	_set_t(0.0 if opening else 1.0)   # cover now, so the first drawn frame is already wiping, not opaque
-	_tween = create_tween()
-	_tween.set_speed_scale(0.2 if slow_mo else 1.0)
-	_tween.tween_method(_set_t, 0.0 if opening else 1.0, 1.0 if opening else 0.0, OPEN_TIME if opening else CLOSE_TIME)
-	if not opening:
-		_tween.tween_callback(_finish_close)
-
-
-## t 0 = hidden (inked, low), 1 = shown. Both effects step, so they read as pixel art.
-func _set_t(t: float) -> void:
-	var s: float = floorf(t * DitherReveal.STEPS) / DitherReveal.STEPS
-	_slide = roundf((1.0 - s) * SLIDE)
-	_reveal.set_cover(1.0 - s)
 
 
 ## Run `swap` under a dither wipe: ink in, swap, ink out. Instant when flashing is reduced.
@@ -348,9 +299,9 @@ func _page(swap: Callable) -> void:
 	_busy = true
 	var t := create_tween()
 	t.set_speed_scale(0.2 if slow_mo else 1.0)
-	t.tween_method(_reveal.set_cover, 0.0, 1.0, PAGE_OUT)
+	t.tween_method(_anim.reveal.set_cover, 0.0, 1.0, PAGE_OUT)
 	t.tween_callback(swap)
-	t.tween_method(_reveal.set_cover, 1.0, 0.0, PAGE_IN)
+	t.tween_method(_anim.reveal.set_cover, 1.0, 0.0, PAGE_IN)
 	t.tween_callback(func() -> void: _busy = false)
 
 
@@ -532,18 +483,21 @@ func _source_card(s: Dictionary) -> Control:
 	return p
 
 
-func _focus_first() -> void:
+func _focus_first(quiet: bool = false) -> void:
 	if detail_open():
-		_grab.call_deferred(_back)
+		_grab.call_deferred(_back, quiet)
 		return
 	for card: IndexCard in _cards.values():
-		_grab.call_deferred(card)
+		_grab.call_deferred(card, quiet)
 		return
 
 
-func _grab(c: Control) -> void:
+func _grab(c: Control, quiet: bool = false) -> void:
 	if is_instance_valid(c) and c.is_inside_tree() and c.is_visible_in_tree() and is_open():
-		c.grab_focus()
+		if quiet:
+			Tip.grab_quiet(c)
+		else:
+			c.grab_focus()
 
 
 # ---------------------------------------------------------------- frame
@@ -557,9 +511,7 @@ func _layout() -> void:
 	if _scroll.custom_minimum_size.y != h:
 		_scroll.custom_minimum_size.y = h
 		reset_size()
-	position = ((host.size - size) * 0.5).floor() + Vector2(0.0, _slide)
-	_reveal.global_position = global_position
-	_reveal.size = size.max(get_combined_minimum_size())
+	position = ((host.size - size) * 0.5).floor() + Vector2(0.0, float(get_meta(&"menu_slide", 0.0)))
 
 
 func _process(delta: float) -> void:
