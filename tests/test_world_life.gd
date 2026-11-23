@@ -39,10 +39,20 @@ func run(t: Object) -> void:
 	# Cinder: the quarry floor is loose rock, its pale road is packed dust, pads and gate are wood.
 	for i in 4:
 		t.ok(ResourceLoader.exists("res://assets/audio/sfx/step_cinder_%d.ogg" % i), "step_cinder_%d exists" % i)
-	MeadowSites.use("res://assets/art/zone2/quarry/placements3d.json", "res://assets/art/zone2/quarry/ground.png", Vector2i(100, 60))
-	t.eq(MeadowSites.surface_at(Vector2(150.0, 160.0)), MeadowSites.CINDER, "quarry floor is cinder")
-	t.eq(MeadowSites.surface_at(Vector2(319.0, 220.0)), MeadowSites.SAND, "the quarry road is packed dust")
-	t.eq(MeadowSites.surface_at(Vector2(414.0, 296.0)), MeadowSites.WOOD, "a quarry pad is wood")
+	var qdata: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/zone2/quarry/placements3d.json")) as Dictionary
+	var qpad: Vector2 = Vector2.ZERO
+	var qspawn: Vector2 = Vector2.ZERO
+	for anc: Dictionary in qdata.get("anchors", []):
+		var k: String = str(anc.get("kind", ""))
+		var at := Vector2(float(anc.get("sx", 0.0)), float(anc.get("sy", 0.0)))
+		if k == "pad" and qpad == Vector2.ZERO:
+			qpad = at
+		elif k == "player_spawn":
+			qspawn = at
+	MeadowSites.use("res://assets/art/zone2/quarry/placements3d.json", "res://assets/art/zone2/quarry/ground.png", Vector2i.ZERO)
+	t.eq(MeadowSites.surface_at(Vector2(560.0, 520.0)), MeadowSites.CINDER, "quarry floor is cinder")
+	t.eq(MeadowSites.surface_at(qspawn), MeadowSites.SAND, "the quarry road is packed dust")
+	t.eq(MeadowSites.surface_at(qpad), MeadowSites.WOOD, "a quarry pad is wood")
 	t.eq(MeadowSites.surface_at(Vector2(-500.0, -500.0)), MeadowSites.CINDER, "off the quarry map falls back to cinder")
 	MeadowSites.use("", "", MeadowSites.MEADOW_OFFSET)
 	t.eq(MeadowSites.surface_at(Vector2(175.0, 175.0)), MeadowSites.GRASS, "back in the meadow the floor is grass again")

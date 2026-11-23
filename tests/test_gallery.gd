@@ -7,7 +7,7 @@ func run(t: Object) -> void:
 	for e: Array in GalleryMenu.ENTRIES:
 		kinds.append(e[0])
 		t.ok(ResourceLoader.exists("res://assets/icons/big/%s.png" % e[2]), "icon exists for %s" % e[0])
-	for k: StringName in [&"stats", &"attributes", &"upgrades", &"relics", &"travel", &"settings", &"history", &"log"]:
+	for k: StringName in [&"stats", &"attributes", &"upgrades", &"relics", &"travel", &"settings", &"history", &"ledger", &"log"]:
 		t.ok(kinds.has(k), "the gallery has a %s tile" % k)
 
 	var g := GalleryMenu.new()
@@ -51,6 +51,8 @@ func run(t: Object) -> void:
 	t.eq(GalleryTile.lift_px(0.0), 0, "a resting tile is not lifted")
 	t.eq(GalleryTile.lift_px(1.0), GalleryTile.LIFT, "a hovered tile lifts fully")
 	t.eq(GalleryTile.lift_px(2.0), GalleryTile.LIFT, "lift is clamped")
+	t.ok(not GalleryTile.dither_lit(0, 0, 0.0), "zero density lights nothing")
+	t.ok(GalleryTile.dither_lit(1, 1, 1.0), "full density lights every cell")
 
 	var entries: Array[Dictionary] = BuildInfo.parse_changelog("## Unreleased\n- later\n\n## 0.5.0 - 2026-11-23\n- Added the hamburger\n- Fixed menus\n\n## 0.4.0\n- Older\n")
 	var rows: Array[Dictionary] = UpdateLogPanel.rows_from(entries)

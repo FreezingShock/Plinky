@@ -25,16 +25,16 @@ func run(t: Object) -> void:
 	for a: Dictionary in d.get("anchors", []):
 		var kind: String = str(a.get("kind", ""))
 		if kind in ["pad", "player_spawn", "gate", "vent"]:
-			var x: int = int(float(a.sx)) + 100
-			var y: int = int(float(a.sy)) + 60
-			t.ok(im.get_pixel(x, y).r > 0.5, "quarry %s at (%d, %d) is on walkable ground" % [kind, x - 100, y - 60])
+			var x: int = int(float(a.sx))
+			var y: int = int(float(a.sy))
+			t.ok(im.get_pixel(x, y).r > 0.5, "quarry %s at (%d, %d) is on walkable ground" % [kind, x, y])
 
 	# the way back: an Arch anchor at the end of the south road, with its own art, leading to the previous zone
 	var has_arch: bool = false
 	for a: Dictionary in d.get("anchors", []):
 		if str(a.get("kind", "")) == "arch":
 			has_arch = true
-			t.ok(im.get_pixel(int(float(a.sx)) + 100, int(float(a.sy)) + 60).r > 0.5, "the quarry's way back is on walkable ground")
+			t.ok(im.get_pixel(int(float(a.sx)), int(float(a.sy))).r > 0.5, "the quarry's way back is on walkable ground")
 	t.ok(has_arch, "the quarry has an Arch anchor for the way back to Larkmoor")
 	var qsrc: String = FileAccess.get_file_as_string("res://world/quarry_scene.gd")
 	t.ok(qsrc.contains("\"Arch\""), "quarry_scene.gd creates the Arch marker")
@@ -72,11 +72,20 @@ func run(t: Object) -> void:
 	var src: String = FileAccess.get_file_as_string("res://main.gd")
 	t.ok(src.contains("_free_occluders()") and not src.contains("begins_with(\"Occ_\")"), "main frees zone props by reference")
 
-	# a click on the cliff face snaps to ground (the walk ring and the walker use the same rule)
-	WalkMask.use("res://assets/art/zone2/quarry/walkable.png", Vector2i(100, 60))
-	var cliff: Vector2 = Vector2(300.0, 345.0)
-	t.ok(not WalkMask.walkable(cliff), "the cliff face below the plateau is not walkable")
-	t.ok(WalkMask.walkable(WalkMask.nearest(cliff)), "a click on the cliff snaps to walkable ground")
+	# a click on the cliff face snaps to ground (the walk ring and the walker use the same rule): walk up from the first pad
+	# until the mask ends, which is a terrace wall or a prop, then click just past it
+	WalkMask.use("res://assets/art/zone2/quarry/walkable.png", Vector2i.ZERO)
+	var pad0: Vector2 = Vector2.ZERO
+	for anc: Dictionary in d.get("anchors", []):
+		if str(anc.get("kind", "")) == "pad":
+			pad0 = Vector2(float(anc.sx), float(anc.sy))
+			break
+	var cliff: Vector2 = pad0
+	while WalkMask.walkable(cliff) and cliff.y > pad0.y - 120.0:
+		cliff.y -= 1.0
+	cliff.y -= 2.0
+	t.ok(not WalkMask.walkable(cliff), "the wall behind the first terrace is not walkable")
+	t.ok(WalkMask.walkable(WalkMask.nearest(cliff)), "a click on the wall snaps to walkable ground")
 	var inset: Vector2 = WalkMask.nearest_inset(cliff)
-	t.ok(WalkMask.walkable(inset) and WalkMask.walkable(inset + Vector2(0.0, 6.0)), "a cliff click lands 6 texels back from the lip")
+	t.ok(WalkMask.walkable(inset) and WalkMask.walkable(inset + Vector2(0.0, 6.0)), "a wall click lands 6 texels back from the edge")
 	WalkMask.use("")
