@@ -42,7 +42,7 @@ func run(t: Object) -> void:
 	MeadowSites.use("res://assets/art/zone2/quarry/placements3d.json", "res://assets/art/zone2/quarry/ground.png", Vector2i(100, 60))
 	t.eq(MeadowSites.surface_at(Vector2(150.0, 160.0)), MeadowSites.CINDER, "quarry floor is cinder")
 	t.eq(MeadowSites.surface_at(Vector2(319.0, 220.0)), MeadowSites.SAND, "the quarry road is packed dust")
-	t.eq(MeadowSites.surface_at(Vector2(392.0, 214.5)), MeadowSites.WOOD, "a quarry pad is wood")
+	t.eq(MeadowSites.surface_at(Vector2(414.0, 296.0)), MeadowSites.WOOD, "a quarry pad is wood")
 	t.eq(MeadowSites.surface_at(Vector2(-500.0, -500.0)), MeadowSites.CINDER, "off the quarry map falls back to cinder")
 	MeadowSites.use("", "", MeadowSites.MEADOW_OFFSET)
 	t.eq(MeadowSites.surface_at(Vector2(175.0, 175.0)), MeadowSites.GRASS, "back in the meadow the floor is grass again")

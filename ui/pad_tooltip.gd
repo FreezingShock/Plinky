@@ -63,8 +63,10 @@ static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 				below = t
 		hint = "Locked. Press the last %s pad once to open it." % (below.display_name if below != null else "previous")
 		hint_color = StatStyle.cant()
+	var row_tier: TierDef = sim.tier_of(button_id)
+	var row_name: String = row_tier.display_name if row_tier != null else String(b.row).capitalize()
 	return {
-		"title": "%s %d" % [String(b.row).capitalize(), b.row_index + 1], "title_color": rc, "color": edge,
+		"title": "%s %d" % [row_name, b.row_index + 1], "title_color": rc, "color": edge,
 		"icon": String(b.reward_stat), "body": body, "lines": lines,
 		"hint": hint, "hint_color": hint_color,
 	}
