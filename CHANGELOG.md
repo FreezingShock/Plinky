@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.15.0 - 2026-11-23
+- Ember Quarry redesigned as a whole map facing the camera: a hub plaza at the middle where you spawn, a main road to the gate and branches to the three pads, ground in every direction, no rock wall in front of the camera; the gate gets a dark recess that glows when open.
+
 ## 0.14.7 - 2026-11-23
 - Ember Quarry: the near cliff face is now layered basalt strata with ember seams, a lip highlight and a fall-off to dark; pads and the spawn sit well back from the lip; walk clicks near a ledge land a few texels back from the edge.
 
