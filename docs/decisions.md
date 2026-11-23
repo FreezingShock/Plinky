@@ -397,6 +397,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Credits panel lists Godot, Pixelify Sans (OFL) and Spleen (BSD 2-Clause). Names Nathan only as the maker; change the line if a different credit is wanted.
 - Run in a software GL (Mesa llvmpipe, gl_compatibility) for captures, so the look is confirmed for the 2D title; the real Forward+ run on the PC is still the check for frame timing.
 
+## Gallery PC-pass fixes (index panel)
+- Cards use the SELECT solid style (as the hamburger tiles). The detail page hides the hover strip and uses DETAIL_H (230) instead of the grid's 150, since nothing sits under it. Panel centring uses the combined minimum size. All index focus grabs are quiet (no tooltip on open or page change).
+- Detail page: header panel (icon+name left, value+gain right) and sub-tabs About / Sources / Level (attributes only), one page visible at a time instead of one long scroll.
+
 ## 2026-11-23 Momentum overhaul (v0.14.0)
 - Nathan: "completely overhaul momentum and its bar". Momentum stays a 0..1 charge so the +40% ceiling and the balance sim are untouched, but it now has structure.
 - Stages, named and data-driven (GameConfig.momentum_tier_*): Idle, Stride (20%), Rhythm (45%), Flow (70%), Surge (full). Income is 1 + 0.28 x charge + a kicker per stage reached (1/2/3/6%), so a full bar is still +40% and mid-bar is a touch lower, which makes crossing a stage feel like a step up.

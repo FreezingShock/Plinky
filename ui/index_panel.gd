@@ -21,6 +21,8 @@ const KIND_ICONS: Dictionary = {
 	"base": "presses", "attribute": "attrs_menu", "relic": "relics/r_double", "mastery": "mastery",
 	"prestige": "prestige", "zone": "walk", "action": "reb", "total": "clock",
 }
+const DTABS: Array[String] = ["About", "Sources", "Level"]
+const DETAIL_H: float = 240.0
 const HINT: String = "Hover a card for details. Click it to see where it comes from."
 
 ## Debug: F7 slows the open, close and page wipes 5x so they can be checked by eye.
@@ -43,6 +45,10 @@ var _d_total: Label
 var _d_buff: Label
 var _d_tip: Label
 var _d_bar: DitherBar
+var _d_level: Label
+var _dtab: int = 0
+var _dtabs: Array[PixelButton] = []
+var _d_pages: Array[VBoxContainer] = []
 var _buy: PixelButton
 var _d_sources: HFlowContainer
 var _back: PixelButton
@@ -80,6 +86,9 @@ func _init() -> void:
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_sub.add_theme_color_override("font_color", RelicStyle.dim)
 	head.add_child(_sub)
+	var x_room := Control.new()   # the close X sits over the top right corner
+	x_room.custom_minimum_size = Vector2(18, 1)
+	head.add_child(x_room)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 4)
 	v.add_child(bar)
@@ -137,44 +146,90 @@ func _strip_label(c: Color, wrap: bool) -> Label:
 
 func _build_detail() -> void:
 	_detail_box = VBoxContainer.new()
-	_detail_box.add_theme_constant_override("separation", 3)
+	_detail_box.add_theme_constant_override("separation", 4)
 	_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var top := VBoxContainer.new()
-	top.alignment = BoxContainer.ALIGNMENT_CENTER
-	top.add_theme_constant_override("separation", 1)
-	_detail_box.add_child(top)
+	# Header: icon and name on the left (left-aligned), value and gain on the right (right-aligned), in a solid panel.
+	var hp := PanelContainer.new()
+	hp.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 6.0, 4.0))
+	_detail_box.add_child(hp)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	hp.add_child(head)
 	_d_icon = TextureRect.new()
-	_d_icon.custom_minimum_size = Vector2(64, 64)
+	_d_icon.custom_minimum_size = Vector2(32, 32)
 	_d_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_d_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_d_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	top.add_child(_d_icon)
-	_d_name = _centered(top, RelicStyle.dim)
-	_d_total = _centered(top, RelicStyle.accent)
+	head.add_child(_d_icon)
+	_d_name = Label.new()
+	_d_name.theme_type_variation = &"TitleLabel"
+	_d_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_d_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_d_name)
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 0)
+	head.add_child(right)
+	_d_total = _right(right, RelicStyle.accent)
 	_d_total.theme_type_variation = &"TitleLabel"
-	_d_total.add_theme_font_size_override("font_size", 32)
-	_d_buff = _centered(top, RelicStyle.good)
-	_d_tip = _centered(top, RelicStyle.dim)
+	_d_total.add_theme_font_size_override("font_size", 24)
+	_d_buff = _right(right, RelicStyle.good)
+	# Sub-tabs, so nothing is a long scroll: About / Sources / Level (Attributes only).
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 4)
+	_detail_box.add_child(tabs)
+	for k in 3:
+		var b := PixelButton.new()
+		b.text = DTABS[k]
+		b.toggle_mode = true
+		b.pressed.connect(_set_dtab.bind(k))
+		tabs.add_child(b)
+		_dtabs.append(b)
+		var pg := VBoxContainer.new()
+		pg.add_theme_constant_override("separation", 4)
+		pg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_detail_box.add_child(pg)
+		_d_pages.append(pg)
+	_d_tip = Label.new()
 	_d_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_d_tip.custom_minimum_size.x = WIDTH - 24.0
-	var bar_row := CenterContainer.new()
-	top.add_child(bar_row)
+	_d_tip.custom_minimum_size.x = WIDTH - 12.0
+	_d_tip.add_theme_color_override("font_color", RelicStyle.text)
+	_d_pages[0].add_child(_d_tip)
+	_d_sources = HFlowContainer.new()
+	_d_sources.add_theme_constant_override("h_separation", 4)
+	_d_sources.add_theme_constant_override("v_separation", 4)
+	_d_pages[1].add_child(_d_sources)
 	_d_bar = DitherBar.new(160.0)
+	var bar_row := CenterContainer.new()
 	bar_row.add_child(_d_bar)
+	_d_pages[2].add_child(bar_row)
+	_d_level = Label.new()
+	_d_level.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_d_level.add_theme_color_override("font_color", RelicStyle.dim)
+	_d_pages[2].add_child(_d_level)
 	_buy = PixelButton.new()
 	_buy.pressed.connect(_on_buy)
 	Tip.bind(_buy, {"title": "Buy level", "body": "Spend Prestige on the next level."})
 	var buy_row := CenterContainer.new()
 	buy_row.add_child(_buy)
-	top.add_child(buy_row)
-	var cap := Label.new()
-	cap.text = "SOURCES"
-	cap.add_theme_color_override("font_color", RelicStyle.accent)
-	_detail_box.add_child(cap)
-	_d_sources = HFlowContainer.new()
-	_d_sources.add_theme_constant_override("h_separation", 4)
-	_d_sources.add_theme_constant_override("v_separation", 4)
-	_detail_box.add_child(_d_sources)
+	_d_pages[2].add_child(buy_row)
+
+
+func _right(parent: Node, c: Color) -> Label:
+	var l := Label.new()
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.add_theme_color_override("font_color", c)
+	parent.add_child(l)
+	return l
+
+
+## Show one sub-page of the detail view. The Level page only exists for attributes.
+func _set_dtab(k: int) -> void:
+	_dtab = k if (k < 2 or tab == Tab.ATTRIBUTES) else 0
+	for n in 3:
+		_d_pages[n].visible = n == _dtab
+		_dtabs[n].set_pressed_no_signal(n == _dtab)
+	_dtabs[2].visible = tab == Tab.ATTRIBUTES
+	_scroll.scroll_vertical = 0
 
 
 func _centered(parent: Node, c: Color) -> Label:
@@ -272,11 +327,13 @@ func open_detail(id: StringName) -> void:
 		return
 	var card: IndexCard = _cards[id]
 	_page(func() -> void:
+		_dtab = 0
 		_fill_detail(card.data)
 		detail_id = id
 		_grid_box.visible = false
 		_detail_box.visible = true
 		_back.visible = true
+		_strip.visible = false
 		_scroll.scroll_vertical = 0
 		_strip_idle()
 		_grab.call_deferred(_back))
@@ -330,6 +387,7 @@ func _sync_tabs() -> void:
 		_tabs[i].set_pressed_no_signal(i == tab)
 	_title.text = TITLES[tab]
 	_back.visible = detail_open()
+	_strip.visible = not detail_open()
 
 
 func _data() -> Array[Dictionary]:
@@ -341,6 +399,7 @@ func _show_grid_now() -> void:
 	_detail_box.visible = false
 	_grid_box.visible = true
 	_back.visible = false
+	_strip.visible = true
 	_key = ""
 	_refresh(true)
 	_strip_idle()
@@ -410,14 +469,13 @@ func _strip_idle() -> void:
 
 func _fill_detail(d: Dictionary) -> void:
 	_d_icon.texture = IndexCard.icon_for(String(d["icon"]))
-	_d_name.text = String(d["name"]).to_upper()
+	_d_name.text = String(d["name"])
 	_d_total.text = String(d["value"])
 	_d_buff.text = String(d["note"]) if String(d["note"]) != "" else " "
 	_d_tip.text = String(d["tip"])
-	_d_bar.visible = d.has("cap")
 	if d.has("cap"):
 		_d_bar.value = float(d["level"]) / maxf(float(d["cap"]), 1.0)
-	_buy.get_parent().visible = tab == Tab.ATTRIBUTES
+		_d_level.text = "Level %d / %d" % [int(d["level"]), int(d["cap"])]
 	if tab == Tab.ATTRIBUTES:
 		var lv: int = int(d["level"])
 		var maxed: bool = lv >= int(d["cap"])
@@ -433,6 +491,7 @@ func _fill_detail(d: Dictionary) -> void:
 		c.queue_free()
 	for s: Dictionary in sim.stat_sources(d["id"], tab == Tab.ATTRIBUTES):
 		_d_sources.add_child(_source_card(s))
+	_set_dtab(_dtab)
 
 
 func _on_buy() -> void:
@@ -492,7 +551,7 @@ func _focus_first(quiet: bool = false) -> void:
 		return
 
 
-func _grab(c: Control, quiet: bool = false) -> void:
+func _grab(c: Control, quiet: bool = true) -> void:
 	if is_instance_valid(c) and c.is_inside_tree() and c.is_visible_in_tree() and is_open():
 		if quiet:
 			Tip.grab_quiet(c)
@@ -506,12 +565,14 @@ func _layout() -> void:
 	var host: Control = get_parent_control()
 	if host == null:
 		return
-	var avail: float = host.size.y - 170.0
-	var h: float = clampf(avail, 56.0, SCROLL_H)
+	# The detail page has no info strip under it, so it gets that height too and can grow taller than the grid.
+	var detail: bool = detail_open()
+	var h: float = clampf(host.size.y - (130.0 if detail else 170.0), 56.0, DETAIL_H if detail else SCROLL_H)
 	if _scroll.custom_minimum_size.y != h:
 		_scroll.custom_minimum_size.y = h
 		reset_size()
-	position = ((host.size - size) * 0.5).floor() + Vector2(0.0, float(get_meta(&"menu_slide", 0.0)))
+	var psz: Vector2 = size.max(get_combined_minimum_size())
+	position = ((host.size - psz) * 0.5).floor() + Vector2(0.0, float(get_meta(&"menu_slide", 0.0)))
 
 
 func _process(delta: float) -> void:
