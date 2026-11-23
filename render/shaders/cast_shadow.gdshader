@@ -6,7 +6,7 @@ render_mode blend_mul;
 // fade: the density thins from the foot to the tip and toward the edges, picked against the 4x4 Bayer matrix
 // in world texels (a soft penumbra that works with the dither).
 
-uniform vec3 shade : source_color = vec3(0.50, 0.60, 0.72);
+uniform vec3 shade : source_color = vec3(0.28, 0.38, 0.56);
 uniform float strength = 1.0;          // 0..1 overall
 uniform float density_foot = 0.85;
 uniform float density_tip = 0.25;
@@ -25,11 +25,13 @@ void vertex() {
 
 void fragment() {
 	vec2 q = (UV - vec2(0.5)) * 2.0;
-	float edge = 1.0 - smoothstep(0.55, 1.0, length(q));      // 1 in the middle, 0 at the rim
+	float core = clamp((1.0 - length(q)) * 3.0, 0.0, 1.0);     // solid inside, dithered only on the rim
 	float along = 1.0 - UV.y;                                  // 0 at the foot end, 1 at the tip
-	float dens = mix(density_foot, density_tip, along) * edge * strength;
+	float dens = mix(density_foot, density_tip, along * along) * core * strength;
+	// solid body, dithered rim and tip: anything above 0.6 is fully shadowed, the rest ramps through the Bayer matrix
+	dens = clamp(dens / 0.6, 0.0, 1.0);
 	float thr = bayer4(ivec2(floor(wpos)));
-	if (thr >= dens) {
+	if (dens < 1.0 && thr >= dens) {
 		COLOR = vec4(1.0, 1.0, 1.0, 0.0);
 	} else {
 		COLOR = vec4(shade, 1.0);

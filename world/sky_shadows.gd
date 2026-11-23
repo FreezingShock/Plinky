@@ -81,7 +81,7 @@ func _lay(it: Dictionary) -> void:
 
 
 func _place(sp: Sprite2D, foot: Vector2, w: float, h: float) -> void:
-	var wid: float = w * 0.85
+	var wid: float = w * 1.25
 	var span: float = maxf(h * _len, 2.0) + wid * 0.7
 	var dir_s := Vector2(_dir.x, _dir.y * 0.5)               # ground to screen: y squashed 2:1
 	var perp_s := Vector2(-_dir.y, _dir.x * 0.5)
