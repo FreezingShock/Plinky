@@ -23,6 +23,8 @@ signal mastery_changed(button_id: StringName, level: int, xp: float)
 signal mastery_leveled(button_id: StringName, level: int)
 ## A flower tier's pads just became pressable (the last pad of the tier below was pressed).
 signal tier_opened(tier_id: StringName)
+## An achievement just unlocked (core/achievements.gd). Never fires for ones a loaded save already had.
+signal achievement_unlocked(achievement_id: StringName)
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -38,6 +40,8 @@ var relics: RelicInventory
 var mastery: Mastery = Mastery.new()
 ## History numbers (income graph, time per zone, bests) for the History screen. Lifetime part is saved.
 var run_stats: RunStats = RunStats.new()
+## Which achievements are unlocked (the Ledger). Replaced by ContentLoader with the content's list.
+var achievements: Achievements = Achievements.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
 
@@ -78,6 +82,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Dev console only (core/dev_commands.gd). Presses cost nothing. Never saved.
 var god_mode: bool = false
 
+var _ach_clock: float = 0.0
 var _dirty: Dictionary = {}
 
 
@@ -134,6 +139,15 @@ func validate() -> PackedStringArray:
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
+	var known: Dictionary = achievement_counters()
+	for a: AchievementDef in achievements.sorted:
+		if Achievements.category_index(a.category) >= Achievements.CATEGORIES.size():
+			errs.append("achievement %s: unknown category %s" % [a.id, a.category])
+		var peak_ok: bool = String(a.counter).begins_with("peak_") and stat_defs.has(StringName(String(a.counter).trim_prefix("peak_")))
+		if not known.has(a.counter) and not peak_ok:
+			errs.append("achievement %s: unknown counter %s" % [a.id, a.counter])
+		if a.target <= 0.0:
+			errs.append("achievement %s: target must be above zero" % a.id)
 	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat]:
 		if not stat_defs.has(key):
 			errs.append("config: unknown stat %s" % key)
@@ -155,6 +169,8 @@ func new_game() -> void:
 	relic_drops = 0
 	mastery.clear()
 	run_stats.clear()
+	achievements.clear()
+	_ach_clock = 0.0
 	calendar.reset()
 	ui_flags = {}
 	momentum = 0.0
@@ -630,12 +646,62 @@ func _roll_relic_drop() -> StringName:
 	return drop
 
 
+## Seconds between achievement checks while playing.
+const ACHIEVEMENT_EVERY: float = 1.0
+
+
+## Everything an achievement can count, by name: plain totals, `tier_<id>` and `zone_<id>` flags, and `peak_<stat>`.
+func achievement_counters() -> Dictionary:
+	var best_rank: int = 0
+	var kinds: int = 0
+	for id: Variant in relics.owned:
+		if relics.stacks_of(id) > 0 and relics.defs.has(id):
+			kinds += 1
+			best_rank = maxi(best_rank, (relics.defs[id] as RelicDef).rarity.rank + 1)
+	var attrs: int = 0
+	for lv: Variant in attr_levels.values():
+		attrs += int(lv)
+	var top_mastery: int = 0
+	for bid: Variant in button_defs:
+		top_mastery = maxi(top_mastery, mastery.level(bid))
+	var c: Dictionary = {
+		&"presses": float(press_count), &"crits": float(run_stats.crits), &"streaks_done": float(run_stats.streaks_done),
+		&"best_chain": float(run_stats.best_chain), &"best_momentum": float(run_stats.best_tier),
+		&"rebirths": float(rebirth_count), &"relic_drops": float(relic_drops), &"relic_kinds": float(kinds),
+		&"best_relic_rank": float(best_rank), &"attributes_bought": float(attrs), &"mastery_best": float(top_mastery),
+		&"play_hours": play_seconds / 3600.0, &"gates_open": float(gates_open.size()),
+	}
+	for tid: Variant in tier_defs:
+		var zid: StringName = (tier_defs[tid] as TierDef).zone
+		var reached: bool = zones_entered.has(zid) or zone_id == zid   # a zone's first tier is open on arrival, not before
+		c[&"tier_" + String(tid)] = 1.0 if reached and is_tier_open(tid) else 0.0
+	for zid: Variant in zone_defs:
+		c[&"zone_" + String(zid)] = 1.0 if zones_entered.has(zid) or zone_id == zid else 0.0
+	return achievements.with_peaks(c)
+
+
+## Unlocks what has been earned and returns the ids unlocked just now. Quiet: no signal.
+func _evaluate_achievements() -> Array[StringName]:
+	achievements.note_stats(stats)
+	return achievements.check(achievement_counters())
+
+
+## Checks every achievement and announces new unlocks. Runs once a second from step() and after a rebirth.
+func check_achievements() -> void:
+	for id: StringName in _evaluate_achievements():
+		achievement_unlocked.emit(id)
+
+
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
 func step(dt: float) -> void:
 	play_seconds += dt
 	if run_stats.step(dt, zone_id):
 		run_stats.record_income(income_per_second(config.income_stat))
 	calendar.advance(dt)
+	_ach_clock += dt
+	if _ach_clock >= ACHIEVEMENT_EVERY:
+		_ach_clock = 0.0
+		check_achievements()
 	if momentum_hold > 0.0:
 		momentum_hold = maxf(0.0, momentum_hold - dt)
 	elif momentum > 0.0:
@@ -720,6 +786,7 @@ func try_rebirth() -> bool:
 	_flush()
 	run_stats.mark_rebirth()
 	rebirth_done.emit(gained)
+	check_achievements()
 	return true
 
 
@@ -853,6 +920,7 @@ func apply_offline(seconds: float) -> float:
 func _set_stat(stat_id: StringName, value: BigNum) -> void:
 	stats[stat_id] = value
 	_dirty[stat_id] = true
+	achievements.note_stat(stat_id, value)
 
 
 func _flush() -> void:
@@ -907,6 +975,7 @@ func to_dict() -> Dictionary:
 		"mastery": mastery.to_dict(),
 		"calendar": calendar.to_dict(),
 		"run_stats": run_stats.to_dict(),
+		"achievements": achievements.to_dict(),
 	}
 
 
@@ -974,6 +1043,10 @@ func from_dict(d_in: Dictionary) -> bool:
 		run_stats.from_dict(rs)
 	if old_ladder:
 		_migrate_to_ladder(d_in)
+	if d.has("achievements"):
+		achievements.from_dict(d["achievements"])
+	else:
+		_evaluate_achievements()   # a save from before the Ledger: what is already earned counts, with no pop-ups
 	_dirty.clear()
 	return true
 

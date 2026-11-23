@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.28.0 - 2026-11-23
+- Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
+
 ## 0.27.1 - 2026-11-23
 - Fixed the title screen's input error (the menu pad actions are now registered before the title), and onboarding tip cards now step aside while any menu is open, so the Esc menu's buttons are never covered.
 
