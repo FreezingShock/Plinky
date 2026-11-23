@@ -209,11 +209,11 @@ func tip_text(tip: StringName) -> String:
 		&"relic":
 			return "A relic dropped! Open Relics [R] to equip it. Equipped relics boost your run."
 		&"critter":
-			return "A golden critter! Click it before it leaves for a big Cash payout."
+			return "A golden critter! Click it before it leaves for a big payout."
 		&"rebirth_button":
 			var src: StatDef = sim.stat_defs.get(sim.prestige_source()) as StatDef
 			var src_name: String = src.display_name if src != null else "stats"
-			var resets: String = "Cash, Multiplier and the forge pads" if sim.zone_id == &"zone2" else "Sunlight, flowers and pads"
+			var resets: String = "Embers, Cinder and the forge pads" if sim.zone_id == &"zone2" else "Sunlight, flowers and pads"
 			return "You can Rebirth now. It resets your %s and banks your %s as Prestige, a permanent income boost. An open gate stays open. Pushing past %d %s pays more." % [resets, src_name, int(sim.config.prestige_push_threshold), src_name]
 		&"gate_open":
 			var nz: ZoneDef = sim.zone_defs.get(z.next_zone) as ZoneDef if z != null else null
