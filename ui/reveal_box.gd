@@ -79,6 +79,11 @@ func _sync() -> void:
 		_veil.queue_redraw()
 
 
+## The height the box asks for right now (the engine caches get_combined_minimum_size until the next idle frame).
+func shown_height() -> float:
+	return _get_minimum_size().y
+
+
 func _get_minimum_size() -> Vector2:
 	var b: Control = body()
 	if b == null:

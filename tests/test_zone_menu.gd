@@ -17,15 +17,14 @@ func run(t: Object) -> void:
 	var body := Control.new()
 	body.custom_minimum_size = Vector2(40, 80)
 	box.add_child(body)
-	t.root.add_child(box)   # minimum sizes only update inside the tree
-	t.eq(box.get_combined_minimum_size().y, 80.0, "open box shows the whole body")
+	t.eq(box.shown_height(), 80.0, "open box shows the whole body")
 	box.set_open(false, false)
-	t.eq(box.get_combined_minimum_size().y, 0.0, "shut box has no height")
+	t.eq(box.shown_height(), 0.0, "shut box has no height")
 	t.ok(not body.visible, "shut body is hidden so focus skips it")
 	box.floor_px = 26.0
-	t.eq(box.get_combined_minimum_size().y, 26.0, "a floor keeps a stub showing")
+	t.eq(box.shown_height(), 26.0, "a floor keeps a stub showing")
 	box.amount = 0.5
-	t.eq(box.get_combined_minimum_size().y, 53.0, "half open lands between floor and full")
+	t.eq(box.shown_height(), 53.0, "half open lands between floor and full")
 	box.free()
 
 	var panel := ZonePanel.new()
