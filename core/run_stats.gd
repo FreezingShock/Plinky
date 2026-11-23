@@ -21,7 +21,7 @@ var best_tier: int = 0                ## highest Momentum stage reached
 var crits: int = 0
 var best_income: BigNum = BigNum.zero()
 
-var _clock: float = 0.0
+var _clock: float = SAMPLE_EVERY   ## starts due, so the graph has its first bar right away
 
 
 func clear() -> void:
@@ -34,7 +34,7 @@ func clear() -> void:
 	best_tier = 0
 	crits = 0
 	best_income = BigNum.zero()
-	_clock = 0.0
+	_clock = SAMPLE_EVERY
 
 
 ## Advance time. Returns true when a graph sample is due: the caller then passes the current income to record_income().

@@ -3,8 +3,10 @@ extends RefCounted
 
 func run(t: Object) -> void:
 	var rs := RunStats.new()
-	t.ok(not rs.step(4.9, &"meadow"), "no sample is due before the interval")
-	t.ok(rs.step(0.2, &"meadow"), "a sample is due after the interval")
+	t.ok(rs.step(0.1, &"meadow"), "the first sample is due at once, so the graph is never empty")
+	rs.record_income(BigNum.make(1.0, 3))
+	t.ok(not rs.step(4.7, &"meadow"), "no sample is due before the interval")
+	t.ok(rs.step(0.3, &"meadow"), "a sample is due after the interval")
 	rs.record_income(BigNum.make(1.0, 3))
 	t.near(rs.samples[0], 3.0, 1e-4, "income is stored as log10")
 	t.near(RunStats.log10_of(BigNum.zero()), 0.0, 1e-9, "zero income is 0 on the log scale")
@@ -41,7 +43,7 @@ func run(t: Object) -> void:
 	t.near(sim2.run_stats.zone_seconds[&"meadow"], 321.0, 1e-6, "zone time survives a save")
 	t.eq(sim2.run_stats.crits, 7, "crits survive a save")
 	t.ok(sim2.run_stats.best_income.gte(BigNum.make(1.9, 6)), "best income survives a save")
-	t.eq(sim2.run_stats.samples.size(), 0, "the session graph starts empty after a load")
+	t.ok(sim2.run_stats.samples.size() <= 1, "the session graph starts fresh after a load")
 	var old: Dictionary = sim.to_dict()
 	old.erase("run_stats")
 	t.ok(sim2.from_dict(old), "a save from before History still loads")
@@ -57,7 +59,9 @@ func run(t: Object) -> void:
 	t.eq(hs[2], 40, "the highest sample fills the box")
 	t.ok(HistoryGraph.bar_heights(PackedFloat32Array(), 40).is_empty(), "no samples, no bars")
 	t.ok(HistoryGraph.bar_heights(PackedFloat32Array([3.0, 3.0]), 40)[0] > 0, "a flat line still draws")
-	t.ok(HistoryGraph.capacity(380) >= 120, "the graph box fits 10 minutes of samples")
+	t.ok(HistoryGraph.capacity(302) >= RunStats.MAX_SAMPLES, "the graph box fits 10 minutes of samples")
+	t.eq(HistoryGraph.new().custom_minimum_size.y, float(HistoryGraph.HEIGHT), "the graph is its full height")
+	t.ok(HistoryGraph.HEIGHT >= 72, "the graph is tall enough to read")
 
 	t.eq(HistoryPanel.span_text(45.0), "45 s", "short spans are seconds")
 	t.eq(HistoryPanel.span_text(125.0), "2 min", "minutes")
