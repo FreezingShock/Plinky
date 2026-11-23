@@ -19,7 +19,6 @@ var _arch: Marker2D = null        ## the way back to the previous zone, when the
 var _arch_lock: float = 0.0
 var _crossing: bool = false
 var _prev_zone: StringName = &""
-var banner: DistrictBanner
 var _district_id: String = ""
 var _district_t: float = 0.0
 var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
@@ -123,8 +122,7 @@ func _ready() -> void:
 	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
-	banner = DistrictBanner.new()
-	hud.add_child(banner)
+	Banner.attach(hud)
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
@@ -134,6 +132,7 @@ func _ready() -> void:
 	bus.zone_entered.connect(_on_zone_entered)
 	bus.bonus_gained.connect(_on_bonus_gained)
 	_enter_zone_visuals(sim.zone_id)
+	get_tree().create_timer(1.2).timeout.connect(func() -> void: _announce_zone_arrival(sim.zone_id))
 	_clear_spawn()
 	_prev_zone = _previous_zone(sim.zone_id)
 	camera.snap()
@@ -406,6 +405,34 @@ func _update_arch(delta: float) -> void:
 const ARCH_RADIUS: float = 16.0
 
 
+## Arrival banner for a zone. Zones that name their districts (Larkmoor) let the district banner do it instead.
+func _announce_zone_arrival(zone_id: StringName) -> void:
+	if meadow != null and meadow.has_method("district_at"):
+		return
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	if z != null:
+		_announce_area(z.display_name, "", zone_id)
+
+
+## The shared banner for an outdoor area: its name, then season and date, then the time of day. Reads the Calendar
+## autoload when it exists (now() returns a dictionary, see core/area_banner.gd) and falls back to the sky clock.
+func _announce_area(area_name: String, area_id: String, zone_id: StringName = &"") -> void:
+	var z: ZoneDef = sim.zone_defs.get(zone_id if zone_id != &"" else sim.zone_id) as ZoneDef
+	if z != null and not z.outdoor:
+		return
+	var cal: Dictionary = {}
+	var calendar: Node = get_node_or_null("/root/Calendar")
+	if calendar != null and calendar.has_method("now"):
+		cal = calendar.call("now") as Dictionary
+	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
+	var phase: float = sky.clock_phase() if sky != null else 0.5
+	var icon: String = ""
+	var area: AreaDef = sim.area_defs.get(StringName(area_id)) as AreaDef if area_id != "" else null
+	if area != null:
+		icon = area.icon
+	Banner.announce(AreaBanner.compose(area_name, cal, phase, icon))
+
+
 ## Names the district the walker is in, once per entry.
 func _update_district(delta: float) -> void:
 	_district_t -= delta
@@ -418,7 +445,7 @@ func _update_district(delta: float) -> void:
 		_district_id = id
 		if id != "":
 			hud.set_district(StringName(id))
-			banner.show_name(String(d.get("name", "")))
+			_announce_area(String(d.get("name", "")), String(d.get("id", "")))
 
 
 ## Zone 2 vents: present only when the zone scene has Vent anchors.
@@ -443,6 +470,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 		_enter_zone_visuals(zone_id)
 		Juice.zone_enter()
 		_after_crossing(zone_id)
+		_announce_zone_arrival(zone_id)
 		return
 	_crossing = true
 	walker.stop()
@@ -453,6 +481,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 			_clear_spawn())
 	_crossing = false
 	_after_crossing(zone_id)
+	_announce_zone_arrival(zone_id)
 
 
 func _after_crossing(zone_id: StringName) -> void:

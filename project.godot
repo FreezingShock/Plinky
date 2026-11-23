@@ -16,6 +16,7 @@ Save="*res://core/save.gd"
 Fx="*res://render/fx_driver.gd"
 Juice="*res://ui/fx/fx_bus.gd"
 Audio="*res://audio/audio.gd"
+Banner="*res://ui/banner.gd"
 
 [display]
 

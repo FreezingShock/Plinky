@@ -275,3 +275,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Stage 5: the time-of-day grade now has a real midnight (cool blue, 0.6 coverage) and a warm noon (0.25 coverage) instead of an almost-white day and a no-grade night. Dusk stays orange fading to magenta.
 - Not run in-engine. Parallax is still open: the far backdrop is baked into ground.png and needs a generator split.
 - PC pass fixes: vignette dither used a rounded origin, which slipped against the ground when the camera offset was fractional (Larkmoor zoom 3, 30% match). It now uses the exact origin. Pad shadow stretches from 18 texels (was 9) so it reads. Larkmoor noon was overexposed: ground relight now scales 0.55 at noon to 1.0 at a low sun, light_lift 0.22 to 0.12, the full-frame highlight lift only starts at lum 0.66, and the noon grade covers 0.15 instead of 0.25.
+
+## Popup banners (Banner autoload)
+- `Banner.announce({title, lines, icon, color, duration, key, interrupt})` (ui/banner.gd, logic in core/banner_queue.gd). `show` is taken by CanvasLayer, so the call is `announce`.
+- Bottom-middle, typed from the centre outward and collapsed back to it. The panel is a fixed size for the whole banner, so it never jitters. Queue holds 4, same key is a duplicate, a repeat within 6 s is dropped, `skip()` ends early.
+- Reduced motion: new Access toggle "Still banners" (`FxConfig.reduce_motion`): banners show whole with no typing or collapse.
+- Replaces the old DistrictBanner. Area arrival (core/area_banner.gd): name, then season/date from `/root/Calendar.now()` when that autoload exists, then time; with no calendar it shows the sky clock and period only. `ZoneDef.outdoor` (default true) turns it off for indoor zones. Larkmoor shows district banners, other zones show a zone banner on arrival and at boot.
+- Calendar keys read: season (name or 0-3), month, day, hour, minute, period. Not wired: season_changed banner (waiting on the calendar thread's signal names).

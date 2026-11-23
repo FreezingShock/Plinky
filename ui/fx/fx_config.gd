@@ -28,6 +28,8 @@ const PAL_PAPER := 7
 ## Set by the settings screen (M4). Respected by every effect below.
 static var reduce_flashing := false
 static var reduce_shake := false
+## Banners and other typed text show whole, with no typing or collapse.
+static var reduce_motion := false
 
 ## Snap a position to whole texels so FX never sit between world pixels.
 static func snap(v: Vector2) -> Vector2:
