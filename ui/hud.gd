@@ -22,7 +22,7 @@ var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
 var _rebirth: ExpandChip
-var _bloom: ExpandChip
+var _reset_chips: Dictionary = {}   # zone reset id -> its bottom-bar chip (generated from content/resets)
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
@@ -226,7 +226,7 @@ static func hud_stat_ids(sim: Sim) -> Array[StringName]:
 
 
 ## Whether a stat row belongs in the current zone. Prestige and Rebirth Points show where Rebirth runs (not the meadow),
-## Seeds once a Bloom has paid them.
+## a zone reset's currency (Seeds) once it has paid them.
 func _row_in_zone(sid: StringName) -> bool:
 	if not _layout_rows().has(sid):
 		return false
@@ -239,8 +239,8 @@ func _zone_has(sid: StringName) -> bool:
 	var d: StatDef = sim.stat_defs.get(sid) as StatDef
 	if sid == &"prestige" or sid == &"rp":
 		return sim.rebirth_here()
-	if sid == &"seeds":
-		return sim.bloom_count > 0 or not sim.get_stat(&"seeds").is_zero()
+	if sim.reset_for_currency(sid) != null:
+		return UpgradeText.group_shown(sim, sid) and (sim.reset_count(sim.reset_for_currency(sid).id) > 0 or not sim.get_stat(sid).is_zero())
 	return d == null or d.in_zone(sim.zone_id)
 
 
@@ -282,19 +282,22 @@ func _build_clock() -> void:
 	gate(_clock_widget, Onboarding.F_DEWDROP)
 
 
-## Bloom asks first too (the same Settings switch). The numbers are read when it is pressed.
-func _on_bloom_pressed() -> void:
-	if not sim.can_bloom():
+## A zone reset asks first too (the same Settings switch). Its words come from its ZoneResetDef; the numbers are read when
+## it is pressed.
+func _on_zone_reset_pressed(rid: StringName) -> void:
+	var r: ZoneResetDef = sim.reset_defs.get(rid) as ZoneResetDef
+	if r == null or not sim.can_reset(rid):
 		return
 	if not ModalCard.rebirth_confirm:
-		GameState.try_bloom()
+		GameState.try_reset(rid)
 		return
+	var cname: String = (sim.stat_defs[r.currency] as StatDef).display_name
 	var lines: Array = [
-		["Resets your Sunlight and every flower.", StatStyle.PAPER],
-		["+%d Seeds" % sim.bloom_gain_preview(), StatStyle.color(&"seeds")],
-		["Every pad pays %d%% more, for good." % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), StatStyle.gain()],
+		[r.resets_text, StatStyle.PAPER],
+		["+%d %s" % [sim.reset_gain(rid), cname], StatStyle.color(r.currency)],
+		["Every pad pays %d%% more, for good." % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()],
 	]
-	_modal.open("Bloom?", lines, "Bloom", "Not yet", func() -> void: GameState.try_bloom())
+	_modal.open("%s?" % r.display_name, lines, r.display_name, "Not yet", func() -> void: GameState.try_reset(rid))
 
 
 ## Rebirth asks first (Settings > Gameplay > Confirm rebirth turns that off). The numbers are read when it is pressed.
@@ -323,10 +326,14 @@ func _build_bottom() -> void:
 	_rebirth.pressed.connect(_on_rebirth_pressed)
 	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format(), str(sim.rp_gain_preview()) if sim.can_rebirth() else ""))
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
-	_bloom = _chip(h, "seeds", "Bloom", "Reset the meadow for Seeds.")
-	_bloom.pressed.connect(_on_bloom_pressed)
-	Tip.bind(_bloom, func() -> Variant: return TipText.bloom(sim.can_bloom(), sim.bloom_gain_preview(), "+%d%%" % int(roundf(sim.config.bloom_reward_per_bloom * 100.0)), "Reach %s %s." % [BigNum.from_float(sim.bloom_ref()).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]))
-	_bloom.visible = false
+	for zr: ZoneResetDef in sim.resets_ordered():   # one chip per zone reset; only the current zone's shows
+		var rid: StringName = zr.id
+		var chip: ExpandChip = _chip(h, String(zr.currency), zr.display_name, zr.button_hint)
+		chip.pressed.connect(_on_zone_reset_pressed.bind(rid))
+		var cname: String = (sim.stat_defs[zr.currency] as StatDef).display_name
+		Tip.bind(chip, func() -> Variant: return TipText.zone_reset(zr, cname, sim.can_reset(rid), sim.reset_gain(rid), "Reach %s %s." % [BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[zr.source_stat] as StatDef).display_name]))
+		chip.visible = false
+		_reset_chips[rid] = chip
 	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.", "Keys: %s or 1" % Keybinds.key_name(&"upgrades"))
 	up.full_text = "Upgrades [Tab]"
 	up.short_text = "Upgrades"
@@ -385,7 +392,9 @@ func _build_upgrades() -> void:
 	title.text = "Upgrades"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	for sid: StringName in [&"seeds", &"rp", &"prestige"]:   # right-aligned balances, the one on the far right is Prestige
+	var heads: Array[StringName] = UpgradeText.currencies(sim)
+	heads.reverse()   # right-aligned balances, the one on the far right is Prestige
+	for sid: StringName in heads:
 		_cur_badges[sid] = _currency_badge(head, sid)
 	var x_gap := Control.new()   # keeps the balances clear of the close X in the corner
 	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
@@ -405,7 +414,7 @@ func _build_upgrades() -> void:
 		if a.currency != group:   # a small heading where each perk group starts
 			group = a.currency
 			var gh := Label.new()
-			gh.text = String(UpgradeText.GROUP_HEADS.get(group, String(group).to_upper()))
+			gh.text = UpgradeText.group_head(sim, group)
 			gh.add_theme_color_override("font_color", StatStyle.color(group))
 			list.add_child(gh)
 			_group_heads[group] = gh
@@ -450,8 +459,8 @@ func _currency_badge(parent: Control, sid: StringName) -> HBoxContainer:
 
 ## What the player can spend of a currency: unspent Prestige, or the Rebirth Points in hand.
 func _balance(sid: StringName) -> BigNum:
-	if sid == &"seeds":
-		return sim.get_stat(&"seeds")
+	if sim.reset_for_currency(sid) != null:
+		return sim.get_stat(sid)
 	return sim.rp_available() if sid == &"rp" else sim.prestige_available()
 
 
@@ -630,9 +639,14 @@ func _refresh() -> void:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
 	_rebirth.disabled = not sim.can_rebirth()
 	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need %s %s)" % [BigNum.from_float(sim.config.rebirth_min_value).format(), (sim.stat_defs[sim.prestige_source()] as StatDef).display_name]
-	_bloom.visible = sim.can_bloom() or sim.bloom_count > 0 or (sim.bloom_unlocked() and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES))
-	_bloom.disabled = not sim.can_bloom()
-	_bloom.full_text = "Bloom (+%d Seeds)" % sim.bloom_gain_preview() if sim.can_bloom() else "Bloom (need %s %s)" % [BigNum.from_float(sim.bloom_ref()).format(), (sim.stat_defs[sim.config.bloom_source_stat] as StatDef).display_name]
+	for rid: StringName in _reset_chips:
+		var rd: ZoneResetDef = sim.reset_defs[rid] as ZoneResetDef
+		var rc: ExpandChip = _reset_chips[rid] as ExpandChip
+		var mine: bool = rd == sim.reset_for_zone()
+		rc.visible = mine and (sim.can_reset(rid) or sim.reset_count(rid) > 0)
+		rc.disabled = not sim.can_reset(rid)
+		var cn: String = (sim.stat_defs[rd.currency] as StatDef).display_name
+		rc.full_text = "%s (+%d %s)" % [rd.display_name, sim.reset_gain(rid), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:
@@ -977,7 +991,7 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open or Tip.is_showing()   # tips never cover an open menu or a tooltip
+	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible   # tips never cover an open menu, a tooltip or a confirm card
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

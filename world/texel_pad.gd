@@ -380,17 +380,22 @@ func _forge_frame() -> int:
 	return (Time.get_ticks_msec() / FLICKER_MS) % 3
 
 
-static func forge_texture(art: String, frame: int) -> Texture2D:
-	var key: String = "%s_%d" % [art, frame]
+## stage 1..3: pad 1 is the plain version, pad 2 adds to it, pad 3 is the grand one.
+static func forge_texture(art: String, stage: int, frame: int) -> Texture2D:
+	var key: String = "%s_%d_%d" % [art, stage, frame]
 	if not _forge_tex.has(key):
-		_forge_tex[key] = load("%s%s_game_f%d.png" % [FORGE_DIR, art, frame]) as Texture2D
+		_forge_tex[key] = load("%s%s_s%d_game_f%d.png" % [FORGE_DIR, art, stage, frame]) as Texture2D
 	return _forge_tex[key] as Texture2D
 
 
 ## A forge row's object, bottom-centre on the plate. Locked: a flat dark silhouette. Opening: it rises out of the plate
 ## row by row and throws the same ring of sparks as a flower.
 func _draw_forge(top: int, _ink: Color) -> void:
-	var tex: Texture2D = forge_texture(String(FORGE_ART[tier_row]), _forge_frame())
+	var stage: int = 3
+	var sd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
+	if sd != null:
+		stage = clampi(sd.row_index + 1, 1, 3)
+	var tex: Texture2D = forge_texture(String(FORGE_ART[tier_row]), stage, _forge_frame())
 	if tex == null:
 		return
 	var w: int = tex.get_width()

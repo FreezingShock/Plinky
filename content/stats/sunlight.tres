@@ -15,6 +15,5 @@ income_factor_per_unit = 0.0
 gain_boost_stat = &""
 prestige_boosts_income = true
 resets_on_rebirth = true
-resets_on_bloom = true
 relics_boost_income = true
 relics_boost_gain = false
