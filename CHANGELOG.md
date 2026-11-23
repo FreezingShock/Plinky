@@ -9,8 +9,61 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.11.0 - 2026-11-23
+## 0.17.0 - 2026-11-23
 - Grass redrawn: the square light/dark patchwork is gone. Seasonal recolour now spreads as smooth organic blobs (it was hashed 5x5 squares, also showing in tree canopies and rocks), and the ground has hand-placed blade tufts that gather into clumps instead of random noise patches, in the meadow and Larkmoor.
+
+## 0.16.3 - 2026-11-23
+- Ember Quarry: the way back to Larkmoor is now a cave mouth in the rock instead of a second gate: rough basalt, a dark inside with a window of green meadow light, grass, moss and flowers at the lip, cool motes drifting out, and a green light spill on the road.
+
+## 0.16.2 - 2026-11-23
+- Ember Quarry: the south road now ends at a stone landing under a way-back arch (cool ash glow) that returns you to Larkmoor, with a tooltip; no more road to nowhere.
+
+## 0.16.1 - 2026-11-23
+- Stats and Attributes galleries overhaul: every card outline and name wears its stat's colour (brighter, solid on hover or focus); maxed attributes read a gold MAX; all names in Title Case; long names get a short card label (Rebirth Pts) so nothing clips, cards are 76 px wide; RP shows as a whole number; the three Rebirth Perks sit under their own Rebirth Perks header, each with its own icon (Deep Sleep, Pad Lore, Lucky Streak); the detail header frame and name use the stat colour.
+
+## 0.16.0 - 2026-11-23
+- Hold a Buy button in Upgrades to keep buying, faster the longer you hold. The Upgrades header shows Prestige as an icon and value on the right. New currency: Rebirth Points, paid on every rebirth and spent on Rebirth perks (Pad lore, Lucky streak, Deep sleep). World popups no longer draw over open menus. Save format v4.
+
+## 0.15.0 - 2026-11-23
+- Ember Quarry redesigned as a whole map facing the camera: a hub plaza at the middle where you spawn, a main road to the gate and branches to the three pads, ground in every direction, no rock wall in front of the camera; the gate gets a dark recess that glows when open.
+
+## 0.14.7 - 2026-11-23
+- Ember Quarry: the near cliff face is now layered basalt strata with ember seams, a lip highlight and a fall-off to dark; pads and the spawn sit well back from the lip; walk clicks near a ledge land a few texels back from the edge.
+
+## 0.14.6 - 2026-11-23
+- Stats and Attributes window is centred by the HUD, so it stays centred at Wide and other view sizes; the detail header keeps a minimum width for the value so a long name can't clip it.
+
+## 0.14.5 - 2026-11-23
+- The Welcome back toast now sits centred in the upper third, clear of the momentum panel, and the momentum tooltip is trimmed to charge, income, next stage, sources and hold/drain.
+
+## 0.14.4 - 2026-11-23
+- Stat detail header: a stat with no gain line centres its value vertically against the icon and name.
+
+## 0.14.3 - 2026-11-23
+- Momentum bar no longer grows or crowds the panel border on a stage-up: the pop is now colour and frame flash only, and the stage name has fixed room.
+
+## 0.14.2 - 2026-11-23
+- Click-to-walk ring and dots now snap to the nearest walkable ground, so they no longer sit on cliff faces or water.
+
+## 0.14.1 - 2026-11-23
+- Stats and Attributes gallery fixes from the PC pass: focused and hovered cards use a solid fill; the detail page hides the grid strip and gets more height so Next level, the sources and Buy fit; Back no longer pops a tooltip on open; the Prestige-to-spend header clears the close X; the panel recentres at wide sizes. The detail page is now a solid header (icon and name left, value and gain right) over About / Sources / Level sub-tabs, so it no longer scrolls.
+
+## 0.14.0 - 2026-11-23
+- Momentum overhaul: five named stages (Idle, Stride, Rhythm, Flow, Surge) with income kickers, a hold window before it drains (4 s at Surge), pad presses and crits feed it, and a new bar with stage ticks, a decay ghost, a hold line, stage colours, a tier-up flash and thump, and a tooltip with exact numbers. Full bar is still +40%.
+
+## 0.13.0 - 2026-11-23
+- Stats and Attributes are now a gallery: 32 px icon cards, hover info strip, and a detail page per stat with its sources (where it comes from, how to get more). New clean symmetric icon set, and `sim.stat_sources`. Attribute detail pages let you buy the next level.
+
+## 0.12.0 - 2026-11-23
+- Title screen overhaul: a layered dusk meadow (stars, sun, two drifting cloud decks, snow-capped mountains with mist, wooded ridge with a windmill and a smoking cottage, a lake with a sun glitter column, a swaying-tree meadow, fireflies, birds, falling leaves, tall foreground grass) on the texel grid with mouse parallax and per-layer dither; the logo and a framed menu sit left, the walker on its pad right. The menu gets pixel icons on every button: Continue (or Play), New Game, Saves, Settings, Update Log, Credits, Quit.
+- Save slots: three slots (slot 1 is the existing save), a Saves list showing rebirths, play time, presses and save date with Load, Start and a two-step Delete; Continue loads the last used slot; nothing autosaves while the title is up.
+- The version number on the boot and title screens is bright with an ink outline, underlines on hover, and opens the Update Log when clicked (boot waits while it is open). New Credits panel.
+
+## 0.10.13 - 2026-11-23
+- HUD top bar no longer overlaps: the clock card squeezes to fit between the stats and zone panels and sits under the zone list. The district banner is centred on the screen, 40% down.
+
+## 0.10.12 - 2026-11-23
+- Ember Quarry: meadow trees no longer carry over from Larkmoor (props are freed by reference, not by name); the forge gate gets real basalt-and-iron art with locked, open and tooltip states; pads, spawn and props moved off the cliff face onto visible ground.
 
 ## 0.10.11 - 2026-11-23
 - Every menu (Upgrades, Relics, Settings, Feedback, Update Log, hamburger) now opens and closes with the same dither wipe and slide as Stats and Attributes, from one shared MenuAnim. Opening a menu no longer pops a tooltip on its first item; tooltips wait for hover or the first arrow, d-pad or Tab press.

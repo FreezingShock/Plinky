@@ -34,6 +34,7 @@ func _ready() -> void:
 	sim.bonus_gained.connect(func(k: StringName, g: Dictionary) -> void: bus.bonus_gained.emit(k, g))
 	sim.critter_spawned.connect(func() -> void: bus.critter_spawned.emit())
 	sim.heat_hot_changed.connect(func(h: bool) -> void: bus.heat_hot_changed.emit(h))
+	sim.momentum_tier_changed.connect(func(t: int, up: bool) -> void: bus.momentum_tier_changed.emit(t, up))
 	sim.critter_gone.connect(func() -> void: bus.critter_gone.emit())
 	sim.calendar.day_changed.connect(func(d: int) -> void: bus.day_changed.emit(d))
 	sim.calendar.month_changed.connect(func(m: int) -> void: bus.month_changed.emit(m))

@@ -25,6 +25,7 @@ var _district_t: float = 0.0
 var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
 var walker: TexelWalker
 var gate: TexelGate
+var arch_gate: TexelGate   ## drawn at the Arch anchor of zones with gate art: the way back
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
 var pointer: PadPointer
@@ -76,7 +77,7 @@ func _ready() -> void:
 	_scene_path = _zone_scene_path(sim.zone_id)
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	_spawn_occluders()
 	_apply_scene_frame(sim.zone_id)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
@@ -89,7 +90,13 @@ func _ready() -> void:
 	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
 	gate.position = gate_marker.position if gate_marker != null else Vector2(480, 120)
 	gate.walker = walker
+	gate.dead_end.connect(func() -> void: banner.show_name("The way on is still being forged"))
 	world.add_child(gate)
+	arch_gate = TexelGate.new()
+	arch_gate.walker = walker
+	arch_gate.visible = false
+	world.add_child(arch_gate)
+	_sync_arch_gate(sim.zone_id)
 
 	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
 	camera = WorldCamera.new()
@@ -140,6 +147,7 @@ func _ready() -> void:
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
 	bus.bonus_gained.connect(_on_bonus_gained)
+	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
 	_prev_zone = _previous_zone(sim.zone_id)
@@ -177,6 +185,12 @@ func _update_tooltip() -> void:
 		if pad.hovered:
 			tooltip.show_for(sim, pad.button_id, get_local_mouse_position())
 			shown = true
+	if not shown and not blocked and gate.hit(m):
+		tooltip.show_spec(TexelGate.spec_for(sim, gate.zone_id), get_local_mouse_position())
+		shown = true
+	if not shown and not blocked and arch_gate.visible and arch_gate.hit(m) and arch_gate.back_to != &"":
+		tooltip.show_spec(TexelGate.back_spec(sim, arch_gate.zone_id, arch_gate.back_to), get_local_mouse_position())
+		shown = true
 	if not shown:
 		tooltip.hide_tip()
 
@@ -274,6 +288,7 @@ func _build_pads() -> void:
 	pads.clear()
 	var z: ZoneDef = sim.current_zone()
 	gate.zone_id = z.id if z != null else &""
+	gate.art = z.gate_art if z != null else &""
 	if z == null:
 		return
 	var anchors: Node = meadow.get_node("Anchors")
@@ -337,13 +352,11 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 		_apply_scene_frame(zone_id)
 		return
 	_scene_path = path
-	for c: Node in world.get_children():
-		if String(c.name).begins_with("Occ_"):
-			c.queue_free()
+	_free_occluders()
 	meadow.queue_free()
 	meadow = (load(path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	_spawn_occluders()
 	_apply_scene_frame(zone_id)
 	var anchors: Node = meadow.get_node("Anchors")
 	var going_back: bool = _going_back
@@ -362,6 +375,29 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 
 
 var _going_back: bool = false
+var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone scene, freed on a swap
+
+
+## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
+## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
+## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
+func _spawn_occluders() -> void:
+	var before: Dictionary = {}
+	for c: Node in world.get_children():
+		before[c] = true
+	meadow.call("spawn_occluders", world)
+	_occluders.clear()
+	for c: Node in world.get_children():
+		if not before.has(c):
+			_occluders.append(c)
+
+
+func _free_occluders() -> void:
+	for c: Node in _occluders:
+		if is_instance_valid(c):
+			world.remove_child(c)   # out of the tree now, so a same-named sprite from the next scene keeps its name
+			c.queue_free()
+	_occluders.clear()
 
 
 ## Frames the zone scene: the walker, the walk mask and the footstep lookups follow its size, and the camera is
@@ -377,6 +413,7 @@ func _apply_scene_frame(zone_id: StringName) -> void:
 	MeadowSites.use(String(pp) if pp is String else "", String(gp) if gp is String else "", off as Vector2i if off is Vector2i else MeadowSites.MEADOW_OFFSET)
 	var anchors: Node = meadow.get_node("Anchors")
 	_arch = anchors.get_node_or_null("Arch") as Marker2D
+	_sync_arch_gate(zone_id)
 	_district_id = ""
 	if camera != null:
 		camera.bounds = _camera_bounds()
@@ -387,6 +424,21 @@ func _camera_bounds() -> Rect2:
 		return _world_rect as Rect2
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	return Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+
+
+## Zones with gate art (the quarry) draw their own arch at the Arch anchor; others bake theirs into the scene.
+func _sync_arch_gate(zone_id: StringName) -> void:
+	if arch_gate == null:
+		return
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	var art: StringName = z.gate_art if z != null else &""
+	arch_gate.visible = _arch != null and art != &""
+	if arch_gate.visible:
+		arch_gate.position = _arch.position
+		arch_gate.art = art
+		arch_gate.zone_id = zone_id
+		arch_gate.back_to = _previous_zone(zone_id)
+		arch_gate.palette = Palettes.colors(Palettes.for_zone(zone_id))
 
 
 ## The zone whose next_zone is this one: where the Arch leads back to.
@@ -483,6 +535,7 @@ func _on_mastery_leveled(button_id: StringName, level: int) -> void:
 
 
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
+	sim.feed_press_momentum(crit)
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
 		return
@@ -519,6 +572,8 @@ func _wire_index() -> void:
 	index_panel = IndexPanel.new()
 	hud.add_child(index_panel)
 	index_panel.bind(sim)
+	hud.keep_centered(index_panel)   # the HUD centres it in the visible frame at every view size
+	index_panel.buyer = func(id: StringName) -> bool: return GameState.buy_attribute(id)
 	hud.index_requested.connect(func(t: int) -> void:
 		menus.toggle(&"stats" if t == IndexPanel.Tab.STATS else &"attributes"))
 

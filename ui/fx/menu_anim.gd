@@ -26,7 +26,7 @@ static func attach(p: Control) -> MenuAnim:
 	p.visibility_changed.connect(a._on_visibility)
 	a.reveal.tree_entered.connect(a._sync_reveal)
 	p.tree_exiting.connect(a._cleanup)
-	if p.is_inside_tree() and p.get_parent() != null:
+	if p.get_parent() != null:
 		p.get_parent().add_child(a.reveal)
 	else:
 		p.tree_entered.connect(a._adopt_reveal, CONNECT_ONE_SHOT)
