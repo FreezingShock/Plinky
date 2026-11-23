@@ -86,6 +86,10 @@ func bind(inv: RelicInventory) -> void:
 	inv.changed.connect(refresh)
 	refresh()
 
+var _slots_shown: Array[StringName] = []
+var _slots_primed: bool = false
+
+
 func refresh() -> void:
 	if inventory == null:
 		return
@@ -108,6 +112,8 @@ func refresh() -> void:
 			var id: StringName = inventory.equipped[i]
 			s.setup(inventory.defs[id], inventory.stacks_of(id), false)
 			s.set_highlight(_swap_from != &"")
+			if _slots_primed and not _slots_shown.has(id):
+				s.pop()
 		else:
 			s.setup(null)
 		_wire(s, true)
@@ -119,6 +125,8 @@ func refresh() -> void:
 			s.setup(null)
 			_wire(s, true)
 			_slots_row.add_child(s)
+	_slots_shown = inventory.equipped.duplicate()
+	_slots_primed = true
 	_fill_bonuses()
 	# Toolbar labels.
 	_sort_btn.text = "Sort: %s" % query.sort_name()

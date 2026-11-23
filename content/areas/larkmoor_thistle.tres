@@ -10,5 +10,5 @@ display_name = "Thistle Rise"
 order = 2
 icon = "flower"
 theme_role = 6
-blurb = "A dry, flowering slope east of the road."
-pad_buttons = PackedStringArray("t1", "t2")
+blurb = "A dry, flowering slope east of the road. The Foxglove row stands among the flowers."
+pad_buttons = PackedStringArray("foxglove_1", "foxglove_2", "foxglove_3")

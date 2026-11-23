@@ -10,12 +10,12 @@ func run(t: Object) -> void:
 	t.eq(sim.rp_total_for(3), 3, "three early rebirths paid 3 RP")
 
 	# A rebirth pays RP and Prestige; rebirths still only boost Multiplier gain.
-	sim.stats[&"reb"] = BigNum.from_float(9.0)
+	sim.stats[&"clover"] = BigNum.from_float(9.0)
 	t.eq(sim.rp_gain_preview(), 1, "preview shows the next payout")
 	t.ok(sim.try_rebirth(), "rebirth")
 	t.near(sim.rp_available().to_float(), 1.0, 1e-9, "rebirth paid 1 RP")
 	t.near(sim.get_stat(&"prestige").to_float(), 9.0, 1e-9, "prestige payout unchanged")
-	sim.stats[&"reb"] = BigNum.from_float(9.0)
+	sim.stats[&"clover"] = BigNum.from_float(9.0)
 	t.ok(sim.try_rebirth(), "second rebirth")
 	t.near(sim.rp_available().to_float(), 2.0, 1e-9, "RP stack across rebirths (not reset)")
 

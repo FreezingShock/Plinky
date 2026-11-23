@@ -10,5 +10,5 @@ display_name = "Starting Clearing"
 order = 0
 icon = "clearing"
 theme_role = 4
-blurb = "Where every pad is new. Press, walk, and let Multiplier climb."
-pad_buttons = PackedStringArray("m1", "m2", "m3")
+blurb = "Where every pad is new. Press, walk, and let Dewdrops climb."
+pad_buttons = PackedStringArray("sprout_1", "sprout_2", "sprout_3")

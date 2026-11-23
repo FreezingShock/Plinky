@@ -38,6 +38,7 @@ func help_lines() -> PackedStringArray:
 		"skip <time>               fast forward income (90s, 15m, 3h, 2d)",
 		"season [name|0-3]         show the calendar, or jump to the start of a season (spring, summer, autumn, winter)",
 		"day <n>                   advance the calendar by n in-game days",
+		"tiers [id]                open every flower tier, or just the one named",
 		"god [on|off]              presses cost nothing",
 		"reset confirm             wipe the save and restart",
 	])
@@ -83,6 +84,8 @@ func run(line: String) -> String:
 			return _season(args)
 		"day":
 			return _day(args)
+		"tiers":
+			return _tiers(args)
 		"god":
 			return _god(args)
 		"reset":
@@ -267,6 +270,16 @@ func _zone(args: PackedStringArray) -> String:
 		return "No zone '%s'. Zones: %s" % [args[0], ", ".join(ids)]
 	sim.dev_force_zone(StringName(args[0].to_lower()))
 	return "In zone %s." % sim.zone_id
+
+
+func _tiers(args: PackedStringArray) -> String:
+	var ids: PackedStringArray = PackedStringArray()
+	for id: StringName in sim.tier_defs:
+		ids.append(String(id))
+	if not args.is_empty() and not sim.tier_defs.has(StringName(args[0].to_lower())):
+		return "No tier '%s'. Tiers: %s" % [args[0], ", ".join(ids)]
+	sim.dev_open_tiers(StringName(args[0].to_lower()) if not args.is_empty() else &"")
+	return "Opened %s." % (args[0].to_lower() if not args.is_empty() else "every tier")
 
 
 func _attr(args: PackedStringArray) -> String:

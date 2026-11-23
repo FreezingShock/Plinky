@@ -2,8 +2,8 @@ extends RefCounted
 
 func run(t: Object) -> void:
 	var sim: Sim = t.make_sim()
-	sim.stats[&"cash"] = BigNum.make(1.5, 40)
-	sim.stats[&"reb"] = BigNum.from_float(9.0)
+	sim.stats[&"sunlight"] = BigNum.make(1.5, 40)
+	sim.stats[&"clover"] = BigNum.from_float(9.0)
 	sim.step(0.1)  # latches gate
 	sim.attr_levels[&"luck"] = 3
 	sim.prestige_spent = BigNum.from_float(4.0)
@@ -15,8 +15,8 @@ func run(t: Object) -> void:
 	t.ok(not d.is_empty(), "decode succeeds")
 	var sim2: Sim = t.make_sim()
 	t.ok(sim2.from_dict(d["game"]), "from_dict succeeds")
-	t.ok(sim2.get_stat(&"cash").gte(BigNum.make(1.49, 40)) and sim2.get_stat(&"cash").lte(BigNum.make(1.6, 40)), "big cash survives JSON")
-	t.near(sim2.get_stat(&"reb").to_float(), 9.0, 1e-9, "reb survives")
+	t.ok(sim2.get_stat(&"sunlight").gte(BigNum.make(1.49, 40)) and sim2.get_stat(&"sunlight").lte(BigNum.make(1.6, 40)), "big cash survives JSON")
+	t.near(sim2.get_stat(&"clover").to_float(), 9.0, 1e-9, "reb survives")
 	t.ok(sim2.is_gate_open(&"zone1"), "gate latch survives")
 	t.eq(sim2.attr_level(&"luck"), 3, "attribute level survives")
 	t.eq(sim2.relics.stacks_of(&"r_rate"), 2, "relic stacks survive")
@@ -30,7 +30,7 @@ func run(t: Object) -> void:
 	t.ok(SaveCodec.decode('{"game": {}}').is_empty(), "missing version is rejected")
 	var sim3: Sim = t.make_sim()
 	t.ok(not sim3.from_dict({}), "empty dict gives a new game, no crash")
-	t.near(sim3.get_stat(&"cash").to_float(), 10.0, 1e-9, "new game after empty load starts with 10 cash")
+	t.near(sim3.get_stat(&"sunlight").to_float(), 10.0, 1e-9, "new game after empty load starts with 10 cash")
 	sim3.from_dict({"stats": {"cash": "oops", "ghost": [1, 1]}, "zone": "nowhere", "attributes": {"luck": 9999}})
 	t.eq(sim3.zone_id, &"zone1", "unknown zone falls back")
 	t.eq(sim3.attr_level(&"luck"), 20, "attribute level clamps to cap")

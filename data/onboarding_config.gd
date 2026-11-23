@@ -3,8 +3,8 @@ extends Resource
 ## Pacing for the first ten minutes: when each system appears and how tips are spaced.
 ## Single file: content/config/onboarding.tres. Tip wording lives in core/onboarding.gd.
 
-## The Rebirth pads, Rebirths row and gate panel appear once Multiplier reaches this.
-@export var rebirth_reveal_mult: float = 200.0
+## The Clover pads, Clover Leaves row and gate panel appear once Dewdrops reach this.
+@export var clover_reveal_dewdrops: float = 200.0
 ## The streak tip appears after this many presses.
 @export var streak_tip_presses: int = 12
 ## The momentum tip appears after this many seconds of play, once the player has pressed a pad.

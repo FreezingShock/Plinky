@@ -15,7 +15,7 @@ func run(t: SceneTree) -> void:
 	# Stacking
 	inv.add_relic(&"r_cash", 3)
 	t.ok(inv.equip(&"r_cash"), "equip owned")
-	t.ok(is_equal_approx(inv.total_effect(RelicDef.Effect.CASH_MULT), 0.3), "linear 3 stacks = 0.3")
+	t.ok(is_equal_approx(inv.total_effect(RelicDef.Effect.CASH_MULT), 1.0 - 0.94 * 0.94 * 0.94), "diminishing 3 stacks = 0.164")
 	t.ok(not inv.equip(&"r_cash"), "no double equip")
 	t.ok(not inv.equip(&"r_rate"), "cannot equip unowned")
 
@@ -42,6 +42,13 @@ func run(t: SceneTree) -> void:
 
 	# Tooltip text
 	t.ok(d.describe(2).contains("19%"), "describe fills value: " + d.describe(2))
+
+	# Long play stays bounded: the four stacking relics diminish, so drops keep coming without the bonus running away
+	for id: StringName in [&"r_cash", &"r_rate", &"r_mult", &"r_crit"]:
+		var rd: RelicDef = inv.defs[id]
+		t.ok(rd.stacking == RelicDef.Stacking.DIMINISHING, "%s diminishes" % id)
+		t.ok(is_equal_approx(rd.value_for(1), rd.per_stack), "%s first stack is its full step" % id)
+		t.ok(rd.value_for(1000) <= 1.0, "%s stays at or under 100%% after 1000 stacks" % id)
 
 	# Save round trip
 	var snap: Dictionary = inv.to_dict()
