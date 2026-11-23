@@ -36,6 +36,11 @@ func momentum_decay_mult(season: int) -> float:
 	return _mult(config.momentum_decay_mult if config != null else PackedFloat32Array(), season)
 
 
+## How much thicker the season's own air is (petals, sun motes, leaves and seeds, snow).
+func particle_boost(season: int) -> float:
+	return _mult(config.particle_boost if config != null else PackedFloat32Array(), season)
+
+
 static func _mult(a: PackedFloat32Array, i: int) -> float:
 	return maxf(a[i], 0.01) if i >= 0 and i < a.size() else 1.0
 

@@ -15,3 +15,5 @@ extends Resource
 @export var relic_roll_mult: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 0.75, 1.0])
 ## Winter: momentum decay per second is multiplied by this (lower = momentum lasts longer).
 @export var momentum_decay_mult: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 1.0, 0.5])
+## Air boost of the season's own particles (petals, sun motes, leaves and seeds, snow), so the event is seen: 1.0 = normal.
+@export var particle_boost: PackedFloat32Array = PackedFloat32Array([2.4, 2.6, 2.2, 1.8])

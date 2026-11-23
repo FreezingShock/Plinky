@@ -19,6 +19,8 @@ func run(t: Object) -> void:
 	t.ok(ev.momentum_decay_mult(3) < 1.0 and ev.momentum_decay_mult(2) == 1.0, "only winter slows momentum decay")
 	for s: int in 4:
 		t.ok(ev.day_income_mult(s, true) <= 1.1, "no income event is above +10%")
+	for s: int in 4:
+		t.ok(ev.particle_boost(s) > 1.0, "every event thickens its season's air")
 	var none := SeasonalEvents.new()
 	t.eq(none.name_of(0), "", "no config, no event name")
 	t.near(none.critter_interval_mult(2), 1.0, 1e-9, "no config, neutral multiplier")
