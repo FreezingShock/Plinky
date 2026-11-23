@@ -662,7 +662,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Rebirth stays in the quarry until Reforge.** It never needed the Multiplier: it banks Ingots as Prestige, Prestige multiplies Embers income and buys Attributes, and Rebirth Points buy perks. The Reforge ZoneReset (PR #183 framework) should replace it as its own follow-up, with a forge-themed currency and menu.
 - **Saves:** `ladder = 3`. Saves from before it move `cash` to `embers` and `mult` to `cinder` on load (`Sim._rename_quarry_stats`). Older saves still go through the flower and quarry ladder migrations first.
 - Not run in the cloud: the engine (tests and screenshots are CI and the PC tester).
-## 2026-11-23 Travel menu lists top-level areas only (v0.34.0)
+## 2026-11-23 Travel menu lists top-level areas only
 Travel shows Meadow and Ember Quarry plus two locked "???" teaser rows (`travel_teased_rows` in game.tres). Larkmoor is inside the Meadow (`ZoneDef.travel_parent`), so its districts leave the list. The Meadow row lands in the furthest unlocked zone of the Meadow (Larkmoor once the first gate is open), or stays put if you are already inside it. Sub-area expand toggles removed.
 
 ## Ember Quarry rework: roomy terraced world, lava, front-facing 2D art (2026-11-23)
@@ -743,3 +743,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - The arrival at boot (1.2 s after start) goes through the same path, so it can no longer name a zone the walker has left.
 - Bottom-centre banners lift clear of the Momentum meter (bottom-left, `Banner.avoid` set by the HUD) when the two would overlap. At 640x360 a wide season toast ("Long Light") covered the meter's right half. Lifted only when it overlaps, so the usual position is unchanged. The overlap test is `BannerQueue.bottom_clearance` (pure, tested).
 - Not run in-engine from the cloud: the banner text after a Quit to Title, and the lifted position at 640x360 need a PC check.
+- Offline pay is capped by design: passive income credits at `offline_income_fraction` (0.5) of the rate you left with, in one slice, so tending cannot compound it. This restores the locked rule that idle takes about twice as long as active play. The 12-slice compounding from #197 paid about 294x on a fresh save and is off (`offline_slices = 1`).
