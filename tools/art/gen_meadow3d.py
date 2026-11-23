@@ -657,14 +657,19 @@ def render_scene(keep):
     rgb = np.zeros((H, W, 3), np.uint8); rgb[:] = COLS[0]
     have = out >= 0; rgb[have] = COLS[out[have]]
 
-    global LAST_AUX; LAST_AUX = dict(nu=img_nu, nv=img_nv, l=img_l, mat=img_mat, out=out)
+    global LAST_AUX; LAST_AUX = dict(nu=img_nu, nv=img_nv, l=img_l, mat=img_mat, out=out, z=img_z)
     return rgb, img_id
 tall_ids = np.array([t['id'] for t in TALL])
 rgb_full, id_full = render_scene(np.ones(len(u_), bool))
 AUX_FULL = LAST_AUX
 depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP, PAL)
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
+AUX_GND = LAST_AUX
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(HERE, 'meadow3d-ground-1x.png'))
+# ground G-buffer, same size as the ground art: normal + material + baked light (relight data) and world height.
+# Terrain materials are codes 100..109, so write_relight_data accepts mat < 110 (the ramp include is sized to match).
+depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
+depth_pass.write_height(os.path.join(HERE, 'meadow3d-ground-1x_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []
 for t in TALL:
     ys_, xs_ = np.nonzero(id_full == t['id'])

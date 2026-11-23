@@ -202,6 +202,12 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
 
+## 2026-11-23: Zone menu, areas and the zone card
+- New `AreaDef` (content/areas/*.tres, loaded into `sim.areas_in_zone()`): a named sub-area of a zone with a glyph, a palette role and the pads it lists. Larkmoor's seven districts reuse the district ids from the scene (so the walker entering a district moves the card), the Meadow has Starting Clearing and Standing Stones (invented names), the Quarry has Forge Floor. `ZoneDef` gained `description` and `theme_role`.
+- `ZonePanel` replaces the gate panel, the Go buttons and the Pads list: title, gate bar, a foldable Travel menu (every location with its areas, each in its zone palette colour, locked zones shown as Locked), and the current area card (description, every pad with cost, mastery). With Travel open the card folds to a one-line dithered stub (title plus one description line); closed it shows in full. Folding is `RevealBox` (8 steps, 0.22 s). Rows are focusable `ListRow`s with the marching-dot ring.
+- Clicking a location or an area in another zone travels there and shows that area. Clicking an area in the current zone only views it; walking into a district moves the card back.
+- Mastery row sums `sim.mastery` level, progress and crit bonuses over the area's pads. Tooltips use the shared `Tip.bind`.
+- Not run in-engine from the cloud.
 ## Stats and Attributes index (2026-11-23)
 - One window (ui/index_panel.gd) with two tabs, opened by two icon-only HUD buttons, keys I (Stats) and O (Attributes), pad Back and Left-stick click. Read only: buying stays in Upgrades.
 - Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage is `sim.crit_damage()`; Pad mastery is the sum of `sim.mastery.level(id)` over all pads.
@@ -243,3 +249,29 @@ First numbers (+1.5% yield, +0.3% crit chance per level) put the Larkmoor far ga
 
 ## 2026-11-23: Mastery yield cut again
 PC sim after the first retune put the Larkmoor far gate at 57.5 min (target about 61; 24 of 250 area levels, best pad level 11). `yield_per_level` 0.002 to 0.001, crit chance per level stays 0.001. Not re-run after this change.
+- Dither wipe is drawn from tiled 4x4 textures (no shader) and is inked before the first frame; the shader version showed opaque on frame 1 on the PC.
+
+## Lighting overhaul, stage 3: real night (23 Nov)
+- Night shade was a light dither (80% of texels, mid-blue). Now a separate night_shade 0.97 (night_strength stays 0.8, test_sky needs smooth steps) with darker tints (night 0.34/0.42/0.72, deep 0.16/0.20/0.42) and 60% of shaded texels take the deep tint, so night is genuinely dark. Light pools are about 1.5x wider so shrine, gate, pads and the walker clear the dark and read as light sources.
+- Not run in-engine; PC pass to judge darkness and readability of pads and the HUD-adjacent scene.
+
+## Lighting overhaul, stage 2a (redo) and the real cause of "barely visible" (23 Nov)
+- Cause: terrain materials are codes 100..109 but the relight data and shader only accepted 10..47, so only ~11.7k of ~124k ground texels (props and flowers) were ever relit. The ground was effectively untouched. Now accepted range is < 110 (write_relight_data, write_ramp_include, both shaders); 122k of 124k ground texels carry a material code.
+- Ground G-buffer: ground_n.png (normal, material, baked light) and ground_h.png (height) beside ground.png, written by gen_meadow3d.py; ground.png is byte-identical.
+- ground_light.gdshader: N.L relight, height-march cast shadows (flowers, tufts, rocks, slopes), cool shadow tint (multiplied), contact occlusion, depth fog. Pushed hard on purpose: relight 2.2, shadow 1.2, AO 0.5, step length 1.6 texels at noon to 3.4 at low sun. Tune down in content/config/sky.tres from here.
+- Debug: F6 cycles the ground view: off, albedo, normal, height, shadow only.
+- Process note: the first stage 2a push never carried the code (a denied command was never run, then a hard reset dropped the edits). This commit is the first one that actually contains it.
+## 2026-11-23 Pad art, rarity and Momentum label
+- Nathan: pad inlay sprites were too small and all alike. Inlay is now 21x11 texels, and each pad gets a unique mirrored 5x5 emblem from its id, projected onto the plate, with a stat-colour spine. The centre stays clear for the tick or X.
+- Pads have a rarity (`ButtonDef.rarity`, content only): Meadow common, common, uncommon, rare, epic; Larkmoor common to legendary by cost; Quarry uncommon, rare, epic. Frame ring in the tier colour (none for Common), white studs from Legendary. Shown in the tooltip through `Sim.pad_rarity`.
+- Momentum label: Pixelify Sans, capitals, embolden 0.6 and a 2px ink outline.
+
+## 2026-11-23 Quiet pad clicks
+- Nathan: standing on a pad clicked forever. Settings > Audio now has "Quiet pad clicks" (on by default) and "Clicks before quiet" (slider 1 to 10, default 5). After that many presses in a row the pad click and hold tick go quiet. Stepping off or releasing a pad resets the count, as does a 1.5 s pause. Crit sounds always play. Settings are stored per id with defaults in settings.cfg, which has no schema version, so there was nothing to bump.
+
+## Lighting: vignette dither pinned to the world, Larkmoor ground relight (23 Nov)
+- The dotted pattern over the top of the frame was the vignette: its shape is frame-fixed but its Bayer pattern was pinned to screen texels, so the dots stayed still while the ground scrolled (shower-door). Nathan likes the dither itself. The pattern is now computed in world texels (ScreenLight passes the world origin and zoom, snapped to whole texels), so it moves and scales with the ground. The other passes (night, grade, rays, haze, ground relight, shadows) already use world positions.
+- Larkmoor gets the same ground G-buffer and relight as the meadow (gen_larkmoor.py writes ground_n.png and ground_h.png; ground.png unchanged). It uses the shared meadow ramp include, so Larkmoor's rock ramp is the meadow one (palette is the same).
+- Not run in-engine: check the vignette dots scroll with the ground at zoom 1-4, and Larkmoor F6 views.
+## 2026-11-23 Pad outlines on the texel grid
+- Nathan: the pad outline looked sharp, finer than the world's pixels. draw_polyline diagonals are anti-aliased and sub-texel. Every pad outline, ring and ripple is now whole-texel rects (TexelPad._outline), and the pad snaps its position to whole texels in _ready (marker anchors are fractional, e.g. 245.5).

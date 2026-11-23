@@ -52,6 +52,14 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 	if shake: shake.add(0.45 if big else 0.1)
 	Audio.pad_press(big, held)
 
+## Mastery level-up: ring flash on the plate and a big "LV n" popup above it.
+func level_up(pad: TexelPad, pos: Vector2, level: int) -> void:
+	pad.level_flash()
+	PopupNumber.spawn_text(_popup_parent(), _to_screen(pos) + Vector2(-14, -44), "LV %d" % level, true)
+	if shake: shake.add(0.2)
+	Audio.relic(&"rare")
+
+
 func milestone() -> void:
 	if transitions: await transitions.invert_flash()
 	if shake: shake.add(0.8)

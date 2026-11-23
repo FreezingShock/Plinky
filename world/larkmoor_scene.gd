@@ -82,6 +82,7 @@ func _add_sky() -> void:
 	_sky.area = world_rect.grow(10.0)
 	_sky.shadows = _shadows
 	_sky.ground_texture = _ground.texture
+	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
 	_place_atmosphere()
 	add_child(_sky)
 	_add_lights()
@@ -116,6 +117,7 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+				_shadows.add_blob(Vector2(a.sx, a.sy), 22.0, 9.0)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 

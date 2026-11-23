@@ -219,6 +219,12 @@ static func _device_apply(v: Variant) -> void:
 	AudioServer.output_device = want if AudioServer.get_output_device_list().has(want) else "Default"
 
 
+static func _click_limit_apply(_v: Variant) -> void:
+	var a: Node = _autoload("Audio")
+	if a != null:
+		a.call("set_click_limit", bool(value(&"click_limit")), int(value(&"click_limit_count")))
+
+
 static func _register_audio() -> void:
 	for row: Array in [[&"vol_master", "Master", &"Master"], [&"vol_music", "Music", &"Music"],
 			[&"vol_sfx", "Effects", &"SFX"], [&"vol_ui", "Interface", &"UI"], [&"vol_amb", "Ambience", &"Ambience"]]:
@@ -226,6 +232,11 @@ static func _register_audio() -> void:
 			"id": row[0], "tab": "Audio", "label": row[1], "kind": Kind.SLIDER, "min": 0.0, "max": 1.0, "step": 0.05,
 			"get": _vol_get.bind(row[2]), "set": _vol_set.bind(row[2]), "format": _pct,
 		})
+	register_stored(&"click_limit", "Audio", "Quiet pad clicks", Kind.TOGGLE, true, _click_limit_apply,
+		{"hint": "Stops the pad click after a few presses in a row while you stand on a pad or hold it. Stepping off starts it again."})
+	register_stored(&"click_limit_count", "Audio", "Clicks before quiet", Kind.SLIDER, 5.0, _click_limit_apply,
+		{"min": 1.0, "max": 10.0, "step": 1.0, "format": func(v: Variant) -> String: return "%d" % roundi(float(v)),
+		"hint": "How many presses play the click (1 to 10) before it goes quiet. Needs Quiet pad clicks on."})
 	_add({"id": &"muted", "tab": "Audio", "label": "Mute all", "kind": Kind.TOGGLE, "get": _mute_get, "set": _mute_set})
 	_add({
 		"id": &"audio_device", "tab": "Audio", "label": "Output device", "kind": Kind.CHOICE, "default": "Default",

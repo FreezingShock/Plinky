@@ -6,6 +6,8 @@
 script = ExtResource("1")
 id = &"larkmoor"
 display_name = "Larkmoor"
+description = "Rolling moorland past the arch: seven districts, each with its own pads, wind and lanterns."
+theme_role = 6
 order = 1
 gate_stat = &"reb"
 gate_threshold = 1500

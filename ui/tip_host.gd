@@ -91,6 +91,8 @@ func show_free(spec: Variant, at: Vector2, exact: bool = false) -> void:
 var _free_spec: Variant = null
 var _free_exact: bool = false
 var _anchor: Rect2 = Rect2()
+## Extra rects to keep clear of, besides the visible Controls in the avoid group (used by tests).
+var avoid_extra: Array[Rect2] = []
 const AVOID_GROUP: StringName = &"tip_avoid"
 
 
@@ -221,7 +223,7 @@ func _beside(view: Vector2) -> Vector2:
 	var cands: Array[Vector2] = [
 		Vector2(a.end.x + 4.0, a.position.y), Vector2(a.position.x - size.x - 4.0, a.position.y),
 		Vector2(a.position.x, a.end.y + 4.0), Vector2(a.position.x, a.position.y - size.y - 4.0)]
-	var avoid: Array[Rect2] = []
+	var avoid: Array[Rect2] = avoid_extra.duplicate()
 	if is_inside_tree():
 		for n: Node in get_tree().get_nodes_in_group(AVOID_GROUP):
 			if n is Control and (n as Control).is_visible_in_tree():

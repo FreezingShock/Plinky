@@ -128,6 +128,7 @@ func _ready() -> void:
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
+	bus.mastery_leveled.connect(_on_mastery_leveled)
 	bus.gate_opened.connect(func(_id: StringName) -> void: Juice.milestone())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
@@ -281,6 +282,7 @@ func _build_pads() -> void:
 		pad.position = marker.position
 		pad.walker = walker
 		pad.glow = pad_glow
+		pad.left.connect(Audio.reset_press_streak)
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
@@ -415,6 +417,7 @@ func _update_district(delta: float) -> void:
 	if id != _district_id:
 		_district_id = id
 		if id != "":
+			hud.set_district(StringName(id))
 			banner.show_name(String(d.get("name", "")))
 
 
@@ -468,6 +471,13 @@ func _on_bonus_gained(kind: StringName, gains: Dictionary) -> void:
 	Juice.milestone()
 
 
+## Pad mastery level-up: a gold double ring on the plate and an "LV n" pop.
+func _on_mastery_leveled(button_id: StringName, level: int) -> void:
+	var pad: TexelPad = pads.get(button_id) as TexelPad
+	if pad != null:
+		Juice.level_up(pad, pad.position, level)
+
+
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
 	var pad: TexelPad = pads.get(button_id) as TexelPad
 	if pad == null:
@@ -507,11 +517,8 @@ func _wire_index() -> void:
 	hud.add_child(index_panel)
 	index_panel.bind(sim)
 	hud.index_requested.connect(func(t: int) -> void:
-		if index_panel.is_open() and index_panel.tab == t:
-			index_panel.close_panel()
-		else:
-			relic_panel.hide()
-			index_panel.open_tab(t))
+		relic_panel.hide()
+		index_panel.toggle_tab(t))
 
 
 ## Settings panel (F10 or the bottom-bar button). Centred over the view, closes with F10 or Esc.
