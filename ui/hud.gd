@@ -258,7 +258,7 @@ func _earned(sid: StringName) -> bool:
 
 func _build_gate() -> void:
 	_zone_panel = ZonePanel.new()
-	_zone_panel.position = Vector2(456, 4)
+	_zone_panel.position = Vector2(632.0 - ZonePanel.WIDTH, 4)
 	add_child(_zone_panel)
 	_zone_panel.setup(sim)
 	_gate_panel = _zone_panel

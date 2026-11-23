@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.37.6 - 2026-11-23
+- Zone panel is more compact: narrower (152 px), tighter padding, description clamped to two lines (full text in its tooltip), three pads before "N more...".
+
 ## 0.37.5 - 2026-11-23
 - Larkmoor noon no longer reads lime-flat: the high-sun light pass takes a per-scene boost (1.7 in Larkmoor) for exposure, contrast and saturation, plus a warm cast that pulls green out of the bright ground. The meadow is unchanged.
 
