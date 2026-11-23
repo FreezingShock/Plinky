@@ -460,6 +460,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
 
+## 2026-11-23 Quality-of-life bundle (v0.21.0)
+- **Rebind with modifiers.** A binding is a keycode OR-ed with `KEY_MASK_SHIFT/CTRL/ALT/META`, so old saves (plain keycodes) still load. A modifier alone (Shift, Ctrl) binds when released with no other key pressed. Sprint (Shift) and Sprint lock (Ctrl) are now rebindable actions. A binding's modifiers must be held; extra held modifiers are tolerated, so Shift+C still crouches-slides while sprinting.
+- **Save indicator.** "Saved" fades after each save, beside the Menu chip; a failed write shows red "Save failed" even with the indicator off (`EventBus.save_failed`). Setting: Gameplay > Save indicator.
+- **Welcome Back card** replaces the 5 s toast: time away, each gain in its stat colour, a note when the offline cap was hit. Shown only after 1 minute or more away. Stays until Collect.
+- **Rebirth confirm** card shows the Prestige and Rebirth Points you will get. Setting: Gameplay > Confirm rebirth (default on).
+- Buy max and Buy x10 were dropped from this bundle at Nathan's request.
+- Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges card placement and the indicator.
 ## Ambient soundscape (23 Nov, v0.20.0)
 | Date | Decision | Why |
 |---|---|---|
@@ -470,7 +477,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 | 2026-11-23 | No new slider: the existing Ambience volume scales every layer | One control already exists in Settings > Audio |
 | 2026-11-23 | Mix levels are consts in `ambient_mix.gd` / `ambient_scape.gd`, not content/*.tres | They are sound-design values, not game balance |
 
-## 0.21.0 World life and footsteps (2026-11-23)
+## 0.22.0 World life and footsteps (2026-11-23)
 - **Found already built:** butterflies, dusk fireflies, pollen, seasonal petals/leaves/snow (SeasonParticles) and grass/sand/wood footsteps. This pass fills the gaps rather than redoing them.
 - **Butterflies follow the calendar.** Up to 6 out at summer noon (was 2 all the time, even at night). Spring 0.8, summer 1.0, autumn 0.35, winter 0; none at night, fewer at low sun, none in heavy rain. Each has its own wing colours (accent, paper, light over earth/accent). Fireflies are a summer thing (spring 0.7, autumn 0.45, winter none). `MeadowLife.season` carries the mix, written by SkyCycle with the same weights as SeasonParticles.
 - **Ember Quarry gets its own air layer** (`world/life_embers.gd`): 7 embers per vent rising and cooling (paper, glow, flame, dark), 16 drifting ash flakes. Whole-texel squares, no alpha, 12 fps, frozen under Reduce motion, thinner on Low.
