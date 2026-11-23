@@ -5,9 +5,9 @@ extends RefCounted
 ## Sources: placements3d.json (pads, gate, water, trees) and ground.png (the sand path is dithered
 ## in two cream colours, so sand is "enough cream texels around the foot").
 
-const PLACEMENTS: String = "res://assets/art/zone1/meadow3d/placements3d.json"
-const GROUND: String = "res://assets/art/zone1/meadow3d/ground.png"
-const GROUND_OFFSET: Vector2i = Vector2i(100, 60)   # same bleed as WalkMask.OFFSET
+const MEADOW_PLACEMENTS: String = "res://assets/art/zone1/meadow3d/placements3d.json"
+const MEADOW_GROUND: String = "res://assets/art/zone1/meadow3d/ground.png"
+const MEADOW_OFFSET: Vector2i = Vector2i(100, 60)   # same bleed as WalkMask.OFFSET
 
 const SAND_A: Color = Color8(242, 230, 160)
 const SAND_B: Color = Color8(246, 239, 217)
@@ -23,6 +23,9 @@ const GRASS: StringName = &"grass"
 const SAND: StringName = &"sand"
 const WOOD: StringName = &"wood"
 
+static var _placements: String = MEADOW_PLACEMENTS
+static var _ground_path: String = MEADOW_GROUND
+static var _offset: Vector2i = MEADOW_OFFSET
 static var _loaded: bool = false
 static var _wood: Array[Vector2] = []
 static var _water: Array[Dictionary] = []     # {c: Vector2, r: Vector2, w: float}
@@ -30,17 +33,33 @@ static var _trees: Array[Vector2] = []
 static var _ground: Image = null
 
 
+## Points the lookups at another zone's placements and ground (an empty placements path means the meadow).
+static func use(placements: String, ground: String, offset: Vector2i) -> void:
+	var p: String = MEADOW_PLACEMENTS if placements == "" else placements
+	var g: String = MEADOW_GROUND if ground == "" else ground
+	if p == _placements and g == _ground_path and offset == _offset:
+		return
+	_placements = p
+	_ground_path = g
+	_offset = offset
+	_loaded = false
+	_wood.clear()
+	_water.clear()
+	_trees.clear()
+	_ground = null
+
+
 static func _load() -> void:
 	if _loaded:
 		return
 	_loaded = true
-	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(PLACEMENTS))
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(_placements))
 	if data is Dictionary:
 		for a: Variant in (data as Dictionary).get("anchors", []):
 			var d: Dictionary = a as Dictionary
 			var kind: String = str(d.get("kind", ""))
 			var c := Vector2(float(d.get("sx", 0.0)), float(d.get("sy", 0.0)))
-			if kind == "pad" or kind == "gate":
+			if kind == "pad" or kind == "gate" or kind == "arch":
 				_wood.append(c)
 			elif kind == "water":
 				var r := Vector2(maxf(float(d.get("rx", 1.0)), 1.0), maxf(float(d.get("ry", 1.0)), 1.0))
@@ -51,8 +70,8 @@ static func _load() -> void:
 				var foot: Array = d.get("foot", []) as Array
 				if foot.size() == 2:
 					_trees.append(Vector2(float(foot[0]), float(foot[1])))
-	if ResourceLoader.exists(GROUND):
-		var tex: Texture2D = load(GROUND) as Texture2D
+	if ResourceLoader.exists(_ground_path):
+		var tex: Texture2D = load(_ground_path) as Texture2D
 		if tex != null:
 			_ground = tex.get_image()
 
@@ -70,8 +89,8 @@ static func surface_at(p: Vector2) -> StringName:
 			return WOOD
 	if _ground == null:
 		return GRASS
-	var cx: int = int(floorf(p.x)) + GROUND_OFFSET.x
-	var cy: int = int(floorf(p.y)) + GROUND_OFFSET.y
+	var cx: int = int(floorf(p.x)) + _offset.x
+	var cy: int = int(floorf(p.y)) + _offset.y
 	var hits: int = 0
 	var total: int = 0
 	for dy in range(-SAND_RADIUS, SAND_RADIUS + 1):

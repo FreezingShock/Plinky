@@ -22,6 +22,8 @@ const SWAY_STEP: float = 1.0 / 8.0
 static var debug_phase: float = -1.0
 static var debug_rain: float = -1.0
 
+## The rect the shade and rain cover. The meadow uses AREA; bigger scenes (Larkmoor) set their own before add_child.
+var area: Rect2 = AREA
 var model: SkyModel = SkyModel.new()
 var sway_material: ShaderMaterial
 var rain_layer: SkyRain
@@ -69,8 +71,8 @@ func _ready() -> void:
 	add_child(rays)
 	var shade := ColorRect.new()
 	shade.name = "Shade"
-	shade.position = AREA.position
-	shade.size = AREA.size
+	shade.position = area.position
+	shade.size = area.size
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_shade_mat = ShaderMaterial.new()
 	_shade_mat.shader = SHADE_SHADER
@@ -79,8 +81,8 @@ func _ready() -> void:
 	rain_layer = SkyRain.new()
 	rain_layer.name = "Rain"
 	rain_layer.z_index = 6   # relative to this node: z 11 overall
-	rain_layer.area = AREA
-	rain_layer.drops = _config.rain_drops
+	rain_layer.area = area
+	rain_layer.drops = int(round(float(_config.rain_drops) * minf(area.get_area() / AREA.get_area(), 2.0)))   # denser over a bigger field, capped for cost
 	add_child(rain_layer)
 	sway_material = ShaderMaterial.new()
 	sway_material.shader = SWAY_SHADER

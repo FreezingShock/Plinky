@@ -29,6 +29,7 @@ func bind(sim: Sim) -> void:
 	_edit = TextEdit.new()
 	_edit.custom_minimum_size = Vector2(300, 90)
 	_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_edit.tab_input_mode = false   # Tab moves focus on instead of trapping it
 	_edit.placeholder_text = "Type a note..."
 	v.add_child(_edit)
 

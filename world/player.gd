@@ -24,14 +24,11 @@ func move_to(world_pos: Vector3) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	var input: Vector2 = Vector2(
-		float(_key(KEY_D) or _key(KEY_RIGHT)) - float(_key(KEY_A) or _key(KEY_LEFT)),
-		float(_key(KEY_S) or _key(KEY_DOWN)) - float(_key(KEY_W) or _key(KEY_UP)))
+	var input: Vector2 = PadInput.move_vector()
 	var dir: Vector3 = Vector3.ZERO
 	if input != Vector2.ZERO:
 		_has_target = false  # keys cancel click-to-move
 		dir = Basis(Vector3.UP, deg_to_rad(iso_yaw_degrees)) * Vector3(input.x, 0.0, input.y)
-		dir = dir.normalized()
 	elif _has_target:
 		var to: Vector3 = _target - global_position
 		if to.length() <= arrive_distance:

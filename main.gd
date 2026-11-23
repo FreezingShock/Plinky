@@ -5,16 +5,29 @@ extends Control
 
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
 const MEADOW_PATH: String = "res://world/meadow3d_scene.tscn"
-const QUARRY_TINT: Color = Color(1.0, 0.78, 0.62)  # stand-in until zone 2 has its own art
 
 var sim: Sim
 var pv: PixelViewport
 var world: Node2D
-var meadow: Node2D
+var meadow: Node2D   ## the current zone scene (Anchors, spawn_occluders); named for zone 1, swapped on zone entry
+var heat_vents: HeatVents
+var relic_bar: RelicBar
+var _scene_path: String = ""
+var _clear_spawn_pending: bool = false
+var _world_rect: Variant = null   ## Rect2 when the zone scene is bigger than the 640x360 frame (Larkmoor), else null
+var _arch: Marker2D = null        ## the way back to the previous zone, when the scene has one
+var _arch_lock: float = 0.0
+var _crossing: bool = false
+var _prev_zone: StringName = &""
+var banner: DistrictBanner
+var _district_id: String = ""
+var _district_t: float = 0.0
+var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
 var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
+var pointer: PadPointer
 var pad_glow: PadGlow
 var shake: ScreenShake
 var camera: WorldCamera
@@ -23,13 +36,18 @@ var hud: Hud
 var tooltip: PadTooltip
 var relic_panel: RelicPanel
 var display_panel: DisplayPanel
+var dev_console: DevConsole
+var window_frame: WindowFrame
 var feedback_panel: FeedbackPanel
 var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
+	PadInput.ensure()
 	DisplaySettings.apply(get_window())
+	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
+	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
@@ -51,9 +69,11 @@ func _ready() -> void:
 	world.name = "World"
 	world.y_sort_enabled = true
 	add_child(world)
-	meadow = (load(MEADOW_PATH) as PackedScene).instantiate()
+	_scene_path = _zone_scene_path(sim.zone_id)
+	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
 	meadow.call("spawn_occluders", world)
+	_apply_scene_frame(sim.zone_id)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
 	var anchors: Node = meadow.get_node("Anchors")
@@ -73,12 +93,18 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	camera.bounds = _camera_bounds()
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
 
 	# 3. Juice (autoload) gets its targets.
 	Juice.shake = shake
 	Juice.transitions = transitions
 	Juice.fx_root = world
+
+	# 3b. Onboarding: tips on or off comes from its own settings file; progress comes from the save.
+	TipsSettings.load_settings()
+	TipsSettings.register_rows()
+	GameState.onboarding.tips_enabled = TipsSettings.enabled
 
 	# 4. HUD above everything.
 	hud = Hud.new()
@@ -87,8 +113,14 @@ func _ready() -> void:
 	hud.setup(sim)
 	_wire_relics()
 	_wire_display()
+	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
+	window_frame = WindowFrame.new()
+	add_child(window_frame)
+	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
+	banner = DistrictBanner.new()
+	hud.add_child(banner)
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
@@ -98,13 +130,26 @@ func _ready() -> void:
 	bus.bonus_gained.connect(_on_bonus_gained)
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
+	_prev_zone = _previous_zone(sim.zone_id)
+	camera.snap()
 	Audio.start(sim.zone_id)
 
 
 func _process(_delta: float) -> void:
 	_layout_frame()
+	_menu_focus()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	if sim.zone_id != _shown_zone and not _crossing:
+		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
+		_enter_zone_visuals(sim.zone_id)
+		if _clear_spawn_pending:
+			_clear_spawn_pending = false
+			_clear_spawn()
+	if relic_bar != null:
+		relic_bar.position.y = ceilf(hud.stats_bottom()) + 4.0
 	_update_tooltip()
+	_update_district(_delta)
+	_update_arch(_delta)
 
 
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
@@ -121,16 +166,14 @@ func _update_tooltip() -> void:
 	tooltip.hide_tip()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	if event.keycode == KEY_F11:
+func _unhandled_input(event: InputEvent) -> void:
+	if Keybinds.matches(&"fullscreen", event):
 		DisplaySettings.toggle_fullscreen(get_window())
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_F8:
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F8:
 		_toggle_feedback()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ESCAPE:
+	elif event.is_action_pressed(&"plinky_back"):
 		var any: bool = relic_panel.visible or hud.upgrades_open() or display_panel.visible or feedback_panel.visible
 		relic_panel.hide()
 		display_panel.close()
@@ -140,13 +183,35 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+## Menus without a mouse: while a panel is open the walker stands still and focus lands on its first control.
+## Arrows, d-pad or stick move focus, Enter/Space/pad A press, Esc or pad B closes (all via Godot ui_* actions).
+func _menu_focus() -> void:
+	var panels: Array[Control] = [dev_console, feedback_panel, display_panel, relic_panel, hud.upgrades_panel()]
+	var open: Control = null
+	for p: Control in panels:
+		if p != null and p.visible:
+			open = p
+			break
+	PadInput.menu_open = open != null
+	var owner_ctl: Control = get_viewport().gui_get_focus_owner()
+	if open == null:
+		if owner_ctl != null:
+			owner_ctl.release_focus()
+	elif owner_ctl == null or not open.is_ancestor_of(owner_ctl):
+		var first: Control = PadInput.first_focusable(open)
+		if first != null:
+			first.grab_focus()
+
+
 ## Lay the frame out in the window. The frame is the bleed size (640x360 until the wider backdrop is in),
 ## or smaller if the window is smaller. It is centred in the visible area, and the rest stays black.
 func _layout_frame() -> void:
-	var visible: Vector2 = get_viewport_rect().size
+	# The custom title bar takes a strip off the top of the view, so it never covers the HUD.
+	var top: float = window_frame.inset() if window_frame != null else 0.0
+	var visible: Vector2 = get_viewport_rect().size - Vector2(0.0, top)
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	var frame: Vector2 = Vector2(minf(visible.x, bleed.x), minf(visible.y, bleed.y)).floor()
-	var origin: Vector2 = ((visible - frame) * 0.5).floor()
+	var origin: Vector2 = ((visible - frame) * 0.5).floor() + Vector2(0.0, top)
 	if frame == size and origin == position:
 		return
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -154,7 +219,7 @@ func _layout_frame() -> void:
 	size = frame
 	camera.frame = frame
 	camera.frame_origin = origin
-	camera.bounds = Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+	camera.bounds = _camera_bounds()
 	hud.frame = frame
 
 
@@ -206,6 +271,12 @@ func _build_pads() -> void:
 		pad.palette = Palettes.colors(palette_id)
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	var first: TexelPad = pads.get(&"m1") as TexelPad
+	if first != null:
+		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
+		pointer = PadPointer.new()
+		pointer.palette = Palettes.colors(palette_id)
+		first.add_child(pointer)
 	if critter == null:
 		critter = TexelCritter.new()
 		world.add_child(critter)
@@ -216,19 +287,162 @@ func _build_pads() -> void:
 
 
 func _enter_zone_visuals(zone_id: StringName) -> void:
+	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
 	PlinkyTheme.apply(theme, String(palette_id))
-	world.modulate = QUARRY_TINT if palette_id == Palettes.QUARRY else Color.WHITE
+	_swap_zone_scene(zone_id)
 	var cols: PackedColorArray = Palettes.colors(palette_id)
 	walker.palette = cols
 	gate.palette = cols
 	_build_pads()
+	_build_vents(cols)
+
+
+func _zone_scene_path(zone_id: StringName) -> String:
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	return z.scene_path if z != null and z.scene_path != "" else MEADOW_PATH
+
+
+func _zone_mask_path(zone_id: StringName) -> String:
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	return z.walk_mask_path if z != null else ""
+
+
+## Zones with their own scene replace the meadow: backdrop, tall props, anchors and walk mask. Going forward the
+## walker restarts at the new scene's Walker anchor; going back it appears just inside the Gate anchor, so the
+## zone you left is behind you and the gate does not fire again at once.
+func _swap_zone_scene(zone_id: StringName) -> void:
+	var path: String = _zone_scene_path(zone_id)
+	if path == _scene_path:
+		_apply_scene_frame(zone_id)
+		return
+	_scene_path = path
+	for c: Node in world.get_children():
+		if String(c.name).begins_with("Occ_"):
+			c.queue_free()
+	meadow.queue_free()
+	meadow = (load(path) as PackedScene).instantiate()
+	world.add_child(meadow)
+	meadow.call("spawn_occluders", world)
+	_apply_scene_frame(zone_id)
+	var anchors: Node = meadow.get_node("Anchors")
+	var going_back: bool = _going_back
+	var spawn: Marker2D = anchors.get_node_or_null("Walker") as Marker2D
+	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
+	if going_back and gate_marker != null:
+		walker.position = gate_marker.position + Vector2(0.0, 36.0)
+		walker.stop()
+	elif spawn != null:
+		walker.position = spawn.position
+		walker.stop()
+	if gate_marker != null:
+		gate.position = gate_marker.position
+	_clear_spawn_pending = true
+	camera.snap()
+
+
+var _going_back: bool = false
+
+
+## Frames the zone scene: the walker, the walk mask and the footstep lookups follow its size, and the camera is
+## kept inside it. Scenes that do not say (the meadow, the quarry) use the 640x360 frame with its bleed.
+func _apply_scene_frame(zone_id: StringName) -> void:
+	var rect: Variant = meadow.get("world_rect")
+	_world_rect = rect if rect is Rect2 else null
+	TexelWalker.bounds = _world_rect as Rect2 if _world_rect != null else TexelWalker.BOUNDS
+	var off: Variant = meadow.get("mask_offset")
+	WalkMask.use(_zone_mask_path(zone_id), off as Vector2i if off is Vector2i else WalkMask.OFFSET)
+	var pp: Variant = meadow.get("placements_path")
+	var gp: Variant = meadow.get("ground_path")
+	MeadowSites.use(String(pp) if pp is String else "", String(gp) if gp is String else "", off as Vector2i if off is Vector2i else MeadowSites.MEADOW_OFFSET)
+	var anchors: Node = meadow.get_node("Anchors")
+	_arch = anchors.get_node_or_null("Arch") as Marker2D
+	_district_id = ""
+	if camera != null:
+		camera.bounds = _camera_bounds()
+
+
+func _camera_bounds() -> Rect2:
+	if _world_rect != null:
+		return _world_rect as Rect2
+	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
+	return Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+
+
+## The zone whose next_zone is this one: where the Arch leads back to.
+func _previous_zone(zone_id: StringName) -> StringName:
+	for z: ZoneDef in sim.zone_defs.values():
+		if z.next_zone == zone_id:
+			return z.id
+	return &""
+
+
+## Walking into the Arch goes back through the zone crossing. A short lock after any crossing stops ping-pong.
+func _update_arch(delta: float) -> void:
+	_arch_lock = maxf(_arch_lock - delta, 0.0)
+	if _arch == null or _crossing or _arch_lock > 0.0 or _prev_zone == &"":
+		return
+	if walker.position.distance_to(_arch.position) <= ARCH_RADIUS:
+		_going_back = true
+		GameState.enter_zone(_prev_zone)
+
+
+const ARCH_RADIUS: float = 16.0
+
+
+## Names the district the walker is in, once per entry.
+func _update_district(delta: float) -> void:
+	_district_t -= delta
+	if _district_t > 0.0 or not meadow.has_method("district_at"):
+		return
+	_district_t = 0.25
+	var d: Dictionary = meadow.call("district_at", walker.position)
+	var id: String = String(d.get("id", ""))
+	if id != _district_id:
+		_district_id = id
+		if id != "":
+			banner.show_name(String(d.get("name", "")))
+
+
+## Zone 2 vents: present only when the zone scene has Vent anchors.
+func _build_vents(cols: PackedColorArray) -> void:
+	if heat_vents != null:
+		heat_vents.queue_free()
+		heat_vents = null
+	var anchors: Node = meadow.get_node("Anchors")
+	if anchors.get_node_or_null("Vent0") == null:
+		return
+	heat_vents = HeatVents.new()
+	heat_vents.name = "HeatVents"
+	heat_vents.walker = walker
+	heat_vents.palette = cols
+	world.add_child(heat_vents)
+	heat_vents.setup(anchors)
 
 
 func _on_zone_entered(zone_id: StringName) -> void:
-	_enter_zone_visuals(zone_id)
-	Juice.zone_enter()
+	var cross: bool = _zone_scene_path(zone_id) != _scene_path
+	if not cross:
+		_enter_zone_visuals(zone_id)
+		Juice.zone_enter()
+		_after_crossing(zone_id)
+		return
+	_crossing = true
+	walker.stop()
+	await transitions.cross_zone(func() -> void:
+		_enter_zone_visuals(zone_id)
+		if _clear_spawn_pending:
+			_clear_spawn_pending = false
+			_clear_spawn())
+	_crossing = false
+	_after_crossing(zone_id)
+
+
+func _after_crossing(zone_id: StringName) -> void:
+	_going_back = false
+	_arch_lock = 1.5
+	_prev_zone = _previous_zone(zone_id)
 
 
 ## Streak and critter payouts float up as a gold popup at the walker or the critter.
@@ -254,8 +468,10 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 func _wire_relics() -> void:
 	var inv: RelicInventory = GameState.relics
 	var bar := RelicBar.new()
-	bar.position = Vector2(8, 76)  # below the stats panel
+	relic_bar = bar
+	bar.position = Vector2(8, 76)  # follows the stats panel bottom (see _process)
 	hud.add_child(bar)
+	hud.gate(bar, Onboarding.F_RELICS)  # the equipped bar appears with the first relic
 	bar.bind(inv)
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)

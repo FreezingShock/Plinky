@@ -36,6 +36,10 @@ func set_highlight(on: bool) -> void:
 	highlight = on
 	queue_redraw()
 
+func _process(_d: float) -> void:
+	if has_focus():
+		queue_redraw()   # marching dots
+
 func _gui_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 		pressed.emit(self)
@@ -77,5 +81,7 @@ func _draw() -> void:
 			draw_rect(Rect2(1, 1, 3, 3), RelicStyle.accent)
 	if highlight:
 		draw_rect(r.grow(1), RelicStyle.accent, false)
-	if _hover or has_focus():
+	if has_focus():
+		PadInput.draw_focus_ring(self, r.grow(2), RelicStyle.accent)
+	elif _hover:
 		draw_rect(r.grow(2), RelicStyle.accent, false)
