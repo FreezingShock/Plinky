@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.9.0 - 2026-11-23
+- Upgrades menu overhaul: real stat values as "now -> next" (current greyed, next lit), level pips, green/red costs, an animated Buy (squash, cost flies to Prestige, numbers tick up, pip pop, rising click), and three new upgrades unlocked by Rebirths (Crit power at 3, Quick study at 5, Pad yield at 10) with padlock rows for locked ones.
+
 ## 0.8.0 - 2026-11-23
 - In-game calendar (5-day months, 10-day seasons), HUD clock, outdoor seasons (blossom, lush, amber, snow) with season particles, 3 min day / 2 min night, save v3.
 
