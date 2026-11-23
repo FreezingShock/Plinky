@@ -42,9 +42,27 @@ var _menu_chip: ExpandChip   # hamburger, bottom right
 var _key_chips: Array[ExpandChip] = []   # number keys 1 to 5 press these, in order (Rebirth is left out on purpose)
 var _centered: Array[Control] = []   # panels kept centred in the free area above the bottom bar
 
+## The stat strip is customizable (core/hud_layout.gd, saved per game): right-click a row to hide it, or press the pencil for
+## edit mode (move, hide, add from the icon chips, reset to Default). Settings > Gameplay has matching rows.
+const GROUP: StringName = &"stat_strip"   ## Settings reaches the HUD through this group (the registry cannot name Hud)
+var _stats_box: VBoxContainer
+var _edit_mode: bool = false
+var _edit_pending: bool = false          # Settings asked for edit mode; it starts once the menu is closed
+var _row_ctl: Dictionary = {}            # stat id -> [HBoxContainer, up, down, close] (edit mode only)
+var _foot_normal: HBoxContainer          # the pencil
+var _foot_edit: VBoxContainer            # chips to add, row count, Reset, Done
+var _edit_btn: StripButton
+var _reset_btn: StripButton
+var _sug_grid: GridContainer
+var _sug_note: Label
+var _count_label: Label
+var _layout_sig: String = ""
+const SUG_COLUMNS: int = 6
+
 
 func setup(p_sim: Sim) -> void:
 	sim = p_sim
+	add_to_group(GROUP)
 	PopupNumber.under_menu = point_under_menu
 	GameState.onboarding.update()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -143,6 +161,7 @@ func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
 	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
+	_stats_box = v
 	var row_ids: Array[StringName] = hud_stat_ids(sim)
 	for sid: StringName in row_ids:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
@@ -180,6 +199,8 @@ func _build_stats() -> void:
 			var inc: BigNum = sim.income_per_second(sid)
 			return TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format()))
 		_row_boxes[sid] = h
+		h.gui_input.connect(_on_row_input.bind(sid))
+		_build_row_controls(h, sid)
 		match sid:
 			&"dewdrop": gate(h, Onboarding.F_DEWDROP)
 			&"clover": gate(h, Onboarding.F_CLOVER_ROW)
@@ -187,6 +208,7 @@ func _build_stats() -> void:
 		if sid in [&"dewdrop", &"clover", &"prestige"]:
 			_gated_rows[sid] = true
 	_prestige_label = _rows.get(&"prestige", [null, null])[1]
+	_build_strip_footer(v)
 
 
 ## The stat rows of the HUD, top to bottom: every stat by ladder position, then Prestige and Rebirth Points last.
@@ -206,21 +228,26 @@ static func hud_stat_ids(sim: Sim) -> Array[StringName]:
 ## Whether a stat row belongs in the current zone. Prestige and Rebirth Points show where Rebirth runs (not the meadow),
 ## Seeds once a Bloom has paid them.
 func _row_in_zone(sid: StringName) -> bool:
+	if not _layout_rows().has(sid):
+		return false
+	return _edit_mode or _earned(sid)
+
+
+## Whether a stat is one of the current zone's own rows (the Default layout). Prestige and Rebirth Points are where
+## Rebirth runs (not the meadow), Seeds once a Bloom has paid them.
+func _zone_has(sid: StringName) -> bool:
 	var d: StatDef = sim.stat_defs.get(sid) as StatDef
-	var in_zone: bool
 	if sid == &"prestige" or sid == &"rp":
-		in_zone = sim.rebirth_here()
-	elif sid == &"seeds":
-		in_zone = sim.bloom_count > 0 or not sim.get_stat(&"seeds").is_zero()
-	else:
-		in_zone = d == null or d.in_zone(sim.zone_id)
-	return in_zone and _earned(sid)
+		return sim.rebirth_here()
+	if sid == &"seeds":
+		return sim.bloom_count > 0 or not sim.get_stat(&"seeds").is_zero()
+	return d == null or d.in_zone(sim.zone_id)
 
 
 ## A row stays hidden until its stat has been held once (or earns income), then stays for the session, so spending to zero
 ## never makes a row vanish. The first stat on the ladder (what the pads pay) is always shown.
 func _earned(sid: StringName) -> bool:
-	if _earned_rows.has(sid):
+	if _earned_rows.has(sid) or _opt(&"strip_empty", false):
 		return true
 	var d: StatDef = sim.stat_defs.get(sid) as StatDef
 	if (d != null and d.tier == 0) or not sim.get_stat(sid).is_zero() or not sim.income_per_second(sid).is_zero():
@@ -516,6 +543,10 @@ func _place_clock(zone_left: float) -> void:
 func _place() -> void:
 	if size != frame:
 		size = frame
+	if _stats_panel != null:   # the strip hugs its rows: it shrinks when rows are hidden, not only grows
+		var want: Vector2 = _stats_panel.get_combined_minimum_size()
+		if _stats_panel.size != want:
+			_stats_panel.size = want
 	if _tip_card != null and _tip_card.visible and _bottom != null:
 		# Bottom right, above the bottom bar: clear of the pads, the walker's start and the stats panel.
 		var cp: Vector2 = Vector2(frame.x - _tip_card.size.x - 4.0, frame.y - _bottom.size.y - _tip_card.size.y - 8.0).floor()
@@ -563,20 +594,30 @@ var _gated_rows: Dictionary = {}   # stat id -> true for rows a tutorial step ho
 
 
 func _refresh() -> void:
+	if _edit_pending and not PadInput.menu_open:
+		_edit_pending = false
+		set_edit_mode(true)
+	elif _edit_mode and PadInput.menu_open:
+		set_edit_mode(false)
+	_sync_layout()
+	if _foot_normal != null:
+		_foot_normal.visible = not _edit_mode and GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)
 	for sid2: StringName in _row_boxes:   # rows no tutorial step holds back follow the zone alone
 		if not _gated_rows.has(sid2) and sid2 != &"rp":
 			(_row_boxes[sid2] as Control).visible = _row_in_zone(sid2)
 	var rp_box: Control = _row_boxes.get(&"rp") as Control
 	if rp_box != null:   # Rebirth Points show once you have rebirthed (or hold some)
-		rp_box.visible = GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (sim.rebirth_count > 0 or not sim.rp_available().is_zero()) and sim.rebirth_here()
+		rp_box.visible = _layout_rows().has(&"rp") and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (_edit_mode or sim.rebirth_count > 0 or not sim.rp_available().is_zero())
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
+	var show_rates: bool = _opt(&"strip_rates", true)
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
 		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
 		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
+		(pair[1] as Label).visible = show_rates
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
 	_rebirth.disabled = not sim.can_rebirth()
@@ -623,6 +664,244 @@ static func _away_text(seconds: float) -> String:
 	if hrs < 48:
 		return "You were away %d h %d min." % [hrs, mins % 60]
 	return "You were away %d days %d h." % [floori(hrs / 24.0), hrs % 24]
+
+
+# ---------------------------------------------------------------- stat strip customization
+
+var _cached_rows: Array[StringName] = []   # the rows the layout shows in this zone, refreshed by _sync_layout
+
+
+## A true/false setting from the registry (Settings > Gameplay), or `fallback` when it is not registered.
+func _opt(id: StringName, fallback: bool) -> bool:
+	var v: Variant = SettingsRegistry.value(id)
+	return fallback if v == null else bool(v)
+
+
+## The zone's own rows in ladder order: the Default layout.
+func _defaults() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for sid: StringName in hud_stat_ids(sim):
+		if sim.stat_defs.has(sid) and _zone_has(sid):
+			out.append(sid)
+	return out
+
+
+func _layout_rows() -> Array[StringName]:
+	return _cached_rows
+
+
+## Stats from other zones that you have met, offered after the zone's own hidden ones.
+func _pool(defaults: Array[StringName]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for sid: StringName in hud_stat_ids(sim):
+		if not defaults.has(sid) and (_earned_rows.has(sid) or not sim.get_stat(sid).is_zero()):
+			out.append(sid)
+	return out
+
+
+static func _join(ids: Array[StringName]) -> String:
+	var out: String = ""
+	for id: StringName in ids:
+		out += String(id) + ","
+	return out
+
+
+## Pull the on-screen rows in line with the layout: order, the move and hide controls, the count, the add chips.
+## Cheap when nothing changed (it compares a signature), so the 10 Hz refresh calls it every time.
+func _sync_layout() -> void:
+	var defaults: Array[StringName] = _defaults()
+	_cached_rows = sim.hud_layout.rows(sim.zone_id, defaults)
+	var sig: String = String(sim.zone_id) + "|" + _join(_cached_rows)
+	var sugg: Array[StringName] = []
+	if _edit_mode:
+		sugg = sim.hud_layout.suggestions(sim.zone_id, defaults, _pool(defaults))
+		sig += "|e|" + _join(sugg)
+	if sig == _layout_sig:
+		return
+	_layout_sig = sig
+	var idx: int = 0
+	for sid: StringName in _cached_rows:
+		var b: Control = _row_boxes.get(sid) as Control
+		if b != null:
+			_stats_box.move_child(b, idx)
+			idx += 1
+	for sid2: StringName in _row_boxes:
+		if not _cached_rows.has(sid2):
+			_stats_box.move_child(_row_boxes[sid2] as Control, idx)
+			idx += 1
+	var last: int = _cached_rows.size() - 1
+	for i: int in _cached_rows.size():
+		var rc: Array = _row_ctl.get(_cached_rows[i], []) as Array
+		if rc.size() == 4:
+			(rc[1] as StripButton).disabled = i == 0
+			(rc[2] as StripButton).disabled = i == last
+			(rc[3] as StripButton).disabled = _cached_rows.size() <= 1
+	var is_default: bool = _cached_rows == defaults
+	_count_label.text = "%s %d/%d" % ["Default" if is_default else "Custom", _cached_rows.size(), HudLayout.MAX_ROWS]
+	_reset_btn.disabled = is_default
+	if _edit_mode:
+		_rebuild_suggestions(sugg)
+
+
+func _rebuild_suggestions(sugg: Array[StringName]) -> void:
+	for c: Node in _sug_grid.get_children():
+		_sug_grid.remove_child(c)
+		c.queue_free()
+	var full: bool = _cached_rows.size() >= HudLayout.MAX_ROWS
+	for sid: StringName in sugg:
+		var def: StatDef = sim.stat_defs.get(sid) as StatDef
+		if def == null:
+			continue
+		var b: StripButton = StripButton.chip(load("res://assets/icons/%s.png" % String(sid)) as Texture2D)
+		b.disabled = full
+		b.pressed.connect(_add_row.bind(sid))
+		var col: Color = StatStyle.color(sid)
+		Tip.bind(b, {"title": def.display_name, "title_color": col, "color": col, "icon": String(sid),
+			"body": "The strip is full. Hide a row first." if full else "Click to add it to the strip."})
+		_sug_grid.add_child(b)
+	_sug_grid.visible = _sug_grid.get_child_count() > 0
+	_sug_note.visible = not _sug_grid.visible
+
+
+## Move, hide and (right-click) quick-hide controls for one row. Shown only in edit mode.
+func _build_row_controls(h: HBoxContainer, sid: StringName) -> void:
+	var ctl := HBoxContainer.new()
+	ctl.add_theme_constant_override("separation", 1)
+	ctl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ctl.visible = false
+	h.add_child(ctl)
+	h.move_child(ctl, 0)
+	var up: StripButton = StripButton.make(StripButton.Glyph.UP)
+	var down: StripButton = StripButton.make(StripButton.Glyph.DOWN)
+	var close: StripButton = StripButton.make(StripButton.Glyph.CLOSE)
+	up.pressed.connect(_move_row.bind(sid, -1))
+	down.pressed.connect(_move_row.bind(sid, 1))
+	close.pressed.connect(_hide_row.bind(sid))
+	Tip.bind(up, {"title": "Move Up"})
+	Tip.bind(down, {"title": "Move Down"})
+	Tip.bind(close, {"title": "Hide Row", "body": "Take it off the strip. Add it back from the chips below."})
+	for b: StripButton in [up, down, close]:
+		ctl.add_child(b)
+	_row_ctl[sid] = [ctl, up, down, close]
+
+
+## The pencil (normal mode) and the edit footer: add chips, row count, Reset, Done.
+func _build_strip_footer(v: VBoxContainer) -> void:
+	_foot_normal = HBoxContainer.new()
+	_foot_normal.custom_minimum_size.y = 14.0
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_foot_normal.add_child(sp)
+	_edit_btn = StripButton.make(StripButton.Glyph.EDIT)
+	_edit_btn.modulate.a = 0.75
+	_edit_btn.pressed.connect(set_edit_mode.bind(true))
+	Tip.bind(_edit_btn, {"title": "Edit Stat Strip", "body": "Show, hide and reorder the rows.", "hint": "Right-click a row to hide it."})
+	_foot_normal.add_child(_edit_btn)
+	v.add_child(_foot_normal)
+	_foot_normal.visible = false   # _refresh shows it once the tutorial reaches Dewdrops (a bare Sunlight counter needs no editing)
+
+	_foot_edit = VBoxContainer.new()
+	_foot_edit.add_theme_constant_override("separation", 2)
+	_foot_edit.visible = false
+	v.add_child(_foot_edit)
+	_foot_edit.add_child(PanelDivider.new())
+	var title := Label.new()
+	title.theme_type_variation = &"TitleLabel"
+	title.text = "Add Stats"
+	_foot_edit.add_child(title)
+	_sug_grid = GridContainer.new()
+	_sug_grid.columns = SUG_COLUMNS
+	_sug_grid.add_theme_constant_override("h_separation", 2)
+	_sug_grid.add_theme_constant_override("v_separation", 2)
+	_foot_edit.add_child(_sug_grid)
+	_sug_note = Label.new()
+	_sug_note.text = "Every stat is on the strip."
+	_sug_note.add_theme_color_override("font_color", RelicStyle.dim)
+	_foot_edit.add_child(_sug_note)
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 2)
+	_foot_edit.add_child(bar)
+	_count_label = Label.new()
+	_count_label.add_theme_color_override("font_color", RelicStyle.dim)
+	_count_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.add_child(_count_label)
+	_reset_btn = StripButton.make(StripButton.Glyph.RESET)
+	_reset_btn.pressed.connect(reset_layout)
+	Tip.bind(_reset_btn, {"title": "Reset To Default", "body": "Back to this zone's usual rows, in ladder order."})
+	bar.add_child(_reset_btn)
+	var done: StripButton = StripButton.make(StripButton.Glyph.DONE)
+	done.pressed.connect(set_edit_mode.bind(false))
+	Tip.bind(done, {"title": "Done", "body": "Save the layout and leave edit mode."})
+	bar.add_child(done)
+
+
+func edit_mode() -> bool:
+	return _edit_mode
+
+
+## Edit mode: every row of the layout shows with move and hide controls, and the add chips appear under the strip.
+func set_edit_mode(on: bool) -> void:
+	if on == _edit_mode:
+		return
+	_edit_mode = on
+	_foot_normal.visible = not on and GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)
+	_foot_edit.visible = on
+	for sid: StringName in _row_ctl:
+		((_row_ctl[sid] as Array)[0] as Control).visible = on
+	Tip.hide_all()
+	if not on:
+		var sv: Node = get_node_or_null("/root/Save")
+		if sv != null:
+			sv.call("save_game")
+	_after_layout_change()
+
+
+## Settings > Gameplay > Edit Stat Strip: edit mode starts as soon as no menu is open.
+func request_edit() -> void:
+	_edit_pending = true
+
+
+## Default layout for the zone you are in.
+func reset_layout() -> void:
+	sim.hud_layout.reset(sim.zone_id)
+	_after_layout_change()
+
+
+## Default layout for every zone (Settings > Gameplay > Reset Stat Strip).
+func reset_all_layouts() -> void:
+	sim.hud_layout.reset_all()
+	_after_layout_change()
+
+
+func _after_layout_change() -> void:
+	_layout_sig = ""
+	_refresh()
+
+
+func _add_row(sid: StringName) -> void:
+	if sim.hud_layout.add(sim.zone_id, sid, _defaults()):
+		_after_layout_change()
+
+
+func _hide_row(sid: StringName) -> void:
+	if sim.hud_layout.hide(sim.zone_id, sid, _defaults()):
+		_after_layout_change()
+
+
+func _move_row(sid: StringName, dir: int) -> void:
+	if sim.hud_layout.move(sim.zone_id, sid, dir, _defaults()):
+		_after_layout_change()
+
+
+## Right-click a row to hide it (Settings > Gameplay > Right-click hides a row turns that off).
+func _on_row_input(event: InputEvent, sid: StringName) -> void:
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_RIGHT or not _opt(&"strip_rclick", true):
+		return
+	(_row_boxes[sid] as Control).accept_event()
+	_hide_row(sid)
 
 
 # ---------------------------------------------------------------- staged unlocks and tips
