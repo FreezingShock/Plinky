@@ -17,6 +17,7 @@ signal critter_spawned()
 signal critter_gone()
 ## Heat crossed the zone's hot line (see ZoneDef.heat_hot_at).
 signal heat_hot_changed(hot: bool)
+signal momentum_tier_changed(tier: int, rising: bool)
 ## A press gave a pad XP. level and xp are the pad's after the press.
 signal mastery_changed(button_id: StringName, level: int, xp: float)
 signal mastery_leveled(button_id: StringName, level: int)
@@ -46,8 +47,11 @@ var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 var relic_drops: int = 0     # relics dropped from presses this save
 var ui_flags: Dictionary = {}  # onboarding: {"unlocked": {id: true}, "seen": {id: true}}. Opaque to the sim, saved with it.
-## 0 to 1. Walking charges it (feed_momentum), time drains it. Not saved.
+## 0 to 1. Walking charges it (feed_momentum), pressing nudges it (feed_press_momentum). Once charging stops it holds
+## for `momentum_hold` seconds, then drains. Stages come from GameConfig.momentum_tiers. Not saved.
 var momentum: float = 0.0
+var momentum_hold: float = 0.0
+var _momentum_tier: int = 0
 ## 0 to ZoneDef.heat_cap. Standing on a vent charges it, time drains it. Not saved, cleared on zone entry and rebirth.
 var heat: float = 0.0
 var critter_active: bool = false
@@ -124,6 +128,8 @@ func new_game() -> void:
 	calendar.reset()
 	ui_flags = {}
 	momentum = 0.0
+	momentum_hold = 0.0
+	_momentum_tier = 0
 	heat = 0.0
 	critter_active = false
 	critter_left = 0.0
@@ -186,7 +192,7 @@ func income_per_second(stat_id: StringName) -> BigNum:
 			boost = boost.mul(get_stat(s.id).mul(BigNum.from_float(s.income_factor_per_unit)).add(BigNum.one()))
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
-	rm = rm.mul(BigNum.from_float(1.0 + momentum * config.momentum_max_bonus))
+	rm = rm.mul(BigNum.from_float(1.0 + momentum_bonus()))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
@@ -392,7 +398,54 @@ func _set_heat(value: float) -> void:
 
 ## Walking calls this with the distance moved (texels). Fills momentum up to 1.
 func feed_momentum(distance: float) -> void:
-	momentum = minf(1.0, momentum + maxf(distance, 0.0) * config.momentum_per_unit)
+	_add_momentum(maxf(distance, 0.0) * config.momentum_per_unit)
+
+
+## A pad press (from the game's pad input, not the headless balance sim) nudges momentum; a crit nudges it more.
+func feed_press_momentum(crit: bool) -> void:
+	_add_momentum(config.momentum_per_press + (config.momentum_per_crit if crit else 0.0))
+
+
+## Stage index for a momentum value: 0 is idle, then one more for each threshold reached.
+func momentum_tier_for(value: float) -> int:
+	var t: int = 0
+	for th: float in config.momentum_tier_thresholds:
+		if value >= th:
+			t += 1
+	return t
+
+
+func momentum_tier() -> int:
+	return _momentum_tier
+
+
+func momentum_tier_name(tier: int) -> String:
+	var names: PackedStringArray = config.momentum_tier_names
+	return names[clampi(tier, 0, names.size() - 1)]
+
+
+## Income bonus (0.4 = +40%): a smooth part that follows the bar, plus a kicker for each stage reached.
+func momentum_bonus() -> float:
+	var extra: float = 0.0
+	for i in _momentum_tier:
+		extra += config.momentum_tier_bonus[i]
+	return momentum * config.momentum_max_bonus + extra
+
+
+func _add_momentum(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	momentum = minf(1.0, momentum + amount)
+	momentum_hold = config.momentum_surge_hold if momentum >= 1.0 else config.momentum_grace
+	_sync_momentum_tier()
+
+
+func _sync_momentum_tier() -> void:
+	var t: int = momentum_tier_for(momentum)
+	if t != _momentum_tier:
+		var rising: bool = t > _momentum_tier
+		_momentum_tier = t
+		momentum_tier_changed.emit(t, rising)
 
 
 func _schedule_critter() -> void:
@@ -482,7 +535,11 @@ func _roll_relic_drop() -> StringName:
 func step(dt: float) -> void:
 	play_seconds += dt
 	calendar.advance(dt)
-	momentum = maxf(0.0, momentum - config.momentum_decay_per_second * dt)
+	if momentum_hold > 0.0:
+		momentum_hold = maxf(0.0, momentum_hold - dt)
+	elif momentum > 0.0:
+		momentum = maxf(0.0, momentum - config.momentum_decay_per_second * dt)
+		_sync_momentum_tier()
 	if heat > 0.0:
 		var zd: ZoneDef = current_zone()
 		_set_heat(heat - (zd.heat_decay_per_second if zd != null else heat) * dt)
