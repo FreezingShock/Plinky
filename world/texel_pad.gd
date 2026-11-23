@@ -19,6 +19,17 @@ var hovered: bool = false
 ## 0..1 of the cost you hold (see _refresh_progress). Drives the gauge and the Far / Close / Ready look.
 var progress: float = 0.0
 
+## Buy state colours are fixed hex (like rarity colours): green = you can buy, red = you can't. Not palette-tinted, so they read in every zone.
+const BUY_GREEN: Color = Color("5fd068")
+const BUY_RED: Color = Color("d8483c")
+## Secondary colour = the stat this pad raises. Unknown stats fall back to paper.
+const STAT_COLORS: Dictionary = {
+	&"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
+}
+## Unique inlay motif per pad, picked from its id: 0 solid, 1 quartered, 2 ring, 3 stripes.
+var variant: int = 0
+var stat_color: Color = Color("f6efd9")
+
 enum PadState { FAR, CLOSE, READY }
 const THICK: int = 3                 # slab thickness in texels at rest
 const FAR_BELOW: float = 0.1         # under this share of the cost the pad looks inert (stone, no gauge)
@@ -35,6 +46,10 @@ var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
 func _ready() -> void:
+	variant = absi(String(button_id).hash()) % 4
+	var b: ButtonDef = GameState.sim.button_defs.get(button_id) as ButtonDef
+	if b != null:
+		stat_color = STAT_COLORS.get(b.reward_stat, stat_color)
 	hold = HoldPress.new()
 	add_child(hold)
 	hold.tick.connect(_press)
@@ -206,33 +221,49 @@ func _draw() -> void:
 		_lit_rim(top, hx, hy, palette[3])
 	# Rim: brighter as the walker approaches or the mouse hovers.
 	var near: int = nearness()
-	var rim: Color = palette[2] if st == PadState.FAR else palette[6]
-	if st == PadState.READY:
-		rim = palette[5]
-	if near >= 1 and st != PadState.FAR:
-		rim = palette[7] if near >= 2 else palette[5]
+	var rim: Color = BUY_RED.darkened(0.3) if st != PadState.READY else BUY_GREEN
+	if near >= 2:
+		rim = rim.lerp(Color.WHITE, 0.4)
 	if hovered:
 		rim = palette[7]
 	draw_polyline(_diamond_at(1.0, top), rim, 1.0)
-	# Inset: the glow inlay. Ready = full glow colour (pulses a step). Otherwise a gauge that fills with progress.
+	# Inset: green when buyable, red when not, with a green gauge filling as you earn the cost. Each pad has its own motif.
 	var ihx: int = 8
 	var ihy: int = 4
+	var buy: Color = BUY_GREEN
 	if st == PadState.READY:
-		var gc: Color = glow.pad_color(palette) if glow != null else palette[5]
+		if glow != null and glow.flash_t > 0.0:
+			buy = glow.pad_color(palette)   # relic drop flash
 		if _pulse_step() == 0 and not FxConfig.reduce_flashing:
-			gc = gc.lerp(palette[7], 0.4)
+			buy = buy.lerp(Color.WHITE, 0.35)
 		if sink >= 2 or standing:
-			gc = palette[7]
-		_rows(0, top, ihx, ihy, gc, gc)
+			buy = Color.WHITE
+		_rows(0, top, ihx, ihy, buy, buy)
 	else:
-		_rows(0, top, ihx, ihy, palette[1], palette[1])
+		var red: Color = BUY_RED.darkened(0.45) if st == PadState.FAR else BUY_RED
+		_rows(0, top, ihx, ihy, red, red)
 		if st == PadState.CLOSE:
 			var cut: int = top + ihy - roundi(progress * float(ihy * 2 + 1))
 			for dy in range(-ihy, ihy + 1):
 				if top + dy < cut:
 					continue
 				var w: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5)))
-				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), palette[3])
+				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), BUY_GREEN.darkened(0.2))
+	# Unique motif cut into the inlay in ink, so every pad has its own face.
+	match variant:
+		1:
+			draw_rect(Rect2(-ihx + 2, top, ihx * 2 - 3, 1), ink)
+			draw_rect(Rect2(0, top - ihy + 1, 1, ihy * 2 - 1), ink)
+		2:
+			draw_polyline(_diamond_at(0.3, top), ink, 1.0)
+		3:
+			for dy in [-2, 0, 2]:
+				var w2: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5))) - 2
+				draw_rect(Rect2(-w2, top + dy, w2 * 2 + 1, 1), ink)
+	# Stat colour: a gem on each corner of the plate plus a centre pip.
+	for g: Vector2i in [Vector2i(-hx + 2, 0), Vector2i(hx - 2, 0), Vector2i(0, -hy + 1), Vector2i(0, hy - 1)]:
+		draw_rect(Rect2(g.x - 1, top + g.y, 3 if g.y == 0 else 3, 1), stat_color)
+	draw_rect(Rect2(0, top, 1, 1), stat_color)
 	draw_polyline(_diamond_at(0.6, top), ink, 1.0)
 	if standing:
 		draw_polyline(_diamond_at(0.38, top), palette[7], 1.0)
