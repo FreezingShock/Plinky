@@ -9,11 +9,11 @@ signal closed
 
 enum Tab { STATS, ATTRIBUTES }
 
-const WIDTH: float = 284.0
-const SCROLL_H: float = 190.0
-const SLIDE: float = 8.0
-const OPEN_TIME: float = 0.24
-const CLOSE_TIME: float = 0.16
+const WIDTH: float = 326.0
+const SCROLL_H: float = 150.0
+const SLIDE: float = 14.0
+const OPEN_TIME: float = 0.42
+const CLOSE_TIME: float = 0.28
 const REFRESH: float = 0.1
 const TITLES: Array[String] = ["Stats", "Attributes"]
 const SHEETS: Array[String] = ["stats_menu", "attrs_menu"]
@@ -256,6 +256,9 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 		row.focus_exited.connect(_on_row_untip.bind(row))
 		_list.add_child(row)
 		_rows[r["id"]] = row
+	var tail := Control.new()   # keeps the last row clear of the scroll edge
+	tail.custom_minimum_size = Vector2(1, 6)
+	_list.add_child(tail)
 	if keep != &"" and _rows.has(keep) and is_open():
 		(_rows[keep] as IndexRow).call_deferred("grab_focus")
 
@@ -290,7 +293,7 @@ func _refresh_tip() -> void:
 	if _tip_text == body and _tip.visible:
 		return
 	_tip_text = body
-	_tip.show_text(String(d["name"]), body, Rect2(_tip_row.global_position, _tip_row.size))
+	_tip.show_text(String(d["name"]), body, Rect2(global_position.x, _tip_row.global_position.y, size.x, _tip_row.size.y))
 
 
 # ---------------------------------------------------------------- frame
@@ -299,7 +302,7 @@ func _layout() -> void:
 	var host: Control = get_parent_control()
 	if host == null:
 		return
-	var avail: float = host.size.y - 118.0
+	var avail: float = host.size.y - 150.0
 	var h: float = clampf(avail, 64.0, SCROLL_H)
 	if _scroll.custom_minimum_size.y != h:
 		_scroll.custom_minimum_size.y = h

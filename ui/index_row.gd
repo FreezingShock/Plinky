@@ -32,8 +32,8 @@ func _init(width: float) -> void:
 	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(_icon)
-	_name = _label(h, 92)
-	_value = _label(h, 62)
+	_name = _label(h, 84)
+	_value = _label(h, 60)
 	_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_note = _label(h, 0)
 	_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL

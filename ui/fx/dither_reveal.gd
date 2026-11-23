@@ -3,7 +3,7 @@ extends ColorRect
 ## Ink overlay that wipes a panel in or out as a 4x4 Bayer dither, stepped (no smooth fades).
 ## cover 1 = fully inked, 0 = clear. Sits on top of a panel, ignores the mouse.
 
-const STEPS: int = 6
+const STEPS: int = 8
 const SHADER: String = """
 shader_type canvas_item;
 uniform float cover = 1.0;
