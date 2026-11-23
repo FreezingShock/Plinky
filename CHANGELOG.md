@@ -9,8 +9,21 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.28.1 - 2026-11-23
-- Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active Larkmoor gate 58.4 to 51.6 min (target 57 to 61, still short). Meadow unchanged.
+## 0.31.1 - 2026-11-23
+- Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.
+
+## 0.31.0 - 2026-11-23
+- Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
+
+## 0.30.1 - 2026-11-23
+- HUD strip: the gain sits tight against the value (no fixed-width value column), so short values no longer leave a gap.
+
+## 0.30.0 - 2026-11-23
+- The Ember Quarry is now a six-row forge ladder, Cinder, Ore, Slag, Ingot, Alloy and Emberheart: 18 pads climbing the terraces, each row opening the next, with new isometric voxel pad objects and per-row colours, tier buffs (1.25x and 1.5x) from Slag up, Rebirth that banks Ingots and only resets the quarry, and a small flat arrival purse. Old quarry saves migrate.
+
+## 0.29.0 - 2026-11-23
+- HUD currency panel is now a compact strip: icon, small dim gain, and a value in the stat's colour. Names live in the instant tooltips. Rows appear once you have held that stat, and only the current zone's stats show. About a third of the old height.
+- New `tools/hud_shot.tscn` captures the HUD panel (early or late-game fixture); CLAUDE.md and SPEC name the real capture tools.
 
 ## 0.28.0 - 2026-11-23
 - Higher flower tiers now buff several lower stats at once (Thistle and Heather 1.25x, Foxglove and Starbloom 1.5x, data-driven). New Settings option for multipliers as a factor (x1.5) or a percent (150%). Locked pads are clearly darker and buyable pads glow green. Larkmoor gate retuned to 2000 Starbloom Petals.

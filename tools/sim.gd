@@ -77,7 +77,7 @@ func _run(presses_per_second: float, seed_value: int, every: float) -> Dictionar
 		out["carry"][zone] = sim.get_stat(&"sunlight").format()
 		t = t_end
 		var next: StringName = z.next_zone
-		if open and next != &"" and next != &"zone2":   # the quarry has its own sim (docs/zone2.md)
+		if open and next != &"":
 			sim.enter_zone(next)
 			zone = next
 		else:

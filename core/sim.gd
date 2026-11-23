@@ -9,6 +9,8 @@ signal button_denied(button_id: StringName)
 signal zone_entered(zone_id: StringName)
 signal gate_opened(gate_id: StringName)
 signal rebirth_done(prestige_gained: BigNum)
+## A Bloom was done; the argument is the Seeds it paid.
+signal bloom_done(seeds_gained: int)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)
 ## Streak or critter payout. kind is &"streak" or &"critter"; gains is StringName -> BigNum.
@@ -51,6 +53,7 @@ var zones_entered: Dictionary = {}   # zone id -> true once its entry grants wer
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
+var bloom_count: int = 0    # Blooms done: each adds a permanent bonus to every pad reward
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 ## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
 ## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
@@ -120,7 +123,7 @@ func validate() -> PackedStringArray:
 		if not zone_defs.has(t.zone):
 			errs.append("tier %s: unknown zone %s" % [t.id, t.zone])
 	for b: ButtonDef in button_defs.values():
-		if not tier_defs.is_empty() and b.zone != &"zone2" and not tier_defs.has(b.row):
+		if not tier_defs.is_empty() and not tier_defs.has(b.row):
 			errs.append("button %s: row %s is not a tier" % [b.id, b.row])
 		elif tier_defs.has(b.row) and (tier_defs[b.row] as TierDef).stat != b.reward_stat:
 			errs.append("button %s: pays %s but its tier pays %s" % [b.id, b.reward_stat, (tier_defs[b.row] as TierDef).stat])
@@ -137,7 +140,10 @@ func validate() -> PackedStringArray:
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
-	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat]:
+	for z: ZoneDef in zone_defs.values():
+		if z.prestige_source_stat != &"" and not stat_defs.has(z.prestige_source_stat):
+			errs.append("zone %s: unknown prestige_source_stat %s" % [z.id, z.prestige_source_stat])
+	for key: StringName in [config.prestige_source_stat, config.prestige_stat, config.rp_stat, config.bloom_stat, config.bloom_source_stat]:
 		if not stat_defs.has(key):
 			errs.append("config: unknown stat %s" % key)
 	return errs
@@ -155,6 +161,7 @@ func new_game() -> void:
 	play_seconds = 0.0
 	press_count = 0
 	rebirth_count = 0
+	bloom_count = 0
 	relic_drops = 0
 	mastery.clear()
 	run_stats.clear()
@@ -225,7 +232,7 @@ func income_per_second(stat_id: StringName) -> BigNum:
 			boost = boost.mul(get_stat(s.id).mul(BigNum.from_float(s.income_factor_per_unit)).add(BigNum.one()))
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
-	rm = rm.mul(BigNum.from_float(1.0 + momentum_bonus()))
+	rm = rm.mul(BigNum.from_float((1.0 + momentum_bonus()) * (1.0 + effect_total(&"sun_rate"))))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
@@ -360,7 +367,7 @@ func luck_level() -> int:
 
 ## Multiplier on every press reward from the Pad yield attribute.
 func pad_yield_mult() -> float:
-	return 1.0 + effect_total(&"pad_yield")
+	return 1.0 + effect_total(&"pad_yield") + float(bloom_count) * config.bloom_reward_per_bloom
 
 
 ## True once the player has rebirthed enough times for this attribute to be bought. Levels bought stay when saves load.
@@ -700,8 +707,68 @@ func dev_force_zone(z_id: StringName) -> bool:
 	return true
 
 
+## True in the zones where Rebirth, Prestige and Rebirth Points are shown (the meadow runs on Bloom instead).
+func rebirth_here() -> bool:
+	return String(zone_id) in config.rebirth_zones
+
+
+## Bloom opens with the Larkmoor gate, and pays once the source stat is high enough for the first payout.
+func bloom_unlocked() -> bool:
+	return bool(gates_open.get(config.bloom_gate_zone, false))
+
+
+## The Starbloom a first payout is measured against: the Bloom gate's own threshold, so Bloom follows the gate when it moves.
+func bloom_ref() -> float:
+	var z: ZoneDef = zone_defs.get(config.bloom_gate_zone) as ZoneDef
+	return z.gate_threshold if z != null and z.gate_threshold > 0.0 else config.bloom_seed_ref
+
+
+## Seeds a Bloom would pay now (0 until it is available).
+func bloom_gain_preview() -> int:
+	if not bloom_unlocked():
+		return 0
+	var v: float = maxf(0.0, get_stat(config.bloom_source_stat).to_float())
+	var n: int = int(floorf(config.bloom_seed_scale * sqrt(v / bloom_ref())))
+	return n if float(n) >= config.bloom_min_seeds else 0
+
+
+func can_bloom() -> bool:
+	return bloom_gain_preview() > 0
+
+
+## Sunlight a run starts with after a Bloom: the stat's start plus the Head start gift.
+func bloom_start_sunlight() -> BigNum:
+	return BigNum.from_float((stat_defs[&"sunlight"] as StatDef).start + effect_total(&"head_start"))
+
+
+## Resets every stat flagged resets_on_bloom, pays Seeds and counts the Bloom. Gates, tiers, relics, mastery, RP and old
+## Prestige stay.
+func try_bloom() -> bool:
+	if not can_bloom():
+		return false
+	var gained: int = bloom_gain_preview()
+	for s: StatDef in stat_defs.values():
+		if s.resets_on_bloom:
+			_set_stat(s.id, BigNum.from_float(s.start))
+	if stat_defs.has(&"sunlight"):
+		_set_stat(&"sunlight", bloom_start_sunlight())
+	_set_stat(config.bloom_stat, get_stat(config.bloom_stat).add(BigNum.from_float(float(gained))))
+	bloom_count += 1
+	_set_heat(0.0)
+	_flush()
+	run_stats.mark_rebirth()
+	bloom_done.emit(gained)
+	return true
+
+
+## The stat Rebirth banks in the current zone: the zone's own (Ingots in the quarry) or the game's (Clover Leaves).
+func prestige_source() -> StringName:
+	var z: ZoneDef = current_zone()
+	return z.prestige_source_stat if z != null and z.prestige_source_stat != &"" else config.prestige_source_stat
+
+
 func can_rebirth() -> bool:
-	return get_stat(config.prestige_source_stat).gte(BigNum.from_float(config.rebirth_min_value))
+	return get_stat(prestige_source()).gte(BigNum.from_float(config.rebirth_min_value))
 
 
 func prestige_gain_preview() -> BigNum:
@@ -710,7 +777,7 @@ func prestige_gain_preview() -> BigNum:
 
 ## The source stat, boosted once it passes prestige_push_threshold so pushing further pays more than linearly.
 func _prestige_gain() -> BigNum:
-	var v: BigNum = get_stat(config.prestige_source_stat).copy()
+	var v: BigNum = get_stat(prestige_source()).copy()
 	var th: float = config.prestige_push_threshold
 	var f: float = v.to_float()
 	if th > 0.0 and f > th:
@@ -725,8 +792,10 @@ func try_rebirth() -> bool:
 		return false
 	var gained: BigNum = _prestige_gain()
 	for s: StatDef in stat_defs.values():
-		if s.resets_on_rebirth:
+		if s.resets_on_rebirth and s.in_zone(zone_id):   # a rebirth only resets the zone it was done in
 			_set_stat(s.id, BigNum.from_float(s.start))
+	if stat_defs.has(&"reb") and (stat_defs[&"reb"] as StatDef).in_zone(zone_id):
+		_set_stat(&"reb", get_stat(&"reb").add(BigNum.one()))   # the quarry counts its rebirths (Rebirths stat)
 	_set_stat(config.prestige_stat, get_stat(config.prestige_stat).add(gained))
 	_set_stat(config.rp_stat, get_stat(config.rp_stat).add(BigNum.from_float(float(rp_for_rebirth(rebirth_count)))))
 	rebirth_count += 1
@@ -763,6 +832,8 @@ func rp_available() -> BigNum:
 
 ## What an attribute is paid with, as a balance: Prestige earned and not yet spent, or Rebirth Points.
 func attribute_available(a: AttributeDef) -> BigNum:
+	if a.currency == config.bloom_stat:
+		return get_stat(config.bloom_stat)
 	return rp_available() if a.currency == config.rp_stat else prestige_available()
 
 
@@ -787,6 +858,8 @@ func buy_attribute(attr_id: StringName) -> bool:
 		return false
 	if a.currency == config.rp_stat:
 		_set_stat(config.rp_stat, rp_available().sub(cost).max_zero())
+	elif a.currency == config.bloom_stat:
+		_set_stat(config.bloom_stat, get_stat(config.bloom_stat).sub(cost).max_zero())
 	else:
 		prestige_spent = prestige_spent.add(cost)
 	attr_levels[attr_id] = attr_level(attr_id) + 1
@@ -830,9 +903,9 @@ func _pay_entry_grants(z_id: StringName) -> void:
 	if z == null or bool(zones_entered.get(z_id, false)):
 		return
 	zones_entered[z_id] = true
-	if z.entry_grants.is_empty() or z.entry_source_stat == &"":
+	if z.entry_grants.is_empty():
 		return
-	var src: BigNum = get_stat(z.entry_source_stat)
+	var src: BigNum = get_stat(z.entry_source_stat) if z.entry_source_stat != &"" else BigNum.one()   # no source = a flat purse
 	for sid: Variant in z.entry_grants:
 		var id: StringName = StringName(str(sid))
 		if stat_defs.has(id):
@@ -891,7 +964,7 @@ func _check_gates() -> void:
 # ---------------------------------------------------------------- save format
 
 ## Save format of the flower ladder (the meadow's Sunlight to Starbloom economy). Older saves are migrated on load.
-const LADDER_SAVE: int = 1
+const LADDER_SAVE: int = 2
 
 func to_dict() -> Dictionary:
 	var s: Dictionary = {}
@@ -915,6 +988,7 @@ func to_dict() -> Dictionary:
 		"play_seconds": play_seconds,
 		"press_count": press_count,
 		"rebirth_count": rebirth_count,
+		"bloom_count": bloom_count,
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
 		"ui_flags": ui_flags.duplicate(true),
@@ -931,8 +1005,10 @@ func from_dict(d_in: Dictionary) -> bool:
 	if d_in.is_empty():
 		return false
 	var d: Dictionary = d_in
-	var old_ladder: bool = int(d.get("ladder", 0)) < LADDER_SAVE
-	if old_ladder:
+	var save_ladder: int = int(d.get("ladder", 0))
+	var old_ladder: bool = save_ladder < 1
+	var old_quarry: bool = save_ladder < 2   # before the Ember Quarry ladder (Cinder to Emberheart)
+	if old_ladder or old_quarry:
 		d = _ladder_save_ids(d)
 	var s: Variant = d.get("stats", {})
 	if s is Dictionary:
@@ -973,6 +1049,7 @@ func from_dict(d_in: Dictionary) -> bool:
 	play_seconds = float(d.get("play_seconds", 0.0))
 	press_count = int(d.get("press_count", 0))
 	rebirth_count = int(d.get("rebirth_count", 0))
+	bloom_count = maxi(0, int(d.get("bloom_count", 0)))
 	relic_drops = int(d.get("relic_drops", 0))
 	_last_drop_at = float(d.get("last_drop_at", play_seconds))
 	var uf: Variant = d.get("ui_flags", {})
@@ -989,6 +1066,8 @@ func from_dict(d_in: Dictionary) -> bool:
 		run_stats.from_dict(rs)
 	if old_ladder:
 		_migrate_to_ladder(d_in)
+	if old_quarry:
+		_migrate_to_quarry_ladder()
 	_dirty.clear()
 	return true
 
@@ -1003,6 +1082,32 @@ const LADDER_PAD_MAP: Dictionary = {
 }
 
 
+## The three Forge pads of the old quarry became the Slag row of the new ladder (they paid Slag).
+const QUARRY_PAD_MAP: Dictionary = {"f1": "slagrow_1", "f2": "slagrow_2", "f3": "slagrow_3"}
+
+
+func old_pre_ladder(d: Dictionary) -> bool:
+	return int(d.get("ladder", 0)) < 1
+
+
+## A save from before the quarry ladder. A player who already was in the quarry (or had Slag, Forge mastery or an open
+## quarry gate) gets the rows they already played opened, so nothing locks behind a tier they got past. Their Cash,
+## Multiplier, Rebirths and Slag are kept as they are; the new stats start at zero.
+func _migrate_to_quarry_ladder() -> void:
+	var played: bool = zone_id == &"zone2" or bool(zones_entered.get(&"zone2", false)) or not get_stat(&"slag").is_zero()
+	for b: ButtonDef in button_defs.values():
+		if b.zone == &"zone2" and mastery.xp(b.id) > 0.0:
+			played = true
+	if not played:
+		return
+	for id: StringName in [&"cinder", &"ore", &"slagrow"]:
+		if tier_defs.has(id):
+			tiers_open[id] = true
+	if gates_open.get(&"zone2", false):   # the old gate (9 Slag) was beaten: keep every row open for the new one
+		for t: TierDef in tiers_in_zone(&"zone2"):
+			tiers_open[t.id] = true
+
+
 ## A copy of a pre-ladder save with its mastery keys renamed to the new pad ids.
 func _ladder_save_ids(d: Dictionary) -> Dictionary:
 	var out: Dictionary = d.duplicate(true)
@@ -1010,7 +1115,10 @@ func _ladder_save_ids(d: Dictionary) -> Dictionary:
 	if m is Dictionary:
 		var renamed: Dictionary = {}
 		for k: Variant in (m as Dictionary):
-			renamed[LADDER_PAD_MAP.get(str(k), str(k))] = (m as Dictionary)[k]
+			var nk: String = str(k)
+			if old_pre_ladder(d):
+				nk = LADDER_PAD_MAP.get(nk, nk)
+			renamed[QUARRY_PAD_MAP.get(nk, nk)] = (m as Dictionary)[k]
 		out["mastery"] = renamed
 	var uf: Variant = out.get("ui_flags")
 	if uf is Dictionary:   # tutorial steps were renamed with the rows they reveal
