@@ -35,6 +35,7 @@ func setup(p_sim: Sim) -> void:
 	v.add_child(top)
 	top.add_child(_title("MOMENTUM", Color("f6efd9")))
 	_stage = _title("", RelicStyle.edge)
+	_stage.custom_minimum_size = Vector2(72, 0)   # fixed room, so changing stage names never resize the panel
 	_stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_stage.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	top.add_child(_stage)
@@ -126,8 +127,7 @@ func _apply() -> void:
 	_stage.text = _sim.momentum_tier_name(tier).to_upper()
 	var tc: Color = _tier_color(tier)
 	_stage.add_theme_color_override("font_color", RelicStyle.text.lerp(tc, 1.0 - _flash) if _flash > 0.0 else tc)
-	# Pop: the stage name grows a size for a beat when a stage is crossed.
-	_stage.add_theme_font_size_override("font_size", 16 if _flash > 0.5 else 14)
+	# No size change on a stage-up: a bigger font grows the row and pushes the panel. Colour and the frame flash carry it.
 	_value.text = "+%d%%" % roundi(_sim.momentum_bonus() * 100.0)
 	_value.modulate = RelicStyle.accent if pulse else Color.WHITE
 

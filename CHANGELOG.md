@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.14.3 - 2026-11-23
+- Momentum bar no longer grows or crowds the panel border on a stage-up: the pop is now colour and frame flash only, and the stage name has fixed room.
+
 ## 0.14.2 - 2026-11-23
 - Click-to-walk ring and dots now snap to the nearest walkable ground, so they no longer sit on cliff faces or water.
 
