@@ -46,6 +46,7 @@ var _d_buff: Label
 var _d_tip: Label
 var _d_bar: DitherBar
 var _d_level: Label
+var _d_head: PanelContainer
 var _dtab: int = 0
 var _dtabs: Array[PixelButton] = []
 var _d_pages: Array[VBoxContainer] = []
@@ -151,6 +152,7 @@ func _build_detail() -> void:
 	# Header: icon and name on the left (left-aligned), value and gain on the right (right-aligned), in a solid panel.
 	var hp := PanelContainer.new()
 	hp.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 6.0, 4.0))
+	_d_head = hp
 	_detail_box.add_child(hp)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
@@ -439,10 +441,10 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 			group = r["group"]
 			var h := Label.new()
 			h.text = group.to_upper()
-			h.add_theme_color_override("font_color", RelicStyle.accent)
+			h.add_theme_color_override("font_color", StatStyle.color(&"rp") if group == "Rebirth Perks" else RelicStyle.accent)
 			_grid_box.add_child(h)
 			flow = HFlowContainer.new()
-			flow.add_theme_constant_override("h_separation", 4)
+			flow.add_theme_constant_override("h_separation", 3)
 			flow.add_theme_constant_override("v_separation", 4)
 			_grid_box.add_child(flow)
 		var card := IndexCard.new()
@@ -460,12 +462,14 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 
 func _preview(card: IndexCard) -> void:
 	var d: Dictionary = card.data
+	_s_head.add_theme_color_override("font_color", StatStyle.color(StringName(d.get("color_id", d["id"]))))
 	_s_head.text = "%s   %s" % [d["name"], d["value"]]
 	_s_buff.text = String(d["note"]) if String(d["note"]) != "" else " "
 	_s_tip.text = String(d["tip"]).split("\n")[0]
 
 
 func _strip_idle() -> void:
+	_s_head.add_theme_color_override("font_color", RelicStyle.text)
 	_s_head.text = HINT
 	_s_buff.text = " "
 	_s_tip.text = ""
@@ -474,6 +478,11 @@ func _strip_idle() -> void:
 func _fill_detail(d: Dictionary) -> void:
 	_d_icon.texture = IndexCard.icon_for(String(d["icon"]))
 	_d_name.text = String(d["name"])
+	var sc: Color = StatStyle.color(StringName(d.get("color_id", d["id"])))
+	_d_name.add_theme_color_override("font_color", sc)
+	var hb: AsciiBox = AsciiBox.make(AsciiBox.Kind.PANEL, 6.0, 4.0)
+	hb.edge_override = sc.darkened(0.2)   # the header frame wears the stat's colour
+	_d_head.add_theme_stylebox_override("panel", hb)
 	_d_total.text = String(d["value"])
 	_d_buff.text = String(d["note"])
 	_d_buff.visible = _d_buff.text != ""
