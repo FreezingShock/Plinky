@@ -1,48 +1,47 @@
 # Plinky
 
-Incremental button-presser in Godot 4.7, GDScript, Forward+. Fixed isometric
-camera, 3D rendered at 640x360 with dither, palette, and outline post-process.
-Full spec: docs/SPEC.md. Art values: docs/art-bible.md. Theme: docs/theme.md. Interfaces: docs/interfaces.md. Log: docs/decisions.md.
-main is the source of truth. The design library (specs, art, longer docs) lives outside the repo in the project's shared files.
+Godot 4.7 isometric incremental button-presser. GDScript, Forward+, fixed isometric camera. The 3D scene renders at 640x360, then goes through dither, palette and outline post-process.
 
-## Layout (flat, there is no src/)
-core/ data/ world/ render/ ui/ ui/fx/ boot/ audio/ theme/ fonts/ content/ assets/ tests/ tools/ docs/ .github/workflows/
-Autoloads (project.godot): EventBus, GameState, Calendar, Save, Fx (render/fx_driver.gd), Juice (ui/fx/fx_bus.gd), Audio.
+Read only what your task touches. Grep the big docs rather than reading them whole.
 
-Process: docs/workflow.md (cloud PR per task, one PC QA thread, QA findings routed by the coordinator).
+## Repo map (flat, no src/)
+- `core/` pure logic: sim, bignum, formulas, mastery, codecs, number_format. Never references nodes, scenes, or render/ world/ ui/. Only the autoload shells (event_bus, game_state, save, calendar_service) may be Nodes, and they stay thin.
+- `data/` resource definitions. `content/` all balance numbers as .tres (no balance numbers in scripts). `content/parked/` is kept on purpose.
+- `world/` zone scenes, pads, walker, gates. `render/` Fx driver, camera, pixel viewport, toon material, shaders. `ui/` HUD, menus, panels; `ui/fx/` Juice popups and transitions.
+- `boot/`, `audio/`, `theme/`, `fonts/`, `assets/` (art and audio, binary).
+- `tools/` capture scenes, sim, bench, art generators (`tools/art/`). `tests/` has `run.gd` and `test_*.gd`; every suite must be listed in `run.gd`.
+- Autoloads (project.godot): EventBus, GameState, Calendar, Save, Fx (`render/fx_driver.gd`), Juice (`ui/fx/fx_bus.gd`), Audio.
+
+## Docs (grep for the section you need)
+- `docs/SPEC.md` system spec and section 5 stream ownership. `docs/interfaces.md` signals and APIs. `docs/art-bible.md` art values.
+- `docs/decisions.md` decision log. Newest at the bottom. Grep it by topic, do not read it whole.
+- `docs/workflow.md` process. `docs/versioning.md` version rules. `docs/ci.md` jobs, ruleset and release.
+- The design library (specs, art, longer docs) lives outside the repo at `/mnt/project-files/plinky/`. Its README is the index.
 
 ## Rules
-- Read docs/SPEC.md, docs/art-bible.md, docs/theme.md and docs/decisions.md before starting work.
 - Static typing everywhere.
-- Pure logic in core/ (sim, bignum, formulas, mastery, codecs) never references nodes, scenes, or render/, world/, ui/. The Node autoload shells in core/ (event_bus, game_state, save, calendar_service) are the only exceptions and stay thin.
 - Gameplay emits EventBus signals and never sets shader uniforms. Fx owns gameplay-driven uniforms. Presentation scripts that own their own material (sky, shadows, screen light, toon material, pixel viewport, window frame, transitions, boot and title backgrounds) may set that material's uniforms.
-- No balance numbers in scripts. They live in content/*.tres.
-- All stat values are BigNum, never float. Format numbers only through core/number_format.gd.
+- All stat values are BigNum, never float. Format numbers only through `core/number_format.gd`.
 - Theme: Pixelify Sans titles, Spleen 6x12 body, palette-indexed colour roles, 4x4 Bayer dither, nearest filtering, integer scale, no blur. Title Case for stat names and menu labels.
 - No image textures on world geometry. Colour is vertex colour or palette index.
-- Do not copy assets, names, or number tables from any existing game.
-- Do not use the word "Plinko" in game text, store copy, or file names. No literal "Button" in player-facing text.
+- Do not copy assets, names or number tables from any existing game.
+- Do not use the word "Plinko" in game text, store copy or file names. No literal "Button" in player-facing text.
 
-## Versioning
-Every code PR adds one changelog fragment, `changelog.d/<slug>.patch.md` or `.minor.md` (small = patch, feature = minor), and does NOT bump the version or edit CHANGELOG.md; the Release workflow stamps the version on merge. MAJOR only when Nathan asks. See docs/versioning.md.
+## Commands
+- Tests: `godot --headless --path . --import` once on a fresh checkout, then `godot --headless --path . --script tests/run.gd`. Exit 0 means pass.
+- Visual check: `godot --path . tools/play_shots.tscn` (gameplay) or `tools/hud_shot.tscn` (HUD panel, `-- early|late`). Look at the PNG.
+- Godot does not run in cloud sessions. Say in the PR which checks were not run in-engine.
 
-## Git and CI
-- Branch from main, open a PR, never push to main. CI (.github/workflows/ci.yml) runs the headless Godot tests and the sim on every PR; keep it green. Draft or conflicting PRs do not run CI: merge main in and mark ready.
-
-## After every change
-1. godot --headless --path . --script tests/run.gd (run `godot --headless --import` once on a fresh checkout)
-2. godot --path . tools/play_shots.tscn (gameplay) or tools/hud_shot.tscn (HUD panel, `-- early|late`), then look at the PNG
-3. Commit only when tests pass
-
-## Parallel work
-- Streams own the folders listed in SPEC section 5. Stay inside yours.
-- Only the main session edits project.godot, the main scene, this file,
-  and docs/interfaces.md.
-- One branch and one worktree per stream.
+## Workflow (summary; details in docs/workflow.md)
+- Branch from main, open a PR, never push to main, never bypass the ruleset.
+- Every PR that touches game folders adds one `changelog.d/<slug>.patch.md` or `.minor.md` (small = patch, feature = minor). Do not edit the version or `CHANGELOG.md`. MAJOR only when Nathan asks.
+- CI (`test` check, see docs/ci.md) must be green. Draft or conflicting PRs do not run CI: merge main in, mark ready, merge promptly.
+- Parallel work: stay inside your stream's folders. Only the main session edits project.godot, the main scene, this file and docs/interfaces.md. Cross-area changes go through the coordinator.
+- Log decisions in `docs/decisions.md`.
 
 ## Working with Nathan
 - Lead with the result, then the reasoning.
-- Make reasonable calls and log them in docs/decisions.md.
-- Stop and ask before anything hard to undo. Ask taste and recommendation questions with your own pick.
-- Include screenshots in reports. If Godot cannot run (cloud sessions), say clearly what has not been run in-engine.
-- Finished-product quality: no placeholders or stubs left in a merged milestone.
+- Make reasonable calls and log them. For taste questions, give your own recommended pick.
+- Stop and ask before anything hard to undo.
+- Include screenshots in reports. Say clearly what has not been run in-engine.
+- Finished-product quality: no placeholders or stubs in a merged milestone.

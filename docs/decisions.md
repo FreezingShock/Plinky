@@ -723,3 +723,8 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - `ui/district_banner.gd` is no longer used by anything. Left in place for a later cleanup PR.
 - PC QA fixes in the same PR: Banner rebuilds its panel if the HUD that held it was freed (Quit to Title), so a later banner never touches a freed node, and `_tl` starts as a full timeline so no key can be missing. Tip cards hold while a banner shows and the next tip waits for it, so the Welcome card no longer covers a zone banner at 640x360.
 - Not run in-engine from the cloud: the crossfade, the banner palette and the 640x360 overlap need a PC check.
+## 2026-11-23 Repo trim for faster, cheaper threads
+- Removed 10 unreferenced GDScript files (`world/player.gd`, `world/button_pad.gd`, `ui/district_banner.gd`, `ui/fx/counter_tick.gd`, and six tool scripts with no scene, test or doc reference). Reasoning: each had zero references (class names and paths checked); git history keeps them.
+- Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
+- `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
+- Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.
