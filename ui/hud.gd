@@ -126,6 +126,7 @@ func _build_stats() -> void:
 		rate.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
+		Tip.bind_all(h, TipText.stat(sid, def.display_name))
 		_row_boxes[sid] = h
 		match sid:
 			&"mult": gate(h, Onboarding.F_MULT)
@@ -154,6 +155,7 @@ func _build_gate() -> void:
 	_gate_bar = DitherBar.new(150.0)
 	v.add_child(_gate_bar)
 	v.add_child(_gate_label)
+	Tip.bind(_gate_bar, func() -> Variant: return {"title": "Gate", "body": "Fill this to open the way to the next zone.", "hint": _gate_label.text})
 	_zone_buttons = HBoxContainer.new()
 	v.add_child(_zone_buttons)
 
@@ -166,23 +168,27 @@ func _build_bottom() -> void:
 	add_child(h)
 	_rebirth = PixelButton.new()
 	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
+	Tip.bind(_rebirth, func() -> Variant: return TipText.rebirth(sim.can_rebirth(), sim.prestige_gain_preview().format()))
 	h.add_child(_rebirth)
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
 	var up := PixelButton.new()
 	up.text = "Upgrades [Tab]"
 	up.pressed.connect(func() -> void: _upgrades_panel.visible = not _upgrades_panel.visible)
 	h.add_child(up)
+	Tip.bind(up, {"title": "Upgrades", "body": "Spend Prestige on permanent boosts.", "hint": "Opens with Tab."})
 	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
 		var rb := PixelButton.new()
 		rb.text = "Relics [R]"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
 		h.add_child(rb)
+		Tip.bind(rb, {"title": "Relics", "body": "Equip relics for passive bonuses and see what you own.", "hint": "Opens with R."})
 		gate(rb, Onboarding.F_RELICS)
 	var st := PixelButton.new()
 	st.text = "Settings [%s]" % Keybinds.key_name(&"settings")
 	st.pressed.connect(func() -> void: settings_toggled.emit(true))
 	h.add_child(st)
+	Tip.bind(st, {"title": "Settings", "body": "Display, sound, controls and your save.", "hint": "Opens with %s." % Keybinds.key_name(&"settings")})
 
 
 func _build_pad_list() -> void:
@@ -226,6 +232,8 @@ func _build_upgrades() -> void:
 		b.pressed.connect(func() -> void: GameState.buy_attribute(aid))
 		h.add_child(b)
 		_attr_rows[aid] = [l, b]
+		Tip.bind_all(h, func() -> Variant:
+			return TipText.attribute(a, sim.attr_level(aid), sim.attribute_cost(aid).format(), not sim.prestige_available().lt(sim.attribute_cost(aid))))
 
 var _prestige_avail: Label
 
@@ -349,6 +357,7 @@ func _refresh_zone_buttons() -> void:
 			var b := PixelButton.new()
 			b.text = "Go: %s" % (sim.zone_defs[zid] as ZoneDef).display_name
 			b.pressed.connect(func() -> void: GameState.enter_zone(zid))
+			Tip.bind(b, TipText.zone_button((sim.zone_defs[zid] as ZoneDef).display_name))
 			_zone_buttons.add_child(b)
 
 

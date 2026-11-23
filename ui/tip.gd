@@ -36,6 +36,14 @@ static func bind(c: Control, spec: Variant) -> void:
 		(c as BaseButton).button_down.connect(_on_exit.bind(c))
 
 
+## Bind the same spec to a container and every Control directly inside it (a row of icon, label and value).
+static func bind_all(c: Control, spec: Variant) -> void:
+	bind(c, spec)
+	for ch: Node in c.get_children():
+		if ch is Control:
+			bind(ch as Control, spec)
+
+
 ## Change the spec of a bound control (also refreshes it while it is showing).
 static func set_spec(c: Control, spec: Variant) -> void:
 	bind(c, spec)

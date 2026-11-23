@@ -10,6 +10,7 @@ nothing in project.godot changes.
 Tip.bind(button, "Opens the relic screen.")                                   # body only
 Tip.bind(row, {"title": "Luck", "body": "Better drops.", "hint": "Rebirth to raise it."})
 Tip.bind(slot, func() -> Variant: return {"title": name, "body": describe()}) # rebuilt every time it shows
+Tip.bind_all(row, spec)             # the container and every Control directly inside it
 Tip.set_spec(row, new_spec)       # change text later; refreshes if showing
 Tip.unbind(row)
 ```
@@ -39,3 +40,7 @@ Tip.hide_free(get_tree())         # when it leaves
 
 Say what it does and what it costs in one or two lines. Title is the noun; hint is the next step or why it is
 unavailable ("Need 40 more Cash"). No jargon the HUD does not already use, and never the word Button.
+
+## Where the words live
+
+`ui/tip_text.gd` (TipText) holds the copy for the HUD: stat rows, bottom buttons, upgrades, zone travel, gate bar. Settings rows reuse each row's `hint`.

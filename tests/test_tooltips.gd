@@ -11,6 +11,16 @@ func run(t: Object) -> void:
 	d = Tip.normalize(func() -> Variant: return {"body": "live"})
 	t.eq(d["body"], "live", "a Callable spec is evaluated")
 
+	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+		t.ok(str(TipText.stat(sid, "x")["body"]) != "", "stat tooltip text exists for %s" % sid)
+	var a := AttributeDef.new()
+	a.display_name = "Luck"
+	a.effect = &"luck"
+	a.cap = 5
+	t.eq(TipText.attribute(a, 5, "3", true)["hint"], "Max level.", "a maxed attribute says so")
+	t.ok(str(TipText.attribute(a, 1, "3", false)["hint"]).begins_with("Need"), "an unaffordable attribute says what is needed")
+	t.ok(str(TipText.rebirth(false, "1")["hint"]) != "", "rebirth explains when it is unavailable")
+
 	var root: Node = (t as SceneTree).root
 	var c := Control.new()
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE

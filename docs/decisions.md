@@ -212,3 +212,6 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - Save version 2 adds `game.mastery` as `{pad id: [level, xp_in_level]}`. The v1 migration adds an empty one. Unknown ids drop, levels clamp to the cap.
 - Crit popup: a crit number ends in "!" and takes the crit gold (`PopupNumber.CRIT_COLOR`), on top of the existing 24 px size, hit-stop, burst and shake.
 - Balance: the starting curve (12 XP, x1.35, cap 25, +1.5% yield per level) gives +15% yield, +3% crit chance and +0.4 crit damage on a pad after roughly 650 presses on it (level 10). Not yet measured against the 61 minute Larkmoor pacing; `tools/sim_larkmoor.gd` now prints the mastery reached by the far gate, to run on the PC.
+
+## 2026-11-23: Tooltips on the existing UI
+HUD stat rows, bottom bar (Rebirth, Upgrades, Relics, Settings), upgrade rows, zone travel, the gate bar, and every Settings row that has a hint now use `Tip.bind`. Copy lives in `ui/tip_text.gd`; no balance numbers in it, live values (cost, gain) come from the caller. Pads and relics keep their own richer tooltips. Not run in-engine from the cloud; PC pass should hover each and tab through the HUD.
