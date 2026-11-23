@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.37.7 - 2026-11-23
+- Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.
+
 ## 0.37.6 - 2026-11-23
 - Toasts (relic drops and achievements) now draw above open menu panels, so an open Ledger or Relics window never covers them.
 
