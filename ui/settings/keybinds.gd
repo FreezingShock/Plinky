@@ -10,6 +10,8 @@ const ACTIONS: Array = [
 	[&"fullscreen", "Fullscreen", KEY_F11],
 	[&"relics", "Relics", KEY_R],
 	[&"upgrades", "Upgrades", KEY_TAB],
+	[&"stats", "Stats", KEY_I],
+	[&"attributes", "Attributes", KEY_O],
 	[&"recenter", "Recentre camera", KEY_C],
 	[&"console", "Dev console", KEY_QUOTELEFT],
 ]
