@@ -5,6 +5,8 @@ extends Control
 
 signal relic_panel_toggled(open: bool)
 signal settings_toggled(open: bool)
+## A HUD-owned panel is about to open, so Main can close the others (one menu at a time).
+signal menu_opened(kind: StringName)
 signal index_requested(tab: int)   ## IndexPanel.Tab: the Stats or Attributes button or key
 
 ## The frame the HUD lays out in (Main size). The gate panel and bottom bar hug its right and bottom edges.
@@ -18,7 +20,7 @@ var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
-var _rebirth: PixelButton
+var _rebirth: ExpandChip
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
@@ -30,6 +32,7 @@ var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
 var _momentum: MomentumMeter
 var _stats_panel: PanelContainer
+var _centered: Array[Control] = []   # panels kept centred in the free area above the bottom bar
 
 
 func setup(p_sim: Sim) -> void:
@@ -67,6 +70,28 @@ func upgrades_open() -> bool:
 
 func upgrades_panel() -> Control:
 	return _upgrades_panel
+
+
+func toggle_upgrades() -> void:
+	if _upgrades_panel.visible:
+		_upgrades_panel.visible = false
+		return
+	menu_opened.emit(&"upgrades")
+	_upgrades_panel.visible = true
+
+
+## The bottom bar. Main keeps it above every menu so its chips stay clickable while a menu is open.
+func bottom_bar() -> Control:
+	return _bottom
+
+
+func owns_focus(c: Control) -> bool:
+	return c != null and _bottom != null and _bottom.is_ancestor_of(c)
+
+
+## Keep `p` centred in the free area above the bottom bar (clamped to stay on screen).
+func keep_centered(p: Control) -> void:
+	_centered.append(p)
 
 
 func close_panels() -> void:
@@ -160,50 +185,57 @@ func _build_bottom() -> void:
 	_bottom = h
 	h.add_theme_constant_override("separation", 4)
 	add_child(h)
-	_rebirth = PixelButton.new()
+	_rebirth = _chip(h, "reb", "Rebirth", "Reset the run for Prestige.")
 	_rebirth.pressed.connect(func() -> void: GameState.try_rebirth())
-	h.add_child(_rebirth)
 	gate(_rebirth, Onboarding.F_REBIRTH_BUTTON)
-	var up := PixelButton.new()
-	up.text = "Upgrades [Tab]"
-	up.pressed.connect(func() -> void: _upgrades_panel.visible = not _upgrades_panel.visible)
-	h.add_child(up)
+	var up: ExpandChip = _chip(h, "prestige", "Upgrades", "Spend Prestige on permanent upgrades.")
+	up.full_text = "Upgrades [Tab]"
+	up.pressed.connect(toggle_upgrades)
 	gate(up, Onboarding.F_UPGRADES)
 	if GameState.relics != null:
-		var rb := PixelButton.new()
-		rb.text = "Relics [R]"
+		var rb: ExpandChip = _chip(h, "relics/r_pulse", "Relics", "Equip relics you have found.")
+		rb.full_text = "Relics [R]"
 		rb.pressed.connect(func() -> void: relic_panel_toggled.emit(true))
-		h.add_child(rb)
 		gate(rb, Onboarding.F_RELICS)
 	for t: int in 2:
-		var ib := PixelButton.new()
 		var nm: String = ["Stats", "Attributes"][t]
 		var act: StringName = [&"stats", &"attributes"][t]
-		ib.icon = load("res://assets/icons/%s.png" % ["stats_menu", "attrs_menu"][t]) as Texture2D
-		Tip.bind(ib, {"title": nm, "body": "Open the %s list." % nm.to_lower(), "hint": "Key: %s" % Keybinds.key_name(act)})
+		var ib: ExpandChip = _chip(h, ["stats_menu", "attrs_menu"][t], nm, "Open the %s list." % nm.to_lower())
+		ib.full_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
 		ib.pressed.connect(func() -> void: index_requested.emit(t))
-		h.add_child(ib)
 		gate(ib, Onboarding.F_MULT if t == 0 else Onboarding.F_UPGRADES)
-	var st := PixelButton.new()
-	st.text = "Settings [%s]" % Keybinds.key_name(&"settings")
+	var st: ExpandChip = _chip(h, "settings", "Settings", "Display, sound, keys and tips.")
+	st.full_text = "Settings [%s]" % Keybinds.key_name(&"settings")
 	st.pressed.connect(func() -> void: settings_toggled.emit(true))
-	h.add_child(st)
+
+
+## A bottom-bar chip: icon at rest, icon + label on hover or focus. Tooltip names it while it is collapsed.
+func _chip(parent: Control, icon_name: String, tip_title: String, tip_body: String) -> ExpandChip:
+	var c := ExpandChip.new()
+	c.icon = load("res://assets/icons/%s.png" % icon_name) as Texture2D
+	c.expand_icon = false
+	parent.add_child(c)
+	Tip.bind(c, {"title": tip_title, "body": tip_body})
+	return c
 
 
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
 	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.panel())
-	_upgrades_panel.position = Vector2(4, 96)
 	_upgrades_panel.visible = false
 	add_child(_upgrades_panel)
+	keep_centered(_upgrades_panel)
 	_upgrades_box = VBoxContainer.new()
+	_upgrades_box.add_theme_constant_override("separation", 2)
 	_upgrades_panel.add_child(_upgrades_box)
 	var title := Label.new()
 	title.theme_type_variation = &"TitleLabel"
 	title.text = "Upgrades"
 	_upgrades_box.add_child(title)
 	_prestige_avail = Label.new()
+	_prestige_avail.add_theme_color_override("font_color", RelicStyle.dim)
 	_upgrades_box.add_child(_prestige_avail)
+	_upgrades_box.add_child(PanelDivider.new())
 	var ids: Array = sim.attribute_defs.keys()
 	ids.sort()
 	for aid: StringName in ids:
@@ -241,7 +273,7 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 		return   # letters like R belong to the text box
 	if event.is_action_pressed(&"plinky_upgrades") or Keybinds.matches(&"upgrades", event):
 		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
-			_upgrades_panel.visible = not _upgrades_panel.visible
+			toggle_upgrades()
 		get_viewport().set_input_as_handled()
 	elif (event.is_action_pressed(&"plinky_relics") or Keybinds.matches(&"relics", event)) and GameState.relics != null:
 		if GameState.onboarding.is_unlocked(Onboarding.F_RELICS):
@@ -285,6 +317,13 @@ func _place() -> void:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
 			_momentum.position = mp
+	for cp2: Control in _centered:
+		if cp2.visible:
+			var free_h: float = frame.y - (_bottom.size.y if _bottom != null else 0.0) - 8.0
+			var psz: Vector2 = cp2.size.max(cp2.get_combined_minimum_size())
+			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)))
+			if cp2.position != at:
+				cp2.position = at
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:
@@ -307,7 +346,7 @@ func _refresh() -> void:
 	if _prestige_label != null:
 		_prestige_label.text = "x%s" % sim.prestige_mult().format()
 	_rebirth.disabled = not sim.can_rebirth()
-	_rebirth.text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
+	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need 1 Rebirths)"
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		_prestige_avail.text = "Prestige to spend: %s" % sim.prestige_available().format()
