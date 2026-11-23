@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.6 - 2026-11-23
+- Night is a solid cool tint instead of a blue checkerboard: the shade only dithers between two close tints where it thins (light pool edges, dusk, dawn), so props stay readable. Lantern and pool glow use the same soft ladder instead of a noisy dot blob.
+
 ## 0.10.5 - 2026-11-23
 - Edge shade and full-frame light pass now step on the world texel grid and read the camera transform from the shared globals, so they no longer drift against the ground at zoom 3 (PC pan diff: 41% match with them on, 96.7% off).
 
