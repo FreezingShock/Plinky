@@ -66,6 +66,7 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_pal = Palettes.colors(Palettes.MEADOW)
 	RelicStyle.set_palette(_pal)
+	PadInput.ensure()   # registers plinky_back and the menu pad actions, which only Main did before
 	SettingsRegistry.apply_all()
 	_bg = BootBackground.new()
 	add_child(_bg)

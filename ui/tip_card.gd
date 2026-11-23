@@ -11,6 +11,12 @@ const WIDTH: float = 250.0
 var _title: Label
 var _body: Label
 var _bar: DitherBar
+## True while a menu is open (the Esc menu, panels): the card steps aside, its timer pauses, and it comes back after.
+var held: bool = false:
+	set(v):
+		held = v
+		visible = _active and not held
+var _active: bool = false
 var _left: float = 0.0
 var _total: float = 1.0
 
@@ -50,19 +56,22 @@ func show_tip(title: String, text: String, lifetime: float) -> void:
 	_total = maxf(lifetime, 1.0)
 	_left = _total
 	_bar.value = 1.0
-	visible = true
+	_active = true
+	visible = not held
 	reset_size()
 
 
 func is_showing() -> bool:
-	return visible
+	return _active
 
 
 func dismiss() -> void:
+	_active = false
 	visible = false
 
 
 func _close(skipped: bool) -> void:
+	_active = false
 	visible = false
 	closed.emit(skipped)
 
