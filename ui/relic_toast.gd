@@ -37,7 +37,7 @@ func bind(inv: RelicInventory) -> void:
 			show_drop(d, stacks))
 
 func show_drop(d: RelicDef, stacks: int) -> void:
-	while BloomRitual.running and is_inside_tree():   # wait out the Bloom sequence
+	while FxConfig.bloom_running and is_inside_tree():   # wait out the Bloom sequence
 		await get_tree().create_timer(0.25).timeout
 	var c: Color = d.rarity.readable_color(RelicStyle.ink)
 	add_theme_stylebox_override("panel", AsciiBox.panel(d.rarity.tint()))

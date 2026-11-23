@@ -89,7 +89,7 @@ func _next() -> void:
 		visible = false
 		return
 	_showing = true
-	while BloomRitual.running and is_inside_tree():   # hold the card until the Bloom sequence is over
+	while FxConfig.bloom_running and is_inside_tree():   # hold the card until the Bloom sequence is over
 		await get_tree().create_timer(0.25).timeout
 	if _queue.is_empty():
 		_showing = false

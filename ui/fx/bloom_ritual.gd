@@ -23,8 +23,6 @@ var hud: Hud
 var _t: float = -1.0    ## seconds since the reset; negative = idle
 var _plan: Dictionary = {}
 var _calm: bool = false
-## True from the Bloom until the sequence ends. Toasts wait on it so they never cover the number and icon.
-static var running: bool = false
 var _gained: int = 0
 var _reset: ZoneResetDef
 var _color: Color = Color.WHITE
@@ -141,7 +139,7 @@ func start(reset_id: StringName, gained: int) -> void:
 	_hint.add_theme_color_override("font_color", StatStyle.gain())
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_t = 0.0
-	running = true
+	FxConfig.bloom_running = true
 	visible = true
 	set_process(true)
 	set_process_input(true)
@@ -406,7 +404,7 @@ func _end(finished: bool) -> void:
 	if _t < 0.0 and not finished:
 		return
 	_t = -1.0
-	running = false
+	FxConfig.bloom_running = false
 	visible = false
 	set_process(false)
 	set_process_input(false)
