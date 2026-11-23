@@ -18,3 +18,5 @@ resets_on_rebirth = true
 resets_on_bloom = true
 relics_boost_income = false
 relics_boost_gain = false
+buff_stats = PackedStringArray("dewdrop", "clover", "thistle", "heather", "foxglove")
+buff_factor = 1.5
