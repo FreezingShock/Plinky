@@ -66,7 +66,7 @@ extends Resource
 @export var rim_strength: float = 0.85
 
 ## Share of texels the night shade covers at full night, 0..1. Kept apart from night_strength so the model stays smooth.
-@export var night_shade: float = 0.97
+@export var night_shade: float = 0.8
 
 @export_group("Atmosphere")
 ## Vignette: how much of the frame edge is darkened, 0..1 (0 = off).
@@ -79,7 +79,7 @@ extends Resource
 ## Full-frame light pass (light_grade.gdshader): sun-side lift and away-side shade across the whole frame, 0..1.
 @export var light_side: float = 0.6
 ## Highlight-warm / shadow-cool split by luminance, 0..1.
-@export var light_split: float = 0.4
+@export var light_split: float = 0.3
 ## How much brighter a lit texel gets, 0..1.
 @export var light_lift: float = 0.06
 ## Drifting fog over the land (ground_fog.gdshader), 0..1. Scaled by the mist curve: thickest at dawn and dusk and in rain.

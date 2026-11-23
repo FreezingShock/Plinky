@@ -344,3 +344,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Esc = `plinky_back`: closes open menus first, otherwise opens the hamburger gallery. The game is not hard-paused (menus never paused it; the walker already stands still while a menu is open), so "Close menu" just closes the menu. Quit to title / Quit game save first.
 - Gallery tiles are icon-only at rest and type their label in on hover or focus (ExpandChip.reveal); tiles never change size. Text actions use `MenuTextButton` (Pixelify Sans, no frame, accent colour, sliding ">" and sweeping underline) so they read as different from the icon chips. Close menu (was Resume) is green (palette 4), quits are accent (palette 5).
 - Not run with a GPU from the cloud: headless tests and a scripted Esc / Play / Quit to title walk-through pass; visuals unverified.
+## Lighting: nothing follows the camera
+- The vignette shape was frame-fixed, so its dither crawled through a stationary dark rim while panning. Its shape is now computed in world texels from the playable area, so it only darkens when you pan toward an edge. All other passes (day/night, light grade, ground light, fog) were already world-anchored.
+- Veil turned down: vignette 0.6 to 0.45, night_shade 0.97 to 0.8 (night_strength stays 0.8 for the smoothness test), light_split 0.4 to 0.3.
+- New Access toggle "Reduce screen effects" (FxConfig.reduce_screen_fx) hides the edge shade and the full-frame light pass.

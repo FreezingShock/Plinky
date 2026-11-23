@@ -50,6 +50,7 @@ var _walker: Node2D
 var _shade_mat: ShaderMaterial
 var _fog_mat: ShaderMaterial          # drifting ground fog (ground_fog.gdshader)
 var _fog_rect: ColorRect
+var _lg_rect: ColorRect
 var _light_mat: ShaderMaterial          # full-frame light pass (light_grade.gdshader)
 var _config: SkyConfig
 var _t: float = 0.0
@@ -130,6 +131,7 @@ func _ready() -> void:
 	shade.material = _shade_mat
 	add_child(shade)
 	var lg := ColorRect.new()
+	_lg_rect = lg
 	lg.name = "LightGrade"
 	lg.position = area.position
 	lg.size = area.size
@@ -455,7 +457,10 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
 	if _screen != null:
+		_screen.set_area(area)
 		_screen.set_strength(_config.vignette_strength)
+	if _lg_rect != null:
+		_lg_rect.visible = not FxConfig.reduce_screen_fx
 	_push_lights(t, steady)
 
 
