@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.37.8 - 2026-11-23
+- Balance sim (tools/sim.gd) now reports the Ember Quarry gate under each play profile (idle, active, hold), with its time after Larkmoor opened, and CI fails if the quarry gate is not reached. Tier times stay on the absolute game clock.
+
 ## 0.37.7 - 2026-11-23
 - Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.
 

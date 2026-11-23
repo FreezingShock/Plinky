@@ -1,10 +1,11 @@
 extends SceneTree
-## Balance sim for the meadow ladder. Plays Meadow then Larkmoor with a greedy strategy under each play profile
+## Balance sim for the meadow, Larkmoor and Ember Quarry ladders. Plays Meadow, Larkmoor, then the quarry, with a greedy strategy under each play profile
 ## (content/config/sim_profiles.tres), over several seeded runs, and prints the median minutes to each tier and gate.
 ## Strategy: at every press, buy the highest-row pad you can afford (top tier first). No walking, attributes or relics:
 ## a floor for the pacing, not a prediction. Mastery and crits still run, so seeds matter.
 ## Run: godot --headless --path . --script tools/sim.gd [-- rebirth_every_minutes]
 ## Prints "NOT reached" for a gate the strategy could not open in MAX_SECONDS, which CI treats as a failure.
+## The quarry time is also printed as minutes after Larkmoor opened (its arrival). Tier times are absolute game-clock minutes.
 
 const DT: float = 0.25
 const MAX_SECONDS: float = 8.0 * 3600.0
@@ -106,10 +107,11 @@ func _init() -> void:
 	for i: int in profiles.profile_names.size():
 		var name: String = profiles.profile_names[i]
 		var pps: float = profiles.presses_per_second[i]
-		var gates: Dictionary = {&"zone1": [], &"larkmoor": []}
+		var gates: Dictionary = {&"zone1": [], &"larkmoor": [], &"zone2": []}
 		var tiers: Dictionary = {}
 		var pads: Dictionary = {}
 		var carry: String = ""
+		var quarry: Array = []
 		for s: int in profiles.seeds:
 			var r: Dictionary = _run(pps, s + 1, every)
 			if s == 0:
@@ -119,6 +121,10 @@ func _init() -> void:
 				if g < 0.0:
 					failed = true
 				gates[z].append(g)
+			var lk: float = r["gates"].get(&"larkmoor", -1.0)
+			var zq: float = r["gates"].get(&"zone2", -1.0)
+			if lk >= 0.0 and zq >= 0.0:
+				quarry.append(zq - lk)
 			for id: StringName in r["tiers"]:
 				if not tiers.has(id):
 					tiers[id] = []
@@ -130,8 +136,10 @@ func _init() -> void:
 		print("== %s (%.2f presses/s, %d seeds)" % [name, pps, profiles.seeds])
 		for z: StringName in gates:
 			var vals: Array = gates[z]
-			var label: String = "meadow gate" if z == &"zone1" else "larkmoor gate"
+			var label: String = "meadow gate" if z == &"zone1" else ("larkmoor gate" if z == &"larkmoor" else "ember quarry gate")
 			print("   %s: median %.1f min (range %.1f to %.1f)%s" % [label, _median(vals.duplicate()), vals.min(), vals.max(), "  NOT reached" if vals.has(-1.0) else ""])
+		if not quarry.is_empty():
+			print("   ember quarry, minutes after Larkmoor opened: median %.1f min (range %.1f to %.1f)" % [_median(quarry.duplicate()), quarry.min(), quarry.max()])
 		print("   Sunlight carried into Larkmoor (seed 1): %s" % carry)
 		for id: StringName in tiers:
 			print("   tier %s opens: median %.1f min" % [id, _median(tiers[id].duplicate())])
