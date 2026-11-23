@@ -42,7 +42,7 @@ func run(t: Object) -> void:
 	# Stays on screen even when asked for far outside the corner.
 	h.show_free({"title": "Pad", "body": "Costs a lot of something, so the box is wide enough to need wrapping."}, Vector2(99999, 99999))
 	h._process(TipHost.HOVER_DELAY + 0.01)
-	var view: Vector2 = h.get_viewport().get_visible_rect().size
+	var view: Vector2 = h._view_size()
 	t.ok(h.visible, "a free tip shows")
 	t.ok(h.position.x >= 0.0 and h.position.y >= 0.0, "a free tip is not above or left of the screen")
 	t.ok(h.position.x + h.size.x <= view.x and h.position.y + h.size.y <= view.y, "a free tip is not past the right or bottom edge")

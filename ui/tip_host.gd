@@ -102,7 +102,7 @@ func dismiss() -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		_since_hidden += delta
-	if target != null and (not is_instance_valid(target) or not target.is_visible_in_tree()):
+	if target != null and (not is_instance_valid(target) or (target.is_inside_tree() and not target.is_visible_in_tree())):
 		dismiss()
 		return
 	if _free_mode:
@@ -149,7 +149,7 @@ func _fill(spec: Variant) -> void:
 
 func _place() -> void:
 	reset_size()
-	var view: Vector2 = get_viewport().get_visible_rect().size
+	var view: Vector2 = _view_size()
 	var p: Vector2
 	if _free_mode:
 		p = _free_at + CURSOR_OFFSET
@@ -162,7 +162,7 @@ func _place() -> void:
 		if p.y + size.y > view.y - 2.0:
 			p.y = r.position.y - size.y - 3.0
 	else:
-		var m: Vector2 = get_viewport().get_mouse_position()
+		var m: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else Vector2.ZERO
 		p = m + CURSOR_OFFSET
 		if p.y + size.y > view.y - 2.0:
 			p.y = m.y - size.y - 8.0
@@ -171,3 +171,8 @@ func _place() -> void:
 	p.x = clampf(p.x, 2.0, maxf(2.0, view.x - size.x - 2.0))
 	p.y = clampf(p.y, 2.0, maxf(2.0, view.y - size.y - 2.0))
 	global_position = p.round()
+
+
+func _view_size() -> Vector2:
+	var vp: Viewport = get_viewport()
+	return vp.get_visible_rect().size if vp != null else Vector2(640.0, 360.0)
