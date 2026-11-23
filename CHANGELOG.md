@@ -12,6 +12,9 @@ under a new version heading and updates the version everywhere.
 ## 0.35.0 - 2026-11-23
 - Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
 
+## 0.34.2 - 2026-11-23
+- Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
+
 ## 0.34.1 - 2026-11-23
 - Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
 
