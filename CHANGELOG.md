@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.34.2 - 2026-11-23
+## 0.34.3 - 2026-11-23
 - Noon no longer bleaches and sunset is softer: the light pass gets an exposure drop, extra contrast and saturation at high sun (10:00 to 14:00), the noon grade is less green, and the 17:00 to 19:00 grade and ray colours are a softer amber instead of red-orange so shadow detail stays readable.
+
+## 0.34.2 - 2026-11-23
+- Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
 
 ## 0.34.1 - 2026-11-23
 - Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
