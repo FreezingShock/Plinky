@@ -25,6 +25,7 @@ var _district_t: float = 0.0
 var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
 var walker: TexelWalker
 var gate: TexelGate
+var arch_gate: TexelGate   ## drawn at the Arch anchor of zones with gate art: the way back
 var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
 var pointer: PadPointer
@@ -91,6 +92,11 @@ func _ready() -> void:
 	gate.walker = walker
 	gate.dead_end.connect(func() -> void: banner.show_name("The way on is still being forged"))
 	world.add_child(gate)
+	arch_gate = TexelGate.new()
+	arch_gate.walker = walker
+	arch_gate.visible = false
+	world.add_child(arch_gate)
+	_sync_arch_gate(sim.zone_id)
 
 	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
 	camera = WorldCamera.new()
@@ -181,6 +187,9 @@ func _update_tooltip() -> void:
 			shown = true
 	if not shown and not blocked and gate.hit(m):
 		tooltip.show_spec(TexelGate.spec_for(sim, gate.zone_id), get_local_mouse_position())
+		shown = true
+	if not shown and not blocked and arch_gate.visible and arch_gate.hit(m) and arch_gate.back_to != &"":
+		tooltip.show_spec(TexelGate.back_spec(sim, arch_gate.zone_id, arch_gate.back_to), get_local_mouse_position())
 		shown = true
 	if not shown:
 		tooltip.hide_tip()
@@ -404,6 +413,7 @@ func _apply_scene_frame(zone_id: StringName) -> void:
 	MeadowSites.use(String(pp) if pp is String else "", String(gp) if gp is String else "", off as Vector2i if off is Vector2i else MeadowSites.MEADOW_OFFSET)
 	var anchors: Node = meadow.get_node("Anchors")
 	_arch = anchors.get_node_or_null("Arch") as Marker2D
+	_sync_arch_gate(zone_id)
 	_district_id = ""
 	if camera != null:
 		camera.bounds = _camera_bounds()
@@ -414,6 +424,21 @@ func _camera_bounds() -> Rect2:
 		return _world_rect as Rect2
 	var bleed: Vector2 = Vector2(DisplaySettings.bleed_size())
 	return Rect2(-(bleed - Vector2(DisplaySettings.BASE)) * 0.5, bleed)
+
+
+## Zones with gate art (the quarry) draw their own arch at the Arch anchor; others bake theirs into the scene.
+func _sync_arch_gate(zone_id: StringName) -> void:
+	if arch_gate == null:
+		return
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	var art: StringName = z.gate_art if z != null else &""
+	arch_gate.visible = _arch != null and art != &""
+	if arch_gate.visible:
+		arch_gate.position = _arch.position
+		arch_gate.art = art
+		arch_gate.zone_id = zone_id
+		arch_gate.back_to = _previous_zone(zone_id)
+		arch_gate.palette = Palettes.colors(Palettes.for_zone(zone_id))
 
 
 ## The zone whose next_zone is this one: where the Arch leads back to.

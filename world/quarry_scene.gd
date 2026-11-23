@@ -33,6 +33,8 @@ func _ready() -> void:
 				pad_i += 1
 			"gate":
 				m.name = "Gate"
+			"arch":
+				m.name = "Arch"
 			"player_spawn":
 				m.name = "Walker"
 			"vent":
