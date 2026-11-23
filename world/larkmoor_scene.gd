@@ -82,6 +82,7 @@ func _add_sky() -> void:
 	_sky.area = world_rect.grow(10.0)
 	_sky.shadows = _shadows
 	_sky.ground_texture = _ground.texture
+	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
 	_place_atmosphere()
 	add_child(_sky)
 	_add_lights()
