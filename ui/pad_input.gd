@@ -52,6 +52,12 @@ static func ensure() -> void:
 			InputMap.action_add_event(action, em)
 
 
+## Focus is dropped only on the frame a menu closes, so its pad focus ring does not linger on the HUD. Dropping it
+## every frame cancelled mouse clicks: a Button takes focus on press, and losing focus before release eats the click.
+static func should_release_focus(menu_just_closed: bool, has_focus_owner: bool) -> bool:
+	return menu_just_closed and has_focus_owner
+
+
 ## Walk input, screen space, length at most 1 (stick tilt gives partial speed). Zero while a menu is open.
 static func move_vector() -> Vector2:
 	ensure()
