@@ -9,8 +9,14 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.31.1 - 2026-11-23
+## 0.32.1 - 2026-11-23
 - Balance sim: idle, active and hold play profiles over 8 seeds (median and range), profiles in `content/config/sim_profiles.tres`. Larkmoor cost pass for smoother unlocks: Heather 3 2.3M to 1M Thistle, Foxglove 3 1800 to 1000 Heather, Starbloom 3 2000 to 1000 Foxglove, Larkmoor gate 2000 to 2600 Starbloom. Active far gate 58.4 to 51.6 min (target 57 to 61, accepted for faster progression). Meadow unchanged.
+
+## 0.32.0 - 2026-11-23
+- Golden light holds through the day: new SkyModel.golden() curve (warm, long shadows, rim light, rays and a thin haze fade out slowly toward noon instead of ending an hour after sunrise), richer grade curves for morning, noon, dusk and night, saturation and contrast in the full-frame light pass, warmer rim and ray colours, deeper night blue with warmer lantern pools. New tools/golden_shots.tscn captures the sky at fixed times of day.
+
+## 0.31.1 - 2026-11-23
+- Pad tooltips show the real gain: one shared press formula now includes Heat, buffs, mastery, yield and Bloom, plus an average-with-crits line when crit or double chance is active. Test checks tooltip against a real press.
 
 ## 0.31.0 - 2026-11-23
 - Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
