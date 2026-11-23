@@ -64,4 +64,6 @@ func run(t: Object) -> void:
 	var cliff: Vector2 = Vector2(300.0, 345.0)
 	t.ok(not WalkMask.walkable(cliff), "the cliff face below the plateau is not walkable")
 	t.ok(WalkMask.walkable(WalkMask.nearest(cliff)), "a click on the cliff snaps to walkable ground")
+	var inset: Vector2 = WalkMask.nearest_inset(cliff)
+	t.ok(WalkMask.walkable(inset) and WalkMask.walkable(inset + Vector2(0.0, 6.0)), "a cliff click lands 6 texels back from the lip")
 	WalkMask.use("")
