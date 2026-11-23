@@ -1,0 +1,1 @@
+Offline pay is now half the live rate (offline_income_fraction 0.5, the locked idle-2x rule) and priced at the rate you left with, so tending no longer compounds it (a 1 h fresh-save return had paid about 294x).

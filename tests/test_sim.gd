@@ -84,7 +84,7 @@ func run(t: Object) -> void:
 	sim.config.offline_tend_fraction = 0.0   # the plain income check below is about passive cash only
 	sim.config.offline_relic_roll_fraction = 0.0
 	t.near(sim.apply_offline(10.0 * 3600.0), 7200.0, 1e-9, "offline capped at 2 h")
-	t.near(sim.get_stat(&"sunlight").to_float(), 10.0 + 0.25 * 7200.0, 1e-6, "offline cash (10 start plus 2 h of income)")
+	t.near(sim.get_stat(&"sunlight").to_float(), 10.0 + 0.25 * 7200.0 * sim.config.offline_income_fraction, 1e-6, "offline cash (10 start plus 2 h of income at the idle fraction)")
 
 	# Crit: with crit chance 100 percent the gain is 5x
 	sim.new_game()
@@ -236,8 +236,16 @@ func _offline_extras(t: Object) -> void:
 	live.config.offline_tend_fraction = 0.0
 	var live_rate: float = live.income_per_second(&"sunlight").to_float()
 	live.apply_offline(3600.0)
-	t.near(live.get_stat(&"sunlight").to_float() / 3600.0 / live_rate, 1.0, 1e-9, "offline Sunlight rate equals the live rate (idle factor 1, no momentum at load)")
+	t.near(live.get_stat(&"sunlight").to_float() / 3600.0 / live_rate, live.config.offline_income_fraction, 1e-9, "offline Sunlight rate is the idle fraction of the live rate")
 	t.ok(live_rate > 0.25 * 5.0, "Dewdrops boost the rate offline uses")
+	# No runaway: an hour away with tending on must not pay more than the idle fraction of the rate you left with (the idle 2x rule).
+	var run: Sim = t.make_sim()
+	run.stats[&"dewdrop"] = BigNum.from_float(10.0)
+	run.stats[&"sunlight"] = BigNum.from_float(10.0)
+	run.config.offline_tend_fraction = 0.1
+	var rate_before: float = run.income_per_second(&"sunlight").to_float()
+	run.apply_offline(3600.0)
+	t.ok(run.get_stat(&"sunlight").to_float() < rate_before * 3600.0 * run.config.offline_income_fraction + 10.0 + 1.0, "offline Sunlight stays at the idle fraction")
 	var sim2: Sim = t.make_sim()
 	sim2.stats[&"sunlight"] = BigNum.zero()
 	sim2.config.offline_tend_fraction = 0.0

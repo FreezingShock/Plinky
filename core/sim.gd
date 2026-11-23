@@ -1185,7 +1185,7 @@ func apply_offline(seconds: float) -> float:
 	# income, as it would if you were pressing, instead of the whole stretch paying at the rate you left with.
 	var slices: int = maxi(1, config.offline_slices)
 	var slice_secs: float = secs / float(slices)
-	var sb: BigNum = BigNum.from_float(slice_secs)
+	var sb: BigNum = BigNum.from_float(slice_secs * config.offline_income_fraction)
 	for i in slices:
 		for s: StatDef in stat_defs.values():
 			if s.passive:
