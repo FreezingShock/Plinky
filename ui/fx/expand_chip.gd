@@ -40,7 +40,7 @@ var full_text: String = "":
 		full_text = v
 		_dirty = true
 ## Bubble opens leftwards from the chip's right edge (for chips at the right edge of the screen).
-var anchor_right: bool = false
+var bubble_right: bool = false
 ## 0 closed .. 1 open. Read by tests.
 var progress: float = 0.0
 
@@ -184,7 +184,7 @@ func _draw() -> void:
 	var fs: int = get_theme_font_size(&"font_size")
 	var bh: float = ceilf(font.get_height(fs)) + 6.0
 	var bw: float = maxf(14.0, width_at(0.0, _text_w + BUBBLE_PAD * 2.0, progress))
-	var x: float = size.x - bw if anchor_right else 0.0
+	var x: float = size.x - bw if bubble_right else 0.0
 	var y: float = -bh - 3.0
 	draw_style_box(_bubble_box, Rect2(x, y, bw, bh))
 	draw_string(font, Vector2(x + BUBBLE_PAD, y + 3.0 + font.get_ascent(fs)), bubble_text(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, RelicStyle.text)

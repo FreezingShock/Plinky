@@ -222,7 +222,7 @@ func _build_bottom() -> void:
 	# Settings and the Update Log live in the hamburger menu, at the far right of the screen.
 	_menu_chip = _chip(self, "big/menu_hamburger", "Menu", "Settings, the update log and every section.", "Keys: %s or 5" % Keybinds.key_name(&"menu"))
 	_menu_chip.full_text = "Menu [%s]" % Keybinds.key_name(&"menu")
-	_menu_chip.anchor_right = true   # its label opens leftwards, away from the screen edge
+	_menu_chip.bubble_right = true   # its label opens leftwards, away from the screen edge
 	_menu_chip.pressed.connect(func() -> void: menu_toggled.emit(&"gallery"))
 	_key_chips.append(_menu_chip)
 

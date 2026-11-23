@@ -96,7 +96,8 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_down = true
-			grab_focus()
+			if is_inside_tree():
+				grab_focus()
 			accept_event()
 			queue_redraw()
 		else:
