@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.32.1 - 2026-11-23
+- HUD strip: more room between the gain text and the value so long suffixes never touch it.
+
 ## 0.32.0 - 2026-11-23
 - Golden light holds through the day: new SkyModel.golden() curve (warm, long shadows, rim light, rays and a thin haze fade out slowly toward noon instead of ending an hour after sunrise), richer grade curves for morning, noon, dusk and night, saturation and contrast in the full-frame light pass, warmer rim and ray colours, deeper night blue with warmer lantern pools. New tools/golden_shots.tscn captures the sky at fixed times of day.
 
