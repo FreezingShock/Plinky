@@ -186,3 +186,6 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 ## 2026-11-23: meadow sky hotfix, boot smoke test now gates
 `SkyCycle` assigned an untyped array to `Array[Rect2]` (PR #60), which broke the meadow's sky on main. Larkmoor was fine, and no test loaded the meadow scene. Fixed with `.assign()`, added `run_meadow` in `test_lighting.gd` (fails with the exact engine error without the fix), and removed `continue-on-error` from the CI boot smoke test.
 | 2026-11-23 | Audio.preload_all() loads every sfx and amb stream at start; bench HITCH lines say whether the audio cache grew | The Larkmoor Low stall falls at an unpredictable frame on a still scene with flat counters, which matches a random first use, and bird chirps are on a random timer with five lazily loaded variants. A guess, labelled as one in docs/perf.md; the next bench confirms or rules it out. |
+
+## 2026-11-23: Stronger prop depth
+- Baked light contrast raised (`.04 + 1.05 * N.L`, shader gain matches), foliage height gradient x3, AO .42 to .62 with a wider 8 texel ring so crown clusters separate, rim .30 to .55, relief .10 to .18. Crown layering comes from AO between overlapping leaf balls plus the height gradient, not a separate draw order (the balls are one sprite).

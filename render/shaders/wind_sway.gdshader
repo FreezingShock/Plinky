@@ -57,7 +57,7 @@ void fragment() {
 			vec3 n = vec3(d.rg * 2.0 - 1.0, 0.0);
 			n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
 			float lb = d.a * 1.8 - 0.4;
-			float l = lb + 0.86 * (max(dot(n, normalize(sun_dir)), 0.0) - max(dot(n, BASE_DIR), 0.0)) * relight;
+			float l = lb + 1.05 * (max(dot(n, normalize(sun_dir)), 0.0) - max(dot(n, BASE_DIR), 0.0)) * relight;
 			if (abs(l - lb) > 0.03) {
 				int cnt = RAMP_LEN[code] - 1;
 				float v = clamp(l, 0.0, 0.9999) * float(cnt);
