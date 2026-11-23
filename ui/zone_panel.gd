@@ -76,7 +76,6 @@ func setup(p_sim: Sim) -> void:
 	_build_list(list)
 	_travel.set_open(false, false)
 	_card = RevealBox.new()
-	_card.fade = true
 	_card.floor_px = 0.0
 	var card := VBoxContainer.new()
 	card.add_theme_constant_override("separation", 2)
@@ -172,7 +171,10 @@ func _sync_toggles() -> void:
 
 ## Height of the folded card: the title row and exactly one description line, so no line is cut through.
 func _stub_px() -> float:
-	return _card_title.get_combined_minimum_size().y + 2.0 + _card_desc.get_line_height()
+	var font: Font = _card_desc.get_theme_font("font")
+	var fs: int = _card_desc.get_theme_font_size("font_size")
+	var line: float = maxf(_card_desc.get_line_height(), font.get_height(fs) if font != null else 0.0)
+	return _card_title.get_combined_minimum_size().y + 2.0 + line + 3.0   # +3 keeps descenders (g, p, y) whole
 
 
 func set_travel_open(on: bool, animate: bool = true) -> void:
@@ -250,7 +252,7 @@ func _rebuild_card() -> void:
 		_card_desc.text = z.description if z != null else ""
 		return
 	var col: Color = area_colour(a)
-	_card_title.text = "%s %s" % [a.glyph, a.display_name]
+	_card_title.text = a.display_name
 	_card_title.add_theme_color_override("font_color", col)
 	_card_desc.text = a.blurb
 	_mastery_bar.fill = col
