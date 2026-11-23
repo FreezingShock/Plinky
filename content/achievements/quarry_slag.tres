@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"quarry_slag"
+display_name = "Slag Heap"
+description = "Hold 100 Slag at once."
+category = &"quarry"
+counter = &"peak_slag"
+target = 100.0
+order = 4
+title = "Slag Hand"

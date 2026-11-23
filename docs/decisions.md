@@ -548,6 +548,15 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
+## 2026-11-23 Achievements and the Ledger (0.37.0)
+- **Rewards are cosmetic only: a title.** No income, drop or balance effect, per the audit pick. The newest unlocked achievement with a title sets the Ledger's title.
+- **40 achievements, 8 categories** (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey), plain names, no streak-tier words. One `.tres` each in `content/achievements/`; targets are content, not script.
+- **Counters reuse History** (`RunStats` crits, chains, Momentum best) plus Sim totals. Stat achievements use saved **peaks** so spending never loses progress. A zone's first tier counts as opened only once the zone is entered.
+- **Old saves are backfilled silently**, loading never replays unlocks, and the toast stays quiet during the tutorial.
+- **No Bloom achievements yet**: Bloom is not built. Divine and Special relic grants are proposed in `docs/achievements.md`, not implemented.
+- **Menu:** `Ledger` is a gallery tile after History (gold accent), a MenuRouter window like History, locked until Dewdrops unlock. Rows rebuild only when something changed.
+- Verified: 2838 headless checks, 0 failed, and the boot smoke test is clean. Screenshots rendered in the cloud on software OpenGL (`tools/ledger_shots.tscn`); the real look is for the PC pass.
+
 ## Offline catch-up v2 (v0.35.0)
 - Away time still caps at offline_base_cap_hours plus Deep Sleep levels. Within it: passive Sunlight at full rate; flower tending at `offline_tend_fraction` (0.1) of the press rate, one top unlocked pad per open tier, lowest tier first, paying real cost and reward and limited by stock (so it can never invent resources); mastery XP follows from those presses with Pad Lore applied; relic rolls at `offline_relic_roll_fraction` (0.25) of the awake rate with normal luck and pity, at most 3 drops per return. All numbers in content/config/game.tres. Zone 2 has no tiers yet, so it gets passive income only. Welcome Back lists tending and mastery in the mastery colour and found relics in their rarity colour. Untested in engine: no Godot in the cloud; CI runs the new tests. Balance threads may retune the three fractions.
 ## Tier buffs, multiplier display, clearer pad states (2026-11-23)

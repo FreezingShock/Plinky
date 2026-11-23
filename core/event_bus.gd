@@ -23,6 +23,7 @@ signal heat_hot_changed(hot: bool)
 signal momentum_tier_changed(tier: int, rising: bool)
 signal mastery_changed(button_id: StringName, level: int, xp: float)  # every press; level and xp are the pad's after it
 signal mastery_leveled(button_id: StringName, level: int)
+signal achievement_unlocked(achievement_id: StringName)  # a Ledger entry just unlocked (core/achievements.gd)
 signal game_loaded()
 signal game_saved()
 signal save_failed()  # a save could not be written (full disk, locked file)
