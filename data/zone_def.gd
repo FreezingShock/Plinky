@@ -11,6 +11,8 @@ extends Resource
 @export var gate_stat: StringName = &""
 @export var gate_threshold: float = 0.0
 @export var next_zone: StringName = &""
+## Top-level area this zone belongs to. Set = no travel row of its own (Larkmoor lives inside the Meadow).
+@export var travel_parent: StringName = &""
 ## Drawn gate arch (TexelGate): "forge" for the Ember Quarry. Empty = the plain pulsing ring.
 @export var gate_art: StringName = &""
 ## Income per second a passive stat of this zone starts from (before its boosts). The name is from when Cash was the only one.
