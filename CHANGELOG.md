@@ -9,11 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.14.4 - 2026-11-23
-- Stat detail header: a stat with no gain line centres its value vertically against the icon and name.
-
 ## 0.14.5 - 2026-11-23
 - The Welcome back toast now sits centred in the upper third, clear of the momentum panel, and the momentum tooltip is trimmed to charge, income, next stage, sources and hold/drain.
+
+## 0.14.4 - 2026-11-23
+- Stat detail header: a stat with no gain line centres its value vertically against the icon and name.
 
 ## 0.14.3 - 2026-11-23
 - Momentum bar no longer grows or crowds the panel border on a stage-up: the pop is now colour and frame flash only, and the stage name has fixed room.
