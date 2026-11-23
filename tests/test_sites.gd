@@ -32,8 +32,11 @@ func run(t: Object) -> void:
 	t.ok(ResourceLoader.exists("res://assets/audio/amb/shore_amb.ogg"), "shore loop exists")
 
 	# Gains follow proximity. Drives the Audio autoload's own stepping, no frames needed.
-	var a: Node = (t as SceneTree).root.get_node_or_null("Audio")
-	t.ok(a != null, "Audio autoload present")
+	# Autoloads are not instanced under --script, so build a private Audio and put it in the tree for _ready.
+	var a: Node = (load("res://audio/audio.gd") as GDScript).new() as Node
+	a.name = "AudioUnderTest"
+	(t as SceneTree).root.add_child(a)
+	t.ok(a != null, "Audio instance built")
 	if a != null:
 		a.set_surroundings(0.9, 0.0)
 		for i in 40:
@@ -51,3 +54,4 @@ func run(t: Object) -> void:
 		a.set_surroundings(0.0, 0.0)
 		for i in 40:
 			a.world_step(0.1)
+		a.free()
