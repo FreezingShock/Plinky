@@ -84,6 +84,11 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 	return rows
 
 
+## The presses total as display text.
+static func stats_value_presses(sim: Sim) -> String:
+	return BigNum.from_float(float(sim.press_count)).format()
+
+
 static func effect_text(a: AttributeDef, amount: float) -> String:
 	match a.effect:
 		&"walk_speed": return "+%s%% walk speed" % _trim(amount * 100.0)

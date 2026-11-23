@@ -255,6 +255,11 @@ func crit_damage(button_id: StringName = &"") -> float:
 	return base * (relics.multiplier(RelicDef.Effect.CRIT_DAMAGE) if relics != null else 1.0)
 
 
+## Where a stat or attribute comes from: rows of {source, amount, how_to, kind}. See StatSources.
+func stat_sources(id: StringName, is_attribute: bool = false) -> Array[Dictionary]:
+	return StatSources.of(self, id, is_attribute)
+
+
 ## Mastery rollup for a zone's pads (see Mastery.area). Empty zone gives zeros.
 func area_mastery(z_id: StringName) -> Dictionary:
 	var ids: Array = []
