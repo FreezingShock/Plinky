@@ -131,6 +131,9 @@ func validate() -> PackedStringArray:
 		if z.boost_stat != &"" and not stat_defs.has(z.boost_stat):
 			errs.append("zone %s: unknown boost_stat %s" % [z.id, z.boost_stat])
 	for s: StatDef in stat_defs.values():
+		for t: String in s.buff_stats:
+			if not stat_defs.has(StringName(t)):
+				errs.append("stat %s: unknown buff target %s" % [s.id, t])
 		for ref: StringName in [s.income_boost_stat, s.gain_boost_stat]:
 			if ref != &"" and not stat_defs.has(ref):
 				errs.append("stat %s: unknown boost stat %s" % [s.id, ref])
@@ -319,9 +322,21 @@ func _relic_gain_mult(b: ButtonDef) -> BigNum:
 
 func _gain_boost(reward_stat: StringName) -> BigNum:
 	var d: StatDef = stat_defs.get(reward_stat) as StatDef
-	if d == null or d.gain_boost_stat == &"":
+	if d == null:
 		return BigNum.one()
-	return get_stat(d.gain_boost_stat).add(BigNum.one())
+	var boost: BigNum = BigNum.one()
+	if d.gain_boost_stat != &"":
+		boost = get_stat(d.gain_boost_stat).add(BigNum.one())
+	return boost.mul(BigNum.from_float(buff_factor_for(reward_stat)))
+
+
+## The combined multiplier on rewards into `stat_id` from every higher stat that lists it in buff_stats and is held (>= 1).
+func buff_factor_for(stat_id: StringName) -> float:
+	var f: float = 1.0
+	for s: StatDef in stat_defs.values():
+		if s.buff_stats.has(String(stat_id)) and get_stat(s.id).gte(BigNum.one()):
+			f *= s.buff_factor
+	return f
 
 
 # ---------------------------------------------------------------- attribute effects

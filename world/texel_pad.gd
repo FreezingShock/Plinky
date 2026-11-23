@@ -293,18 +293,20 @@ func _draw() -> void:
 		for k in 2:
 			var g2: float = 1.0 + 0.2 * float(ls) + 0.35 * float(k)
 			_outline(g2, 0, palette[7] if ((ls + k) % 2 == 0 and not FxConfig.reduce_flashing) else palette[5])
+	if st == PadState.READY and not locked:
+		_outline(1.18, 0, StatStyle.gain() if _pulse_step() < 2 else StatStyle.gain().lightened(0.4))   # a green halo on the ground: buyable reads from a distance
 	# Ink silhouette (rule 6: one outline in palette 0) around the whole slab.
 	for k in range(0, th + 1):
 		_rows(0, top + k, hx + 1, hy + 1, ink, ink)
 	# Side faces: lit left in earth, shaded right in shadow (rule 1: warm only where light hits).
 	for k in range(1, th + 1):
-		_rows(0, top + k, hx, hy, palette[6], palette[1])
+		_rows(0, top + k, hx, hy, palette[1] if locked else palette[6], ink if locked else palette[1])
 	# Top face.
 	var face: Color = palette[6]
 	var face_r: Color = palette[6]
 	if st == PadState.FAR or locked:
-		face = palette[1] if locked else palette[2]
-		face_r = palette[2]
+		face = ink.lerp(palette[1], 0.45) if locked else palette[2]
+		face_r = face
 	_rows(0, top, hx, hy, face, face_r)
 	if st != PadState.FAR:
 		_lit_rim(top, hx, hy, palette[5])
@@ -322,7 +324,10 @@ func _draw() -> void:
 	var ihx: int = 10
 	var ihy: int = 5
 	var buy: Color = StatStyle.gain()
-	if st == PadState.READY:
+	if locked:
+		var dull: Color = ink.lerp(palette[1], 0.25)
+		_rows(0, top, ihx, ihy, dull, dull)
+	elif st == PadState.READY:
 		if glow != null and glow.flash_t > 0.0:
 			buy = glow.pad_color(palette)   # relic drop flash
 		if _pulse_step() == 0 and not FxConfig.reduce_flashing:

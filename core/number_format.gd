@@ -14,6 +14,22 @@ const HUNDREDS: PackedStringArray = ["", "Ce", "Dn", "Tc", "Qe", "Qi", "Se", "Sm
 enum Style { SUFFIX, SCIENTIFIC, ENGINEERING }
 static var style: int = Style.SUFFIX
 
+## How multipliers read: a factor ("x1.5") or a percent ("150%"). Set from Settings > Gameplay > Multiplier display.
+enum MultStyle { FACTOR, PERCENT }
+static var mult_style: int = MultStyle.FACTOR
+
+
+## A multiplier as text in the chosen style: 1.5 -> "x1.5" or "150%".
+static func mult(m: BigNum) -> String:
+	if mult_style == MultStyle.PERCENT:
+		return "%s%%" % m.mul(BigNum.from_float(100.0)).format()
+	return "x%s" % m.format()
+
+
+static func mult_f(m: float) -> String:
+	return mult(BigNum.from_float(m))
+
+
 ## Highest group with a name: n = 999, i.e. 10^3003. Past that, e-notation.
 const MAX_GROUP: int = 1000
 
