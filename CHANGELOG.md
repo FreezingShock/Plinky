@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.24.2 - 2026-11-23
+## 0.24.3 - 2026-11-23
 - History window is narrower still so it no longer covers the zone panel at 640x360, and its list area is taller.
+
+## 0.24.2 - 2026-11-23
+- HUD currency panel: the gain text (+x/s, xN) now sits left of each value in a smaller font, vertically centred, so the panel is narrower; values stay centred on the row and line up in a column.
 
 ## 0.24.1 - 2026-11-23
 - History screen: taller graph that fills from the left with a first bar at once, a narrower window that clears the zone panel, and the tracked currency now comes from config (`income_stat`).
