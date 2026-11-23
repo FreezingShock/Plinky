@@ -9,7 +9,7 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.28.0 - 2026-11-23
+## 0.29.0 - 2026-11-23
 - Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
 
 ## 0.27.0 - 2026-11-23
