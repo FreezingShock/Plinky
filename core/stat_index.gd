@@ -130,7 +130,7 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		var perk: bool = a.currency == &"rp"
 		var zr: ZoneResetDef = sim.reset_for_currency(a.currency)
 		var group_name: String = "Rebirth Perks" if perk else (zr.menu_title if zr != null else "Attributes")
-		var r: Dictionary = _row(aid, group_name, a.display_name, attr_icon(a), "Lv %d/%d" % [lv, a.cap], now, tip)
+		var r: Dictionary = _row(aid, group_name, a.display_name, String(ID_ICONS.get(aid, ATTR_ICONS.get(a.effect, "prestige"))), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap
 		r["maxed"] = lv >= a.cap

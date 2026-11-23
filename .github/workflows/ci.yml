@@ -138,7 +138,9 @@ jobs:
   # One stable check name for the whole pipeline ("test"). Skipped engine jobs (docs-only PRs) count as passing.
   test:
     needs: [changes, unit, sim, play, changelog-guard]
-    if: always()
+    # !cancelled(): when a newer push cancels this run, this job is skipped instead of reporting a false red.
+    # A real failure in any needed job still runs this job and fails it.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

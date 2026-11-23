@@ -60,12 +60,6 @@ var zones_entered: Dictionary = {}   # zone id -> true once its entry grants wer
 var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
-## Every stat as it stood just before the last zone reset (stat id -> BigNum). The reset animation counts down from it.
-var bloom_before: Dictionary = {}
-## True while an automatic press (Dew Sprites, Wildflower) is running, so the UI can skip momentum and the press streak.
-var auto_press_active: bool = false
-var _auto_acc: float = 0.0
-var _wild_acc: float = 0.0
 var reset_counts: Dictionary = {}    # reset id -> times done (ZoneResetDef); each adds its bonus to every pad reward
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 ## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
@@ -902,7 +896,7 @@ func reset_count(reset_id: StringName) -> int:
 func reset_bonus() -> float:
 	var total: float = 0.0
 	for r: ZoneResetDef in reset_defs.values():
-		total += float(reset_count(r.id)) * (r.bonus_per_use + (effect_total(r.bonus_effect) if r.bonus_effect != &"" else 0.0))
+		total += float(reset_count(r.id)) * r.bonus_per_use
 	return total
 
 
@@ -957,11 +951,7 @@ func reset_gain(reset_id: StringName) -> int:
 		return 0
 	var v: float = maxf(0.0, get_stat(r.source_stat).to_float())
 	var n: int = int(floorf(r.pay_scale * sqrt(v / reset_ref(reset_id))))
-	if float(n) < r.min_pay:
-		return 0
-	if r.pay_effect != &"":
-		n = int(floorf(float(r.pay_scale * sqrt(v / reset_ref(reset_id))) * (1.0 + effect_total(r.pay_effect))))
-	return n
+	return n if float(n) >= r.min_pay else 0
 
 
 func can_reset(reset_id: StringName) -> bool:
@@ -983,12 +973,7 @@ func try_reset(reset_id: StringName) -> bool:
 		return false
 	var r: ZoneResetDef = reset_defs[reset_id] as ZoneResetDef
 	var gained: int = reset_gain(reset_id)
-	bloom_before = stats.duplicate()   # what the reset animation counts down from (BloomRitual)
-	var keep: int = int(floorf(effect_total(r.keep_effect))) if r.keep_effect != &"" else 0
 	for sid: String in r.resets:
-		if StringName(sid) != r.start_stat and keep > 0:
-			keep -= 1   # a kept flower: the gift saves the lowest ones listed
-			continue
 		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
 	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
 	reset_counts[reset_id] = reset_count(reset_id) + 1
@@ -1178,16 +1163,30 @@ func apply_offline(seconds: float) -> float:
 	last_offline = {}
 	if secs <= 0.0:
 		return 0.0
-	calendar.advance(secs)   # the world keeps turning while you are away
+	last_offline["spent"] = {}
 	var gains: Dictionary = {}
-	var sb: BigNum = BigNum.from_float(secs)
-	for s: StatDef in stat_defs.values():
-		if s.passive:
-			var g: BigNum = income_per_second(s.id).mul(sb)
-			_set_stat(s.id, get_stat(s.id).add(g))
-			gains[s.id] = g
-	last_offline["tend"] = _offline_tend(secs, gains)
+	var tend: Dictionary = {}
+	# Slices keep income and tending in step: what tending pays in one slice (Dewdrops and up) raises the next slice's
+	# income, as it would if you were pressing, instead of the whole stretch paying at the rate you left with.
+	var slices: int = maxi(1, config.offline_slices)
+	var slice_secs: float = secs / float(slices)
+	var sb: BigNum = BigNum.from_float(slice_secs)
+	for i in slices:
+		for s: StatDef in stat_defs.values():
+			if s.passive:
+				var g: BigNum = income_per_second(s.id).mul(sb)
+				_set_stat(s.id, get_stat(s.id).add(g))
+				gains[s.id] = (gains[s.id] as BigNum).add(g) if gains.has(s.id) else g
+		var part: Dictionary = _offline_tend(slice_secs, gains)
+		for tid: StringName in part:
+			var r: Dictionary = part[tid]
+			if tend.has(tid):
+				r["presses"] = int(r["presses"]) + int((tend[tid] as Dictionary)["presses"])
+				r["levels"] = int(r["levels"]) + int((tend[tid] as Dictionary)["levels"])
+			tend[tid] = r
+	last_offline["tend"] = tend
 	last_offline["relics"] = _offline_relics(secs)
+	calendar.advance(secs)   # the world keeps turning while you are away; after crediting, so the rate is the one you left with
 	_check_gates()
 	_flush()
 	offline_gained.emit(secs, gains)
@@ -1220,6 +1219,8 @@ func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
 		var nb: BigNum = BigNum.from_float(n)
 		var reward: BigNum = press_gain_preview(pad.id).mul(nb)
 		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
+		var paid: BigNum = cost.mul(nb)
+		last_offline["spent"][pad.cost_stat] = (last_offline["spent"][pad.cost_stat] as BigNum).add(paid) if (last_offline["spent"] as Dictionary).has(pad.cost_stat) else paid
 		_set_stat(pad.reward_stat, get_stat(pad.reward_stat).add(reward))
 		gains[pad.reward_stat] = (gains[pad.reward_stat] as BigNum).add(reward) if gains.has(pad.reward_stat) else reward
 		press_count += int(n)

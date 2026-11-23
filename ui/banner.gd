@@ -4,8 +4,9 @@ extends CanvasLayer
 ##
 ##   Banner.announce({"title": "Heronmere", "lines": ["Spring - Day 2", "06:30 - Dawn"], "icon": "lake", "duration": 2.6})
 ##
-## Keys: title (Pixelify), lines (Spleen), icon (AreaIcons id), color (Color, tints the border and title), duration
-## (hold, seconds), key (same key = same banner, dropped as a duplicate), interrupt (replace what is showing).
+## Keys: title (Pixelify), lines (Spleen), icon (AreaIcons id), color (Color, tints the border and title), fill (Color,
+## the panel background; zone banners use their palette ink), duration (hold, seconds), key (same key = same banner,
+## dropped as a duplicate), interrupt (replace what is showing).
 ## Banners queue (max 4 waiting), skip() ends the current one early, and reduced motion (FxConfig.reduce_motion)
 ## shows each one whole with no typing. Logic lives in core/banner_queue.gd. main.gd calls attach(hud) so the panel
 ## sits inside the framed game view; until then it uses its own layer.
@@ -27,7 +28,7 @@ var _lines: Array[_Line] = []
 var _box: VBoxContainer
 var _t: float = 0.0
 var _clock: float = 0.0
-var _tl: Dictionary = {}
+var _tl: Dictionary = BannerQueue.timeline(0, 0.0, true)   # always a full timeline, so no key can be missing
 var _count: int = 0
 var _active: bool = false
 
@@ -73,6 +74,12 @@ class _Line extends Control:
 func _ready() -> void:
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_build_view()
+
+
+## Builds the panel. Quit to Title frees the HUD that the panel was attached to, which frees the panel with it, so
+## _ensure_view() rebuilds it before anything touches a freed node.
+func _build_view() -> void:
 	view = PanelContainer.new()
 	view.visible = false
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -97,9 +104,21 @@ func _ready() -> void:
 	add_child(view)
 
 
+## Rebuilds the panel if its node was freed, dropping the banner that was on screen.
+func _ensure_view() -> void:
+	if is_instance_valid(view):
+		return
+	_active = false
+	_title = null
+	_lines.clear()
+	queue.current = {}
+	_build_view()
+
+
 ## Moves the panel into `host` (the HUD) so it follows the framed game view. Safe to call again.
 func attach(host: Control) -> void:
-	if view == null or view.get_parent() == host:
+	_ensure_view()
+	if view.get_parent() == host:
 		return
 	view.get_parent().remove_child(view)
 	host.add_child(view)
@@ -131,6 +150,7 @@ func is_showing() -> bool:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	_ensure_view()
 	if not _active:
 		if queue.pending.is_empty():
 			return
@@ -145,12 +165,16 @@ func _process(delta: float) -> void:
 
 
 func _begin(spec: Dictionary) -> void:
+	_ensure_view()
 	var title: String = spec["title"]
 	var body: Array = spec["lines"]
 	var tint: Variant = spec["color"]
 	var edge: Color = tint as Color if tint is Color else RelicStyle.edge
 	var title_col: Color = tint as Color if tint is Color else RelicStyle.accent
-	view.add_theme_stylebox_override("panel", AsciiBox.panel(edge))
+	var box: AsciiBox = AsciiBox.panel(edge)
+	if spec["fill"] is Color:
+		box.fill_override = spec["fill"] as Color
+	view.add_theme_stylebox_override("panel", box)
 	for c in _box.get_children():
 		_box.remove_child(c)
 		c.queue_free()
@@ -183,7 +207,8 @@ func _end_current() -> void:
 	if not _active:
 		return
 	_active = false
-	view.visible = false
+	if is_instance_valid(view):
+		view.visible = false
 	var key: String = queue.current.get("key", "")
 	queue.finish(_clock)
 	banner_finished.emit(key)

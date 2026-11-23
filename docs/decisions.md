@@ -627,14 +627,6 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - 2026-11-23, Nathan: global Prestige is retired as the main loop. Every zone gets its own rebirth/ascension with its own currency and its own themed upgrade menu, in the same menu style as Upgrades. Meadow = Bloom (Seeds, Bloom Gifts). Ember Quarry = Reforge later. Keep layers modest.
 - Built as `ZoneResetDef` (data/zone_reset_def.gd), one .tres per zone in content/resets/. A new zone needs: the def, a currency stat, an icon at 8/16/24/32 px, a colour in StatStyle.COLORS, and gift attributes with `currency` set to it.
 - Bloom repeat pacing: resets only Sunlight and Larkmoor's flowers (not Dewdrops or Clover Leaves), +25% pad reward per use, requirement shrinks 15% per use down to 30%. Unmeasured in-engine; run tools/sim_bloom.gd on the PC.
-
-## 2026-11-23 Bloom gifts and the Bloom animation
-- Gifts are content, not code: each `content/attributes/bloom_*.tres` carries its own blurb, icon, unit and value kind, and unlocks by Blooms done (`unlock_resets`). A reset def names the effects that bend it (`keep_effect`, `pay_effect`, `bonus_effect`, plus `start_effect`), so Reforge adds forge gifts with files only. New sim effects: `auto_press` (Dew Sprites press the best affordable pad), `wild_bloom` (Wildflower: free press of a pad in the highest open row), `double_chance`, `seed_pay`, `bloom_bonus`, `keep_flowers`, `petal_burst` (cosmetic).
-- Automatic presses carry `Sim.auto_press_active`: they feed no momentum and no press streak, and show a quiet popup.
-- The reset animation is `BloomRitual` on the HUD, driven by `EventBus.reset_done`, clocked by `BloomTimeline` (pure, tested). HUD counters use `RollValue.countdown` so every row ends together; the currency row `hold`s its old value until the number lands. Reduced motion settings give a short fade; nothing shakes the camera. Sound reuses existing chimes (`Audio.bloom_*`); no new audio files.
-- Not run in-engine from the cloud: seed costs and gift strengths are first guesses, to be tuned with `tools/sim_bloom.gd` on the PC.
-
-
 ## 2026-11-23: Ember Quarry balance pass (v0.37.2)
 - **Pad costs x0.6** (from the shipped values) on all 18 quarry pads (`content/buttons/cinder_*` to `emberheart_*`). Rewards unchanged. Greedy floor (no walking, momentum, relics, heat or attributes), from the arrival purse: active gate about 40 min after arrival, was about 66. Idle (0.2 presses/s, the idle profile from #174) gate about 78 min, ratio about 2.0. **The greedy floor is erratic here:** x0.58 gives active 29 min and idle 105 min (ratio 3.7), and x0.5 gives 38 and 48 (ratio 1.3). Treat the 2x ratio as a point estimate. The seeded engine sim over the profiles is what should confirm it.
 - **Prestige per quarry rebirth x (1 + 0.25 x quarry rebirths so far)**, set by `ZoneDef.prestige_per_rebirth_bonus = 0.25` on zone2 only. Counted by the `reb` stat (quarry rebirths, not reset), so meadow and Larkmoor rebirths do not inflate it. Model (one attribute track, cheapest first, rebirth at Ingot 9, 6 hours, levels 1 to 15 only since the caps stop buys there): attribute gaps, median and max, were 14 and 63 min before, 4.4 and 8.1 min with this pass. Beyond level 15 the gaps still grow with the 1.4x cost; the caps (8 to 25 levels) stop that in practice.
@@ -685,6 +677,7 @@ PRs add a `changelog.d/<slug>.patch|minor.md` fragment instead of bumping `core/
 ## 2026-11-23 Menu tiles always show their names
 Nathan wanted the hamburger menu words visible, not only on the focused tile. Tiles now always draw their name; a locked tile still says "Locked" while hovered. Grid is 3 columns (nine tiles fill 3x3) and tiles are 96 wide. New hover: a slanted band of 4x4 Bayer dither in the section colour sweeps across once (0.4 s), the icon bobs one texel, plus the existing lift. All off under reduced motion / flashing. Tooltips unchanged. Not run in-engine from the cloud.
 
+- Offline Sunlight uses the same `income_per_second` as the live tick, at idle factor 1 (Dewdrop boost, relics, Bloom and Sun-rate bonuses all included). Only Momentum is absent, because it is zero at load. A QA reading of 0.25/s against 0.88/s on a fresh save came from Dewdrops being 0 at load and later pressed; the new test pins offline rate / live rate = 1.
 ## Popup banners (Banner autoload)
 - `Banner.announce({title, lines, icon, color, duration, key, interrupt})` (ui/banner.gd, logic in core/banner_queue.gd). `show` is taken by CanvasLayer, so the call is `announce`.
 - Bottom-middle, typed from the centre outward and collapsed back to it. The panel is a fixed size for the whole banner, so it never jitters. Queue holds 4, same key is a duplicate, a repeat within 6 s is dropped, `skip()` ends early.
@@ -702,4 +695,45 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Same five sizes (8, 12, 16, 24, 32) for the flower and quarry stats (Sunlight, Dewdrop, Seeds, Clover, Thistle, Heather, Foxglove, Starbloom, Embers, Cinder, Ironore, Ingot, Alloy, Emberheart, Slag), the 6 relic icons and the 9 gallery menu icons. Relic files sit in `assets/icons/relics/` (16 px) with `s8 s12 s24 s32` folders beside them; menu icons at 32 px stay in `big/`, their 16 px is `assets/icons/menu_*.png`.
 - These were seeded by `tools/art/seed_staged.py` (majority-colour reduction with a rebuilt outline; Scale2x for 16 to 32 on relics), not drawn from blank. Their 8 and 12 px versions are the weakest and are the first to polish by hand. Icons that need colours beyond the 8 zone roles list them in the .txt (`%a=#rrggbb`).
 - Skipped on purpose: Rebirth and Prestige polish (the quarry reset is being replaced), the hamburger glyph (16 px only), menu tile glyphs (9 px) and area glyphs (7 px).
-- 2026-11-23: CI node ceiling 1200 to 1300. The Bloom gifts add 10 rows to the Upgrades menu (about 13 nodes each), taking Larkmoor from 1065 to about 1205 headless. Cheaper alternative if it grows again: build gift rows when the menu first opens.
+
+## 2026-11-23 Clock chip centred, season shown once, zone title unclipped
+- The clock chip centres on the screen (between the stats panel and the zone card, clamped to both). Squeeze levels are unchanged.
+- The season appears once: the month line reads "Early Summer · Day 2" in the season accent, and the season accent is also the dial's bottom texel row. The separate "Summer" line is gone.
+- The dial fills the chip's full inner height (1 texel inside the frame top and bottom) and sizes itself to the text height. Art: dithered sky, a rising and falling horizon with grass tufts, a sun or moon on its arc, twinkling stars at night.
+- The zone card's Travel button moved to its own full-width row under the title. A 152 px card cannot fit "Ember Quarry" beside the button. Titles that still overflow drop to the small size.
+- Not verified in-engine: cloud threads cannot run Godot. The PC QA thread should check the chip at 640x360 and at a wide frame, plus the Ember Quarry card.
+## Pads receive cast shadows
+- Pads are plates drawn above the baked ground, so the ground's height-march shadow stopped at their edge and the pad stayed fully lit inside a shadow. New `pad_shadow.gdshader`: the same march from the plate's own top (ground height under the fragment plus `pad_lift`, 6 encoded units, about 2 world units), with the sun, slope, reach and strength SkyCycle already feeds the ground. SkyCycle owns it (`pad_material`, `_pad_mats`); each zone scene exposes `pad_material` and main.gd assigns it to the pads it builds (one line).
+- The pad's own drop shadow blob was sized like a tree (26 x 18); it is now 22 x 4, the slab's width and thickness, in the same sun direction and softness as the other casters.
+- Moving prop shadows (SkyShadows) are drawn beneath the pads, so they used to stop at the plate. Each caster within 220 texels of a pad now also gets a copy in a `PadOverlay` node at z 1 (above the plates), using the same shader with `clip` on: it only paints inside a pad's diamond (15 x 8 around the plate centre, up to 24 pads), so the shadow carries across the plate and nowhere else. Scenes call `add_pad` for every pad anchor.
+- Not run in engine. PC: Larkmoor at golden hour, zoomed on a pad next to a tree.
+
+## 2026-11-23 Clock dial follows the zone palette
+- The dial reads the palette of the current zone (Palettes.for_zone) and recolours within a tenth of a second of a zone change. Meadow stays green.
+- Ember Quarry's sun uses the amber role (4), not the dusty rose role (5), so it reads as ember. Other zones keep role 5.
+- Not verified in-engine. The PC QA thread should check the dial in the meadow and in Ember Quarry, by day and at night.
+## 2026-11-23 Capital Qd and Qn again
+- Nathan asked for Qd and Qn capitalised. This reverses the lowercase q from PR #193, which QA raised because a Q in "+100QnVg" read as a 0 at popup size. Only Qd and Qn change (`N_SMALL`, `UNITS`, tests). qg, qq, qe and qi stay lowercase, so compound names now mix cases (a name with Qd next to one with qg). Taste call to revisit: capitalise the rest too, or keep the split.
+- Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
+- Not run in engine: no Godot in the cloud. CI runs the headless tests.
+
+## 2026-11-23 Zone banner on zone entry only, area card swaps in place
+- Nathan: the full banner plays when entering each zone, not each subarea. Walking into a district (Old Oak Crossing and so on) no longer calls `Banner.announce`; `ZonePanel.set_district` changes the top-right area card instead, with a crossfade of SWAP_OUT 0.1 s then SWAP_IN 0.2 s, stepped in quarters so it dithers. The fade is skipped when "Still banners" (FxConfig.reduce_motion) is on.
+- Larkmoor is a zone (its own ZoneDef, scene and arch), so it gets a zone banner on arrival. This was the one case that used to get none. Its districts get none. If Nathan wants Larkmoor treated as part of the Meadow instead, change `_announce_zone_arrival` only.
+- Zone banner styling: the border and title use the zone's palette role (`ZoneDef.theme_role`), and the panel fill uses the zone palette's ink (index 0) through a new optional `fill` key on the banner spec. Season tint is dropped for zone banners so Meadow and Larkmoor (same palette, different role) read apart. Hold 3 s (`ZONE_BANNER_HOLD`).
+- `ui/district_banner.gd` is no longer used by anything. Left in place for a later cleanup PR.
+- PC QA fixes in the same PR: Banner rebuilds its panel if the HUD that held it was freed (Quit to Title), so a later banner never touches a freed node, and `_tl` starts as a full timeline so no key can be missing. Tip cards hold while a banner shows and the next tip waits for it, so the Welcome card no longer covers a zone banner at 640x360.
+- Not run in-engine from the cloud: the crossfade, the banner palette and the 640x360 overlap need a PC check.
+
+## 2026-11-23 Repo trim for faster, cheaper threads
+- Removed 10 unreferenced GDScript files (`world/player.gd`, `world/button_pad.gd`, `ui/district_banner.gd`, `ui/fx/counter_tick.gd`, and six tool scripts with no scene, test or doc reference). Reasoning: each had zero references (class names and paths checked); git history keeps them.
+- Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
+- `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
+- Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.
+## 2026-11-23 Popup Q gets a tail; popups use a derived font
+- PC QA on v0.45.2: "+100QnVg!" read as "+1000nVg!" at popup size. Correction to the entry above: that atlas check used Spleen 6x12, but popups draw in Pixelify Sans 16 (`PopupLabel` in plinky_theme.tres). The Pixelify Q's tail sat under the bowl and the 2 px popup outline filled the gap, so it read as a 0.
+- Fix: `fonts/PixelifySans-popup.ttf`, a derived copy of Pixelify Sans whose Q has a tail detached from the bowl by the bottom-right notch. Only Q changes, advance width is the same, and the family is renamed "Pixelify Sans Popup". Pixelify Sans is OFL 1.1 with no Reserved Font Name, so the derived copy is allowed. `PopupLabel` uses it. Titles, menus and the stock Q stay as they were. Built by `tools/build_popup_font.py`.
+- Candidates compared at 16 px with the 2 px outline: a filled-corner descender and a stair tail both read as lowercase q, so the detached diagonal was chosen.
+- QA finding 2: "1.5e15" shown as "+30d" at 3x. Not reproduced in the cloud. `NumberFormat.short(1.5e15)` gives "1.5Qd" (checked against a Python mirror of the formatter and now pinned in tests/test_format.gd), and the popup path (`PopupNumber.spawn`, `PressPopups._format`, `FxBus.bonus_popup`) passes the value straight through with no truncation. Nothing in the popup code produces a "d" suffix; the only "d" output is the skip duration in core/dev_commands.gd. Likely a probe or input mismatch. The PC probe should print the label's `.text` to settle it.
+- Not run in engine: no Godot in the cloud. PC QA should check "+100QnVg!" and "+1.5Qd" at 1x and 3x, and "Quarry" in a popup.
+- Offline credit now uses the day or night income rate you left with (the calendar advances after crediting), so offline Sunlight per second equals the live rate; before, advancing the clock first made the rate depend on when you came back (a test caught 1.08x). Verified with the headless suite (4393 checks, 0 failed).

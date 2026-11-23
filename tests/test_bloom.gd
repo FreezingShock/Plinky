@@ -61,7 +61,7 @@ func run(t: Object) -> void:
 	forge.currency = &"slag"
 	forge.source_stat = gz.gate_stat
 	forge.gate_zone = &"zone1"
-	forge.resets = PackedStringArray(["ironore"])
+	forge.resets = PackedStringArray(["embers"])
 	forge.menu_title = "Forge Gifts"
 	sim.reset_defs[&"forge"] = forge
 	t.ok(sim.reset_for_zone(&"zone2") == forge and sim.reset_for_zone(&"larkmoor") == rd, "each zone has its own reset")
@@ -70,10 +70,10 @@ func run(t: Object) -> void:
 	t.eq(UpgradeText.group_head(sim, &"slag"), "FORGE GIFTS", "the heading comes from the def")
 	sim.gates_open[&"zone1"] = true
 	sim.stats[gz.gate_stat] = BigNum.from_float(sim.reset_ref(&"forge") * 4.0)
-	sim.stats[&"ironore"] = BigNum.from_float(500.0)
+	sim.stats[&"embers"] = BigNum.from_float(500.0)
 	t.eq(sim.reset_gain(&"forge"), 4, "the new reset pays by its own formula")
 	t.ok(sim.try_reset(&"forge"), "the new reset runs")
-	t.near(sim.get_stat(&"ironore").to_float(), (sim.stat_defs[&"ironore"] as StatDef).start, 1e-9, "it resets only what its def lists")
+	t.near(sim.get_stat(&"embers").to_float(), (sim.stat_defs[&"embers"] as StatDef).start, 1e-9, "it resets only what its def lists")
 	t.near(sim.get_stat(&"slag").to_float(), 4.0, 1e-9, "and pays its own currency")
 	t.eq(sim.reset_count(rid), 1, "the other reset's count is untouched")
 	sim.reset_defs.erase(&"forge")
