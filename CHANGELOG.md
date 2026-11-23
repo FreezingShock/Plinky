@@ -12,7 +12,7 @@ under a new version heading and updates the version everywhere.
 ## 0.6.0 - 2026-11-23
 
 - Hamburger menu at the bottom right: a gallery of big icon tiles (Stats, Attributes, Upgrades, Relics, Travel, Settings, Update Log) with the version shown; Settings moves into it.
-- Fixed the close X: it now draws a full 13 texel frame with arms and clicks reliably; the Stats window no longer has a text Close button.
+- Fixed the close X: it now draws a full 13 texel frame with arms and clicks reliably; the Stats, Settings and Feedback windows no longer have text Close buttons.
 - Update Log tile shows this changelog in the game.
 - Menus close and switch reliably when spammed, with an animated close X on every panel; bottom bar buttons expand to icon plus label.
 
