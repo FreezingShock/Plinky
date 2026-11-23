@@ -6,6 +6,7 @@ extends RefCounted
 const STAT_TIPS: Dictionary = {
 	&"cash": "Earned every second and from presses. Spend it to unlock pads. Resets on rebirth.",
 	&"mult": "Multiplies Cash income. Earned from presses, and boosted by Rebirths. Resets on rebirth.",
+	&"rp": "Earned on every rebirth, and a little more each time. Spend it on Rebirth perks in Upgrades.",
 	&"reb": "Rebirths you have banked. Each one boosts how fast the Multiplier grows.",
 	&"slag": "Quarry currency. Earned on the quarry pads.",
 	&"prestige": "Earned by rebirthing. Boosts all income and buys Attributes.",
@@ -29,7 +30,7 @@ const ATTR_TIPS: Dictionary = {
 ## Every stat the player can see, grouped. Empty groups are left out.
 static func stats(sim: Sim) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
-	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige"]:
+	for sid: StringName in [&"cash", &"mult", &"reb", &"slag", &"prestige", &"rp"]:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
 			continue
@@ -40,6 +41,8 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 		var value: String = sim.get_stat(sid).format()
 		if sid == &"prestige":
 			note = "x%s income" % sim.prestige_mult().format()
+		elif sid == &"rp" and sim.can_rebirth():
+			note = "+%d next rebirth" % sim.rp_gain_preview()
 		rows.append(_row(sid, "Currencies", def.display_name, String(sid), value, note, String(STAT_TIPS.get(sid, ""))))
 	rows.append(_row(&"crit_chance", "Presses", "Crit chance", "crit", _pct(sim.crit_chance()), "",
 		"Chance that a press is a critical hit. Raised by the Crit chance attribute and relics."))
@@ -80,7 +83,7 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		elif lv >= a.cap:
 			tip += "\nMaxed out."
 		else:
-			tip += "\nNext level: %s\nCost: %s Prestige" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format()]
+			tip += "\nNext level: %s\nCost: %s %s" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format(), UpgradeText.currency_name(a)]
 		var r: Dictionary = _row(aid, "Attributes", a.display_name, String(ATTR_ICONS.get(a.effect, "prestige")), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap

@@ -212,7 +212,7 @@ func _build_detail() -> void:
 	_d_pages[2].add_child(_d_level)
 	_buy = PixelButton.new()
 	_buy.pressed.connect(_on_buy)
-	Tip.bind(_buy, {"title": "Buy level", "body": "Spend Prestige on the next level."})
+	Tip.bind(_buy, {"title": "Buy level", "body": "Spend Prestige or Rebirth Points on the next level."})
 	var buy_row := CenterContainer.new()
 	buy_row.add_child(_buy)
 	_d_pages[2].add_child(buy_row)
@@ -423,7 +423,7 @@ func _refresh(force: bool = false) -> void:
 			(_cards[r["id"]] as IndexCard).set_data(r)
 	if detail_open() and _cards.has(detail_id):
 		_fill_detail((_cards[detail_id] as IndexCard).data)
-	_sub.text = "Prestige to spend: %s" % sim.prestige_available().format() if tab == Tab.ATTRIBUTES else ""
+	_sub.text = "%s Prestige   %s RP" % [sim.prestige_available().format(), sim.rp_available().format()] if tab == Tab.ATTRIBUTES else ""
 
 
 func _rebuild(rows: Array[Dictionary], key: String) -> void:
@@ -485,7 +485,8 @@ func _fill_detail(d: Dictionary) -> void:
 		var lv: int = int(d["level"])
 		var maxed: bool = lv >= int(d["cap"])
 		var cost: BigNum = sim.attribute_cost(d["id"])
-		var ok: bool = not maxed and not sim.prestige_available().lt(cost)
+		var ad: AttributeDef = sim.attribute_defs[d["id"]] as AttributeDef
+		var ok: bool = not maxed and not sim.attribute_available(ad).lt(cost)
 		_buy.text = "MAX" if maxed else "Buy  %s" % cost.format()
 		_buy.disabled = not ok
 		var col: Color = RelicStyle.good if ok else Color(0.86, 0.35, 0.3)

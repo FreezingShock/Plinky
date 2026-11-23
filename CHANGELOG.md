@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.16.0 - 2026-11-23
+- Hold a Buy button in Upgrades to keep buying, faster the longer you hold. The Upgrades header shows Prestige as an icon and value on the right. New currency: Rebirth Points, paid on every rebirth and spent on Rebirth perks (Pad lore, Lucky streak, Deep sleep). World popups no longer draw over open menus. Save format v4.
+
 ## 0.15.0 - 2026-11-23
 - Ember Quarry redesigned as a whole map facing the camera: a hub plaza at the middle where you spawn, a main road to the gate and branches to the three pads, ground in every direction, no rock wall in front of the camera; the gate gets a dark recess that glows when open.
 

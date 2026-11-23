@@ -7,7 +7,7 @@ const BUY_GREEN: Color = Color("5fd068")   ## affordable, a gain
 const BUY_RED: Color = Color("d8483c")     ## not affordable
 const COLORS: Dictionary = {
 	&"cash": Color("f2c94c"), &"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
-	&"prestige": Color("f08fb0"), &"crit_chance": Color("ff6b5a"), &"crit_damage": Color("ffae42"),
+	&"prestige": Color("f08fb0"), &"rp": Color("9ee2c0"), &"crit_chance": Color("ff6b5a"), &"crit_damage": Color("ffae42"),
 	&"luck": Color("7be08a"), &"press_rate": Color("6fd6e8"), &"walk_speed": Color("a3d96a"),
 	&"offline_cap": Color("8aa6ff"), &"mastery": Color("ffd166"),
 }
