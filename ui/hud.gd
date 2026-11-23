@@ -520,26 +520,29 @@ func _process(delta: float) -> void:
 		_refresh()
 
 
-## Park the clock left of the zone card and right of the stats panel. When the gap is too small it squeezes
-## (ClockWidget.set_squeeze) instead of overlapping either neighbour.
+## Centre the clock on the frame, between the stats panel on the left and the zone card on the right. The room is the
+## narrower gap measured from the centre line, doubled, so the centred chip clears both neighbours. When that room is
+## too small it squeezes (ClockWidget.set_squeeze) instead of overlapping either one.
 func _place_clock(zone_left: float) -> void:
 	var stats_right: float = 0.0
 	if _stats_panel != null:
 		stats_right = _stats_panel.position.x + maxf(_stats_panel.size.x, _stats_panel.get_combined_minimum_size().x)
-	var room: float = zone_left - 6.0 - (stats_right + 6.0)
+	var mid: float = floorf(frame.x * 0.5)
+	var half: float = minf(mid - (stats_right + 6.0), zone_left - 6.0 - mid)
 	var cw: ClockWidget = _clock_widget
 	var level: int = cw.squeeze_level()
 	cw.remember_width()
 	# Widest layout that fits; ClockWidget remembers each layout's width so this does not flap.
 	var want: int = 2
 	for l: int in 3:
-		if cw.width_at(l) <= room:
+		if cw.width_at(l) <= half * 2.0:
 			want = l
 			break
 	if want != level:
 		cw.set_squeeze(want)
 	var w: float = maxf(cw.size.x, cw.get_combined_minimum_size().x)
-	var clk: Vector2 = Vector2(maxf(zone_left - w - 6.0, stats_right + 6.0), 4.0).floor()
+	var x: float = maxf(minf(floorf(mid - w * 0.5), zone_left - 6.0 - w), stats_right + 6.0)
+	var clk: Vector2 = Vector2(x, 4.0).floor()
 	if cw.position != clk:
 		cw.position = clk
 
