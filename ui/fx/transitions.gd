@@ -65,10 +65,14 @@ func cross_zone(swap: Callable, cover := 0.45, hold := 0.12, clear := 0.55) -> v
 	await t2.finished
 	_set_wipe(0.0)
 
-## Rebirth: dither-wipe to ASCII and back.
+## Rebirth: dither-wipe over the whole window and back. Uses the same overlay as cross_zone, because the post-process
+## `ascii` uniform only reaches the (empty) 3D view and never showed over the 2D world.
 func rebirth_ascii(hold := 0.6) -> void:
+	if FxConfig.reduce_flashing:
+		return
 	var t := create_tween()
-	t.tween_method(func(v: float): _set_u("ascii", v), 0.0, 1.0, 0.8)
+	t.tween_method(_set_wipe, 0.0, 1.0, 0.8)
 	t.tween_interval(hold)
-	t.tween_method(func(v: float): _set_u("ascii", v), 1.0, 0.0, 0.8)
+	t.tween_method(_set_wipe, 1.0, 0.0, 0.8)
 	await t.finished
+	_set_wipe(0.0)
