@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_banked"
+display_name = "Banked Rows"
+effect = &"keep_rows"
+per_level = 1.0
+cap = 3
+base_cost = 10.0
+cost_growth = 2.4
+order = 10
+currency = &"shards"
+unlock_resets = 3
+blurb = "A Nucleus no longer resets your lowest rows: Cinder first, then Iron Ore, then Slag stay as they are."
+icon = &"slag"
+unit_text = "rows kept"
+value_kind = &"count"

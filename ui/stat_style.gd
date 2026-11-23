@@ -9,13 +9,13 @@ const COLORS: Dictionary = {
 	&"sunlight": Color("ffd95a"), &"dewdrop": Color("e4f1ff"), &"clover": Color("6be86b"), &"thistle": Color("7f9bff"),
 	&"heather": Color("c27cff"), &"foxglove": Color("ffb62e"), &"starbloom": Color("ff7bff"),
 	&"embers": Color("ff8a3d"), &"cinder": Color("d6cfc4"), &"reb": Color("c77dff"), &"slag": Color("5fb0e0"), &"ironore": Color("5fb26a"), &"ingot": Color("a07ee0"), &"alloy": Color("e8b43a"), &"emberheart": Color("ff5aa0"),
-	&"prestige": Color("f08fb0"), &"rp": Color("9ee2c0"), &"seeds": Color("ffc178"), &"crit_chance": Color("ff6b5a"), &"crit_damage": Color("ffae42"),
+	&"prestige": Color("f08fb0"), &"rp": Color("9ee2c0"), &"seeds": Color("ffc178"), &"shards": Color("62f0e8"), &"crit_chance": Color("ff6b5a"), &"crit_damage": Color("ffae42"),
 	&"luck": Color("7be08a"), &"press_rate": Color("6fd6e8"), &"walk_speed": Color("a3d96a"),
 	&"offline_cap": Color("8aa6ff"), &"mastery": Color("ffd166"),
 }
 const PAPER: Color = Color("f6efd9")
 ## Attribute effect id -> the stat id whose colour it uses.
-const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap", &"mastery_xp": &"mastery", &"pad_yield": &"sunlight", &"head_start": &"seeds", &"sun_rate": &"seeds", &"auto_press": &"seeds", &"wild_bloom": &"seeds", &"double_chance": &"seeds", &"seed_pay": &"seeds", &"bloom_bonus": &"seeds", &"keep_flowers": &"seeds", &"petal_burst": &"seeds"}
+const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap", &"mastery_xp": &"mastery", &"pad_yield": &"sunlight", &"head_start": &"seeds", &"sun_rate": &"seeds", &"auto_press": &"seeds", &"wild_bloom": &"seeds", &"double_chance": &"seeds", &"seed_pay": &"seeds", &"bloom_bonus": &"seeds", &"keep_flowers": &"seeds", &"ember_start": &"shards", &"ember_rate": &"shards", &"shard_pay": &"shards", &"nucleus_bonus": &"shards", &"keep_rows": &"shards", &"petal_burst": &"seeds"}
 
 
 static func color(id: StringName) -> Color:

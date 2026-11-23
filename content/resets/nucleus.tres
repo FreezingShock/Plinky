@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ZoneResetDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/zone_reset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus"
+display_name = "Nucleus"
+zones = PackedStringArray("zone2")
+order = 3
+currency = &"shards"
+source_stat = &"emberheart"
+gate_zone = &"zone2"
+ref_fallback = 600.0
+pay_scale = 2.0
+min_pay = 2.0
+ref_shrink_per_use = 0.85
+ref_floor = 0.3
+bonus_per_use = 0.25
+resets = PackedStringArray("embers", "cinder", "ironore", "slag", "ingot", "alloy", "emberheart")
+start_stat = &"embers"
+start_effect = &"ember_start"
+keep_effect = &"keep_rows"
+pay_effect = &"shard_pay"
+bonus_effect = &"nucleus_bonus"
+menu_title = "Nucleus Gifts"
+button_hint = "Collapse the quarry to its core for Core Shards."
+tip_body = "Let the forge fall in on itself and strike a new Nucleus. Your rows go cold and start over."
+resets_text = "Resets your Embers and every forge stat, Cinder to Emberheart."
+keeps_text = "Gates, relics, mastery, Core Shards and open rows are kept."
+teach_text = "The forge can strike a Nucleus now. It resets your Embers and forge stats and pays Core Shards, and every pad pays more for good. Spend Core Shards on Nucleus gifts in Upgrades [Tab]. Open gates stay open."
+fx_stats = PackedStringArray("embers", "cinder", "ironore", "slag", "ingot", "alloy", "emberheart")
+fx_marks = ".:+#"
+fx_rise = true

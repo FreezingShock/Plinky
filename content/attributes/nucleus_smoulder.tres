@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_smoulder"
+display_name = "Slow Burn"
+effect = &"offline_hours"
+per_level = 0.5
+cap = 8
+base_cost = 3.0
+cost_growth = 1.6
+order = 4
+currency = &"shards"
+unlock_resets = 0
+blurb = "Earn for more hours while you are away."
+icon = &"offline"
+unit_text = "offline cap"

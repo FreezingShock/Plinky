@@ -61,7 +61,7 @@ func run(t: Object) -> void:
 	forge.currency = &"slag"
 	forge.source_stat = gz.gate_stat
 	forge.gate_zone = &"zone1"
-	forge.resets = PackedStringArray(["embers"])
+	forge.resets = PackedStringArray(["ironore"])
 	forge.menu_title = "Forge Gifts"
 	sim.reset_defs[&"forge"] = forge
 	t.ok(sim.reset_for_zone(&"zone2") == forge and sim.reset_for_zone(&"larkmoor") == rd, "each zone has its own reset")
@@ -70,10 +70,10 @@ func run(t: Object) -> void:
 	t.eq(UpgradeText.group_head(sim, &"slag"), "FORGE GIFTS", "the heading comes from the def")
 	sim.gates_open[&"zone1"] = true
 	sim.stats[gz.gate_stat] = BigNum.from_float(sim.reset_ref(&"forge") * 4.0)
-	sim.stats[&"embers"] = BigNum.from_float(500.0)
+	sim.stats[&"ironore"] = BigNum.from_float(500.0)
 	t.eq(sim.reset_gain(&"forge"), 4, "the new reset pays by its own formula")
 	t.ok(sim.try_reset(&"forge"), "the new reset runs")
-	t.near(sim.get_stat(&"embers").to_float(), (sim.stat_defs[&"embers"] as StatDef).start, 1e-9, "it resets only what its def lists")
+	t.near(sim.get_stat(&"ironore").to_float(), (sim.stat_defs[&"ironore"] as StatDef).start, 1e-9, "it resets only what its def lists")
 	t.near(sim.get_stat(&"slag").to_float(), 4.0, 1e-9, "and pays its own currency")
 	t.eq(sim.reset_count(rid), 1, "the other reset's count is untouched")
 	sim.reset_defs.erase(&"forge")
@@ -86,7 +86,7 @@ func run(t: Object) -> void:
 	t.ok(not UpgradeText.group_shown(sim, &"prestige"), "Prestige upgrades hide in the meadow")
 	t.ok(UpgradeText.group_shown(sim, &"seeds"), "Bloom gifts show after a Bloom")
 	sim.zone_id = &"zone2"
-	t.ok(sim.rebirth_here(), "Zone 2 runs Rebirth")
+	t.ok(not sim.rebirth_here(), "no zone runs the old Rebirth any more: the quarry has the Nucleus")
 
 	# Gifts cost Seeds, not Prestige, and do what they say.
 	var gift: AttributeDef = sim.attribute_defs[&"bloom_head_start"]
@@ -100,7 +100,7 @@ func run(t: Object) -> void:
 	t.near(sim.reset_start_value(rid, &"sunlight").to_float(), (sim.stat_defs[&"sunlight"] as StatDef).start + gift.per_level, 1e-9, "Head start adds Sunlight")
 	sim.stats[&"seeds"] = BigNum.zero()
 	t.ok(not sim.buy_attribute(&"bloom_soil"), "no Seeds, no gift")
-	t.eq(UpgradeText.ordered(sim).back().currency, &"seeds", "Bloom gifts list last")
+	t.eq(UpgradeText.ordered(sim).back().currency, &"shards", "the newest reset's gifts list last")
 
 	var soil: AttributeDef = sim.attribute_defs[&"bloom_soil"]
 	sim.zone_id = &"zone1"

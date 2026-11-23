@@ -13,6 +13,7 @@ const STAT_TIPS: Dictionary = {
 	&"starbloom": "Paid by the Starbloom pads, the last row. Boosts Foxglove Bells per press and opens the far gate.",
 	&"embers": "The forge's passive glow, earned every second. Spent on the Cinder pads. Resets on rebirth.",
 	&"cinder": "Paid by the Cinder pads, the first forge row. Boosts Embers income and Iron Ore presses, and is spent on Ore pads.",
+	&"shards": "Paid by every Nucleus, more the higher your Emberhearts were. Spend it on Nucleus gifts in Upgrades.",
 	&"seeds": "Paid by every Bloom, more the higher your Starbloom Petals were. Spend it on Bloom gifts in Upgrades.",
 	&"rp": "Earned on every rebirth, and a little more each time. Spend it on Rebirth perks in Upgrades.",
 	&"reb": "Rebirths you have banked. Each one banks Prestige, which boosts Embers income.",

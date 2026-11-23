@@ -140,7 +140,7 @@ func _ready() -> void:
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 	Banner.attach(hud)
-	BloomRitual.attach(hud, sim, get_node("/root/EventBus"))   # the zone reset animation (Bloom)
+	BloomRitual.attach(hud, sim, get_node("/root/EventBus"))   # the zone reset animation (Bloom, Nucleus)
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)

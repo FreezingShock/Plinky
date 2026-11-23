@@ -168,6 +168,17 @@ func _hint_text() -> String:
 	return line
 
 
+## The colours of the burst: the reset's own ladder (Nucleus: Embers to Emberheart), the flowers by default.
+func _ladder() -> Array[StringName]:
+	var out: Array[StringName] = []
+	if _reset != null:
+		for s: String in _reset.fx_stats:
+			out.append(StringName(s))
+	if out.is_empty():
+		out.append_array(FLOWERS)
+	return out
+
+
 func _center() -> Vector2:
 	return Vector2(roundf(size.x * 0.5), roundf(size.y * 0.36))
 
@@ -240,14 +251,15 @@ func _burst() -> void:
 	var c: Vector2 = _center()
 	for i in 3:   # three pixel rings, each a different colour and speed
 		_rings.append({"age": -0.08 * float(i), "life": 0.7 + 0.15 * float(i), "r0": 14.0, "r1": 70.0 + 38.0 * float(i),
-			"col": [Color("fff1c8"), _color, StatStyle.color(&"starbloom")][i], "w": 2 if i == 0 else 1})
+			"col": [Color("fff1c8"), _color, StatStyle.color(_ladder()[-1])][i], "w": 2 if i == 0 else 1})
+	var ladder: Array[StringName] = _ladder()
 	var n: int = GraphicsQuality.particle_count(44)
 	for i in n:
 		var a: float = _rng.randf() * TAU
 		var s: float = _rng.randf_range(50.0, 170.0)
-		var col: Color = _color if i % 3 == 0 else StatStyle.color(FLOWERS[i % FLOWERS.size()])
+		var col: Color = _color if i % 3 == 0 else StatStyle.color(ladder[i % ladder.size()])
 		_parts.append({"pos": c + Vector2(cos(a), sin(a)) * 18.0, "vel": Vector2(cos(a), sin(a) * 0.8) * s, "life": _rng.randf_range(0.7, 1.5), "age": 0.0,
-			"size": 2 if i % 4 == 0 else 1, "col": col, "grav": 40.0, "drag": 1.6})
+			"size": 2 if i % 4 == 0 else 1, "col": col, "grav": -30.0 if _reset.fx_rise else 40.0, "drag": 1.6})
 	for i in GraphicsQuality.particle_count(16):
 		var a2: float = _rng.randf() * TAU
 		var r: float = _rng.randf_range(36.0, 120.0)
@@ -293,7 +305,8 @@ func _draw() -> void:
 		var n: int = 28
 		for i in n:
 			var a: float = TAU * float(i) / float(n) + u * 1.6
-			var ch: String = MARKS[(i + int(_t * 18.0)) % MARKS.length()]
+			var marks: String = _reset.fx_marks if _reset != null and _reset.fx_marks != "" else MARKS
+			var ch: String = marks[(i + int(_t * 18.0)) % marks.length()]
 			var at: Vector2 = c + Vector2(cos(a), sin(a) * 0.8) * radius
 			draw_string(_font, (at + Vector2(-3.0, 4.0)).round(), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, _color.lerp(Color.WHITE, u))
 	var icon_scale: int = BloomTimeline.icon_scale(_t, p)

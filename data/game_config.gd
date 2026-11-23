@@ -39,7 +39,9 @@ extends Resource
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
 ## Rebirth, Prestige and Rebirth Points show only in these zones. Every other zone runs on its own ZoneResetDef (content/resets).
-@export var rebirth_zones: PackedStringArray = PackedStringArray(["zone2"])
+@export var rebirth_zones: PackedStringArray = PackedStringArray()
+## Saves from before the Nucleus: old Rebirths carry over as this many Nucleus uses at most (each adds the pad bonus).
+@export var nucleus_carry_max: int = 8
 ## Momentum: walking charges it (pressing nudges it), then it holds a moment and falls. Income gets
 ## x(1 + momentum * momentum_max_bonus + the kickers of every stage reached). Stages: Idle, then one per threshold.
 ## Full bar = max_bonus + sum(tier_bonus) = +40%.
