@@ -52,12 +52,13 @@ func run(t: Object) -> void:
 		a.pressed.emit()
 	t.eq(seen, ["resume", "title", "quit"], "each action emits its own signal")
 
-	# Tiles are icon-only at rest and never change size when the label opens.
+	# Every tile carries its name, and the hover sweep never changes its size.
 	var tile: GalleryTile = g.tile(&"stats")
-	t.eq(tile.label_t, 0.0, "a resting tile shows no label")
+	t.eq(tile.label, "Stats", "a resting tile shows its name")
 	var size_before: Vector2 = tile.custom_minimum_size
-	tile.label_t = 1.0
-	t.eq(tile.custom_minimum_size, size_before, "an open tile label never shifts layout")
+	tile.sweep_t = 0.5
+	t.eq(tile.custom_minimum_size, size_before, "the hover sweep never shifts layout")
+	t.eq(tile.bob_px(), 0, "a resting tile does not bob")
 	g.free()
 
 

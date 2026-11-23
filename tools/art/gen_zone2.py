@@ -2,7 +2,7 @@
 """Zone 2 art: concept mockups and the Ember Quarry blockout. numpy + Pillow only.
 
   python3 tools/art/gen_zone2.py concepts OUTDIR   three 640x360 concept mockups plus a contact sheet
-  python3 tools/art/gen_zone2.py quarry            writes assets/art/zone2/quarry/ (ground, walkable, sprites, json)
+  (the Ember Quarry itself is now tools/art/gen_quarry.py; its `quarry` command here is the old 640x360 blockout)
 
 Same projection as gen_meadow3d.py: screen = (320 + u - v, 4 + (u + v) / 2 - h) in the 640x360 frame, ground
 frame is 840x480 placed at (-100,-60). Terrain is a height field drawn back to front, props are prisms and blobs

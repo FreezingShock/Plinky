@@ -95,7 +95,7 @@ func _tier_color(tier: int) -> Color:
 
 
 func _process(delta: float) -> void:
-	# Appears with the Multiplier row, so a brand new player sees Cash alone (see Onboarding).
+	# Appears with the Multiplier row, so a brand new player sees the first stat alone (see Onboarding).
 	var on: bool = DisplaySettings.momentum_meter and _sim != null and GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)
 	if visible != on:
 		visible = on

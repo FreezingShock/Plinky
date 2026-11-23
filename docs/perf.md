@@ -29,6 +29,9 @@ not fork; lower levels draw less and step slower.
 | World life redraw (LifeAir) | 8 fps | 10 fps | 12 fps |
 | Grass sway redraw (LifeGround) | 4 fps, every 2nd tip | 5 fps | 6 fps |
 | Particles per burst | 50% (min 2) | 75% | 100% |
+| Ground relight height march (ground_light.gdshader) | 6 taps at 2x stride (same reach) | 9 taps at 1.34x | 12 taps |
+| Ground occlusion taps | 2 | 4 | 4 |
+| Full-frame light grade (reads the screen texture, a back-buffer copy) | skipped | on | on |
 | Season air (SeasonParticles: petals, motes, leaves, snow) | 40% | 70% | 100% (at most 400 per kind, 12 fps, visible part only, none under Reduce motion) |
 
 Systems that scale with content (new props, birds, grass, weather, lights) read their counts through
@@ -68,8 +71,8 @@ machine is available.
 | Whole frame, pad presses | avg 1.2 ms, p99 2.5 ms, worst 4 ms | a spike above 4 ms here is a visible hitch on a slow GPU |
 | One new visual system (a layer, a shader pass) | at most 0.1 ms avg | there are about 8 such systems in flight |
 | Whole frame on Low | at least 25% under High | Low exists for slow GPUs |
-| Draw calls | under 250 | High peaks near 200 now |
-| Nodes in the active zone | under 700 | Larkmoor is about 414 headless |
+| Draw calls | under 250 (CI-enforced; the headless bench reads 0, so it bites on real-window runs) | High peaks near 160 on the CPU rasteriser |
+| Nodes in the active zone | under 1200 (CI-enforced) | Larkmoor is 1065 headless now (it was about 414 when this was written) |
 
 A PR that adds a visual system pastes the `tools/bench.gd` table (Low and High) and states the delta against these.
 
@@ -94,3 +97,29 @@ each stage. After the fix the swap is a 99 ms first rendered frame plus 22 ms of
 - No GPU numbers yet. A real-hardware run of tools/bench.gd is needed to find the actual hot spot; the CPU
   side is cheap enough that the post shader and window fill rate at 4K may matter more.
 - Popups and particle bursts are still one node each. Fine at hold-press rates; pool them if the bench shows spikes in `presses`.
+
+## Weak-hardware stand-in (2026-11-23)
+No integrated GPU was available, so `tools/bench_weak.sh` runs the real-window bench on **Mesa lavapipe** (software
+Vulkan) under Xvfb, 4 CPU cores, 1280x720. That is a CPU rasteriser, not an iGPU: its absolute numbers mean nothing
+(every phase sits near 20 ms), but it is stable enough to A/B two builds or two quality levels. Install: `apt install
+mesa-vulkan-drivers xvfb`, then `GODOT=/path/to/godot tools/bench_weak.sh out.json 1280x720 --frames=120`.
+
+Where a frame goes at Low in the meadow (wall time, hiding one group at a time; the empty window floor is 5.4 ms,
+the HUD 1.7 ms, the world about 14 ms): sky passes about 7 ms, ground about 6 ms, walker, pads and props about 5 ms,
+far layer 3.6 ms, screen light 3 ms, life layers 2.3 ms, tree and rock shadow sprites 1.5 ms. Frame time barely moves
+with resolution here (640x360 21.7 ms, 1080p 27.3 ms), so the cost is per-layer work, not pixel count.
+
+What Low changed (all measured with `bench_weak.sh`, 120 frames a phase, same machine, main at v0.33.0 vs this branch):
+
+| Average frame, mean of the 5 non-zoom phases | before | after |
+|---|---|---|
+| Low, meadow | 21.5 ms | 18.8 ms (-13%) |
+| Low, Larkmoor | 21.2 ms | 19.0 ms (-10%) |
+| High, meadow | 20.9 ms | 20.1 ms (noise; High is unchanged except the shadow march now skips when no shadow applies) |
+| High, Larkmoor | 21.1 ms | 21.2 ms (unchanged) |
+
+Low is now about 10 to 15% under High on this rasteriser, short of the 25% budget above. The budget stays: a real iGPU
+may respond more to the skipped screen-texture pass and the shader taps than lavapipe does, and the PC thread should
+run `tools/bench.gd` at Low and High on the real machine and update this table.
+Not done and why: rendering the world into a 642x362 target (would cut fill 9x at 1080p) touches every world shader's
+texel maths and the zoom, so it needs its own change and an in-engine look check.
