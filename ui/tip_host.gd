@@ -4,18 +4,15 @@ extends PanelContainer
 ## Never takes mouse input. Drawn in the 640x360 stretch view, so it follows UI scale, and clamped to the visible rect.
 ##
 ## Layout: [icon] title / prose body / rich lines (coloured segments and inline icons) / hint.
-## Hover is tracked by asking the viewport which control is under the mouse each frame, so it is right at any
-## stretch scale and never depends on mouse_exited arriving; it hides once the mouse has been away for AWAY seconds.
+## Minecraft-style: no delay, no grace, no fade. A tip appears on the frame the cursor (or focus) reaches a bound
+## control, follows the cursor, and disappears on the frame it leaves. Hover is tracked by asking the viewport which
+## control is under the mouse each frame, so it is right at any stretch scale.
 
 const BODY_FONT: String = "res://fonts/spleen-6x12.fnt"
 const TITLE_FONT: String = "res://fonts/PixelifySans.ttf"
 const THEME_FALLBACK: String = "res://theme/plinky_theme.tres"
 const ICON_DIR: String = "res://assets/icons/"
 const MAX_WIDTH: int = 150
-const HOVER_DELAY: float = 0.35     ## seconds before a mouse hover shows
-const FOCUS_DELAY: float = 0.08     ## keyboard / pad focus shows almost at once
-const GRACE: float = 0.30           ## after one tip, the next shows instantly within this window
-const AWAY: float = 0.10            ## the mouse may be off the control this long before the tip hides
 const CURSOR_OFFSET: Vector2 = Vector2(10.0, 12.0)
 const AVOID_GROUP: StringName = &"tip_avoid"
 
@@ -34,9 +31,6 @@ var _free_exact: bool = false
 var _free_at: Vector2 = Vector2.ZERO
 var _free_spec: Variant = null
 var _anchor: Rect2 = Rect2()
-var _wait: float = 0.0
-var _away: float = 0.0
-var _since_hidden: float = 99.0
 var _head: HBoxContainer
 var _icon: TextureRect
 var _title: Label
@@ -101,12 +95,7 @@ func request(c: Control, by_focus: bool) -> void:
 	target = c
 	_by_focus = by_focus
 	_free_mode = false
-	_away = 0.0
-	_wait = 0.0 if (visible or _since_hidden < GRACE) else (FOCUS_DELAY if by_focus else HOVER_DELAY)
-	if _wait <= 0.0:
-		_show()
-	else:
-		visible = false
+	_show()
 
 
 func show_free(spec: Variant, at: Vector2, exact: bool = false) -> void:
@@ -116,15 +105,13 @@ func show_free(spec: Variant, at: Vector2, exact: bool = false) -> void:
 		target = null
 		_free_mode = true
 		_by_focus = false
-		_wait = 0.0 if _since_hidden < GRACE else HOVER_DELAY
 	_free_spec = spec
 	_free_at = at
-	if _wait <= 0.0:
-		if _fill(spec):
-			visible = true
-			_place()
-		else:
-			visible = false
+	if _fill(spec):
+		visible = true
+		_place()
+	else:
+		visible = false
 
 
 func set_beside(r: Rect2) -> void:
@@ -152,13 +139,9 @@ func on_exit(c: Control) -> void:
 
 
 func dismiss() -> void:
-	if visible:
-		_since_hidden = 0.0
 	visible = false
 	target = null
 	_free_mode = false
-	_wait = 0.0
-	_away = 0.0
 
 
 ## The first navigation input after a quiet menu-open focus lets focus tooltips show again.
@@ -171,32 +154,20 @@ func _input(event: InputEvent) -> void:
 			return
 
 
-func _process(delta: float) -> void:
-	if not visible:
-		_since_hidden += delta
+func _process(_delta: float) -> void:
 	if target != null and (not is_instance_valid(target) or (target.is_inside_tree() and not target.is_visible_in_tree())):
 		dismiss()
 		return
 	if _free_mode:
-		if _wait > 0.0:
-			_wait -= delta
-			if _wait <= 0.0:
-				if _fill(_free_spec):
-					visible = true
-					_place()
-		elif visible:
-			_place()
+		if visible:
+			_place()   # a free tip (a pad) follows the cursor; its owner calls show_free every frame it is hovered
 		return
 	if target == null:
 		_discover()
 		return
-	if not _by_focus and _track_hover(delta):
+	if not _by_focus and _track_hover():
 		return
-	if _wait > 0.0:
-		_wait -= delta
-		if _wait <= 0.0:
-			_show()
-	elif visible and not _by_focus:
+	if visible and not _by_focus:
 		_place()
 
 
@@ -217,13 +188,13 @@ func _discover() -> void:
 	_suppressed = null
 
 
-## True if the tip was dismissed or switched. Asks the viewport which control is under the mouse.
-func _track_hover(delta: float) -> bool:
+## True if the tip was dismissed or switched. Asks the viewport which control is under the mouse. Leaving the
+## control hides the tip on this same frame; sliding onto another bound control swaps to it on this frame.
+func _track_hover() -> bool:
 	if not test_hover_enabled and not (is_inside_tree() and get_viewport() != null):
 		return false
 	var hov: Control = test_hover if test_hover_enabled else get_viewport().gui_get_hovered_control()
 	if hov != null and (hov == target or target.is_ancestor_of(hov)):
-		_away = 0.0
 		return false
 	var up: Node = hov
 	while up != null:
@@ -231,11 +202,8 @@ func _track_hover(delta: float) -> bool:
 			request(up as Control, false)   # slid straight onto another tooltip's control
 			return true
 		up = up.get_parent()
-	_away += delta
-	if _away >= AWAY:
-		dismiss()
-		return true
-	return false
+	dismiss()
+	return true
 
 
 ## The panel lives on its own layer, outside the HUD's theme, so borrow the theme (and so the fonts) of the

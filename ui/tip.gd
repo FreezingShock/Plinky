@@ -6,9 +6,10 @@ extends RefCounted
 ##   Tip.bind(row, {"title": "Luck", "body": "Better drops.", "hint": "Rebirth to raise it."})
 ##   Tip.bind(slot, func() -> Variant: return build_spec())   # re-evaluated each time it shows
 ##
-## Mouse hover shows it after a short delay and it follows the cursor. Keyboard or pad focus shows it
-## sooner, anchored to the control. It hides on exit, click, hide or free. No autoload: the host is
-## created on first use under the scene root, so no project.godot change is needed.
+## Minecraft-style: mouse hover shows it on the same frame, with no delay or fade, and it follows the cursor.
+## Keyboard or pad focus shows it the same frame too, anchored under the control. It hides on the frame the mouse
+## leaves, on click, on hide or on free. No autoload: the host is created on first use under the scene root,
+## so no project.godot change is needed.
 
 const HOST_NAME: String = "TipLayer"
 const META: StringName = &"_tip_spec"

@@ -22,7 +22,7 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_ALL
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	tooltip_text = "Open the Update Log"
+	Tip.bind(self, "Open the Update Log")   # the shared instant tooltip, not Godot's delayed tooltip_text
 	custom_minimum_size = text_size() + Vector2(8.0, 4.0)
 	var ms: Vector2 = custom_minimum_size
 	set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)

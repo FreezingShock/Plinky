@@ -436,3 +436,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Larkmoor sway tips regenerated: `python3 tools/art/gen_life_anchors.py --backdrop assets/art/zone1b/larkmoor/ground.png --placements assets/art/zone1b/larkmoor/placements3d.json --out world/larkmoor_life.json --bounds 190,110,1340,725 --sway-count 420`. Only `sway` and `drift` change. `tests/test_life.gd` now checks Larkmoor tips sit on palette 4 texels. Not run in engine.
 
 - **Grass style A locked (2026-11-23, Nathan: "I like A baked the most").** Blade tufts gathering into clumps, baked into the ground by tools/art/grass_tex.py (default `GRASS=a`) for the meadow and Larkmoor. B, C, D stay in the module as alternatives only; do not change the default without Nathan.
+
+## 2026-11-23: Tooltips are instant (Minecraft-style)
+- Nathan: tooltips should appear the same frame the cursor enters a hoverable, follow the cursor, and disappear the same frame it leaves. No delay, no fade, no lingering.
+- `TipHost` lost its hover delay (was 0.35 s), focus delay (0.08 s), grace window (0.30 s) and hide delay (0.10 s). A bound control shows on entry, focus shows at once, and leaving hides on that frame. Moving straight onto another bound control swaps on that frame.
+- Godot's built-in `tooltip_text` (which has its own delay) was the one remaining user: the version link on boot and title now uses `Tip.bind`. Nothing in the project uses `tooltip_text` any more, so `gui/timers/tooltip_delay_sec` is not touched (project.godot is the integrator's file).
+- Kept: "no tooltip on menu open" (`Tip.grab_quiet`, `focus_muted`), so a menu opening does not pop a tip until the player navigates. A pressed button still hides its tip until the mouse leaves it.
+- Not changed on purpose: the gallery hover strip and display-panel hint are card/text readouts, not tooltips, and the chip label grace in `ui/fx/expand_chip.gd` is a HUD animation.
