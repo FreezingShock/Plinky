@@ -65,6 +65,13 @@ func add_caster(src: Sprite2D, kind: String, size: Vector2) -> void:
 	_lay(_items[_items.size() - 1])
 
 
+## A shadow for something that is not a prop sprite (a pad slab): foot position, width, and the height it stretches from.
+func add_blob(foot: Vector2, w: float, h: float) -> void:
+	var sp: Sprite2D = _quad("Sh_blob%d" % _items.size())
+	_items.append({"sprite": sp, "foot": foot, "w": w, "h": h})
+	_lay(_items[_items.size() - 1])
+
+
 ## Sun state from SkyCycle: light x (-1 left .. +1 right), shadow length in object heights, strength 0..1.
 func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> void:
 	_warm = maxi(_warm - 1, 0)
