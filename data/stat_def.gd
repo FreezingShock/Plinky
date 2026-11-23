@@ -10,6 +10,8 @@ extends Resource
 @export var passive: bool = false
 ## Income is multiplied by (1 + value of this stat). Empty = none.
 @export var income_boost_stat: StringName = &""
+## Passive income is also multiplied by (1 + value x this). 0 = off. Separate factor from income_boost_stat, so they stack.
+@export var income_factor_per_unit: float = 0.0
 ## Button rewards into this stat are multiplied by (1 + value of this stat). Empty = none.
 @export var gain_boost_stat: StringName = &""
 ## Income is also multiplied by prestige_mult.

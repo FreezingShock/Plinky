@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="OnboardingConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/onboarding_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+rebirth_reveal_mult = 200.0
+streak_tip_presses = 12
+walk_tip_seconds = 40.0
+first_tip_delay = 1.0
+tip_gap_seconds = 15.0
+tip_lifetime = 20.0
+urgent_gap_seconds = 6.0

@@ -48,9 +48,10 @@ func run(t: Object) -> void:
 	t.eq(gate_events.size(), 1, "gate_opened once")
 	sim.step(0.1)
 	t.eq(gate_events.size(), 1, "gate_opened does not repeat")
-	t.ok(sim.enter_zone(&"zone2"), "can enter zone 2 after the gate opens")
-	t.eq(sim.zone_id, &"zone2", "now in zone 2")
-	t.ok(sim.enter_zone(&"zone1"), "can go back to zone 1")
+	t.ok(not sim.enter_zone(&"zone2"), "zone 2 is not behind the onboarding gate")
+	t.ok(sim.enter_zone(&"larkmoor"), "the onboarding gate leads to Larkmoor")
+	t.eq(sim.zone_id, &"larkmoor", "now in Larkmoor")
+	t.ok(sim.enter_zone(&"zone1"), "can go back to the onboarding meadow")
 
 	# Rebirth: resets, banks prestige, formula 1 + p^0.8
 	var done: Array = []

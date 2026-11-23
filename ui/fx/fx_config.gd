@@ -7,6 +7,13 @@ const PARTICLES_MAX := 12
 const POPUP_LIFE := 0.8
 const POPUP_RISE_TEXELS := 18.0
 const COUNTER_TICK_TIME := 0.35
+## Rolling counters: time constant of the ease (s), snap distance (relative), and the gain size that earns a float.
+const ROLL_TIME := 0.16
+const ROLL_SNAP := 0.002
+const ROLL_HZ := 30.0
+const BIG_GAIN_RATIO := 0.15
+const BIG_GAIN_FLASH := 0.35
+const SMALL_GAIN_FLASH := 0.12
 const SHAKE_DECAY := 6.0
 const SHAKE_MAX_TEXELS := 3.0
 const FLASH_FRAMES := 3
