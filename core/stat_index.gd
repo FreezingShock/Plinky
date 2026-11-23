@@ -2,12 +2,6 @@ class_name StatIndex
 extends RefCounted
 ## Rows for the Stats and Attributes index, built from a Sim. Pure data: no nodes, so tests can check it headless.
 ## A row is {id, group, name, icon, value, note, tip, pending}. `icon` is a file name under assets/icons.
-## Crit damage and pad mastery come from another thread: until the Sim has their API the rows stay as
-## "pending" placeholders, then light up on their own (see CRIT_DAMAGE_API and MASTERY_API).
-
-## Sim methods that may carry the new stats. The first one the Sim has is used.
-const CRIT_DAMAGE_API: Array[StringName] = [&"crit_damage", &"crit_multiplier", &"crit_damage_mult"]
-const MASTERY_API: Array[StringName] = [&"mastery_total_level", &"total_mastery_level", &"mastery_levels"]
 
 const STAT_TIPS: Dictionary = {
 	&"cash": "Earned every second and from presses. Spend it to unlock pads. Resets on rebirth.",
@@ -47,22 +41,21 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 		rows.append(_row(sid, "Currencies", def.display_name, String(sid), value, note, String(STAT_TIPS.get(sid, ""))))
 	rows.append(_row(&"crit_chance", "Presses", "Crit chance", "crit", _pct(sim.crit_chance()), "",
 		"Chance that a press is a critical hit. Raised by the Crit chance attribute and relics."))
-	var cd: Variant = _call_first(sim, CRIT_DAMAGE_API)
-	if cd == null:
-		rows.append(_pending(&"crit_damage", "Presses", "Crit damage", "crit_dmg", "Arrives with the crit update."))
-	else:
-		rows.append(_row(&"crit_damage", "Presses", "Crit damage", "crit_dmg", "x%.2f" % float(cd), "", "How much a critical hit pays, as a multiple of a normal press."))
+	rows.append(_row(&"crit_damage", "Presses", "Crit damage", "crit_dmg", "x%.2f" % sim.crit_damage(), "",
+		"What a critical hit multiplies a press by. Raised by pad mastery and relics."))
 	rows.append(_row(&"press_rate", "Presses", "Press rate", "rate", "%.2f/s" % (1.0 / maxf(sim.press_interval(), 0.001)), "",
 		"Presses per second while you stand on a pad."))
 	rows.append(_row(&"luck", "Presses", "Luck", "luck", "Lv %d" % sim.luck_level(), "", "Each level improves the chance of a relic drop."))
 	rows.append(_row(&"walk_speed", "Travel", "Walk speed", "walk", "x%.2f" % sim.walk_speed_mult(), "", "How fast the walker moves."))
 	rows.append(_row(&"offline_cap", "Travel", "Offline cap", "offline", "%s h" % _trim(sim.offline_cap_seconds() / 3600.0), "",
 		"The most income you can collect while the game is closed."))
-	var m: Variant = _call_first(sim, MASTERY_API)
-	if m == null:
-		rows.append(_pending(&"mastery", "Mastery", "Pad mastery", "mastery", "Pads gain levels as you press them. Arrives with the mastery update."))
-	else:
-		rows.append(_row(&"mastery", "Mastery", "Pad mastery", "mastery", "Lv %d" % _mastery_total(m), "", "Total mastery level across all pads."))
+	var lv_total: int = 0
+	var lv_max: int = 0
+	for bid: StringName in sim.button_defs:
+		lv_total += sim.mastery.level(bid)
+		lv_max = maxi(lv_max, sim.mastery.level(bid))
+	rows.append(_row(&"mastery", "Mastery", "Pad mastery", "mastery", "Lv %d" % lv_total, "best pad Lv %d" % lv_max,
+		"Pads gain levels as you press them. Each level adds crit chance and crit damage on that pad."))
 	rows.append(_row(&"presses", "Totals", "Presses", "presses", BigNum.from_float(float(sim.press_count)).format(), "", "Every press you have made in this save."))
 	rows.append(_row(&"rebirths_done", "Totals", "Rebirths done", "reb", str(sim.rebirth_count), "", "Times you have rebirthed. Extra relic slots unlock at 5 and 20."))
 	rows.append(_row(&"relic_drops", "Totals", "Relic drops", "relics/r_double", str(sim.relic_drops), "", "Relics dropped from presses."))
@@ -75,10 +68,8 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	var ids: Array = sim.attribute_defs.keys()
 	ids.sort()
-	var has_crit_dmg: bool = false
 	for aid: StringName in ids:
 		var a: AttributeDef = sim.attribute_defs[aid]
-		has_crit_dmg = has_crit_dmg or a.effect == &"crit_damage"
 		var lv: int = sim.attr_level(aid)
 		var now: String = effect_text(a, float(lv) * a.per_level)
 		var tip: String = String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
@@ -90,8 +81,6 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		r["level"] = lv
 		r["cap"] = a.cap
 		rows.append(r)
-	if not has_crit_dmg:
-		rows.append(_pending(&"crit_damage", "Attributes", "Crit damage", "crit_dmg", "Arrives with the crit update."))
 	return rows
 
 
@@ -132,19 +121,3 @@ static func _pending(id: StringName, group: String, label: String, icon: String,
 	var r: Dictionary = _row(id, group, label, icon, "Soon", "", tip)
 	r["pending"] = true
 	return r
-
-
-static func _call_first(sim: Sim, names: Array[StringName]) -> Variant:
-	for n: StringName in names:
-		if sim.has_method(n):
-			return sim.call(n)
-	return null
-
-
-static func _mastery_total(v: Variant) -> int:
-	if v is Dictionary:
-		var n: int = 0
-		for x: Variant in (v as Dictionary).values():
-			n += int(x)
-		return n
-	return int(v)

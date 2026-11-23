@@ -204,7 +204,15 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 
 ## Stats and Attributes index (2026-11-23)
 - One window (ui/index_panel.gd) with two tabs, opened by two icon-only HUD buttons, keys I (Stats) and O (Attributes), pad Back and Left-stick click. Read only: buying stays in Upgrades.
-- Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage and pad mastery show as "Soon" rows until the Sim has the API (`StatIndex.CRIT_DAMAGE_API`, `MASTERY_API`), then switch on by themselves.
+- Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage is `sim.crit_damage()`; Pad mastery is the sum of `sim.mastery.level(id)` over all pads.
 - Open and close are a stepped 6 level Bayer wipe (ui/fx/dither_reveal.gd) plus an 8 texel slide; the header icon plays a 4 frame sheet. Reduce flashing turns the wipe off.
 - Tooltips use RelicTooltip.show_text for now; swap to the shared `Tip` once PR #73 is in.
 - New 16x16 icons (tools/art/gen_index_icons.py): stats_menu, attrs_menu (+4 frame sheets), crit_dmg, mastery, presses, clock; heat.png copied from the library set.
+## 2026-11-23: Pad mastery and crits
+- Every press gives the pad `xp_per_press` XP. Level n+1 needs `first_level_xp * xp_growth^n` XP; cap `max_level`. Each level adds `yield_per_level` to that pad's reward multiplier, `crit_chance_per_level` to its crit chance and `crit_damage_per_level` to its crit multiplier (added to `GameConfig.crit_multiplier`, then relic crit damage multiplies it). All numbers are in `content/config/mastery.tres`.
+- Mastery is permanent: rebirth keeps it, `new_game` clears it. It sits on the pad, not the stat, so a stat index can still show the global crit chance (attribute only) and the per-pad value separately.
+- Crit chance and crit damage already existed (Crit chance attribute, Crit Damage relic, `crit_multiplier` 5). Added `Sim.crit_chance(button_id)` and `Sim.crit_damage(button_id)`; no argument gives the global value.
+- Data API for UI threads: `Sim.mastery` (`level`, `xp`, `xp_for_next`, `progress`, `yield_mult`, `crit_chance_bonus`, `crit_damage_bonus`), `Sim.area_mastery(zone)` -> `{pads, level_sum, level_cap, fraction, maxed}`, EventBus `mastery_changed(button_id, level, xp)` (every press) and `mastery_leveled(button_id, level)`.
+- Save version 2 adds `game.mastery` as `{pad id: [level, xp_in_level]}`. The v1 migration adds an empty one. Unknown ids drop, levels clamp to the cap.
+- Crit popup: a crit number ends in "!" and takes the crit gold (`PopupNumber.CRIT_COLOR`), on top of the existing 24 px size, hit-stop, burst and shake.
+- Balance: the starting curve (12 XP, x1.35, cap 25, +1.5% yield per level) gives +15% yield, +3% crit chance and +0.4 crit damage on a pad after roughly 650 presses on it (level 10). Not yet measured against the 61 minute Larkmoor pacing; `tools/sim_larkmoor.gd` now prints the mastery reached by the far gate, to run on the PC.
