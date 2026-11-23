@@ -75,11 +75,11 @@ func run(t: Object) -> void:
 	var shadows: SkyShadows = scene.get_node("Shadows") as SkyShadows
 	t.ok(shadows != null, "Larkmoor has a Shadows node")
 	if shadows != null:
-		var pad_count: int = 0
+		var shadow_pads: int = 0
 		for an: Dictionary in placements.anchors as Array:
 			if String(an.kind) == "pad":
-				pad_count += 1
-		t.eq(shadows._items.size(), sprites.size() + pad_count, "Larkmoor registers a cast shadow for every prop, landmark and pad")
+				shadow_pads += 1
+		t.eq(shadows._items.size(), sprites.size() + shadow_pads, "Larkmoor registers a cast shadow for every prop, landmark and pad")
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
 	t.ok(lanterns > 0 and sky._lights.size() >= lanterns + 1, "lanterns and the walker get light pools (%d lights)" % sky._lights.size())
