@@ -57,15 +57,17 @@ func setup(p_sim: Sim) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	add_child(v)
-	var head := HBoxContainer.new()
+	# The title and the Travel button stack: a 152 px card cannot hold a zone name beside a button without clipping it.
+	var head := VBoxContainer.new()
+	head.add_theme_constant_override("separation", 2)
 	v.add_child(head)
 	_title = Label.new()
 	_title.theme_type_variation = &"TitleLabel"
-	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_title.clip_text = true
 	head.add_child(_title)
 	_travel_btn = PixelButton.new()
 	_travel_btn.text = "Travel +"
+	_travel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_travel_btn.pressed.connect(func() -> void: set_travel_open(not travel_open))
 	_bind(_travel_btn, func() -> Array: return ["Travel", "Pick a place to go, or look at another area. Hide the menu to read the full area card."])
 	head.add_child(_travel_btn)
@@ -487,14 +489,12 @@ func refresh() -> void:
 	_gate_text(z)
 
 
-## Long zone names ("Ember Quarry") drop to the small title size instead of running under the Travel button.
+## Long zone names ("Ember Quarry") drop to the small title size when the full size would not fit the card's width.
 func _fit_title() -> void:
 	var font: Font = _title.get_theme_font("font")
-	var avail: float = INNER - _travel_btn.get_combined_minimum_size().x - 4.0
-	var big: int = _title.get_theme_font_size("font_size")
 	_title.remove_theme_font_size_override("font_size")
-	big = _title.get_theme_font_size("font_size")
-	if font != null and font.get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, big).x > avail:
+	var big: int = _title.get_theme_font_size("font_size")
+	if font != null and font.get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, big).x > INNER:
 		_title.add_theme_font_size_override("font_size", 12)
 
 
