@@ -276,6 +276,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Not run in-engine. Parallax is still open: the far backdrop is baked into ground.png and needs a generator split.
 - PC pass fixes: vignette dither used a rounded origin, which slipped against the ground when the camera offset was fractional (Larkmoor zoom 3, 30% match). It now uses the exact origin. Pad shadow stretches from 18 texels (was 9) so it reads. Larkmoor noon was overexposed: ground relight now scales 0.55 at noon to 1.0 at a low sun, light_lift 0.22 to 0.12, the full-frame highlight lift only starts at lum 0.66, and the noon grade covers 0.15 instead of 0.25.
 
+## Backdrop parallax and PC pass tuning (23 Nov)
+- The far backdrop (sky and mountains) is now its own image per zone (backdrop_far.png, 64 texels wider each side) and ground_fg.png is the ground with those texels transparent. Both generators write them; compositing them reproduces ground.png exactly (0 mismatching pixels), and ground.png itself is unchanged, so haze, mist, walk masks and the G-buffer keep working. FarLayer (world/far_layer.gd) follows the camera by parallax_far = 0.1 of its travel in whole texels. The water band stays in the ground art so the shoreline never slips.
+- Tuning from the PC pass: ground fog halved (0.4) and tinted pale and cool instead of the dawn haze colour, god rays 1.0 to 0.6, Larkmoor noon down another step (ground relight 0.4 at noon, light_lift 0.06, light_split 0.4).
+- Not run in-engine: check the seam where the far layer meets the ground at zoom 1 to 4 and while panning to the edge of the bleed.
 ## 2026-11-23: Bottom bar chips (ExpandChip)
 - Bottom-bar buttons (Rebirth, Upgrades, Relics, Settings) are icon-only at rest and open to icon + label on hover or focus. `ui/fx/expand_chip.gd`, extends PixelButton so focus ring, press sink and AsciiBox frame carry over.
 - One eased progress value, no tweens, so spamming hover is continuous. Label types in with 3 scrambled trailing glyphs (ASCII noise at ~22 Hz) and a short settle flicker. Width grows in whole texels; the HBox slides neighbours aside. Reduce motion snaps with no noise.
