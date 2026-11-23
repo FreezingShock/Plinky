@@ -543,3 +543,9 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Pad yield cap 25 to 15** (last level was 64k prestige for +2%, about 13x worse per prestige than crit chance). **Quick study cap 20 to 10** (21k prestige for mastery XP that barely matters). **Press rate cap 20 to 15** (so Stopwatch and the attribute together stay near 5x press rate).
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
+
+## Seasonal events (2026-11-23)
+- **Decision (Nathan approved the audit pick; picks are mine):** one small event per season, read off the calendar, all numbers in `content/config/seasonal_events.tres`. Spring **Petal Shower**: golden critter wait x0.7. Summer **Long Light**: passive income +8% while the sun is up (about +2% averaged over a year). Autumn **Seed Fall**: relic roll interval x0.75. Winter **Frost Pads**: momentum decays at half speed.
+- **Why these:** each touches a system that already exists (critter, income, relic rolls, momentum), so nothing new to balance and no swing over a few percent. Plain names, no streak-tier words.
+- **Surface:** `core/seasonal_events.gd` (pure), `Sim.events`, arrival banner on `season_changed` (`DistrictBanner.show_event`), event line in the clock tooltip. Water and recolour untouched; no new dither.
+- **Not done:** extra world visuals (frosted pads, petal burst). Not run in the cloud: the engine; CI runs tests, the PC pass checks the banner.

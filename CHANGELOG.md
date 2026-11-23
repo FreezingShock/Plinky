@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.28.0 - 2026-11-23
+- Seasonal events: one light effect per season on the existing calendar (Petal Shower, Long Light, Seed Fall, Frost Pads), with an arrival banner and a clock tooltip line.
+
 ## 0.27.1 - 2026-11-23
 - Fixed the title screen's input error (the menu pad actions are now registered before the title), and onboarding tip cards now step aside while any menu is open, so the Esc menu's buttons are never covered.
 

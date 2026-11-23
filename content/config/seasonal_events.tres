@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SeasonalEventsConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/seasonal_events_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+event_names = PackedStringArray("Petal Shower", "Long Light", "Seed Fall", "Frost Pads")
+event_blurbs = PackedStringArray("The golden critter visits more often.", "Sunlight flows 8% faster while the sun is up.", "Relics drop more often.", "Momentum fades half as fast.")
+critter_interval_mult = PackedFloat32Array(0.7, 1, 1, 1)
+day_income_mult = PackedFloat32Array(1, 1.08, 1, 1)
+relic_roll_mult = PackedFloat32Array(1, 1, 0.75, 1)
+momentum_decay_mult = PackedFloat32Array(1, 1, 1, 0.5)

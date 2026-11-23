@@ -148,6 +148,7 @@ func _ready() -> void:
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
 	bus.bonus_gained.connect(_on_bonus_gained)
+	bus.season_changed.connect(_on_season_changed)
 	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
 	_enter_zone_visuals(sim.zone_id)
 	_clear_spawn()
@@ -504,6 +505,13 @@ func _update_arch(delta: float) -> void:
 
 
 const ARCH_RADIUS: float = 16.0
+
+
+## Arrival banner for the new season's event.
+func _on_season_changed(season: int) -> void:
+	var ev_name: String = sim.events.name_of(season)
+	if ev_name != "":
+		banner.show_event(ev_name, sim.events.blurb_of(season), sim.calendar.season_color(season))
 
 
 ## Names the district the walker is in, once per entry.
