@@ -9,6 +9,10 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.17.2 - 2026-11-23
+- The top-right area card now folds to its one-line stub 3.5 s after you walk into an area (hover keeps it open).
+- Entering an area now shows a slim title card (about 1.6 s, top-centre, 12 pt name) instead of the big centred panel. It takes the zone palette: border and name in the area colour, the area icon either side, a dotted rule and the zone name small above.
+
 ## 0.17.1 - 2026-11-23
 - Larkmoor grass sway tips regenerated for the new grass, so every flicking tip sits on a blade; a test now checks it.
 

@@ -8,6 +8,7 @@ extends PanelContainer
 
 const WIDTH: float = 176.0
 const INNER: float = WIDTH - 16.0
+const PEEK: float = 3.5   ## seconds the area card stays open after you walk into an area
 
 signal travel_toggled(open: bool)
 
@@ -33,6 +34,7 @@ var _pad_rows: Dictionary = {}      # button id -> Label
 var _mastery_label: Label
 var _mastery_bar: DitherBar
 var _card_area: StringName = &""
+var _peek_tween: Tween
 var _gated: Array[Control] = []     # parts that wait for the rebirth row to unlock
 
 
@@ -211,8 +213,27 @@ func set_district(aid: StringName) -> void:
 	if sim == null or not sim.area_defs.has(aid):
 		return
 	if (sim.area_defs[aid] as AreaDef).zone == sim.zone_id:
+		var changed: bool = aid != _view_area
 		_view_area = aid
 		refresh()
+		if changed:
+			_peek()
+
+
+## Entering an area shows its full card for PEEK seconds, then folds it to the one-line stub so it stops covering the world.
+func _peek() -> void:
+	if travel_open:
+		return
+	_card.floor_px = 0.0
+	_card.set_open(true, true)
+	if _peek_tween != null:
+		_peek_tween.kill()
+	_peek_tween = create_tween()
+	_peek_tween.tween_interval(PEEK)
+	_peek_tween.tween_callback(func() -> void:
+		if not travel_open and not get_global_rect().has_point(get_global_mouse_position()):
+			_card.floor_px = _stub_px()
+			_card.set_open(false, true))
 
 
 func view_area() -> StringName:

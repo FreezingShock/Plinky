@@ -474,7 +474,11 @@ func _update_district(delta: float) -> void:
 		_district_id = id
 		if id != "":
 			hud.set_district(StringName(id))
-			banner.show_name(String(d.get("name", "")))
+			var area: AreaDef = sim.area_defs.get(StringName(id)) as AreaDef
+			if area != null:
+				banner.show_area(area, sim.zone_defs.get(area.zone) as ZoneDef)
+			else:
+				banner.show_name(String(d.get("name", "")))
 
 
 ## Zone 2 vents: present only when the zone scene has Vent anchors.
