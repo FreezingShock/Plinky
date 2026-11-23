@@ -460,6 +460,11 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
 
+## Settings and Esc menu refresh
+- **Colours.** Each Settings tab and each Esc menu tile takes one fixed stat colour (Audio cyan, Display blue, Gameplay gold, Access green, Controls purple, Data pink; Stats gold, Attributes blue, Upgrades green, Relics purple, Travel cyan, Settings paper, Update Log mint). Panel border, title, row labels and tab outlines use it, like the gallery's stat cards.
+- **Title Case is applied at display time** (`DisplayPanel.title_case`), not by editing registry strings, so rows added by other threads (Access, QoL, rebind screen) are covered automatically. Words with capitals or digits (VSync) are kept.
+- **Layout untouched.** Rows still come from SettingsRegistry; only visuals changed, so parallel threads adding rows do not conflict.
+- Not run in the cloud: the engine. The PC pass judges the colours and spacing.
 ## 2026-11-23 Quality-of-life bundle (v0.21.0)
 - **Rebind with modifiers.** A binding is a keycode OR-ed with `KEY_MASK_SHIFT/CTRL/ALT/META`, so old saves (plain keycodes) still load. A modifier alone (Shift, Ctrl) binds when released with no other key pressed. Sprint (Shift) and Sprint lock (Ctrl) are now rebindable actions. A binding's modifiers must be held; extra held modifiers are tolerated, so Shift+C still crouches-slides while sprinting.
 - **Save indicator.** "Saved" fades after each save, beside the Menu chip; a failed write shows red "Save failed" even with the indicator off (`EventBus.save_failed`). Setting: Gameplay > Save indicator.
@@ -477,7 +482,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 | 2026-11-23 | No new slider: the existing Ambience volume scales every layer | One control already exists in Settings > Audio |
 | 2026-11-23 | Mix levels are consts in `ambient_mix.gd` / `ambient_scape.gd`, not content/*.tres | They are sound-design values, not game balance |
 
-## 0.22.0 World life and footsteps (2026-11-23)
+## 0.23.0 World life and footsteps (2026-11-23)
 - **Found already built:** butterflies, dusk fireflies, pollen, seasonal petals/leaves/snow (SeasonParticles) and grass/sand/wood footsteps. This pass fills the gaps rather than redoing them.
 - **Butterflies follow the calendar.** Up to 6 out at summer noon (was 2 all the time, even at night). Spring 0.8, summer 1.0, autumn 0.35, winter 0; none at night, fewer at low sun, none in heavy rain. Each has its own wing colours (accent, paper, light over earth/accent). Fireflies are a summer thing (spring 0.7, autumn 0.45, winter none). `MeadowLife.season` carries the mix, written by SkyCycle with the same weights as SeasonParticles.
 - **Ember Quarry gets its own air layer** (`world/life_embers.gd`): 7 embers per vent rising and cooling (paper, glow, flame, dark), 16 drifting ash flakes. Whole-texel squares, no alpha, 12 fps, frozen under Reduce motion, thinner on Low.

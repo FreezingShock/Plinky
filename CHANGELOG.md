@@ -9,10 +9,14 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.22.0 - 2026-11-23
+## 0.23.0 - 2026-11-23
 - World life follows the calendar: up to six butterflies by day in spring and summer (a few in autumn, none in winter, at night or in rain), each with its own wing colours, and fireflies fade out of winter.
 - The Ember Quarry has its own air: embers rise and cool off the heat vents and ash drifts across the floor.
 - Footsteps get a quarry surface (crunchy cinder; the pale road stays packed dust), and sprints and hard landings land heavier. The quarry now reads its own ground for footsteps instead of the meadow's.
+
+## 0.22.0 - 2026-11-23
+- Settings and the Esc menu now match the gallery: every tab and menu tile has its own colour (coloured outlines, matching labels), each setting sits on its own outlined card, and all labels and buttons show in Title Case.
+
 
 ## 0.21.0 - 2026-11-23
 - Quality of life: a small "Saved" note after each save (red "Save failed" if a write fails), a Welcome Back card with what you earned while away, a confirm card before Rebirth, and rebinding that accepts Shift, Ctrl and Alt combos plus new Sprint and Sprint lock keys. Settings > Gameplay can turn off the Saved note and the rebirth confirm.
