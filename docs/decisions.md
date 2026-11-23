@@ -778,3 +778,9 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Menus keep the existing behaviour: popups under an open menu are hidden. The clamp is only for the zone panel.
 - I could not find PR #157 in history, so I could not compare against its clamp. This follows the existing viewport clamp in `_draw_pop`.
 - Not run in engine: no Godot in the cloud. Tests in tests/test_popup_clear.gd cover the geometry. PC QA should check a popup on a pad beside the zone panel, with the panel open and with Travel open.
+
+
+## CI uid guard (2026-11-23)
+- **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
+- **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
+- **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.

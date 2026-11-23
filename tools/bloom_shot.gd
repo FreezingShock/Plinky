@@ -32,6 +32,8 @@ func _ready() -> void:
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await _wait(40)
+	if mode == "calm":
+		FxConfig.reduce_flashing = true   # again, in case loading the game reset it
 	var sim: Sim = GameState.sim
 	GameState.onboarding.tips_enabled = false
 	sim.gates_open[&"larkmoor"] = true

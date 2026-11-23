@@ -89,6 +89,11 @@ func _next() -> void:
 		visible = false
 		return
 	_showing = true
+	while FxConfig.bloom_running and is_inside_tree():   # hold the card until the Bloom sequence is over
+		await get_tree().create_timer(0.25).timeout
+	if _queue.is_empty():
+		_showing = false
+		return
 	var d: AchievementDef = _queue.pop_front()
 	var col: Color = LedgerPanel.color_of(d.category)
 	add_theme_stylebox_override("panel", AsciiBox.panel(col))
