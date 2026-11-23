@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Haze over the far mountains and drifting mist over the water. Both are dither: a texel is either lit with
 // the haze colour or left alone, picked by comparing a density to the 4x4 Bayer matrix in world texels.
 //  - mountains: density rises with distance from the island (atmospheric perspective) inside a horizon band.
@@ -38,7 +42,7 @@ float vnoise(vec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {

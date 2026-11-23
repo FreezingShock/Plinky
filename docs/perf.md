@@ -29,6 +29,7 @@ not fork; lower levels draw less and step slower.
 | World life redraw (LifeAir) | 8 fps | 10 fps | 12 fps |
 | Grass sway redraw (LifeGround) | 4 fps, every 2nd tip | 5 fps | 6 fps |
 | Particles per burst | 50% (min 2) | 75% | 100% |
+| Season air (SeasonParticles: petals, motes, leaves, snow) | 40% | 70% | 100% (at most 400 per kind, 12 fps, visible part only, none under Reduce motion) |
 
 Systems that scale with content (new props, birds, grass, weather, lights) read their counts through
 `GraphicsQuality.life_count()`, `particle_count()` or the step helpers, and cull with `visible_local_rect()`.

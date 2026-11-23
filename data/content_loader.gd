@@ -13,8 +13,16 @@ static func load_into(sim: Sim, root: String = "res://content") -> bool:
 	sim.button_defs = _collect(root.path_join("buttons"), "ButtonDef")
 	sim.zone_defs = _collect(root.path_join("zones"), "ZoneDef")
 	sim.attribute_defs = _collect(root.path_join("attributes"), "AttributeDef")
+	sim.area_defs = _collect(root.path_join("areas"), "AreaDef")
 	var mcfg: MasteryConfig = load(root.path_join("config/mastery.tres")) as MasteryConfig
 	sim.mastery = Mastery.new(mcfg)
+	var ccfg: CalendarConfig = load(root.path_join("config/calendar.tres")) as CalendarConfig
+	var scfg: SkyConfig = load(root.path_join("config/sky.tres")) as SkyConfig
+	if ccfg == null or scfg == null:
+		push_error("ContentLoader: missing config/calendar.tres or config/sky.tres")
+		return false
+	sim.calendar = GameCalendar.new(ccfg, scfg.day_seconds)
+	sim.calendar.daylight_fraction = scfg.daylight_fraction
 	var rcfg: RelicConfig = load(root.path_join("relics/_config.tres")) as RelicConfig
 	if rcfg == null:
 		push_error("ContentLoader: missing relics/_config.tres")

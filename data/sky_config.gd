@@ -5,6 +5,8 @@ extends Resource
 
 ## Real seconds for one full day (midnight to midnight).
 @export var day_seconds: float = 720.0
+## Share of the day the sun is up. 0.5 is an even split; 0.6 is three minutes of day and two of night on a five minute day.
+@export var daylight_fraction: float = 0.5
 ## Where in the day a new session starts: 0 midnight, 0.25 sunrise, 0.5 noon, 0.75 sunset.
 @export var start_phase: float = 0.32
 ## How dark midnight gets, 0..1. Density of the dithered shade layer, so 1.0 would shade every texel.
@@ -64,7 +66,7 @@ extends Resource
 @export var rim_strength: float = 0.85
 
 ## Share of texels the night shade covers at full night, 0..1. Kept apart from night_strength so the model stays smooth.
-@export var night_shade: float = 0.97
+@export var night_shade: float = 0.8
 
 @export_group("Atmosphere")
 ## Vignette: how much of the frame edge is darkened, 0..1 (0 = off).
@@ -77,9 +79,13 @@ extends Resource
 ## Full-frame light pass (light_grade.gdshader): sun-side lift and away-side shade across the whole frame, 0..1.
 @export var light_side: float = 0.6
 ## Highlight-warm / shadow-cool split by luminance, 0..1.
-@export var light_split: float = 0.55
+@export var light_split: float = 0.3
 ## How much brighter a lit texel gets, 0..1.
-@export var light_lift: float = 0.22
+@export var light_lift: float = 0.06
+## Drifting fog over the land (ground_fog.gdshader), 0..1. Scaled by the mist curve: thickest at dawn and dusk and in rain.
+@export var fog_ground: float = 0.4
+## Share of the camera movement the far backdrop (sky and mountains) follows, 0 = fixed to the ground.
+@export var parallax_far: float = 0.1
 ## Horizon haze density over the far mountains, 0..1.
 @export var haze_strength: float = 0.6
 ## Drifting mist over the water, 0..1.

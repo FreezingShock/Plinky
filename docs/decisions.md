@@ -202,6 +202,12 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 ## 2026-11-23: HUD buttons ate mouse clicks
 `Main._menu_focus` released focus from the focused control every frame while no menu was open. A Button takes focus on press, so it lost focus before release and the click was cancelled. Every HUD button was affected, including the world switch (Go: zone). Focus is now dropped only on the frame a menu closes (`PadInput.should_release_focus`). Found by pushing real mouse events at the HUD in headless Godot.
 
+## 2026-11-23: Zone menu, areas and the zone card
+- New `AreaDef` (content/areas/*.tres, loaded into `sim.areas_in_zone()`): a named sub-area of a zone with a 7x7 pixel icon (ui/area_icons.gd), a palette role and the pads it lists. Larkmoor's seven districts reuse the district ids from the scene (so the walker entering a district moves the card), the Meadow has Starting Clearing and Standing Stones (invented names), the Quarry has Forge Floor. `ZoneDef` gained `description` and `theme_role`.
+- `ZonePanel` replaces the gate panel, the Go buttons and the Pads list: title, gate bar, a foldable Travel menu (every location with its areas, each in its zone palette colour, locked zones shown as Locked), and the current area card (description, every pad with cost, mastery). With Travel open the card folds to a one-line dithered stub (title plus one description line); closed it shows in full. Folding is `RevealBox` (8 steps, 0.22 s). Rows are focusable `ListRow`s with the marching-dot ring.
+- Clicking a location or an area in another zone travels there and shows that area. Clicking an area in the current zone only views it; walking into a district moves the card back.
+- Mastery row sums `sim.mastery` level, progress and crit bonuses over the area's pads. Tooltips use the shared `Tip.bind`.
+- Not run in-engine from the cloud.
 ## Stats and Attributes index (2026-11-23)
 - One window (ui/index_panel.gd) with two tabs, opened by two icon-only HUD buttons, keys I (Stats) and O (Attributes), pad Back and Left-stick click. Read only: buying stays in Upgrades.
 - Rows come from core/stat_index.gd, pure data, so tests cover them. Crit damage is `sim.crit_damage()`; Pad mastery is the sum of `sim.mastery.level(id)` over all pads.
@@ -218,6 +224,12 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 - Save version 2 adds `game.mastery` as `{pad id: [level, xp_in_level]}`. The v1 migration adds an empty one. Unknown ids drop, levels clamp to the cap.
 - Crit popup: a crit number ends in "!" and takes the crit gold (`PopupNumber.CRIT_COLOR`), on top of the existing 24 px size, hit-stop, burst and shake.
 - Balance: the starting curve (12 XP, x1.35, cap 25, +1.5% yield per level) gives +15% yield, +3% crit chance and +0.4 crit damage on a pad after roughly 650 presses on it (level 10). Not yet measured against the 61 minute Larkmoor pacing; `tools/sim_larkmoor.gd` now prints the mastery reached by the far gate, to run on the PC.
+
+## 2026-11-23: Tooltips on the existing UI
+HUD stat rows, bottom bar (Rebirth, Upgrades, Relics, Settings), upgrade rows, zone travel, the gate bar, and every Settings row that has a hint now use `Tip.bind`. Copy lives in `ui/tip_text.gd`; no balance numbers in it, live values (cost, gain) come from the caller. Pads and relics keep their own richer tooltips. Not run in-engine from the cloud; PC pass should hover each and tab through the HUD.
+
+## 2026-11-23: Pad and relic tooltips moved onto Tip
+`PadTooltip` and `RelicTooltip` are now thin wrappers (plain Nodes) over `Tip.show_free`, so every tooltip shares one look, delay and on-screen clamp. Content for pads comes from `PadTooltip.spec_for`, which adds a "Rarity: <Name>" line and tints the border and title when `Sim.pad_rarity` exists and the pad is above common (the pad thread adds it). `Tip.show_free` gained `exact` to place beside a slot instead of a cursor. Relic stat lines lose their separate green colour (one body colour now). Not run in-engine from the cloud.
 ## 2026-11-23 Pad plates and press feel
 - The old pad was only a 1px outline (the meadow art bakes no pads by design; TexelPad drew the ring). Not a render glitch.
 - Pads are now a raised plate drawn live in palette indices: ink outline, earth side faces (lit left, shadow right), dithered lit rim, glow inlay.
@@ -262,3 +274,88 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Larkmoor gets the same ground G-buffer and relight as the meadow (gen_larkmoor.py writes ground_n.png and ground_h.png; ground.png unchanged). It uses the shared meadow ramp include, so Larkmoor's rock ramp is the meadow one (palette is the same).
 - Not run in-engine: check the vignette dots scroll with the ground at zoom 1-4, and Larkmoor F6 views.
 - Icons v3 (tools/art/gen_icons_v3.py + pixel_kit.py): shapes are geometry sampled at pixel centres, so symmetry is exact and diagonals are 45 degree or 2:1 steps. All 16 px icons regenerated, 32 px gallery icons in assets/icons/big/. Relic icons unchanged.
+## 2026-11-23 Pad outlines on the texel grid
+- Nathan: the pad outline looked sharp, finer than the world's pixels. draw_polyline diagonals are anti-aliased and sub-texel. Every pad outline, ring and ripple is now whole-texel rects (TexelPad._outline), and the pad snaps its position to whole texels in _ready (marker anchors are fractional, e.g. 245.5).
+
+## Lighting overhaul, stages 4 and 5 (23 Nov)
+- Stage 4: ground_fog.gdshader, a drifting two-band fog over the land, thicker toward the top of the frame, scaled by the existing mist curve (dawn, dusk, rain, night). The Bayer dither is in world texels (wpos), so it moves with the ground. Knob: fog_ground in sky.tres. Drawn only while amount > 0.01 and atmosphere is on, so it costs nothing at noon.
+- Stage 5: the time-of-day grade now has a real midnight (cool blue, 0.6 coverage) and a warm noon (0.25 coverage) instead of an almost-white day and a no-grade night. Dusk stays orange fading to magenta.
+- Not run in-engine. Parallax is still open: the far backdrop is baked into ground.png and needs a generator split.
+- PC pass fixes: vignette dither used a rounded origin, which slipped against the ground when the camera offset was fractional (Larkmoor zoom 3, 30% match). It now uses the exact origin. Pad shadow stretches from 18 texels (was 9) so it reads. Larkmoor noon was overexposed: ground relight now scales 0.55 at noon to 1.0 at a low sun, light_lift 0.22 to 0.12, the full-frame highlight lift only starts at lum 0.66, and the noon grade covers 0.15 instead of 0.25.
+
+## Backdrop parallax and PC pass tuning (23 Nov)
+- The far backdrop (sky and mountains) is now its own image per zone (backdrop_far.png, 64 texels wider each side) and ground_fg.png is the ground with those texels transparent. Both generators write them; compositing them reproduces ground.png exactly (0 mismatching pixels), and ground.png itself is unchanged, so haze, mist, walk masks and the G-buffer keep working. FarLayer (world/far_layer.gd) follows the camera by parallax_far = 0.1 of its travel in whole texels. The water band stays in the ground art so the shoreline never slips.
+- Tuning from the PC pass: ground fog halved (0.4) and tinted pale and cool instead of the dawn haze colour, god rays 1.0 to 0.6, Larkmoor noon down another step (ground relight 0.4 at noon, light_lift 0.06, light_split 0.4).
+- Not run in-engine: check the seam where the far layer meets the ground at zoom 1 to 4 and while panning to the edge of the bleed.
+## 2026-11-23: Bottom bar chips (ExpandChip)
+- Bottom-bar buttons (Rebirth, Upgrades, Relics, Settings) are icon-only at rest and open to icon + label on hover or focus. `ui/fx/expand_chip.gd`, extends PixelButton so focus ring, press sink and AsciiBox frame carry over.
+- One eased progress value, no tweens, so spamming hover is continuous. Label types in with 3 scrambled trailing glyphs (ASCII noise at ~22 Hz) and a short settle flicker. Width grows in whole texels; the HBox slides neighbours aside. Reduce motion snaps with no noise.
+- Each chip has a Tip tooltip so the icon-only state is named. New 16x16 `assets/icons/settings.png` (meadow palette). Stat rows and panel headers not changed: Nathan scoped this to the bottom bar.
+
+## 2026-11-23: Menus and the bottom bar
+- Chips stay clickable while a menu is open: Main raises the bottom bar above every panel, and `_menu_focus` no longer pulls focus out of the bar (that yank cancelled clicks, same class of bug as #71). Opening a menu from the bar still puts focus in the new menu.
+- One menu at a time (`Main._close_others`): a chip opens its menu and closes the others; the same chip closes its own. Upgrades goes through `Hud.toggle_upgrades` and `menu_opened`.
+- Upgrades and Relics panels are centred in the free area above the bottom bar (`Hud.keep_centered`). `PanelDivider` (dotted 1 texel rule with air) separates sections. Tooltips untouched: the tooltips thread owns them.
+
+## 2026-11-23: MenuRouter and the shared close X
+- Nathan could not close menus with the bottom buttons. Every opener (chips, hotkeys, the X, Esc, Feedback row) now goes through `MenuRouter` (ui/menu_router.gd): toggle closes an open menu, opening one closes the rest, Stats and Attributes share a group so switching tabs flips the window instead of closing it. Pure RefCounted, tested with stubs.
+- Spam safety: the index window's wipe now starts from its current progress (`_t`) and only plays the distance left, so reversing mid-animation never jumps or sticks. The X and chips use per-frame eased values, not tweens. `tests/test_menus.gd` spams 20 and 21 toggles and asserts the end state.
+- `CloseX` (ui/fx/close_x.gd): one animated X for the top right of Upgrades, Relics, Stats/Attributes, Settings and Feedback. Floats over the corner (top_level), arms grow out in steps each open, hover reaches one texel further and thickens, press sinks with an accent fill. Reduce motion / flashing shows it grown and still. The zone panel is a permanent HUD panel with its own Travel fold, so it has no X.
+
+## 2026-11-23: Calendar, clock and seasons
+- Structure (Nathan): a month is 5 days, a season 2 months (10 days), a year 4 seasons (40 days). One in-game day is 5 real minutes, 3 of daylight and 2 of night (`daylight_fraction` 0.6 in sky.tres), so a season is 50 minutes and a year about 3h20m. The clock is linear (sunrise 04:48, sunset 19:12); only the sun's phase is stretched (`SkyModel.phase_of_clock`), and daylight 0.5 stays the old cosine so old tests hold.
+- Names (Nathan: plain defaults): seasons Spring, Summer, Autumn, Winter; months Early Spring, Late Spring, Early Summer, Late Summer, Early Autumn, Late Autumn, Early Winter, Late Winter. All in content/config/calendar.tres.
+- `GameCalendar` (core/game_calendar.gd) lives in the Sim, ticks with it, advances through offline time, and saves as `calendar.elapsed_days`. Save version 3; v2 saves migrate to the first morning of Spring. A new game starts at 07:12, Day 1.
+- The sky runs off the calendar clock (not session time), so the sky and the HUD clock agree. Rain, wind and mist keep the session clock.
+- API: `Calendar` autoload (core/calendar_service.gd, one line in project.godot) with `now()`, `season_weights()`; EventBus `season_changed`, `month_changed`, `day_changed`, `year_changed`. The class is `GameCalendar` because an autoload cannot share a global class name.
+- Seasons are outdoor only (meadow and Larkmoor, anything with a SkyCycle). Ground and props are recoloured in the existing relight shaders (render/shaders/season.gdshaderinc): green texels switch to the season colour by a per-texel Bayer plus patch threshold, so a change is a growing scatter, never a pop; winter lays snow on greens and highlights. The grade tint, haze colour and fog are multiplied by the season. The look turns over during the last day of a season, so the new one is complete when its first day starts. Spring and summer blossom and green, autumn amber and red, winter snow, in rain becomes snow in winter. Particles (petals, sun motes, leaves, snow) in world/season_particles.gd.
+- Quarry and other themed areas have no SkyCycle, so they are unchanged. The clock still shows there.
+- Dev console: `season [name]`, `day <n>`. tools/season_shots.gd renders each season at noon, golden hour and night.
+## 2026-11-23: Game version and changelog
+- Version is MAJOR.MINOR.PATCH in `core/build_info.gd` (already existed at 0.1.0). MINOR = features, PATCH = fixes and tweaks, MAJOR only when Nathan asks. Rules in docs/versioning.md; CHANGELOG.md has history backfilled from #3-#95 grouped into 0.1.0 to 0.4.0, and this change is 0.5.0.
+- Shown small on the boot screen. Nathan wants it less tucked away than a Settings row, so the Update Log tile in the bottom-bar hamburger gallery will show it via `BuildInfo.string()` and `BuildInfo.changelog()`. No Settings About row.
+- Not run in-engine: boot label placement, CHANGELOG.md in the export (include_filter added).
+
+## 2026-11-23: Upgrades menu overhaul
+- Each row shows what the upgrade gives: "now -> next" with the current value greyed and the next lit (`UpgradeText`, pure, tested), level pips (`PipBar`), and a Buy button with the cost green when affordable, red when not. Unaffordable is still clickable: it plays a small deny wobble and sound instead of silently doing nothing.
+- Animated buy (`UpgradeRow.play_buy`): button squash, "-cost" in red flying to the Prestige readout, now/next numbers ticking up in 8 steps, newest pip popping, a click and tick that rise in pitch with the level (gate sound on max). Reduce motion / flashing keep the sound and skip the motion.
+- Upgrades now unlock through Rebirths: `AttributeDef.unlock_rebirths`, `Sim.attr_unlocked`, `buy_attribute` refuses locked ones. Locked rows show a pixel padlock and "Unlocks at N Rebirths (have/need)". Gate is Rebirths done, not Prestige (Nathan's correction).
+- Three new upgrades: Crit power (3 Rebirths, +5% crit multiplier per level, 20 levels), Quick study (5 Rebirths, +5% Mastery XP per level, 20 levels), Pad yield (10 Rebirths, +2% press reward per level, 25 levels, base cost 20). Pad yield opens after the Zone 1 gate at 9 Rebirths, and prestige is spent only after rebirthing, so the 57 to 61 minute Larkmoor pacing is unchanged (sim_larkmoor does not buy attributes). NOT run: the sim and the tests need Godot; CI and the PC pass will confirm.
+- Left for the stats thread: `sim.stat_sources()` and the 32px icons. The row tooltip goes through Tip and `UpgradeText.tip`; it can pick up the coloured tooltip format when that lands.
+## 2026-11-23: Tooltip rework (one system, rich lines, polled hover)
+- Hover is now found by polling `gui_get_hovered_control()` instead of trusting `mouse_entered`/`mouse_exited`/a rect check; the old rect check could hide a tip under the stretch scale and some rows never fired. A tip hides 0.10 s after the mouse leaves, never on a timer.
+- Specs gained `icon`, `title_color`, `lines` (coloured segments and inline 16 px icons), `hint_color`, `beside`. Colours come from `StatStyle`: stat names in stat colour, cost green/red by affordability, gains green.
+- `RelicTooltip` is gone (relic slots use `Tip.bind` with `beside`); `PadTooltip` stays a thin wrapper for the world pads only. Every Stats and Attributes index row, HUD stat and upgrade row has a tooltip.
+- Taste call: icons are the existing 16 px stat icons (no 8 px set exists; scaling would blur). Used in the title and on cost/gain lines. If Nathan wants 8 px icons they need new art.
+- Not run in-engine from the cloud.
+## 2026-11-23: Hamburger gallery menu
+- Nathan: the bottom bar should not be the only home for sections, but must not go empty. Bar keeps Rebirth, Upgrades, Relics, Stats and Attributes; Travel stays in the zone panel. A hamburger chip at the bottom right (key M, rebindable) opens `GalleryMenu`: big 32 texel tiles for Stats, Attributes, Upgrades, Relics, Travel, Settings and Update Log, with the build version in the header. Settings and Update Log live only here (F10 still opens Settings).
+- Tiles lift in steps on hover or focus, are normal focusable buttons (keyboard and pad), and show Locked until the tutorial unlocks that section. Picking one goes through `MenuRouter` (gallery closes, section opens); Travel closes the gallery and opens the zone panel's Travel list. Gallery and Update Log both get the shared `CloseX`.
+- Update Log renders `res://CHANGELOG.md` (parsed headings, bullets, text) and shows "No update log yet." until the versioning thread adds the file. Exports need `CHANGELOG.md` in the export include filter (export_presets.cfg include_filter is empty today): flag for the main session.
+- Icons: `tools/art/gen_menu_icons.py` writes `assets/icons/big/menu_*.png` (32 texel, meadow palette) and the 16 texel hamburger. The stats thread's `gen_icons_v3.py` may replace these later; swap the file names in `GalleryMenu.ENTRIES`.
+
+## 2026-11-23: Bottom bar that holds still
+- Nathan: sweeping the mouse across the chips was hard because each one widened and shoved the others. Chips now keep a fixed size; the label is a framed bubble drawn above the chip (typewriter and scramble kept) at a higher z so it overlays the meter and neighbours without touching layout. The hamburger's bubble opens leftwards from the screen edge.
+- One shared state: focus (keyboard or pad) opens it at once; the mouse needs 130 ms of rest (a quick sweep opens nothing) and the label lingers 150 ms after leaving (no flicker across the gap). Hit areas extend 2 texels sideways and 4 up and down, so neighbours meet in the gaps and the margin below the bar is clickable.
+- Settings > Access > Bottom bar labels: On hover (default), Always (labels sit in fixed, wider chips, nothing animates), Never (icons only; tooltips still name them). Reduce motion / flashing snaps the bubble with no scramble.
+- Number keys 1 to 5 press Upgrades, Relics, Stats, Attributes, Menu (fixed numbers, shown in each chip's tooltip). Rebirth has no number key on purpose, so it cannot be hit by accident.
+
+## Title screen and Esc pause menu
+- Boot now dissolves into `boot/title_screen.tscn`; `TitleScreen.game_scene` carries the preloaded game so Play is instant. Skip with `-- --skip-title` or env `PLINKY_SKIP_TITLE` (CI boot smoke test uses it). Quit to title returns to the title even when the flag is set.
+- Esc = `plinky_back`: closes open menus first, otherwise opens the hamburger gallery. The game is not hard-paused (menus never paused it; the walker already stands still while a menu is open), so "Close menu" just closes the menu. Quit to title / Quit game save first.
+- Gallery tiles are icon-only at rest and type their label in on hover or focus (ExpandChip.reveal); tiles never change size. Text actions use `MenuTextButton` (Pixelify Sans, no frame, accent colour, sliding ">" and sweeping underline) so they read as different from the icon chips. Close menu (was Resume) is green (palette 4), quits are accent (palette 5).
+- Not run with a GPU from the cloud: headless tests and a scripted Esc / Play / Quit to title walk-through pass; visuals unverified.
+## Lighting: nothing follows the camera
+- The vignette shape was frame-fixed, so its dither crawled through a stationary dark rim while panning. Its shape is now computed in world texels from the playable area, so it only darkens when you pan toward an edge. All other passes (day/night, light grade, ground light, fog) were already world-anchored.
+- Veil turned down: vignette 0.6 to 0.45, night_shade 0.97 to 0.8 (night_strength stays 0.8 for the smoothness test), light_split 0.4 to 0.3.
+- New Access toggle "Reduce screen effects" (FxConfig.reduce_screen_fx) hides the edge shade and the full-frame light pass.
+
+## World shaders use true world texels (anchor fix)
+- Root cause of the camera-following dither: `MODEL_MATRIX` includes the `world` Node2D's transform, which WorldCamera scales by the zoom. Every world shader used `(MODEL_MATRIX * VERTEX).xy` as "world texels", so at zoom 2+ dither cells were single screen pixels (fine speckle, not texel-sized) and their phase slid against the ground as it panned. Zoom 1 only matched by luck, which is why the earlier PC pixel check passed.
+- Fix: globals `world_origin` and `world_scale` (RenderGlobals.set_world, called from WorldCamera._apply) are divided out in the vertex stage of ground_light, wind_sway, cast_shadow, ground_fog, god_rays, sky_haze, day_night and light_grade. This also puts light pools and the area-based fog and shade back in true world coordinates at every zoom. Season recolour and shadow dither use the same wpos, so they are covered. The vignette already did its own conversion.
+- Not run in engine. PC pass: pan at zoom 2 and 3 with frame diffs; ground dither should move 1:1 with the grass.
+
+## Light passes read the shared camera globals, one value per world texel
+- PC pan diff at zoom 3 (clock paused, calm, still): 41% match with Reduce screen effects off (best shift 32 px, not a whole texel), 96.7% on. The edge shade and the full-frame light pass were the remaining non-rigid layers.
+- Vignette: dropped its private `w_origin` / `w_scale` (derived from a node transform in ScreenLight._process, so it could trail the camera) for the `world_origin` / `world_scale` globals. Both passes now evaluate their smooth fields (edge distance, sun-side gradient) at the texel centre, so every screen pixel of a texel gets the same value.
+- Not run in engine; needs the same zoom-3 diff with Reduce screen effects off.

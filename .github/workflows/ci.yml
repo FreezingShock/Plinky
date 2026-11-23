@@ -39,6 +39,9 @@ jobs:
       - name: Import project
         run: ~/godot/godot --headless --path . --import
 
+      - name: Version bump script tests
+        run: python3 tests/test_bump_version.py
+
       - name: Unit tests (tests/run.gd)
         run: |
           set -o pipefail
@@ -65,5 +68,5 @@ jobs:
       - name: Boot smoke test (loads main.gd)
         run: |
           set -o pipefail
-          timeout 90 ~/godot/godot --headless --path . --quit-after 180 2>&1 | tee /tmp/boot.log || true
+          timeout 90 ~/godot/godot --headless --path . --quit-after 180 -- --skip-title 2>&1 | tee /tmp/boot.log || true
           ! grep -E "SCRIPT ERROR|Parse Error" /tmp/boot.log

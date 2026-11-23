@@ -35,6 +35,7 @@ var _clock: float = 0.0
 var _slide: float = 0.0
 var _tween: Tween
 var _closing: bool = false
+var _t: float = 0.0   ## current wipe progress 0..1, so a reversed animation starts where the last one stopped
 
 
 func _init() -> void:
@@ -58,6 +59,9 @@ func _init() -> void:
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_sub.add_theme_color_override("font_color", RelicStyle.dim)
 	head.add_child(_sub)
+	var x_gap := Control.new()   # room for the close X floating in the corner
+	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
+	head.add_child(x_gap)
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 4)
 	v.add_child(bar)
@@ -69,11 +73,6 @@ func _init() -> void:
 		b.pressed.connect(set_tab.bind(i))
 		bar.add_child(b)
 		_tabs.append(b)
-	var close := PixelButton.new()
-	close.text = "Close"
-	close.size_flags_horizontal = Control.SIZE_SHRINK_END | Control.SIZE_EXPAND
-	close.pressed.connect(close_panel)
-	bar.add_child(close)
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
@@ -130,6 +129,8 @@ func open_tab(t: int) -> void:
 	if sim == null:
 		return
 	var was_open: bool = is_open()
+	if not visible:
+		_t = 0.0   # a hidden window always opens from the start of the wipe
 	tab = clampi(t, 0, 1)
 	_key = ""
 	_refresh(true)
@@ -170,6 +171,7 @@ func close_panel() -> void:
 
 
 func _finish_close() -> void:
+	_t = 0.0
 	_closing = false
 	visible = false
 	_reveal.set_cover(0.0)
@@ -186,18 +188,21 @@ func _animate(opening: bool) -> void:
 	if FxConfig.reduce_flashing:
 		_set_t(1.0)
 		return
-	_set_t(0.0 if opening else 1.0)   # cover now, so the first drawn frame is already wiping, not opaque
+	var from: float = _t
+	_set_t(from)   # cover now, so the first drawn frame is already wiping, not opaque
+	var to: float = 1.0 if opening else 0.0
+	var full: float = OPEN_TIME if opening else CLOSE_TIME
+	var dur: float = maxf(0.01, full * absf(to - from))   # only the distance left, so a reversal never replays the whole wipe
 	_tween = create_tween()
 	_tween.set_speed_scale(0.2 if slow_mo else 1.0)
-	var from: float = 0.0 if opening else 1.0
-	var to: float = 1.0 if opening else 0.0
-	_tween.tween_method(_set_t, from, to, OPEN_TIME if opening else CLOSE_TIME)
+	_tween.tween_method(_set_t, from, to, dur)
 	if not opening:
 		_tween.tween_callback(_finish_close)
 
 
 ## t 0 = hidden (inked, low), 1 = shown. Both effects step, so they read as pixel art.
 func _set_t(t: float) -> void:
+	_t = t
 	var s: float = floorf(t * DitherReveal.STEPS) / DitherReveal.STEPS
 	_slide = roundf((1.0 - s) * SLIDE)
 	_reveal.set_cover(1.0 - s)
@@ -270,7 +275,7 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 			_list.add_child(h)
 		var row := IndexRow.new(WIDTH - 12.0)
 		row.set_data(r)
-		Tip.bind(row, func() -> Variant: return {"title": row.data["name"], "body": row.data["tip"]})
+		Tip.bind_all(row, func() -> Variant: return TipText.index_row(row.data))
 		_list.add_child(row)
 		_rows[r["id"]] = row
 	var tail := Control.new()   # keeps the last row clear of the scroll edge

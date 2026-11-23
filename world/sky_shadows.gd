@@ -34,6 +34,7 @@ var _warm: int = 4   # frames drawn even when faded out, so the shadow shader co
 
 
 func _init() -> void:
+	RenderGlobals.ensure()
 	mat = ShaderMaterial.new()
 	mat.shader = SHADER
 
@@ -62,6 +63,13 @@ func add_caster(src: Sprite2D, kind: String, size: Vector2) -> void:
 	var k: Vector2 = KIND.get(kind, DEFAULT_KIND) as Vector2
 	var sp: Sprite2D = _quad("Sh_" + String(src.name))
 	_items.append({"sprite": sp, "foot": src.position, "w": size.x * k.x, "h": size.y * k.y})
+	_lay(_items[_items.size() - 1])
+
+
+## A shadow for something that is not a prop sprite (a pad slab): foot position, width, and the height it stretches from.
+func add_blob(foot: Vector2, w: float, h: float) -> void:
+	var sp: Sprite2D = _quad("Sh_blob%d" % _items.size())
+	_items.append({"sprite": sp, "foot": foot, "w": w, "h": h})
 	_lay(_items[_items.size() - 1])
 
 

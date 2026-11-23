@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/area_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"emberwatch"
+zone = &"larkmoor"
+display_name = "Emberwatch"
+order = 6
+icon = "tower"
+theme_role = 6
+blurb = "The northern tower, and the far gate beyond it."
+pad_buttons = PackedStringArray("e1")

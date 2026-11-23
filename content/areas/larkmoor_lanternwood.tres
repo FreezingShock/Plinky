@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/area_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"lanternwood"
+zone = &"larkmoor"
+display_name = "Lanternwood"
+order = 5
+icon = "lantern"
+theme_role = 5
+blurb = "Paper lanterns hang between the trees after dusk."
+pad_buttons = PackedStringArray("l1")

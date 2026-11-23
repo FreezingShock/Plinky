@@ -3,10 +3,14 @@ extends Node2D
 ## 640x360 frame, tall props (trees, big rocks, crystals, bushes) as separate sprites with a foot anchor, and
 ## Marker2D anchors for the things the game draws itself. All coordinates are in the 640x360 texel frame.
 const DIR: String = "res://assets/art/zone1/meadow3d/"
+const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1/meadow3d/backdrop_far.png")
+const GROUND_FG: Texture2D = preload("res://assets/art/zone1/meadow3d/ground_fg.png")
 const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
 @export_file("*.json") var placements_path: String = DIR + "placements3d.json"
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd). Rocks and crystals stay put.
+## Cast shadow of a pad slab: width in texels and the height it stretches from (the slab is about 3 texels thick).
+const PAD_SHADOW: Vector2 = Vector2(26.0, 18.0)
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 
 var _data: Dictionary = {}
@@ -21,7 +25,11 @@ func _ready() -> void:
 	var bleed: Dictionary = _data.bleed
 	var ground := Sprite2D.new()
 	ground.name = "Ground"
-	ground.texture = GROUND
+	var far := FarLayer.new()
+	far.texture = FAR_BACKDROP
+	far.base = Vector2(float(bleed.ground_offset[0]) - 64.0, float(bleed.ground_offset[1]))
+	add_child(far)
+	ground.texture = GROUND_FG
 	ground.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ground.centered = false
 	ground.position = Vector2(bleed.ground_offset[0], bleed.ground_offset[1])
@@ -86,7 +94,7 @@ func _add_sky() -> void:
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
 	_sky.shadows = _shadows
-	_sky.ground_texture = _ground.texture
+	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
 	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
 	var water: Array = []
 	for a: Dictionary in _data.anchors:
@@ -111,6 +119,7 @@ func _add_lights() -> void:
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+				_shadows.add_blob(Vector2(a.sx, a.sy), PAD_SHADOW.x, PAD_SHADOW.y)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 

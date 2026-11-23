@@ -2,7 +2,7 @@ class_name SaveCodec
 extends RefCounted
 ## Pure save encode/decode, migration, and file IO with .bak fallback. Never throws.
 
-const CURRENT_VERSION: int = 2
+const CURRENT_VERSION: int = 3
 
 
 static func encode(sim: Sim, now_unix: float) -> String:
@@ -35,6 +35,11 @@ static func _migrate_step(d: Dictionary) -> Dictionary:
 			if d.get("game") is Dictionary and not (d["game"] as Dictionary).has("mastery"):
 				(d["game"] as Dictionary)["mastery"] = {}
 			d["version"] = 2
+		2:
+			# v3 adds the calendar. Older saves start on the first morning of Spring, Year 1.
+			if d.get("game") is Dictionary and not (d["game"] as Dictionary).has("calendar"):
+				(d["game"] as Dictionary)["calendar"] = {}
+			d["version"] = 3
 		_:
 			d["version"] = int(d["version"]) + 1
 	return d

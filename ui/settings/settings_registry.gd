@@ -363,6 +363,12 @@ static func _register_gameplay() -> void:
 # ---- accessibility
 static func _register_access() -> void:
 	_add({
+		"id": &"chip_labels", "tab": "Access", "label": "Bottom bar labels", "kind": Kind.CHOICE, "default": "hover",
+		"hint": "On hover: a label floats above the button. Always: labels sit in the buttons. Never: icons only.",
+		"options": func() -> Array: return [["hover", "On hover"], ["always", "Always"], ["never", "Never"]],
+		"apply": func(v: Variant) -> void: ExpandChip.label_mode = String(v),
+	})
+	_add({
 		"id": &"reduce_flashing", "tab": "Access", "label": "Reduce flashing", "kind": Kind.TOGGLE, "default": false,
 		"hint": "Softens screen flashes and the rarity pad flash.",
 		"apply": func(v: Variant) -> void: FxConfig.reduce_flashing = bool(v),
@@ -370,6 +376,11 @@ static func _register_access() -> void:
 	_add({
 		"id": &"reduce_shake", "tab": "Access", "label": "Reduce screen shake", "kind": Kind.TOGGLE, "default": false,
 		"apply": func(v: Variant) -> void: FxConfig.reduce_shake = bool(v),
+	})
+	_add({
+		"id": &"reduce_screen_fx", "tab": "Access", "label": "Reduce screen effects", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Turns off the edge shade and the full-frame light pass. Ground, shadows and night still show.",
+		"apply": func(v: Variant) -> void: FxConfig.reduce_screen_fx = bool(v),
 	})
 	_add({
 		"id": &"calm_camera", "tab": "Access", "label": "Calm camera", "kind": Kind.TOGGLE, "default": false,

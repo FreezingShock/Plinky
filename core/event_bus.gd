@@ -24,3 +24,8 @@ signal mastery_leveled(button_id: StringName, level: int)
 signal game_loaded()
 signal game_saved()
 signal onboarding_complete()  # the tutorial meadow's gate just opened; the main meadow can take over from here
+# Calendar (core/game_calendar.gd). Indices are 0-based within the year; season 0 spring, 1 summer, 2 autumn, 3 winter.
+signal day_changed(day_of_year: int)
+signal month_changed(month_index: int)
+signal season_changed(season_index: int)
+signal year_changed(year: int)

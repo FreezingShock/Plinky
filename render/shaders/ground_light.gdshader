@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Ground relight. The meadow ground is a baked render with a same-size G-buffer made by tools/art/gen_meadow3d.py:
 //   nrm_tex  R,G normal (u, v), B material code, A baked light (see depth_pass.write_relight_data)
 //   h_tex    world height, 1..255 over h_lo..h_hi, 0 outside the scene
@@ -6,6 +10,7 @@ shader_type canvas_item;
 // (terrain and slopes shade each other), then the colour is re-picked from the material ramp with a Bayer dither.
 // Far texels (top of the frame) take a dithered depth fog. Everything stays on the palette.
 #include "res://render/shaders/prop_ramps.gdshaderinc"
+#include "res://render/shaders/season.gdshaderinc"
 uniform sampler2D nrm_tex : filter_nearest;
 uniform sampler2D h_tex : filter_nearest;
 uniform vec3 sun_dir = vec3(-0.45, 0.45, 0.85);
@@ -29,7 +34,7 @@ float bayer4(ivec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {
@@ -76,6 +81,9 @@ void fragment() {
 				c.rgb = vec3(sh);
 			}
 		}
+	}
+	if (c.a > 0.5 && debug_view == 0 && (season_amt > 0.0 || season_snow > 0.0)) {
+		c.rgb = season_recolor(c.rgb, wpos);
 	}
 	// depth fog: the far (top) rows fade toward the haze colour, dithered
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;

@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Full-frame light pass. Unlike the multiply overlays, this reads the finished picture underneath (ground, props,
 // walker, water) and re-lights EVERY texel from it: a sun-side lift and an away-side shade across the whole frame,
 // then a luminance split (highlights pick up the light colour, shadows go cool or magenta). Every change is stepped
@@ -24,7 +28,7 @@ float bayer4(ivec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {
@@ -33,7 +37,7 @@ void fragment() {
 	float thr = bayer4(t);
 	float thr2 = 1.0 - thr;
 	float lum = dot(c, vec3(0.299, 0.587, 0.114));
-	vec2 q = (wpos - area_center) / area_half;
+	vec2 q = (floor(wpos) + vec2(0.5) - area_center) / area_half;   // one value per world texel
 	float side = clamp(dot(q, normalize(sun_dir)) * 0.9, -1.0, 1.0) * side_amount;
 	// sun side: lift and warm. away side: shade and cool.
 	if (side > 0.0 && thr < side) {
@@ -42,7 +46,7 @@ void fragment() {
 		c *= shade_col;
 	}
 	// luminance split on the offset half of the matrix, so the two patterns interleave
-	float hi = smoothstep(0.50, 0.85, lum) * split_amount;
+	float hi = smoothstep(0.66, 0.95, lum) * split_amount;
 	float lo = (1.0 - smoothstep(0.12, 0.45, lum)) * split_amount;
 	if (thr2 < hi) {
 		c = c * (1.0 + lift * 0.6) * mix(vec3(1.0), light_col * 1.2, 0.7);
