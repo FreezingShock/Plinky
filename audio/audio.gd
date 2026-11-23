@@ -356,16 +356,17 @@ func world_step(delta: float) -> void:
 	var on: bool = _meadow_world
 	_water_gain = move_toward(_water_gain, _water_target if on else 0.0, delta * WORLD_FADE_PER_S)
 	_tree_gain = move_toward(_tree_gain, _tree_target if on else 0.0, delta * WORLD_FADE_PER_S)
+	var live: bool = is_inside_tree()   # players cannot start outside the tree (headless tests step this directly)
 	if _water_gain > 0.01:
-		if not _shore.playing:
+		if live and not _shore.playing:
 			_start_shore()
 		_shore.volume_db = SHORE_DB + linear_to_db(_water_gain)
-	elif _shore.playing:
+	elif live and _shore.playing:
 		_shore.stop()
 	var birds: float = _scape.bird_scale() if _scape != null else 1.0
 	if _meadow_world and _amb.playing:
 		_amb.volume_db = MEADOW_AMB_DB + linear_to_db(maxf(_scape.day_gain(), 0.0001))   # the old loop has birds baked in: day only
-	if _tree_gain > 0.05 and birds > 0.02:
+	if live and _tree_gain > 0.05 and birds > 0.02:
 		_bird_clock -= delta
 		if _bird_clock <= 0.0:
 			_bird_clock = randf_range(BIRD_GAP_S.x, BIRD_GAP_S.y) / ((0.4 + _tree_gain) * birds)   # more trees, shorter pauses

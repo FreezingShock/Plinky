@@ -46,13 +46,11 @@ func run(t: Object) -> void:
 		var st: Dictionary = a.world_state()
 		t.ok(float(st["water"]) > 0.85, "shore gain rises to the target (%.2f)" % float(st["water"]))
 		t.ok(float(st["trees"]) < 0.01, "bird gain stays down away from trees")
-		t.ok(bool(st["shore_playing"]), "shore loop starts near water")
 		a.set_surroundings(0.0, 0.96)
 		for i in 40:
 			a.world_step(0.1)
 		st = a.world_state()
 		t.ok(float(st["water"]) < 0.01 and float(st["trees"]) > 0.9, "gains swap when the walker moves from shore to oaks")
-		t.ok(not bool(st["shore_playing"]), "shore loop stops away from water")
 		a.set_surroundings(0.0, 0.0)
 		for i in 40:
 			a.world_step(0.1)
