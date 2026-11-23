@@ -6,9 +6,9 @@ extends Node2D
 ## travels under Reduce motion (embers freeze in place and still twinkle), and Low graphics draws fewer.
 ## Colours are quarry palette indices (art-bible section 3).
 
-const EMBERS_PER_VENT: int = 7
+const EMBERS_PER_VENT: int = 12
 const ASH: int = 16
-const RISE: float = 11.0        # texels per second an ember climbs
+const RISE: float = 16.0        # texels per second an ember climbs (a plume about 40 texels tall)
 const LIFE: float = 4.2         # seconds from vent to fade
 const IDX_DARK: int = 1
 const IDX_FLAME: int = 3
@@ -41,8 +41,8 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
-func _dot(p: Vector2i, idx: int) -> void:
-	draw_rect(Rect2(p.x, p.y, 1, 1), palette[idx])
+func _dot(p: Vector2i, idx: int, size: int = 1) -> void:
+	draw_rect(Rect2(p.x, p.y, size, size), palette[idx])
 
 
 func _draw() -> void:
@@ -76,7 +76,7 @@ func _draw_embers(tm: float, tb: float) -> void:
 			var idx: int = IDX_PAPER if age < 0.12 else (IDX_GLOW if age < 0.4 else (IDX_FLAME if age < 0.75 else IDX_DARK))
 			if idx == IDX_DARK and int(tb * 6.0 + float(id)) % 2 == 0:
 				continue   # the last of it flickers out
-			_dot(p, idx)
+			_dot(p, idx, 2 if age < 0.55 else 1)   # young embers are 2 texels, then shrink as they cool
 
 
 ## Ash flakes drift on the wind and sink slowly, wrapping at the area edge. Every 5th is a brighter cinder.

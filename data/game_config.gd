@@ -20,6 +20,8 @@ extends Resource
 ## Rebirth Points: each rebirth pays rp_base, plus rp_growth for every rebirth already done (rounded down).
 ## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; rebirths still only boost Multiplier gain.
 @export var rp_stat: StringName = &"rp"
+## The currency the History graph tracks (income per second). Content swaps this when the economy changes.
+@export var income_stat: StringName = &"cash"
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
 ## Momentum: walking charges it (pressing nudges it), then it holds a moment and falls. Income gets

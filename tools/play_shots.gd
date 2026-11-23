@@ -98,7 +98,7 @@ func _ready() -> void:
 			pad.hold.begin()
 			pad._press()
 			await _wait(12)
-			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"m1"), " cost ", Formulas.button_cost(sim.button_defs[&"m1"]).format())
+			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"sprout_1"), " cost ", Formulas.button_cost(sim.button_defs[&"sprout_1"]).format())
 			await _shot("p_z%d_press_hold" % z)
 			await _wait(60)
 			await _shot("p_z%d_hold_long" % z)

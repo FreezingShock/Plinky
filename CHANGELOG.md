@@ -8,7 +8,30 @@ Every PR adds a line under **Unreleased**. `python3 tools/bump_version.py minor|
 under a new version heading and updates the version everywhere.
 
 ## Unreleased
+
+## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, per-tier pad flowers and locked buds, re-spaced pad rows.
+
+## 0.26.1 - 2026-11-23
+- Sound subtitles sit on a dark plate so they read on bright ground, and up to four show at once.
+
+## 0.26.0 - 2026-11-23
+- Relics menu refresh: relics are now rarity-framed cards (exact rarity-colour outline, name in the rarity colour, stack count, Equipped mark) in a scrolling collection, with Sort (Rarity, Name, Stacks, Equipped), Show (All, Equipped, Unequipped) and Rarity filter buttons, an Active bonuses readout under the slots, and compare-on-hover.
+
+## 0.25.0 - 2026-11-23
+- Settings > Access gains Colour-safe colours (red-green safe, blue-yellow safe) for rarity, buy and stat colours, Large tooltip text, and Sound subtitles (captions for crits, relic chimes, gates, birdsong, waves, footsteps and music changes).
+
+## 0.24.4 - 2026-11-23
+- Quarry embers are denser (12 per vent), bigger while hot (2 texels) and climb higher, so they read as a plume at 640x360.
+
+## 0.24.3 - 2026-11-23
+- History window is narrower still so it no longer covers the zone panel at 640x360, and its list area is taller.
+
+## 0.24.2 - 2026-11-23
+- HUD currency panel: the gain text (+x/s, xN) now sits left of each value in a smaller font, vertically centred, so the panel is narrower; values stay centred on the row and line up in a column.
+
+## 0.24.1 - 2026-11-23
+- History screen: taller graph that fills from the left with a first bar at once, a narrower window that clears the zone panel, and the tracked currency now comes from config (`income_stat`).
 
 ## 0.24.0 - 2026-11-23
 - New press popups: one pooled node draws every number, rolls a motion, easing and size per press, stacks held presses into one number, merges quick clicks and keeps numbers off each other. Escalating streak tiers (Gold, Ice, Rainbow, Chroma, Galaxy) change colour, sparkles, pad ripple and sound. Relic pulses now ripple outward as echoes with spark links and their own sound. Twelve new sounds. Respects Quiet pad clicks, Reduce flashing and Calm camera.

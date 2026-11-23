@@ -52,3 +52,20 @@ func describe(stacks: int) -> String:
 static func _pct(v: float) -> String:
 	var p: float = v * 100.0
 	return "%d%%" % roundi(p) if absf(p - roundf(p)) < 0.05 else "%.1f%%" % p
+
+## Title Case name of an effect, for the panel's bonus lines and compare rows.
+static func effect_name(e: Effect) -> String:
+	match e:
+		Effect.CASH_MULT: return "Cash Income"
+		Effect.MULT_GAIN: return "Multiplier Gain"
+		Effect.PRESS_RATE: return "Presses Per Second"
+		Effect.CRIT_DAMAGE: return "Crit Damage"
+		Effect.DOUBLE_CHANCE: return "Double Press Chance"
+		Effect.PULSE_CHANCE: return "Pulse Chance"
+	return "Bonus"
+
+## Percentage text for a total effect, with a sign. Press rate is a flat add, shown without a percent.
+static func effect_text(e: Effect, v: float) -> String:
+	if e == Effect.PRESS_RATE:
+		return "+%s" % (("%d" % roundi(v)) if absf(v - roundf(v)) < 0.005 else "%.2f" % v)
+	return "+" + _pct(v)

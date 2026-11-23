@@ -20,8 +20,6 @@ var hovered: bool = false
 var progress: float = 0.0
 
 ## Buy state colours are fixed hex (like rarity colours): green = you can buy, red = you can't. Not palette-tinted, so they read in every zone.
-const BUY_GREEN: Color = Color("5fd068")
-const BUY_RED: Color = Color("d8483c")
 ## Secondary colour = the stat this pad raises. Unknown stats fall back to paper.
 const STAT_COLORS: Dictionary = {
 	&"dewdrop": Color("e4f1ff"), &"clover": Color("6be86b"), &"thistle": Color("7f9bff"),
@@ -80,7 +78,7 @@ func _ready() -> void:
 	rarity = load("res://content/rarities/%s.tres" % _sim().pad_rarity(button_id)) as RarityDef
 	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if b != null:
-		stat_color = STAT_COLORS.get(b.reward_stat, stat_color)
+		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
 	hold = HoldPress.new()
 	add_child(hold)
@@ -294,7 +292,7 @@ func _draw() -> void:
 		_lit_rim(top, hx, hy, palette[3])
 	# Rim: brighter as the walker approaches or the mouse hovers.
 	var near: int = nearness()
-	var rim: Color = BUY_RED.darkened(0.3) if st != PadState.READY else BUY_GREEN
+	var rim: Color = StatStyle.cant().darkened(0.3) if st != PadState.READY else StatStyle.gain()
 	if near >= 2:
 		rim = rim.lerp(Color.WHITE, 0.4)
 	if hovered:
@@ -303,7 +301,7 @@ func _draw() -> void:
 	# Inset: green when buyable, red when not, with a green gauge filling as you earn the cost. Each pad has its own motif.
 	var ihx: int = 10
 	var ihy: int = 5
-	var buy: Color = BUY_GREEN
+	var buy: Color = StatStyle.gain()
 	if st == PadState.READY:
 		if glow != null and glow.flash_t > 0.0:
 			buy = glow.pad_color(palette)   # relic drop flash
@@ -313,7 +311,7 @@ func _draw() -> void:
 			buy = Color.WHITE
 		_rows(0, top, ihx, ihy, buy, buy)
 	else:
-		var red: Color = BUY_RED.darkened(0.45) if st == PadState.FAR else BUY_RED
+		var red: Color = StatStyle.cant().darkened(0.45) if st == PadState.FAR else StatStyle.cant()
 		_rows(0, top, ihx, ihy, red, red)
 		if st == PadState.CLOSE:
 			var cut: int = top + ihy - roundi(progress * float(ihy * 2 + 1))
@@ -321,10 +319,10 @@ func _draw() -> void:
 				if top + dy < cut:
 					continue
 				var w: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5)))
-				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), BUY_GREEN.darkened(0.2))
+				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), StatStyle.gain().darkened(0.2))
 	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Legendary adds corner studs.
 	if rarity != null and rarity.rank > 0:
-		_dashed_diamond(0.86, top, rarity.color)  # dashed, so Uncommon green never reads as the buy-state green
+		_dashed_diamond(0.86, top, rarity.tint())  # dashed, so Uncommon green never reads as the buy-state green
 		if rarity.rank >= 4:
 			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
