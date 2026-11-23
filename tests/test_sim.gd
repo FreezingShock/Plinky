@@ -217,6 +217,12 @@ func _offline_extras(t: Object) -> void:
 	t.ok(sim.mastery.level(&"sprout_3") > 0 or sim.mastery.xp(&"sprout_3") > 0.0, "tending earned mastery XP")
 	t.ok(not tend.has(&"clover"), "locked tiers are not tended")
 	t.ok((sim.last_offline["relics"] as Array).size() <= sim.config.offline_relic_max_drops, "relic drops capped")
+	var sim3: Sim = t.make_sim()
+	sim3.attr_levels[&"bloom_dusk"] = 4
+	sim3.attr_levels[&"rp_rest"] = 2
+	var per_dusk: float = (sim3.attribute_defs[&"bloom_dusk"] as AttributeDef).per_level
+	var per_rest: float = (sim3.attribute_defs[&"rp_rest"] as AttributeDef).per_level
+	t.near(sim3.offline_cap_seconds(), (sim3.config.offline_base_cap_hours + 4.0 * per_dusk + 2.0 * per_rest) * 3600.0, 1e-6, "Long dusk and Deep sleep stack on the offline cap")
 	var sim2: Sim = t.make_sim()
 	sim2.stats[&"sunlight"] = BigNum.zero()
 	sim2.config.offline_tend_fraction = 0.0
