@@ -57,6 +57,15 @@ func setup(p_sim: Sim) -> void:
 	row.add_child(_value)
 	_sprint = _title("", RelicStyle.accent)
 	_sprint.top_level = true   # outside the container's layout, so showing it never resizes the panel
+	var plate := StyleBoxFlat.new()   # a dark backing, so the busy ground never shows through the letters
+	plate.bg_color = Color("14161c")
+	plate.set_border_width_all(1)
+	plate.border_color = RelicStyle.edge
+	plate.content_margin_left = 4.0
+	plate.content_margin_right = 4.0
+	plate.content_margin_top = 0.0
+	plate.content_margin_bottom = 1.0
+	_sprint.add_theme_stylebox_override("normal", plate)
 	_sprint.visible = false
 	add_child(_sprint)
 	Tip.bind_all(self, Callable(self, "_spec"))
@@ -128,7 +137,7 @@ func _update_sprint_label(panel_on: bool) -> void:
 		_sprint.reset_size()
 	_sprint.visible = st > 0
 	if st > 0:
-		_sprint.global_position = global_position + Vector2(6.0, -_sprint.size.y - 1.0)
+		_sprint.global_position = global_position + Vector2(0.0, -_sprint.size.y - 1.0)
 
 
 func _apply() -> void:
