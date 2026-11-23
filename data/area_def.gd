@@ -8,8 +8,8 @@ extends Resource
 @export var display_name: String
 ## Lowest order lists first inside its zone.
 @export var order: int = 0
-## One ASCII character shown before the name (Spleen has no icons). Keeps areas apart when colours are close.
-@export var glyph: String = "*"
+## Icon id from ui/area_icons.gd, drawn before the name in the zone menu.
+@export var icon: String = "clearing"
 ## Palette role (0 to 7, art-bible section 3) the area's text and bar use. Roles 3 to 7 read on the ink background.
 @export_range(0, 7) var theme_role: int = 4
 @export_multiline var blurb: String = ""

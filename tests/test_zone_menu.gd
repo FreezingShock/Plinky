@@ -8,6 +8,7 @@ func run(t: Object) -> void:
 	for z: ZoneDef in sim.zone_defs.values():
 		var seen: Dictionary = {}
 		for a in sim.areas_in_zone(z.id):
+			t.ok(AreaIcons.has(a.icon), "%s has a drawn icon" % a.id)
 			for bid in a.pad_buttons:
 				seen[bid] = true
 		t.eq(seen.size(), z.pad_buttons.size(), "%s: its areas list every pad once" % z.id)
