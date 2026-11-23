@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.10 - 2026-11-23
+- Night tint and lantern glow are fully smooth gradients now (no step dither), removing the faint grid on the ground at night.
+
 ## 0.10.9 - 2026-11-23
 - HUD currency panel: each stat name (Cash, Multiplier, Rebirths, Slag, Prestige) is drawn in Pixelify Sans in that stat's own tooltip colour instead of plain green Spleen; the name column sizes to the widest name so the numbers stay aligned.
 
