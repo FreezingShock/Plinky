@@ -16,6 +16,7 @@ var locked_text: String = ""      ## non-empty means locked; shown in tooltip
 var highlight: bool = false       ## swap target pulse
 
 var _hover: bool = false
+var _pop_t: float = -1.0          ## seconds since pop(); negative = idle
 
 func _init() -> void:
 	custom_minimum_size = Vector2(SIZE, SIZE)
@@ -36,9 +37,22 @@ func set_highlight(on: bool) -> void:
 	highlight = on
 	queue_redraw()
 
-func _process(_d: float) -> void:
+## A relic just landed here (equipped or swapped in): a hop with overshoot and a ring that widens in whole pixels.
+func pop() -> void:
+	if FxConfig.reduce_shake or relic == null:
+		return
+	_pop_t = 0.0
+	queue_redraw()
+
+
+func _process(d: float) -> void:
 	if has_focus():
 		queue_redraw()   # marching dots
+	if _pop_t >= 0.0:
+		_pop_t += d
+		if _pop_t >= FxConfig.RELIC_POP_TIME:
+			_pop_t = -1.0
+		queue_redraw()
 
 func _gui_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
@@ -66,8 +80,18 @@ func _draw() -> void:
 		else:
 			draw_rect(Rect2(9, 6, 2, 8), c); draw_rect(Rect2(6, 9, 8, 2), c)
 	else:
-		draw_texture(relic.rarity.frame, Vector2.ZERO)
-		draw_texture(relic.icon, Vector2(2, 2))
+		var hop := Vector2.ZERO
+		if _pop_t >= 0.0:
+			var k: int = clampi(int(_pop_t / FxConfig.RELIC_POP_TIME * FxConfig.RELIC_HOP.size()), 0, FxConfig.RELIC_HOP.size() - 1)
+			hop = Vector2(0, -FxConfig.RELIC_HOP[k])
+			# Ring in the rarity colour, one pixel wider each step; lighter under Reduce flashing.
+			var grow: int = 1 + int(_pop_t / FxConfig.RELIC_POP_TIME * 4.0)
+			if not FxConfig.reduce_flashing:
+				var ring: Color = RelicStyle.text
+				ring.a = 1.0 - _pop_t / FxConfig.RELIC_POP_TIME
+				PadInput.draw_focus_ring(self, r.grow(grow), ring)
+		draw_texture(relic.rarity.frame, hop)
+		draw_texture(relic.icon, hop + Vector2(2, 2))
 		if stacks > 1:
 			var s: String = "x%d" % stacks if stacks < 100 else "99+"
 			var f: Font = get_theme_default_font()

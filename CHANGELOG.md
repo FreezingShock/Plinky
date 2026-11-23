@@ -12,6 +12,12 @@ under a new version heading and updates the version everywhere.
 ## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
 
+## 0.26.7 - 2026-11-23
+- Balance: the four linear relics (Gold Purse, Stopwatch, Growth Crystal, Sharp Fang) now diminish, so long play tops out near +100% per relic instead of running away; Gold Purse and Growth Crystal step down to 6% and 10%. Pad yield caps at 15 (was 25), Quick study at 10 (was 20), Press rate at 15 (was 20). Larkmoor pacing, pads, mastery, Rebirth Points and Momentum are unchanged.
+
+## 0.26.6 - 2026-11-23
+- Relics hop into their slot with a widening ring when equipped or swapped in (HUD strip and Relics menu; skipped under Reduce motion).
+
 ## 0.26.5 - 2026-11-23
 - Stat counters punch with an overshoot when a big gain lands (stepped, skipped under Reduce motion).
 
