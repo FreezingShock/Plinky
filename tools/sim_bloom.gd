@@ -8,7 +8,6 @@ extends SceneTree
 const DT: float = 0.25
 const MAX_SECONDS: float = 12.0 * 3600.0
 const MIN_CYCLES: int = 5   ## the run must reach at least this many Blooms, each cycle ending sooner than the first
-const GIFT_ORDER: Array[StringName] = [&"bloom_head_start", &"bloom_soil", &"bloom_wide", &"bloom_dusk"]
 
 
 func _order(sim: Sim) -> Array[ButtonDef]:
@@ -24,15 +23,23 @@ func _order(sim: Sim) -> Array[ButtonDef]:
 	return buttons
 
 
+## Buys the cheapest affordable gift again and again, so the gifts level together (every gift the sim has: Sprites and
+## Wildflower included, which then press for the greedy player).
 func _buy_gifts(sim: Sim) -> int:
 	var n: int = 0
-	var again: bool = true
-	while again:
-		again = false
-		for id: StringName in GIFT_ORDER:   # cheapest-first rotation keeps the gifts level with each other
-			if sim.buy_attribute(id):
-				n += 1
-				again = true
+	while true:
+		var best: StringName = &""
+		var best_cost: float = INF
+		for a: AttributeDef in sim.attribute_defs.values():
+			if a.currency != &"seeds" or sim.attr_level(a.id) >= a.cap or not sim.attr_unlocked(a.id):
+				continue
+			var c: float = sim.attribute_cost(a.id).to_float()
+			if c < best_cost and sim.get_stat(&"seeds").to_float() >= c:
+				best = a.id
+				best_cost = c
+		if best == &"" or not sim.buy_attribute(best):
+			break
+		n += 1
 	return n
 
 

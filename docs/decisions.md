@@ -588,3 +588,10 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - 2026-11-23, Nathan: global Prestige is retired as the main loop. Every zone gets its own rebirth/ascension with its own currency and its own themed upgrade menu, in the same menu style as Upgrades. Meadow = Bloom (Seeds, Bloom Gifts). Ember Quarry = Reforge later. Keep layers modest.
 - Built as `ZoneResetDef` (data/zone_reset_def.gd), one .tres per zone in content/resets/. A new zone needs: the def, a currency stat, an icon at 8/16/24/32 px, a colour in StatStyle.COLORS, and gift attributes with `currency` set to it.
 - Bloom repeat pacing: resets only Sunlight and Larkmoor's flowers (not Dewdrops or Clover Leaves), +25% pad reward per use, requirement shrinks 15% per use down to 30%. Unmeasured in-engine; run tools/sim_bloom.gd on the PC.
+
+## 2026-11-23 Bloom gifts and the Bloom animation (v0.34.0)
+- Gifts are content, not code: each `content/attributes/bloom_*.tres` carries its own blurb, icon, unit and value kind, and unlocks by Blooms done (`unlock_resets`). A reset def names the effects that bend it (`keep_effect`, `pay_effect`, `bonus_effect`, plus `start_effect`), so Reforge adds forge gifts with files only. New sim effects: `auto_press` (Dew Sprites press the best affordable pad), `wild_bloom` (Wildflower: free press of a pad in the highest open row), `double_chance`, `seed_pay`, `bloom_bonus`, `keep_flowers`, `petal_burst` (cosmetic).
+- Automatic presses carry `Sim.auto_press_active`: they feed no momentum and no press streak, and show a quiet popup.
+- The reset animation is `BloomRitual` on the HUD, driven by `EventBus.reset_done`, clocked by `BloomTimeline` (pure, tested). HUD counters use `RollValue.countdown` so every row ends together; the currency row `hold`s its old value until the number lands. Reduced motion settings give a short fade; nothing shakes the camera. Sound reuses existing chimes (`Audio.bloom_*`); no new audio files.
+- Not run in-engine from the cloud: seed costs and gift strengths are first guesses, to be tuned with `tools/sim_bloom.gd` on the PC.
+

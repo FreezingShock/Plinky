@@ -13,6 +13,13 @@ var _whole: bool = false
 var _accum: float = 0.0
 var _flash: Tween
 var _pop: Tween
+## Timed mode (a zone reset): the counter runs from `_t_from` to the live target over exactly `_t_dur` seconds, so every
+## row of the HUD lands in the same instant. hold() keeps a row still for the same span, then lets it roll normally.
+var _timed: bool = false
+var _t_from: BigNum = BigNum.zero()
+var _t_dur: float = 1.0
+var _t_age: float = 0.0
+var _t_hold: bool = false
 
 
 ## One ease step. Pure, so tests can run it without a scene.
@@ -27,6 +34,15 @@ static func step(from: BigNum, to: BigNum, dt: float) -> BigNum:
 	return from.add(diff.mul(BigNum.from_float(k)))
 
 
+## Eased progress 0..1 of a timed countdown at `age` of `dur` seconds, held to 20 steps a second so it ticks like pixel art.
+## Starts slow, runs fast through the middle and settles gently.
+static func timed_progress(age: float, dur: float) -> float:
+	if dur <= 0.0 or age >= dur:
+		return 1.0
+	var u: float = floorf(clampf(age / dur, 0.0, 1.0) * 20.0 * dur) / (20.0 * dur)
+	return u * u * (3.0 - 2.0 * u)
+
+
 ## Gain relative to the value before it. A gain onto zero counts as 1.
 static func gain_ratio(before: BigNum, gain: BigNum) -> float:
 	if before.is_zero():
@@ -38,7 +54,55 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
+## Count from `from` to wherever the target ends up, over `seconds`. Used by the Bloom animation for every stat at once.
+func countdown(from: BigNum, seconds: float) -> void:
+	_timed = true
+	_t_hold = false
+	_t_from = from
+	_t_dur = maxf(seconds, 0.05)
+	_t_age = 0.0
+	shown = from
+	_show()
+
+
+## Keep showing `value` for `seconds`, then roll to the target as usual (the Seeds row waits for the big number to land).
+func hold(value: BigNum, seconds: float) -> void:
+	_timed = true
+	_t_hold = true
+	_t_from = value
+	_t_dur = maxf(seconds, 0.05)
+	_t_age = 0.0
+	shown = value
+	_show()
+
+
+## True while a countdown or hold is running.
+func timed() -> bool:
+	return _timed
+
+
+## End a countdown or hold now; the row rolls from where it is.
+func finish_timed() -> void:
+	_timed = false
+
+
+## End a hold: the row rolls up from the held value to the target with the gain flash and floating gain.
+func release() -> void:
+	if not _timed:
+		return
+	_timed = false
+	_t_hold = false
+	_accum = 1.0   # roll on from the held value this frame
+	if target.gt(shown):
+		_flash_gain(true)
+		big_gain.emit(target.sub(shown))
+
+
 func set_target(v: BigNum) -> void:
+	if _timed:
+		target = v
+		_whole = _is_whole(v)
+		return
 	if not _primed:
 		_primed = true
 		target = v
@@ -57,6 +121,23 @@ func set_target(v: BigNum) -> void:
 
 
 func _process(delta: float) -> void:
+	if _timed:
+		_t_age += delta
+		if _t_age >= _t_dur:
+			_timed = false
+			if _t_hold:
+				release()
+			else:
+				shown = target
+				_show()
+				return
+		elif not _t_hold:
+			var k: float = timed_progress(_t_age, _t_dur)
+			shown = _t_from.add(target.sub(_t_from).mul(BigNum.from_float(k)))
+			_show()
+			return
+		else:
+			return
 	_accum += delta
 	if _accum < 1.0 / FxConfig.ROLL_HZ:
 		return

@@ -43,7 +43,7 @@ func setup(a: AttributeDef) -> void:
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(slot)
 	_icon = TextureRect.new()
-	_icon.texture = load("res://assets/icons/%s.png" % String(StatIndex.ATTR_ICONS.get(a.effect, "prestige"))) as Texture2D
+	_icon.texture = load("res://assets/icons/%s.png" % StatIndex.attr_icon(a)) as Texture2D
 	_icon.custom_minimum_size = Vector2(16, 16)
 	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE

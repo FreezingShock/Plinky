@@ -9,6 +9,10 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.34.0 - 2026-11-23
+- Bloom gifts that change how the meadow plays: 14 gifts in four tiers that open as you Bloom (Seed Pods, Twin Petals, Petal Burst, Springy Stride, Dew Sprites auto-press, Bramble Crown, Perennial Roots keep flowers through a Bloom, Bloom Echo, Rooted Study, Wildflower free blooms) and stronger Head Start, Deep Soil and Wide Bloom. Gift text, icon, unit and unlock now live in the gift's own content file (`AttributeDef.blurb/icon/unit_text/value_kind/unlock_resets`) and a reset names the gift effects that bend it (`ZoneResetDef.keep_effect/pay_effect/bonus_effect`), so Reforge reuses the pattern.
+- Bloom animation (`ui/fx/bloom_ritual.gd`): every HUD stat counts down over the same 1.4 s and lands together, then a centred sequence plays: light-dither veil, a closing ring of ASCII marks, flash, a large Seeds icon pop, pixel rings, sparkles and petals, the Seeds earned counting up with ticks, then the icon flies into the HUD Seeds row. Calm version under Reduce flashing, Still meadow, Calm camera and Reduce screen effects; no camera shake; any click skips ahead. Capture: `tools/bloom_shot.tscn`.
+
 ## 0.33.0 - 2026-11-23
 - Zone resets are data: every zone gets its own reset, currency and themed upgrade menu from a content/resets/*.tres ZoneResetDef (standing rule). Bloom moves onto it and now repeats: it only resets Sunlight and Larkmoor's flowers, pays +25% pad reward per Bloom, and asks 15% less each time (floor 30%). Gifts are stronger. Tips hide behind confirm cards; gift text and level pips are easier to read. Needs tools/sim_bloom.gd run on the PC.
 ## 0.32.0 - 2026-11-23

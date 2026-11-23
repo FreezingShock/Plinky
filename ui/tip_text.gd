@@ -57,8 +57,8 @@ static func attribute(a: AttributeDef, level: int, cost_text: String, can_afford
 	if not maxed:
 		lines.append(["Next ", Tip.seg(StatIndex.effect_text(a, float(level + 1) * a.per_level), StatStyle.gain())])
 		lines.append(["Costs ", Tip.icon(String(a.currency)), Tip.seg(cost_text, StatStyle.buy(can_afford)), " ", Tip.seg(UpgradeText.currency_name(a), StatStyle.color(a.currency))])
-	return {"title": a.display_name, "title_color": c, "color": c, "icon": String(ATTR_ICONS.get(a.effect, "prestige")),
-		"body": ATTRS.get(a.effect, ""), "lines": lines,
+	return {"title": a.display_name, "title_color": c, "color": c, "icon": StatIndex.attr_icon(a),
+		"body": a.blurb if a.blurb != "" else ATTRS.get(a.effect, ""), "lines": lines,
 		"hint": "Max level." if maxed else ("Click Buy to upgrade." if can_afford else "Need more %s." % UpgradeText.currency_name(a)),
 		"hint_color": StatStyle.gain() if (maxed or can_afford) else StatStyle.cant()}
 

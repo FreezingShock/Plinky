@@ -132,6 +132,17 @@ func _panel(pos: Vector2) -> VBoxContainer:
 	return v
 
 
+## The rolling counter of a stat row (null when the stat has none). The Bloom animation drives it.
+func stat_value(sid: StringName) -> RollValue:
+	var pair: Array = _rows.get(sid, []) as Array
+	return pair[0] as RollValue if not pair.is_empty() else null
+
+
+## Every stat id that has a row on the HUD.
+func stat_value_ids() -> Array:
+	return _rows.keys()
+
+
 ## Bottom edge of the stats panel in HUD coordinates, so panels below it (relic bar) follow its height.
 func stats_bottom() -> float:
 	if _stats_panel == null:

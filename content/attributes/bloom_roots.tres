@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bloom_roots"
+display_name = "Perennial Roots"
+effect = &"keep_flowers"
+per_level = 1.0
+cap = 3
+base_cost = 10.0
+cost_growth = 2.4
+order = 11
+currency = &"seeds"
+unlock_resets = 3
+blurb = "A Bloom no longer resets your lowest flowers: Thistle first, then Heather, then Foxglove stay as they are."
+icon = &"thistle"
+unit_text = "flowers kept"
+value_kind = &"count"

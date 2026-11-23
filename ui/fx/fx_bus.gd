@@ -107,6 +107,27 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 		hs.queue_free()
 
 
+## A press made by a Bloom gift (Dew Sprites, Wildflower): the number floats up quietly and a few pixels pop, with no
+## streak, no hitstop and no click ladder.
+func auto_press(pad: CanvasItem, pos: Vector2, amount: float) -> void:
+	var key: StringName = (pad as TexelPad).button_id if pad is TexelPad else StringName(str(pad.get_instance_id()))
+	_popup_field().press(key, _to_screen(pos) + POPUP_LIFT, amount, 0, false, false, false, 0.0)
+	var cols: Array[Color] = PARTICLE_COLORS
+	if pad is TexelPad:
+		cols = Array([(pad as TexelPad).palette[5], (pad as TexelPad).palette[6]], TYPE_COLOR, "", null)
+		(pad as TexelPad).punch(Color(0.0, 0.0, 0.0, 0.0), 0)
+	ParticleBurst.spawn(fx_root, pos, cols, 4)
+	Audio.auto_press()
+
+
+## Petal Burst gift (cosmetic): every press scatters extra petals in the pad's colours. level 1 to 3.
+func petals(pad: CanvasItem, pos: Vector2, level: int) -> void:
+	var cols: Array[Color] = PARTICLE_COLORS
+	if pad is TexelPad:
+		cols = Array([(pad as TexelPad).palette[5], (pad as TexelPad).palette[6], StatStyle.color(&"seeds")], TYPE_COLOR, "", null)
+	ParticleBurst.spawn(fx_root, pos, cols, 6 + 4 * clampi(level, 1, 3))
+
+
 ## The pad's own reaction: sink, ripple (tinted by tier), and a burst of pixels in the tier's colours.
 func _pad_feedback(pad: CanvasItem, pos: Vector2, tier: int, tint: Color, big: bool, pulse: bool) -> void:
 	var cols: Array[Color] = []
