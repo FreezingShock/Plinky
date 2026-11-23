@@ -229,6 +229,14 @@ func _offline_extras(t: Object) -> void:
 	flat.apply_offline(3600.0)
 	t.ok(sim.get_stat(&"sunlight").to_float() >= 0.0 and (sim.last_offline["tend"] as Dictionary).size() > 0, "tending ran in slices")
 	t.ok(flat.get_stat(&"dewdrop").to_float() <= before_dew, "no tending, no Dewdrops")
+	var live: Sim = t.make_sim()
+	live.stats[&"dewdrop"] = BigNum.from_float(5.0)
+	live.stats[&"sunlight"] = BigNum.zero()
+	live.config.offline_tend_fraction = 0.0
+	var live_rate: float = live.income_per_second(&"sunlight").to_float()
+	live.apply_offline(3600.0)
+	t.near(live.get_stat(&"sunlight").to_float() / 3600.0 / live_rate, 1.0, 1e-9, "offline Sunlight rate equals the live rate (idle factor 1, no momentum at load)")
+	t.ok(live_rate > 0.25 * 5.0, "Dewdrops boost the rate offline uses")
 	var sim2: Sim = t.make_sim()
 	sim2.stats[&"sunlight"] = BigNum.zero()
 	sim2.config.offline_tend_fraction = 0.0
