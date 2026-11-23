@@ -3,6 +3,9 @@ extends Resource
 
 @export var id: StringName
 @export var display_name: String
+@export_multiline var description: String = ""
+## Palette role (4 to 7) for this zone's name and menu row, so Meadow and Larkmoor read apart on one palette.
+@export_range(3, 7) var theme_role: int = 4
 ## Lowest order is the starting zone.
 @export var order: int = 0
 @export var gate_stat: StringName = &""
