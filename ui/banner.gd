@@ -155,7 +155,7 @@ func _process(delta: float) -> void:
 	_clock += delta
 	_ensure_view()
 	if not _active:
-		if queue.pending.is_empty() or BloomRitual.running:   # held while a reset animation plays
+		if queue.pending.is_empty() or FxConfig.bloom_running:   # held while a reset animation plays
 			return
 		var resolved: Dictionary = _resolve(queue.next())
 		if resolved.is_empty():
