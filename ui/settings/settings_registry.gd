@@ -165,6 +165,7 @@ static func _ensure() -> void:
 	_register_audio()
 	_register_display()
 	_register_gameplay()
+	_register_strip()
 	_register_qol()
 	_register_access()
 	_register_controls()
@@ -348,6 +349,12 @@ static func _register_gameplay() -> void:
 		"apply": func(v: Variant) -> void: NumberFormat.style = int(v),
 	})
 	_add({
+		"id": &"mult_style", "tab": "Gameplay", "label": "Multiplier display", "kind": Kind.CHOICE, "default": NumberFormat.MultStyle.FACTOR,
+		"hint": "Show multipliers as a factor (x1.5) or as a percent (150%). Labels change on their next update.",
+		"options": func() -> Array: return [[NumberFormat.MultStyle.FACTOR, "Factor (x1.5)"], [NumberFormat.MultStyle.PERCENT, "Percent (150%)"]],
+		"apply": func(v: Variant) -> void: NumberFormat.mult_style = int(v),
+	})
+	_add({
 		"id": &"momentum_meter", "tab": "Gameplay", "label": "Momentum meter", "kind": Kind.TOGGLE,
 		"hint": "The bar above the bottom bar that shows walking income bonus.",
 		"get": func() -> Variant: return DisplaySettings.momentum_meter,
@@ -358,6 +365,51 @@ static func _register_gameplay() -> void:
 		"hint": "It also saves on rebirth, zone change and quit.",
 		"options": func() -> Array: return [[0, "Default"], [15, "Every 15 s"], [30, "Every 30 s"], [60, "Every minute"], [120, "Every 2 minutes"]],
 		"apply": _autosave_apply,
+	})
+
+
+# ---- the HUD stat strip (ui/hud.gd, core/hud_layout.gd). The layout itself is saved per game; these are display choices.
+static func _strip_hud() -> Node:
+	var win: Window = _root()
+	return win.get_tree().get_first_node_in_group(&"stat_strip") if win != null else null
+
+
+static func _strip_edit() -> String:
+	var hud: Node = _strip_hud()
+	if hud == null:
+		return "Start or load a game first."
+	hud.call("request_edit")
+	return "Close this menu to edit the strip."
+
+
+static func _strip_reset() -> String:
+	var hud: Node = _strip_hud()
+	if hud == null:
+		return "Start or load a game first."
+	hud.call("reset_all_layouts")
+	return "Every zone is back on its Default rows."
+
+
+static func _register_strip() -> void:
+	_add({
+		"id": &"strip_edit", "tab": "Gameplay", "label": "Edit stat strip", "kind": Kind.ACTION, "run": _strip_edit,
+		"hint": "Move, hide and add the stat rows at the top left. Also the pencil under the strip. Right-click a row to hide it.",
+	})
+	_add({
+		"id": &"strip_reset", "tab": "Gameplay", "label": "Reset stat strip", "kind": Kind.ACTION, "confirm": true, "run": _strip_reset,
+		"hint": "Puts the strip back on its Default rows in every zone. Press twice to confirm.",
+	})
+	_add({
+		"id": &"strip_rates", "tab": "Gameplay", "label": "Strip gain rates", "kind": Kind.TOGGLE, "default": true,
+		"hint": "The small +x/s beside each value. Off keeps just the icon and the number.",
+	})
+	_add({
+		"id": &"strip_empty", "tab": "Gameplay", "label": "Strip unearned rows", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Show every row on your layout from the start, even before you have held that stat.",
+	})
+	_add({
+		"id": &"strip_rclick", "tab": "Gameplay", "label": "Right-click hides a row", "kind": Kind.TOGGLE, "default": true,
+		"hint": "Right-click a strip row to take it off. Add it back in edit mode.",
 	})
 
 

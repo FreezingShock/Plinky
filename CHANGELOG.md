@@ -9,8 +9,45 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.29.0 - 2026-11-23
+## 0.34.0 - 2026-11-23
 - Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
+
+## 0.33.0 - 2026-11-23
+- The HUD stat strip is customizable and saved per game. Right-click a row to hide it, or press the pencil under the strip for edit mode: move rows up and down, hide them, add stats from icon-only chips (instant tooltip names each one), up to 10 rows, and Reset to the zone's Default layout. Each zone keeps its own layout (flower ladder, Ember Quarry), stats met in other zones can be pinned, older saves start on Default. Settings > Gameplay gets Edit Stat Strip, Reset Stat Strip, Strip Gain Rates, Strip Unearned Rows and Right-click Hides a Row. New `tools/hud_shot.tscn -- edit` fixture.
+
+## 0.32.2 - 2026-11-23
+- New pad-press popups: pooled, procedural stacking gain numbers coloured by streak tier (Gold, Ice, Rainbow, Chroma, Galaxy), stat-name caption, relic pulse echoes, new SFX, anchored in the world and drawn below menus; pads shake instead of the camera.
+
+## 0.32.1 - 2026-11-23
+- HUD strip: more room between the gain text and the value so long suffixes never touch it.
+
+## 0.32.0 - 2026-11-23
+- Golden light holds through the day: new SkyModel.golden() curve (warm, long shadows, rim light, rays and a thin haze fade out slowly toward noon instead of ending an hour after sunrise), richer grade curves for morning, noon, dusk and night, saturation and contrast in the full-frame light pass, warmer rim and ray colours, deeper night blue with warmer lantern pools. New tools/golden_shots.tscn captures the sky at fixed times of day.
+
+## 0.31.1 - 2026-11-23
+- Pad tooltips show the real gain: one shared press formula now includes Heat, buffs, mastery, yield and Bloom, plus an average-with-crits line when crit or double chance is active. Test checks tooltip against a real press.
+
+## 0.31.0 - 2026-11-23
+- Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
+
+## 0.30.1 - 2026-11-23
+- HUD strip: the gain sits tight against the value (no fixed-width value column), so short values no longer leave a gap.
+
+## 0.30.0 - 2026-11-23
+- The Ember Quarry is now a six-row forge ladder, Cinder, Ore, Slag, Ingot, Alloy and Emberheart: 18 pads climbing the terraces, each row opening the next, with new isometric voxel pad objects and per-row colours, tier buffs (1.25x and 1.5x) from Slag up, Rebirth that banks Ingots and only resets the quarry, and a small flat arrival purse. Old quarry saves migrate.
+
+## 0.29.0 - 2026-11-23
+- HUD currency panel is now a compact strip: icon, small dim gain, and a value in the stat's colour. Names live in the instant tooltips. Rows appear once you have held that stat, and only the current zone's stats show. About a third of the old height.
+- New `tools/hud_shot.tscn` captures the HUD panel (early or late-game fixture); CLAUDE.md and SPEC name the real capture tools.
+
+## 0.28.0 - 2026-11-23
+- Higher flower tiers now buff several lower stats at once (Thistle and Heather 1.25x, Foxglove and Starbloom 1.5x, data-driven). New Settings option for multipliers as a factor (x1.5) or a percent (150%). Locked pads are clearly darker and buyable pads glow green. Larkmoor gate retuned to 2000 Starbloom Petals.
+
+## 0.27.2 - 2026-11-23
+- Docs only: CLAUDE.md and SPEC.md now match the flat repo layout, docs/interfaces.md added, shader-uniform rule amended, features.md and balance.md refreshed.
+
+## 0.27.1 - 2026-11-23
+- Fixed the title screen's input error (the menu pad actions are now registered before the title), and onboarding tip cards now step aside while any menu is open, so the Esc menu's buttons are never covered.
 
 ## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
