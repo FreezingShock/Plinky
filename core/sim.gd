@@ -321,12 +321,29 @@ func buttons_in_zone(z_id: StringName) -> Array[ButtonDef]:
 	return out
 
 
-## Reward a press would give right now, without crit.
-func press_gain_preview(button_id: StringName) -> BigNum:
+## Reward of one press right now, with every current multiplier. The real press and the tooltips both use this.
+## `crit_mult` is 1.0 for a normal press; `presses` is 2 on a relic double.
+func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1) -> BigNum:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
 	if b == null:
 		return BigNum.zero()
-	return Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), 1.0).mul(BigNum.from_float(mastery.yield_mult(button_id) * pad_yield_mult()))
+	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
+	if is_hot():
+		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
+	return gain
+
+
+## Reward a press would give right now, without crit or a double.
+func press_gain_preview(button_id: StringName) -> BigNum:
+	return press_gain(button_id)
+
+
+## Expected reward per press: the preview times the average crit and double-press boosts.
+func press_gain_average(button_id: StringName) -> BigNum:
+	var chance: float = crit_chance(button_id)
+	var dbl: float = relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE) if relics != null else 0.0
+	var boost: float = (1.0 + chance * (crit_damage(button_id) - 1.0)) * (1.0 + clampf(dbl, 0.0, 1.0))
+	return press_gain(button_id).mul(BigNum.from_float(boost))
 
 
 ## MULT_GAIN relics apply to rewards that go into a stat flagged relics_boost_gain.
@@ -460,9 +477,7 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 	var dbl: float = relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE)
 	if dbl > 0.0 and rng.randf() < dbl:
 		presses = 2
-	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
-	if is_hot():
-		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
+	var gain: BigNum = press_gain(button_id, crit_mult, presses)
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
 	_open_next_tier(b)
