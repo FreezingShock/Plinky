@@ -13,8 +13,8 @@ uniform float night = 0.0;
 uniform float rain = 0.0;
 uniform vec3 grade_col : source_color = vec3(1.0);
 uniform float grade_amount = 0.0;
-uniform vec3 night_tint : source_color = vec3(0.50, 0.58, 0.82);
-uniform vec3 deep_tint : source_color = vec3(0.30, 0.36, 0.62);
+uniform vec3 night_tint : source_color = vec3(0.34, 0.42, 0.72);
+uniform vec3 deep_tint : source_color = vec3(0.16, 0.20, 0.42);
 uniform vec3 rain_tint : source_color = vec3(0.82, 0.88, 0.92);
 uniform vec3 pool_tint : source_color = vec3(1.0, 0.90, 0.68);
 uniform vec4 lights[24];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused)
@@ -49,7 +49,7 @@ void fragment() {
 	vec3 m = vec3(1.0);
 	float n = night * (1.0 - pool);
 	if (thr < n) {
-		m *= (thr < n * 0.45) ? deep_tint : night_tint;
+		m *= (thr < n * 0.6) ? deep_tint : night_tint;
 	}
 	// warm cast inside a pool, only while it is dark enough to matter (dither on the offset half of the matrix)
 	if (1.0 - thr < pool * (0.35 + 0.65 * night) && pool > 0.12) {
