@@ -2,7 +2,7 @@ class_name SaveCodec
 extends RefCounted
 ## Pure save encode/decode, migration, and file IO with .bak fallback. Never throws.
 
-const CURRENT_VERSION: int = 1
+const CURRENT_VERSION: int = 2
 
 
 static func encode(sim: Sim, now_unix: float) -> String:
@@ -30,6 +30,11 @@ static func decode(text: String) -> Dictionary:
 ## One step from version N to N+1. Add a branch per new version.
 static func _migrate_step(d: Dictionary) -> Dictionary:
 	match int(d["version"]):
+		1:
+			# v2 adds pad mastery. Older saves start every pad at level 0.
+			if d.get("game") is Dictionary and not (d["game"] as Dictionary).has("mastery"):
+				(d["game"] as Dictionary)["mastery"] = {}
+			d["version"] = 2
 		_:
 			d["version"] = int(d["version"]) + 1
 	return d

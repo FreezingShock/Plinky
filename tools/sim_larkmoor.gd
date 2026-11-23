@@ -50,4 +50,10 @@ func _init() -> void:
 		if id is StringName:
 			print("%s first bought at +%.1f min" % [id, (float(log2[id]) - t) / 60.0])
 	print("larkmoor gate %s at +%.1f min (rebirths %d)" % ["open" if sim.is_gate_open(&"larkmoor") else "NOT reached", (t2 - t) / 60.0, int(log2.get("rebirths", 0))])
+	var area: Dictionary = sim.area_mastery(&"larkmoor")
+	var top: StringName = &""
+	for b: ButtonDef in sim.buttons_in_zone(&"larkmoor"):
+		if top == &"" or sim.mastery.level(b.id) > sim.mastery.level(top):
+			top = b.id
+	print("larkmoor mastery: %d of %d levels (%.1f%%), best pad %s at level %d" % [area["level_sum"], area["level_cap"], float(area["fraction"]) * 100.0, top, sim.mastery.level(top)])
 	quit(0)
