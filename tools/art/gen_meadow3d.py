@@ -533,7 +533,8 @@ light = np.where(pi_, lp, lraw)
 # rock: moss caps on upward faces
 mossy = (mat_ == M_ROCK) & (nz_ > .62) & (vn3(u_ * .35, v_ * .35, z_ * .35, 12) > .38)
 mat_ = np.where(mossy, M_MOSS, mat_)
-light = np.where(shadow, light * .55 - .03, light)
+BAKED_SHADOW = .2   # fraction of the old cast-shadow darkening kept; the runtime sun (world/sky_shadows.gd) draws the moving shadows
+light = np.where(shadow, light * (1 - .45 * BAKED_SHADOW) - .03 * BAKED_SHADOW, light)
 sd_water = shadow & (mat_ == T_WATER)
 log('shaded')
 def render_scene(keep):
