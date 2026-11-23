@@ -53,7 +53,7 @@ static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 		edge = rar.readable_color(RelicStyle.ink)
 		lines.append(TipText.rarity_tag(rar, "button", edge))
 	lines.append(["Costs ", Tip.icon(String(b.cost_stat)), Tip.seg(cost.format(), StatStyle.buy(can)), " ", Tip.seg(cost_def.display_name, StatStyle.color(b.cost_stat))])
-	lines.append(["Gives ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % sim.press_gain_preview(button_id).format(), StatStyle.BUY_GREEN), " ", Tip.seg(reward_def.display_name, rc)])
+	lines.append(["Gives ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % sim.press_gain_preview(button_id).format(), StatStyle.gain()), " ", Tip.seg(reward_def.display_name, rc)])
 	return {
 		"title": "%s %d" % [String(b.row).capitalize(), b.row_index + 1], "title_color": rc, "color": edge,
 		"icon": String(b.reward_stat), "body": body, "lines": lines,

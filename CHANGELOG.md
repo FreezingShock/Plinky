@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.25.0 - 2026-11-23
+- Settings > Access gains Colour-safe colours (red-green safe, blue-yellow safe) for rarity, buy and stat colours, Large tooltip text, and Sound subtitles (captions for crits, relic chimes, gates, birdsong, waves, footsteps and music changes).
+
 ## 0.24.4 - 2026-11-23
 - Quarry embers are denser (12 per vent), bigger while hot (2 texels) and climb higher, so they read as a plume at 640x360.
 
