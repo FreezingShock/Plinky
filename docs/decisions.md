@@ -695,3 +695,9 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - The pad's own drop shadow blob was sized like a tree (26 x 18); it is now 22 x 4, the slab's width and thickness, in the same sun direction and softness as the other casters.
 - Moving prop shadows (SkyShadows) are drawn beneath the pads, so they used to stop at the plate. Each caster within 220 texels of a pad now also gets a copy in a `PadOverlay` node at z 1 (above the plates), using the same shader with `clip` on: it only paints inside a pad's diamond (15 x 8 around the plate centre, up to 24 pads), so the shadow carries across the plate and nowhere else. Scenes call `add_pad` for every pad anchor.
 - Not run in engine. PC: Larkmoor at golden hour, zoomed on a pad next to a tree.
+
+## 2026-11-23 Repo trim for faster, cheaper threads
+- Removed 10 unreferenced GDScript files (`world/player.gd`, `world/button_pad.gd`, `ui/district_banner.gd`, `ui/fx/counter_tick.gd`, and six tool scripts with no scene, test or doc reference). Reasoning: each had zero references (class names and paths checked); git history keeps them.
+- Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
+- `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
+- Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.

@@ -4,3 +4,5 @@ export/
 build/
 shots/
 captures/
+__pycache__/
+*.pyc

@@ -1,0 +1,18 @@
+# Generated, binary and bulk files. Agents skip these in searches.
+# Open one by exact path when you really need it.
+.godot/
+*.import
+export/
+build/
+shots/
+captures/
+__pycache__/
+*.pyc
+CHANGELOG.md
+assets/**/*.png
+assets/**/*.gif
+assets/**/*.ogg
+assets/**/*.wav
+assets/**/*.ttf
+assets/**/*.ico
+assets/**/*.icns
