@@ -26,6 +26,19 @@ func run(t: Object) -> void:
 		t.ok(GraphicsQuality.life_count(12) >= 1, "life count stays at least 1")
 		t.ok(GraphicsQuality.particle_count(10) >= 2, "bursts keep at least 2 particles")
 	t.eq(GraphicsQuality.life_count(12), 12, "High draws every firefly")
+	# Ground relight cost: Low spends fewer taps, and a coarser march still reaches as far as High's.
+	var prev_steps: int = 0
+	for lv: int in [GraphicsQuality.Level.LOW, GraphicsQuality.Level.MEDIUM, GraphicsQuality.Level.HIGH]:
+		GraphicsQuality.set_level(lv, false)
+		t.ok(GraphicsQuality.shadow_steps() > prev_steps, "march steps rise with quality (level %d)" % lv)
+		prev_steps = GraphicsQuality.shadow_steps()
+		var reach: float = float(GraphicsQuality.shadow_steps()) * GraphicsQuality.shadow_stride()
+		t.ok(absf(reach - 12.0) <= 0.1, "march reach stays 12 strides at level %d" % lv)
+		t.ok(GraphicsQuality.shadow_steps() <= 12 and GraphicsQuality.ao_taps() in [2, 4], "shader loop bounds respected")
+	GraphicsQuality.set_level(GraphicsQuality.Level.LOW, false)
+	t.ok(not GraphicsQuality.screen_grade(), "Low skips the screen-texture light grade")
+	GraphicsQuality.set_level(GraphicsQuality.Level.HIGH, false)
+	t.ok(GraphicsQuality.screen_grade() and GraphicsQuality.ao_taps() == 4 and GraphicsQuality.shadow_steps() == 12, "High keeps the full pass")
 	t.eq(GraphicsQuality.particle_count(10), 10, "High keeps full bursts")
 	t.near(GraphicsQuality.life_step(), 1.0 / 12.0, 1e-9, "High life steps at 12 fps")
 	t.near(GraphicsQuality.sway_step(), 1.0 / 6.0, 1e-9, "High sway steps at 6 fps")

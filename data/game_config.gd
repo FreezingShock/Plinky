@@ -2,10 +2,19 @@ class_name GameConfig
 extends Resource
 ## Global rules and tunables. Single file: content/config/game.tres.
 
+## Locked "???" rows the travel menu shows below the top-level areas.
+@export var travel_teased_rows: int = 2
 @export var tick_rate: int = 10
 @export var max_ticks_per_frame: int = 50
 @export var autosave_seconds: float = 30.0
 @export var offline_base_cap_hours: float = 2.0
+## While away the meadow is tended at this fraction of your press rate: each open tier presses its top unlocked pad,
+## paying the same cost and reward as a real press, limited by what the tier below left in stock. 0 turns it off.
+@export var offline_tend_fraction: float = 0.1
+## Relic drop rolls run at this fraction of the awake rate (same chance, luck and pity rules), at most
+## offline_relic_max_drops per return. 0 turns offline drops off.
+@export var offline_relic_roll_fraction: float = 0.25
+@export var offline_relic_max_drops: int = 3
 @export var prestige_exponent: float = 0.8
 @export var crit_multiplier: float = 5.0
 ## Rebirth needs this stat at or above rebirth_min_value, and converts it to prestige.
@@ -18,10 +27,10 @@ extends Resource
 @export var prestige_push_threshold: float = 9.0
 @export var prestige_push_exponent: float = 0.5
 ## Rebirth Points: each rebirth pays rp_base, plus rp_growth for every rebirth already done (rounded down).
-## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; rebirths still only boost Multiplier gain.
+## Spendable on the Rebirth perks in Upgrades. Separate from Prestige; Rebirth Prestige multiplies passive income (Embers in the quarry).
 @export var rp_stat: StringName = &"rp"
 ## The currency the History graph tracks (income per second). Content swaps this when the economy changes.
-@export var income_stat: StringName = &"cash"
+@export var income_stat: StringName = &"embers"
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
 ## Bloom: the meadow's reset. Opens once `bloom_gate_zone`'s gate is open and `bloom_source_stat` reaches the first payout. The reference amount is that gate's threshold (bloom_seed_ref is only the fallback).

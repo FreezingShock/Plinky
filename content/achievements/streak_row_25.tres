@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"streak_row_25"
+display_name = "Row Runner"
+description = "Finish 25 rows in order."
+category = &"streaks"
+counter = &"streaks_done"
+target = 25.0
+order = 2
+title = ""

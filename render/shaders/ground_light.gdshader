@@ -19,6 +19,8 @@ uniform float relight = 0.0;                    // 0 = baked look
 uniform float shadow_amt = 0.0;                 // how dark the cast shadow makes the light value
 uniform float shadow_slope = 2.6;               // encoded height units a step may rise before it blocks the sun
 uniform float ao_amt = 0.0;
+uniform int march_steps = 12;                   // height-march taps toward the sun (GraphicsQuality: Low 6 at double the stride)
+uniform int ao_taps = 4;                        // occlusion taps around the texel (Low 2)
 uniform float shadow_reach = 2.0;               // texels per march step; longer when the sun is low
 uniform vec3 shadow_tint : source_color = vec3(0.45, 0.52, 0.80);   // cool colour multiplied into shadowed texels
 uniform int debug_view = 0;                     // 0 off, 1 albedo, 2 normal, 3 height, 4 shadow only, 5 lit (F6 cycles)
@@ -54,16 +56,28 @@ void fragment() {
 			float h0 = texture(h_tex, UV).r * 255.0;
 			float sh = 0.0;
 			float occ = 0.0;
-			for (int k = 1; k <= 12; k++) {
-				float hn = texture(h_tex, UV + sun_px * float(k) * shadow_reach * px).r * 255.0;
-				if (hn > 0.5 && hn - h0 > shadow_slope * float(k) * shadow_reach) {
-					sh = 1.0;
+			// No cast shadow and no occlusion to apply means no taps to spend (identical result, most of the day's cost).
+			if (shadow_amt * relight > 0.002 || debug_view == 4) {
+				for (int k = 1; k <= 12; k++) {
+					if (k > march_steps) {
+						break;
+					}
+					float hn = texture(h_tex, UV + sun_px * float(k) * shadow_reach * px).r * 255.0;
+					if (hn > 0.5 && hn - h0 > shadow_slope * float(k) * shadow_reach) {
+						sh = 1.0;
+					}
 				}
 			}
-			for (int k = 0; k < 4; k++) {
-				vec2 o = vec2(float(k % 2) * 2.0 - 1.0, float(k / 2) * 2.0 - 1.0) * 3.0 * px;
-				float hn = texture(h_tex, UV + o).r * 255.0;
-				occ += clamp((hn - h0 - 4.0) / 24.0, 0.0, 1.0) * 0.25;
+			if (ao_amt > 0.0) {
+				for (int j = 0; j < 4; j++) {
+					if (j >= ao_taps) {
+						break;
+					}
+					int k = (ao_taps == 2) ? j * 3 : j;   // two taps use the opposite diagonal pair
+					vec2 o = vec2(float(k % 2) * 2.0 - 1.0, float(k / 2) * 2.0 - 1.0) * 3.0 * px;
+					float hn = texture(h_tex, UV + o).r * 255.0;
+					occ += clamp((hn - h0 - 4.0) / 24.0, 0.0, 1.0) / float(ao_taps);
+				}
 			}
 			l -= sh * shadow_amt * relight + occ * ao_amt;
 			if (abs(l - lb) > 0.03) {

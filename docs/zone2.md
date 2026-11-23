@@ -66,3 +66,7 @@ Playable, ready to swap. Verified by the PC thread only; the cloud thread could 
 **Feedback.** A pulsing ring marks each vent, and ten pips over the walker show Heat (base colour while charging, paper when Hot, a tick at the hot line). Hot payouts show as larger popups.
 
 **Not done.** Zone 3 (the gate leads nowhere yet; the HUD says so), a Heat bar on the HUD (open question above, pips for now), a zone 2 shrine and life layer (sway, embers, critters), zone 2 audio, balance pass, the transition art between zones.
+
+
+## Rework (v0.38.0)
+The quarry is now a 1400x760 world with six terraces, mesas, lava rivers, falls, pools and a moat with a bridge. See docs/decisions.md ("Ember Quarry rework") for the layout, the baked glow and the front-facing art direction. Source: `tools/art/gen_quarry.py`.
