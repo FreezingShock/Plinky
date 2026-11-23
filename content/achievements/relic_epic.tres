@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"relic_epic"
+display_name = "Epic Find"
+description = "Own an Epic relic or better."
+category = &"relics"
+counter = &"best_relic_rank"
+target = 4.0
+order = 5
+title = ""

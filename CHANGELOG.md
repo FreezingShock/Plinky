@@ -9,8 +9,45 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.32.2 - 2026-11-23
+## 0.37.2 - 2026-11-23
 - Ember Quarry balance pass: the 18 forge pads cost 40% less (greedy-floor gate about 40 min after arrival, was about 66; idle about 2x that), and each quarry rebirth pays 25% more Prestige for every quarry rebirth already done (`ZoneDef.prestige_per_rebirth_bonus`), so attribute buys keep pace with their 1.4x cost growth.
+
+## 0.37.1 - 2026-11-23
+- Low graphics quality now really lowers cost: the ground light uses fewer shadow and occlusion taps and the full-frame light grade (the one pass that copies the screen) is skipped, about 10 to 13% faster on a software-GPU stand-in. High is unchanged. The ground shader skips shadow work when no shadow applies, more shaders are pre-compiled at start, and CI now fails above 250 draw calls or 1200 nodes. New `tools/bench_weak.sh` runs the bench on a CPU rasteriser.
+
+## 0.37.0 - 2026-11-23
+- Added the Ledger: 40 achievements in eight categories (Presses, Meadow, Streaks, Relics, Rebirth, Growth, Quarry, Journey) with a new Ledger tile in the Esc menu, per-category colours and icons, progress bars, an unlock card, and cosmetic titles as the only reward. Old saves are credited with what they already did.
+
+## 0.36.0 - 2026-11-23
+- Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
+
+## 0.35.0 - 2026-11-23
+- Docs only: docs/workflow.md writes down the five-step working process and the PC pitfalls; linked from README and CLAUDE.md.
+
+## 0.34.3 - 2026-11-23
+- Zone panel: areas with more than five pads show four and fold the rest behind a greyed, underlined "N more..." line (click to expand, scrolls past 8 rows); open Travel shows the full area description and the panel shrinks back instead of leaving empty space.
+
+## 0.34.3 - 2026-11-23
+- Noon no longer bleaches and sunset is softer: the light pass gets an exposure drop, extra contrast and saturation at high sun (10:00 to 14:00), the noon grade is less green, and the 17:00 to 19:00 grade and ray colours are a softer amber instead of red-orange so shadow detail stays readable.
+
+## 0.34.3 - 2026-11-23
+- Number format tests pin 1e80 ("100QnVg") and the e-notation fallback past the last suffix.
+
+## 0.34.2 - 2026-11-23
+- Added tools/tip_probe.tscn, a frame-exact tooltip trace (pad, HUD chip, focus, menu open) that saves captures/.
+
+## 0.34.1 - 2026-11-23
+- Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
+
+## 0.34.0 - 2026-11-23
+- Ember Quarry: Cash and Multiplier are removed from the zone. Cash became Embers (the passive trickle that feeds the forge) and the Multiplier became Cinder, the first forge row, so the ladder reads Embers, Cinder, Ore, Slag, Ingot, Alloy, Emberheart with the same numbers. The old stats are parked in `content/parked/` for a later liminal zone. Saves move over one for one (save ladder 3); new Embers and Cinder icons, colours and tooltips.
+- **Simpler travel map.** The Travel menu now lists only top-level areas (Meadow, Ember Quarry) plus locked "???" rows for what comes next. Larkmoor and its districts stay in the world but leave the list; the Meadow row lands in Larkmoor once the Meadow gate is open.
+
+## 0.33.0 - 2026-11-23
+- The HUD stat strip is customizable and saved per game. Right-click a row to hide it, or press the pencil under the strip for edit mode: move rows up and down, hide them, add stats from icon-only chips (instant tooltip names each one), up to 10 rows, and Reset to the zone's Default layout. Each zone keeps its own layout (flower ladder, Ember Quarry), stats met in other zones can be pinned, older saves start on Default. Settings > Gameplay gets Edit Stat Strip, Reset Stat Strip, Strip Gain Rates, Strip Unearned Rows and Right-click Hides a Row. New `tools/hud_shot.tscn -- edit` fixture.
+
+## 0.32.2 - 2026-11-23
+- New pad-press popups: pooled, procedural stacking gain numbers coloured by streak tier (Gold, Ice, Rainbow, Chroma, Galaxy), stat-name caption, relic pulse echoes, new SFX, anchored in the world and drawn below menus; pads shake instead of the camera.
 
 ## 0.32.1 - 2026-11-23
 - HUD strip: more room between the gain text and the value so long suffixes never touch it.

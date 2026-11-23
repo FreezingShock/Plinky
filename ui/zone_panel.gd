@@ -1,7 +1,7 @@
 class_name ZonePanel
 extends PanelContainer
-## Top-right zone panel: where you are (name, gate progress), a foldable travel menu of every location with its
-## areas, and the card of the area you are viewing (description, pads, mastery). While the travel menu is open the
+## Top-right zone panel: where you are (name, gate progress), a foldable travel menu of the top-level areas (Meadow,
+## Ember Quarry) plus a few locked teasers for what comes next, and the card of the district you are viewing (description, pads, mastery). While the travel menu is open the
 ## card folds down to a dithered stub; closed, it shows in full. Every row is a focusable button, so keyboard and pad
 ## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and icon).
 ## The mastery row sums the area's pads from `sim.mastery`.
@@ -9,6 +9,9 @@ extends PanelContainer
 const WIDTH: float = 176.0
 const INNER: float = WIDTH - 16.0
 const PEEK: float = 3.5   ## seconds the area card stays open after you walk into an area
+const PADS_SHOWN: int = 4      ## pads listed when an area has more than PADS_FOLD of them; the rest fold behind "N more..."
+const PADS_FOLD: int = 5
+const PADS_MAX_PX: float = 96.0   ## tallest the expanded pad list grows before it scrolls, so the panel never leaves the screen
 
 signal travel_toggled(open: bool)
 
@@ -22,14 +25,15 @@ var _gate_bar: DitherBar
 var _gate_label: Label
 var _travel_btn: PixelButton
 var _travel: RevealBox
-var _zone_rows: Dictionary = {}     # zone id -> ListRow
-var _zone_toggles: Dictionary = {}  # zone id -> ListRow
-var _zone_areas: Dictionary = {}    # zone id -> RevealBox
-var _area_rows: Dictionary = {}     # area id -> ListRow
+var _zone_rows: Dictionary = {}     # top-level zone id -> ListRow
+var _teaser_rows: Array[ListRow] = []
 var _card: RevealBox
 var _card_title: Label
 var _card_desc: Label
 var _card_pads: VBoxContainer
+var _pads_scroll: ScrollContainer
+var _pads_more: Label
+var _pads_expanded: bool = false
 var _pad_rows: Dictionary = {}      # button id -> Label
 var _mastery_label: Label
 var _mastery_bar: DitherBar
@@ -41,6 +45,8 @@ var _gated: Array[Control] = []     # parts that wait for the rebirth row to unl
 func _init() -> void:
 	add_theme_stylebox_override("panel", AsciiBox.panel())
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A panel only ever grows by itself; let it shrink back when the card folds so no empty space is left below.
+	minimum_size_changed.connect(func() -> void: set_deferred("size", Vector2(size.x, 0.0)))
 
 
 func setup(p_sim: Sim) -> void:
@@ -121,63 +127,67 @@ func area_colour(a: AreaDef) -> Color:
 	return palette_of(a.zone)[clampi(a.theme_role, 0, 7)]
 
 
-func _build_list(list: VBoxContainer) -> void:
+## The top-level area a zone belongs to: Larkmoor is part of the Meadow, so it has no row of its own.
+func top_of(zid: StringName) -> StringName:
+	var cur: StringName = zid
+	for _i in 8:
+		var z: ZoneDef = sim.zone_defs.get(cur) as ZoneDef
+		if z == null or z.travel_parent == &"" or not sim.zone_defs.has(z.travel_parent):
+			break
+		cur = z.travel_parent
+	return cur
+
+
+## Top-level areas in travel order.
+func top_zones() -> Array[ZoneDef]:
+	var out: Array[ZoneDef] = []
 	for z in _zones_sorted():
+		if top_of(z.id) == z.id:
+			out.append(z)
+	return out
+
+
+## Where a click on a top-level row lands: the furthest unlocked zone inside it (the Meadow row opens Larkmoor once
+## the Meadow gate is open), or the zone you are already in.
+func destination(top: StringName) -> StringName:
+	if top_of(sim.zone_id) == top:
+		return sim.zone_id
+	var best: StringName = top
+	for z in _zones_sorted():
+		if top_of(z.id) == top and sim.is_zone_unlocked(z.id):
+			best = z.id
+	return best
+
+
+func _build_list(list: VBoxContainer) -> void:
+	for z in top_zones():
 		var zid: StringName = z.id
-		var head := HBoxContainer.new()
-		head.add_theme_constant_override("separation", 0)
-		list.add_child(head)
-		var tog := ListRow.new()
-		tog.text = "+"
-		tog.custom_minimum_size.x = 18
-		tog.tint = zone_colour(z)
-		tog.pressed.connect(func() -> void: _toggle_zone(zid))
-		_bind(tog, func() -> Array: return ["Areas", "Show or hide the areas inside %s." % z.display_name])
-		head.add_child(tog)
-		_zone_toggles[zid] = tog
 		var row := ListRow.new()
 		row.tint = zone_colour(z)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.pressed.connect(func() -> void: _go(zid, &""))
+		row.pressed.connect(func() -> void: _go(destination(zid), &""))
 		_bind(row, func() -> Array: return _zone_tip(zid))
-		head.add_child(row)
+		list.add_child(row)
 		_zone_rows[zid] = row
-		var reveal := RevealBox.new()
-		var box := VBoxContainer.new()
-		box.add_theme_constant_override("separation", 0)
-		reveal.add_child(box)
-		list.add_child(reveal)
-		_zone_areas[zid] = reveal
-		for a in sim.areas_in_zone(zid):
-			var aid: StringName = a.id
-			var ar := ListRow.new()
-			ar.tint = area_colour(a)
-			ar.text = "   " + a.display_name
-			ar.area_icon = a.icon
-			ar.pressed.connect(func() -> void: _go(zid, aid))
-			_bind(ar, func() -> Array: return _area_tip(aid))
-			box.add_child(ar)
-			_area_rows[aid] = ar
-		reveal.set_open(zid == sim.zone_id, false)
+	for i in sim.config.travel_teased_rows:
+		var t := ListRow.new()
+		t.text = "??? (soon)"
+		t.tint = RelicStyle.dim
+		t.disabled = true
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_bind(t, func() -> Array: return ["Locked", "A new area is on the way."])
+		list.add_child(t)
+		_teaser_rows.append(t)
 
 
-func _toggle_zone(zid: StringName, animate: bool = true) -> void:
-	var r: RevealBox = _zone_areas[zid]
-	r.set_open(not r._target, animate)
-	_sync_toggles()
-
-
-func _sync_toggles() -> void:
-	for zid: StringName in _zone_toggles:
-		(_zone_toggles[zid] as ListRow).text = "-" if (_zone_areas[zid] as RevealBox)._target else "+"
-
-
-## Height of the folded card: the title row and exactly one description line, so no line is cut through.
+## Height of the folded card: the title row and the whole (wrapped) description, so no line is cut through.
 func _stub_px() -> float:
 	var font: Font = _card_desc.get_theme_font("font")
 	var fs: int = _card_desc.get_theme_font_size("font_size")
-	var line: float = maxf(_card_desc.get_line_height(), font.get_height(fs) if font != null else 0.0)
-	return _card_title.get_combined_minimum_size().y + 2.0 + line + 3.0   # +3 keeps descenders (g, p, y) whole
+	var h: float = _card_desc.get_line_height()
+	if font != null:
+		h = maxf(h, font.get_multiline_string_size(_card_desc.text, HORIZONTAL_ALIGNMENT_LEFT, INNER, fs).y)
+	return _card_title.get_combined_minimum_size().y + 2.0 + h + 3.0   # +3 keeps descenders (g, p, y) whole
 
 
 func set_travel_open(on: bool, animate: bool = true) -> void:
@@ -251,9 +261,29 @@ func _build_card(card: VBoxContainer) -> void:
 	_card_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_card_desc.add_theme_color_override("font_color", RelicStyle.text)
 	card.add_child(_card_desc)
+	_pads_scroll = ScrollContainer.new()
+	_pads_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_pads_scroll.custom_minimum_size.x = INNER
+	_pads_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	card.add_child(_pads_scroll)
 	_card_pads = VBoxContainer.new()
 	_card_pads.add_theme_constant_override("separation", 0)
-	card.add_child(_card_pads)
+	_card_pads.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pads_scroll.add_child(_card_pads)
+	_pads_more = Label.new()
+	_pads_more.mouse_filter = Control.MOUSE_FILTER_STOP
+	_pads_more.focus_mode = Control.FOCUS_ALL
+	_pads_more.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_pads_more.add_theme_color_override("font_color", RelicStyle.dim)
+	_pads_more.gui_input.connect(_on_more_input)
+	_pads_more.draw.connect(func() -> void:   # underline
+		var f: Font = _pads_more.get_theme_font("font")
+		var fs: int = _pads_more.get_theme_font_size("font_size")
+		var w: float = f.get_string_size(_pads_more.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var y: float = f.get_ascent(fs) + 2.0
+		_pads_more.draw_rect(Rect2(0.0, y, w, 1.0), RelicStyle.dim))
+	_bind(_pads_more, func() -> Array: return ["Pads", "Click to show or hide the rest of this area's pads."])
+	card.add_child(_pads_more)
 	_mastery_label = Label.new()
 	_mastery_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	_bind(_mastery_label, _mastery_tip)
@@ -262,8 +292,46 @@ func _build_card(card: VBoxContainer) -> void:
 	card.add_child(_mastery_bar)
 
 
+func _on_more_input(ev: InputEvent) -> void:
+	var hit: bool = ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT
+	if hit or ev.is_action_pressed(&"ui_accept"):
+		_pads_expanded = not _pads_expanded
+		_pads_more.accept_event()
+		Tip.hide_all()
+		_layout_pads()
+
+
+## Shows the pads that matter first. Up to PADS_FOLD pads all show. Longer lists show PADS_SHOWN of them, starting
+## one before the first pad you cannot afford yet (so the next goals lead), and fold the rest behind a "N more..." line.
+func _layout_pads() -> void:
+	var ids: Array = _pad_rows.keys()
+	var n: int = ids.size()
+	var fold: bool = n > PADS_FOLD
+	var start: int = 0
+	if fold and not _pads_expanded:
+		var first_wait: int = n
+		for i in n:
+			if not sim.can_afford(ids[i] as StringName):
+				first_wait = i
+				break
+		start = clampi(first_wait - 1, 0, n - PADS_SHOWN)
+	for i in n:
+		(_pad_rows[ids[i]] as Label).visible = not fold or _pads_expanded or (i >= start and i < start + PADS_SHOWN)
+	_pads_more.visible = fold
+	if fold:
+		_pads_more.text = "Show less" if _pads_expanded else "%d more..." % (n - PADS_SHOWN)
+		_pads_more.queue_redraw()
+	var rows: int = n if (_pads_expanded or not fold) else PADS_SHOWN
+	var line: float = 12.0
+	if n > 0:
+		line = maxf((_pad_rows[ids[0]] as Label).get_combined_minimum_size().y, 1.0)
+	_pads_scroll.custom_minimum_size.y = minf(float(rows) * line, PADS_MAX_PX)
+	_pads_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if _pads_expanded else ScrollContainer.SCROLL_MODE_DISABLED
+
+
 func _rebuild_card() -> void:
 	_card_area = _view_area
+	_pads_expanded = false
 	for c in _card_pads.get_children():
 		c.queue_free()
 	_pad_rows.clear()
@@ -272,6 +340,7 @@ func _rebuild_card() -> void:
 		var z: ZoneDef = sim.current_zone()
 		_card_title.text = z.display_name if z != null else ""
 		_card_desc.text = z.description if z != null else ""
+		_layout_pads()
 		return
 	var col: Color = area_colour(a)
 	_card_title.text = a.display_name
@@ -285,6 +354,9 @@ func _rebuild_card() -> void:
 		_bind(l, func() -> Array: return _pad_tip(id))
 		_card_pads.add_child(l)
 		_pad_rows[id] = l
+	_layout_pads()
+	if travel_open:
+		_card.floor_px = _stub_px()
 
 
 func _pad_tip(id: StringName) -> Array:
@@ -332,17 +404,18 @@ func _zone_tip(zid: StringName) -> Array:
 		var prev: String = ""
 		for o: ZoneDef in sim.zone_defs.values():
 			if o.next_zone == zid:
-				prev = o.display_name
+				prev = top_name_of(o.id)
 		return ["Locked", "Open the gate in %s to come here." % prev]
-	var n_pads: int = z.pad_buttons.size()
-	var state: String = "You are here." if zid == sim.zone_id else "Click to travel."
-	return [z.display_name, "%s\n%d areas, %d pads." % [state, sim.areas_in_zone(zid).size(), n_pads]]
+	var n_pads: int = 0
+	for o in _zones_sorted():
+		if top_of(o.id) == zid:
+			n_pads += o.pad_buttons.size()
+	var state: String = "You are here." if top_of(sim.zone_id) == zid else "Click to travel."
+	return [z.display_name, "%s\n%d pads." % [state, n_pads]]
 
 
-func _area_tip(aid: StringName) -> Array:
-	var a: AreaDef = sim.area_defs[aid] as AreaDef
-	var here: String = " You are in this zone." if a.zone == sim.zone_id else " Click to travel there."
-	return [a.display_name, "%s\n%d pads.%s" % [a.blurb, a.pad_buttons.size(), here]]
+func top_name_of(zid: StringName) -> String:
+	return (sim.zone_defs[top_of(zid)] as ZoneDef).display_name
 
 
 func _gate_tip() -> Array:
@@ -364,30 +437,27 @@ func refresh() -> void:
 		var areas: Array[AreaDef] = sim.areas_in_zone(z.id)
 		if not sim.area_defs.has(_view_area) or (sim.area_defs[_view_area] as AreaDef).zone != z.id:
 			_view_area = areas[0].id if not areas.is_empty() else &""
-		for zid: StringName in _zone_areas:
-			(_zone_areas[zid] as RevealBox).set_open(zid == z.id)
-		_sync_toggles()
 	if _card_area != _view_area or _pad_rows.is_empty() and _view_area != &"":
 		_rebuild_card()
 	_title.text = z.display_name
 	_title.add_theme_color_override("font_color", zone_colour(z))
 	_fit_title()
+	var here: StringName = top_of(sim.zone_id)
 	for zid: StringName in _zone_rows:
 		var zd: ZoneDef = sim.zone_defs[zid] as ZoneDef
 		var row: ListRow = _zone_rows[zid]
 		var open: bool = sim.is_zone_unlocked(zid)
-		row.text = ("%s (here)" % zd.display_name if zid == sim.zone_id else zd.display_name) if open else "??? (locked)"
+		row.text = ("%s (here)" % zd.display_name if zid == here else zd.display_name) if open else "??? (locked)"
 		row.disabled = not open
-		(_zone_toggles[zid] as ListRow).disabled = not open
-		(_zone_areas[zid] as RevealBox).visible = open
-	for aid: StringName in _area_rows:
-		(_area_rows[aid] as ListRow).marked = aid == _view_area
+		row.marked = zid == here
 	for bid: StringName in _pad_rows:
 		var b: ButtonDef = sim.button_defs[bid]
 		var ready: bool = sim.can_afford(bid)
 		var l: Label = _pad_rows[bid]
 		l.text = "%s %s %d  %s" % ["*" if ready else "-", String(b.row).capitalize(), b.row_index + 1, Formulas.button_cost(b).format()]
 		l.add_theme_color_override("font_color", RelicStyle.accent if ready else RelicStyle.dim)
+	if not _pads_expanded and _pad_rows.size() > PADS_FOLD:
+		_layout_pads()
 	var ms: Array = _mastery_of(_view_area)
 	_mastery_label.text = "Mastery  Lv %d/%d" % [int(ms[0]), int(ms[1])]
 	_mastery_label.add_theme_color_override("font_color", RelicStyle.text)

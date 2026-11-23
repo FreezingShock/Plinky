@@ -12,11 +12,11 @@ func run(t: Object) -> void:
 	for id: String in z2.pad_buttons:
 		t.ok(sim.button_defs.has(StringName(id)), "button %s exists" % id)
 
-	# Slag multiplies cash income as its own factor and stacks with Multiplier
-	sim.stats[&"mult"] = BigNum.from_float(3.0)
-	var base: float = sim.income_per_second(&"cash").to_float()
+	# Slag multiplies Embers income as its own factor and stacks with Cinder
+	sim.stats[&"cinder"] = BigNum.from_float(3.0)
+	var base: float = sim.income_per_second(&"embers").to_float()
 	sim.stats[&"slag"] = BigNum.from_float(4.0)
-	t.near(sim.income_per_second(&"cash").to_float(), base * (1.0 + 4.0 * 0.5), 1e-9, "slag adds a (1 + slag / 2) factor")
+	t.near(sim.income_per_second(&"embers").to_float(), base * (1.0 + 4.0 * 0.5), 1e-9, "slag adds a (1 + slag / 2) factor")
 
 	# Heat only exists in zone 2
 	sim.step(0.1)
@@ -41,17 +41,17 @@ func run(t: Object) -> void:
 	t.near(sim.heat, z2.heat_cap - z2.heat_decay_per_second, 1e-9, "Heat decays while away from vents")
 
 	# a Hot press pays heat_hot_mult times as much as a cold one
-	sim.stats[&"cash"] = BigNum.from_float(1.0e7)
+	sim.stats[&"embers"] = BigNum.from_float(1.0e7)
 	var hot_gain: BigNum = sim.press_gain_preview(&"cinder_1")   # the preview includes Heat
-	var before: float = sim.get_stat(&"mult").to_float()
+	var before: float = sim.get_stat(&"cinder").to_float()
 	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while Hot")
-	t.near(sim.get_stat(&"mult").to_float() - before, hot_gain.to_float(), 1e-9, "Hot press pays what the tooltip preview says")
+	t.near(sim.get_stat(&"cinder").to_float() - before, hot_gain.to_float(), 1e-9, "Hot press pays what the tooltip preview says")
 	sim.heat = 0.0
 	var cold: BigNum = sim.press_gain_preview(&"cinder_1")
 	t.near(hot_gain.to_float(), cold.to_float() * z2.heat_hot_mult, 1e-9, "Hot preview is heat_hot_mult times the cold one")
-	before = sim.get_stat(&"mult").to_float()
+	before = sim.get_stat(&"cinder").to_float()
 	t.ok(sim.try_press(&"cinder_1"), "press cinder_1 while cold")
-	t.near(sim.get_stat(&"mult").to_float() - before, cold.to_float(), 1e-9, "cold press pays the base reward")
+	t.near(sim.get_stat(&"cinder").to_float() - before, cold.to_float(), 1e-9, "cold press pays the base reward")
 
 	# decay runs out, hot flips back off, rebirth and zone entry clear Heat
 	sim.feed_heat(100.0)

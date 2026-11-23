@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AchievementDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/achievement_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"relic_kinds_6"
+display_name = "Full Set"
+description = "Own all 6 different relics."
+category = &"relics"
+counter = &"relic_kinds"
+target = 6.0
+order = 4
+title = "Collector"

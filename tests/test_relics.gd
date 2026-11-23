@@ -112,4 +112,4 @@ func run(t: SceneTree) -> void:
 	t.ok(q.equipped.size() == 2 and not q.is_equipped(&"r_mult"), "preview changes nothing")
 	var sw: Array[Dictionary] = q.preview_change(&"r_rate", &"r_cash")
 	t.ok(sw.size() == 2, "swap preview lists both effects")
-	t.ok(RelicDef.effect_name(RelicDef.Effect.CASH_MULT) == "Cash Income", "effect names are Title Case")
+	t.ok(RelicDef.effect_name(RelicDef.Effect.CASH_MULT) == "Passive Income", "effect names are Title Case")
