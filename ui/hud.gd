@@ -171,7 +171,6 @@ func _build_stats() -> void:
 		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(rate)
 		var val := RollValue.new()
-		val.custom_minimum_size.x = STAT_VALUE_WIDTH
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		val.add_theme_color_override("font_color", StatStyle.color(sid))
