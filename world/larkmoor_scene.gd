@@ -177,11 +177,16 @@ func spawn_occluders(parent: Node2D) -> void:
 func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	var bush_sprites: Array = []
 	var start: int = Time.get_ticks_usec()
+	var i: int = 0
 	for s: Dictionary in _data.sprites:
+		i += 1
 		_spawn_one(parent, s, bush_sprites)
 		if float(Time.get_ticks_usec() - start) / 1000.0 >= budget_ms:
+			var yielded: int = Time.get_ticks_usec()
 			await get_tree().process_frame
 			start = Time.get_ticks_usec()
+			if PerfStats.tracing and float(start - yielded) / 1000.0 > 25.0:
+				PerfStats.trace.append("slice frame gap %.1f ms (after %d props)" % [float(start - yielded) / 1000.0, i])
 	if react != null:
 		react.set_bushes(bush_sprites)
 

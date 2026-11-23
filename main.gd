@@ -370,6 +370,9 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	PerfStats.lap("swap: instantiate")
 	world.add_child(meadow)
 	PerfStats.lap("swap: add_child (ready)")
+	if sliced:
+		await get_tree().process_frame   # the scene's first frame is its own frame, not stacked on a prop slice
+		PerfStats.lap("swap: first frame after add_child")
 	await _spawn_occluders(sliced)
 	PerfStats.lap("swap: occluders")
 	_apply_scene_frame(zone_id)
