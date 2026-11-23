@@ -13,6 +13,10 @@ const SHADER: Shader = preload("res://render/shaders/cast_shadow.gdshader")
 const KIND: Dictionary = {
 	"oak": Vector2(0.80, 0.80), "pine": Vector2(0.45, 0.95), "bush": Vector2(0.85, 0.45),
 	"rock": Vector2(0.80, 0.55), "crystals": Vector2(0.50, 0.85),
+	# Larkmoor landmarks: slim towers throw long thin shadows, the windmill and gatehouse are broader.
+	"tower": Vector2(0.40, 0.90), "lighthouse": Vector2(0.38, 0.95), "obelisk": Vector2(0.45, 0.90),
+	"menhir": Vector2(0.55, 0.70), "windmill": Vector2(0.60, 0.80), "gateway": Vector2(0.75, 0.60),
+	"lantern": Vector2(0.30, 0.55), "sign": Vector2(0.35, 0.40),
 }
 const DEFAULT_KIND: Vector2 = Vector2(0.7, 0.6)
 const WALKER_SIZE: Vector2 = Vector2(11.0, 17.0)   # width of the walker's shadow and the height it stretches from

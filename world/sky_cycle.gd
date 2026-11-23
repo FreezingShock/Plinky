@@ -13,7 +13,8 @@ const SHADE_SHADER: Shader = preload("res://render/shaders/day_night.gdshader")
 const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
-const MAX_LIGHTS: int = 12
+const MAX_LIGHTS: int = 12            # what the shade shader draws at once
+const MAX_STORED: int = 40            # pools a scene may register; the 12 nearest the camera are drawn
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
 const SWAY_STEP: float = 1.0 / 8.0
@@ -30,6 +31,9 @@ var rain_layer: SkyRain
 var shadows: SkyShadows                 # set by MeadowScene before this node enters the tree
 var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
 var ground_texture: Texture2D           # backdrop, so the haze shader can tell water from land
+## Haze shader overrides for bigger scenes (Larkmoor): ground_origin, horizon_y, band_half, island_x, island_half, island.
+## Empty keeps the meadow defaults baked into the shader.
+var haze_params: Dictionary = {}
 var ponds: Array = []                   # [Vector4(cx, cy, rx, ry)] for the lake and ponds
 var _haze_mat: ShaderMaterial
 var _rays_mat: ShaderMaterial
@@ -44,29 +48,30 @@ var _sway_step: int = -1
 
 func _ready() -> void:
 	z_index = 5
-	_config = load(CONFIG_PATH) as SkyConfig
-	if _config == null:
-		_config = SkyConfig.new()
+	light_config()
 	_apply_config()
 	var haze := ColorRect.new()
 	haze.name = "Haze"
-	haze.position = AREA.position
-	haze.size = AREA.size
+	haze.position = area.position
+	haze.size = area.size
 	haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_haze_mat = ShaderMaterial.new()
 	_haze_mat.shader = HAZE_SHADER
 	if ground_texture != null:
 		_haze_mat.set_shader_parameter("ground", ground_texture)
 	_haze_mat.set_shader_parameter("ponds", _pond_array())
+	for k: String in haze_params:
+		_haze_mat.set_shader_parameter(k, haze_params[k])
 	haze.material = _haze_mat
 	add_child(haze)
 	var rays := ColorRect.new()
 	rays.name = "Rays"
-	rays.position = AREA.position
-	rays.size = AREA.size
+	rays.position = area.position
+	rays.size = area.size
 	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rays_mat = ShaderMaterial.new()
 	_rays_mat.shader = RAYS_SHADER
+	_rays_mat.set_shader_parameter("reach", maxf(860.0, area.size.y * 1.3))
 	rays.material = _rays_mat
 	add_child(rays)
 	var shade := ColorRect.new()
@@ -118,12 +123,17 @@ func _pond_array() -> Array:
 
 ## Add a light pool. `follow` (optional) is a node the pool tracks each frame.
 func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
-	if _lights.size() >= MAX_LIGHTS:
+	if _lights.size() >= MAX_STORED:
 		return
 	_lights.append({"pos": pos, "radius": radius, "strength": strength, "kind": kind})
 
 
+## The sky config, loaded on first use so a scene can read pool radii before this node has entered the tree.
 func light_config() -> SkyConfig:
+	if _config == null:
+		_config = load(CONFIG_PATH) as SkyConfig
+		if _config == null:
+			_config = SkyConfig.new()
 	return _config
 
 
@@ -230,7 +240,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	# god rays: sun point sits above the frame on the side the sun is on
 	var ray_amt: float = _config.ray_strength * model.rays(mt, rain01)
 	_rays_mat.set_shader_parameter("amount", ray_amt)
-	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 400.0, -120.0))
+	_rays_mat.set_shader_parameter("sun", Vector2(area.get_center().x + az * 400.0, area.position.y - 50.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
 	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
 	# vignette
@@ -257,15 +267,30 @@ static func light_flicker(t: float, key: int, steady: bool) -> float:
 
 
 func _push_lights(t: float, steady: bool) -> void:
-	var arr: Array = []
+	var view: Rect2 = get_global_transform_with_canvas().affine_inverse() * get_viewport_rect()
+	var centre: Vector2 = view.get_center()
+	var cand: Array[Dictionary] = []
 	for L: Dictionary in _lights:
 		var pos: Vector2 = L.pos
+		var d2: float = 0.0
 		if L.kind == &"walker":
 			if _walker == null or not is_instance_valid(_walker):
 				_walker = _find_walker()
 			if _walker == null:
 				continue
 			pos = _walker.position
+			d2 = -1.0   # always kept
+		else:
+			if _lights.size() > MAX_LIGHTS and not view.grow(float(L.radius)).has_point(pos):
+				continue
+			d2 = pos.distance_squared_to(centre)
+		cand.append({"pos": pos, "radius": L.radius, "strength": L.strength, "d2": d2})
+	if cand.size() > MAX_LIGHTS:
+		cand.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.d2) < float(b.d2))
+		cand.resize(MAX_LIGHTS)
+	var arr: Array = []
+	for L: Dictionary in cand:
+		var pos: Vector2 = L.pos
 		var flick: float = light_flicker(t, int(pos.x), steady)
 		arr.append(Vector4(pos.x, pos.y - 4.0, float(L.radius) + flick, float(L.strength)))
 	while arr.size() < MAX_LIGHTS:

@@ -21,6 +21,8 @@ const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
 var _data: Dictionary = {}
 var react: LifeReact
 var _sky: SkyCycle
+var _shadows: SkyShadows
+var _ground: Sprite2D
 var districts: Array[Dictionary] = []   # {id, name, pos}
 
 
@@ -65,16 +67,54 @@ func _ready() -> void:
 			_:
 				continue
 		anchors.add_child(m)
+	_ground = ground
 	_add_life(ground)
 	_add_sky()
 
 
-## Day/night shade, rain and wind over the whole world (world/sky_cycle.gd).
+## Day/night shade, rain, wind, sun shadows, haze and light pools over the whole world (world/sky_cycle.gd).
 func _add_sky() -> void:
+	_shadows = SkyShadows.new()
+	_shadows.name = "Shadows"
+	add_child(_shadows)   # above the ground and grass, below every prop and the walker
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
+	_sky.shadows = _shadows
+	_sky.ground_texture = _ground.texture
 	_sky.area = world_rect.grow(10.0)
+	var water: Array = []
+	for a: Dictionary in _data.anchors:
+		if String(a.kind) == "water":
+			water.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
+	_sky.ponds = water
+	# Mountains ring the island on every side: haze band along the far rim, island ellipse keeps mist off the land.
+	_sky.haze_params = {
+		"ground_origin": Vector2.ZERO, "horizon_y": 130.0, "band_half": 90.0,
+		"island_x": 760.0, "island_half": 520.0, "island": Vector4(760.0, 450.0, 560.0, 290.0),
+	}
 	add_child(_sky)
+	_add_lights()
+
+
+## Light pools (radii in content/config/sky.tres): the lanterns, the gates, the pad clusters, the lighthouse,
+## the great lantern and the watchtower, and a small one around the walker. They show against the night shade and dusk.
+func _add_lights() -> void:
+	var cfg: SkyConfig = _sky.light_config()
+	var life: Dictionary = MeadowLife.load_data(LIFE_PATH)
+	for L: Variant in life.get("lights", []) as Array:
+		var d: Dictionary = L as Dictionary
+		_sky.add_light(Vector2(float(d.x), float(d.y)), cfg.pool_shrine_radius, 1.0)
+	for a: Dictionary in _data.anchors:
+		match String(a.kind):
+			"gate", "arch":
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
+			"pad":
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+	for s: Dictionary in _data.sprites:
+		match String(s.kind):
+			"lighthouse", "tower":
+				_sky.add_light(Vector2(float(s.foot[0]), float(s.y) + 8.0), cfg.pool_shrine_radius * 1.3, 0.9)
+	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 
 
 ## The district whose centre is nearest the walker, or an empty dictionary when none is within DISTRICT_RADIUS.
@@ -127,7 +167,11 @@ func spawn_occluders(parent: Node2D) -> void:
 			sp.texture = SkyCycle.padded(sp.texture)
 			sp.offset.x -= float(SkyCycle.SWAY_PAD)
 			sp.material = _sky.sway_material
+		elif _sky != null:
+			sp.material = _sky.rim_material
 		parent.add_child(sp)
+		if _shadows != null:
+			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
 		if String(s.kind) == "bush":
 			bush_sprites.append(sp)
 	if react != null:

@@ -151,3 +151,9 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Larkmoor reuses `meadow` palette and the meadow life layers (grass sway, fireflies) with its own anchors from `gen_life_anchors.py --bounds ... --sway-count ...`.
 - Open: day/night and weather (PR #41) and walker reactions (PR #34) are not wired to the Larkmoor scene yet; both read the scene's ground, so they should work once merged. Pad colours, names and numbers are Nathan's call.
 | 2026-11-23 | Window placement (core/window_place.gd, DisplaySettings.place_window): first launch centres the window on the screen under the cursor (else primary), 90% of that screen at most. Every later start, and every return from fullscreen, clamps the window wholly onto the one screen that holds most of it, shrinking if needed. Dead zones between monitors of different sizes pull it to the nearest screen | The exe opened across the gap on a 3840x1483 two-monitor desktop. Pure Rect2i math with tests: straddling, dead zone, off-screen, oversized, negative coordinates, tiny screens. |
+
+### Larkmoor lighting (23 Nov)
+- Larkmoor now uses the #47 lighting: sun shadows (new kinds: tower, lighthouse, obelisk, menhir, windmill, gateway, lantern, sign), rim light on non-swaying props, haze over the surrounding mountains and mist over the lake and mere (`SkyCycle.haze_params` overrides the meadow-sized defaults), and god rays sized to the world rect.
+- Light pools: the six lanterns, gate and arch, ten pads, lighthouse and both towers, and the walker. That is more than the shade shader's 12 slots, so `SkyCycle` stores up to 40 and each frame draws the 12 nearest the camera (walker always kept). Shader cost is unchanged.
+- `SkyCycle.light_config()` loads the config on first use so scenes can read pool radii before the node enters the tree.
+- Review shots: `tools/larkmoor_light_shots.gd` (dawn to midnight at the lantern wood and a zoom-1 overview).
