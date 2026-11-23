@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.37.3 - 2026-11-23
+- Offline catch-up: income and tending now run in 12 slices, so Dewdrops earned while away raise the later income instead of the whole stretch paying at the rate you left with. The Welcome Back card groups repeat relics ("Found Gold Purse x2").
+
 ## 0.37.2 - 2026-11-23
 - Ember Quarry balance pass: the 18 forge pads cost 40% less (greedy-floor gate about 40 min after arrival, was about 66; idle about 2x that), and each quarry rebirth pays 25% more Prestige for every quarry rebirth already done (`ZoneDef.prestige_per_rebirth_bonus`), so attribute buys keep pace with their 1.4x cost growth.
 

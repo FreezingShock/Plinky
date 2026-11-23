@@ -1018,13 +1018,26 @@ func apply_offline(seconds: float) -> float:
 		return 0.0
 	calendar.advance(secs)   # the world keeps turning while you are away
 	var gains: Dictionary = {}
-	var sb: BigNum = BigNum.from_float(secs)
-	for s: StatDef in stat_defs.values():
-		if s.passive:
-			var g: BigNum = income_per_second(s.id).mul(sb)
-			_set_stat(s.id, get_stat(s.id).add(g))
-			gains[s.id] = g
-	last_offline["tend"] = _offline_tend(secs, gains)
+	var tend: Dictionary = {}
+	# Slices keep income and tending in step: what tending pays in one slice (Dewdrops and up) raises the next slice's
+	# income, as it would if you were pressing, instead of the whole stretch paying at the rate you left with.
+	var slices: int = maxi(1, config.offline_slices)
+	var slice_secs: float = secs / float(slices)
+	var sb: BigNum = BigNum.from_float(slice_secs)
+	for i in slices:
+		for s: StatDef in stat_defs.values():
+			if s.passive:
+				var g: BigNum = income_per_second(s.id).mul(sb)
+				_set_stat(s.id, get_stat(s.id).add(g))
+				gains[s.id] = (gains[s.id] as BigNum).add(g) if gains.has(s.id) else g
+		var part: Dictionary = _offline_tend(slice_secs, gains)
+		for tid: StringName in part:
+			var r: Dictionary = part[tid]
+			if tend.has(tid):
+				r["presses"] = int(r["presses"]) + int((tend[tid] as Dictionary)["presses"])
+				r["levels"] = int(r["levels"]) + int((tend[tid] as Dictionary)["levels"])
+			tend[tid] = r
+	last_offline["tend"] = tend
 	last_offline["relics"] = _offline_relics(secs)
 	_check_gates()
 	_flush()
