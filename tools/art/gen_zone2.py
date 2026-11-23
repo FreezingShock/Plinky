@@ -293,7 +293,8 @@ BOUNDS_W = (70.0, 10.0, -50.0)         # tier boundaries along w (near to far); 
 # branches west, east and north-west to the three pads. Nothing rises in front of the camera: the near edge of the
 # bowl is a low berm, so the plateau reads as a whole map with ground in every direction.
 HUB_WD = (30, 0)
-MAIN_WD = [(132, 0), (104, -12), (76, 8), (52, -4), HUB_WD, (6, -10), (-20, 0), (-50, -6), (-76, 8), (-100, 12)]
+ARCH_WD = (124, 0)
+MAIN_WD = [ARCH_WD, (104, -12), (76, 8), (52, -4), HUB_WD, (6, -10), (-20, 0), (-50, -6), (-76, 8), (-100, 12)]
 BRANCHES_WD = [
     [HUB_WD, (38, -34), (32, -72)],       # west to pad 0
     [HUB_WD, (26, 34), (32, 72)],         # east to pad 1
@@ -356,7 +357,8 @@ def build_quarry(seed=0):
     M[seam & (M == M_FLOOR)] = M_SEAM
     hub_u, hub_v = wd_uv(*HUB_WD)
     gate_u, gate_v = wd_uv(*GATE_WD)
-    plaza = (np.hypot(UU - hub_u, VV - hub_v) < 15.5) | (np.hypot(UU - gate_u, VV - gate_v) < 14.0)
+    arch_u, arch_v = wd_uv(*ARCH_WD)
+    plaza = (np.hypot(UU - hub_u, VV - hub_v) < 15.5) | (np.hypot(UU - gate_u, VV - gate_v) < 14.0) | (np.hypot(UU - arch_u, VV - arch_v) < 14.0)
     M[((dpath < 6.2) | plaza) & (slope < 0.95) & (rim < .2)] = M_PATH
     M[lava] = M_LAVA
     vents = [wd_uv(*v) for v in VENTS_WD]
@@ -469,6 +471,8 @@ def populate_quarry(sc, rng):
     # gate arch: drawn in code by world/texel_gate.gd (ZoneDef.gate_art "forge"); here only its footprint is blocked
     gu, gv = wd_uv(*GATE_WD)
     blocked_disc(sc, gu - 13, gv + 13, 5); blocked_disc(sc, gu + 13, gv - 13, 5)
+    au, av = wd_uv(*ARCH_WD)   # the way back: same arch footprint at the south end of the road
+    blocked_disc(sc, au - 13, av + 13, 5); blocked_disc(sc, au + 13, av - 13, 5)
 
 
 def finalize_props_walk(sc):
@@ -590,6 +594,8 @@ def bake_quarry(outdir, preview=None):
         anchors.append(dict(kind='pad', state='ready', u=u, v=v, sx=round(sx, 1), sy=round(sy, 1)))
     gu, gv = wd_uv(*GATE_WD); sx, sy = screen_of(sc, gu, gv)
     anchors.append(dict(kind='gate', u=gu, v=gv, sx=round(sx, 1), sy=round(sy, 1)))
+    au, av = wd_uv(*ARCH_WD); sx, sy = screen_of(sc, au, av)
+    anchors.append(dict(kind='arch', u=au, v=av, sx=round(sx, 1), sy=round(sy, 1)))
     su, sv = wd_uv(*SPAWN_WD); sx, sy = screen_of(sc, su, sv)
     anchors.append(dict(kind='player_spawn', u=su, v=sv, sx=round(sx, 1), sy=round(sy, 1)))
     for wd in VENTS_WD:

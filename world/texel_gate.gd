@@ -14,6 +14,7 @@ const HIT: Rect2 = Rect2(-34.0, -56.0, 68.0, 62.0)
 
 var zone_id: StringName
 var art: StringName = &""
+var back_to: StringName = &""   ## set on the arch at the way back: always open, and main walks the player through it
 var walker: Node2D   ## typed loosely: TexelWalker reads the GameState autoload, which --script tests cannot compile
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _t: float = 0.0
@@ -28,6 +29,8 @@ func _process(delta: float) -> void:
 	var sim: Sim = gs.get("sim") as Sim
 	if art != &"" or sim.is_gate_open(zone_id):
 		queue_redraw()
+	if back_to != &"":
+		return   # the way back is walked through by main (_update_arch)
 	var near: bool = walker.position.distance_to(position) <= RADIUS
 	if not sim.is_gate_open(zone_id):
 		_inside = near
@@ -51,6 +54,17 @@ func _gs() -> Node:
 ## True when a point in world texels is over the drawn arch (only zones with gate art are hoverable).
 func hit(world_pos: Vector2) -> bool:
 	return art != &"" and HIT.has_point(world_pos - position)
+
+
+## Tooltip for the way back: where it leads.
+static func back_spec(sim: Sim, from_id: StringName, to_id: StringName) -> Dictionary:
+	var from_z: ZoneDef = sim.zone_defs.get(from_id) as ZoneDef
+	var to_z: ZoneDef = sim.zone_defs.get(to_id) as ZoneDef
+	if from_z == null or to_z == null:
+		return {}
+	var col: Color = Palettes.colors(Palettes.for_zone(from_id))[5]
+	return {"title": "Way back", "title_color": col, "color": col,
+		"body": "Walk in to return to %s." % to_z.display_name, "hint": "Open", "hint_color": StatStyle.buy(true)}
 
 
 ## Tooltip content for the shared Tip system: what the gate needs, or where it goes.
@@ -86,7 +100,7 @@ func _draw() -> void:
 	var gs: Node = _gs()
 	if gs == null:
 		return
-	var open: bool = (gs.get("sim") as Sim).is_gate_open(zone_id)
+	var open: bool = back_to != &"" or (gs.get("sim") as Sim).is_gate_open(zone_id)
 	if art == &"forge":
 		_draw_forge(open)
 		return
@@ -102,6 +116,8 @@ func _draw_forge(open: bool) -> void:
 	var p: PackedColorArray = palette
 	var soot: Color = p[0]
 	var seam_on: Color = p[4] if int(_t * 5.0) % 4 != 0 else p[3]
+	if back_to != &"":
+		seam_on = p[7] if int(_t * 5.0) % 4 != 0 else p[5]   # the way back glows cool ash, the way on glows ember
 	var seam: Color = seam_on if open else p[2]
 	# the doorway: a dark recess in the rock, glowing from the floor up when the gate is open
 	var rx: float = -HALF_SPAN + float(PILLAR_W) * 0.5

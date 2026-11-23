@@ -29,6 +29,19 @@ func run(t: Object) -> void:
 			var y: int = int(float(a.sy)) + 60
 			t.ok(im.get_pixel(x, y).r > 0.5, "quarry %s at (%d, %d) is on walkable ground" % [kind, x - 100, y - 60])
 
+	# the way back: an Arch anchor at the end of the south road, with its own art, leading to the previous zone
+	var has_arch: bool = false
+	for a: Dictionary in d.get("anchors", []):
+		if str(a.get("kind", "")) == "arch":
+			has_arch = true
+			t.ok(im.get_pixel(int(float(a.sx)) + 100, int(float(a.sy)) + 60).r > 0.5, "the quarry's way back is on walkable ground")
+	t.ok(has_arch, "the quarry has an Arch anchor for the way back to Larkmoor")
+	var qsrc: String = FileAccess.get_file_as_string("res://world/quarry_scene.gd")
+	t.ok(qsrc.contains("\"Arch\""), "quarry_scene.gd creates the Arch marker")
+	var sim0: Sim = t.make_sim()
+	var back: Dictionary = TexelGate.back_spec(sim0, &"zone2", &"larkmoor")
+	t.ok(str(back.get("body", "")).contains("Larkmoor"), "the way back's tooltip names Larkmoor")
+
 	# the gate
 	var sim: Sim = t.make_sim()
 	t.eq(z2.gate_art, &"forge", "zone 2 has the forge gate art")
