@@ -460,10 +460,19 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
 
-## 2026-11-23 Quality-of-life bundle (v0.19.0)
+## 2026-11-23 Quality-of-life bundle (v0.21.0)
 - **Rebind with modifiers.** A binding is a keycode OR-ed with `KEY_MASK_SHIFT/CTRL/ALT/META`, so old saves (plain keycodes) still load. A modifier alone (Shift, Ctrl) binds when released with no other key pressed. Sprint (Shift) and Sprint lock (Ctrl) are now rebindable actions. A binding's modifiers must be held; extra held modifiers are tolerated, so Shift+C still crouches-slides while sprinting.
 - **Save indicator.** "Saved" fades after each save, beside the Menu chip; a failed write shows red "Save failed" even with the indicator off (`EventBus.save_failed`). Setting: Gameplay > Save indicator.
 - **Welcome Back card** replaces the 5 s toast: time away, each gain in its stat colour, a note when the offline cap was hit. Shown only after 1 minute or more away. Stays until Collect.
 - **Rebirth confirm** card shows the Prestige and Rebirth Points you will get. Setting: Gameplay > Confirm rebirth (default on).
 - Buy max and Buy x10 were dropped from this bundle at Nathan's request.
 - Not run in the cloud: the engine. CI runs the headless tests; the PC pass judges card placement and the indicator.
+## Ambient soundscape (23 Nov, v0.20.0)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-23 | Six new seamless loops in assets/audio/amb (wind_day, wind_night, wind_winter, crickets, leaves, crackle), made by `gen_audio.py scape` with their own RNG so older files keep their bytes | Same soft-synth style, nothing third-party |
+| 2026-11-23 | The mix is a pure function, `core/ambient_mix.gd` (zone area, clock, daylight fraction, season weights -> gain per layer). `audio/ambient_scape.gd` plays and fades the layers (about 3 s to fade, calendar read 4x a second) | Testable headless; no node code in core/ |
+| 2026-11-23 | Day = wind_day (+ old meadow loop); night = wind_night + crickets (summer full, spring and autumn about half, winter none); autumn adds leaves; winter swaps in a thin whistling wind; quarry = quiet hollow wind plus forge crackle, louder at night | Matches the 3 min day / 2 min night calendar and the seasonal crossfade |
+| 2026-11-23 | Sunrise and sunset fade over +-4% of a day (about 12 s). Birds: none at night, spring 1.0, summer 0.85, autumn 0.5, winter 0.12, +30% dawn chorus. The old baked meadow loop follows daylight so its chirps do not play at night | Birds were the one thing that still sounded daytime in the dark |
+| 2026-11-23 | No new slider: the existing Ambience volume scales every layer | One control already exists in Settings > Audio |
+| 2026-11-23 | Mix levels are consts in `ambient_mix.gd` / `ambient_scape.gd`, not content/*.tres | They are sound-design values, not game balance |
