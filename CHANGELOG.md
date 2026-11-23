@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.34.1 - 2026-11-23
+## 0.34.2 - 2026-11-23
 - Zone panel: areas with more than five pads show four and fold the rest behind a greyed, underlined "N more..." line (click to expand, scrolls past 8 rows); open Travel shows the full area description and the panel shrinks back instead of leaving empty space.
+
+## 0.34.1 - 2026-11-23
+- Tip cards step aside (and pause) while a tooltip is showing so they never overlap; the pad tooltip average line lines its icon up with the other rows.
 
 ## 0.34.0 - 2026-11-23
 - **Simpler travel map.** The Travel menu now lists only top-level areas (Meadow, Ember Quarry) plus locked "???" rows for what comes next. Larkmoor and its districts stay in the world but leave the list; the Meadow row lands in Larkmoor once the Meadow gate is open.
