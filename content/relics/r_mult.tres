@@ -14,4 +14,4 @@ effect = 1
 stacking = 1
 per_stack = 0.10
 max_stacks = 0
-description = "Multiplier gain +{value}. Each stack adds {step}, less than the last."
+description = "Press gain +{value}. Each stack adds {step}, less than the last."

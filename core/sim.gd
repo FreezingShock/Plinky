@@ -804,7 +804,7 @@ func _prestige_gain() -> BigNum:
 
 
 ## Resets stats flagged resets_on_rebirth and banks the source stat into Prestige.
-## Rebirths therefore only boost Multiplier gain (via gain_boost_stat). Gates stay open.
+## Prestige then multiplies passive income (Embers in the quarry). Gates stay open.
 func try_rebirth() -> bool:
 	if not can_rebirth():
 		return false
@@ -982,7 +982,7 @@ func _check_gates() -> void:
 # ---------------------------------------------------------------- save format
 
 ## Save format of the flower ladder (the meadow's Sunlight to Starbloom economy). Older saves are migrated on load.
-const LADDER_SAVE: int = 2
+const LADDER_SAVE: int = 3   # 3: the quarry's Cash and Multiplier became Embers and Cinder
 
 func to_dict() -> Dictionary:
 	var s: Dictionary = {}
@@ -1029,6 +1029,8 @@ func from_dict(d_in: Dictionary) -> bool:
 	var old_quarry: bool = save_ladder < 2   # before the Ember Quarry ladder (Cinder to Emberheart)
 	if old_ladder or old_quarry:
 		d = _ladder_save_ids(d)
+	if save_ladder < 3:
+		d = _rename_quarry_stats(d)
 	var s: Variant = d.get("stats", {})
 	if s is Dictionary:
 		for k: Variant in (s as Dictionary):
@@ -1111,8 +1113,8 @@ func old_pre_ladder(d: Dictionary) -> bool:
 
 
 ## A save from before the quarry ladder. A player who already was in the quarry (or had Slag, Forge mastery or an open
-## quarry gate) gets the rows they already played opened, so nothing locks behind a tier they got past. Their Cash,
-## Multiplier, Rebirths and Slag are kept as they are; the new stats start at zero.
+## quarry gate) gets the rows they already played opened, so nothing locks behind a tier they got past. Their Embers,
+## Cinder, Rebirths and Slag are kept as they are; the new stats start at zero.
 func _migrate_to_quarry_ladder() -> void:
 	var played: bool = zone_id == &"zone2" or bool(zones_entered.get(&"zone2", false)) or not get_stat(&"slag").is_zero()
 	for b: ButtonDef in button_defs.values():
@@ -1126,6 +1128,20 @@ func _migrate_to_quarry_ladder() -> void:
 	if gates_open.get(&"zone2", false):   # the old gate (9 Slag) was beaten: keep every row open for the new one
 		for t: TierDef in tiers_in_zone(&"zone2"):
 			tiers_open[t.id] = true
+
+
+## Saves from before Cash and Multiplier left the quarry (ladder < 3): the Cash stock becomes Embers and the Multiplier
+## stock becomes Cinder, one for one, so a quarry run carries on exactly as it was. (The old stats are parked in
+## content/parked/.) A copy of the save; the stats of every older zone are rewritten by _migrate_to_ladder afterwards.
+func _rename_quarry_stats(d: Dictionary) -> Dictionary:
+	var out: Dictionary = d.duplicate(true)
+	var st: Variant = out.get("stats")
+	if st is Dictionary:
+		for pair: Array in [["cash", "embers"], ["mult", "cinder"]]:
+			if (st as Dictionary).has(pair[0]):
+				(st as Dictionary)[pair[1]] = (st as Dictionary)[pair[0]]
+				(st as Dictionary).erase(pair[0])
+	return out
 
 
 ## A copy of a pre-ladder save with its mastery keys renamed to the new pad ids.
@@ -1153,7 +1169,7 @@ func _ladder_save_ids(d: Dictionary) -> Dictionary:
 	return out
 
 
-## A save from before the flower ladder. Cash, Multiplier and Rebirths now only live in the Ember Quarry, so a player who
+## A save from before the flower ladder. Cash, Multiplier and Rebirths then only lived in the Ember Quarry, so a player who
 ## has left the meadow gets their progress as the matching flower stock instead: the old Multiplier becomes Thistle Down
 ## (it was the income multiplier Larkmoor ran on) and the old Rebirths become Heather Sprigs. Tiers and arrivals the
 ## player already got past are opened and latched, so nothing locks behind them.
@@ -1178,7 +1194,7 @@ func _migrate_to_ladder(old: Dictionary) -> void:
 	if zone_id == &"zone2" or zone_id == &"":
 		for t: TierDef in tier_defs.values():
 			tiers_open[t.id] = true
-		return   # still in the quarry: Cash, Multiplier and Rebirths carry on as they were
+		return   # still in the quarry: Embers, Cinder and Rebirths carry on as they were
 	_set_stat(&"sunlight", old_cash)
 	if z != null and z.order > zone_defs[first].order:
 		_set_stat(&"dewdrop", BigNum.from_float(64.0))
@@ -1189,8 +1205,8 @@ func _migrate_to_ladder(old: Dictionary) -> void:
 	else:
 		_set_stat(&"dewdrop", old_mult)
 		_set_stat(&"clover", old_reb)
-	for id: StringName in [&"cash", &"mult", &"reb"]:
-		_set_stat(id, BigNum.from_float((stat_defs[id] as StatDef).start) if id == &"cash" else BigNum.zero())
+	for id: StringName in [&"embers", &"cinder", &"reb"]:   # the quarry's own stock starts fresh
+		_set_stat(id, BigNum.from_float((stat_defs[id] as StatDef).start) if id == &"embers" else BigNum.zero())
 	for t: TierDef in tier_defs.values():   # any pad the player had practised opens its own tier and the one under it
 		for b: ButtonDef in button_defs.values():
 			if b.row == t.id and mastery.xp(b.id) > 0.0:

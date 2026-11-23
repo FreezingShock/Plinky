@@ -14,4 +14,4 @@ effect = 0
 stacking = 1
 per_stack = 0.06
 max_stacks = 0
-description = "Cash income +{value}. Each stack adds {step}, less than the last."
+description = "Passive income +{value}. Each stack adds {step}, less than the last."
