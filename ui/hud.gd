@@ -15,9 +15,8 @@ var _gate_panel: PanelContainer
 var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
-const STAT_NAME_SIZE: int = 16   ## stat names in the top-left panel; integer so Pixelify Sans stays crisp
 const STAT_RATE_SIZE: int = 8    ## the small "+x/s" or "xN" gain text left of each value
-const RATE_SAMPLE: String = "+99.99Qd/s"   ## widest gain text expected; sizes the gain column so values line up
+const STAT_VALUE_WIDTH: int = 48   ## value column: fits "999.99Sx" in Spleen 6x12
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
@@ -145,19 +144,15 @@ func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
 	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
-	var name_font: FontFile = CrispFont.apply(load("res://fonts/PixelifySans.ttf") as FontFile)
-	var name_w: float = 0.0   # widest stat name, so the number column lines up
 	var row_ids: Array[StringName] = hud_stat_ids(sim)
-	for sid: StringName in row_ids:
-		var d: StatDef = sim.stat_defs.get(sid) as StatDef
-		if d != null:
-			name_w = maxf(name_w, name_font.get_string_size(String(HUD_NAMES.get(sid, d.display_name)), HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_NAME_SIZE).x)
 	for sid: StringName in row_ids:
 		var def: StatDef = sim.stat_defs.get(sid) as StatDef
 		if def == null:
 			continue
+		# Compact strip: icon, then (small dim gain, value) pushed to the right edge. No names: the instant tooltip has them,
+		# and the value takes the stat's colour. The panel is only as wide as its widest visible row.
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 6)
+		h.add_theme_constant_override("separation", 4)
 		v.add_child(h)
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
@@ -165,27 +160,23 @@ func _build_stats() -> void:
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(icon)
-		var name_l := Label.new()
-		name_l.text = String(HUD_NAMES.get(sid, def.display_name))
-		name_l.custom_minimum_size.x = ceilf(name_w)
-		name_l.theme_type_variation = &"TitleLabel"   # same face as the tooltip titles
-		name_l.add_theme_font_size_override("font_size", STAT_NAME_SIZE)
-		name_l.add_theme_color_override("font_color", StatStyle.color(sid))   # same colour as the tooltip title
-		h.add_child(name_l)
-		# Gain text sits left of the value, small and centred on the row; the value stays centred when it is empty.
+		var gap := Control.new()
+		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		gap.custom_minimum_size.x = 6
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(gap)
 		var rate := Label.new()
 		rate.theme_type_variation = &"TitleLabel"
 		rate.add_theme_font_size_override("font_size", STAT_RATE_SIZE)
 		rate.add_theme_color_override("font_color", RelicStyle.dim)
-		rate.custom_minimum_size.x = ceilf(name_font.get_string_size(RATE_SAMPLE, HORIZONTAL_ALIGNMENT_LEFT, -1.0, STAT_RATE_SIZE).x)
-		rate.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(rate)
 		var val := RollValue.new()
 		val.big_gain.connect(_float_gain.bind(val, def.display_name, sid))
-		val.custom_minimum_size.x = 90
+		val.custom_minimum_size.x = STAT_VALUE_WIDTH
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		val.add_theme_color_override("font_color", StatStyle.color(sid))
 		h.add_child(val)
 		_rows[sid] = [val, rate]
 		Tip.bind_all(h, func() -> Variant:
@@ -219,11 +210,26 @@ static func hud_stat_ids(sim: Sim) -> Array[StringName]:
 ## Seeds once a Bloom has paid them.
 func _row_in_zone(sid: StringName) -> bool:
 	var d: StatDef = sim.stat_defs.get(sid) as StatDef
+	var in_zone: bool
 	if sid == &"prestige" or sid == &"rp":
-		return sim.rebirth_here()
-	if sid == &"seeds":
-		return sim.bloom_count > 0 or not sim.get_stat(&"seeds").is_zero()
-	return d == null or d.in_zone(sim.zone_id)
+		in_zone = sim.rebirth_here()
+	elif sid == &"seeds":
+		in_zone = sim.bloom_count > 0 or not sim.get_stat(&"seeds").is_zero()
+	else:
+		in_zone = d == null or d.in_zone(sim.zone_id)
+	return in_zone and _earned(sid)
+
+
+## A row stays hidden until its stat has been held once (or earns income), then stays for the session, so spending to zero
+## never makes a row vanish. The first stat on the ladder (what the pads pay) is always shown.
+func _earned(sid: StringName) -> bool:
+	if _earned_rows.has(sid):
+		return true
+	var d: StatDef = sim.stat_defs.get(sid) as StatDef
+	if (d != null and d.tier == 0) or not sim.get_stat(sid).is_zero() or not sim.income_per_second(sid).is_zero():
+		_earned_rows[sid] = true
+		return true
+	return false
 
 
 ## Big jumps in a stat float up beside its counter. The first stat is left out: every press already pops its own number.
@@ -401,7 +407,6 @@ func _build_upgrades() -> void:
 		Tip.bind_all(row, spec)
 		_attr_rows[a.id] = row
 
-const HUD_NAMES: Dictionary = {&"rp": "RP", &"clover": "Clover", &"heather": "Heather", &"foxglove": "Foxglove", &"starbloom": "Starbloom"}   ## short row labels; tooltips and the gallery keep the full name
 var _group_heads: Dictionary = {}   # currency stat id -> the small heading above its upgrades
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
@@ -570,6 +575,7 @@ func _place() -> void:
 			_bottom.position = bp
 
 
+var _earned_rows: Dictionary = {}   # stat id -> true once the row has been shown (see _earned)
 var _gated_rows: Dictionary = {}   # stat id -> true for rows a tutorial step holds back (see gate())
 
 

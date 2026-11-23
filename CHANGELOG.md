@@ -9,8 +9,13 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.29.0 - 2026-11-23
+## 0.30.0 - 2026-11-23
 - Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
+
+## 0.29.0 - 2026-11-23
+- HUD currency panel is now a compact strip: icon, small dim gain, and a value in the stat's colour. Names live in the instant tooltips. Rows appear once you have held that stat, and only the current zone's stats show. About a third of the old height.
+- New `tools/hud_shot.tscn` captures the HUD panel (early or late-game fixture); CLAUDE.md and SPEC name the real capture tools.
+
 ## 0.28.0 - 2026-11-23
 - Higher flower tiers now buff several lower stats at once (Thistle and Heather 1.25x, Foxglove and Starbloom 1.5x, data-driven). New Settings option for multipliers as a factor (x1.5) or a percent (150%). Locked pads are clearly darker and buyable pads glow green. Larkmoor gate retuned to 2000 Starbloom Petals.
 
