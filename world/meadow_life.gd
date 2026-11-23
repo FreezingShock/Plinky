@@ -19,6 +19,25 @@ static var night: float = 0.0      # 0 day .. 1 deep night
 static var low_sun: float = 0.0    # 1 at golden hour, sunrise and sunset
 static var rain: float = 0.0       # 0..1
 
+## Season mix (spring, summer, autumn, winter), written by SkyCycle with the same weights SeasonParticles gets, so
+## butterflies and fireflies can follow the calendar: butterflies are a spring and summer thing, fireflies a summer one.
+static var season: Array[float] = [1.0, 0.0, 0.0, 0.0]
+
+
+## How many of the `full` butterflies are out: none at night or in winter, a few in autumn, most in summer, fewer in rain.
+static func butterfly_share() -> float:
+	var s: Array[float] = season
+	var by_season: float = s[0] * 0.8 + s[1] * 1.0 + s[2] * 0.35 + s[3] * 0.0
+	var by_light: float = clampf(1.0 - night * 1.6 - low_sun * 0.35, 0.0, 1.0)
+	return by_season * by_light * (1.0 - rain)
+
+
+## How many of the `full` fireflies come out: the season's share (a summer thing), times the dark.
+static func firefly_season_share() -> float:
+	var s: Array[float] = season
+	return s[0] * 0.7 + s[1] * 1.0 + s[2] * 0.45 + s[3] * 0.0
+
+
 ## 4x4 Bayer matrix, art-bible section 2. Threshold for index i is (BAYER[i] + 0.5) / 16.
 const BAYER: Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 

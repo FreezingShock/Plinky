@@ -3,7 +3,7 @@
 audio, so there is nothing to license. Output: assets/audio/{sfx,music,amb}/*.ogg (Vorbis, via ffmpeg).
 
     python3 tools/audio/gen_audio.py            # all
-    python3 tools/audio/gen_audio.py sfx        # just sfx (also: music, amb, world)
+    python3 tools/audio/gen_audio.py sfx        # just sfx (also: music, amb, world, cinder)
     python3 tools/audio/gen_audio.py --wav      # keep wav next to ogg (for quick listening)
 
 Style: "soft synth" (sines, light harmonics, gentle reverb). Pitches stay on C major pentatonic so
@@ -294,8 +294,29 @@ def world():
     xf = int(2 * SR); out = wave[:n - xf].copy(); out[:xf] = out[:xf] * np.linspace(0, 1, xf) + wave[n - xf:] * np.linspace(1, 0, xf)
     write(f"{ROOT}/amb/shore_amb.ogg", norm(out, 0.2), q=3)
 
+# ---------------------------------------------------------------- CINDER (Ember Quarry footsteps)
+# Own RNG again, so these never shift the bytes of anything above.
+crng = np.random.default_rng(23112027)
+
+def cinder():
+    d = os.path.join(ROOT, "sfx")
+    for i in range(4):
+        # Cinder: loose, dry rock. Fewer, harder grains than sand (lower band, longer), a clink or two, a dull thud.
+        t = t_(0.2); x = np.zeros(len(t))
+        for k in range(int(crng.integers(4, 7))):
+            m = int(crng.uniform(0.006, 0.016) * SR)
+            g = fft_filter(crng.standard_normal(m), lo=900, hi=4200) * np.hanning(m)
+            place(x, g * crng.uniform(0.4, 1.0), crng.uniform(0, 0.1))
+        for k in range(int(crng.integers(1, 3))):   # small stones knocking together
+            tt = t_(0.03); f = crng.uniform(1900, 3400)
+            place(x, np.sin(2 * np.pi * f * tt) * np.exp(-tt / 0.006) * crng.uniform(0.15, 0.3), crng.uniform(0.01, 0.09))
+        x += fft_filter(crng.standard_normal(len(t)), lo=300, hi=1800) * np.exp(-t / 0.04) * 0.3
+        x += np.sin(2 * np.pi * (72 + 5 * i) * t) * np.exp(-t / 0.04) * 0.5
+        write(f"{d}/step_cinder_{i}.ogg", norm(fade(x, 3), 0.34))
+
 if __name__ == "__main__":
-    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world"]
+    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world", "cinder"]
+    if "cinder" in what: cinder()
     if "sfx" in what: sfx()
     if "music" in what: music_all()
     if "amb" in what: amb()

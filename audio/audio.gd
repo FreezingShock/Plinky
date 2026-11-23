@@ -268,13 +268,14 @@ func relic(rarity: StringName) -> void:
 
 
 var _step_i: int = 0
-const STEP_DB: Dictionary = {&"grass": -6.0, &"sand": -4.0, &"wood": -8.0}   # wood knocks hottest, so it sits lowest
-## Call once per footfall. surface is &"grass", &"sand" or &"wood" (MeadowSites.surface_at); four
+const STEP_DB: Dictionary = {&"grass": -6.0, &"sand": -4.0, &"wood": -8.0, &"cinder": -5.0}   # wood knocks hottest, so it sits lowest
+## Call once per footfall. surface is &"grass", &"sand", &"wood" or &"cinder" (MeadowSites.surface_at); four
 ## variants each, never the same twice in a row. Unknown surfaces fall back to the old plain step.
-func footstep(surface: StringName = &"") -> void:
+## extra_db makes a step heavier or lighter than a walking one: a sprint adds a little, a hard landing a lot.
+func footstep(surface: StringName = &"", extra_db: float = 0.0) -> void:
 	_step_i = (_step_i + 1 + randi() % 3) % 4
 	var name: StringName = StringName("step_%s_%d" % [surface, _step_i]) if STEP_DB.has(surface) else StringName("step_%d" % _step_i)
-	play(name, randf_range(0.92, 1.08), STEP_DB.get(surface, -6.0) as float, BUS_SFX, false)
+	play(name, randf_range(0.92, 1.08), (STEP_DB.get(surface, -6.0) as float) + extra_db, BUS_SFX, false)
 
 
 ## Positional ambience. The walker reports how close the shore and the trees are (0..1 each, from
