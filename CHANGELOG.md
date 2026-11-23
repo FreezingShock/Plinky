@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.24.4 - 2026-11-23
+- Quarry embers are denser (12 per vent), bigger while hot (2 texels) and climb higher, so they read as a plume at 640x360.
+
 ## 0.24.3 - 2026-11-23
 - History window is narrower still so it no longer covers the zone panel at 640x360, and its list area is taller.
 
