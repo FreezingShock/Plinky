@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Tree and bush sway. Rows lean sideways by whole texels, more toward the top (h squared), so the foot
 // stays planted and the crown moves in clean pixel steps. The sprite is padded by SkyCycle.SWAY_PAD texels
 // on each side so the lean is never clipped. `step_time` is stepped by SkyCycle, not continuous.
@@ -36,7 +40,7 @@ float lum(vec3 c) {
 
 void vertex() {
 	phase = MODEL_MATRIX[3].x * 0.043 + MODEL_MATRIX[3].y * 0.017;
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {

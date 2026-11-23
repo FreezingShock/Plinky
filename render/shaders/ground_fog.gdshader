@@ -1,4 +1,8 @@
 shader_type canvas_item;
+// The WorldCamera's transform (RenderGlobals.set_world). MODEL_MATRIX includes it, so it is divided out to get
+// true world texels: dither and lights must not shift when the camera pans or zooms.
+global uniform vec2 world_origin;
+global uniform float world_scale;
 // Drifting ground fog over the land. Two slow bands of streaky noise slide sideways at different speeds, thicker
 // toward the top (far) of the frame. A texel takes the fog colour when the density beats the 4x4 Bayer matrix in
 // WORLD texels (wpos), so the dots move with the ground, never with the screen.
@@ -28,7 +32,7 @@ float vnoise(vec2 p) {
 }
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+	wpos = ((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - world_origin) / world_scale;   // world texels, not screen pixels
 }
 
 void fragment() {

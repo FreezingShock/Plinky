@@ -240,3 +240,4 @@ func _apply() -> void:
 	world.scale = Vector2(zoom_level, zoom_level)
 	var offset: Vector2 = shake.offset if shake != null else Vector2.ZERO
 	world.position = world_position(_clamp_center(_center), zoom_level, frame) + offset + _punch.round()
+	RenderGlobals.set_world(world.position, float(zoom_level))
