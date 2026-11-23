@@ -28,7 +28,7 @@ const ENTRIES: Array = [
 ## Section colours, the same fixed stat colours the gallery cards use: Cash gold, Multiplier blue and so on.
 const COLORS: Dictionary = {
 	&"stats": Color("f2c94c"), &"attributes": Color("55aaff"), &"upgrades": Color("7be08a"), &"relics": Color("c77dff"),
-	&"travel": Color("6fd6e8"), &"settings": Color("f6efd9"), &"log": Color("9ee2c0"),
+	&"travel": Color("6fd6e8"), &"settings": Color("f6efd9"), &"log": Color("9ee2c0"), &"history": Color("f29e6b"),
 }
 
 ## Set by Main: kind -> true while that section is still locked by the tutorial.
