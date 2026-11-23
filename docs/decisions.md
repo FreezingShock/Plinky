@@ -460,7 +460,17 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **HUD.** SPRINTING HELD (Shift) or SPRINTING ENABLED (Ctrl lock) floats above the Momentum panel in the bold Pixelify title face; it sits outside the panel layout so it never resizes it. It shows only while the Momentum panel is visible.
 - Not run in the cloud: the engine itself. CI runs the headless tests; the PC pass judges the feel, the label position and the new sprites.
 
-## 0.19.0 World life and footsteps (2026-11-23)
+## Ambient soundscape (23 Nov, v0.20.0)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-23 | Six new seamless loops in assets/audio/amb (wind_day, wind_night, wind_winter, crickets, leaves, crackle), made by `gen_audio.py scape` with their own RNG so older files keep their bytes | Same soft-synth style, nothing third-party |
+| 2026-11-23 | The mix is a pure function, `core/ambient_mix.gd` (zone area, clock, daylight fraction, season weights -> gain per layer). `audio/ambient_scape.gd` plays and fades the layers (about 3 s to fade, calendar read 4x a second) | Testable headless; no node code in core/ |
+| 2026-11-23 | Day = wind_day (+ old meadow loop); night = wind_night + crickets (summer full, spring and autumn about half, winter none); autumn adds leaves; winter swaps in a thin whistling wind; quarry = quiet hollow wind plus forge crackle, louder at night | Matches the 3 min day / 2 min night calendar and the seasonal crossfade |
+| 2026-11-23 | Sunrise and sunset fade over +-4% of a day (about 12 s). Birds: none at night, spring 1.0, summer 0.85, autumn 0.5, winter 0.12, +30% dawn chorus. The old baked meadow loop follows daylight so its chirps do not play at night | Birds were the one thing that still sounded daytime in the dark |
+| 2026-11-23 | No new slider: the existing Ambience volume scales every layer | One control already exists in Settings > Audio |
+| 2026-11-23 | Mix levels are consts in `ambient_mix.gd` / `ambient_scape.gd`, not content/*.tres | They are sound-design values, not game balance |
+
+## 0.21.0 World life and footsteps (2026-11-23)
 - **Found already built:** butterflies, dusk fireflies, pollen, seasonal petals/leaves/snow (SeasonParticles) and grass/sand/wood footsteps. This pass fills the gaps rather than redoing them.
 - **Butterflies follow the calendar.** Up to 6 out at summer noon (was 2 all the time, even at night). Spring 0.8, summer 1.0, autumn 0.35, winter 0; none at night, fewer at low sun, none in heavy rain. Each has its own wing colours (accent, paper, light over earth/accent). Fireflies are a summer thing (spring 0.7, autumn 0.45, winter none). `MeadowLife.season` carries the mix, written by SkyCycle with the same weights as SeasonParticles.
 - **Ember Quarry gets its own air layer** (`world/life_embers.gd`): 7 embers per vent rising and cooling (paper, glow, flame, dark), 16 drifting ash flakes. Whole-texel squares, no alpha, 12 fps, frozen under Reduce motion, thinner on Low.
