@@ -71,9 +71,9 @@ func _index_spam(t: Object) -> void:
 	panel.bind(t.make_sim())
 	for i in 20:
 		panel.toggle_tab(IndexPanel.Tab.STATS)
-		t.ok(not (panel._closing and not panel.visible), "mid-spam the window is never closing while hidden")
+		t.ok(not (panel._anim.closing and not panel.visible), "mid-spam the window is never closing while hidden")
 	t.ok(not panel.is_open(), "20 quick toggles of the Stats tab end closed")
-	panel._finish_close()
+	panel._anim._finish()
 	t.ok(not panel.visible, "and it is hidden once the close finishes")
 	for i in 21:
 		panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)
@@ -83,8 +83,8 @@ func _index_spam(t: Object) -> void:
 	t.ok(panel.is_open() and panel.tab == IndexPanel.Tab.ATTRIBUTES, "alternating tabs keeps the window open on the last tab")
 	panel.close_panel()
 	panel.open_tab(IndexPanel.Tab.STATS)
-	t.ok(panel.is_open() and panel.visible and not panel._closing, "re-opening during the close animation recovers cleanly")
-	t.ok(panel._t >= 0.0 and panel._t <= 1.0, "wipe progress stays in range")
+	t.ok(panel.is_open() and panel.visible and not panel._anim.closing, "re-opening during the close animation recovers cleanly")
+	t.ok(panel._anim.t >= 0.0 and panel._anim.t <= 1.0, "wipe progress stays in range")
 	host.free()
 
 

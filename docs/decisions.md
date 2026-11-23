@@ -273,6 +273,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - The dotted pattern over the top of the frame was the vignette: its shape is frame-fixed but its Bayer pattern was pinned to screen texels, so the dots stayed still while the ground scrolled (shower-door). Nathan likes the dither itself. The pattern is now computed in world texels (ScreenLight passes the world origin and zoom, snapped to whole texels), so it moves and scales with the ground. The other passes (night, grade, rays, haze, ground relight, shadows) already use world positions.
 - Larkmoor gets the same ground G-buffer and relight as the meadow (gen_larkmoor.py writes ground_n.png and ground_h.png; ground.png unchanged). It uses the shared meadow ramp include, so Larkmoor's rock ramp is the meadow one (palette is the same).
 - Not run in-engine: check the vignette dots scroll with the ground at zoom 1-4, and Larkmoor F6 views.
+- Icons v3 (tools/art/gen_icons_v3.py + pixel_kit.py): shapes are geometry sampled at pixel centres, so symmetry is exact and diagonals are 45 degree or 2:1 steps. All 16 px icons regenerated, 32 px gallery icons in assets/icons/big/. Relic icons unchanged.
 ## 2026-11-23 Pad outlines on the texel grid
 - Nathan: the pad outline looked sharp, finer than the world's pixels. draw_polyline diagonals are anti-aliased and sub-texel. Every pad outline, ring and ripple is now whole-texel rects (TexelPad._outline), and the pad snaps its position to whole texels in _ready (marker anchors are fractional, e.g. 245.5).
 
@@ -358,6 +359,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - PC pan diff at zoom 3 (clock paused, calm, still): 41% match with Reduce screen effects off (best shift 32 px, not a whole texel), 96.7% on. The edge shade and the full-frame light pass were the remaining non-rigid layers.
 - Vignette: dropped its private `w_origin` / `w_scale` (derived from a node transform in ScreenLight._process, so it could trail the camera) for the `world_origin` / `world_scale` globals. Both passes now evaluate their smooth fields (edge distance, sun-side gradient) at the texel centre, so every screen pixel of a texel gets the same value.
 - Not run in engine; needs the same zoom-3 diff with Reduce screen effects off.
+- Gallery (PR #90): cards are IndexCard (ui/index_card.gd), pages swap under the dither wipe, Esc steps back from a detail page before it closes the window (handled in IndexPanel._input, so the menu router is unchanged).
 
 ## Night is a solid tint, not a two-tone dither
 - Nathan's Larkmoor night screenshot: a blue checkerboard of two strongly different tints (night_tint and deep_tint) over about 80% of texels buried the scene, and the walker lantern was a noisy dot blob.

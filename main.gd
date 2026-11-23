@@ -545,6 +545,7 @@ func _wire_index() -> void:
 	index_panel = IndexPanel.new()
 	hud.add_child(index_panel)
 	index_panel.bind(sim)
+	index_panel.buyer = func(id: StringName) -> bool: return GameState.buy_attribute(id)
 	hud.index_requested.connect(func(t: int) -> void:
 		menus.toggle(&"stats" if t == IndexPanel.Tab.STATS else &"attributes"))
 
