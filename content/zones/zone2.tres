@@ -12,6 +12,7 @@ order = 2
 gate_stat = &"slag"
 gate_threshold = 9.0
 next_zone = &""
+gate_art = &"forge"
 base_cash_per_second = 0.25
 press_rate = 0.5
 palette_id = &"ember_quarry"

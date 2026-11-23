@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.10.12 - 2026-11-23
+- Ember Quarry: meadow trees no longer carry over from Larkmoor (props are freed by reference, not by name); the forge gate gets real basalt-and-iron art with locked, open and tooltip states; pads, spawn and props moved off the cliff face onto visible ground.
+
 ## 0.10.11 - 2026-11-23
 - Every menu (Upgrades, Relics, Settings, Feedback, Update Log, hamburger) now opens and closes with the same dither wipe and slide as Stats and Attributes, from one shared MenuAnim. Opening a menu no longer pops a tooltip on its first item; tooltips wait for hover or the first arrow, d-pad or Tab press.
 

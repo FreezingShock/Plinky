@@ -76,7 +76,7 @@ func _ready() -> void:
 	_scene_path = _zone_scene_path(sim.zone_id)
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	_spawn_occluders()
 	_apply_scene_frame(sim.zone_id)
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
@@ -89,6 +89,7 @@ func _ready() -> void:
 	var gate_marker: Marker2D = anchors.get_node_or_null("Gate") as Marker2D
 	gate.position = gate_marker.position if gate_marker != null else Vector2(480, 120)
 	gate.walker = walker
+	gate.dead_end.connect(func() -> void: banner.show_name("The way on is still being forged"))
 	world.add_child(gate)
 
 	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
@@ -177,6 +178,9 @@ func _update_tooltip() -> void:
 		if pad.hovered:
 			tooltip.show_for(sim, pad.button_id, get_local_mouse_position())
 			shown = true
+	if not shown and not blocked and gate.hit(m):
+		tooltip.show_spec(TexelGate.spec_for(sim, gate.zone_id), get_local_mouse_position())
+		shown = true
 	if not shown:
 		tooltip.hide_tip()
 
@@ -274,6 +278,7 @@ func _build_pads() -> void:
 	pads.clear()
 	var z: ZoneDef = sim.current_zone()
 	gate.zone_id = z.id if z != null else &""
+	gate.art = z.gate_art if z != null else &""
 	if z == null:
 		return
 	var anchors: Node = meadow.get_node("Anchors")
@@ -337,13 +342,11 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 		_apply_scene_frame(zone_id)
 		return
 	_scene_path = path
-	for c: Node in world.get_children():
-		if String(c.name).begins_with("Occ_"):
-			c.queue_free()
+	_free_occluders()
 	meadow.queue_free()
 	meadow = (load(path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	meadow.call("spawn_occluders", world)
+	_spawn_occluders()
 	_apply_scene_frame(zone_id)
 	var anchors: Node = meadow.get_node("Anchors")
 	var going_back: bool = _going_back
@@ -362,6 +365,29 @@ func _swap_zone_scene(zone_id: StringName) -> void:
 
 
 var _going_back: bool = false
+var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone scene, freed on a swap
+
+
+## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
+## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
+## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
+func _spawn_occluders() -> void:
+	var before: Dictionary = {}
+	for c: Node in world.get_children():
+		before[c] = true
+	meadow.call("spawn_occluders", world)
+	_occluders.clear()
+	for c: Node in world.get_children():
+		if not before.has(c):
+			_occluders.append(c)
+
+
+func _free_occluders() -> void:
+	for c: Node in _occluders:
+		if is_instance_valid(c):
+			world.remove_child(c)   # out of the tree now, so a same-named sprite from the next scene keeps its name
+			c.queue_free()
+	_occluders.clear()
 
 
 ## Frames the zone scene: the walker, the walk mask and the footstep lookups follow its size, and the camera is

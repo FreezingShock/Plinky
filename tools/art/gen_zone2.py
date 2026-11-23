@@ -413,12 +413,8 @@ def populate_quarry(sc, rng):
         for off in (-1, 1):
             u, v = (pu + qu) / 2 + off * 9, (pv + qv) / 2 - off * 9
             post(u, v)
-    # gate arch: two tall pillars and a lintel
+    # gate arch: drawn in code by world/texel_gate.gd (ZoneDef.gate_art "forge"); here only its footprint is blocked
     gu, gv = wd_uv(*GATE_WD)
-    sc.prop('gate_pillar', gu - 13, gv + 13, P_SPIRE, tall=True, shape='box', r=3.2, height=46)
-    sc.prop('gate_pillar', gu + 13, gv - 13, P_SPIRE, tall=True, shape='box', r=3.2, height=46)
-    for j in range(-3, 4):
-        sc.prop('lintel', gu + j * 3.5, gv - j * 3.5, P_BLOCK, tall=True, shape='box', r=2.2, height=6, base=sc.H[int(gu), int(gv)] + 46)
     blocked_disc(sc, gu - 13, gv + 13, 5); blocked_disc(sc, gu + 13, gv - 13, 5)
 
 
@@ -426,6 +422,42 @@ def finalize_props_walk(sc):
     for p in sc.props:
         if p['kind'] in ('spire', 'boulder', 'crystal', 'block', 'gate_pillar'):
             blocked_disc(sc, p['u'], p['v'], 4.5 if p['kind'] != 'boulder' else 5.2)
+
+
+def visible_walk(sc, margin=6):
+    """Cells whose top surface is actually visible from the camera, eroded by `margin` cells. The quarry's near
+    rim wall hides the lowest tier, so a cell can be flat and walkable in the height map and still sit on the
+    dark cliff face on screen. Pads, the spawn and props are only placed on these cells."""
+    S, Mat, F, ID, DR, aux = sc.render(skip_tall=True)
+    top_h = aux[0]
+    vis = np.zeros((N, N), bool)
+    us, vs = np.nonzero(sc.walk)
+    xs = (320 + us - vs + OX).astype(int)
+    ys = np.floor(4 + (us + vs) / 2.0 - top_h[us, vs] + OY).astype(int)
+    ok = (xs >= 0) & (xs < GW) & (ys >= 0) & (ys < GH)
+    hit = np.zeros(len(us), bool)
+    hit[ok] = F[ys[ok], xs[ok]] == 0
+    vis[us[hit], vs[hit]] = True
+    out = vis.copy()
+    for du in range(-margin, margin + 1):
+        for dv in range(-margin, margin + 1):
+            if du * du + dv * dv <= margin * margin:
+                out &= np.roll(np.roll(vis, du, 0), dv, 1)
+    return out
+
+
+def snap_to(vis, wd, avoid=(), gap=26.0):
+    """Nearest cell of `vis` to the (w, d) point, as (w, d), at least `gap` cells from each point in `avoid`."""
+    u0, v0 = wd_uv(*wd)
+    far = all(math.hypot(u0 - au, v0 - av) >= gap for au, av in avoid)
+    if far and vis[int(round(u0)), int(round(v0))]:
+        return wd
+    us, vs = np.nonzero(vis)
+    d2 = (us - u0) ** 2 + (vs - v0) ** 2
+    for au, av in avoid:
+        d2 = np.where(np.hypot(us - au, vs - av) < gap, 1e18, d2)
+    k = int(np.argmin(d2))
+    return ((us[k] + vs[k]) / 2.0 - 200, float(us[k] - vs[k]))
 
 
 def screen_of(sc, u, v):
@@ -436,6 +468,14 @@ def screen_of(sc, u, v):
 def bake_quarry(outdir, preview=None):
     rng = np.random.default_rng(7)
     sc = build_quarry()
+    inner = visible_walk(sc, 8)
+    sc.walk &= visible_walk(sc, 3)
+    global SPAWN_WD
+    SPAWN_WD = snap_to(inner, SPAWN_WD)
+    keep = [wd_uv(*SPAWN_WD)]
+    for i, p in enumerate(PADS_WD):
+        PADS_WD[i] = snap_to(inner, p, keep)
+        keep.append(wd_uv(*PADS_WD[i]))
     populate_quarry(sc, rng)
     finalize_props_walk(sc)
     os.makedirs(os.path.join(outdir, 'sprites'), exist_ok=True)
