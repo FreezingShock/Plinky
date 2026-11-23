@@ -135,9 +135,28 @@ jobs:
             fi
           fi
 
+  # Godot writes a .uid sidecar next to every script and shader. Without a committed one, each machine invents its own
+  # uid and references to the script break. Runs on a clean checkout, so a sidecar that exists only locally fails here.
+  # Scenes (.tscn) are not covered: Godot keeps their uid in the file header, and no .tscn.uid sidecar is used.
+  uid-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every tracked script and shader has a committed .uid
+        run: |
+          status=0
+          while IFS= read -r -d '' f; do
+            if [ ! -f "$f.uid" ]; then
+              echo "::error file=$f::Missing $f.uid. Open the project in Godot once and commit the .uid file it creates next to the script."
+              status=1
+            fi
+          done < <(git ls-files -z '*.gd' '*.gdshader')
+          exit $status
+
   # One stable check name for the whole pipeline ("test"). Skipped engine jobs (docs-only PRs) count as passing.
   test:
-    needs: [changes, unit, sim, play, changelog-guard]
+    needs: [changes, unit, sim, play, changelog-guard, uid-guard]
     # !cancelled(): when a newer push cancels this run, this job is skipped instead of reporting a false red.
     # A real failure in any needed job still runs this job and fails it.
     if: ${{ !cancelled() }}

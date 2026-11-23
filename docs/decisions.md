@@ -772,3 +772,9 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Edit mode:** the three boxed buttons per row became a frameless grip (drag the row, or Up and Down while the grip has focus) and a frameless hide mark, dim until the row is hovered. This drops the move up and move down buttons, so there is nothing to disable at either end.
 - **Motion:** rows glide to new places, fade out when hidden and fade in when added, the grips and footer ease open in six steps, and chips pop in. All of it snaps under Reduce Motion or Reduce Flashing.
 - Not run in-engine from the cloud; needs a PC capture.
+
+
+## CI uid guard (2026-11-23)
+- **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
+- **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
+- **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
