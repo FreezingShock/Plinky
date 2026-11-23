@@ -36,7 +36,7 @@ An empty spec (null, or nothing in it) shows nothing.
 
 - Stat names and icons use their stat colour: `StatStyle.color(id)` (Cash gold, Multiplier blue, Rebirths violet...).
 - Numbers: `StatStyle.BUY_GREEN` for a gain or an affordable cost, `StatStyle.BUY_RED` for a cost you cannot pay (`StatStyle.buy(can)`).
-- Rarity text and border use the rarity colour (`RarityDef.readable_color`).
+- Rarity is one all-caps tag in the bold display face (`Tip.tag`, `TipText.rarity_tag`): rarity then type, in rarity colour, e.g. UNCOMMON BUTTON, RARE RELIC. Border uses the rarity colour too. The relic drop toast uses the same face.
 - Copy for existing UI lives in `ui/tip_text.gd`; pad specs in `PadTooltip.spec_for`.
 
 ## Behaviour
@@ -55,4 +55,4 @@ An empty spec (null, or nothing in it) shows nothing.
 ## Writing tooltips
 
 Say what it does and what it costs in one or two lines. Title is the noun; hint is the next step or why it is
-unavailable. No jargon the HUD does not already use, and never the word Button.
+unavailable. No jargon the HUD does not already use,.

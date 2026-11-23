@@ -101,6 +101,11 @@ static func seg(text: String, c: Color = Color(0, 0, 0, 0)) -> Dictionary:
 	return {"t": text, "c": c}
 
 
+## An all-caps tag in the bold display face (rarity + type, e.g. UNCOMMON PAD).
+static func tag(text: String, c: Color = Color(0, 0, 0, 0)) -> Dictionary:
+	return {"t": text.to_upper(), "c": c, "tag": true}
+
+
 static func icon(name: String) -> Dictionary:
 	return {"icon": name}
 

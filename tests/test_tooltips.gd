@@ -21,6 +21,11 @@ func run(t: Object) -> void:
 	t.ok(str(TipText.attribute(a, 1, "3", false)["hint"]).begins_with("Need"), "an unaffordable attribute says what is needed")
 	t.ok(str(TipText.rebirth(false, "1")["hint"]) != "", "rebirth explains when it is unavailable")
 
+	var rar: RarityDef = load("res://content/rarities/uncommon.tres") as RarityDef
+	var tag: Dictionary = TipText.rarity_tag(rar, "button", Color.WHITE)[0] as Dictionary
+	t.eq(tag["t"], "UNCOMMON BUTTON", "the rarity tag is rarity then type, all caps")
+	t.ok(bool(tag["tag"]), "the rarity tag is drawn in the bold tag face")
+	t.ok(StatStyle.tag_font().base_font.resource_path.ends_with("PixelifySans.ttf") and StatStyle.tag_font().variation_embolden > 0.0, "the tag face is emboldened Pixelify Sans")
 	var sim: Sim = t.make_sim()
 	var bid: StringName = sim.button_defs.keys()[0]
 	var ps: Dictionary = PadTooltip.spec_for(sim, bid)
