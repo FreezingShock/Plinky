@@ -37,7 +37,7 @@ void fragment() {
 	float thr = bayer4(t);
 	float thr2 = 1.0 - thr;
 	float lum = dot(c, vec3(0.299, 0.587, 0.114));
-	vec2 q = (wpos - area_center) / area_half;
+	vec2 q = (floor(wpos) + vec2(0.5) - area_center) / area_half;   // one value per world texel
 	float side = clamp(dot(q, normalize(sun_dir)) * 0.9, -1.0, 1.0) * side_amount;
 	// sun side: lift and warm. away side: shade and cool.
 	if (side > 0.0 && thr < side) {
