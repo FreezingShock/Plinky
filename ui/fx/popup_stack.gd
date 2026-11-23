@@ -12,9 +12,9 @@ static var _total := 0.0
 static var _release_timer: SceneTreeTimer
 
 ## held = true while the pad is held down (HoldPress.begin() was called).
-static func spawn(parent: Node, pos: Vector2, amount: float, big := false, held := false) -> PopupNumber:
+static func spawn(parent: Node, pos: Vector2, amount: float, big := false, held := false, crit := false) -> PopupNumber:
 	if not held:
-		return PopupNumber.spawn(parent, pos, amount, big)
+		return PopupNumber.spawn(parent, pos, amount, big, crit)
 	if is_instance_valid(_run) and _run.is_running:
 		_total += amount
 		_run.bump(_total)

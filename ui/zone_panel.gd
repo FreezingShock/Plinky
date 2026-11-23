@@ -4,7 +4,7 @@ extends PanelContainer
 ## areas, and the card of the area you are viewing (description, pads, mastery). While the travel menu is open the
 ## card folds down to a dithered stub; closed, it shows in full. Every row is a focusable button, so keyboard and pad
 ## focus walk it. Colours come from each zone's own palette (ZoneDef.theme_role, AreaDef.theme_role and glyph).
-## Mastery is read from `sim.mastery` when that exists (pad mastery API); until then the row says so.
+## The mastery row sums the area's pads from `sim.mastery`.
 
 const WIDTH: float = 176.0
 const INNER: float = WIDTH - 16.0
@@ -269,26 +269,27 @@ func _area_pads(aid: StringName) -> PackedStringArray:
 	return a.pad_buttons if a != null else PackedStringArray()
 
 
-## [pad levels summed, level cap total, mean progress 0..1] or an empty array when pad mastery is not in the game yet.
+## [level sum, level cap sum, mean progress 0..1, best crit chance bonus, best crit damage bonus] for the area's pads.
 func _mastery_of(aid: StringName) -> Array:
-	var m: Variant = sim.get("mastery")
-	if m == null or not (m as Object).has_method("level"):
-		return []
+	var m: Mastery = sim.mastery
 	var lv: int = 0
 	var prog: float = 0.0
 	var n: int = 0
+	var cc: float = 0.0
+	var cd: float = 0.0
 	for bid in _area_pads(aid):
 		var id: StringName = StringName(bid)
-		lv += int(m.level(id))
-		prog += float(m.progress(id)) if m.has_method("progress") else 0.0
+		lv += m.level(id)
+		prog += m.progress(id)
+		cc += m.crit_chance_bonus(id)
+		cd += m.crit_damage_bonus(id)
 		n += 1
-	return [lv, n, prog / maxf(float(n), 1.0)]
+	return [lv, n * m.config.max_level, prog / maxf(float(n), 1.0), cc, cd]
 
 
 func _mastery_tip() -> Array:
-	if _mastery_of(_view_area).is_empty():
-		return ["Mastery", "Pads you press a lot grow in skill. This area has nothing to train yet."]
-	return ["Mastery", "Every press trains its pad. Each level adds crit chance and crit damage. The bar is the average progress to the next level."]
+	var ms: Array = _mastery_of(_view_area)
+	return ["Mastery", "Every press trains its pad. Levels add crit chance and crit damage.\nThis area: +%d%% crit chance, +%.2f crit damage in total.\nThe bar is the average progress to each pad's next level." % [roundi(float(ms[3]) * 100.0), float(ms[4])]]
 
 
 func _zone_tip(zid: StringName) -> Array:
@@ -354,14 +355,9 @@ func refresh() -> void:
 		l.text = "%s %s %d  %s" % ["*" if ready else "-", String(b.row).capitalize(), b.row_index + 1, Formulas.button_cost(b).format()]
 		l.add_theme_color_override("font_color", RelicStyle.accent if ready else RelicStyle.dim)
 	var ms: Array = _mastery_of(_view_area)
-	if ms.is_empty():
-		_mastery_label.text = "Mastery  not trained yet"
-		_mastery_label.add_theme_color_override("font_color", RelicStyle.dim)
-		_mastery_bar.value = 0.0
-	else:
-		_mastery_label.text = "Mastery  Lv %d" % int(ms[0])
-		_mastery_label.add_theme_color_override("font_color", RelicStyle.text)
-		_mastery_bar.value = float(ms[2])
+	_mastery_label.text = "Mastery  Lv %d/%d" % [int(ms[0]), int(ms[1])]
+	_mastery_label.add_theme_color_override("font_color", RelicStyle.text)
+	_mastery_bar.value = float(ms[2])
 	_gate_text(z)
 
 

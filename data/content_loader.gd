@@ -14,6 +14,8 @@ static func load_into(sim: Sim, root: String = "res://content") -> bool:
 	sim.zone_defs = _collect(root.path_join("zones"), "ZoneDef")
 	sim.attribute_defs = _collect(root.path_join("attributes"), "AttributeDef")
 	sim.area_defs = _collect(root.path_join("areas"), "AreaDef")
+	var mcfg: MasteryConfig = load(root.path_join("config/mastery.tres")) as MasteryConfig
+	sim.mastery = Mastery.new(mcfg)
 	var rcfg: RelicConfig = load(root.path_join("relics/_config.tres")) as RelicConfig
 	if rcfg == null:
 		push_error("ContentLoader: missing relics/_config.tres")
