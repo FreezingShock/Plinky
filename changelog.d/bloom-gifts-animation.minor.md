@@ -1,1 +1,0 @@
-Bloom gets 14 gifts that change how the meadow plays (Seed Pods, Twin Petals, Petal Burst, Spring Step, Dew Sprites auto-press, Brambles, Deep Roots, Bloom Echo, Rooted Study, Wildflower) and a centred Bloom animation: all HUD stats count down together, then a big Seeds icon pops with rings, sparkles and a counting number (calm version for reduced motion).
