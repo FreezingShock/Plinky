@@ -13,7 +13,12 @@ const SHADER: Shader = preload("res://render/shaders/cast_shadow.gdshader")
 const KIND: Dictionary = {
 	"oak": Vector2(0.80, 0.80), "pine": Vector2(0.45, 0.95), "bush": Vector2(0.85, 0.45),
 	"rock": Vector2(0.80, 0.55), "crystals": Vector2(0.50, 0.85),
+	"menhir": Vector2(0.55, 0.9), "lantern": Vector2(0.4, 0.8), "sign": Vector2(0.5, 0.7), "tower": Vector2(0.7, 0.95),
+	"windmill": Vector2(0.6, 0.95), "lighthouse": Vector2(0.5, 1.0), "obelisk": Vector2(0.45, 1.0),
+	"gateway": Vector2(0.9, 0.8), "spire": Vector2(0.45, 0.95), "lintel": Vector2(0.9, 0.7), "gate_pillar": Vector2(0.5, 0.9),
 }
+const SHADE: Color = Color(0.28, 0.38, 0.56)
+const SHADE_DEEP: Color = Color(0.12, 0.18, 0.36)   # at low sun the ground is dark, so the shadow goes deeper to stay readable
 const DEFAULT_KIND: Vector2 = Vector2(0.7, 0.6)
 const WALKER_SIZE: Vector2 = Vector2(11.0, 17.0)   # width of the walker's shadow and the height it stretches from
 const QUANT: float = 24.0                          # sun values are rounded to 1/QUANT so the shadows move in steps
@@ -67,6 +72,7 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 	mat.set_shader_parameter("strength", strength)
 	mat.set_shader_parameter("density_foot", float(p.foot))
 	mat.set_shader_parameter("density_tip", float(p.tip))
+	mat.set_shader_parameter("shade", SHADE.lerp(SHADE_DEEP, clampf(float(p.get("low", 0.0)), 0.0, 1.0)))
 	var key := Vector2i(roundi(azimuth * QUANT), roundi(length * QUANT))
 	if key == _key:
 		return

@@ -13,7 +13,7 @@ const SHADE_SHADER: Shader = preload("res://render/shaders/day_night.gdshader")
 const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
-const MAX_LIGHTS: int = 12
+const MAX_LIGHTS: int = 24
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
 const SWAY_STEP: float = 1.0 / 8.0
@@ -29,6 +29,7 @@ var sway_material: ShaderMaterial
 var rain_layer: SkyRain
 var shadows: SkyShadows                 # set by MeadowScene before this node enters the tree
 var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
+var atmosphere: bool = true             # false: no mountain haze or mist (they are placed for the onboarding meadow)
 var ground_texture: Texture2D           # backdrop, so the haze shader can tell water from land
 var ponds: Array = []                   # [Vector4(cx, cy, rx, ry)] for the lake and ponds
 var _haze_mat: ShaderMaterial
@@ -52,6 +53,7 @@ func _ready() -> void:
 	_apply_config()
 	var haze := ColorRect.new()
 	haze.name = "Haze"
+	haze.visible = atmosphere
 	haze.position = AREA.position
 	haze.size = AREA.size
 	haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -64,8 +66,8 @@ func _ready() -> void:
 	add_child(haze)
 	var rays := ColorRect.new()
 	rays.name = "Rays"
-	rays.position = AREA.position
-	rays.size = AREA.size
+	rays.position = area.position
+	rays.size = area.size
 	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rays_mat = ShaderMaterial.new()
 	_rays_mat.shader = RAYS_SHADER
@@ -127,6 +129,10 @@ func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = 
 
 
 func light_config() -> SkyConfig:
+	if _config == null:
+		_config = load(CONFIG_PATH) as SkyConfig
+		if _config == null:
+			_config = SkyConfig.new()
 	return _config
 
 
@@ -208,10 +214,11 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var ramp: float = model.ramp(mt)
 	var rain01: float = clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0)
 	# cast shadows
+	var low_sun_k: float = model.low_sun(mt)
 	if shadows != null:
 		var len: float = model.shadow_length(mt, _config.shadow_len_noon, _config.shadow_len_low, _config.shadow_len_moon)
 		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon, rain01),
-				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip})
+				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip, "low": low_sun_k})
 	# rim light on props: whole-texel direction toward the light, warm when the sun is low, cool under the moon
 	var low: float = model.low_sun(mt)
 	var night_k: float = clampf(-model.sun_of(model.phase(mt)) * 2.0, 0.0, 1.0)
@@ -236,7 +243,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_rays_rect.visible = ray_amt > 0.002 or _warm > 0
 	_warm = maxi(_warm - 1, 0)
 	_rays_mat.set_shader_parameter("amount", ray_amt)
-	_rays_mat.set_shader_parameter("sun", Vector2(320.0 + az * 400.0, -120.0))
+	_rays_mat.set_shader_parameter("sun", Vector2(area.get_center().x + az * area.size.x * 0.465, area.position.y - 50.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
 	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
 	# vignette
