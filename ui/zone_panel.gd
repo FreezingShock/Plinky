@@ -354,9 +354,8 @@ func refresh() -> void:
 		var zd: ZoneDef = sim.zone_defs[zid] as ZoneDef
 		var row: ListRow = _zone_rows[zid]
 		var open: bool = sim.is_zone_unlocked(zid)
-		row.text = zd.display_name if open else "??? (locked)"
+		row.text = ("%s (here)" % zd.display_name if zid == sim.zone_id else zd.display_name) if open else "??? (locked)"
 		row.disabled = not open
-		row.marked = zid == sim.zone_id
 		(_zone_toggles[zid] as ListRow).disabled = not open
 		(_zone_areas[zid] as RevealBox).visible = open
 	for aid: StringName in _area_rows:
