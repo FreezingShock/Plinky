@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.29.1 - 2026-11-23
+- HUD strip: the gain sits tight against the value (no fixed-width value column), so short values no longer leave a gap.
+
 ## 0.29.0 - 2026-11-23
 - HUD currency panel is now a compact strip: icon, small dim gain, and a value in the stat's colour. Names live in the instant tooltips. Rows appear once you have held that stat, and only the current zone's stats show. About a third of the old height.
 - New `tools/hud_shot.tscn` captures the HUD panel (early or late-game fixture); CLAUDE.md and SPEC name the real capture tools.
