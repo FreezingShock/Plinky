@@ -1,8 +1,9 @@
-[gd_resource type="Theme" load_steps=10 format=3]
+[gd_resource type="Theme" load_steps=11 format=3]
 
 [ext_resource type="FontFile" path="res://fonts/spleen-6x12.fnt" id="1_body"]
 [ext_resource type="FontFile" path="res://fonts/PixelifySans.ttf" id="2_display"]
 [ext_resource type="FontFile" path="res://fonts/spleen-5x8.fnt" id="3_caption"]
+[ext_resource type="FontFile" path="res://fonts/PixelifySans-popup.ttf" id="4_popup"]
 
 [sub_resource type="StyleBoxFlat" id="panel"]
 bg_color = Color(0.0784, 0.0863, 0.1098, 1)
@@ -103,7 +104,7 @@ TitleLabel/base_type = &"Label"
 TitleLabel/fonts/font = ExtResource("2_display")
 TitleLabel/font_sizes/font_size = 16
 PopupLabel/base_type = &"Label"
-PopupLabel/fonts/font = ExtResource("2_display")
+PopupLabel/fonts/font = ExtResource("4_popup")
 PopupLabel/font_sizes/font_size = 16
 PopupLabel/colors/font_color = Color(0.949, 0.902, 0.627, 1)
 PopupLabel/colors/font_outline_color = Color(0.0784, 0.0863, 0.1098, 1)

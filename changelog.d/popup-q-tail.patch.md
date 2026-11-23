@@ -1,0 +1,1 @@
+Popup numbers draw Q with a tail that reads apart from 0 at popup size, so "+100QnVg!" no longer looks like "+1000nVg!". Only the popup font changed (a derived copy of Pixelify Sans with a new Q); titles and menus keep the stock Q.
