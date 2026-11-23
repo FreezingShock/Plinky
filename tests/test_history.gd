@@ -1,0 +1,67 @@
+extends RefCounted
+## History screen data: RunStats sampling, bests, save round trip, and the pure parts of the graph and panel.
+
+func run(t: Object) -> void:
+	var rs := RunStats.new()
+	t.ok(not rs.step(4.9, &"meadow"), "no sample is due before the interval")
+	t.ok(rs.step(0.2, &"meadow"), "a sample is due after the interval")
+	rs.record_income(BigNum.make(1.0, 3))
+	t.near(rs.samples[0], 3.0, 1e-4, "income is stored as log10")
+	t.near(RunStats.log10_of(BigNum.zero()), 0.0, 1e-9, "zero income is 0 on the log scale")
+	t.near(rs.zone_seconds[&"meadow"], 5.1, 1e-4, "time is counted per zone")
+	rs.step(2.0, &"larkmoor")
+	t.eq(rs.zone_rows()[0]["zone"], &"meadow", "zone rows are largest first")
+	for i in RunStats.MAX_SAMPLES + 10:
+		rs.record_income(BigNum.from_float(10.0))
+	t.eq(rs.samples.size(), RunStats.MAX_SAMPLES, "the graph keeps only the last 10 minutes")
+	rs.mark_rebirth()
+	t.eq(rs.rebirth_marks.size(), 1, "a rebirth is marked")
+	rs.record_income(BigNum.from_float(10.0))
+	t.eq(rs.rebirth_marks[0], RunStats.MAX_SAMPLES - 1, "marks slide left as old samples fall off")
+	rs.on_chain(3)
+	rs.on_chain(2)
+	t.eq(rs.best_chain, 3, "best chain keeps the maximum")
+	rs.on_tier(4)
+	rs.on_tier(1)
+	t.eq(rs.best_tier, 4, "best Momentum stage keeps the maximum")
+	rs.on_press(true)
+	rs.on_press(false)
+	t.eq(rs.crits, 1, "only crits are counted")
+
+	var sim: Sim = t.make_sim()
+	sim.run_stats.best_chain = 5
+	sim.run_stats.best_tier = 3
+	sim.run_stats.zone_seconds[&"meadow"] = 321.0
+	sim.run_stats.crits = 7
+	sim.run_stats.best_income = BigNum.make(2.0, 6)
+	var sim2: Sim = t.make_sim()
+	t.ok(sim2.from_dict(SaveCodec.decode(SaveCodec.encode(sim, 1.0))["game"]), "a save with history loads")
+	t.eq(sim2.run_stats.best_chain, 5, "best chain survives a save")
+	t.eq(sim2.run_stats.best_tier, 3, "best tier survives a save")
+	t.near(sim2.run_stats.zone_seconds[&"meadow"], 321.0, 1e-6, "zone time survives a save")
+	t.eq(sim2.run_stats.crits, 7, "crits survive a save")
+	t.ok(sim2.run_stats.best_income.gte(BigNum.make(1.9, 6)), "best income survives a save")
+	t.eq(sim2.run_stats.samples.size(), 0, "the session graph starts empty after a load")
+	var old: Dictionary = sim.to_dict()
+	old.erase("run_stats")
+	t.ok(sim2.from_dict(old), "a save from before History still loads")
+	t.eq(sim2.run_stats.best_chain, 0, "and starts with empty history")
+	for i in 120:
+		sim2.step(1.0)
+	t.ok(sim2.run_stats.samples.size() >= 20, "the sim feeds the graph while it runs")
+	t.ok(sim2.run_stats.session_seconds >= 119.0, "the session clock runs")
+
+	var hs: Array[int] = HistoryGraph.bar_heights(PackedFloat32Array([2.0, 3.0, 4.0]), 40)
+	t.eq(hs.size(), 3, "one bar per sample")
+	t.ok(hs[0] < hs[1] and hs[1] < hs[2], "a climb draws taller bars")
+	t.eq(hs[2], 40, "the highest sample fills the box")
+	t.ok(HistoryGraph.bar_heights(PackedFloat32Array(), 40).is_empty(), "no samples, no bars")
+	t.ok(HistoryGraph.bar_heights(PackedFloat32Array([3.0, 3.0]), 40)[0] > 0, "a flat line still draws")
+	t.ok(HistoryGraph.capacity(380) >= 120, "the graph box fits 10 minutes of samples")
+
+	t.eq(HistoryPanel.span_text(45.0), "45 s", "short spans are seconds")
+	t.eq(HistoryPanel.span_text(125.0), "2 min", "minutes")
+	t.eq(HistoryPanel.span_text(3900.0), "1 h 05 min", "hours")
+	var rows: Array[Dictionary] = HistoryPanel.rows_for(sim)
+	t.ok(rows.size() >= 8, "the panel lists bests and totals")
+	t.eq(rows[2]["value"], sim.momentum_tier_name(3), "highest Momentum shows the stage name")

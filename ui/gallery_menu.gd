@@ -21,6 +21,7 @@ const ENTRIES: Array = [
 	[&"relics", "Relics", "menu_relics"],
 	[&"travel", "Travel", "menu_travel"],
 	[&"settings", "Settings", "menu_settings"],
+	[&"history", "History", "menu_history"],
 	[&"log", "Update Log", "menu_log"],
 ]
 
