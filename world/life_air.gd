@@ -2,7 +2,7 @@ class_name LifeAir
 extends Node2D
 ## Air and light layer of the zone 1 world life. MeadowScene adds it as its child at z_index 10, so it
 ## draws over the walker, pads and gate. Every element is a pure function of time, redrawn in 12 fps
-## steps with no alpha: fireflies with a Bayer-dithered halo, lantern and shrine glow, drifting pollen and
+## steps (8 on Low, see GraphicsQuality; lower levels also draw fewer fireflies and pollen) with no alpha: fireflies with a Bayer-dithered halo, lantern and shrine glow, drifting pollen and
 ## leaves, two butterflies, sparkles on the water cove, and a shimmer that runs round each ready pad.
 ## Colours are palette indices (art-bible section 3), so a zone palette swap re-tints the whole layer.
 ## Every position comes from world/meadow_life.json (anchor data), so the layer follows the art.
@@ -41,6 +41,7 @@ var _pads: Array[Vector2] = []
 var _t: float = 0.0
 var _pt: float = 0.0               # pollen clock: runs faster in a breeze, so a gust carries it without a jump
 var _step: int = -1
+var _view: Rect2 = Rect2()             # on-screen part of this layer this redraw; empty = draw everything
 
 
 func setup(data: Dictionary, backdrop_sprite: Sprite2D) -> void:
@@ -63,14 +64,15 @@ func _process(delta: float) -> void:
 	_t += delta
 	if not MeadowLife.reduce_motion:
 		_pt += delta * (0.55 + 0.9 * MeadowLife.wind)
-	var s: int = int(_t / STEP)
+	var s: int = int(_t / GraphicsQuality.life_step())
 	if s != _step:
 		_step = s
 		queue_redraw()
 
 
 func _draw() -> void:
-	var tb: float = float(maxi(_step, 0)) * STEP        # stepped time: blinks, glow, sparkles
+	var tb: float = float(maxi(_step, 0)) * GraphicsQuality.life_step()  # stepped time: blinks, glow, sparkles
+	_view = GraphicsQuality.visible_local_rect(self)
 	var tm: float = 0.0 if MeadowLife.reduce_motion else tb  # moving things freeze under reduce-motion
 	_draw_lights(tb)
 	_draw_water(tb)
@@ -99,7 +101,7 @@ func _pollen_count() -> int:
 
 ## Fireflies hover on a slow Lissajous path and blink: a 1.2 s lit phase in a 4 to 7 s cycle.
 func _draw_fireflies(tm: float, tb: float) -> void:
-	for i: int in _firefly_count():
+	for i: int in GraphicsQuality.life_scaled(_firefly_count()):
 		var s: float = float(i)
 		var home: Vector2 = Vector2(
 			lerpf(_drift.position.x, _drift.end.x, MeadowLife.hash01(i * 3 + 1)),
@@ -108,6 +110,8 @@ func _draw_fireflies(tm: float, tb: float) -> void:
 			sin(tm * 0.37 + s * 1.9) * 14.0 + sin(tm * 0.13 + s) * 6.0,
 			cos(tm * 0.29 + s * 2.3) * 5.0 - 8.0 + sin(tm * 0.9 + s) * 1.5)
 		var pos: Vector2i = Vector2i(roundi(p.x), roundi(p.y))
+		if _view.has_area() and not _view.has_point(Vector2(pos)):
+			continue
 		var cycle: float = 4.0 + MeadowLife.hash01(i * 5 + 2) * 3.0
 		var phase: float = fposmod(tb + MeadowLife.hash01(i * 7 + 3) * cycle, cycle)
 		if phase >= 1.2:
@@ -131,6 +135,8 @@ func _draw_lights(tb: float) -> void:
 	for k: int in _lights.size():
 		var L: Dictionary = _lights[k] as Dictionary
 		var c: Vector2i = Vector2i(roundi(float(L.x)), roundi(float(L.y)))
+		if _view.has_area() and not _view.grow(12.0).has_point(Vector2(c)):
+			continue  # glow is at most 12 texels wide, so a light just off screen can still reach in
 		var flick: int = int(MeadowLife.hash01(beat * 7 + k * 101) * 3.0) - 1  # -1, 0 or +1
 		var r: int = clampi(int(L.r) + flick, 3, 12)
 		_dot(c, IDX_PAPER)
@@ -212,7 +218,7 @@ func _draw_pads(tm: float) -> void:
 ## Pollen drifts on the breeze, left to right, and wraps at the edge. Leaves tumble in a 2x1 / 1x2 flutter.
 func _draw_pollen(tm: float, tb: float) -> void:
 	var glint: bool = MeadowLife.low_sun > 0.35   # motes catch the low sun
-	for i: int in _pollen_count():
+	for i: int in GraphicsQuality.life_scaled(_pollen_count()):
 		var s: float = float(i)
 		var speed: float = 8.0 + MeadowLife.hash01(i * 11) * 8.0
 		var x: float = _drift.position.x + fposmod(MeadowLife.hash01(i * 11 + 1) * _drift.size.x + _pt * speed, _drift.size.x)

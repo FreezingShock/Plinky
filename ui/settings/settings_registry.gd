@@ -283,6 +283,13 @@ static func _register_display() -> void:
 		"set": func(v: Variant) -> void: DisplaySettings.set_native_frame(_root(), bool(v)),
 	})
 	_add({
+		"id": &"graphics_quality", "tab": "Display", "label": "Graphics quality", "kind": Kind.CHOICE,
+		"hint": "Low draws fewer fireflies and particles and animates the grass and air more slowly. The look is the same.",
+		"options": func() -> Array: return [[GraphicsQuality.Level.LOW, "Low"], [GraphicsQuality.Level.MEDIUM, "Medium"], [GraphicsQuality.Level.HIGH, "High"]],
+		"get": func() -> Variant: GraphicsQuality.load_settings(); return GraphicsQuality.level,
+		"set": func(v: Variant) -> void: GraphicsQuality.set_level(int(v)),
+	})
+	_add({
 		"id": &"scale_mode", "tab": "Display", "label": "Scaling", "kind": Kind.CHOICE,
 		"hint": "Fit fills any window size. Pixel perfect keeps whole-number texels. Wide shows more meadow.",
 		"options": func() -> Array: return [[DisplaySettings.Scale.PIXEL, "Pixel perfect"], [DisplaySettings.Scale.FIT, "Fit window"], [DisplaySettings.Scale.WIDE, "Wide view"]],

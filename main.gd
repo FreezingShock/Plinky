@@ -93,6 +93,7 @@ func _ready() -> void:
 	camera.target = walker
 	camera.shake = shake
 	add_child(camera)
+	PerfOverlay.attach(self)  # F3 frame-time overlay (ui/perf_overlay.gd)
 	camera.bounds = _camera_bounds()
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
 
@@ -138,7 +139,9 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
-	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	var mult: float = sim.get_stat(&"mult").to_float() + 1.0
+	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
+		pad_glow.multiplier = mult
 	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)

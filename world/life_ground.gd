@@ -3,7 +3,7 @@ extends Node2D
 ## Ground layer of the zone 1 world life, drawn on top of the baked backdrop (MeadowScene child, after it).
 ## Grass tips flick up to two texels sideways in a wind wave that rolls across the field. The backdrop is
 ## never painted over: a tip that moves repaints its own vacated texel from the backdrop texture, and the
-## tip is redrawn at its new texel. Stepped at 6 fps, no alpha, palette index 4 (light).
+## tip is redrawn at its new texel. Stepped at 6 fps (4 on Low, see GraphicsQuality), no alpha, palette index 4 (light).
 ## The backdrop may sit at an offset (the 3D meadow's bleed), so texels are read through the sprite's position.
 
 const STEP: float = 1.0 / 6.0
@@ -40,7 +40,7 @@ func _process(delta: float) -> void:
 	_t += delta
 	if pusher_group != &"" and (_push == null or not is_instance_valid(_push)):
 		_push = get_tree().get_first_node_in_group(pusher_group) as Node2D
-	var s: int = int(_t / STEP)
+	var s: int = int(_t / GraphicsQuality.sway_step())
 	if s != _step:
 		_step = s
 		queue_redraw()
@@ -76,8 +76,15 @@ func _draw() -> void:
 	if backdrop == null or _tips.is_empty():
 		return
 	var tip_col: Color = palette[4]
-	var t: float = float(maxi(_step, 0)) * STEP
-	for p: Vector2i in _tips:
+	var step_len: float = GraphicsQuality.sway_step()
+	var t: float = float(maxi(_step, 0)) * step_len
+	var stride: int = GraphicsQuality.sway_stride()
+	var view: Rect2 = GraphicsQuality.visible_local_rect(self)  # tips off screen are skipped (matters for the big meadow)
+	var culling: bool = view.has_area()
+	for i: int in range(0, _tips.size(), stride):
+		var p: Vector2i = _tips[i]
+		if culling and not view.has_point(Vector2(p)):
+			continue
 		var d: int = 0 if MeadowLife.reduce_motion else _lean(p, t)
 		if d == 0:
 			continue  # the backdrop already shows the tip in place
