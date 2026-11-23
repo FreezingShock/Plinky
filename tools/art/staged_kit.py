@@ -17,6 +17,7 @@ SIZES = (8, 12, 16, 24, 32)
 def parse(path):
     """-> {size: 2D list of palette index or None}"""
     out, cur, mirror, rows = {}, None, False, []
+    extra = {}      # letter -> index (8+) for icons that need colours beyond the 8 zone roles (e.g. Embers)
 
     def flush():
         if cur is None:
@@ -24,7 +25,7 @@ def parse(path):
         n = cur
         grid = []
         for r in rows:
-            cells = [] if r == '-' else [None if ch == '.' else int(ch) for ch in r]
+            cells = [] if r == '-' else [None if ch == '.' else (int(ch) if ch.isdigit() else extra[ch]) for ch in r]
             if mirror:
                 assert len(cells) <= n // 2, '%s @%d: half row width %d > %d (%r)' % (path, n, len(cells), n // 2, r)
                 cells = [None] * (n // 2 - len(cells)) + cells      # short rows are right-aligned to the centre line
@@ -40,6 +41,10 @@ def parse(path):
     for line in open(path, encoding='utf-8'):
         line = line.rstrip('\n').strip()
         if not line or line.startswith('#'):
+            continue
+        if line.startswith('%'):
+            ch, hexv = line[1:].split('=')
+            extra[ch] = tuple(int(hexv[k:k + 2], 16) for k in (1, 3, 5)) + (255,)    # cell value is the RGBA itself
             continue
         if line.startswith('@'):
             flush()
@@ -57,7 +62,7 @@ def image(grid):
     for y, row in enumerate(grid):
         for x, c in enumerate(row):
             if c is not None:
-                im.putpixel((x, y), RGB[c])
+                im.putpixel((x, y), RGB[c] if isinstance(c, int) else c)
     return im
 
 

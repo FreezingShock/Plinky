@@ -548,6 +548,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
+## Seasonal events (2026-11-23)
+- **Decision (Nathan approved the audit pick; picks are mine):** one small event per season, read off the calendar, all numbers in `content/config/seasonal_events.tres`. Spring **Petal Shower**: golden critter wait x0.7. Summer **Long Light**: passive income +8% while the sun is up (about +2% averaged over a year). Autumn **Seed Fall**: relic roll interval x0.75. Winter **Frost Pads**: momentum decays at half speed.
+- **Why these:** each touches a system that already exists (critter, income, relic rolls, momentum), so nothing new to balance and no swing over a few percent. Plain names, no streak-tier words.
+- **Surface:** `core/seasonal_events.gd` (pure), `Sim.events`, arrival banner on `season_changed` (`DistrictBanner.show_event`), event line in the clock tooltip. Water and recolour untouched; no new dither.
+- **Visible:** each event thickens its own season's particles (x2.4 petals, x2.6 sun motes, x2.2 leaves and seeds, x1.8 snow, `particle_boost`). Not done: frosted pad meshes and a warmer summer grade (need the engine to tune). Not run in the cloud: the engine; CI runs tests, the PC pass checks the look.
+
+
 ## Balance sim: three play profiles, meadow pacing checked (2026-11-23)
 - **Why:** the sim had one greedy press rate, so it could not show how much the pacing depends on how often the player presses. Idle, active and hold now run over 8 seeded runs each, and the table shows the median and the range.
 - **Profiles are content:** `content/config/sim_profiles.tres` (`data/sim_profiles.gd`) holds the presses per second (idle 0.2, active 0.5, hold 4.0) and the seed count. They are harness assumptions for pacing, not game balance. Active is the zone's `press_rate`, which already includes walking between pads.
@@ -674,6 +681,11 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Rebirth Points redrawn: a faceted green gem with a two-leaf sprout (a rebirth seed), distinct from the Rebirth ring-arrow, Prestige crown and Luck clover. Pale table, light girdle, deep pavilion, the sprout carries the "new life" read at 8 px.
 - Audit before this change: stats, attributes, perks (19 icons) had 16 and 32 px only, both rendered from one shared geometry. Relics (6) have 16 px only, menu tile glyphs 9 px, area glyphs 7 px, rarity frames 20 px, hamburger and gallery menu icons 32 px. Now done: the 19 stat/attribute/perk icons have all five sizes; the 8 px and 12 px versions started from a reduction of the 16 px art and were redrawn by hand where it read badly (clock, book, Rebirth). Not done yet: relics, gallery menu icons.
 - Not run in engine: no Godot in the cloud; CI runs the headless tests, the PC pass should judge the icons at 1x/3x in the HUD and gallery.
+
+## 2026-11-23 Staged icons, second pass
+- Same five sizes (8, 12, 16, 24, 32) for the flower and quarry stats (Sunlight, Dewdrop, Seeds, Clover, Thistle, Heather, Foxglove, Starbloom, Embers, Cinder, Ironore, Ingot, Alloy, Emberheart, Slag), the 6 relic icons and the 9 gallery menu icons. Relic files sit in `assets/icons/relics/` (16 px) with `s8 s12 s24 s32` folders beside them; menu icons at 32 px stay in `big/`, their 16 px is `assets/icons/menu_*.png`.
+- These were seeded by `tools/art/seed_staged.py` (majority-colour reduction with a rebuilt outline; Scale2x for 16 to 32 on relics), not drawn from blank. Their 8 and 12 px versions are the weakest and are the first to polish by hand. Icons that need colours beyond the 8 zone roles list them in the .txt (`%a=#rrggbb`).
+- Skipped on purpose: Rebirth and Prestige polish (the quarry reset is being replaced), the hamburger glyph (16 px only), menu tile glyphs (9 px) and area glyphs (7 px).
 ## Pads receive cast shadows
 - Pads are plates drawn above the baked ground, so the ground's height-march shadow stopped at their edge and the pad stayed fully lit inside a shadow. New `pad_shadow.gdshader`: the same march from the plate's own top (ground height under the fragment plus `pad_lift`, 6 encoded units, about 2 world units), with the sun, slope, reach and strength SkyCycle already feeds the ground. SkyCycle owns it (`pad_material`, `_pad_mats`); each zone scene exposes `pad_material` and main.gd assigns it to the pads it builds (one line).
 - The pad's own drop shadow blob was sized like a tree (26 x 18); it is now 22 x 4, the slab's width and thickness, in the same sun direction and softness as the other casters.

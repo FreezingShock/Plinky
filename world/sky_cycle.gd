@@ -161,6 +161,7 @@ func _ready() -> void:
 	particles.z_index = 6
 	particles.area = area
 	particles.config = _cal_cfg
+	particles.boost = _event_boost()
 	add_child(particles)
 	sway_material = ShaderMaterial.new()
 	sway_material.shader = SWAY_SHADER
@@ -247,6 +248,17 @@ func _model_time(t: float) -> float:
 	if _cal != null:
 		return (_cal.elapsed_days - model.clock_of_phase(model.start_phase)) * model.day_seconds
 	return t
+
+
+## Per-season air boost of the seasonal event (content/config/seasonal_events.tres): more petals in spring, motes in
+## summer, falling seeds in autumn, snow in winter. All 1.0 when there is no sim (tools, tests).
+func _event_boost() -> Array[float]:
+	var out: Array[float] = [1.0, 1.0, 1.0, 1.0]
+	var gs: Node = get_node_or_null("/root/GameState") if is_inside_tree() else null
+	if gs != null and gs.get("sim") is Sim:
+		for i in 4:
+			out[i] = (gs.get("sim") as Sim).events.particle_boost(i)
+	return out
 
 
 func _find_calendar() -> void:

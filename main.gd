@@ -147,6 +147,7 @@ func _ready() -> void:
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
 	bus.bonus_gained.connect(_on_bonus_gained)
+	bus.season_changed.connect(_on_season_changed)
 	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
 	_enter_zone_visuals(sim.zone_id)
 	get_tree().create_timer(1.2).timeout.connect(func() -> void: _announce_zone_arrival(sim.zone_id))
@@ -507,6 +508,15 @@ func _update_arch(delta: float) -> void:
 
 
 const ARCH_RADIUS: float = 16.0
+
+
+## Arrival banner for the new season's event, on the shared banner.
+func _on_season_changed(season: int) -> void:
+	var ev_name: String = sim.events.name_of(season)
+	if ev_name == "":
+		return
+	Banner.announce({"title": ev_name, "lines": [sim.events.blurb_of(season)], "color": sim.calendar.season_color(season),
+			"duration": 2.6, "key": "season_event_%d" % season})
 
 
 ## Arrival banner for a zone. Zones that name their districts (Larkmoor) let the district banner do it instead.

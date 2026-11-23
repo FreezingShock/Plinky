@@ -57,6 +57,7 @@ func _run(presses_per_second: float, seed_value: int, every: float) -> Dictionar
 	if not ContentLoader.load_into(sim):
 		push_error("content failed to load")
 		quit(1)
+	sim.events = SeasonalEvents.new()   # the balance floor must not depend on which season the run starts in
 	sim.rng.seed = seed_value
 	sim.new_game()
 	var out: Dictionary = {"gates": {}, "tiers": {}, "pads": {}, "carry": {}}
