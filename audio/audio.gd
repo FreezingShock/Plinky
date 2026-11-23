@@ -87,6 +87,20 @@ func _ready() -> void:
 ## cold start where the signal fired before the autoload was listening.
 func start(zone_id: StringName) -> void:
 	set_zone(zone_id)
+	preload_all()
+
+
+## Loads every sound effect and ambience into the cache now (about 1 MB), so the first bird chirp, footstep or relic
+## sound never loads from disk mid-play. A one-off 170 ms frame in the bench fell at an unpredictable moment on a
+## still scene, which is what a random first use looks like. Music loads when its zone starts.
+func preload_all() -> void:
+	for folder: String in ["sfx", "amb"]:
+		var dir: DirAccess = DirAccess.open(DIR + folder)
+		if dir == null:
+			continue
+		for f: String in dir.get_files():
+			if f.ends_with(".ogg") or f.ends_with(".ogg.import"):
+				_stream(f.trim_suffix(".import").get_basename(), folder)
 
 
 # ---------------------------------------------------------------- buses and settings

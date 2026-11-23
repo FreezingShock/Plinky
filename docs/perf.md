@@ -78,6 +78,18 @@ were that 12 fps redraw landing on one frame: about 150 drops times three `sin()
 three hashes per drop are constant, so they are now cached once, and Low and Medium draw 40% and 70% of the drops.
 Spike frames on a real GPU after this change: not yet measured.
 
+## The Larkmoor Low stall (open, minor)
+One frame of 166 to 237 ms on Low in Larkmoor, in whichever row runs first (sunset, then noon, then sunset again on the
+e15355d bench: frame 242 of the phase, 172.7 ms, nodes 520, objects 1219, draws 76, VRAM 49 MB, all flat). Not seen on
+Medium or High, which run later in the same session. What it is not: a shader compile of the shared shaders (ShaderWarm
+and an earlier 4-frame warm did not remove it), a zone entry cost (it falls 240+ frames in), audio music (same tracks as
+the meadow), or anything that shows in the engine counters. It does not reproduce under software GL.
+Best remaining guess: a first use of an audio one-shot (bird chirps fire on a random timer, and each of the five
+variants loaded from disk on its first play). `Audio.preload_all()` now loads every sfx and amb stream at start, and the
+HITCH line says whether the audio cache grew on the hitch frame. If the next PC bench still shows it with the cache
+unchanged, it is not audio; the next thing to try is a Godot profiler capture around that frame, and with a stall this
+rare on the lowest setting it can reasonably be left.
+
 ## Open
 - No GPU numbers yet. A real-hardware run of tools/bench.gd is needed to find the actual hot spot; the CPU
   side is cheap enough that the post shader and window fill rate at 4K may matter more.
