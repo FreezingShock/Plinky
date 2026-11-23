@@ -12,7 +12,6 @@ under a new version heading and updates the version everywhere.
 ## 0.27.1 - 2026-11-23
 - Press popups now stack: a press folds into any live number of the same stat on the same pad or within 40 px (up to 1.2 s apart), so nearby numbers become one rising total instead of overlapping. Each number carries its stat name centred underneath in the stat's own colour (the number keeps the streak colour).
 
-## 0.24.2 - 2026-11-23
 ## 0.27.0 - 2026-11-23
 - The meadow is now six flower tiers, Sprout, Clover, Thistle, Heather, Foxglove and Starbloom: three pads per tier paying one stat, each tier unlocking the next. Replaces Cash, Multiplier and Rebirth pads (they return in Zone 2). Old saves migrate. New Sunlight stat, a standing flower per tier on its pad that rises with a petal burst when the tier opens, locked buds, re-spaced pad rows.
 
