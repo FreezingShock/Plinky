@@ -21,6 +21,10 @@ var gust_period_b: float = 37.0
 ## Share of the day the sun is up (sunrise to sunset). 0.5 is the plain cosine; 0.6 gives 3 min of day and 2 of night
 ## on a 5 minute day. The clock runs linearly (midnight 0, noon 0.5); only the sun's phase is stretched to fit.
 var daylight_fraction: float = 0.5
+## Golden light: how high the sun can be (elevation 0..1) before the golden look is down to its floor, and the
+## share of it that is kept at noon. Larger reach = longer golden hours (see golden()).
+var golden_reach: float = 0.95
+var golden_floor: float = 0.35
 
 
 ## Position in the day, 0..1.
@@ -105,10 +109,19 @@ func low_sun(t: float) -> float:
 	return smoothstep(0.62, 0.05, e) * smoothstep(-0.02, 0.06, sun_of(phase(t)))
 
 
+## Golden-hour light 0..1: the warm, long-shadowed, high-contrast look. Unlike low_sun() it does not switch off when
+## the sun climbs: it falls smoothly from 1 at the horizon to `golden_floor` at noon, so the morning and afternoon
+## keep the look that sunrise and sunset have. Zero at night.
+func golden(t: float) -> float:
+	var e: float = elevation(t)
+	var up: float = smoothstep(-0.02, 0.06, sun_of(phase(t)))
+	return up * lerpf(golden_floor, 1.0, smoothstep(golden_reach, 0.3, e))
+
+
 ## Shadow length in units of object height: short at noon, long when the sun is low, a faint moon shadow at night.
 func shadow_length(t: float, noon: float, low: float, moon: float) -> float:
 	var e: float = elevation(t)
-	var day: float = lerpf(low, noon, smoothstep(0.0, 1.0, e))
+	var day: float = lerpf(low, noon, smoothstep(0.0, 1.0, e * e))   # e squared: shadows stay long through the morning and afternoon
 	var moon_up: float = clampf(-sun_of(phase(t)), 0.0, 1.0)
 	return lerpf(day, moon, smoothstep(0.0, 0.2, moon_up))
 
@@ -121,9 +134,12 @@ func shadow_strength(t: float, moon: float, rain01: float = 0.0) -> float:
 	return maxf(sun_part, moon_part)
 
 
-## God ray strength 0..1: only while the sun is low, and not in rain.
+## God ray strength 0..1: while the sun is below about three quarters of its height, and not in rain. Zero at noon,
+## so the full-area ray pass is skipped for the middle of the day.
 func rays(t: float, rain01: float = 0.0) -> float:
-	return low_sun(t) * (1.0 - clampf(rain01, 0.0, 1.0))
+	var e: float = elevation(t)
+	var shafts: float = smoothstep(0.82, 0.3, e) * smoothstep(-0.02, 0.06, sun_of(phase(t)))
+	return maxf(low_sun(t), shafts * 0.85) * (1.0 - clampf(rain01, 0.0, 1.0))
 
 
 ## Ground mist 0..1: thickest at dawn, thinner through the day, back up after dusk, and extra after rain.
@@ -133,7 +149,8 @@ func mist(t: float, rain01: float = 0.0) -> float:
 	var dusk_part: float = 0.55 * exp(-pow((phase(t) - 0.74) / 0.07, 2.0))
 	var night_part: float = 0.35 * smoothstep(0.0, -0.8, s)
 	var wet: float = 0.5 * clampf(rain01, 0.0, 1.0)
-	return clampf(0.18 + dawn_part * 0.7 + dusk_part + night_part + wet, 0.0, 1.0)
+	var gold_part: float = 0.14 * golden(t)   # a thin haze holds through the golden hours
+	return clampf(0.18 + dawn_part * 0.7 + dusk_part + night_part + wet + gold_part, 0.0, 1.0)
 
 
 ## Time of day as 0..1 along a looping colour ramp: 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset.
