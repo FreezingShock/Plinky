@@ -194,7 +194,12 @@ func _float_gain(amount: BigNum, val: RollValue, stat_name: String, sid: StringN
 		return
 	# Beside the stats panel, level with the counter, so it never sits on the HUD text.
 	var at: Vector2 = Vector2(_stats_panel.position.x + _stats_panel.size.x + 8.0, val.global_position.y - global_position.y)
-	PopupNumber.spawn_text(self, at, "+%s %s" % [amount.format(), stat_name], true)
+	var text: String = "+%s %s" % [amount.format(), stat_name]
+	if PressPopups.instance != null:
+		# The shared popup field keeps stat floats off each other (and off press numbers) by taking a free lane.
+		PressPopups.instance.label(StringName("stat_" + String(sid)), global_position + at + Vector2(40.0, 12.0), text, 0)
+	else:
+		PopupNumber.spawn_text(self, at, text, true)
 
 
 func _build_gate() -> void:

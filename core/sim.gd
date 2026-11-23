@@ -47,6 +47,10 @@ var attr_levels: Dictionary = {}     # StringName -> int
 var play_seconds: float = 0.0
 var press_count: int = 0
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
+## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
+## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
+var pulse_source: StringName = &""
+var pulse_order: int = 0
 var relic_drops: int = 0     # relics dropped from presses this save
 var ui_flags: Dictionary = {}  # onboarding: {"unlocked": {id: true}, "seen": {id: true}}. Opaque to the sim, saved with it.
 ## 0 to 1. Walking charges it (feed_momentum), pressing nudges it (feed_press_momentum). Once charging stops it holds
@@ -369,9 +373,15 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool) -> boo
 			relics.add_relic(drop)
 		var pulse: float = relics.total_effect(RelicDef.Effect.PULSE_CHANCE)
 		if pulse > 0.0 and rng.randf() < pulse:
+			pulse_source = button_id
+			var order: int = 0
 			for other: ButtonDef in button_defs.values():
 				if other.zone == b.zone and other.row == b.row and absi(other.row_index - b.row_index) == 1:
+					pulse_order = order
+					order += 1
 					_press(other.id, world_pos, false)
+			pulse_source = &""
+			pulse_order = 0
 	return true
 
 
