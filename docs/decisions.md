@@ -548,6 +548,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
+## Seasonal events (2026-11-23)
+- **Decision (Nathan approved the audit pick; picks are mine):** one small event per season, read off the calendar, all numbers in `content/config/seasonal_events.tres`. Spring **Petal Shower**: golden critter wait x0.7. Summer **Long Light**: passive income +8% while the sun is up (about +2% averaged over a year). Autumn **Seed Fall**: relic roll interval x0.75. Winter **Frost Pads**: momentum decays at half speed.
+- **Why these:** each touches a system that already exists (critter, income, relic rolls, momentum), so nothing new to balance and no swing over a few percent. Plain names, no streak-tier words.
+- **Surface:** `core/seasonal_events.gd` (pure), `Sim.events`, arrival banner on `season_changed` (`DistrictBanner.show_event`), event line in the clock tooltip. Water and recolour untouched; no new dither.
+- **Visible:** each event thickens its own season's particles (x2.4 petals, x2.6 sun motes, x2.2 leaves and seeds, x1.8 snow, `particle_boost`). Not done: frosted pad meshes and a warmer summer grade (need the engine to tune). Not run in the cloud: the engine; CI runs tests, the PC pass checks the look.
+
+
 ## Balance sim: three play profiles, meadow pacing checked (2026-11-23)
 - **Why:** the sim had one greedy press rate, so it could not show how much the pacing depends on how often the player presses. Idle, active and hold now run over 8 seeded runs each, and the table shows the median and the range.
 - **Profiles are content:** `content/config/sim_profiles.tres` (`data/sim_profiles.gd`) holds the presses per second (idle 0.2, active 0.5, hold 4.0) and the seed count. They are harness assumptions for pacing, not game balance. Active is the zone's `press_rate`, which already includes walking between pads.

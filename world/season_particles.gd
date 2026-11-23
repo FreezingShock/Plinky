@@ -10,12 +10,14 @@ const IDX_PAPER: int = 7
 const IDX_LIGHT: int = 4
 const IDX_ACCENT: int = 5
 const IDX_EARTH: int = 6
-const MAX_PER_KIND: int = 400
+const MAX_PER_KIND: int = 700
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var area: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)
 var config: CalendarConfig
 var weights: Array[float] = [1.0, 0.0, 0.0, 0.0]
+## Seasonal event air boost per kind (1.0 = none), from SeasonalEvents.particle_boost.
+var boost: Array[float] = [1.0, 1.0, 1.0, 1.0]
 var snow_precip: float = 0.0   # 0..1, rain turned to snow
 var wind: float = 0.0          # 0..1
 var _t: float = 0.0
@@ -48,7 +50,7 @@ func _total() -> float:
 func count_for(kind: int) -> int:
 	if config == null or kind >= config.particle_counts.size():
 		return 0
-	var k: float = weights[kind]
+	var k: float = weights[kind] * boost[kind]
 	if kind == 3:
 		k = clampf(k * 0.45 + snow_precip * 0.9, 0.0, 1.0)
 	elif kind == 1:
