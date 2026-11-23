@@ -16,7 +16,6 @@ var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
 const STAT_RATE_SIZE: int = 8    ## the small "+x/s" or "xN" gain text left of each value
-const STAT_VALUE_WIDTH: int = 48   ## value column: fits "999.99Sx" in Spleen 6x12
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
