@@ -60,6 +60,8 @@ var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 var pulse_source: StringName = &""
 var pulse_order: int = 0
 var relic_drops: int = 0     # relics dropped from presses this save
+## Which stat rows the HUD strip shows per zone (core/hud_layout.gd). Saved with the game.
+var hud_layout: HudLayout = HudLayout.new()
 var ui_flags: Dictionary = {}  # onboarding: {"unlocked": {id: true}, "seen": {id: true}}. Opaque to the sim, saved with it.
 ## 0 to 1. Walking charges it (feed_momentum), pressing nudges it (feed_press_momentum). Once charging stops it holds
 ## for `momentum_hold` seconds, then drains. Stages come from GameConfig.momentum_tiers. Not saved.
@@ -167,6 +169,7 @@ func new_game() -> void:
 	run_stats.clear()
 	calendar.reset()
 	ui_flags = {}
+	hud_layout.clear()
 	momentum = 0.0
 	momentum_hold = 0.0
 	_momentum_tier = 0
@@ -1007,6 +1010,7 @@ func to_dict() -> Dictionary:
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
 		"ui_flags": ui_flags.duplicate(true),
+		"hud_layout": hud_layout.to_dict(),
 		"relics": relics.to_dict(),
 		"mastery": mastery.to_dict(),
 		"calendar": calendar.to_dict(),
@@ -1072,6 +1076,7 @@ func from_dict(d_in: Dictionary) -> bool:
 	var uf: Variant = d.get("ui_flags", {})
 	if uf is Dictionary:
 		ui_flags = (uf as Dictionary).duplicate(true)
+	hud_layout.from_dict(d.get("hud_layout"), stat_defs.keys())   # saves from before the strip was editable have none: Default
 	var rd: Variant = d.get("relics", {})
 	if rd is Dictionary:
 		relics.from_dict(rd)

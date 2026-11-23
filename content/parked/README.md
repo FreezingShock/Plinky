@@ -3,7 +3,7 @@
 Not loaded by the game (ContentLoader only reads the live content folders). Kept for reuse.
 
 - `stats/cash.tres` and `stats/mult.tres`: the original Cash and Multiplier stats. Nathan removed them from the Ember
-  Quarry (v0.33.0) and plans to bring them back in a later "nostalgic, liminal" zone. In the quarry they became
+  Quarry (v0.34.0) and plans to bring them back in a later "nostalgic, liminal" zone. In the quarry they became
   Embers (the passive trickle) and Cinder (the first forge row). The art is still at `assets/icons/cash.png` and
   `assets/icons/mult.png`, the colours (Cash `f2c94c`, Multiplier `55aaff`) are in the git history of `ui/stat_style.gd`,
   and the relic effects `CASH_MULT` and `MULT_GAIN` still exist in `data/relic_def.gd`.

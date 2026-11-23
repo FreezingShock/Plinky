@@ -9,8 +9,14 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.33.0 - 2026-11-23
+## 0.34.0 - 2026-11-23
 - Ember Quarry: Cash and Multiplier are removed from the zone. Cash became Embers (the passive trickle that feeds the forge) and the Multiplier became Cinder, the first forge row, so the ladder reads Embers, Cinder, Ore, Slag, Ingot, Alloy, Emberheart with the same numbers. The old stats are parked in `content/parked/` for a later liminal zone. Saves move over one for one (save ladder 3); new Embers and Cinder icons, colours and tooltips.
+
+## 0.33.0 - 2026-11-23
+- The HUD stat strip is customizable and saved per game. Right-click a row to hide it, or press the pencil under the strip for edit mode: move rows up and down, hide them, add stats from icon-only chips (instant tooltip names each one), up to 10 rows, and Reset to the zone's Default layout. Each zone keeps its own layout (flower ladder, Ember Quarry), stats met in other zones can be pinned, older saves start on Default. Settings > Gameplay gets Edit Stat Strip, Reset Stat Strip, Strip Gain Rates, Strip Unearned Rows and Right-click Hides a Row. New `tools/hud_shot.tscn -- edit` fixture.
+
+## 0.32.2 - 2026-11-23
+- New pad-press popups: pooled, procedural stacking gain numbers coloured by streak tier (Gold, Ice, Rainbow, Chroma, Galaxy), stat-name caption, relic pulse echoes, new SFX, anchored in the world and drawn below menus; pads shake instead of the camera.
 
 ## 0.32.1 - 2026-11-23
 - HUD strip: more room between the gain text and the value so long suffixes never touch it.
