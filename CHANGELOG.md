@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.17.4 - 2026-11-23
+- Zone panel: a long zone name such as Ember Quarry drops to the 12 pt title size so the Travel button no longer clips it.
+
 ## 0.17.3 - 2026-11-23
 - Tooltips are instant, like Minecraft: no hover or focus delay, no grace window, and they vanish the frame the cursor leaves. The version link on the boot and title screens moved from Godot's delayed tooltip to the shared tooltip.
 
