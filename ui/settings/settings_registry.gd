@@ -465,6 +465,11 @@ static func _register_access() -> void:
 		"apply": func(v: Variant) -> void: FxConfig.reduce_screen_fx = bool(v),
 	})
 	_add({
+		"id": &"reduce_text_motion", "tab": "Access", "label": "Still banners", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Area and event banners appear and leave at once instead of typing in and out.",
+		"apply": func(v: Variant) -> void: FxConfig.reduce_motion = bool(v),
+	})
+	_add({
 		"id": &"calm_camera", "tab": "Access", "label": "Calm camera", "kind": Kind.TOGGLE, "default": false,
 		"hint": "No look-ahead, no crit punch, no idle drift. The camera still follows.",
 		"apply": func(v: Variant) -> void: WorldCamera.calm = bool(v),

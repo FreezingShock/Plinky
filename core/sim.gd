@@ -47,6 +47,8 @@ var run_stats: RunStats = RunStats.new()
 var achievements: Achievements = Achievements.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
+## The current season's light event (core/seasonal_events.gd). Set up by ContentLoader; no config means no events.
+var events: SeasonalEvents = SeasonalEvents.new()
 
 # State
 var stats: Dictionary = {}           # StringName -> BigNum
@@ -265,6 +267,7 @@ func income_per_second(stat_id: StringName) -> BigNum:
 	var pm: BigNum = prestige_mult() if d.prestige_boosts_income else BigNum.one()
 	var rm: BigNum = BigNum.from_float(relics.multiplier(RelicDef.Effect.CASH_MULT)) if d.relics_boost_income and relics != null else BigNum.one()
 	rm = rm.mul(BigNum.from_float((1.0 + momentum_bonus()) * (1.0 + effect_total(&"sun_rate"))))
+	rm = rm.mul(BigNum.from_float(events.day_income_mult(calendar.season_index(), calendar.is_day())))
 	return Formulas.income(z.base_cash_per_second, boost, pm, rm)
 
 
@@ -616,7 +619,7 @@ func _sync_momentum_tier() -> void:
 
 func _schedule_critter() -> void:
 	if config != null:
-		_critter_next = rng.randf_range(config.critter_min_interval, config.critter_max_interval)
+		_critter_next = rng.randf_range(config.critter_min_interval, config.critter_max_interval) * events.critter_interval_mult(calendar.season_index())
 
 
 func _step_critter(dt: float) -> void:
@@ -687,7 +690,7 @@ func _update_streak(b: ButtonDef) -> void:
 ## One drop roll per roll_interval of play time, with a guaranteed first drop and a pity timer.
 func _roll_relic_drop() -> StringName:
 	var rc: RelicConfig = relics.config
-	if play_seconds - _last_roll_at < rc.roll_interval:
+	if play_seconds - _last_roll_at < rc.roll_interval * events.relic_roll_mult(calendar.season_index()):
 		return &""
 	_last_roll_at = play_seconds
 	var due: float = rc.first_drop_seconds if relic_drops == 0 else rc.pity_seconds
@@ -758,7 +761,7 @@ func step(dt: float) -> void:
 	if momentum_hold > 0.0:
 		momentum_hold = maxf(0.0, momentum_hold - dt)
 	elif momentum > 0.0:
-		momentum = maxf(0.0, momentum - config.momentum_decay_per_second * dt)
+		momentum = maxf(0.0, momentum - config.momentum_decay_per_second * events.momentum_decay_mult(calendar.season_index()) * dt)
 		_sync_momentum_tier()
 	if heat > 0.0:
 		var zd: ZoneDef = current_zone()

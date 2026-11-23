@@ -14,6 +14,7 @@ var _cal: GameCalendar
 var _dial: Control
 var _time: Label
 var _season: Label
+var _events: SeasonalEvents
 var _date: Label
 var _squeeze: int = 0
 var _widths: Array[float] = [0.0, 0.0, 0.0]
@@ -27,6 +28,7 @@ var _palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 
 func setup(sim: Sim) -> void:
 	_cal = sim.calendar
+	_events = sim.events
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 6.0, 3.0))
 	var h := HBoxContainer.new()
@@ -129,10 +131,13 @@ func _tip_spec() -> Dictionary:
 	var next_name: String = _cal.season_name((int(n["season"]) + 1) % GameCalendar.SEASONS)
 	var mins: int = int(ceilf(secs / 60.0))
 	var left: String = "%d min" % mins if mins < 120 else "%.1f h" % (secs / 3600.0)
+	var event_line: String = ""
+	if _events != null and _events.name_of(int(n["season"])) != "":
+		event_line = "\n%s: %s" % [_events.name_of(int(n["season"])), _events.blurb_of(int(n["season"]))]
 	return {
 		"title": "%s, %s" % [String(n["season_name"]), String(n["month_name"])],
-		"body": "Day %d of %d. Year %d. %s\n%s, %s." % [int(n["day"]), int(n["days_in_month"]), int(n["year"]),
-				String(n["season_blurb"]), String(n["clock_text"]), "daylight" if bool(n["is_day"]) else "night"],
+		"body": "Day %d of %d. Year %d. %s\n%s, %s.%s" % [int(n["day"]), int(n["days_in_month"]), int(n["year"]),
+				String(n["season_blurb"]), String(n["clock_text"]), "daylight" if bool(n["is_day"]) else "night", event_line],
 		"hint": "%s begins in %s." % [next_name, left],
 		"color": _cal.season_color(int(n["season"])),
 	}

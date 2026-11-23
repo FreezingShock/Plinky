@@ -145,6 +145,10 @@ Format: date, decision, one line of reasoning. Newest at the bottom. The build a
 - Zone 2 gate (Slag 9) has no next zone yet, so walking in does nothing and the HUD says nothing is past it.
 - Placeholder quarry tint on the meadow removed; zone 2 has its own palette-index art.
 
+| 2026-11-23 | PC audio check fixes: ambience gains now step in `Audio.world_step(delta)` (called by _process, callable in tests) and shore/birds default on until a quarry zone turns them off | Probe saw gains stuck at 0 with proximity 0.9+. Cause was not provable without a run; the default removes any dependence on set_zone having fired, and the test now drives gains from proximity. |
+| 2026-11-23 | Wood plate = TexelPad.HALF (14x7) instead of 11x5.5 | The walker triggers a pad anywhere inside 14x7, so a step inside the pad must read wood. |
+| 2026-11-23 | (318,218) is sand and (241,193) is grass in ground.png (checked pixel by pixel); the PC probe's guesses were off, now pinned in tests | Surface classification itself was right. |
+| 2026-11-23 | MeadowSites per-zone data uses `MeadowSites.use(placements, ground, offset)` (set by main on zone entry, from the Larkmoor work) | Zones without placements fall back to grass. |
 
 ## Larkmoor, the big meadow (23 Nov)
 - The small meadow (`zone1`) is now the onboarding area. Its gate (9 Rebirths, unchanged) leads to a new zone, **Larkmoor** (`larkmoor`, order 1). Zone 2 (Ember Quarry) moves to order 2 and sits behind Larkmoor's far gate. `zone1.next_zone = larkmoor`, `larkmoor.next_zone = zone2`.
@@ -548,6 +552,13 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Not changed:** meadow pads (other thread), Larkmoor pads (pacing holds, 57.5 min mean on both trees), Rebirth Points perks, mastery (pinned to Larkmoor pacing, open question), Momentum stages, prestige formula (Bloom thread).
 - Verified: 2612 headless checks, 0 failed. Larkmoor far gate (no relics equipped, as the sim always runs): 57.5 min mean on the base tree, 57.1 on this tree, 12 runs each. Screenshot not verifiable in the cloud.
 
+## Seasonal events (2026-11-23)
+- **Decision (Nathan approved the audit pick; picks are mine):** one small event per season, read off the calendar, all numbers in `content/config/seasonal_events.tres`. Spring **Petal Shower**: golden critter wait x0.7. Summer **Long Light**: passive income +8% while the sun is up (about +2% averaged over a year). Autumn **Seed Fall**: relic roll interval x0.75. Winter **Frost Pads**: momentum decays at half speed.
+- **Why these:** each touches a system that already exists (critter, income, relic rolls, momentum), so nothing new to balance and no swing over a few percent. Plain names, no streak-tier words.
+- **Surface:** `core/seasonal_events.gd` (pure), `Sim.events`, arrival banner on `season_changed` (`DistrictBanner.show_event`), event line in the clock tooltip. Water and recolour untouched; no new dither.
+- **Visible:** each event thickens its own season's particles (x2.4 petals, x2.6 sun motes, x2.2 leaves and seeds, x1.8 snow, `particle_boost`). Not done: frosted pad meshes and a warmer summer grade (need the engine to tune). Not run in the cloud: the engine; CI runs tests, the PC pass checks the look.
+
+
 ## Balance sim: three play profiles, meadow pacing checked (2026-11-23)
 - **Why:** the sim had one greedy press rate, so it could not show how much the pacing depends on how often the player presses. Idle, active and hold now run over 8 seeded runs each, and the table shows the median and the range.
 - **Profiles are content:** `content/config/sim_profiles.tres` (`data/sim_profiles.gd`) holds the presses per second (idle 0.2, active 0.5, hold 4.0) and the seed count. They are harness assumptions for pacing, not game balance. Active is the zone's `press_rate`, which already includes walking between pads.
@@ -665,3 +676,21 @@ Travel shows Meadow and Ember Quarry plus two locked "???" teaser rows (`travel_
 PRs add a `changelog.d/<slug>.patch|minor.md` fragment instead of bumping `core/build_info.gd`, `export_presets.cfg` and CHANGELOG.md, so the version files never conflict. `.github/workflows/release.yml` folds fragments into a release commit on main (serialised, biggest bump wins). Chosen over a merge queue (adds waiting per merge and needs ruleset setup) and over version-in-CI-only (the in-game version must exist in the repo). CI: engine jobs `unit`, `sim`, `play` run in parallel with a cached Godot binary and `.godot/imported`; docs-only PRs skip them; the aggregate check keeps the name `test`. The Release bot pushes to main, so a main ruleset must let GitHub Actions bypass the pull-request and status-check rules. Not run in-engine: the workflow changes are validated by CI itself.
 ## 2026-11-23 Menu tiles always show their names
 Nathan wanted the hamburger menu words visible, not only on the focused tile. Tiles now always draw their name; a locked tile still says "Locked" while hovered. Grid is 3 columns (nine tiles fill 3x3) and tiles are 96 wide. New hover: a slanted band of 4x4 Bayer dither in the section colour sweeps across once (0.4 s), the icon bobs one texel, plus the existing lift. All off under reduced motion / flashing. Tooltips unchanged. Not run in-engine from the cloud.
+
+## Popup banners (Banner autoload)
+- `Banner.announce({title, lines, icon, color, duration, key, interrupt})` (ui/banner.gd, logic in core/banner_queue.gd). `show` is taken by CanvasLayer, so the call is `announce`.
+- Bottom-middle, typed from the centre outward and collapsed back to it. The panel is a fixed size for the whole banner, so it never jitters. Queue holds 4, same key is a duplicate, a repeat within 6 s is dropped, `skip()` ends early.
+- Reduced motion: new Access toggle "Still banners" (`FxConfig.reduce_motion`): banners show whole with no typing or collapse.
+- Replaces the old DistrictBanner. Area arrival (core/area_banner.gd): name, then season/date from `/root/Calendar.now()` when that autoload exists, then time; with no calendar it shows the sky clock and period only. `ZoneDef.outdoor` (default true) turns it off for indoor zones. Larkmoor shows district banners, other zones show a zone banner on arrival and at boot.
+- Calendar keys read: season (name or 0-3), month, day, hour, minute, period. Not wired: season_changed banner (waiting on the calendar thread's signal names).
+## 2026-11-23 Staged (multi-resolution) icons 
+- Nathan: "better and more staged art for rebirth points, and everything else", meaning a hand-drawn variant per size, not scaled copies. Sizes: 8, 12, 16, 24, 32 (square, palette indices, nearest filter, no blur).
+- Source of truth is `tools/art/staged/<name>.txt` (one ASCII grid per size, optional mirrored left half); `tools/art/gen_icons_staged.py` compiles them to `assets/icons/s8|s12/`, `s24/`, the existing 16 px path and `big/` (32 px), plus the contact sheet `docs/img/icons_staged.png`. `ui/icon_set.gd` (`IconSet.get_icon(name, slot_px)`) picks the largest staged size that fits a slot.
+- Rebirth Points redrawn: a faceted green gem with a two-leaf sprout (a rebirth seed), distinct from the Rebirth ring-arrow, Prestige crown and Luck clover. Pale table, light girdle, deep pavilion, the sprout carries the "new life" read at 8 px.
+- Audit before this change: stats, attributes, perks (19 icons) had 16 and 32 px only, both rendered from one shared geometry. Relics (6) have 16 px only, menu tile glyphs 9 px, area glyphs 7 px, rarity frames 20 px, hamburger and gallery menu icons 32 px. Now done: the 19 stat/attribute/perk icons have all five sizes; the 8 px and 12 px versions started from a reduction of the 16 px art and were redrawn by hand where it read badly (clock, book, Rebirth). Not done yet: relics, gallery menu icons.
+- Not run in engine: no Godot in the cloud; CI runs the headless tests, the PC pass should judge the icons at 1x/3x in the HUD and gallery.
+
+## 2026-11-23 Staged icons, second pass
+- Same five sizes (8, 12, 16, 24, 32) for the flower and quarry stats (Sunlight, Dewdrop, Seeds, Clover, Thistle, Heather, Foxglove, Starbloom, Embers, Cinder, Ironore, Ingot, Alloy, Emberheart, Slag), the 6 relic icons and the 9 gallery menu icons. Relic files sit in `assets/icons/relics/` (16 px) with `s8 s12 s24 s32` folders beside them; menu icons at 32 px stay in `big/`, their 16 px is `assets/icons/menu_*.png`.
+- These were seeded by `tools/art/seed_staged.py` (majority-colour reduction with a rebuilt outline; Scale2x for 16 to 32 on relics), not drawn from blank. Their 8 and 12 px versions are the weakest and are the first to polish by hand. Icons that need colours beyond the 8 zone roles list them in the .txt (`%a=#rrggbb`).
+- Skipped on purpose: Rebirth and Prestige polish (the quarry reset is being replaced), the hamburger glyph (16 px only), menu tile glyphs (9 px) and area glyphs (7 px).

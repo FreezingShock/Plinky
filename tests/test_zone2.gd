@@ -120,6 +120,17 @@ func run(t: Object) -> void:
 		if kind in ["pad", "vent", "gate", "player_spawn"]:
 			var n: Vector2 = WalkMask.nearest(p, reach)
 			t.ok(WalkMask.walkable(n) and p.distance_to(n) <= float(reach), "%s at %s is reachable within %d texels" % [kind, str(p), reach])
+	var pad_pts: Array[Vector2] = []
+	for a2: Variant in data.get("anchors", []):
+		var d2: Dictionary = a2 as Dictionary
+		if str(d2.get("kind", "")) == "pad":
+			pad_pts.append(Vector2(float(d2.get("sx", 0)), float(d2.get("sy", 0))))
+	var entries: Array = data.get("row_entry", []) as Array
+	t.eq(entries.size() * 3, pad_pts.size(), "one road entry per pad row")
+	for r in entries.size():
+		var e: Array = entries[r] as Array
+		var ep := Vector2(float(e[0]), float(e[1]))
+		t.ok(pad_pts[r * 3].distance_to(ep) < pad_pts[r * 3 + 1].distance_to(ep) and pad_pts[r * 3 + 1].distance_to(ep) < pad_pts[r * 3 + 2].distance_to(ep), "row %d pads are numbered 1, 2, 3 from where the road meets the row" % (r + 1))
 	t.eq(pads, z2.pad_buttons.size(), "one pad anchor per Forge button")
 	t.ok(vents >= 2, "at least two vents")
 	t.ok(has_gate and has_spawn, "gate and spawn anchors exist")
