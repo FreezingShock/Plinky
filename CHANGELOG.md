@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.18.1 - 2026-11-23
+- The SPRINTING HELD / ENABLED label now has a dark backing plate so the ground no longer shows through its letters.
+
 ## 0.18.0 - 2026-11-23
 - Walker overhaul: the hooded walker is redrawn (20 poses, no baked shadow) and animated procedurally (squash, stretch, lean, hop, dust). Shift sprints, Ctrl locks the sprint, Space jumps (a jump launches you faster and the camera rises with it), C crouches or slides while sprinting. A SPRINTING HELD / SPRINTING ENABLED label sits above Momentum. Recentre camera moves from C to Home.
 
