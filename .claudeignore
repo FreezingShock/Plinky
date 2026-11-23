@@ -16,3 +16,4 @@ assets/**/*.wav
 assets/**/*.ttf
 assets/**/*.ico
 assets/**/*.icns
+tools/art/

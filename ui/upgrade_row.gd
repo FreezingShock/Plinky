@@ -62,7 +62,7 @@ func setup(a: AttributeDef) -> void:
 	_name.text = a.display_name
 	top.add_child(_name)
 	_level = Label.new()
-	_level.add_theme_color_override("font_color", RelicStyle.dim)
+	_level.add_theme_color_override("font_color", RelicStyle.soft())
 	top.add_child(_level)
 	_pips = PipBar.new()
 	_pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -160,7 +160,7 @@ func refresh(s: Dictionary) -> void:
 
 
 func _build_delta(s: Dictionary, now: String, nxt: String) -> String:
-	var dim: String = RelicStyle.dim.to_html(false)
+	var dim: String = RelicStyle.soft().to_html(false)
 	if not bool(s["unlocked"]):
 		return "[color=#%s]%s (%d/%d)[/color]" % [dim, s["lock"], s["rebirths"], s["need"]]
 	if bool(s["maxed"]):
