@@ -143,7 +143,9 @@ func _build_stats() -> void:
 		rate.add_theme_color_override("font_color", RelicStyle.dim)
 		h.add_child(rate)
 		_rows[sid] = [val, rate]
-		Tip.bind_all(h, TipText.stat(sid, def.display_name))
+		Tip.bind_all(h, func() -> Variant:
+			var inc: BigNum = sim.income_per_second(sid)
+			return TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format()))
 		_row_boxes[sid] = h
 		match sid:
 			&"mult": gate(h, Onboarding.F_MULT)

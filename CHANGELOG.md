@@ -9,6 +9,8 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.6.0 - 2026-11-23- Tooltip rework: one rich tooltip system (stat icons and colours, green/red cost, tooltips on every stat and attribute, hover that stays up), relic slots moved onto it.
+
 ## 0.5.0 - 2026-11-23
 - Single source of truth for the game version (`core/build_info.gd`), shown small on the boot screen, with `BuildInfo.string()` and `BuildInfo.changelog()` for the Update Log tile.
 - `tools/bump_version.py`, `tests/test_version.gd`, this changelog and docs/versioning.md.
