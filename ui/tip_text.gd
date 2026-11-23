@@ -9,6 +9,7 @@ const STATS: Dictionary = {
 	&"mult": {"body": "Boosts your Cash income and press rewards.", "hint": "Grows from pads. Rebirths make it grow faster."},
 	&"reb": {"body": "Times you have started over. Each one speeds up Multiplier gain.", "hint": "Use the Rebirth button once you can afford it."},
 	&"slag": {"body": "Quarry currency, made by the pads there.", "hint": "Spend it on quarry pads."},
+	&"rp": {"body": "Earned on every rebirth. Spend it on Rebirth perks.", "hint": "Open Upgrades to spend it."},
 	&"prestige": {"body": "Earned by rebirthing. Spend it on permanent upgrades.", "hint": "Open Upgrades to spend it."},
 }
 
@@ -46,19 +47,20 @@ static func attribute(a: AttributeDef, level: int, cost_text: String, can_afford
 	lines.append(["Now ", Tip.seg(StatIndex.effect_text(a, float(level) * a.per_level), StatStyle.BUY_GREEN)])
 	if not maxed:
 		lines.append(["Next ", Tip.seg(StatIndex.effect_text(a, float(level + 1) * a.per_level), StatStyle.BUY_GREEN)])
-		lines.append(["Costs ", Tip.icon("prestige"), Tip.seg(cost_text, StatStyle.buy(can_afford)), " ", Tip.seg("Prestige", StatStyle.color(&"prestige"))])
+		lines.append(["Costs ", Tip.icon(String(a.currency)), Tip.seg(cost_text, StatStyle.buy(can_afford)), " ", Tip.seg(UpgradeText.currency_name(a), StatStyle.color(a.currency))])
 	return {"title": a.display_name, "title_color": c, "color": c, "icon": String(ATTR_ICONS.get(a.effect, "prestige")),
 		"body": ATTRS.get(a.effect, ""), "lines": lines,
-		"hint": "Max level." if maxed else ("Click Buy to upgrade." if can_afford else "Need more Prestige."),
+		"hint": "Max level." if maxed else ("Click Buy to upgrade." if can_afford else "Need more %s." % UpgradeText.currency_name(a)),
 		"hint_color": StatStyle.BUY_GREEN if (maxed or can_afford) else StatStyle.BUY_RED}
 
 
-static func rebirth(can: bool, gain_text: String) -> Dictionary:
+static func rebirth(can: bool, gain_text: String, rp_text: String = "") -> Dictionary:
 	var pc: Color = StatStyle.color(&"prestige")
 	if can:
 		return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
 			"body": "Reset your Cash and pads for a Rebirth.",
-			"lines": [["Gives ", Tip.icon("prestige"), Tip.seg("+%s" % gain_text, StatStyle.BUY_GREEN), " ", Tip.seg("Prestige", pc)]],
+			"lines": [["Gives ", Tip.icon("prestige"), Tip.seg("+%s" % gain_text, StatStyle.BUY_GREEN), " ", Tip.seg("Prestige", pc)]]
+				+ ([["Gives ", Tip.icon("rp"), Tip.seg("+%s" % rp_text, StatStyle.BUY_GREEN), " ", Tip.seg("Rebirth Points", StatStyle.color(&"rp"))]] if rp_text != "" else []),
 			"hint": "Prestige and relics are kept.", "hint_color": StatStyle.BUY_GREEN}
 	return {"title": "Rebirth", "title_color": StatStyle.color(&"reb"), "color": StatStyle.color(&"reb"), "icon": "reb",
 		"body": "Start over for Prestige and a faster Multiplier.", "hint": "Not available yet.", "hint_color": StatStyle.BUY_RED}
