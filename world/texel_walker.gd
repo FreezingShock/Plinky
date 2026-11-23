@@ -6,6 +6,7 @@ extends Node2D
 ## Feel values, texels per second. Vertical is halved to match the 2:1 isometric ground.
 const SPEED: float = 70.0
 const BOUNDS: Rect2 = Rect2(0.0, 0.0, 640.0, 360.0)   # outer clamp only; WalkMask decides where feet may go
+static var bounds: Rect2 = BOUNDS                     # the current zone's world rect (main sets it on zone entry)
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var moving: bool = false
@@ -106,8 +107,8 @@ func _try_step(step: Vector2) -> bool:
 		if s == Vector2.ZERO:
 			continue
 		var q := Vector2(
-			clampf(position.x + s.x, BOUNDS.position.x, BOUNDS.end.x),
-			clampf(position.y + s.y, BOUNDS.position.y, BOUNDS.end.y))
+			clampf(position.x + s.x, bounds.position.x, bounds.end.x),
+			clampf(position.y + s.y, bounds.position.y, bounds.end.y))
 		if WalkMask.walkable(q):
 			position = q
 			return true
@@ -140,7 +141,7 @@ func _animate(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var p: Vector2 = (get_parent() as Node2D).to_local(get_global_mouse_position())
-		_target = WalkMask.nearest(Vector2(clampf(p.x, BOUNDS.position.x, BOUNDS.end.x), clampf(p.y, BOUNDS.position.y, BOUNDS.end.y)))
+		_target = WalkMask.nearest(Vector2(clampf(p.x, bounds.position.x, bounds.end.x), clampf(p.y, bounds.position.y, bounds.end.y)))
 		_has_target = true
 
 

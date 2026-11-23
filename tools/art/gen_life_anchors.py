@@ -77,13 +77,19 @@ def load_placements(path):
 
 
 def main() -> None:
+    global GRASS_BOUNDS, SWAY_COUNT
     from PIL import Image
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--backdrop", default=DEFAULT_BACKDROP)
     ap.add_argument("--placements", default=DEFAULT_PLACEMENTS)
     ap.add_argument("--out", default=DEFAULT_OUT)
+    ap.add_argument("--bounds", default="", help="x0,y0,x1,y1 in the frame where tips may go (default: the meadow's)")
+    ap.add_argument("--sway-count", type=int, default=SWAY_COUNT)
     args = ap.parse_args()
+    if args.bounds:
+        GRASS_BOUNDS = tuple(int(v) for v in args.bounds.split(","))
+    SWAY_COUNT = args.sway_count
 
     im = Image.open(args.backdrop).convert("RGB")
     w, h = im.size
@@ -123,8 +129,8 @@ def main() -> None:
 
     x0, y0, x1, y1 = GRASS_BOUNDS
     candidates = []
-    for y in range(max(y0, 1), min(y1, 359)):
-        for x in range(max(x0, 1), min(x1, 639)):
+    for y in range(max(y0, 1), min(y1, h + oy - 1)):
+        for x in range(max(x0, 1), min(x1, w + ox - 1)):
             if index_at(x - ox, y - oy) != 4:
                 continue
             below = index_at(x - ox, y + 1 - oy)
@@ -159,7 +165,7 @@ def main() -> None:
 
     data = {
         "format": pl["format"],
-        "size": [640, 360],
+        "size": [w + ox, h + oy] if (ox, oy) != (-100, -60) else [640, 360],
         "backdrop_origin": [ox, oy],
         "sway": [[x, y] for x, y in picked],
         "lights": pl["lights"],

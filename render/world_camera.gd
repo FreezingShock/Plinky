@@ -177,6 +177,14 @@ func zoom_step(dir: int, screen_pos: Vector2) -> void:
 	_apply()
 
 
+## Jumps straight to the walker (a zone change, where a chase across the map would show the whole trip).
+func snap() -> void:
+	pan = Vector2.ZERO
+	if target != null:
+		_center = _clamp_center(target.position + FOCUS_LIFT)
+	_apply()
+
+
 func recenter() -> void:
 	pan = Vector2.ZERO
 	_idle = RETURN_DELAY

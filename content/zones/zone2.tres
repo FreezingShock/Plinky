@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = &"zone2"
 display_name = "Ember Quarry"
-order = 1
+order = 2
 gate_stat = &"slag"
 gate_threshold = 9.0
 next_zone = &""

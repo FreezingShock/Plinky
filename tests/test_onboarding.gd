@@ -88,7 +88,7 @@ func _stages(t: Object, cfg: OnboardingConfig) -> void:
 	sim.gates_open[&"zone1"] = true
 	sim.step(cfg.urgent_gap_seconds + 0.1)
 	t.eq(ob.next_tip(), &"gate_open", "gate tip appears once the gate opens")
-	t.ok(ob.tip_text(&"gate_open").contains("Ember Quarry"), "gate tip names the next zone")
+	t.ok(ob.tip_text(&"gate_open").contains("Larkmoor"), "gate tip names the next zone")
 	for id: StringName in [&"rebirth_button", &"upgrades", &"relic", &"first_press", &"rebirth_row", &"walk", &"streak", &"critter", &"welcome", &"gate_open"]:
 		t.ok(ob.tip_text(id) != "" and ob.tip_title(id) != "", "tip %s has a title and text" % id)
 		t.ok(not ob.tip_text(id).contains("Plinko"), "tip %s avoids the banned word" % id)
