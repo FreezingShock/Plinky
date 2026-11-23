@@ -27,6 +27,7 @@ func _ready() -> void:
 	sim.zone_entered.connect(func(id: StringName) -> void: bus.zone_entered.emit(id))
 	sim.gate_opened.connect(func(id: StringName) -> void: bus.gate_opened.emit(id))
 	sim.rebirth_done.connect(func(p: BigNum) -> void: bus.rebirth_done.emit(p))
+	sim.bloom_done.connect(func(n: int) -> void: bus.bloom_done.emit(n))
 	sim.attribute_bought.connect(func(id: StringName, lv: int) -> void: bus.attribute_bought.emit(id, lv))
 	relics.relic_gained.connect(func(id: StringName, n: int) -> void: bus.relic_gained.emit(id, n))
 	relics.relic_equipped.connect(func(id: StringName) -> void: bus.relic_equipped.emit(id))
@@ -75,6 +76,10 @@ func income_per_second(stat_id: StringName) -> BigNum:
 
 func try_rebirth() -> bool:
 	return sim.try_rebirth()
+
+
+func try_bloom() -> bool:
+	return sim.try_bloom()
 
 
 func buy_attribute(attribute_id: StringName) -> bool:

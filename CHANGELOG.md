@@ -9,8 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.30.2 - 2026-11-23
-- Press popups now stack: a press folds into any live number of the same stat on the same pad or within 40 px (up to 1.2 s apart), so nearby numbers become one rising total instead of overlapping. Each number carries its stat name centred underneath in the stat's own colour (the number keeps the streak colour). The old floating "+N Stat" text beside the stats panel is gone, and streak and critter payouts use the same popup field.
+## 0.31.1 - 2026-11-23
+- New pad-press popups: pooled, procedural stacking gain numbers coloured by streak tier (Gold, Ice, Rainbow, Chroma, Galaxy), stat-name caption, relic pulse echoes, new SFX, anchored in the world and drawn below menus; pads shake instead of the camera.
+
+## 0.31.0 - 2026-11-23
+- Bloom: the meadow's reset. Once Larkmoor's gate is open and you hold as many Starbloom Petals as that gate took, Bloom resets your flowers and Sunlight for Seeds (new currency, peach-gold seed icon) and a permanent +5% to every pad. Four Bloom gifts in Upgrades. Rebirth, Prestige and Rebirth Points are hidden in the meadow and return in Zone 2; nothing is deleted.
 
 ## 0.30.1 - 2026-11-23
 - HUD strip: the gain sits tight against the value (no fixed-width value column), so short values no longer leave a gap.
