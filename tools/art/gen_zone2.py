@@ -501,13 +501,18 @@ def bake_quarry(outdir, preview=None):
     rng = np.random.default_rng(7)
     sc = build_quarry()
     inner = visible_walk(sc, 14)
-    sc.walk &= visible_walk(sc, 3)
+    vis3 = visible_walk(sc, 3)
     global SPAWN_WD
     SPAWN_WD = snap_to(inner, SPAWN_WD)
     keep = [wd_uv(*SPAWN_WD)]
     for i, p in enumerate(PADS_WD):
         PADS_WD[i] = snap_to(inner, p, keep)
         keep.append(wd_uv(*PADS_WD[i]))
+    for i, p in enumerate(VENTS_WD):
+        VENTS_WD[i] = snap_to(inner, p, keep, gap=16.0)
+        keep.append(wd_uv(*VENTS_WD[i]))
+    sc = build_quarry()   # the vent glow is painted from VENTS_WD, so rebuild with the snapped positions
+    sc.walk &= vis3
     populate_quarry(sc, rng)
     finalize_props_walk(sc)
     os.makedirs(os.path.join(outdir, 'sprites'), exist_ok=True)
