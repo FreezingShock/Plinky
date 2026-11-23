@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TierDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/tier_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"alloy"
+display_name = "Alloy"
+order = 5
+zone = &"zone2"
+stat = &"alloy"
+rarity = &"legendary"
+blurb = "A golden anvil with a glowing bar. Costs Ingots, pays Alloys."

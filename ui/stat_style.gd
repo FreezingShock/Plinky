@@ -8,7 +8,7 @@ const BUY_RED: Color = Color("d8483c")     ## not affordable
 const COLORS: Dictionary = {
 	&"sunlight": Color("ffd95a"), &"dewdrop": Color("e4f1ff"), &"clover": Color("6be86b"), &"thistle": Color("7f9bff"),
 	&"heather": Color("c27cff"), &"foxglove": Color("ffb62e"), &"starbloom": Color("ff7bff"),
-	&"cash": Color("f2c94c"), &"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("ffaa00"),
+	&"cash": Color("f2c94c"), &"mult": Color("55aaff"), &"reb": Color("c77dff"), &"slag": Color("5fb0e0"), &"ironore": Color("5fb26a"), &"ingot": Color("a07ee0"), &"alloy": Color("e8b43a"), &"emberheart": Color("ff5aa0"),
 	&"prestige": Color("f08fb0"), &"rp": Color("9ee2c0"), &"crit_chance": Color("ff6b5a"), &"crit_damage": Color("ffae42"),
 	&"luck": Color("7be08a"), &"press_rate": Color("6fd6e8"), &"walk_speed": Color("a3d96a"),
 	&"offline_cap": Color("8aa6ff"), &"mastery": Color("ffd166"),

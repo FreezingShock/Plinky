@@ -568,7 +568,7 @@ func _refresh() -> void:
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
 	_rebirth.disabled = not sim.can_rebirth()
-	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need %s %s)" % [BigNum.from_float(sim.config.rebirth_min_value).format(), (sim.stat_defs[sim.config.prestige_source_stat] as StatDef).display_name]
+	_rebirth.full_text = "Rebirth (+%s Prestige)" % sim.prestige_gain_preview().format() if sim.can_rebirth() else "Rebirth (need %s %s)" % [BigNum.from_float(sim.config.rebirth_min_value).format(), (sim.stat_defs[sim.prestige_source()] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:
