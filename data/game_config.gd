@@ -8,6 +8,13 @@ extends Resource
 @export var max_ticks_per_frame: int = 50
 @export var autosave_seconds: float = 30.0
 @export var offline_base_cap_hours: float = 2.0
+## While away the meadow is tended at this fraction of your press rate: each open tier presses its top unlocked pad,
+## paying the same cost and reward as a real press, limited by what the tier below left in stock. 0 turns it off.
+@export var offline_tend_fraction: float = 0.1
+## Relic drop rolls run at this fraction of the awake rate (same chance, luck and pity rules), at most
+## offline_relic_max_drops per return. 0 turns offline drops off.
+@export var offline_relic_roll_fraction: float = 0.25
+@export var offline_relic_max_drops: int = 3
 @export var prestige_exponent: float = 0.8
 @export var crit_multiplier: float = 5.0
 ## Rebirth needs this stat at or above rebirth_min_value, and converts it to prestige.

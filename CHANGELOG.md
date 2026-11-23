@@ -8,6 +8,11 @@ Every PR adds a line under **Unreleased**. `python3 tools/bump_version.py minor|
 under a new version heading and updates the version everywhere.
 
 ## Unreleased
+
+## 0.36.0 - 2026-11-23
+- Offline catch-up now tends the flower tiers at a fraction of your press rate (mastery XP follows), rolls relic drops at a reduced rate, and lists everything on the Welcome Back card. Rates live in content/config/game.tres.
+
+## 0.35.0 - 2026-11-23
 - Docs only: docs/workflow.md writes down the five-step working process and the PC pitfalls; linked from README and CLAUDE.md.
 
 ## 0.34.3 - 2026-11-23
