@@ -5,7 +5,7 @@ extends Control
 ## do not stack. Nothing shows while the option is off.
 
 const LIFE: float = 2.6
-const MAX_LINES: int = 3
+const MAX_LINES: int = 4
 const TOP: float = 18.0
 
 var _lines: Array[Dictionary] = []   ## {label: Label, left: float, text: String}
@@ -44,7 +44,15 @@ func show_cue(text: String) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_color", RelicStyle.text)
 	label.add_theme_color_override("font_outline_color", RelicStyle.ink)
-	label.add_theme_constant_override("outline_size", 3)
+	label.add_theme_constant_override("outline_size", 0)
+	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var plate := StyleBoxFlat.new()   # ink plate so the text reads on bright ground
+	plate.bg_color = RelicStyle.ink
+	plate.content_margin_left = 4.0
+	plate.content_margin_right = 4.0
+	plate.content_margin_top = 1.0
+	plate.content_margin_bottom = 1.0
+	label.add_theme_stylebox_override("normal", plate)
 	_box.add_child(label)
 	_lines.append({"label": label, "left": LIFE, "text": text})
 	_place()
