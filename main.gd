@@ -516,11 +516,8 @@ func _wire_index() -> void:
 	hud.add_child(index_panel)
 	index_panel.bind(sim)
 	hud.index_requested.connect(func(t: int) -> void:
-		if index_panel.is_open() and index_panel.tab == t:
-			index_panel.close_panel()
-		else:
-			relic_panel.hide()
-			index_panel.open_tab(t))
+		relic_panel.hide()
+		index_panel.toggle_tab(t))
 
 
 ## Settings panel (F10 or the bottom-bar button). Centred over the view, closes with F10 or Esc.
