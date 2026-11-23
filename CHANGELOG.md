@@ -10,6 +10,9 @@ under a new version heading and updates the version everywhere.
 ## Unreleased
 
 ## 0.27.1 - 2026-11-23
+- Fixed the title screen's input error (the menu pad actions are now registered before the title), and onboarding tip cards now step aside while any menu is open, so the Esc menu's buttons are never covered.
+
+## 0.27.2 - 2026-11-23
 - Docs only: CLAUDE.md and SPEC.md now match the flat repo layout, docs/interfaces.md added, shader-uniform rule amended, features.md and balance.md refreshed.
 
 ## 0.27.0 - 2026-11-23
