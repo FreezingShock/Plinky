@@ -130,13 +130,14 @@ func run(t: Object) -> void:
 ## The pad tooltip's gain is what a press really pays: buffs, mastery, yield, heat all included, and it tracks changes.
 func test_live_gain(t: Object) -> void:
 	var sim: Sim = t.make_sim()
-	var id: StringName = sim.button_defs.keys()[0]
+	var id: StringName = sim.buttons_in_zone(sim.zone_id)[0].id
 	var b: ButtonDef = sim.button_defs[id] as ButtonDef
 	sim.god_mode = true
 	sim.rng.seed = 1
+	sim.tiers_open[sim.tier_of(id).id] = true
 	var before: BigNum = sim.get_stat(b.reward_stat)
 	var shown: BigNum = sim.press_gain_preview(id)
-	var seg: Dictionary = (PadTooltip.spec_for(sim, id)["lines"] as Array)[1][2] as Dictionary
+	var seg: Dictionary = ((PadTooltip.spec_for(sim, id)["lines"] as Array).back() as Array)[2] as Dictionary
 	t.eq(seg["t"], "+%s" % shown.format(), "the tooltip prints the previewed gain")
 	if sim.crit_chance(id) == 0.0 and sim.relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE) == 0.0:
 		sim.try_press(id)
