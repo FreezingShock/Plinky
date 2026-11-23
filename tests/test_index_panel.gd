@@ -19,5 +19,4 @@ func run(t: Object) -> void:
 	t.ok(panel.is_open() and panel.tab == IndexPanel.Tab.ATTRIBUTES, "toggling the other tab switches")
 	panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)
 	t.ok(not panel.is_open(), "toggling the open tab closes it")
-	host.free()
-	panel._reveal.free()
+	host.free()   # frees the panel and its overlay together

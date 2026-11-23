@@ -277,7 +277,12 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 	tail.custom_minimum_size = Vector2(1, 6)
 	_list.add_child(tail)
 	if keep != &"" and _rows.has(keep) and is_open():
-		(_rows[keep] as IndexRow).call_deferred("grab_focus")
+		_grab.call_deferred(_rows[keep] as IndexRow)
+
+
+func _grab(row: IndexRow) -> void:
+	if is_instance_valid(row) and row.is_inside_tree() and is_open():
+		row.grab_focus()
 
 
 func _focus_first_row() -> void:
@@ -285,7 +290,7 @@ func _focus_first_row() -> void:
 		return
 	for c in _list.get_children():
 		if c is IndexRow:
-			(c as IndexRow).call_deferred("grab_focus")
+			_grab.call_deferred(c as IndexRow)
 			return
 
 
