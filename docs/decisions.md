@@ -269,3 +269,8 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - Not run in-engine: check the vignette dots scroll with the ground at zoom 1-4, and Larkmoor F6 views.
 ## 2026-11-23 Pad outlines on the texel grid
 - Nathan: the pad outline looked sharp, finer than the world's pixels. draw_polyline diagonals are anti-aliased and sub-texel. Every pad outline, ring and ripple is now whole-texel rects (TexelPad._outline), and the pad snaps its position to whole texels in _ready (marker anchors are fractional, e.g. 245.5).
+
+## Lighting overhaul, stages 4 and 5 (23 Nov)
+- Stage 4: ground_fog.gdshader, a drifting two-band fog over the land, thicker toward the top of the frame, scaled by the existing mist curve (dawn, dusk, rain, night). The Bayer dither is in world texels (wpos), so it moves with the ground. Knob: fog_ground in sky.tres. Drawn only while amount > 0.01 and atmosphere is on, so it costs nothing at noon.
+- Stage 5: the time-of-day grade now has a real midnight (cool blue, 0.6 coverage) and a warm noon (0.25 coverage) instead of an almost-white day and a no-grade night. Dusk stays orange fading to magenta.
+- Not run in-engine. Parallax is still open: the far backdrop is baked into ground.png and needs a generator split.

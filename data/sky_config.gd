@@ -80,6 +80,8 @@ extends Resource
 @export var light_split: float = 0.55
 ## How much brighter a lit texel gets, 0..1.
 @export var light_lift: float = 0.22
+## Drifting fog over the land (ground_fog.gdshader), 0..1. Scaled by the mist curve: thickest at dawn and dusk and in rain.
+@export var fog_ground: float = 0.8
 ## Horizon haze density over the far mountains, 0..1.
 @export var haze_strength: float = 0.6
 ## Drifting mist over the water, 0..1.
