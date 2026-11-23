@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TierDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/tier_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"lark_sprout"
+display_name = "Sprout"
+order = 1
+zone = &"larkmoor"
+stat = &"dewdrop"
+rarity = &"common"
+blurb = "A fresh green shoot with a white bud, beside the lake path. Costs Sunlight, pays Dewdrops."
