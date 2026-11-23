@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.26.6 - 2026-11-23
+- Relics hop into their slot with a widening ring when equipped or swapped in (HUD strip and Relics menu; skipped under Reduce motion).
+
 ## 0.26.5 - 2026-11-23
 - Stat counters punch with an overshoot when a big gain lands (stepped, skipped under Reduce motion).
 
