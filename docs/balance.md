@@ -102,3 +102,111 @@ Run `python3 docs/balance-sim-active.py`. All values are in `content/config/game
 | Rebirth push | prestige gain = reb x (reb / 9) ^ 0.5 above 9 reb | Over 60 min: stopping at 9 reb gives 180 prestige, 54 reb gives 1455 (old rule: 594) |
 
 Limits: pushing further wins at every target in the sim, so there is no stop point yet. A cost wall on r1 and r2 would create one. Not decided.
+
+## 11. Round 3 (23 Nov 2026): relics, attributes, pads, RP, mastery, Momentum
+
+Scope: upgrade cost and effect curves, attributes, relic drops and effects, Rebirth Points perks, pad mastery, Momentum. Not touched: meadow pads (zone1), Bloom, Larkmoor pad costs.
+
+### 11.1 What was checked and how
+- **In-engine.** `tools/sim.gd` (meadow gate) and `tools/sim_larkmoor.gd` (Larkmoor far gate) run headless. Both use a random seed, so one run can move about 5 minutes. Every number below that comes from them is a mean or median over 8 to 12 runs.
+- **Spreadsheet pass.** Pad payback, attribute cost to cap and relic drop shares were worked out from `content/*.tres`. Drop shares use the same roll rules as `core/sim.gd` (one roll per press, at most one per second, first drop by 60 s, pity at 150 s). Monte Carlo over 1 to 60 hours of play.
+- **Probe.** A scratch copy of `sim_larkmoor.gd` that equips each relic into a free slot as it drops. It measures what relics do to pacing. Not committed; the same probe is easy to rebuild if needed.
+
+### 11.2 Pads (Larkmoor, unchanged)
+Payback = cost / (0.25 cash per second x reward). This is the time for a pad to pay for itself at the base income rate.
+
+| Pad | Row | Cost | Reward | Payback |
+|---|---|---|---|---|
+| g1 | Multiplier | 8,000 cash | +24 mult | 22 min |
+| g2 | Multiplier | 96,000 cash | +192 mult | 33 min |
+| h1 | Multiplier | 1.15M cash | +1,536 mult | 50 min |
+| h2 | Multiplier | 13.8M cash | +12,288 mult | 75 min |
+| t1 | Multiplier | 166M cash | +98,304 mult | 112 min |
+| t2 | Multiplier | 1.99B cash | +786,432 mult | 169 min |
+
+Each step is about 1.5x slower to pay back. No pad dominates or is dead, so the Multiplier row stays as is.
+
+Rebirth row: reb per mult falls about 4x per step (o1 5e-5, c1 1.25e-5, l1 3.1e-6, e1 7.8e-7). That is the cost of the big jumps toward the 1,500 gate, so it is left alone.
+
+Found, not changed (other threads): zone 2 forge steps are x10 cost, x8 reward (Larkmoor uses x12 and x8). Meadow r2 gives 2x the reward per cost of r1, so the meadow pads keep the saver path issue from round 2.
+
+### 11.3 Relic drops and stacking (changed)
+Drops at 0.5 to 1 press per second: about 45 to 65 per hour, one relic each. Weight by rarity (60, 25, 9, 4, 1.5, 0.4) picks the rarity and then the relic.
+
+**Problem.** The four linear relics had no cap and carry over between rebirths. Gold Purse is common, so it takes about 60% of drops.
+
+| Stacks after | Gold Purse (+10% cash, linear) | Stopwatch (+8% press rate, linear) | Growth Crystal (+15% mult gain, linear) | Sharp Fang (+25% crit damage, linear) |
+|---|---|---|---|---|
+| 1 hour | +260% | +91% | +42% | +5% |
+| 3 hours | +714% | +246% | +153% | +80% |
+| 10 hours | +2,474% | +802% | +510% | +390% |
+
+**Tried and rejected: hard caps.** A hard cap sends drops to the rarer relics once the common one is full. Everything capped in about 3 hours of play, so the relic system ended there.
+
+**Chosen: diminishing stacks** (the existing `DIMINISHING` rule, the same one Twin Pads and Pulse Ring already use). Each stack adds a smaller step, the total stays under +100%, and drops keep coming.
+
+| Relic | Rarity | Before | After (per stack) | Total at 1 h | 3 h | 10 h |
+|---|---|---|---|---|---|---|
+| Gold Purse | Common | linear 10% | diminishing 6% | +80% | +99% | +100% |
+| Stopwatch | Uncommon | linear 8% | diminishing 8% | +59% | +92% | +100% |
+| Growth Crystal | Rare | linear 15% | diminishing 10% | +25% | +66% | +97% |
+| Sharp Fang | Epic | linear 25% | diminishing 25% | +5% | +58% | +98% |
+
+Twin Pads (Legendary) and Pulse Ring (Mythic) were already diminishing, with caps of 10 and 12. Unchanged.
+
+**Pacing effect (probe, Larkmoor far gate, relics equipped as they drop).**
+
+| Setup | Mean far gate | Notes |
+|---|---|---|
+| No relics (any build) | 57 min | 12 runs each: base tree 57.5, final tree 57.1 |
+| All four relics, old linear values | 26 min | Relics cut the pace by more than half |
+| All four relics, Gold 10% diminishing, Growth 15% diminishing | 31 min | First try, too fast |
+| All four relics, Gold 6%, Growth 10% (shipped) | 35 min | About a third off the unequipped pace |
+| Gold alone, 6% | 36 min | |
+| Growth alone, 10% | 49 min | |
+| Stopwatch alone, or Sharp Fang alone | 57 to 59 min | Barely moves the gate |
+
+Gold Purse and Growth Crystal carry the speed-up. Stopwatch and Sharp Fang are real but matter more later, in standing and crit play.
+
+**Open for Nathan (taste).** Relics are worth a third off Larkmoor's pace (shipped) or half (old). Recommendation: keep a third, because that leaves Larkmoor near its one-hour target. Change `per_stack` in `content/relics/r_cash.tres` and `r_mult.tres` to move it.
+
+### 11.4 Attributes (changed: caps only)
+Costs are `base x 1.4^level`, paid in prestige unless the row says otherwise.
+
+| Attribute | Before | After | Total cost to cap | Value at cap |
+|---|---|---|---|---|
+| Pad yield (unlocks at 10 Rebirths) | cap 25, total 224,944 prestige, last level 64,284 | cap 15, total 7,728, last level 2,222 | 29x cheaper | +50% to +30% press reward |
+| Quick study (5 Rebirths) | cap 20, total 20,892 | cap 10, total 698 | 30x cheaper | +100% to +50% mastery XP |
+| Press rate | cap 20, total 6,268 | cap 15, total 1,159 | 5x cheaper | +200% to +150% press rate |
+
+Why pad yield: last level was 64k prestige for +2% press reward, about 13x worse per prestige than crit chance's last level (9.6k for +1% crit chance, worth about +4% expected press at the 5x crit). Now the last level is 2.2k for +2%.
+
+Why quick study: mastery effects are small (see 11.6), so +100% mastery XP for 21k prestige is over-priced.
+
+Why press rate: Stopwatch now doubles press rate at most, so the two together would reach about 6 presses per second while standing. Capping the attribute at 15 keeps the stack near 5x base (about 2.5 presses per second).
+
+Left alone: crit chance (34k for +25% chance), crit power (17k for +1.0x crit), luck, walk speed, offline gain.
+
+### 11.5 Rebirth Points perks (unchanged)
+RP paid per rebirth: 1 at the start, 2 from rebirth 10, 3 from rebirth 20 (`rp_base 1 + 0.1 per rebirth done`, rounded down). Total after 50 rebirths: 150 RP. After 100: 550.
+Costs to cap: Pad lore 227 RP, Lucky streak 340 RP, Deep sleep 69 RP. Total 636 RP, so the perks take about 100 rebirths. Nothing to fix.
+
+### 11.6 Pad mastery (unchanged, flagged)
+Level 10 takes about 650 presses on one pad. Level 25 takes about 62,000 presses, about 9 hours of pressing one pad. At max a pad gets +2.5% yield, +2.5% crit chance and +1.0 crit damage.
+
+Mastery feeds press yield inside the sim, so changing it moves the Larkmoor far gate. It was tuned down to hit that pacing in the last round (decisions log, 23 Nov). I left it alone.
+**Open for Nathan:** keep mastery as a long tail (current), or raise it and retarget Larkmoor's pacing. Recommendation: keep it, since it makes long runs feel different without touching the one-hour target.
+
+### 11.7 Momentum (unchanged)
+Stage bonuses (+1, +2, +3, +6%) match the four thresholds and five names. A full bar gives +28% charge plus +12% kickers, so +40% total. Presses add 1% each, so standing on a pad at about 2 presses per second fills the bar. That is intended, but it is why the press rate cap moved.
+
+### 11.8 Number overflow
+No risk found. `BigNum` keeps a float mantissa and an integer exponent, so there is no float overflow. `NumberFormat` gives suffixes up to 10^3003, then e-notation. Checked against the 10-hour relic and pad magnitudes, which stay well inside that range.
+
+### 11.9 Flagged for other threads
+- **Prestige formula** (`prestige_mult = 1 + prestige^0.8`, with prestige per rebirth growing roughly linearly): income multiplier grows as N^0.8 across rebirths. This belongs to the Bloom thread. Not changed.
+- Zone 2 forge curve (x10 cost) and meadow r2 (see 11.2).
+
+### 11.10 Verification
+- Headless tests: 2612 checks, 0 failed (2600 before, plus 12 new regression checks, three per stacking relic: diminishes, first stack is its full step, at or under 100% after 1000 stacks; the Gold Purse assertion was updated to the new step).
+- Not run here: the screenshot tool. It draws nothing under the cloud's software renderer, so the PC thread should check the relic and attribute panels in-engine.

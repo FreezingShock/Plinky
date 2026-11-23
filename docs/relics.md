@@ -43,3 +43,9 @@ Frames: `assets/ui/rarity/` (from art/icons/rarity, 20x20, 16x16 icon at offset 
 
 ## Test
 `godot --headless --path . --script tests/run.gd`
+
+## Stacking (2026-11-23)
+- Four relics diminish: Gold Purse 6% cash per stack, Stopwatch 8% press rate, Growth Crystal 10% mult gain, Sharp Fang 25% crit damage. Each stack adds less than the last, so the total stays under +100% and drops keep coming. Twin Pads (cap 10) and Pulse Ring (cap 12) diminish too.
+- Why not caps: a hard cap sends drops to the rarer relics once the common one is full. Everything capped by about 3 hours of play, so the relic system ended there.
+- Drops only roll on a press (at most once per second). Rolls are not per second of wall time, so a player who is not pressing gets no relics.
+- Numbers and the pacing effect are in `docs/balance.md` section 11.3.
