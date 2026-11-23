@@ -7,10 +7,10 @@ extends PanelContainer
 ##
 ## Wire up with bind(inventory). The panel only calls RelicInventory methods and listens to `changed`.
 
-const GAP: int = 4
+const GAP: int = 5
 const COLUMNS: int = 2
 ## Rows of cards visible before the collection scrolls.
-const VISIBLE_HEIGHT: float = 132.0
+const VISIBLE_HEIGHT: float = 92.0
 
 var inventory: RelicInventory
 var query := RelicQuery.new()
@@ -55,7 +55,7 @@ func _init() -> void:
 	_rarity_btn = _tool_button(bar, func() -> void: query.cycle_rarity(inventory))
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(COLUMNS * RelicCard.W + GAP + 8.0, VISIBLE_HEIGHT)
+	scroll.custom_minimum_size = Vector2(COLUMNS * RelicCard.W + GAP + 14.0, VISIBLE_HEIGHT)
 	v.add_child(scroll)
 	_grid = GridContainer.new()
 	_grid.columns = COLUMNS
@@ -146,7 +146,7 @@ func _bonus_text() -> String:
 	for b: Dictionary in inventory.active_bonuses():
 		var e: RelicDef.Effect = b["effect"] as RelicDef.Effect
 		lines.append("%s %s" % [RelicDef.effect_name(e), RelicDef.effect_text(e, float(b["total"]))])
-	return "\n".join(lines) if not lines.is_empty() else "No bonuses active."
+	return "   ".join(lines) if not lines.is_empty() else "No bonuses active."
 
 
 func _hint_text(no_relics: bool, none_shown: bool) -> String:
