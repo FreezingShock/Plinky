@@ -62,7 +62,8 @@ func request(c: Control, by_focus: bool) -> void:
 		visible = false
 
 
-func show_free(spec: Variant, at: Vector2) -> void:
+func show_free(spec: Variant, at: Vector2, exact: bool = false) -> void:
+	_free_exact = exact
 	if not _free_mode:
 		target = null
 		_free_mode = true
@@ -78,6 +79,7 @@ func show_free(spec: Variant, at: Vector2) -> void:
 
 
 var _free_spec: Variant = null
+var _free_exact: bool = false
 
 
 func hide_free() -> void:
@@ -153,8 +155,8 @@ func _place() -> void:
 	var view: Vector2 = _view_size()
 	var p: Vector2
 	if _free_mode:
-		p = _free_at + CURSOR_OFFSET
-		if p.y + size.y > view.y - 2.0:
+		p = _free_at if _free_exact else _free_at + CURSOR_OFFSET
+		if not _free_exact and p.y + size.y > view.y - 2.0:
 			p.y = _free_at.y - size.y - 8.0
 	elif _by_focus and target != null:
 		# Anchor under the focused control; flip above if it would run off the bottom.

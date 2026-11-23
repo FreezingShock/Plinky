@@ -21,6 +21,13 @@ func run(t: Object) -> void:
 	t.ok(str(TipText.attribute(a, 1, "3", false)["hint"]).begins_with("Need"), "an unaffordable attribute says what is needed")
 	t.ok(str(TipText.rebirth(false, "1")["hint"]) != "", "rebirth explains when it is unavailable")
 
+	var sim: Sim = t.make_sim()
+	var bid: StringName = sim.button_defs.keys()[0]
+	var ps: Dictionary = PadTooltip.spec_for(sim, bid)
+	t.ok(str(ps["body"]).contains("Costs") and str(ps["body"]).contains("Gives"), "pad tooltip lists cost and reward")
+	t.ok(not str(ps["body"]).contains("Rarity"), "no rarity line while the sim has no pad_rarity or it is common")
+	t.ok(PadTooltip.spec_for(sim, &"nope").is_empty(), "unknown pad gives an empty spec")
+
 	var root: Node = (t as SceneTree).root
 	var c := Control.new()
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE

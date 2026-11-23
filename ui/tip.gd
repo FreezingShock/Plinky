@@ -59,9 +59,10 @@ static func unbind(c: Control) -> void:
 
 ## Show a tooltip for something that is not a Control (a pad in the world). `at` is in screen texels.
 ## Call every frame while the cursor is over it; it follows `at`. hide_free() when it leaves.
-static func show_free(tree: SceneTree, spec: Variant, at: Vector2) -> void:
+## With `exact` the panel's top-left is placed at `at` (still clamped on screen) instead of beside a cursor.
+static func show_free(tree: SceneTree, spec: Variant, at: Vector2, exact: bool = false) -> void:
 	var h: TipHost = host(tree)
-	h.show_free(spec, at)
+	h.show_free(spec, at, exact)
 
 
 static func hide_free(tree: SceneTree) -> void:

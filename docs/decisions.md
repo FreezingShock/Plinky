@@ -215,3 +215,6 @@ Not run in-engine from the cloud; the PC test thread should confirm.
 
 ## 2026-11-23: Tooltips on the existing UI
 HUD stat rows, bottom bar (Rebirth, Upgrades, Relics, Settings), upgrade rows, zone travel, the gate bar, and every Settings row that has a hint now use `Tip.bind`. Copy lives in `ui/tip_text.gd`; no balance numbers in it, live values (cost, gain) come from the caller. Pads and relics keep their own richer tooltips. Not run in-engine from the cloud; PC pass should hover each and tab through the HUD.
+
+## 2026-11-23: Pad and relic tooltips moved onto Tip
+`PadTooltip` and `RelicTooltip` are now thin wrappers (plain Nodes) over `Tip.show_free`, so every tooltip shares one look, delay and on-screen clamp. Content for pads comes from `PadTooltip.spec_for`, which adds a "Rarity: <Name>" line and tints the border and title when `Sim.pad_rarity` exists and the pad is above common (the pad thread adds it). `Tip.show_free` gained `exact` to place beside a slot instead of a cursor. Relic stat lines lose their separate green colour (one body colour now). Not run in-engine from the cloud.
