@@ -17,3 +17,5 @@ prestige_boosts_income = false
 resets_on_rebirth = true
 relics_boost_income = false
 relics_boost_gain = false
+buff_stats = PackedStringArray("mult", "ironore", "slag")
+buff_factor = 1.25
