@@ -84,7 +84,7 @@ func _index_spam(t: Object) -> void:
 	panel.close_panel()
 	panel.open_tab(IndexPanel.Tab.STATS)
 	t.ok(panel.is_open() and panel.visible and not panel._anim.closing, "re-opening during the close animation recovers cleanly")
-	t.ok(panel._t >= 0.0 and panel._t <= 1.0, "wipe progress stays in range")
+	t.ok(panel._anim.t >= 0.0 and panel._anim.t <= 1.0, "wipe progress stays in range")
 	host.free()
 
 
