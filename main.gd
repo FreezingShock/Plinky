@@ -14,6 +14,7 @@ var heat_vents: HeatVents
 var relic_bar: RelicBar
 var _scene_path: String = ""
 var _clear_spawn_pending: bool = false
+var _shown_zone: StringName = &""   ## the zone whose scene, palette and pads are on screen
 var walker: TexelWalker
 var gate: TexelGate
 var pads: Dictionary = {}  # button id -> TexelPad
@@ -125,6 +126,12 @@ func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
 	pad_glow.multiplier = sim.get_stat(&"mult").to_float() + 1.0
+	if sim.zone_id != _shown_zone:
+		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
+		_enter_zone_visuals(sim.zone_id)
+		if _clear_spawn_pending:
+			_clear_spawn_pending = false
+			_clear_spawn()
 	if relic_bar != null:
 		relic_bar.position.y = ceilf(hud.stats_bottom()) + 4.0
 	_update_tooltip()
@@ -265,6 +272,7 @@ func _build_pads() -> void:
 
 
 func _enter_zone_visuals(zone_id: StringName) -> void:
+	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
 	PopupStack.zone = String(palette_id)
 	PlinkyTheme.apply(theme, String(palette_id))
