@@ -9,6 +9,9 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.30.2 - 2026-11-23
+- Pad tooltips show the real gain: one shared press formula now includes Heat, buffs, mastery and yield, plus an average-with-crits line when crit or double chance is active. Test checks tooltip against a real press.
+
 ## 0.30.1 - 2026-11-23
 - HUD strip: the gain sits tight against the value (no fixed-width value column), so short values no longer leave a gap.
 
