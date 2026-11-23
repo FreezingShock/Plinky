@@ -9,7 +9,7 @@ lands as a lighting band shift and stays inside the palette:
 Pure numpy. Returns additive light terms, the caller adds them to its light image."""
 import numpy as np
 
-RINGS = ((1, .55), (2, 1.0), (3, .8), (5, .6))          # (radius in texels, weight)
+RINGS = ((1, .55), (2, 1.0), (3, .8), (5, .6), (8, .45))          # (radius in texels, weight)
 DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1))
 
 
@@ -21,7 +21,7 @@ def _shift(a, dx, dy, fill):
     return out
 
 
-def compute(img_z, img_id, light_xy, detail=None, strength_ao=.42, strength_rim=.30, strength_lean=.10):
+def compute(img_z, img_id, light_xy, detail=None, strength_ao=.62, strength_rim=.55, strength_lean=.18):
     """img_z: world height per pixel (any value where img_id == -1). img_id: object id, -1 empty.
     light_xy: unit screen vector pointing toward the sun (x right, y down). Returns (ao, rim, lean), each H x W,
     ao in 0..1 (1 = fully occluded), rim 0..1, lean -1..1."""
