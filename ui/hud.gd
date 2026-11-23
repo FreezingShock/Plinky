@@ -32,6 +32,7 @@ var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
 var _momentum: MomentumMeter
 var _stats_panel: PanelContainer
+var _menu_chip: ExpandChip   # hamburger, bottom right
 var _centered: Array[Control] = []   # panels kept centred in the free area above the bottom bar
 
 
@@ -74,6 +75,16 @@ func upgrades_panel() -> Control:
 
 func toggle_upgrades() -> void:
 	menu_toggled.emit(&"upgrades")
+
+
+## The hamburger chip, so Main can keep it above open menus.
+func menu_chip() -> Control:
+	return _menu_chip
+
+
+## Travel: show the zone panel's Travel list (the gallery's Travel tile calls this).
+func open_travel() -> void:
+	_zone_panel.set_travel_open(true)
 
 
 ## The bottom bar. Main keeps it above every menu so its chips stay clickable while a menu is open.
@@ -200,9 +211,10 @@ func _build_bottom() -> void:
 		ib.full_text = "%s [%s]" % [nm, Keybinds.key_name(act)]
 		ib.pressed.connect(func() -> void: index_requested.emit(t))
 		gate(ib, Onboarding.F_MULT if t == 0 else Onboarding.F_UPGRADES)
-	var st: ExpandChip = _chip(h, "settings", "Settings", "Display, sound, keys and tips.")
-	st.full_text = "Settings [%s]" % Keybinds.key_name(&"settings")
-	st.pressed.connect(func() -> void: settings_toggled.emit(true))
+	# Settings and the Update Log live in the hamburger menu, at the far right of the screen.
+	_menu_chip = _chip(self, "big/menu_hamburger", "Menu", "Settings, the update log and every section.")
+	_menu_chip.full_text = "Menu [%s]" % Keybinds.key_name(&"menu")
+	_menu_chip.pressed.connect(func() -> void: menu_toggled.emit(&"gallery"))
 
 
 ## A bottom-bar chip: icon at rest, icon + label on hover or focus. Tooltip names it while it is collapsed.
@@ -283,6 +295,9 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
 			index_requested.emit(1)
 		get_viewport().set_input_as_handled()
+	elif Keybinds.matches(&"menu", event):
+		menu_toggled.emit(&"gallery")
+		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"plinky_settings") or Keybinds.matches(&"settings", event):
 		settings_toggled.emit(true)
 		get_viewport().set_input_as_handled()
@@ -320,6 +335,10 @@ func _place() -> void:
 			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)))
 			if cp2.position != at:
 				cp2.position = at
+	if _menu_chip != null:
+		var mc: Vector2 = Vector2(frame.x - _menu_chip.size.x - 4.0, frame.y - _menu_chip.size.y - 4.0)
+		if _menu_chip.position != mc:
+			_menu_chip.position = mc
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:
