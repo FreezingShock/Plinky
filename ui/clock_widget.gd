@@ -30,9 +30,13 @@ var _beat: int = 0
 var _last_text: String = ""
 var _flash: float = 0.0
 var _palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
+var _sim: Sim
+var _pal_id: StringName = Palettes.MEADOW
+var _sun: int = 5   ## palette role of the sun disc; Ember Quarry uses amber (4) so its sun reads as ember
 
 
 func setup(sim: Sim) -> void:
+	_sim = sim
 	_cal = sim.calendar
 	_events = sim.events
 	mouse_filter = Control.MOUSE_FILTER_PASS
@@ -123,6 +127,7 @@ func squeeze_level() -> int:
 
 
 func _refresh() -> void:
+	_follow_zone_palette()
 	var n: Dictionary = _cal.now()
 	var text: String = "%s|%s|%d" % [n["clock_text"], n["month_name"], int(n["day"])]
 	if text == _last_text:
@@ -132,6 +137,20 @@ func _refresh() -> void:
 	_line.text = "%s · Day %d" % [String(n["month_name"]), int(n["day"])]
 	_line.add_theme_color_override("font_color", _cal.season_color(int(n["season"])))
 	reset_size()
+
+
+## The dial takes the palette of the zone you are in: meadow stays green, Ember Quarry glows ember. Checked at the
+## refresh rate, so a zone change recolours the dial within a tenth of a second.
+func _follow_zone_palette() -> void:
+	if _sim == null:
+		return
+	var pid: StringName = Palettes.for_zone(_sim.zone_id)
+	if pid == _pal_id:
+		return
+	_pal_id = pid
+	_palette = Palettes.colors(pid)
+	_sun = 4 if pid == Palettes.QUARRY else 5
+	_dial.queue_redraw()
 
 
 func _tip_spec() -> Dictionary:
@@ -215,11 +234,11 @@ func _draw_dial() -> void:
 	if sy < ground - 1:
 		if is_day:
 			var pulse: bool = _beat % 2 == 0
-			_disc(sx, sy, _palette[5])
+			_disc(sx, sy, _palette[_sun])
 			_texel(sx - 1, sy - 1, _palette[7])
 			if pulse:
 				for o: Vector2i in [Vector2i(-3, 0), Vector2i(3, 0), Vector2i(0, -3), Vector2i(0, 3)]:
-					_texel(sx + o.x, sy + o.y, _palette[5])
+					_texel(sx + o.x, sy + o.y, _palette[_sun])
 		else:
 			_disc(sx, sy, _palette[7])
 			_texel(sx - 1, sy + 1, _palette[4])
