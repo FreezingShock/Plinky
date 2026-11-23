@@ -94,7 +94,7 @@ func run(t: SceneTree) -> void:
 	qr.cycle_rarity(q)
 	t.ok(qr.rarity_rank == 3, "first rarity step is the highest owned (Epic), got %d" % qr.rarity_rank)
 	t.ok(qr.apply(q).size() == 1 and qr.rarity_name(q) == "Epic", "rarity filter shows only that tier")
-	for i in 5:
+	for i in RelicQuery.owned_ranks(q).size():
 		qr.cycle_rarity(q)
 	t.ok(qr.rarity_rank == -1, "rarity filter cycles back to All")
 	t.ok(q.sorted_owned().size() == 4, "sorted_owned keeps every owned relic")
