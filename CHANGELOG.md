@@ -9,6 +9,11 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
+## 0.11.0 - 2026-11-23
+- Title screen overhaul: a layered dusk meadow (stars, sun, two drifting cloud decks, snow-capped mountains with mist, wooded ridge with a windmill and a smoking cottage, a lake with a sun glitter column, a swaying-tree meadow, fireflies, birds, falling leaves, tall foreground grass) on the texel grid with mouse parallax and per-layer dither; the logo and a framed menu sit left, the walker on its pad right. The menu gets pixel icons on every button: Continue (or Play), New Game, Saves, Settings, Update Log, Credits, Quit.
+- Save slots: three slots (slot 1 is the existing save), a Saves list showing rebirths, play time, presses and save date with Load, Start and a two-step Delete; Continue loads the last used slot; nothing autosaves while the title is up.
+- The version number on the boot and title screens is bright with an ink outline, underlines on hover, and opens the Update Log when clicked (boot waits while it is open). New Credits panel.
+
 ## 0.10.7 - 2026-11-23
 - Hamburger menu polish: tiles hover and focus as a solid lifted panel (dither only as one dotted row under the border) so labels read cleanly; the ">" marker on Close menu, Quit to title and Quit game sits a fixed gap before the first letter on whole texels; Pixelify Sans renders without grey anti-aliasing.
 

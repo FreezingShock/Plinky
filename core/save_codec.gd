@@ -70,3 +70,17 @@ static func read_with_fallback(path: String) -> Dictionary:
 			if not d.is_empty():
 				return d
 	return {}
+
+
+## What a decoded save holds, for the slot list. {exists: false} for an empty dict.
+static func summary(data: Dictionary) -> Dictionary:
+	if data.is_empty() or not (data.get("game") is Dictionary):
+		return {"exists": false, "rebirths": 0, "play_seconds": 0.0, "presses": 0, "saved_at": 0.0}
+	var g: Dictionary = data["game"]
+	return {
+		"exists": true,
+		"rebirths": int(g.get("rebirth_count", 0)),
+		"play_seconds": float(g.get("play_seconds", 0.0)),
+		"presses": int(g.get("press_count", 0)),
+		"saved_at": float(data.get("saved_at", 0.0)),
+	}
