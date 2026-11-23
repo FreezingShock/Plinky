@@ -9,7 +9,7 @@ under a new version heading and updates the version everywhere.
 
 ## Unreleased
 
-## 0.20.0 - 2026-11-23
+## 0.21.0 - 2026-11-23
 - Settings and the Esc menu now match the gallery: every tab and menu tile has its own colour (coloured outlines, matching labels), each setting sits on its own outlined card, and all labels and buttons show in Title Case.
 
 ## 0.20.0 - 2026-11-23
