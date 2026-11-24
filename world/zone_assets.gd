@@ -11,11 +11,18 @@ const SCENE_MANIFESTS: Dictionary = {
 }
 
 ## Larkmoor's ground maps are read by its _ready (the sky's normal and height maps): 3040x1840 each, so their load
-## on the main thread cost about 160 ms in the swap frame.
+## on the main thread cost about 160 ms in the swap frame. The colour maps and the backdrop are held here too (they were
+## preload() constants of the scene script, which kept about 60 MB of them resident after the zone was left).
 const SCENE_TEXTURES: Dictionary = {
 	"res://world/larkmoor_scene.tscn": [
 		"res://assets/art/zone1b/larkmoor/ground_n.png",
 		"res://assets/art/zone1b/larkmoor/ground_h.png",
+		"res://assets/art/zone1b/larkmoor/ground.png",
+		"res://assets/art/zone1b/larkmoor/ground_fg.png",
+		"res://assets/art/zone1b/larkmoor/backdrop_far.png",
+	],
+	"res://world/quarry_scene.tscn": [
+		"res://assets/art/zone2/quarry/ground.png",
 	],
 }
 ## Zone scenes that build the Foxglove Rise farm (world/farm/farm_props.gd): its wheat clumps are generated on workers

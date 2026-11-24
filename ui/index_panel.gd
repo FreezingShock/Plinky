@@ -268,12 +268,6 @@ func detail_open() -> bool:
 	return detail_id != &""
 
 
-## True while the wipe overlay is on screen, sized to the panel, and drawn above it.
-func wipe_showing() -> bool:
-	var r: DitherReveal = _anim.reveal
-	return r.visible and r.size.x > 0.0 and r.size.y > 0.0 and r.z_index > z_index
-
-
 func open_tab(t: int) -> void:
 	if sim == null:
 		return
