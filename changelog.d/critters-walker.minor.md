@@ -1,1 +1,0 @@
-Rabbits graze the Larkmoor and Starting Clearing grass and sit up, then flee from the walker. Ducks paddle the lake and pond, frogs leap in from the shore, and butterflies rest on the flower beds. Birds roost at night and in rain, and flock up when one is startled. Chickens scratch in the Larkmoor farm yard and run from the walker. Reduce Motion keeps them in place.
