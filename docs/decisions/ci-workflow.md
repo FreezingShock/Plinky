@@ -47,3 +47,9 @@ PRs add a `changelog.d/<slug>.patch|minor.md` fragment instead of bumping `core/
 - **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
+
+## 2026-11-24: Public builds wait for Nathan's approval
+| 2026-11-24 | `build.yml` publishes the GitHub release in its own `publish` job, which uses the `public-release` environment (Nathan as required reviewer) | A tag push can't put a build out without his click. Chosen by Nathan on a decision card. Build is split so manual test builds keep running without approval. Read-only top-level token; the publish job alone gets `contents: write`. |
+| 2026-11-24 | Stuck PR watch re-runs a `test` cancelled on the current head, once (`run_attempt` 1 only) | Nothing re-runs a cancel on the head commit, so it stayed grey. Superseded runs are excluded because a newer push changes the head. A second cancel is left to the owner so it cannot loop. |
+| 2026-11-24 | Release push refused by the ruleset fails the run red, instead of a warning on a green run | A warning is easy to miss, and the version stops advancing until `RELEASE_TOKEN` is renewed. |
+| 2026-11-24 | Token expiry reminder opens one issue from 2026-12-02 for `RELEASE_TOKEN` | GitHub doesn't report a PAT's expiry to workflows. Reminds on a date, and stays quiet once the issue exists in any state. |

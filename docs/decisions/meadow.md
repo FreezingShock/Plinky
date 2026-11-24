@@ -100,6 +100,12 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **What:** The chip is a child node of its first pad, at `LOCK_CHIP_Z` 11, so it draws above the air layer. It stays opaque and is shown or hidden as the row's lock changes. `tests/test_pad_plate.gd` asserts the z order.
 - Not run in-engine. Please check the chip on a PC capture for the speckles.
 
+## 2026-11-24: Clover stays green inside its gold rim; Dewdrop row moves in
+- **Why:** Nathan asked why the Clover pads were yellow (screenshots from PC QA). The gold for the Clover rim was also set as the stat colour, so the gems and flowers went gold. Nathan also said the Dewdrop pads sat too close to the arrival gate.
+- **Clover:** the gold is now only the rim, lit rim and rarity ring. The gems, pip and flowers keep the Clover reward green.
+- **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (534,600), (578,622), (622,644): open grass between the main path and the lake, with the nearest pad 156 texels from the arrival gate, up from 31. The first move, to (634,568) to (722,612), put two pads behind the oak and the gatehouse tower, so the walk mask alone is not enough. Placement now also checks sprite occlusion: no sprite standing in front of a pad may overlap its plate. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
+- **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
+- Not run in-engine from the cloud. Please check the pads on a PC capture.
 ## 2026-11-24: Meadow water rework
 - **Brief (Nathan, via coordinator):** the meadow map is nice but needs to be larger and more polished; rework the lake, shoreline and streams and keep the mountains' look (they grow with the map).
 - **Changed:** the lake radius 46 to 54 texels (about 17 percent wider) (still a bowl with the same shore blend); the stream bed is cut 0.9 below its own downhill water surface, so the river is one continuous ribbon instead of a dry channel with gaps; white water only on the stream banks, not down the middle; 90 shore reeds (was 46) and 60 lily pads on the lake (was 42).
@@ -137,3 +143,8 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Test:** `tests/test_quarry.gd` checks that the meadow arch is hoverable from its keystone to its feet, and that the meadow gate has a tooltip spec.
 - **Not done:** the walkable mask stays terrain-only, so the boardwalk, fences and lanterns do not block the walker. Fewer lanterns than slots: the placement checks reject spots near trees, so the path has five, not one per 40 texels.
 - **Not run in the cloud:** Godot, the headless tests, and the look in-engine. The PC QA thread should screenshot the path, the verges, the boardwalk, the gate closed and open, and hover the gate to confirm the tooltip.
+
+## 2026-11-24: Thistle row clear of the oak
+- **Why:** the two Thistle pads in Gatehouse Green, at (868,646) and (912,624), sat behind an oak on main. The walk mask does not catch a sprite standing in front of a pad.
+- **What:** the Thistle row moved to centre (864,642), so its pads sit at (820,664), (864,642) and (908,620). Every Larkmoor pad now passes the sprite occlusion check on the regenerated placements, and every footprint is walkable.
+- Not run in-engine. Please check the Thistle row on a PC capture.
