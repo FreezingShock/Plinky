@@ -41,3 +41,6 @@ When a PR says "All checks have failed", open the failed job: its **Summary** ta
 | Release bot commit | `Release vX.Y.Z [skip ci]` has no checks | Expected: it only edits version files and runs no CI. Its own Release run is the check; look there. |
 | `Preload file ... has no resource loaders` | Printed by the first `--import` step | Harmless noise (fonts preloaded before the first import). Not a failure; the test steps are the real gate. |
 | Conflicting PR | No CI at all, `mergeable_state: dirty` | Merge main in. Draft and conflicting PRs never run CI. |
+
+## Merge conflicts in the decision log
+`.gitattributes` marks `docs/decisions.md` and `docs/decisions/*.md` as `merge=union`, so `git merge main` on your machine or in a cloud thread keeps both sides' appended entries without a conflict. It only works for local merges, and only for append-only edits; if you edited an existing entry, check the result.
