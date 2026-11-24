@@ -210,3 +210,15 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Why:** the coordinator asked for a farm that reads as a place, with fields that sway, not one node per stalk. A sheet per field costs one node, and the fence polylines cost one node per run.
 - **Not in v1:** the animated windmill sails. The map thread will split them into their own sprite in its next slice (hub as the foot anchor); until that lands, the sails stay baked and the windmill stays still. Overlaying a second set of sails on the baked ones would double them. Also not in: a second barn, and fields that fill the box edge to edge (the valid grass is broken up by the paths, the cliff, pads and the mere).
 - **Verified in-engine (Xvfb, morning):** the golden wheat reads as wheat at zoom 1 and 2, and the farm draws at both zooms. **Not verified in-engine:** the channel's look (it is not clearly visible in the captures), fence visibility at zoom 3 and 4, dusk and night, and the frame cost of the extra shadow casters and fields. PC QA should check Thistle Rise with `tools/larkmoor_shots.tscn` at noon and dusk.
+## 2026-11-24: Larger pad glow
+- PC QA found the halo nearly invisible at noon and small beside the dotted ground ring. Reach is about 1.9x by day and 1.8x at night (plate spread 3.0 by day, 2.6 more at night). Day strength is 0.6 and midnight 0.9, peak alpha 1.0, and the falloff is linear so the outer part still carries light. Not verified in-engine: whether the halo now washes out the ground ring or the neighbouring pads.
+
+## 2026-11-24: Pad glow lights the plate and a bloom above it
+- Nathan's feedback: the plate stayed dark, so the halo now lights from the pad's centre out and reaches the plate itself, in 16 steps so the falloff has no visible rings. A smaller squared-falloff bloom hangs over the plate. Props, grass and the walker are under the halo's layer, so it reaches them too.
+- Pad light pools are coloured by affordability in the next entry (2026-11-24: Pad pool colour). Not verified in-engine.
+
+## 2026-11-24: Pad pool colour (green or red light pools from pads)
+- Each pad's light pool in the shared shade shader (`day_night.gdshader`) takes the pad's buy colour: green when buyable, red when not. Locked pads keep the warm default. Other lights (lanterns, shrine, gate, walker) keep `pool_tint`.
+- How: `add_light` takes a `kind` (pads pass `&"pad"`), each light has a `tint` (alpha 0 = warm default), and `SkyCycle.set_pool_tint_at` sets it from main.gd each frame. The shader gets a `light_tint[48]` array beside `lights[48]`, and blends pool colours by falloff where they overlap.
+- Why: the glow on the plate says "buy" but the ground around it stayed warm, so the colour did not carry to the ground. The change is additive: one array uniform, and no change to lantern strength or radius, so the meadow lantern work in the same shader is untouched.
+- Not verified in-engine (cloud has no Godot): shader compile, and whether green and red pools read against the warm lanterns at night.

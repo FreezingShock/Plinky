@@ -23,6 +23,7 @@ uniform vec3 deep_tint : source_color = vec3(0.16, 0.20, 0.42);
 uniform vec3 rain_tint : source_color = vec3(0.82, 0.88, 0.92);
 uniform vec3 pool_tint : source_color = vec3(1.0, 0.86, 0.58);
 uniform vec4 lights[48];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused). Must match SkyCycle.MAX_LIGHTS.
+uniform vec4 light_tint[48];   // rgb colour of each pool (a pad's buy colour); a = 0 keeps pool_tint, the warm default. Same order as lights.
 uniform float pool_strength = 0.9;
 
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
@@ -43,13 +44,20 @@ void fragment() {
 	float thr = bayer4(t);
 	// light pools: sum of falloffs on the 2:1 ground ellipse
 	float pool = 0.0;
+	vec3 tint_sum = vec3(0.0);   // falloff-weighted colour of the pools here, so overlapping pools blend
+	float tint_w = 0.0;
 	for (int i = 0; i < 48; i++) {
 		vec4 L = lights[i];
 		if (L.w > 0.0) {
 			float d = length((p - L.xy) * vec2(1.0, 2.0)) / max(L.z, 1.0);
-			pool += clamp(1.0 - d, 0.0, 1.0) * L.w;
+			float f = clamp(1.0 - d, 0.0, 1.0) * L.w;
+			pool += f;
+			vec4 c = light_tint[i];
+			tint_sum += f * (c.a > 0.0 ? c.rgb : pool_tint);
+			tint_w += f;
 		}
 	}
+	vec3 pcol = tint_w > 0.0 ? tint_sum / tint_w : pool_tint;
 	pool = clamp(pool * pool_strength, 0.0, 1.0);
 	vec3 m = vec3(1.0);
 	// night: a smooth, solid cool multiply that thins toward the light pools. No dither at all: a pool edge or dusk
@@ -58,7 +66,7 @@ void fragment() {
 	m *= mix(vec3(1.0), night_tint, 0.62 * dk);
 	// warm cast inside a pool, smooth the same way, so a lantern is a clean glow
 	float wk = clamp(pool * (0.35 + 0.65 * night) * 2.2, 0.0, 1.0) * smoothstep(0.05, 0.2, pool);
-	m *= mix(vec3(1.0), pool_tint, 0.8 * wk);
+	m *= mix(vec3(1.0), pcol, 0.8 * wk);
 	// the time-of-day grade and rain are solid tints: a smooth change over hours, never a screen-wide pattern
 	m *= mix(vec3(1.0), grade_col, clamp(grade_amount, 0.0, 1.0));
 	m *= mix(vec3(1.0), rain_tint, clamp(rain * 0.5, 0.0, 1.0));

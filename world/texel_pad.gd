@@ -704,6 +704,14 @@ func _halo_signature() -> int:
 	return int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | glow_night_step(_night()) << 5 | int(locked) << 9 | rank << 10
 
 
+## This pad's light pool colour in the lighting shader: green when buyable, red when not. A locked pad draws no glow,
+## so it returns alpha 0 and keeps the warm pool colour.
+func light_tint() -> Color:
+	if locked:
+		return Color(0.0, 0.0, 0.0, 0.0)
+	return StatStyle.gain() if affordable else StatStyle.cant()
+
+
 ## The buy glow and rarity glints. Dithered on world texels, so the band is pixel-crisp and does not crawl as the walker moves.
 func _draw_halo() -> void:
 	if locked:

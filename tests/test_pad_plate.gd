@@ -61,6 +61,15 @@ func run(t: Object) -> void:
 	t.ok(TexelPad.glow_spread(1.0) > TexelPad.glow_spread(0.0), "the glow band widens at night")
 	t.eq(TexelPad.glow_night_step(0.0), 0, "day is night step 0")
 	t.eq(TexelPad.glow_night_step(1.0), 8, "full night is night step 8")
+	# The pad's light pool in the shared shade shader: green when buyable, red when not, the warm default (alpha 0) when locked.
+	var lit_pad := TexelPad.new()
+	lit_pad.affordable = true
+	t.ok(lit_pad.light_tint().is_equal_approx(StatStyle.gain()), "a buyable pad's light pool is green")
+	lit_pad.affordable = false
+	t.ok(lit_pad.light_tint().is_equal_approx(StatStyle.cant()), "an unaffordable pad's light pool is red")
+	lit_pad.locked = true
+	t.ok(lit_pad.light_tint().a == 0.0, "a locked pad keeps the warm pool colour")
+	lit_pad.free()
 	var sim: Sim = t.make_sim()
 	for id: StringName in sim.button_defs:
 		var r: StringName = sim.pad_rarity(id)
