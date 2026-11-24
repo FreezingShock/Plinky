@@ -1,1 +1,0 @@
-Golden hour is warm rather than orange: the saturation boost at low sun is smaller, the long low-sun shadows reach less far, and the away-side shade is less magenta. Sunrise and sunset keep their glow.
