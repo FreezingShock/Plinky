@@ -21,6 +21,14 @@ func run(t: Object) -> void:
 	pad.level_flash()
 	t.ok(pad._level_step() > 0, "a level-up starts the ring flash")
 	pad.free()
+	# Buy glow: green when buyable, red a little softer, magnified at night, and never past full density.
+	t.ok(TexelPad.glow_amount(true, 0.0) > 0.0, "a buyable pad has a glow by day")
+	t.ok(TexelPad.glow_amount(true, 1.0) > TexelPad.glow_amount(true, 0.0), "the glow is stronger at night")
+	t.ok(TexelPad.glow_amount(false, 0.0) < TexelPad.glow_amount(true, 0.0), "the red glow sits softer than the green")
+	t.ok(TexelPad.glow_amount(true, 1.0) <= 1.0, "the glow never passes full density")
+	t.ok(TexelPad.glow_spread(1.0) > TexelPad.glow_spread(0.0), "the glow band widens at night")
+	t.eq(TexelPad.glow_night_step(0.0), 0, "day is night step 0")
+	t.eq(TexelPad.glow_night_step(1.0), 8, "full night is night step 8")
 	var sim: Sim = t.make_sim()
 	for id: StringName in sim.button_defs:
 		var r: StringName = sim.pad_rarity(id)
