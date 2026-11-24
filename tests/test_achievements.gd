@@ -144,14 +144,18 @@ func run(t: Object) -> void:
 	t.ok(banner.queued() >= 1, "the cut-short banner goes back in the queue")
 	banner.free()
 
-	# Geometry and styling: centred across, a bit above the middle, unfurling from a sliver to the full width.
+	# Geometry: scales with the window, is centred across and sits above the middle, and unfurls from a sliver.
 	var area := Vector2(640.0, 360.0)
-	var card := Vector2(AchievementToast.WIDTH, 40.0)
+	var full: float = AchievementToast.banner_width(area.x)
+	var card := Vector2(full, 40.0)
 	var at: Vector2 = AchievementToast.origin_for(area, card)
 	t.eq(at.x + card.x * 0.5, area.x * 0.5, "the banner is centred across the screen")
 	t.ok(at.y + card.y * 0.5 < area.y * 0.5, "the banner sits above the vertical middle")
-	t.ok(AchievementToast.width_for(0.0) < AchievementToast.width_for(0.5), "the banner unfurls from a sliver")
-	t.eq(AchievementToast.width_for(1.0), AchievementToast.WIDTH, "fully open it is the full banner width")
+	t.ok(full < 300.0, "the banner is narrow at 640 wide: it no longer reaches the right-hand panels")
+	t.eq(AchievementToast.banner_width(100.0), AchievementToast.MIN_WIDTH, "a tiny window keeps the minimum width")
+	t.eq(AchievementToast.banner_width(4000.0), AchievementToast.MAX_WIDTH, "a huge window stops at the maximum width")
+	t.ok(AchievementToast.width_for(0.0, full) < AchievementToast.width_for(0.5, full), "the banner unfurls from a sliver")
+	t.eq(AchievementToast.width_for(1.0, full), full, "fully open it is the full banner width")
 	t.ok(AchievementStyle.count_of(&"spark", true) > AchievementStyle.count_of(&"spark", false), "a titled unlock throws more particles")
 	for c: Array in Achievements.CATEGORIES:
 		var cat: StringName = c[0]
