@@ -22,6 +22,9 @@ uniform float beams = 0.0;                      // moon shafts that land on the 
 uniform float halo = 0.0;                       // glow off the shore and above the water
 uniform float body = 0.0;                       // lit rim inside the shore
 uniform float road = 0.20;                      // brightness of the moon road on the water
+uniform float road_width = 60.0;                // half-width of the moon road in texels
+uniform float bloom = 0.0;                      // soft, unscattered bloom spilling off the moon road
+uniform float haze = 0.0;                       // moonlit mist lifting off the water and over the shore
 uniform vec2 moon_px = vec2(1000.0, 500.0);     // moon point in world texels, just north of Heronmere; the shafts fan out from it
 uniform vec3 moon_col : source_color = vec3(0.965, 0.937, 0.851);
 uniform vec3 glow_col : source_color = vec3(0.718, 0.851, 0.471);
@@ -92,12 +95,19 @@ void fragment() {
 	float reach = max(near, far * 0.8);
 	float spill = reach * (1.0 - w);
 
+	float path = exp(-pow(moon_path_dist(wpos) / road_width, 2.0));
+	float wide = exp(-pow(moon_path_dist(wpos) / (road_width * 2.6), 2.0));
+
 	vec3 col = vec3(0.0);
-	col += glow_col * halo * spill * 0.40;                 // spill up the bank and above the shore
+	col += glow_col * halo * spill * 0.40;
+	// bloom: the road's light spreads softly around it, over water and bank alike
+	col += moon_col * bloom * wide * (0.35 + 0.65 * max(w, spill)) * 0.10;
+	// volumetric haze: moonlit mist over the water, thickest where it meets the shore and drifting up the bank
+	float mist = clamp(far * 0.7 + near * 0.3 + w * 0.4, 0.0, 1.0);
+	col += moon_col * haze * mist * (0.45 + 0.55 * wide) * 0.09;                 // spill up the bank and above the shore
 	col += glow_col * body * w * (1.0 - far) * 0.40;       // the water's own light, brightest along the shore inside
 
 	// Glints: a 2x1 texel sparkle grid. Density rises under the moon path; foam sparkles more.
-	float path = exp(-pow(moon_path_dist(wpos) / 60.0, 2.0));
 	if (shimmer > 0.0 && w > 0.5) {
 		// the moon's own light lies on the water along its path: a soft band that is brighter at the centre
 		// dithered, so the road is pixel art: a texel lights where the path beats the Bayer matrix

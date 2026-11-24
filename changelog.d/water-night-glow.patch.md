@@ -1,1 +1,1 @@
-Water at night is being prototyped: a moon-lit glow for lakes and ponds (not in the game yet).
+Larkmoor water glows at night: a moon road on the lake and a soft glow along the shore.
