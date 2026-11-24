@@ -29,7 +29,8 @@ func run(t: Object) -> void:
 	var held: int = _count(hold, 20.0, true, interval)
 
 	t.ok(absi(standing - held) <= 2, "a held mouse and a standing walker press at the same rate (%d vs %d in 20 s)" % [held, standing])
-	t.ok(absi(held - 80) <= 4, "a held pad repeats about 80 times in 20 s at zone 1's rate (got %d)" % held)
+	# A 0.25 s interval at 60 Hz lands every 15 or 16 frames, so 20 s gives 75 to 80 presses.
+	t.ok(absi(held - 80) <= 6, "a held pad repeats about 80 times in 20 s at zone 1's rate (got %d)" % held)
 
 	# Standing and holding at once share one clock, so they do not double the rate.
 	var both := PadPressTimer.new()
