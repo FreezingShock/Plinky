@@ -62,7 +62,7 @@ const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
-const LOCK_CHIP_Z: int = 11       # the chip's z relative to its pad: one above the air layer (z 10), so nothing draws over it
+const LOCK_CHIP_Z: int = 4        # the sign's z relative to its pad: above the plate (z 0), under the night shade (z 5), so it takes the day and night light like the props
 var _chip: Node2D = null          # the chip's own node, made for a row's first pad only
 ## Buy glow and rarity corner glints, on their own child node above the night shade (z 5), so the glow reads brighter as the ground darkens.
 const HALO_Z: int = 6
@@ -70,8 +70,10 @@ const HALO_Z: int = 6
 const GLOW_INNER: float = 1.1     # the halo starts at the plate's edge (its ink sits just inside this)
 const GLOW_DAY: float = 0.6       # strength by day (0..1): clearly there at noon, still under the scene's light
 const GLOW_NIGHT_GAIN: float = 0.5  # extra strength at full night: 0.6 by day, 0.9 at midnight
-const GLOW_SPREAD_DAY: float = 3.0  # how far the halo reaches past the plate, in plate units, by day (reach ~1.9x the old one)
-const GLOW_SPREAD_NIGHT: float = 2.6  # and the extra reach at full night (reach ~1.8x the old one)
+const GLOW_SPREAD_DAY: float = 0.25  # how far the halo reaches past the plate, in plate units, by day (small: a ring on the plate, not a wash on the path)
+const GLOW_SPREAD_NIGHT: float = 0.35  # and the extra reach at full night
+const GLOW_MAX_AMOUNT: float = 0.7  # ceiling on the glow's brightness at any hour, so it never blows out over the path or the field light
+const GLOW_MAX_SPREAD: float = 0.35  # ceiling on how far the glow reaches past the plate (diamond norm): a ring on the plate, never a wash
 const GLOW_PEAK: float = 1.0      # peak alpha at the plate's edge, before the strength scales it
 const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
 const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
@@ -82,14 +84,16 @@ const CROWD_SHARE: float = 0.5    # each lit pad in the crowd (itself included) 
 var crowd: int = 1                # lit pads within CROWD_RANGE, self included; main.gd sets it each frame
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
 static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
-const HAZE_REACH: float = 1.4       # the volumetric bloom above the plate, in plate units
+const HAZE_REACH: float = 0.6       # the volumetric bloom above the plate, in plate units
 const HAZE_LIFT: int = 9            # its centre sits this many texels above the plate's top face
 static var _haze_tex: Dictionary = {}   # "ready_step" -> ImageTexture for the bloom
 var _halo: Node2D = null
 var _halo_sig: int = -1
 const SIGN_X: float = 17.0        # the plank's frame, pad-local texels: beside and behind the plate, clear of the walker's footprint
 const SIGN_Y: float = -27.0
-const SIGN_W: float = 36.0        # widened for long costs, see sign_box
+const SIGN_W: float = 50.0        # fixed: the plank never resizes as the numbers change. Holds six 5 px glyphs (see SIGN_TEXT_CAP)
+const SIGN_TEXT_X: float = 14.0   # the cost and reward text start this far in from the plank's left edge
+const SIGN_TEXT_CAP: float = 32.0 # texels the text may use: the plank's width less the text inset and the right margin
 const SIGN_H: float = 25.0
 const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
@@ -156,16 +160,14 @@ func _ready() -> void:
 		tier_row = b.row
 		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
 		if b.row_index == 0:
-			# A button's cost depends only on its definition, so the chip text is fixed for the pad's life.
-			_lock_cost = Formulas.button_cost(b).format()
 			_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
 			_reward_icon = IconSet.get_icon(String(b.reward_stat), LOCK_ICON)
-			_reward_text = "+" + NumberFormat.short(b.reward)
 			_chip = Node2D.new()
-			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the air layer is at z 10
+			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the night shade is at z 5
 			_chip.visible = false
 			_chip.draw.connect(_draw_cost_sign)
 			add_child(_chip)
+			_refresh_sign(_sim(), b)
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
 			# The gold is only the rim, lit rim and rarity ring. Gems, pip and the flowers keep the Clover reward green.
@@ -284,6 +286,7 @@ func _refresh_progress(sim: Sim) -> void:
 	if b == null:
 		progress = 0.0
 		return
+	_refresh_sign(sim, b)
 	if affordable:
 		progress = 1.0
 		return
@@ -483,12 +486,12 @@ func _draw() -> void:
 	# The cost sign draws on its own child node, above the air layer: see _draw_cost_sign.
 
 
-## The cost sign, drawn on the child node _chip at z LOCK_CHIP_Z, above the air layer (z 10), so fireflies, glow and the pad
-## shimmer never draw over it. A wooden plank on a post, beside and behind the plate so the walker on the plate is not covered.
+## The cost sign, drawn on the child node _chip at z LOCK_CHIP_Z, under the night shade (z 5), so it darkens at night with the
+## world and the props instead of glowing on the scene. A wooden plank on a post, beside and behind the plate so the walker on the plate is not covered.
 ## Two rows: the cost over the reward, each with its stat icon. The top band is green when the cost is held and red when not.
 ## Whole texels throughout, so it stays crisp at 1x.
 func _draw_cost_sign() -> void:
-	var box: Rect2 = sign_box(_lock_cost, _reward_text)
+	var box: Rect2 = sign_box()
 	var ink: Color = palette[0]
 	var wood: Color = palette[6]
 	var wood_hi: Color = wood.lightened(0.2)
@@ -535,10 +538,21 @@ func _draw_cost_sign() -> void:
 	if _reward_icon != null:
 		_chip.draw_texture(_reward_icon, Vector2(x0 + 4.0, y0 + 15.0))
 	# Cost and reward, cream on wood with a one-texel shadow
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 15.0, y0 + 13.0), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, wood_dk)
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 14.0, y0 + 12.0), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, CHIP_CREAM)
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 15.0, y0 + 23.0), _reward_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, wood_dk)
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 14.0, y0 + 22.0), _reward_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, CHIP_CREAM)
+	var tx: float = x0 + SIGN_TEXT_X
+	_draw_run(Vector2(tx + 1.0, y0 + 13.0), _lock_cost, wood_dk)
+	_draw_run(Vector2(tx, y0 + 12.0), _lock_cost, CHIP_CREAM)
+	_draw_run(Vector2(tx + 1.0, y0 + 23.0), _reward_text, wood_dk)
+	_draw_run(Vector2(tx, y0 + 22.0), _reward_text, CHIP_CREAM)
+
+
+## One line of sign text, glyph by glyph: one texel between glyphs when it fits the plank, none when it does not.
+func _draw_run(pos: Vector2, text: String, col: Color) -> void:
+	var gap: float = float(LOCK_DIGIT_GAP) if run_width(text, LOCK_DIGIT_GAP) <= SIGN_TEXT_CAP else 0.0
+	var x: float = pos.x
+	for i in text.length():
+		var ch: String = text.substr(i, 1)
+		_chip.draw_string(LOCK_FONT, Vector2(x, pos.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, col)
+		x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + gap
 
 
 ## Shows or hides the sign node, and redraws it when it appears or when the cost is newly held or lost.
@@ -561,16 +575,50 @@ static func shows_cost_sign(cost: String) -> bool:
 
 ## Width of the digits with one texel between each glyph (no gap after the last one).
 static func chip_text_width(text: String) -> float:
+	return run_width(text, LOCK_DIGIT_GAP)
+
+
+## Width of a line of sign text with `gap` texels between its glyphs.
+static func run_width(text: String, gap: float) -> float:
 	var w: float = 0.0
 	for i in text.length():
 		w += LOCK_FONT.get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
-	return w + float(LOCK_DIGIT_GAP * maxi(text.length() - 1, 0))
+	return w + gap * float(maxi(text.length() - 1, 0))
 
 
-## The sign's frame in pad-local texels: the plank is SIGN_H tall, and widens past SIGN_W only for a long cost or reward.
-static func sign_box(cost: String, gain: String) -> Rect2:
-	var tw: float = maxf(chip_text_width(cost), chip_text_width(gain))
-	return Rect2(SIGN_X, SIGN_Y, maxf(SIGN_W, ceilf(tw) + 18.0), SIGN_H)
+## The sign's frame in pad-local texels. Fixed size, so the plank never resizes or shifts as the numbers change.
+static func sign_box() -> Rect2:
+	return Rect2(SIGN_X, SIGN_Y, SIGN_W, SIGN_H)
+
+
+## Fits a cost or reward to the plank's text width. A value that is too wide drops its fraction first ("20.75B" becomes
+## "20B"), then loses characters from the end. Spleen has no smaller size, so the text stays at its native 8 px.
+static func fit_sign_text(text: String) -> String:
+	if LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x <= SIGN_TEXT_CAP:
+		return text
+	var dot: int = text.find(".")
+	if dot >= 0:
+		var end: int = dot + 1
+		while end < text.length() and text[end] >= "0" and text[end] <= "9":
+			end += 1
+		text = text.substr(0, dot) + text.substr(end)
+	while text.length() > 1 and LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x > SIGN_TEXT_CAP:
+		text = text.substr(0, text.length() - 1)
+	return text
+
+
+## Sets the sign's cost and reward to the live values the pad tooltip shows, and redraws only when one changes.
+func _refresh_sign(sim: Sim, b: ButtonDef) -> void:
+	if _chip == null:
+		return
+	var cost: String = fit_sign_text(Formulas.button_cost(b).format())
+	var gain: String = fit_sign_text("+" + sim.press_gain_preview(button_id).format())
+	if cost == _lock_cost and gain == _reward_text:
+		return
+	_lock_cost = cost
+	_reward_text = gain
+	if _chip.visible:
+		_chip.queue_redraw()
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
@@ -769,12 +817,12 @@ func light_strength() -> float:
 ## Density of the buy glow at full strength, 0..1: green when buyable, red (a little softer) when not, magnified at night.
 static func glow_amount(ready: bool, night: float) -> float:
 	var base: float = GLOW_DAY if ready else GLOW_DAY * 0.8
-	return clampf(base * (1.0 + GLOW_NIGHT_GAIN * clampf(night, 0.0, 1.0)), 0.0, 1.0)
+	return clampf(base * (1.0 + GLOW_NIGHT_GAIN * clampf(night, 0.0, 1.0)), 0.0, GLOW_MAX_AMOUNT)
 
 
 ## Width of the glow band in diamond norm (1.0 is the plate edge). Wider at night, so it reads from a distance.
 static func glow_spread(night: float) -> float:
-	return GLOW_SPREAD_DAY + GLOW_SPREAD_NIGHT * clampf(night, 0.0, 1.0)
+	return minf(GLOW_SPREAD_DAY + GLOW_SPREAD_NIGHT * clampf(night, 0.0, 1.0), GLOW_MAX_SPREAD)
 
 
 ## Night level in 8 steps: the halo redraws only when this changes, not every frame.

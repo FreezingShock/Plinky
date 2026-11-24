@@ -131,7 +131,8 @@ func _update_sprint_label(panel_on: bool) -> void:
 		_sprint.reset_size()
 	_sprint.visible = st > 0
 	if st > 0:
-		_sprint.global_position = global_position + Vector2(0.0, -_sprint.size.y - 1.0)
+		# Centred over the panel. The tag's width changes with its state, so this runs every frame it shows.
+		_sprint.global_position = global_position + Vector2(floorf((size.x - _sprint.size.x) * 0.5), -_sprint.size.y - 1.0)
 
 
 func _apply() -> void:
