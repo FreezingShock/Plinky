@@ -458,6 +458,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Sunlight bonuses** have their own key, so they fold only with each other and not with a pad's Sunlight number. Say so if that splits a Sunlight number you wanted combined.
 - Not run in-engine from the cloud: PC QA should check a neighbouring pad's gain and a standing press on one pad.
 
+## 2026-11-24: Gain numbers and their pad caption stay apart
+- **Why:** on the first-hour playtest, "+6.89" sat right on "Clover Leaves" and the two read as one block. The caption started 2 px under the number's baseline, and the number's 2 px outline and 2 px wave motion pushed into it.
+- **Change:** the caption starts 6 px under the number's baseline (`CAPTION_DROP` 18 px, with the caption 14 px down). The placement box grows to match, so stacked popups still clear the caption.
+- Verified by rendering two neighbouring-pad presses under Xvfb with software Vulkan: the caption now sits clearly under the number. The suite passes, 6141 checks, 0 failed.
+- Not checked: a caption running into the zone panel. The panel clip still shortens "Clover Leaves" there, which is the existing clear-zone behaviour and not part of this change.
 ## 2026-11-24: Seamless scene handoff
 - **Why:** Play, Quit to title and the loading screen's hand-off went through an ink wipe that filled the screen, then a plain `change_scene`. The game's first frames showed the default grey, and the zone art loaded on the main thread, so the screen went black or grey and cut.
 - **Rule:** `SceneSwap` (`boot/scene_swap.gd`) captures the frame being left and covers the window with it. The next scene is swapped in underneath, draws four warm frames there, then the cover sweeps away to reveal it (`boot/scene_reveal.gdshader`, a dithered edge with a sun-coloured lead line). Under Reduce Motion the cover cross-fades. Nothing is drawn in a flat colour.
