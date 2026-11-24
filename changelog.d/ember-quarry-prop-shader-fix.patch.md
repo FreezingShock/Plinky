@@ -1,1 +1,0 @@
-Fix the Ember Quarry prop shader: it used `return` inside fragment() and failed to compile on the PC, so the quarry's props lost their light. The shader now uses an if/else, and a test catches any early return in the quarry shaders.

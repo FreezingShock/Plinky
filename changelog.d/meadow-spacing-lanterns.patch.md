@@ -1,1 +1,0 @@
-Meadow trees, bushes and rocks keep their real crown size apart, so they touch but no longer stack, and none grow over a path. Lantern posts stand a few texels past the rim, off the walk line, with a readable lamp.
