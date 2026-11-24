@@ -48,7 +48,7 @@ extends Resource
 @export var golden_reach: float = 0.95
 @export var golden_floor: float = 0.35
 ## Full-frame saturation and contrast added at full golden light (light_grade.gdshader), and the share kept at night.
-@export var golden_sat: float = 0.16
+@export var golden_sat: float = 0.09
 @export var golden_contrast: float = 0.1
 @export var night_sat: float = 0.1
 ## High sun (elevation above about 0.7): exposure drop, extra contrast and saturation, so noon is not bleached.
