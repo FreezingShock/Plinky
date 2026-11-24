@@ -32,3 +32,9 @@ Calendar, clock, seasons, seasonal events, zone entry cards, the walker and the 
 
 ## 2026-11-24: light pools at night, nearest the walker first
 The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (21 pads, gate, arch, 26 lanterns, walker), and the 24 slots were full before the lanterns were added, so no lantern got a pool. Pools are kept in memory (up to 256) and the shader gets the walker's pool first, then the rest nearest the walker on the 2:1 ground ellipse. Pad pools go from 0.45 to 0.9 strength. Lantern pools are added once per scene in `_begin`, so they do not depend on which chunks are loaded. Not run in-engine (the cloud cannot run Godot); PC night shots are the check.
+
+## 2026-11-24: Larkmoor node headroom (chunks 160, rings 2 and 2)
+- **Why:** #326 adds about 30 Larkmoor nodes, which would put the night count near 1367 against the 1350 ceiling. Each loaded prop is two nodes (its sprite and its shadow quad), so the prop chunks are the lever.
+- **What:** `CHUNK` 320 to 160, `LOAD_RING` 1 to 2, `KEEP_RING` 2 (unchanged). Counted on `placements3d.json`, the worst walker spot loads 162 props, not 299, so the estimate is about 1060 nodes at that spot (about 1340 before). The guarantee is the same: at least 320 texels of props around the walker.
+- **Also:** `_spawn_one` shares one padded texture per file and one prop material per file (`_padded`, `_prop_mat`). Before, each spawn duplicated the material and `SkyCycle.prop_material` kept every copy in `_prop_mats` for the per-frame relight, so the list grew with every load.
+- **Not run in-engine** (the cloud cannot run Godot). The node count is an estimate from the placements, not a measured number; the PC pass should read the real count at night and at the worst spot, and check for pop-in at zoom 1 along a chunk edge (the view reaches about 340 texels from the walker at zoom 1, a little past the 320 guarantee).
