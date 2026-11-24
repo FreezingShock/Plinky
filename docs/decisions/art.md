@@ -201,3 +201,7 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 
 ## 2026-11-24: Larger pad glow
 - PC QA found the halo nearly invisible at noon and small beside the dotted ground ring. Reach is about 1.9x by day and 1.8x at night (plate spread 3.0 by day, 2.6 more at night). Day strength is 0.6 and midnight 0.9, peak alpha 1.0, and the falloff is linear so the outer part still carries light. Not verified in-engine: whether the halo now washes out the ground ring or the neighbouring pads.
+
+## 2026-11-24: Pad glow lights the plate and a bloom above it
+- Nathan's feedback: the plate stayed dark, so the halo now lights from the pad's centre out and reaches the plate itself, in 16 steps so the falloff has no visible rings. A smaller squared-falloff bloom hangs over the plate. Props, grass and the walker are under the halo's layer, so it reaches them too.
+- Not done: colouring the lighting shader's pad light pools by affordability. That shader is shared with the meadow rework thread, so it waits for coordination. Not verified in-engine.
