@@ -1,6 +1,6 @@
 class_name PopupNumber
 extends Label
-## Rises and fades over ~0.8 s, palette 5. Spawn with PopupNumber.spawn().
+## Rises and blinks out over ~0.8 s (stepped, never alpha), palette 5. Spawn with PopupNumber.spawn().
 ## Lives in a screen-space overlay (see fx_bus.gd), NOT under the zoomed world, so it is never
 ## scaled by camera zoom. It carries its own Theme because a Node2D parent breaks theme
 ## inheritance (that is why it once fell back to the thin default font).
@@ -51,8 +51,16 @@ func _run(big: bool) -> void:
 	var start := position
 	for i in 4:
 		t.tween_property(self, "position:y", roundf(start.y - FxConfig.POPUP_RISE_TEXELS * (i + 1) / 4.0), 0.0).set_delay(FxConfig.POPUP_LIFE * i / 4.0)
-	t.tween_property(self, "modulate:a", 0.0, FxConfig.POPUP_LIFE * 0.35).set_delay(FxConfig.POPUP_LIFE * 0.65)
+	_blink_out(t, FxConfig.POPUP_LIFE * 0.65, FxConfig.POPUP_LIFE * 0.35)
 	t.chain().tween_callback(queue_free)
+
+## Fades are stepped, never alpha: the label blinks off, on, off over the span, so no glyph is half-transparent.
+func _blink_out(t: Tween, after: float, span: float) -> void:
+	for i in 3:
+		t.tween_callback(_set_shown.bind(i % 2 == 1)).set_delay(after + span * float(i) / 3.0)
+
+func _set_shown(on: bool) -> void:
+	modulate.a = 1.0 if on else 0.0
 
 # --- running popup (hold-to-repeat): one number that keeps climbing ---
 var is_running := false
@@ -90,5 +98,5 @@ func release() -> void:
 	t.set_parallel(true)
 	for i in 4:
 		t.tween_property(self, "position:y", roundf(position.y - 4.0 * (i + 1)), 0.0).set_delay(0.3 * i / 4.0)
-	t.tween_property(self, "modulate:a", 0.0, 0.3)
+	_blink_out(t, 0.0, 0.3)
 	t.chain().tween_callback(queue_free)

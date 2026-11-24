@@ -119,3 +119,26 @@ func run(t: Object) -> void:
 		ok_other = ok_other and e[0] != src and int(e[2]) >= 0
 	t.ok(ok_src and ok_other, "pulse presses name their source and hit other pads")
 	t.eq(sim2.pulse_source, &"", "pulse_source clears after the press")
+
+	# --- popup text: crisp glyphs and stepped fades (no half-transparent letters)
+	var theme: Theme = load("res://theme/plinky_theme.tres") as Theme
+	t.ok(theme != null, "the plinky theme loads")
+	var pf: Font = CrispFont.theme_font(theme, &"PopupLabel")
+	t.ok(pf is FontFile, "the popup face is a font file")
+	if pf is FontFile:
+		var ff: FontFile = pf as FontFile
+		t.eq(ff.antialiasing, TextServer.FONT_ANTIALIASING_NONE, "popup glyphs render without grey anti-aliasing")
+		t.eq(ff.subpixel_positioning, TextServer.SUBPIXEL_POSITIONING_DISABLED, "popup glyphs sit on whole pixels")
+	t.ok(PopupStyle.shows_now(0.2, 0.3, true) and PopupStyle.shows_now(0.69, 0.5, true), "a popup is solid until its last 30%")
+	var tail_on: int = 0
+	var tail_off: int = 0
+	var tail_solid: bool = true
+	for i in 60:
+		var age: float = 0.5 + float(i) * 0.02
+		if PopupStyle.shows_now(0.85, age, true):
+			tail_on += 1
+		else:
+			tail_off += 1
+		tail_solid = tail_solid and PopupStyle.shows_now(0.85, age, false)
+	t.ok(tail_on > 0 and tail_off > 0, "the last 30% blinks off and on in whole steps")
+	t.ok(tail_solid, "Reduce Flashing keeps the popup solid to its end, with no blink")
