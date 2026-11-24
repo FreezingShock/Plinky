@@ -357,7 +357,8 @@ func can_press(b: ButtonDef, player: bool) -> bool:
 		return false
 	if god_mode:
 		return true
-	var cost: BigNum = press_cost(b) if player else Formulas.button_cost(b)
+	# EXPERIMENT (pacing): a player press is gated on the full pad price, as on main, but charges press_cost.
+	var cost: BigNum = Formulas.button_cost(b)
 	return get_stat(b.cost_stat).gte(cost)
 
 
