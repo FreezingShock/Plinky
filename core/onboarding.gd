@@ -196,7 +196,7 @@ func tip_text(tip: StringName) -> String:
 	match tip:
 		&"welcome":
 			var p1: ButtonDef = sim.button_defs.get(&"sprout_1") as ButtonDef
-			var cost: String = Formulas.button_cost(p1).format() if p1 != null else "some"
+			var cost: String = sim.press_cost(p1).format() if p1 != null else "some"
 			return "Click the ground to walk. Stand on a pad, or hold click on it, to press it. You have %s Sunlight, enough for Sprout 1. Try it." % cost
 		&"first_press":
 			return "Dewdrops make your Sunlight flow faster, and Sunlight also trickles in on its own. The Pads list shows each cost. A * means you can buy it now."

@@ -339,11 +339,26 @@ func is_row_finisher(b: ButtonDef) -> bool:
 
 func can_afford(button_id: StringName) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
-	if b == null or is_pad_locked(button_id):
+	if b == null:
+		return false
+	return can_press(b, true)
+
+
+## What one press of this pad costs from its cost stock. A player press pays press_scale of the full pad cost, because
+## it comes press_rate times as often as before (see press_gain). Automatic presses and tending pay the full cost.
+func press_cost(b: ButtonDef) -> BigNum:
+	return Formulas.button_cost(b).mul(BigNum.from_float(config.press_scale))
+
+
+## Whether the stock covers one press of this pad: a player press (`player` true) pays press_cost, an automatic press
+## or pulse pays the full cost. A locked pad never covers a press.
+func can_press(b: ButtonDef, player: bool) -> bool:
+	if is_pad_locked(b.id):
 		return false
 	if god_mode:
 		return true
-	return get_stat(b.cost_stat).gte(Formulas.button_cost(b))
+	var cost: BigNum = press_cost(b) if player else Formulas.button_cost(b)
+	return get_stat(b.cost_stat).gte(cost)
 
 
 func buttons_in_zone(z_id: StringName) -> Array[ButtonDef]:
@@ -560,7 +575,7 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	if free:
 		if is_pad_locked(button_id):
 			return false
-	elif not can_afford(button_id):
+	elif not can_press(b, allow_pulse):
 		if allow_pulse:
 			button_denied.emit(button_id)
 		return false
@@ -568,7 +583,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	# The roll only happens when such a relic is equipped, so runs without one keep the same random sequence.
 	var refunded: bool = not free and _relic_total(RelicDef.Effect.PRESS_REFUND) > 0.0 and rng.randf() < _relic_total(RelicDef.Effect.PRESS_REFUND)
 	if not god_mode and not free and not refunded:
-		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
+		var paid: BigNum = press_cost(b) if allow_pulse else Formulas.button_cost(b)
+		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(paid).max_zero())
 	var chance: float = crit_chance(button_id)
 	var crit: bool = chance > 0.0 and rng.randf() < chance
 	var crit_mult: float = 1.0
@@ -805,7 +821,7 @@ func auto_pick(affordable: bool) -> StringName:
 	var best_key: int = -1
 	var pool: Array[ButtonDef] = []
 	for b: ButtonDef in buttons_in_zone(zone_id):
-		if is_pad_locked(b.id) or (affordable and not can_afford(b.id)):
+		if is_pad_locked(b.id) or (affordable and not can_press(b, false)):
 			continue
 		var t: TierDef = tier_of(b.id)
 		var key: int = (t.order if t != null else 0) * 100 + b.row_index
@@ -1312,8 +1328,8 @@ func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
 		if n < 1.0:
 			continue
 		var nb: BigNum = BigNum.from_float(n)
-		# Tending presses are player-rate presses (press_scale is in press_gain), but offline_tend_fraction already
-		# carries the matching 1/8, so the reward divides the scale back out to pay what it paid before.
+		# Tending pays and costs the full amount, like an automatic press. offline_tend_fraction already carries the 1/8
+		# (the press count matches the old rate), so the reward divides press_scale back out to pay what it paid before.
 		var reward: BigNum = press_gain_preview(pad.id).mul(nb).mul(BigNum.from_float(1.0 / maxf(config.press_scale, 0.000001)))
 		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
 		var paid: BigNum = cost.mul(nb)

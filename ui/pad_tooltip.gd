@@ -41,7 +41,7 @@ static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 		return {}
 	var cost_def: StatDef = sim.stat_defs[b.cost_stat] as StatDef
 	var reward_def: StatDef = sim.stat_defs[b.reward_stat] as StatDef
-	var cost: BigNum = Formulas.button_cost(b)
+	var cost: BigNum = sim.press_cost(b)
 	var have: BigNum = sim.get_stat(b.cost_stat)
 	var can: bool = have.gte(cost)
 	var rc: Color = StatStyle.color(b.reward_stat)
