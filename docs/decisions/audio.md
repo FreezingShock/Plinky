@@ -72,3 +72,12 @@ The Audio autoload, footsteps, ambient soundscape, world-life sounds and press s
 - **Gain:** `AmbientMix.rain_gain(rain01, snow_w, area)`, a pure rule. It follows `MeadowLife.rain`, is silent under snow (winter rain is snow) and in the quarry (no weather there). `AmbientScape` reads it on each poll, so it fades like the other layers.
 - **Why:** the handoff's recommendation 9. Rain was seen but never heard.
 - **Not verified by ear:** the cloud has no audio output. The level, the loop seam and the tick density need a listen on the PC.
+
+## 2026-11-24: Sound pass 2 (dirt, wheat, purchase, lava)
+- **Found already built:** crickets, day birds, wind (day, night, winter), autumn leaves, shore and pond lapping, procedural rain, grass, sand, wood and cinder steps, press and streak sounds, UI click, hover and back, and the Audio settings (Master, Music, Effects, Interface, Ambience, mute, quiet pad clicks). This pass fills the gaps only.
+- **Sounds:** `step_dirt_0..3` (soft thud with grit), `step_wheat_0..3` (dry stalk brush), `sfx/purchase` (two pentatonic plinks, short enough to repeat), `amb/lava` (24 s loop of murmur and rising bubbles). All from `tools/audio/gen_audio.py dirt wheat purchase lava`, own RNG per sound, so no existing file changes.
+- **Surfaces:** `MeadowSites` reads the farm's `farm_soil` and `farm_wheat` frames from `farm.json` (Larkmoor only, never the quarry). Wheat wins where the frames overlap. Frames are the field rectangles, so stalk-free margins still count as wheat.
+- **Purchase:** `Audio` listens to `EventBus.attribute_bought`. Pad and upgrade buys play the same chime, with no jitter so repeats match.
+- **Lava:** a second Ambience player, faded in by `set_zone` in the quarry and out elsewhere. Sits at -5 dB, under the forge crackle.
+- **Why:** Nathan's sound list (audio pass, 2026-11-24). Wiring waited for his approval of the preview.
+- **Not verified by ear:** the cloud has no audio output. Levels were measured with ffmpeg volumedetect. The farm frame coordinates were checked against `farm.json`, not against the walker in-engine.

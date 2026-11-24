@@ -25,9 +25,19 @@ func run(t: Object) -> void:
 		var w: float = MeadowSites.water_proximity(p)
 		var b: float = MeadowSites.tree_proximity(p)
 		t.ok(w >= 0.0 and w <= 1.0 and b >= 0.0 and b <= 1.0, "proximities stay in 0..1 at %s" % str(p))
-	for s: String in ["grass", "sand", "wood"]:
+	# Farm surfaces: the Larkmoor ground turns on the farm frames. Points checked against farm.json: a wheat frame centre and a soil-only point.
+	MeadowSites.use("res://assets/art/zone1b/larkmoor/placements3d.json", "res://assets/art/zone1b/larkmoor/ground.png", Vector2i(0, 0))
+	t.ok(int(MeadowSites.counts()["soil"]) >= 5 and int(MeadowSites.counts()["wheat"]) >= 50, "farm soil and wheat frames load from farm.json")
+	t.eq(MeadowSites.surface_at(Vector2(2019.0, 1062.0)), MeadowSites.WHEAT, "inside a wheat frame is wheat")
+	t.eq(MeadowSites.surface_at(Vector2(1930.0, 1069.0)), MeadowSites.DIRT, "tilled soil outside the wheat is dirt")
+	t.ok(MeadowSites.surface_at(Vector2(1000.0, 100.0)) != MeadowSites.DIRT, "away from the farm there is no dirt")
+	MeadowSites.use("", "", MeadowSites.MEADOW_OFFSET)
+	t.ok(int(MeadowSites.counts()["wheat"]) == 0, "the meadow has no farm frames")
+	for s: String in ["grass", "sand", "wood", "dirt", "wheat"]:
 		for i in 4:
 			t.ok(ResourceLoader.exists("res://assets/audio/sfx/step_%s_%d.ogg" % [s, i]), "step_%s_%d exists" % [s, i])
+	t.ok(ResourceLoader.exists("res://assets/audio/sfx/purchase.ogg"), "purchase chime exists")
+	t.ok(ResourceLoader.exists("res://assets/audio/amb/lava.ogg"), "lava loop exists")
 	for i in 5:
 		t.ok(ResourceLoader.exists("res://assets/audio/sfx/bird_%d.ogg" % i), "bird_%d exists" % i)
 	t.ok(ResourceLoader.exists("res://assets/audio/amb/shore_amb.ogg"), "shore loop exists")

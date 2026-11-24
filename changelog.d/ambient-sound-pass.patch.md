@@ -1,0 +1,1 @@
+- Sound pass: footsteps on tilled farm soil and through wheat, a soft chime when an upgrade is bought, and a lava murmur in the Ember Quarry.
