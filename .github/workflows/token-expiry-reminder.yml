@@ -7,7 +7,8 @@ name: Token expiry reminder
 
 on:
   schedule:
-    - cron: '0 9 * * *'
+    # 09:17 UTC, off the hour (see stuck-pr-watch.yml for why).
+    - cron: '17 9 * * *'
   workflow_dispatch:
 
 permissions:
