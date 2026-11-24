@@ -4,6 +4,7 @@ extends RefCounted
 func run(t: Object) -> void:
 	run_meadow(t)
 	run_quarry(t)
+	run_quarry_shaders(t)
 	var cfg: SkyConfig = load(SkyCycle.CONFIG_PATH) as SkyConfig
 	t.ok(cfg != null, "sky.tres loads")
 	if cfg == null:
@@ -213,3 +214,49 @@ func run_quarry(t: Object) -> void:
 		if near_list[near[k]].pos.distance_to(Vector2(5.0, 5.0)) < near_list[near[k - 1]].pos.distance_to(Vector2(5.0, 5.0)):
 			sorted = false
 	t.ok(sorted, "sources are listed nearest first")
+
+
+## Shader guard: every Ember Quarry shader loads and makes a ShaderMaterial, and none exits early from fragment() or
+## vertex(). Godot rejects `return` there ("Using 'return' in the 'fragment' processor function is incorrect"), so a
+## shader with one loads fine in tests and then fails on the PC when the quarry spawns its props.
+const QUARRY_SHADERS: Array[String] = [
+	"res://render/shaders/quarry_glow.gdshader",
+	"res://render/shaders/quarry_haze.gdshader",
+	"res://render/shaders/quarry_prop.gdshader",
+	"res://render/shaders/heat_shimmer.gdshader",
+]
+
+
+func run_quarry_shaders(t: Object) -> void:
+	for path: String in QUARRY_SHADERS:
+		var sh: Shader = load(path) as Shader
+		t.ok(sh != null, "%s loads" % path.get_file())
+		if sh == null:
+			continue
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		t.ok(mat.shader == sh, "%s makes a ShaderMaterial" % path.get_file())
+		for header: String in ["void fragment()", "void vertex()"]:
+			t.ok(not _body_has_return(sh.code, header), "%s: no return in %s" % [path.get_file(), header])
+
+
+## True when the function that starts with `header` has a `return` inside its own braces.
+static func _body_has_return(src: String, header: String) -> bool:
+	var at: int = src.find(header)
+	if at < 0:
+		return false
+	var open: int = src.find("{", at)
+	if open < 0:
+		return false
+	var depth: int = 0
+	var i: int = open
+	while i < src.length():
+		var ch: String = src[i]
+		if ch == "{":
+			depth += 1
+		elif ch == "}":
+			depth -= 1
+			if depth == 0:
+				break
+		i += 1
+	return src.substr(open, i - open).contains("return")
