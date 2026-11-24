@@ -1,19 +1,15 @@
 class_name FarmProps
 extends RefCounted
-## The Larkmoor farm district (Thistle Rise): two wheat fields that sway in gusts and part around the walker, a barn,
-## a shed, a scarecrow, hay bales, a cart, crates and wobbly fence runs. The layout comes from
-## assets/art/zone1b/farm/farm.json (tools/art/place_farm.py); the sprites from tools/art/gen_farm.py.
-## Plain props are sprites at their foot with the meadow's rim light and a cast shadow. Fields are animated sheets
-## on the same life-step clock as the cozy wheat (the gust), and FarmWheat parts them around the walker. The gust
-## frames stand still under Reduce Motion, and so does the parting.
+## The Larkmoor farm district (Thistle Rise): organic patches of wheat that gust and part around the walker, a barn, a
+## shed, a scarecrow, hay bales, a cart and crates. The layout comes from assets/art/zone1b/farm/farm.json
+## (tools/art/place_farm.py); the props from tools/art/gen_farm.py; the wheat sheets from tools/bake_wheat.gd, drawn by
+## WheatClump from each clump's seed. Plain props are sprites at their foot with the meadow's rim light and a cast
+## shadow. Wheat clumps are sprites at their foot too, so the walker sorts against them by Y, and FarmWheat animates them.
 
 const MANIFEST: String = "res://assets/art/zone1b/farm/farm.json"
 const DIR: String = "res://assets/art/zone1b/farm/"
-const FIELD_PREFIX: String = "farm_field"
-const FIELD_FRAMES: int = 8
-const FIELD_FRAME_W: int = 96        # default; each field item carries its own frame_w
-const FIELD_FRAME_H: int = 44          # the row sheets are 44 texels tall: rows stack from far to near
-const FIELD_RATE: float = 0.5        # gust frames per life step, as the cozy wheat
+const FIELD_PREFIX: String = "farm_wheat"   # every wheat clump's kind starts with this
+const FIELD_FRAME_W: int = 48                 # default for an item without its own width
 
 
 static func load_manifest() -> Dictionary:
@@ -23,12 +19,12 @@ static func load_manifest() -> Dictionary:
 	return parsed as Dictionary if parsed is Dictionary else {}
 
 
-## True when a farm item of this kind is a wheat field (an animated sheet that parts around the walker).
+## True when a farm item of this kind is a wheat clump (an animated sheet that parts around the walker).
 static func is_field(kind: String) -> bool:
 	return kind.begins_with(FIELD_PREFIX)
 
 
-## True when a farm item of this kind casts a drop shadow. Fields are ground cover and do not.
+## True when a farm item of this kind casts a drop shadow. Wheat is ground cover and does not.
 static func casts_shadow(kind: String) -> bool:
 	return not is_field(kind)
 
@@ -40,9 +36,6 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 	if data.is_empty():
 		push_warning("farm: no manifest at %s" % MANIFEST)
 		return
-	var anim := CozyAnimator.new()
-	anim.name = "FarmAnimator"
-	parent.add_child(anim)
 	var wheat := FarmWheat.new()
 	wheat.name = "FarmWheat"
 	parent.add_child(wheat)
@@ -52,7 +45,7 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 		var kind: String = str(item.get("kind", ""))
 		var tex: Texture2D = load(DIR + str(item.get("file", ""))) as Texture2D
 		if tex == null:
-			push_warning("farm: missing sprite for %s" % kind)
+			push_warning("farm: missing sprite for %s (run tools/bake_wheat.gd)" % kind)
 			continue
 		var fa: Array = item.get("foot", []) as Array
 		var foot := Vector2(float(fa[0]), float(fa[1]))
@@ -66,24 +59,19 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 		sp.position = foot
 		sp.offset = origin - foot
 		if is_field(kind):
-			var frame_w: int = int(item.get("frame_w", FIELD_FRAME_W))
-			var wm: ShaderMaterial = FarmWheat.make_material(frame_w)
-			sp.material = wm
-			wheat.add_material(wm)
-		elif rim != null:
+			var w: int = int(item.get("w", FIELD_FRAME_W))
+			var h: int = int(item.get("h", FIELD_FRAME_W))
+			sp.region_enabled = true
+			sp.region_rect = Rect2(0.0, 0.0, float(w), float(h))
+			parent.add_child(sp)
+			var clump: Dictionary = WheatClump.generate(int(item.get("seed", 0)), w, h, int(item.get("stage", 1)))
+			wheat.add_clump(sp, clump, int(item.get("phase", 0)))
+			continue
+		if rim != null:
 			sp.material = rim
 		parent.add_child(sp)
-		if is_field(kind):
-			anim.add_sheet(sp, FIELD_FRAMES, int(item.get("frame_w", FIELD_FRAME_W)), FIELD_FRAME_H,
-					int(item.get("phase", 0)), FIELD_RATE)
-			continue
 		if shadows != null and casts_shadow(kind):
 			shadows.add_caster(sp, "", Vector2(float(item.get("w", 0)), float(item.get("h", 0))))
-	var runs: Array = data.get("fences", []) as Array
-	if not runs.is_empty():
-		var fences: FarmFences = FarmFences.make(runs)
-		fences.name = "FarmFences"
-		parent.add_child(fences)
 	var channels: Array = data.get("brooks", []) as Array
 	if not channels.is_empty():
 		var channel: CozyBrook = CozyBrook.make(channels)
