@@ -59,6 +59,8 @@ const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_GAP: int = 2           # texels between the icon and the cost digits
+const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
+const LOCK_TOP: int = -6          # the chip's top edge, in pad-local texels: centred on the top face (origin)
 const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
 var _lock_icon: Texture2D = null  # the cost stat's 8 px icon, or null when the stat has none
@@ -398,19 +400,24 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
-	# A locked row's first pad shows its cost and stat icon under the plate: 8 px icon and digits on a cream chip with an ink
-	# border. Whole texels throughout, so the chip stays crisp at 1x.
+	# A locked row's first pad shows its cost and stat icon beside the plate, on the right, not under it: the walker
+	# stands on the plate and would cover a chip under its feet. 8 px icon and digits on a cream chip with an ink border.
+	# Whole texels throughout, so the chip stays crisp at 1x.
 	if shows_lock_chip(locked, _lock_cost):
 		var has_icon: bool = _lock_icon != null
 		var box: Rect2 = lock_chip_box(_lock_cost, has_icon)
 		draw_rect(box, ink)                   # ink border
 		draw_rect(box.grow(-1.0), CHIP_CREAM) # cream interior: 10 rows, the 8-row content leaves one cream row above and below
 		var x: float = box.position.x + 3.0   # the content starts 2 cream texels in from the border
+		var base: float = box.position.y + 9.0  # glyph rows are base - 7 .. base, i.e. box.y + 2 .. box.y + 9, the icon's rows too
 		if has_icon:
-			draw_texture(_lock_icon, Vector2(x, float(THICK + 5)))
+			draw_texture(_lock_icon, Vector2(x, box.position.y + 2.0))
 			x += float(LOCK_ICON + LOCK_GAP)
-		# Baseline at THICK + 12 puts the digit rows at THICK + 5 .. THICK + 12, the same rows as the icon.
-		draw_string(LOCK_FONT, Vector2(x, float(THICK + 12)), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
+		# One glyph at a time, one texel apart: the 5 px font has no spacing of its own, so "300" ran together at 1x.
+		for i in _lock_cost.length():
+			var ch: String = _lock_cost.substr(i, 1)
+			draw_string(LOCK_FONT, Vector2(x, base), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
+			x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + float(LOCK_DIGIT_GAP)
 
 
 ## Whether a pad draws its cost chip: only a locked row's first pad carries a cost, and only when the font loaded.
@@ -418,11 +425,19 @@ static func shows_lock_chip(is_locked: bool, cost: String) -> bool:
 	return is_locked and cost != "" and LOCK_FONT != null
 
 
-## The cost chip's box in pad-local texels: 12 rows under the plate, 3 texels of pad either side of the icon and digits.
+## Width of the digits with one texel between each glyph (no gap after the last one).
+static func chip_text_width(text: String) -> float:
+	var w: float = 0.0
+	for i in text.length():
+		w += LOCK_FONT.get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
+	return w + float(LOCK_DIGIT_GAP * maxi(text.length() - 1, 0))
+
+
+## The cost chip's box in pad-local texels: 12 rows, beside the plate's right end and centred on its top face.
+## 3 texels of chip either side of the icon and digits (1 border, 2 cream).
 static func lock_chip_box(cost: String, has_icon: bool) -> Rect2:
-	var tw: float = LOCK_FONT.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
-	var content: float = tw + (float(LOCK_ICON + LOCK_GAP) if has_icon else 0.0)
-	return Rect2(-content * 0.5 - 3.0, float(THICK + 3), content + 6.0, 12.0)
+	var content: float = chip_text_width(cost) + (float(LOCK_ICON + LOCK_GAP) if has_icon else 0.0)
+	return Rect2(HALF.x + 4.0, float(LOCK_TOP), content + 6.0, 12.0)
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
