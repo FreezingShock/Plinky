@@ -611,6 +611,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var drift: float = 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 860.0)
 	_haze_mat.set_shader_parameter("drift", drift)
 	# ground fog: thickest at dawn and dusk, heavier in rain, drifting sideways; world-anchored dither
+	MeadowLife.fog = model.mist(mt, rain01) * (1.0 if seasonal else 0.0)   # the mist the lamps spread into
 	var fog_amt: float = _config.fog_ground * _season.fog_mult * model.mist(mt, rain01) * (1.0 - 0.5 * clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0))
 	_fog_rect.visible = atmosphere and fog_amt > 0.01
 	_fog_mat.set_shader_parameter("amount", fog_amt)
@@ -687,6 +688,7 @@ func _push_lights(t: float, steady: bool) -> void:
 	var picks: Array[Dictionary] = []
 	var lamp_k: float = lamp_light_k(night01)
 	var bloom: Vector2 = SkyModel.lamp_bloom(MeadowLife.rain)   # rain: lamps swell and warm
+	var halo: float = SkyModel.fog_halo(MeadowLife.fog)         # mist: the same lamps spread into the fog
 	for L: Dictionary in _lights:
 		var is_walker: bool = L.kind == &"walker"
 		var pos: Vector2 = L.pos
@@ -699,7 +701,7 @@ func _push_lights(t: float, steady: bool) -> void:
 		if strength <= 0.0:
 			continue   # a lamp by day takes no slot in the shader
 		strength *= bloom.y   # the shader caps the pool at 1.0
-		var radius: float = float(L.radius) * bloom.x
+		var radius: float = float(L.radius) * bloom.x * halo
 		picks.append({"pos": pos, "radius": radius, "strength": strength, "tint": L.tint as Color,
 				"walker": is_walker, "d": Vector2(q.x, q.y * 2.0).length_squared()})
 	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:

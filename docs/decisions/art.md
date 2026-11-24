@@ -342,12 +342,22 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Pad plates are skipped by colour (they are not grass colours), not by the pad clearance, because Larkmoor has 31 pads and the shader holds 8.
 - Checked in the cloud only (xvfb, lavapipe): no shader errors, `tests/run.gd` passes (6539 checks), `tools/larkmoor_shots.tscn` runs. Not verified on the PC.
 
+## 2026-11-24: Grass blades: Low quality keeps the old tips, and the shader checks fewer cells
+- `GraphicsQuality.GRASS_BLADES` is `[false, true, true]`. On Low the blades hide and `LifeGround` (the baked tips, with the existing Low stride and step) draws instead. The check runs every frame, so a level change takes effect without a reload.
+- Cost, measured in the cloud (lavapipe, CPU-rasterised, so absolute numbers are not PC numbers; High, 150 frames per phase, `tools/bench.gd`): meadow noon average 40.2 ms with blades off, 57.1 ms with the first shader, 47.1 ms after the cell-limited shader. Larkmoor noon 58.9 / 64.7 / 56.1 ms. The blades' cost is per-pixel ALU over the whole screen, and the cell limit trims it about 17% on the meadow. Not measured on a GPU.
+- The shader now checks only the cells that can reach a pixel (2 texels to each side, 2 below), not all 15 candidates. Output is the same except where two blades overlap a texel, where the first one found wins.
+- Ducks are in the pusher list (`LifeCritters.ground_pushers`).
 ## 2026-11-24: Lightning in heavy rain (recommendation 9, third of three)
 - **Look:** a brief cool-white lift on the whole frame in heavy rain (rain at 70% of max and up), made in the light grade pass (`light_grade.gdshader`, uniform `flash`). A strike flickers twice over about half a second.
 - **Schedule:** `SkyModel.lightning_flash(t, rain01)`, pure. Each 40 s window has a strike half the time, at a hashed moment, so the same time always gives the same flash and the test can check it.
 - **Flashing:** zero under Reduce motion or Reduce flashing (`steady` in `SkyCycle._update_light`). Reduce flashing defaults off, so lightning plays by default, as the handoff asked.
 - **Low quality:** the light grade pass is skipped on Low (`GraphicsQuality.screen_grade`), so Low shows no lightning. Thunder sound is not included.
 - **Not verified in-engine:** how strong the lift reads on the PC, and how often a strike falls in a real downpour.
+
+## 2026-11-24: Larkmoor towers become ruins
+- **What:** the gatehouse and Emberwatch towers are broken stone arches, and the lighthouse grove tower is a broken curtain wall. Eight more ruins sit in five small groups on flat ground. Generator: `tools/art/gen_larkmoor.py` (`make_ruin`, `RUIN_PLAN`, `EXTRA_GROUPS`). The new `ruin` kind has a shadow entry in `world/sky_shadows.gd`, and gardens avoid ruins as solid (`tools/art/gen_gardens.py`).
+- **Why:** Nathan disliked the tall lighthouse-like towers. Three styles were mocked up. He picked the arch and the curtain wall, mixed, on flat ground, and asked for several versions spread around. The Emberwatch ruin moved off the cliff to flat ground east of its gate.
+- **Not verified in-engine:** how the ruins read at night, the walker's footing around them, and the node count against the 1350 ceiling.
 ## 2026-11-24: Larkmoor farm fields, edge groves and fences are re-laid (Nathan picked mockup C)
 - **Decision:** `tools/art/place_farm.py` now lays seven fields (the original four plus three on the open grass south of them, found by a search over free walkable grass), a taller farm box (`BOX` is `(1090, 548, 260, 276)` layout texels, so it runs south of the yard), two tree groves on the south and east edge, and fences that follow the outside of each run.
 - **Paths:** the old placer kept 12 canvas texels from the drawn sand. Wheat and soil now keep `FIELD_SAND_CLEAR` (22 canvas texels, 11 layout), fence chords `FENCE_SAND_CLEAR` (10). The walkable mask counts paths as walkable, so every check reads the drawn sand pixels in `ground.png`, never the mask. Nathan's mockup feedback traced to this.
@@ -383,3 +393,15 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Decision:** `FarmWheat` creates each clump as a `RenderingServer` canvas item parented to the y-sorted prop parent, at the clump's foot, instead of a `Sprite2D` per clump. One node owns all 176. The items y-sort against the walker, trees and props exactly as the sprites did, because the renderer sorts a parent's child items by their transform origin. Plain props, trees, the fence and soil stay `Sprite2D` (they take the rim material or shadows).
 - **Why:** #434 laid 176 clumps, which put Larkmoor at 1357 against the 1350 ceiling. The bench now shows about 1000 nodes at peak. A single draw node would have lost the per-clump sort with the walker.
 - **Same look:** same sheet frames, same live redraw near the walker, same nearest filter. Day shots at five spots match before and after except for the gust and sun clock. Tests 7941 checks, 0 failed. Not run on the PC.
+
+## 2026-11-24: Lamps spread into mist (Nathan picked "fog halo only" of three)
+- **Look:** at full mist each lamp pool grows 60% wider (`SkyModel.fog_halo`, `FOG_HALO` 0.6). Clear air leaves the lamps as they were. Mist comes from `SkyModel.mist` (dawn, dusk and after rain), and `MeadowLife.fog` carries it to the lights. Outdoor scenes only.
+- **Not changed:** the lamp-head glow sprites do not grow with mist, only the light pools. That keeps this change off the batched lamp glows (#463).
+- **Rejected for now:** tree drips off the crowns. They are small in still frames and need a look in motion on the PC first. The prototype is kept in the project files, not committed.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests pass; the fog halo is tested in `tests/test_weather.gd`.
+- **Not verified on the PC:** how far the spread reads at dawn in a real mist.
+
+## Farm wheat density restored to mockup carpet (2026-11-24)
+- In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
+- Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
+- FarmWheat caches each clump's global centre once instead of recomputing it per frame.

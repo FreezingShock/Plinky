@@ -30,6 +30,7 @@ const KIND: Dictionary = {
 	"windmill": {"size": Vector2(0.6, 0.95), "strength": 0.9, "length": 1.15, "soft": 0.05},
 	"lighthouse": {"size": Vector2(0.5, 1.0), "strength": 0.9, "length": 1.1, "soft": 0.05},
 	"obelisk": {"size": Vector2(0.45, 1.0), "strength": 0.85, "length": 1.0, "soft": 0.1},
+	"ruin": {"size": Vector2(0.75, 0.7), "strength": 0.75, "length": 0.9, "soft": 0.12},
 	"gateway": {"size": Vector2(0.9, 0.8), "strength": 0.8, "length": 0.8, "soft": 0.1},
 	"spire": {"size": Vector2(0.45, 0.95), "strength": 0.85, "length": 1.1, "soft": 0.1},
 	"lintel": {"size": Vector2(0.9, 0.7), "strength": 0.7, "length": 0.7, "soft": 0.2},
