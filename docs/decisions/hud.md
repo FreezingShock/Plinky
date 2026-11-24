@@ -590,3 +590,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** PC QA on keyboard focus found Tab did not follow the layout (Godot walks the tree, so every tab's page counts), Shift+Tab from the first control stopped instead of wrapping, and the card's text label sat in the focus chain. Same backward stop as Stats and Attributes (see the entry above).
 - **Checked:** `tests/run.gd` passes (7955 checks, 0 failed).
 - **Not run in-engine:** the ring on a PC with a save that has several tabs and tiers. PC QA should walk Tab and Shift+Tab through the Upgrades panel at zoom 1 and 3.
+
+## 2026-11-24: Upgrades icons load once and warm up after setup (first open)
+- **Decision:** `UpgradeCard.icon(name)` keeps each icon texture in a static cache, and every Upgrades icon goes through it (gift cards, the header badges and the tab currency icons). After setup, `HUD._warm_upgrade_icons` loads the icons for every currency and attribute, eight per frame, so the first open does not read them from disk.
+- **Why:** PC batch 119 on a progressed save: the first Upgrades open at zoom 1 still cost about 36 ms more than later opens (the first frame after the call was 45 ms). Texture loads are not held by anything once their nodes are freed, so each open read them again. Headless probe: loading the 50 root icon PNGs cold takes 7.65 ms, and from the cache 0.12 ms.
+- **Checked:** `tests/run.gd` passes (7962 checks, 0 failed), including a check that the icon cache returns the same texture.
+- **Not measured:** the rest of the first-open cost. The probe can't see GPU upload, glyph rasterising or first-use shaders, so the PC has to time the first open before and after this change.
