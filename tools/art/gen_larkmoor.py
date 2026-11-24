@@ -16,6 +16,8 @@ _DEAD = LAY.dead_ends()
 assert not _DEAD, 'paths lead nowhere (path index, end): %r' % (_DEAD,)   # every path must reach a gate, pad, landmark or path
 _ON_PATH = LAY.pads_on_path()
 assert not _ON_PATH, 'pads sit on or against a path (move them in larkmoor_layout.PAD_NUDGE): %r' % (_ON_PATH,)
+_OFF = LAY.rows_off()
+assert not _OFF, 'pad rows must hug a path and not overlap (tools/art/plan_rows.py): %r' % (_OFF,)
 import depth_pass, grass_tex
 GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots

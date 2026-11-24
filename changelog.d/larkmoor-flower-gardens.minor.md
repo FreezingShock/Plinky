@@ -1,1 +1,1 @@
-Larkmoor now has flower gardens: each statistic's pad row is ringed by its own animated flowers (four kinds per statistic) and leafy shrubs, nearly 2,000 in all, that sway in the wind and lean away from you as you walk past.
+Larkmoor's pad rows now run right beside the paths, parallel and easy to press, each in its own flower field of that statistic's flower (clover patches, tall foxgloves, heather tufts and more) that sways and leans away from you, and tapping a pad now walks around trees and water to reach it.

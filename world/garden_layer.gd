@@ -17,6 +17,7 @@ var _push: Node2D
 var _flowers: PackedInt32Array = PackedInt32Array()   # x, y, stat index, variant per flower, sorted by y
 var _t: float = 0.0
 var _step: int = -1
+var _view: Rect2 = Rect2()   # the rect the last draw was culled to
 
 
 func setup(flowers: Array) -> void:
@@ -33,7 +34,13 @@ func count() -> int:
 
 
 func _process(delta: float) -> void:
-	if MeadowLife.reduce_motion or _flowers.is_empty():
+	if _flowers.is_empty():
+		return
+	# the camera moved (a walk, a zoom, a jump to another zone): redraw so the flowers that came into view are drawn
+	var view: Rect2 = GraphicsQuality.visible_local_rect(self)
+	if view.has_area() and (view.position.distance_to(_view.position) > 16.0 or view.size.distance_to(_view.size) > 16.0):
+		queue_redraw()
+	if MeadowLife.reduce_motion:
 		return
 	_t += delta
 	if pusher_group != &"" and (_push == null or not is_instance_valid(_push)):
@@ -64,6 +71,8 @@ func _draw() -> void:
 	var t: float = float(maxi(_step, 0)) * GraphicsQuality.sway_step()
 	var pusher: Vector2 = _push.position if (_push != null and moving) else Vector2.INF
 	var view: Rect2 = GraphicsQuality.visible_local_rect(self)
+	_view = view
+	view = view.grow(20.0)   # a tall flower's head shows above its foot, so cull a little wider than the view
 	var culling: bool = view.has_area()
 	for i in count():
 		var x: int = _flowers[i * 4]
@@ -74,5 +83,5 @@ func _draw() -> void:
 		var variant: int = _flowers[i * 4 + 3]
 		var l: int = lean(x, y, t, MeadowLife.wind, pusher) if moving else 0
 		var tex: Texture2D = GardenArt.frame(stat, variant, l)
-		var sz: Vector2i = GardenArt.sprite_size(stat, variant)
-		draw_texture(tex, Vector2(x - ((sz.x + 2) >> 1), y - sz.y + 1))
+		var sz: Vector2i = Vector2i(tex.get_size())
+		draw_texture(tex, Vector2(x - (sz.x >> 1), y - sz.y + 1 + GardenArt.foot_drop(variant)))

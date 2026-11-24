@@ -9,8 +9,9 @@ func run(t: Object) -> void:
 	# sprite tables: four variants per statistic, equal-width rows, every letter known
 	for stat: StringName in GardenArt.STATS:
 		t.ok(GardenArt.COLORS.has(stat) and GardenArt.VARIANTS.has(stat), "%s has colours and sprites" % stat)
-		t.eq(GardenArt.variant_count(stat), GardenArt.FLOWER_VARIANTS + 2, "%s has four flower variants and two shrubs" % stat)
-		for v in GardenArt.variant_count(stat):
+		t.eq(GardenArt.table_count(stat), GardenArt.FLOWER_VARIANTS + 2, "%s has four flower variants and two shrubs" % stat)
+		t.eq(GardenArt.variant_count(stat), GardenArt.FIELD_FIRST + 12, "%s adds twelve field flowers (three sizes, four tints)" % stat)
+		for v in GardenArt.table_count(stat):
 			var rows: Array = (GardenArt.VARIANTS[stat] as Array)[v]
 			var w0: int = (rows[0] as String).length()
 			var same: bool = true
@@ -23,6 +24,13 @@ func run(t: Object) -> void:
 			for lean in [-1, 0, 1]:
 				var tex: Texture2D = GardenArt.frame(stat, v, lean)
 				t.eq(tex.get_size(), Vector2(w0 + 2, rows.size()), "%s variant %d lean %d is baked at its size" % [stat, v, lean])
+	# field flowers: the pad's own flower, scaled, outlined, with the lean moving only the top
+	for stat: StringName in GardenArt.STATS:
+		for v in range(GardenArt.FIELD_FIRST, GardenArt.variant_count(stat)):
+			var k: int = GardenArt.field_scale(v)
+			var up: Texture2D = GardenArt.frame(stat, v, 0)
+			t.eq(up.get_size(), Vector2(13 * k + 4, 10 * k + 2), "%s field flower %d is the pad flower at %dx plus its outline" % [stat, v, k])
+			t.ok(GardenArt.frame(stat, v, 1).get_image().get_data() != up.get_image().get_data(), "%s field flower %d leans" % [stat, v])
 	# the lean: the walker pushes a flower away from itself, a calm spell leaves it upright, wind tips it
 	t.eq(GardenLayer.lean(110, 100, 0.0, 0.2, Vector2(100, 100)), 1, "a flower right of the walker leans right")
 	t.eq(GardenLayer.lean(90, 100, 0.0, 0.2, Vector2(100, 100)), -1, "a flower left of the walker leans left")
