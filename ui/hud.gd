@@ -120,6 +120,27 @@ func toggle_upgrades() -> void:
 	menu_toggled.emit(&"upgrades")
 
 
+## A zone currency's row opens Upgrades on that currency's gifts tab. If the menu is already up, it just moves to the tab.
+func open_gifts(cur: StringName) -> void:
+	Tip.hide_all()
+	if _upgrades_panel.visible:
+		_select_upgrade_tab(cur)
+		return
+	_pending_tab = cur
+	toggle_upgrades()
+
+
+## The tooltip of a zone currency (Seeds, Core Shards): its balance, the next reset's pay, the gift counts, and the
+## yellow "Click to open!" when the row can open the gifts.
+func _currency_spec(sid: StringName, have: String, clickable: bool) -> Dictionary:
+	var r: ZoneResetDef = sim.reset_for_currency(sid)
+	var counts: Dictionary = UpgradeText.gift_counts(sim, sid)
+	var need: String = "Reach %s %s." % [BigNum.from_float(sim.reset_ref(r.id)).format(), (sim.stat_defs[r.source_stat] as StatDef).display_name]
+	var facts: Dictionary = {"can": sim.can_reset(r.id), "gain": sim.reset_gain(r.id), "need": need,
+		"bought": counts["bought"], "total": counts["total"], "affordable": counts["affordable"]}
+	return TipText.currency(sid, (sim.stat_defs[sid] as StatDef).display_name, have, r, facts, clickable)
+
+
 ## The hamburger chip, so Main can keep it above open menus.
 func menu_chip() -> Control:
 	return _menu_chip
@@ -242,6 +263,8 @@ func _build_stats() -> void:
 		h.add_child(val)
 		_rows[sid] = [val, rate]
 		Tip.bind_all(h, func() -> Variant:
+			if sim.reset_for_currency(sid) != null and not _edit_mode:
+				return _currency_spec(sid, sim.get_stat(sid).format(), true)
 			var inc: BigNum = sim.income_per_second(sid)
 			var spec: Dictionary = TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format())
 			if _edit_mode:
@@ -452,12 +475,14 @@ func _build_upgrades() -> void:
 
 
 var _upg_list: VBoxContainer
+const BADGE_VALUE_WIDTH: float = 44.0   ## the balance in the Upgrades header: wide enough for "999.9K" so buying never shifts it
 var _upg_scroll: ScrollContainer
 var _upg_tabs: HBoxContainer
 var _upg_order: Array[StringName] = []          # the currency of each tab, in menu order
 var _upg_tab_btns: Dictionary = {}              # currency stat id -> its tab (MenuTextButton)
 var _upg_pages: Dictionary = {}                 # currency stat id -> the page of that group's tiers
 var _upg_tab: StringName = &""                  # the tab on show
+var _pending_tab: StringName = &""              # the tab a zone currency's row asked for, taken on show
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
 
@@ -468,6 +493,9 @@ func _on_upgrades_shown() -> void:
 		return
 	_fill_upgrades()
 	_upg_tab = _zone_tab()
+	if _pending_tab != &"" and UpgradeText.tab_shown(sim, _pending_tab):
+		_upg_tab = _pending_tab   # a zone currency's row asked for its gifts
+	_pending_tab = &""
 	_order_upgrade_tabs()
 	_sync_upgrade_tabs()
 
@@ -500,6 +528,7 @@ func _fill_upgrades() -> void:
 		page.visible = false
 		_upg_list.add_child(page)
 		_upg_pages[cur] = page
+		page.add_child(_gift_header(cur))
 		var tab := MenuTextButton.new()
 		tab.label = UpgradeText.tab_name(sim, cur)
 		tab.accent_color = StatStyle.color(cur)
@@ -525,11 +554,14 @@ func _fill_upgrades() -> void:
 			last_cur = cur
 			var tier := Label.new()
 			tier.text = "Tier %d: %s" % [tier_no, UpgradeText.tier_head(sim, a)]
-			tier.add_theme_color_override("font_color", RelicStyle.soft())
+			tier.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			tier.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			tier.add_theme_color_override("font_color", StatStyle.color(cur))   # each zone's heads wear its currency colour
 			page.add_child(tier)
 			grid = GridContainer.new()
 			grid.columns = 2
 			grid.custom_minimum_size = Vector2(UpgradeCard.CARD_SIZE.x * 2.0 + 6.0, 0.0)   # every tier the same width
+			grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER   # centred in the list, not pushed to the left edge
 			grid.add_theme_constant_override("h_separation", 6)
 			grid.add_theme_constant_override("v_separation", 5)
 			page.add_child(grid)
@@ -545,7 +577,57 @@ func _fill_upgrades() -> void:
 		Tip.bind_all(card, spec)
 		_attr_rows[a.id] = card
 	_upg_tab = _first_shown_tab()
+	_size_upgrade_list()
 	_apply_upgrade_tab()
+
+
+## The list is one height for every tab: the tallest tab's, up to UPGRADE_LIST_HEIGHT, and longer tabs scroll. A tab
+## switch or a buy never resizes the panel, so nothing under the pointer moves.
+func _size_upgrade_list() -> void:
+	if _upg_scroll == null or _upg_list == null:
+		return
+	var tallest: float = 0.0
+	for cur: StringName in _upg_pages:
+		for other: StringName in _upg_pages:
+			(_upg_pages[other] as Control).visible = other == cur
+		tallest = maxf(tallest, _upg_list.get_combined_minimum_size().y)
+	_upg_scroll.custom_minimum_size.y = minf(tallest, UPGRADE_LIST_HEIGHT)
+
+
+## The head of a gifts page: the currency's icon and name in its colour, and one line on what earns it. Centred.
+func _gift_header(cur: StringName) -> Control:
+	var r: ZoneResetDef = sim.reset_for_currency(cur)
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 1)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var top := HBoxContainer.new()
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	top.add_theme_constant_override("separation", 4)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(top)
+	var ic := TextureRect.new()
+	ic.texture = load("res://assets/icons/%s.png" % String(cur)) as Texture2D
+	ic.custom_minimum_size = Vector2(16, 16)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(ic)
+	var nm := Label.new()
+	nm.theme_type_variation = &"TitleLabel"
+	nm.text = (sim.stat_defs[cur] as StatDef).display_name
+	nm.add_theme_color_override("font_color", StatStyle.color(cur))
+	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(nm)
+	var blurb := Label.new()
+	blurb.text = r.gift_blurb if r != null else ""
+	blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	blurb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	blurb.add_theme_color_override("font_color", RelicStyle.soft())
+	blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(blurb)
+	return box
 
 
 ## A tab was pressed (mouse, keyboard or pad): the page and the highlight follow it together.
@@ -564,13 +646,7 @@ func _apply_upgrade_tab() -> void:
 		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
 		b.selected = on
 		b.queue_redraw()
-	_fit_upgrade_list()
 
-
-## The list takes the height its tab needs, up to UPGRADE_LIST_HEIGHT; longer tabs scroll.
-func _fit_upgrade_list() -> void:
-	if _upg_scroll != null and _upg_list != null:
-		_upg_scroll.custom_minimum_size.y = minf(_upg_list.get_combined_minimum_size().y, UPGRADE_LIST_HEIGHT)
 
 
 ## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
@@ -604,10 +680,14 @@ func _currency_badge(parent: Control, sid: StringName) -> HBoxContainer:
 	b.add_child(ic)
 	var v := Label.new()
 	v.add_theme_color_override("font_color", StatStyle.color(sid))
+	v.custom_minimum_size.x = BADGE_VALUE_WIDTH   # the balance can grow: a fixed width keeps the header still while buying
 	b.add_child(v)
 	_cur_vals[sid] = v
 	var nm: String = (sim.stat_defs[sid] as StatDef).display_name
-	Tip.bind_all(b, func() -> Variant: return TipText.stat(sid, nm, _balance(sid).format()))
+	if sim.reset_for_currency(sid) != null:
+		Tip.bind_all(b, func() -> Variant: return _currency_spec(sid, _balance(sid).format(), false))
+	else:
+		Tip.bind_all(b, func() -> Variant: return TipText.stat(sid, nm, _balance(sid).format()))
 	return b
 
 
@@ -1232,6 +1312,9 @@ func _on_row_input(event: InputEvent, sid: StringName) -> void:
 			if not mark.get_global_rect().grow(3.0).has_point(get_global_mouse_position()):
 				(_row_boxes[sid] as Control).accept_event()
 				_start_drag(sid)
+		elif not _edit_mode and sim.reset_for_currency(sid) != null:
+			(_row_boxes[sid] as Control).accept_event()
+			open_gifts(sid)
 		return
 	if mb.button_index == MOUSE_BUTTON_RIGHT and _opt(&"strip_rclick", true):
 		(_row_boxes[sid] as Control).accept_event()
