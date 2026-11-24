@@ -35,6 +35,7 @@ var _attr_rows: Dictionary = {}   # attribute id -> UpgradeCard
 const UPGRADE_LIST_WIDTH: float = 318.0   ## two cards across (UpgradeCard.CARD_SIZE) plus a gap and the scrollbar
 const UPGRADE_LIST_HEIGHT: float = 180.0   ## the most the list takes (about three rows); a shorter tab takes only what it needs, and the rest scrolls
 var _tip_card: TipCard
+var toast_showing: Callable   ## set by main: true while the achievement toast is up (tips wait for it)
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
 var _momentum: MomentumMeter
@@ -1400,14 +1401,15 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card or a banner
+	var toast: bool = toast_showing.is_valid() and bool(toast_showing.call())
+	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card, a banner or an achievement toast
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():
 			_tip_card.dismiss()
 		return
-	if Banner.is_showing():
-		return  # the next tip waits for the banner to clear rather than being marked shown behind it
+	if Banner.is_showing() or toast:
+		return  # the next tip waits for the banner or toast to clear rather than being marked shown behind it
 	var id: StringName = ob.next_tip()
 	if id == &"":
 		return
