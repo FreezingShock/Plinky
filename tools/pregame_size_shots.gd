@@ -5,16 +5,6 @@ extends SceneTree
 ##      godot --path . --resolution 2560x1080 --script tools/pregame_size_shots.gd -- 2560 1080 1
 ## User args: width, height, bleed flag (1 = 840x480 bleed art on), scale mode (0 Pixel, 1 Fit, 2 Wide; default 1).
 
-const _UNUSED_SIZES: Array = [
-	[800, 600, 1],
-	[1024, 768, 0],
-	[1280, 720, 1],
-	[1920, 1080, 1],
-	[2560, 1080, 1],
-	[1600, 1000, 1],
-	[3440, 1440, 1],
-	[1280, 1024, 0],
-]
 const SETTLE_FRAMES: int = 14
 const TITLE_SCENE: String = "res://boot/title_screen.tscn"
 const BOOT_SCENE: String = "res://boot/boot.tscn"
@@ -57,12 +47,6 @@ func _capture_size(w: int, h: int, bleed: int) -> void:
 	root.add_child(title)
 	await _settle()
 	await _save("%s/%s_title.png" % [_out_dir, tag])
-	var game: Node = (load("res://main.tscn") as PackedScene).instantiate()
-	root.add_child(game)
-	await _settle()
-	await _save("%s/%s_game.png" % [_out_dir, tag])
-	game.queue_free()
-	await _settle()
 	title.call("_open_settings")
 	await _settle()
 	await _save("%s/%s_settings.png" % [_out_dir, tag])
@@ -79,6 +63,13 @@ func _capture_size(w: int, h: int, bleed: int) -> void:
 	title.call("_close_overlays")
 	await _settle()
 	title.queue_free()
+	await _settle()
+	# The game last: it turns the pre-game fill off, which would letterbox any title screen opened after it.
+	var game: Node = (load("res://main.tscn") as PackedScene).instantiate()
+	root.add_child(game)
+	await _settle()
+	await _save("%s/%s_game.png" % [_out_dir, tag])
+	game.queue_free()
 	await _settle()
 
 
