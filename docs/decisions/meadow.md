@@ -112,3 +112,10 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (634,568), (678,590), (722,612), beside the main path north of the gatehouse tower. The nearest pad is 111 texels from the arrival gate, up from 31. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
 - **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
 - Not run in-engine from the cloud. Please check the pads on a PC capture.
+
+## 2026-11-24: Meadow gate arch (slice 2 of the meadow rework)
+- **Brief (Nathan, via coordinator):** gates and paths between areas must look better and match the area they lead to; the quarry gate reads as ember and stone, so the meadow gate reads as timber and flowers.
+- **Changed:** the meadow gate (zone1) takes `gate_art = &"meadow"` and draws its own arch in `world/texel_gate.gd`: timber posts with cream caps and vines, a flower-garlanded lintel with a keystone bloom, a wooden lattice that shows the green light of Larkmoor once open, and drifting petals while open. It uses the meadow palette, 8 indices like the forge arch.
+- **Why:** the plain pulsing ring read as a placeholder, and the arch gives the gate the hover tooltip the forge gate already has.
+- **Not in this slice:** the path to the gate is still baked sand (gen_meadow3d.py). Path edges (stepping stones, flowers) are the next gate-and-path step.
+- **Not run in the cloud:** the look and the draw code in-engine (no Godot here). The PC QA thread should screenshot the gate closed and open.
