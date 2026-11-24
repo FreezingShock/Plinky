@@ -121,7 +121,7 @@ LANDMARKS = [
     dict(id='lighthouse', kind='lighthouse', at=(596, 590)),
     dict(id='cairn_spire', kind='obelisk', at=(540, 306)),          # the cairn at the centre of the stone ring
     dict(id='great_lantern', kind='great_lantern', at=(978, 376)),
-    dict(id='ember_watchtower', kind='tower', at=(800, 250)),       # beside the Emberwatch gate, on its wall
+    dict(id='ember_watchtower', kind='tower', at=(805, 266)),       # the Emberwatch ruin: flat ground just east of the gate (was on the cliff at 800,250)
 ]
 # Tall-prop groves: kind, centre, radius, count
 GROVES = [

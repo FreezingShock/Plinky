@@ -485,6 +485,115 @@ def make_obelisk(rng):
         cr = sdf_ell(x, y, z, (0, 0, 46), (3.2, 3.2, 8)); sel = cr < d; m = np.where(sel, M_CRYS, m); d = np.minimum(d, cr)
         return d, m
     return f, (9, 9), 56, 6
+# ---------------- ruins: overgrown stone that replaces Larkmoor's tall towers ----------------
+# Nathan asked for the tall lighthouse-like towers to go. Each ruin keeps its tower's place and footprint, but its top is broken
+# and its stone is cut down, moss caps it (the rock rule above), and fallen stone lies around the foot. Three shapes, picked
+# per option (RUIN_PLAN below): 'tower' a broken round stump, 'arch' two piers and a broken arc, 'wall' a broken curtain wall
+# with a stub column. Materials are the zone palette: rock for the stone, light dressed stone for the cornice and the column,
+# leaf green for ivy on the upper walls.
+def _ruin_stone(x, y, z, seed):
+    """Ruin stone: pale dressed stone, mottled with grey rock, so the walls read against the grass."""
+    return np.where(vn3(x * .45, y * .45, z * .45, seed + 21) > .45, M_BARKT, M_ROCK).astype(np.int16)
+def _ruin_union(parts):
+    def f(x, y, z):
+        d, m = parts[0](x, y, z)
+        for pf in parts[1:]:
+            dp, mp = pf(x, y, z); sel = dp < d; m = np.where(sel, mp, m); d = np.minimum(d, dp)
+        return d, m
+    return f
+def _ruin_stump(seed, cx, cy, r0, h):
+    """A round tower cut off at a slant, with a broken-out notch and a small door on its front (toward the camera)."""
+    def f(x, y, z):
+        X, Y = x - cx, y - cy
+        rr = r0 - z * .03
+        d = np.sqrt(X ** 2 + Y ** 2) - rr + (vn3(x * .35, y * .35, z * .35, seed) - .5) * 1.5
+        d = np.maximum(d, -z)                                                     # stands on the ground
+        d = np.maximum(d, (z - h) + (X * .42 - Y * .3) + (vn3(x * .6, y * .6, 0.5, seed + 1) - .5) * 3.0)   # the broken top
+        d = np.maximum(d, -sdf_box(X - rr * .55, Y - rr * .35, z, (0, 0, h), (4.0, 4.0, 5.0), .8))         # a notch knocked out of the crown
+        d = np.maximum(d, -sdf_box(X, Y - rr, z, (0, 0, 4.0), (2.0, 2.2, 4.0), .3))                       # the door
+        m = _ruin_stone(x, y, z, seed)
+        m = np.where((np.abs(z - h * .6) < 1.0) & (d < .9), M_BARKT, m)                                  # dressed cornice band
+        m = np.where((z > h * .7) & (vn3(x * .5, y * .5, z * .5, seed + 9) > .82) & (d < .4), M_FOL, m)    # a little ivy high on the wall
+        return d, m
+    return f
+def _ruin_piers(seed, span, zc):
+    """Two stone piers that stand up to the springing line zc, at x = -span and +span."""
+    def f(x, y, z):
+        d = np.full(x.shape, 1e3, np.float32); m = np.full(x.shape, M_BARKT, np.int16)
+        for px in (-span, span):
+            dp = sdf_box(x, y, z, (px, 0, zc / 2), (2.9, 2.9, zc / 2), .6) + (vn3(x * .4, y * .4, z * .4, seed) - .5) * 1.0
+            sel = dp < d; m = np.where(sel, _ruin_stone(x, y, z, seed), m); d = np.minimum(d, dp)
+        return d, m
+    return f
+def _ruin_arc(seed, span, zc, rise):
+    """The arch between the piers: a thick ring segment above zc, broken away on the right so the top is missing."""
+    def f(x, y, z):
+        arc = np.maximum(np.abs(np.sqrt(x ** 2 + (z - zc) ** 2) - span) - 2.2, np.abs(y) - 2.6)
+        arc = np.maximum(arc, zc - z)                                             # only above the springing line
+        broke = (x > span * .2) & (z > zc + rise * (.55 + (vn3(x * .5, y * .5, z * .5, seed) - .5) * .5))
+        arc = np.where(broke, 1e3, arc)
+        m = np.where((np.abs(np.sqrt(x ** 2 + (z - zc) ** 2) - span) < 1.2) & (arc < .8), M_BARKT, _ruin_stone(x, y, z, seed)).astype(np.int16)
+        return arc, m
+    return f
+def _ruin_pillar(seed, cx, cy, rr, h):
+    """A stub of a dressed column, broken off at a slant."""
+    def f(x, y, z):
+        d = np.sqrt((x - cx) ** 2 + (y - cy) ** 2) - rr + (vn3(x * .5, y * .5, z * .5, seed) - .5) * .8
+        d = np.maximum(d, -z)
+        d = np.maximum(d, (z - h) + (x - cx) * .5 + (vn3(x * .7, y * .7, 0.4, seed + 2) - .5) * 2.5)
+        return d, np.full(x.shape, M_BARKT, np.int16)
+    return f
+def _ruin_fallen(seed, cx, cy, length, rr, ang):
+    """A broken column lying on the ground, along the angle ang (radians)."""
+    ax, ay = cx - math.cos(ang) * length / 2, cy - math.sin(ang) * length / 2
+    bx, by = cx + math.cos(ang) * length / 2, cy + math.sin(ang) * length / 2
+    def f(x, y, z):
+        d = sdf_capsule(x, y, z, (ax, ay, rr * .9), (bx, by, rr * .9), rr) + (vn3(x * .6, y * .6, z * .6, seed) - .5) * .7
+        return d, np.full(x.shape, M_BARKT, np.int16)
+    return f
+def _ruin_wall(seed, cx, cy, R, a0, a1, h):
+    """A curtain wall on an arc of radius R, from angle a0 to a1, with a jagged broken top and open ends."""
+    def f(x, y, z):
+        X, Y = x - cx, y - cy
+        ang = np.arctan2(Y, X)
+        d = np.abs(np.sqrt(X ** 2 + Y ** 2) - R) - 1.9 + (vn3(x * .4, y * .4, z * .4, seed) - .5) * 1.0
+        d = np.maximum(d, -z)
+        d = np.maximum(d, z - h - (vn3(X * .5, Y * .5, 0.7, seed + 4) - .5) * 6.0)
+        d = np.where((ang >= a0) & (ang <= a1), d, 1e3)
+        m = np.where((z > h * .7) & (vn3(x * .5, y * .5, z * .5, seed + 9) > .82), M_FOL, _ruin_stone(x, y, z, seed)).astype(np.int16)
+        return d, m
+    return f
+def _ruin_blob(rng_seed, cx, cy, rr):
+    """A fallen stone, half sunk into the ground."""
+    def f(x, y, z):
+        d = sdf_ell(x, y, z, (cx, cy, rr * .45), (rr, rr * .85, rr * .6)) + (vn3(x * .5, y * .5, z * .5, rng_seed) - .5) * 1.2
+        return d, np.full(x.shape, M_ROCK, np.int16)
+    return f
+def _ruin_rubble(rng, n, spread, rmax):
+    """n fallen stones scattered round the foot, denser close in."""
+    out = []
+    for _ in range(n):
+        a = rng.uniform(0, 6.283); rd = spread * math.sqrt(rng.random())
+        out.append(_ruin_blob(rng.randint(0, 99), math.cos(a) * rd, math.sin(a) * rd, rng.uniform(1.6, rmax)))
+    return out
+RUIN_STYLES = ('tower', 'arch', 'wall')
+# The ruin picked per landmark id: (style, height, turn in radians). Gatehouse and Emberwatch get the broken arch, and the
+# lighthouse grove gets the broken curtain wall (Nathan picked B and C, mixed, on flat ground).
+RUIN_PLAN = {'gatehouse_tower': ('arch', 26.0, -.785), 'lighthouse': ('wall', 20.0, 0.0), 'ember_watchtower': ('arch', 24.0, 0.0)}
+def make_ruin(rng, style='tower', h=24.0):
+    """One ruin sprite. Footprint radius about 12 texels, so it blocks the walker like the tower it replaces."""
+    seed = rng.randint(0, 99)
+    if style == 'tower':
+        parts = [_ruin_stump(seed, 0.0, 0.0, 8.5, h), _ruin_fallen(seed + 1, 9.0, -5.0, 10.0, 2.4, -.5)] + _ruin_rubble(rng, 5, 12.0, 3.2)
+    elif style == 'arch':
+        span = 7.5
+        parts = [_ruin_piers(seed, span, h), _ruin_arc(seed + 2, span, h * .62, h * .38), _ruin_fallen(seed + 3, 2.0, -10.0, 13.0, 2.2, .2)] + _ruin_rubble(rng, 4, 12.0, 3.0)
+    elif style == 'wall':
+        parts = [_ruin_wall(seed, 0.0, 0.0, 10.0, -2.6, 1.9, h), _ruin_pillar(seed + 5, -6.5, 6.0, 2.8, h * 1.5),
+                 _ruin_fallen(seed + 6, 4.0, 8.5, 8.0, 2.2, .9)] + _ruin_rubble(rng, 6, 12.5, 3.0)
+    else:
+        raise ValueError('unknown ruin style %r' % (style,))
+    return _ruin_union(parts), (15, 15), h + 8, 10
 def make_menhir(rng, fixed=False):
     """A standing stone. fixed=True gives the ring's stones one height and no tilt, so the ring reads as built, not scattered."""
     h = 11.0 if fixed else rng.uniform(9, 14); tilt = 0.0 if fixed else rng.uniform(-.12, .12)
@@ -569,11 +678,11 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, see
     big = kw.get('big', True)
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
     mk = dict(oak=make_oak, pine=make_pine, bush=make_bush, rock=lambda r: make_rock(r, big), crystals=make_crystals, stump=make_stump,
-              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, windmill_sails=make_windmill_sails, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge, footbridge=make_footbridge)[kind](rng)
+              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, windmill_sails=make_windmill_sails, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, ruin=lambda r: make_ruin(r, kw.get('style', 'tower'), kw.get('h', 24.0)), gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge, footbridge=make_footbridge)[kind](rng)
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid, bottom=kw.get('bottom', -1.0))
-    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign', 'bridge', 'footbridge') or (kind == 'rock' and big)):
+    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'ruin', 'gateway', 'menhir', 'lantern', 'sign', 'bridge', 'footbridge') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
     if count: placed.append((u, v, rad * scale))
     return z0
@@ -611,7 +720,9 @@ for _g, _st in ((GATE, 'stone'), (GATE2, 'timber')): put('gateway', _g[0], _g[1]
 for lm in LAY.LANDMARKS:
     u, v = s2uv(*lm['at'])
     if lm['kind'] == 'elder_oak': put('oak', u, v, 1.9, rot=.7, sid='new')
-    elif lm['kind'] in ('tower', 'lighthouse', 'obelisk'): put(lm['kind'], u, v, 1.0, rot=0.0)
+    elif lm['kind'] in ('tower', 'lighthouse') and lm['id'] in RUIN_PLAN:      # the tall towers are ruins now
+        _st_, _h_, _rot_ = RUIN_PLAN[lm['id']]; put('ruin', u, v, 1.0, rot=_rot_, style=_st_, h=_h_)
+    elif lm['kind'] == 'obelisk': put(lm['kind'], u, v, 1.0, rot=0.0)
     elif lm['kind'] == 'great_lantern': put('lantern', u, v, 2.6, rot=0.0)
     elif lm['kind'] == 'windmill':
         put('windmill', u, v, 1.0, rot=-.785)                    # the tower
@@ -778,6 +889,36 @@ for pp in PATHS_UV:
                 if VERGE_BAND[0] <= float(samp(dedge, u, v)) <= VERGE_BAND[1] and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
                     put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1)
 log('path drifts placed')
+
+# Extra ruins, scattered over the flat ground of Larkmoor in small organic groups: two or three ruins close together, the groups
+# well apart, never in a row. Nathan: several versions, spread around, not bundled. They come last, with their own random stream
+# and seeds, so every prop placed above keeps its place. Flat spots only (slope and clearance checked here).
+EXTRA_RUINS = [('arch', 20.0), ('wall', 18.0), ('tower', 22.0), ('wall', 22.0), ('arch', 24.0), ('tower', 18.0), ('wall', 19.0), ('arch', 21.0)]
+EXTRA_GROUPS = [2, 2, 2, 1, 1]          # ruins per group, placed in order: 8 ruins in 5 groups
+_xr = random.Random(4242)
+_xr_spots = []
+_xr_k = 0
+for _gn in EXTRA_GROUPS:
+    _gc = None
+    for _t in range(900):                      # a group centre, far from the other groups and the landmarks
+        _a, _rd = _xr.uniform(0, 6.283), math.sqrt(_xr.random()) * 0.7 * R
+        _cu, _cv = CU + math.cos(_a) * _rd, CV + math.sin(_a) * _rd
+        if any(math.hypot(_cu - pu, _cv - pv) < 190 for (pu, pv) in _xr_spots): continue
+        if not ok_spot(_cu, _cv, 12.0, slope_max=0.8, hmax=200.0, path_clear=8.0): continue
+        _gc = (_cu, _cv); break
+    if _gc is None: continue
+    _members = []
+    for _j in range(_gn):
+        for _t in range(400):                  # each ruin of the group 26 to 44 texels from the centre, away from its neighbours
+            _b, _dd = _xr.uniform(0, 6.283), _xr.uniform(26.0, 44.0)
+            _u, _v = _gc[0] + math.cos(_b) * _dd, _gc[1] + math.sin(_b) * _dd
+            if any(math.hypot(_u - pu, _v - pv) < 30 for (pu, pv) in _members): continue
+            if not ok_spot(_u, _v, 12.0, slope_max=0.8, hmax=200.0, path_clear=8.0): continue
+            _style, _xh = EXTRA_RUINS[_xr_k % len(EXTRA_RUINS)]; _xr_k += 1
+            put('ruin', _u, _v, 1.0, style=_style, h=_xh, seed=_xr.randint(0, 1 << 30))
+            _members.append((_u, _v)); break
+    _xr_spots.extend(_members)
+log('extra ruins placed %d in %d groups' % (len(_xr_spots), len(EXTRA_GROUPS)))
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
@@ -1082,7 +1223,7 @@ for t in TALL:
     sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
-nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
+nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, ruin=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
 wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK)
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)

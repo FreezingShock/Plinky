@@ -348,3 +348,8 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Flashing:** zero under Reduce motion or Reduce flashing (`steady` in `SkyCycle._update_light`). Reduce flashing defaults off, so lightning plays by default, as the handoff asked.
 - **Low quality:** the light grade pass is skipped on Low (`GraphicsQuality.screen_grade`), so Low shows no lightning. Thunder sound is not included.
 - **Not verified in-engine:** how strong the lift reads on the PC, and how often a strike falls in a real downpour.
+
+## 2026-11-24: Larkmoor towers become ruins
+- **What:** the gatehouse and Emberwatch towers are broken stone arches, and the lighthouse grove tower is a broken curtain wall. Eight more ruins sit in five small groups on flat ground. Generator: `tools/art/gen_larkmoor.py` (`make_ruin`, `RUIN_PLAN`, `EXTRA_GROUPS`). The new `ruin` kind has a shadow entry in `world/sky_shadows.gd`, and gardens avoid ruins as solid (`tools/art/gen_gardens.py`).
+- **Why:** Nathan disliked the tall lighthouse-like towers. Three styles were mocked up. He picked the arch and the curtain wall, mixed, on flat ground, and asked for several versions spread around. The Emberwatch ruin moved off the cliff to flat ground east of its gate.
+- **Not verified in-engine:** how the ruins read at night, the walker's footing around them, and the node count against the 1350 ceiling.

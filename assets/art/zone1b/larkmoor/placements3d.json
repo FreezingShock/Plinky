@@ -571,13 +571,13 @@
    "sort_y": 1253.1
   },
   {
-   "file": "sprites/tower_024.png",
-   "nrm": "sprites/tower_024_n.png",
-   "kind": "tower",
-   "x": 1444,
-   "y": 1327,
-   "w": 25,
-   "h": 62,
+   "file": "sprites/ruin_024.png",
+   "nrm": "sprites/ruin_024_n.png",
+   "kind": "ruin",
+   "x": 1441,
+   "y": 1358,
+   "w": 31,
+   "h": 31,
    "foot": [
     1456.0,
     1386.0
@@ -585,13 +585,13 @@
    "sort_y": 1386.0
   },
   {
-   "file": "sprites/lighthouse_025.png",
-   "nrm": "sprites/lighthouse_025_n.png",
-   "kind": "lighthouse",
-   "x": 1180,
-   "y": 1107,
-   "w": 25,
-   "h": 73,
+   "file": "sprites/ruin_025.png",
+   "nrm": "sprites/ruin_025_n.png",
+   "kind": "ruin",
+   "x": 1172,
+   "y": 1148,
+   "w": 38,
+   "h": 35,
    "foot": [
     1192.0,
     1177.4
@@ -627,18 +627,18 @@
    "sort_y": 749.2
   },
   {
-   "file": "sprites/tower_028.png",
-   "nrm": "sprites/tower_028_n.png",
-   "kind": "tower",
-   "x": 1588,
-   "y": 403,
-   "w": 25,
-   "h": 66,
+   "file": "sprites/ruin_028.png",
+   "nrm": "sprites/ruin_028_n.png",
+   "kind": "ruin",
+   "x": 1598,
+   "y": 490,
+   "w": 33,
+   "h": 41,
    "foot": [
-    1600.0,
-    462.1
+    1610.0,
+    520.6
    ],
-   "sort_y": 462.1
+   "sort_y": 520.6
   },
   {
    "file": "sprites/bridge_029.png",
@@ -728,9 +728,9 @@
    "file": "sprites/oak_035.png",
    "nrm": "sprites/oak_035_n.png",
    "kind": "oak",
-   "x": 1203,
+   "x": 1202,
    "y": 1117,
-   "w": 49,
+   "w": 50,
    "h": 45,
    "foot": [
     1221.0,
@@ -815,7 +815,7 @@
    "x": 1159,
    "y": 1094,
    "w": 46,
-   "h": 39,
+   "h": 46,
    "foot": [
     1188.4,
     1138.0
@@ -2047,7 +2047,7 @@
    "x": 1458,
    "y": 1050,
    "w": 30,
-   "h": 16,
+   "h": 17,
    "foot": [
     1473.3,
     1061.0
@@ -2117,7 +2117,7 @@
    "x": 1453,
    "y": 1133,
    "w": 27,
-   "h": 21,
+   "h": 20,
    "foot": [
     1466.7,
     1145.4
@@ -2131,7 +2131,7 @@
    "x": 1479,
    "y": 1063,
    "w": 26,
-   "h": 14,
+   "h": 15,
    "foot": [
     1491.4,
     1072.1
@@ -2396,7 +2396,7 @@
    "kind": "bush",
    "x": 1782,
    "y": 1164,
-   "w": 28,
+   "w": 26,
    "h": 16,
    "foot": [
     1795.2,
@@ -2592,7 +2592,7 @@
    "kind": "bush",
    "x": 1804,
    "y": 1155,
-   "w": 23,
+   "w": 25,
    "h": 22,
    "foot": [
     1815.5,
@@ -3318,9 +3318,9 @@
    "file": "sprites/rock_222.png",
    "nrm": "sprites/rock_222_n.png",
    "kind": "rock",
-   "x": 1203,
+   "x": 1201,
    "y": 598,
-   "w": 38,
+   "w": 40,
    "h": 22,
    "foot": [
     1218.6,
@@ -3402,9 +3402,9 @@
    "file": "sprites/rock_228.png",
    "nrm": "sprites/rock_228_n.png",
    "kind": "rock",
-   "x": 1161,
+   "x": 1160,
    "y": 560,
-   "w": 32,
+   "w": 33,
    "h": 27,
    "foot": [
     1173.0,
@@ -3584,10 +3584,10 @@
    "file": "sprites/rock_241.png",
    "nrm": "sprites/rock_241_n.png",
    "kind": "rock",
-   "x": 1483,
+   "x": 1486,
    "y": 671,
-   "w": 37,
-   "h": 20,
+   "w": 34,
+   "h": 18,
    "foot": [
     1502.0,
     683.8
@@ -3614,7 +3614,7 @@
    "kind": "rock",
    "x": 1440,
    "y": 731,
-   "w": 26,
+   "w": 25,
    "h": 15,
    "foot": [
     1453.0,
@@ -3640,9 +3640,9 @@
    "file": "sprites/rock_245.png",
    "nrm": "sprites/rock_245_n.png",
    "kind": "rock",
-   "x": 1603,
+   "x": 1613,
    "y": 702,
-   "w": 39,
+   "w": 29,
    "h": 22,
    "foot": [
     1621.5,
@@ -3684,7 +3684,7 @@
    "kind": "rock",
    "x": 1448,
    "y": 672,
-   "w": 35,
+   "w": 33,
    "h": 24,
    "foot": [
     1467.4,
@@ -3726,7 +3726,7 @@
    "kind": "rock",
    "x": 1582,
    "y": 692,
-   "w": 26,
+   "w": 25,
    "h": 19,
    "foot": [
     1596.5,
@@ -4102,9 +4102,9 @@
    "file": "sprites/rock_278.png",
    "nrm": "sprites/rock_278_n.png",
    "kind": "rock",
-   "x": 1891,
+   "x": 1888,
    "y": 647,
-   "w": 25,
+   "w": 28,
    "h": 19,
    "foot": [
     1900.2,
@@ -4144,15 +4144,15 @@
    "file": "sprites/rock_284.png",
    "nrm": "sprites/rock_284_n.png",
    "kind": "rock",
-   "x": 1584,
-   "y": 519,
-   "w": 37,
+   "x": 1622,
+   "y": 539,
+   "w": 35,
    "h": 20,
    "foot": [
-    1599.6,
-    530.6
+    1638.5,
+    551.7
    ],
-   "sort_y": 530.6
+   "sort_y": 551.7
   },
   {
    "file": "sprites/rock_286.png",
@@ -4503,6 +4503,118 @@
     946.8
    ],
    "sort_y": 946.8
+  },
+  {
+   "file": "sprites/ruin_313.png",
+   "nrm": "sprites/ruin_313_n.png",
+   "kind": "ruin",
+   "x": 2003,
+   "y": 934,
+   "w": 33,
+   "h": 33,
+   "foot": [
+    2020.0,
+    958.0
+   ],
+   "sort_y": 958.0
+  },
+  {
+   "file": "sprites/ruin_314.png",
+   "nrm": "sprites/ruin_314_n.png",
+   "kind": "ruin",
+   "x": 1932,
+   "y": 920,
+   "w": 43,
+   "h": 43,
+   "foot": [
+    1953.0,
+    953.8
+   ],
+   "sort_y": 953.8
+  },
+  {
+   "file": "sprites/ruin_315.png",
+   "nrm": "sprites/ruin_315_n.png",
+   "kind": "ruin",
+   "x": 1712,
+   "y": 668,
+   "w": 27,
+   "h": 40,
+   "foot": [
+    1723.7,
+    698.7
+   ],
+   "sort_y": 698.7
+  },
+  {
+   "file": "sprites/ruin_316.png",
+   "nrm": "sprites/ruin_316_n.png",
+   "kind": "ruin",
+   "x": 1697,
+   "y": 628,
+   "w": 40,
+   "h": 46,
+   "foot": [
+    1717.0,
+    665.8
+   ],
+   "sort_y": 665.8
+  },
+  {
+   "file": "sprites/ruin_317.png",
+   "nrm": "sprites/ruin_317_n.png",
+   "kind": "ruin",
+   "x": 1618,
+   "y": 1153,
+   "w": 31,
+   "h": 35,
+   "foot": [
+    1632.7,
+    1180.5
+   ],
+   "sort_y": 1180.5
+  },
+  {
+   "file": "sprites/ruin_318.png",
+   "nrm": "sprites/ruin_318_n.png",
+   "kind": "ruin",
+   "x": 1586,
+   "y": 1132,
+   "w": 40,
+   "h": 32,
+   "foot": [
+    1602.2,
+    1157.5
+   ],
+   "sort_y": 1157.5
+  },
+  {
+   "file": "sprites/ruin_319.png",
+   "nrm": "sprites/ruin_319_n.png",
+   "kind": "ruin",
+   "x": 1267,
+   "y": 639,
+   "w": 37,
+   "h": 36,
+   "foot": [
+    1284.4,
+    667.5
+   ],
+   "sort_y": 667.5
+  },
+  {
+   "file": "sprites/ruin_320.png",
+   "nrm": "sprites/ruin_320_n.png",
+   "kind": "ruin",
+   "x": 883,
+   "y": 811,
+   "w": 35,
+   "h": 34,
+   "foot": [
+    901.7,
+    835.7
+   ],
+   "sort_y": 835.7
   }
  ]
 }
