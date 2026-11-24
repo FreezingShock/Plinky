@@ -33,3 +33,12 @@ Foundation decisions from 21 Nov (the engine, camera, resolution, save) and any 
 - Nathan asked for Qd and Qn capitalised. This reverses the lowercase q from PR #193, which QA raised because a Q in "+100QnVg" read as a 0 at popup size. Only Qd and Qn change (`N_SMALL`, `UNITS`, tests). qg, qq, qe and qi stay lowercase, so compound names now mix cases (a name with Qd next to one with qg). Taste call to revisit: capitalise the rest too, or keep the split.
 - Atlas check (not in engine): Spleen 6x12 capital Q has a one-pixel tail that separates it from 0 at 4x zoom. The tail is the only difference, so PC QA should look at "+100QnVg" and "1.5Qd" in a popup at 1x and 3x.
 - Not run in engine: no Godot in the cloud. CI runs the headless tests.
+
+## 2026-11-24 Camera: follow and free modes, zoom around the walker unless panning
+- Follow is the default and has no offset: the view eases onto the walker. Free mode starts only on a right or middle drag, edge pan, or stick pan, and ends on recentre (Home or C) or when the idle return settles the offset to zero.
+- Wheel and +/- zoom in follow mode keep the view on the walker, so a far cursor never flings it. In free mode they zoom to the cursor (the world point under it stays put). Keyboard zoom anchors at screen centre.
+- Edge pan runs only while the pointer moves, never over GUI. A resting cursor at a window edge or over the HUD clock does not pan. The old drift was 152 texels in 3 s in a headless probe.
+- A window focus loss ends a drag, so a release that happens elsewhere cannot leave the view stuck in drag mode.
+- Reduce motion turns off the same polish layers as Calm camera (look-ahead, punch, drift, jump lift).
+- `WorldCamera.view_rect()` returns the visible rect in zone texels (rounded outward). Streaming reads it instead of the old GraphicsQuality route.
+- Not run in engine: the cloud has no PC, so the button click path and the moving-pointer edge pan are covered by headless tests only. PC QA should check them.
