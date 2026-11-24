@@ -1,1 +1,0 @@
-Larkmoor's flower rows now have five pads each (Dewdrop, Clover, Thistle, Heather, Foxglove; Starbloom keeps six). Every pad has its own art stage from a single flower to a crowned bed, and the rows sit closer together on curves beside the paths.
