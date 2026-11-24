@@ -366,7 +366,7 @@ func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1)
 	if is_hot():
 		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
 		gain = gain.mul(BigNum.from_float(1.0 + _relic_total(RelicDef.Effect.HOT_GAIN)))
-	return gain
+	return gain.mul(BigNum.from_float(config.press_scale))   # a player press pays press_scale of its old reward (see GameConfig)
 
 
 ## Reward a press would give right now, without crit or a double.
@@ -582,7 +582,10 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	var surge: float = relics.surge_mult(press_count + 1) if relics != null else 1.0
 	# Echo Stone and Echo Ring: pressing the same pad as the last real press pays more. Pulses don't count.
 	var echo: float = 1.0 + _relic_total(RelicDef.Effect.REPEAT_GAIN) if allow_pulse and button_id == _last_pad else 1.0
-	var gain: BigNum = press_gain(button_id, crit_mult, presses).mul(BigNum.from_float(surge * echo))
+	# Only player presses carry press_scale (it is already in press_gain). Auto presses and relic pulses divide it back out,
+	# so they pay what they paid before the zone press rate went up.
+	var reward_fix: float = surge * echo * (1.0 if allow_pulse else 1.0 / maxf(config.press_scale, 0.000001))
+	var gain: BigNum = press_gain(button_id, crit_mult, presses).mul(BigNum.from_float(reward_fix))
 	var proc: float = effect_total(&"press_proc")
 	if proc > 0.0:   # a proc: this press may pay out several times over (Twin Petals, Twin Strike)
 		gain = gain.mul(BigNum.from_float(Formulas.proc_mult(rng.randf(), proc, config.press_proc_mult)))
@@ -590,7 +593,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	press_count += 1
 	_open_next_tier(b)
 	run_stats.on_press(crit)
-	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * (1.0 + effect_total(&"mastery_xp") + _relic_total(RelicDef.Effect.MASTERY_XP)))
+	var xp_scale: float = config.press_scale if allow_pulse else 1.0
+	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * xp_scale * (1.0 + effect_total(&"mastery_xp") + _relic_total(RelicDef.Effect.MASTERY_XP)))
 	_check_gates()
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
@@ -663,7 +667,7 @@ func feed_momentum(distance: float) -> void:
 
 ## A pad press (from the game's pad input, not the headless balance sim) nudges momentum; a crit nudges it more.
 func feed_press_momentum(crit: bool) -> void:
-	_add_momentum(config.momentum_per_press + (config.momentum_per_crit if crit else 0.0))
+	_add_momentum((config.momentum_per_press + (config.momentum_per_crit if crit else 0.0)) * config.press_scale)
 
 
 ## Stage index for a momentum value: 0 is idle, then one more for each threshold reached.
@@ -1308,7 +1312,9 @@ func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
 		if n < 1.0:
 			continue
 		var nb: BigNum = BigNum.from_float(n)
-		var reward: BigNum = press_gain_preview(pad.id).mul(nb)
+		# Tending presses are player-rate presses (press_scale is in press_gain), but offline_tend_fraction already
+		# carries the matching 1/8, so the reward divides the scale back out to pay what it paid before.
+		var reward: BigNum = press_gain_preview(pad.id).mul(nb).mul(BigNum.from_float(1.0 / maxf(config.press_scale, 0.000001)))
 		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
 		var paid: BigNum = cost.mul(nb)
 		last_offline["spent"][pad.cost_stat] = (last_offline["spent"][pad.cost_stat] as BigNum).add(paid) if (last_offline["spent"] as Dictionary).has(pad.cost_stat) else paid

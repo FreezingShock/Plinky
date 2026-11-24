@@ -42,6 +42,28 @@ func run(t: Object) -> void:
 	first.start(interval)
 	t.eq(_count(first, interval - 0.1, true, interval), 0, "no repeat before one interval after the click")
 
+	# Holding is a real press: the held clock presses the sim as often as a standing walker would.
+	var sim2: Sim = t.make_sim()
+	sim2.stats[&"sunlight"] = BigNum.from_float(1e30)   # enough stock to press all the way through
+	var rate_interval: float = sim2.press_interval()
+	t.near(rate_interval, 0.25, 1e-6, "zone 1 presses four times a second (standing and holding)")
+	var clock := PadPressTimer.new()
+	clock.start(rate_interval)
+	var sim_presses: int = 0
+	for i: int in int(round(10.0 / DT)):
+		if clock.step(DT, true, rate_interval) and sim2.try_press(&"sprout_1"):
+			sim_presses += 1
+	t.ok(absi(sim_presses - 40) <= 1, "a held pad presses the sim about 40 times in 10 s (got %d)" % sim_presses)
+
+	# A player press pays press_scale of its old reward. Auto presses and pulses pay the full reward (checked in sim tests).
+	var original_scale: float = sim2.config.press_scale   # the config resource may be shared, so put it back
+	sim2.config.press_scale = 1.0
+	var full: float = sim2.press_gain(&"sprout_1").to_float()
+	sim2.config.press_scale = 0.125
+	var scaled: float = sim2.press_gain(&"sprout_1").to_float()
+	sim2.config.press_scale = original_scale
+	t.near(scaled, full * 0.125, full * 1e-6 + 1e-9, "a press pays press_scale of its reward")
+
 	# Off the pad, nothing fires, and the arrival press is immediate again.
 	var away := PadPressTimer.new()
 	away.arm()

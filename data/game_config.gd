@@ -18,6 +18,9 @@ extends Resource
 @export var offline_rate_cap: float = 0.75
 @export var offline_slices: int = 1
 @export var offline_tend_fraction: float = 0.1
+## Player presses come 8x as often (zone press rate 4 a second, was 0.5), so each one pays this share of its old reward,
+## and momentum and mastery XP from a press are scaled the same. Income per second is unchanged. Not used for auto presses or tending.
+@export var press_scale: float = 1.0
 ## Relic drop rolls run at this fraction of the awake rate (same chance, luck and pity rules), at most
 ## offline_relic_max_drops per return. 0 turns offline drops off.
 @export var offline_relic_roll_fraction: float = 0.25
