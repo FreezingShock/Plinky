@@ -361,6 +361,7 @@ func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1)
 	if b == null:
 		return BigNum.zero()
 	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
+	gain = gain.mul(BigNum.from_float(zone_pad_mult(b.zone)))
 	if relics != null:
 		gain = gain.mul(BigNum.from_float(relics.zone_mult(b.zone)))
 	if is_hot():
@@ -487,6 +488,16 @@ func luck_level() -> int:
 ## Multiplier on every press reward from the Pad yield attribute.
 func pad_yield_mult() -> float:
 	return 1.0 + effect_total(&"pad_yield") + reset_bonus()
+
+
+## Multiplier on the presses of one zone's pads from its reset's capstone gift (ZoneResetDef.crown_effect). A Bloom Crown
+## doubles the meadow and Larkmoor and nothing else; 1.0 while none is bought.
+func zone_pad_mult(z_id: StringName) -> float:
+	var m: float = 1.0
+	for r: ZoneResetDef in reset_defs.values():
+		if r.crown_effect != &"" and r.zones.has(String(z_id)):
+			m += effect_total(r.crown_effect)
+	return m
 
 
 ## True once the player has rebirthed enough times for this attribute to be bought. Levels bought stay when saves load.
