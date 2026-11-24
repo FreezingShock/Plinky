@@ -1,1 +1,0 @@
-The meadow feels cozier: a cottage with a smoking chimney and lit windows, benches, a swing, a picnic rug, a campfire, a well, a fountain, a water wheel on a brook, wheat that rolls with gusts of wind, and firefly swarms gathering by the water at dusk.
