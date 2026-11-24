@@ -9,7 +9,6 @@ extends Control
 ## title's time of day, loads the chosen slot's zone art (the real stall on Play) and labels that step by name.
 
 const GAME_SCENE: String = "res://main.tscn"
-const GARDEN_BAKE_MS: float = 3.0   ## milliseconds a frame spent baking the game's flower atlas on the loading screen
 const MEADOW_SCENE: String = "res://world/meadow3d_scene.tscn"
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
 const WALKER_SHEET_PATH: String = "res://assets/brand/walker-press-sheet-1x.png"
@@ -251,7 +250,9 @@ func _process(delta: float) -> void:
 	_animate_tips(delta)
 	if _phase == Phase.LOADING:
 		_update_loading(delta)
-	GardenArt.prepare_slice(GARDEN_BAKE_MS)   # the flower atlas, a few milliseconds a frame until it exists
+	# The flower atlas bakes a slice a frame until it exists. Once the loader is done, a bigger slice finishes it, and the
+	# leave waits for it (below), so the game never bakes the rest on its first frame.
+	GardenArt.prepare_slice(GardenArt.BAKE_CATCHUP_MS if _loader.is_finished() else GardenArt.BAKE_SLICE_MS)
 
 
 func _update_loading(delta: float) -> void:
@@ -271,7 +272,7 @@ func _update_loading(delta: float) -> void:
 		_status.text = status_line("Opening the gate", _shown)
 	# Stays put while the Update Log is open, so reading it is never cut short.
 	# Also waits while a swap is still revealing this screen, so the leave is never dropped mid-reveal.
-	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= _min_show and not _log.is_open() and not SceneSwap.is_busy():
+	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= _min_show and not _log.is_open() and not SceneSwap.is_busy() and GardenArt.is_ready():
 		_start_leave()
 
 
