@@ -148,3 +148,11 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** the two Thistle pads in Gatehouse Green, at (868,646) and (912,624), sat behind an oak on main. The walk mask does not catch a sprite standing in front of a pad.
 - **What:** the Thistle row moved to centre (864,642), so its pads sit at (820,664), (864,642) and (908,620). Every Larkmoor pad now passes the sprite occlusion check on the regenerated placements, and every footprint is walkable.
 - Not run in-engine. Please check the Thistle row on a PC capture.
+## 2026-11-24: Larkmoor paths, gates, bridge and connectivity (Larkmoor slice 1)
+- **Brief (Nathan, via coordinator):** no path may lead nowhere, structures need a purpose, bridges should be wider and easy to step onto.
+- **Connectivity:** `tools/art/larkmoor_layout.py` `dead_ends()` checks that every path end reaches a gate, pad, landmark or another path within 30 texels. `gen_larkmoor.py` refuses to build while it fails. The north-east path ended in the open grass; it now ends at the Great Lantern.
+- **Structures:** the seven standing stones are one height with no tilt, so the ring reads as built, and the cairn sits at its centre. The gatehouse tower stands beside the arrival gate. The Emberwatch tower stands beside the Ember gate, on its wall.
+- **Gates:** `make_gateway(style)`. The arrival arch is timber with a flower garland on the lintel. The Ember gate is stone with ember bloom in the lintel. Both stay baked props, not the TexelGate art, because the way-back arch in zone 2 depends on the art key.
+- **Bridge and jetty:** the stream bridge is 13 texels wide and the lake jetty 8 wide. Both walk strips are flared at the ends (`_deck_strip`) so the entry is easy to find. Open lake water stays unwalkable.
+- **Pads:** unchanged. The anchors match main exactly.
+- **Not run in the cloud:** the look in-engine, and the generator's output has not been seen in Godot.
