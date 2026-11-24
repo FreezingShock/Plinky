@@ -28,6 +28,7 @@ var _ov_mat: ShaderMaterial          # the same shader, clipped to the pad diamo
 var _overlay: Node2D                 # z 1: above the pad plates (z 0). Holds a clipped copy of every shadow that can reach a pad
 var _pads: Array[Vector2] = []
 const PAD_REACH: float = 220.0       # a caster farther than this from every pad cannot shade one
+var pad_reach: float = PAD_REACH    # per scene: a smaller reach means fewer overlay quads (the quarry sets it lower; each overlay is a node)
 var _items: Array[Dictionary] = []   # {sprite: Sprite2D, foot: Vector2, w: float, h: float}
 var _blob: Sprite2D
 var _walker: Node2D
@@ -115,7 +116,7 @@ func _is_blob(it: Dictionary) -> bool:
 
 func _near_pad(foot: Vector2) -> bool:
 	for p: Vector2 in _pads:
-		if absf(foot.x - p.x) < PAD_REACH and absf(foot.y - p.y) * 2.0 < PAD_REACH:
+		if absf(foot.x - p.x) < pad_reach and absf(foot.y - p.y) * 2.0 < pad_reach:
 			return true
 	return false
 

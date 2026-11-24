@@ -18,6 +18,9 @@ var mask_offset: Vector2i = Vector2i.ZERO                  ## walkable.png and g
 
 var _data: Dictionary = {}
 var _sky: SkyCycle
+## Reach of a cast shadow toward a pad (SkyShadows.pad_reach). 90 keeps the shadows that fall on pads and drops the
+## overlay quads for casters far from every pad: 132 overlays at the default 220, 48 at 120, 28 at 90 (node ceiling).
+const SHADOW_PAD_REACH: float = 90.0
 var _shadows: SkyShadows
 var _light: QuarryLight
 
@@ -90,6 +93,7 @@ func _ready() -> void:
 func _add_sky(ground_size: Array) -> void:
 	_shadows = SkyShadows.new()
 	_shadows.name = "Shadows"
+	_shadows.pad_reach = SHADOW_PAD_REACH   # set before any caster: the quarry's pads sit far enough apart for a tighter reach
 	add_child(_shadows)   # z 0, after the ground and lava: above them, below every prop and the walker
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
