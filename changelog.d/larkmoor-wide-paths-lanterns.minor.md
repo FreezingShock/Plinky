@@ -1,0 +1,1 @@
+Larkmoor paths are about 1.7 times wider, with soft ragged edges that fade into the grass. Every ordinary lantern is the same size, and each lamp head glows warm at night, with a brighter pool of light around it.

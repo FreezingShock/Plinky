@@ -1076,7 +1076,7 @@
    "x": 753,
    "y": 845,
    "w": 46,
-   "h": 39,
+   "h": 40,
    "foot": [
     773.4,
     885.2
@@ -1734,7 +1734,7 @@
    "x": 2020,
    "y": 546,
    "w": 17,
-   "h": 45,
+   "h": 46,
    "foot": [
     2025.5,
     589.3
@@ -1888,7 +1888,7 @@
    "x": 2243,
    "y": 653,
    "w": 27,
-   "h": 45,
+   "h": 46,
    "foot": [
     2257.6,
     695.0
@@ -2363,7 +2363,7 @@
    "kind": "pine",
    "x": 1845,
    "y": 479,
-   "w": 49,
+   "w": 50,
    "h": 70,
    "foot": [
     1869.9,
@@ -2375,10 +2375,10 @@
    "file": "sprites/pine_161.png",
    "nrm": "sprites/pine_161_n.png",
    "kind": "pine",
-   "x": 1900,
+   "x": 1899,
    "y": 491,
-   "w": 43,
-   "h": 63,
+   "w": 44,
+   "h": 64,
    "foot": [
     1919.6,
     549.7
@@ -2529,9 +2529,9 @@
    "file": "sprites/bush_173.png",
    "nrm": "sprites/bush_173_n.png",
    "kind": "bush",
-   "x": 1477,
+   "x": 1478,
    "y": 1139,
-   "w": 20,
+   "w": 19,
    "h": 17,
    "foot": [
     1483.9,
@@ -2546,7 +2546,7 @@
    "x": 1472,
    "y": 1102,
    "w": 21,
-   "h": 18,
+   "h": 16,
    "foot": [
     1481.3,
     1113.8
@@ -2698,9 +2698,9 @@
    "nrm": "sprites/bush_186_n.png",
    "kind": "bush",
    "x": 1414,
-   "y": 1035,
+   "y": 1036,
    "w": 23,
-   "h": 21,
+   "h": 20,
    "foot": [
     1424.0,
     1048.9
@@ -2711,9 +2711,9 @@
    "file": "sprites/bush_187.png",
    "nrm": "sprites/bush_187_n.png",
    "kind": "bush",
-   "x": 1863,
+   "x": 1862,
    "y": 1171,
-   "w": 29,
+   "w": 30,
    "h": 17,
    "foot": [
     1875.6,
@@ -2851,9 +2851,9 @@
    "file": "sprites/bush_197.png",
    "nrm": "sprites/bush_197_n.png",
    "kind": "bush",
-   "x": 1798,
+   "x": 1797,
    "y": 1174,
-   "w": 23,
+   "w": 24,
    "h": 16,
    "foot": [
     1807.9,
@@ -2991,9 +2991,9 @@
    "file": "sprites/bush_208.png",
    "nrm": "sprites/bush_208_n.png",
    "kind": "bush",
-   "x": 1745,
+   "x": 1746,
    "y": 1200,
-   "w": 26,
+   "w": 24,
    "h": 18,
    "foot": [
     1759.5,
@@ -3454,9 +3454,9 @@
    "nrm": "sprites/bush_241_n.png",
    "kind": "bush",
    "x": 1720,
-   "y": 773,
+   "y": 774,
    "w": 28,
-   "h": 17,
+   "h": 16,
    "foot": [
     1734.2,
     788.5
@@ -3761,9 +3761,9 @@
    "file": "sprites/rock_263.png",
    "nrm": "sprites/rock_263_n.png",
    "kind": "rock",
-   "x": 1238,
+   "x": 1244,
    "y": 551,
-   "w": 33,
+   "w": 27,
    "h": 18,
    "foot": [
     1253.9,
@@ -3789,9 +3789,9 @@
    "file": "sprites/rock_265.png",
    "nrm": "sprites/rock_265_n.png",
    "kind": "rock",
-   "x": 1179,
+   "x": 1178,
    "y": 579,
-   "w": 31,
+   "w": 32,
    "h": 17,
    "foot": [
     1194.7,
@@ -3820,7 +3820,7 @@
    "x": 1227,
    "y": 628,
    "w": 22,
-   "h": 20,
+   "h": 19,
    "foot": [
     1236.6,
     641.1
@@ -3847,7 +3847,7 @@
    "kind": "rock",
    "x": 1146,
    "y": 564,
-   "w": 32,
+   "w": 33,
    "h": 18,
    "foot": [
     1161.8,
@@ -3890,7 +3890,7 @@
    "x": 2319,
    "y": 756,
    "w": 24,
-   "h": 16,
+   "h": 11,
    "foot": [
     2330.1,
     766.6
@@ -4001,7 +4001,7 @@
    "kind": "rock",
    "x": 1496,
    "y": 701,
-   "w": 20,
+   "w": 22,
    "h": 19,
    "foot": [
     1506.2,
@@ -4041,9 +4041,9 @@
    "file": "sprites/rock_283.png",
    "nrm": "sprites/rock_283_n.png",
    "kind": "rock",
-   "x": 1559,
+   "x": 1560,
    "y": 693,
-   "w": 24,
+   "w": 23,
    "h": 19,
    "foot": [
     1570.6,
@@ -4085,7 +4085,7 @@
    "kind": "rock",
    "x": 1433,
    "y": 701,
-   "w": 30,
+   "w": 28,
    "h": 20,
    "foot": [
     1447.0,
@@ -4097,9 +4097,9 @@
    "file": "sprites/rock_287.png",
    "nrm": "sprites/rock_287_n.png",
    "kind": "rock",
-   "x": 1559,
+   "x": 1560,
    "y": 670,
-   "w": 25,
+   "w": 24,
    "h": 19,
    "foot": [
     1572.0,
@@ -4113,7 +4113,7 @@
    "kind": "rock",
    "x": 1501,
    "y": 684,
-   "w": 23,
+   "w": 24,
    "h": 19,
    "foot": [
     1513.3,
@@ -4503,351 +4503,337 @@
    "file": "sprites/lantern_318.png",
    "nrm": "sprites/lantern_318_n.png",
    "kind": "lantern",
-   "x": 1528,
-   "y": 1335,
-   "w": 15,
-   "h": 26,
+   "x": 1530,
+   "y": 1334,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1535.0,
-    1359.9
+    1539.0,
+    1360.1
    ],
-   "sort_y": 1359.9
+   "sort_y": 1360.1
   },
   {
    "file": "sprites/lantern_319.png",
    "nrm": "sprites/lantern_319_n.png",
    "kind": "lantern",
-   "x": 1498,
-   "y": 1186,
-   "w": 15,
-   "h": 25,
+   "x": 1500,
+   "y": 1184,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1505.2,
-    1210.6
+    1509.1,
+    1210.0
    ],
-   "sort_y": 1210.6
+   "sort_y": 1210.0
   },
   {
    "file": "sprites/lantern_320.png",
    "nrm": "sprites/lantern_320_n.png",
    "kind": "lantern",
-   "x": 1538,
-   "y": 1052,
-   "w": 15,
-   "h": 25,
+   "x": 1539,
+   "y": 1051,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1544.8,
-    1076.3
+    1548.5,
+    1078.0
    ],
-   "sort_y": 1076.3
+   "sort_y": 1078.0
   },
   {
    "file": "sprites/lantern_321.png",
    "nrm": "sprites/lantern_321_n.png",
    "kind": "lantern",
-   "x": 1536,
-   "y": 896,
-   "w": 15,
-   "h": 17,
+   "x": 1501,
+   "y": 903,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1543.3,
-    920.7
+    1510.3,
+    929.2
    ],
-   "sort_y": 920.7
+   "sort_y": 929.2
   },
   {
    "file": "sprites/lantern_322.png",
    "nrm": "sprites/lantern_322_n.png",
    "kind": "lantern",
-   "x": 1519,
-   "y": 756,
-   "w": 15,
-   "h": 25,
+   "x": 1520,
+   "y": 754,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1525.9,
-    780.3
+    1529.8,
+    780.9
    ],
-   "sort_y": 780.3
+   "sort_y": 780.9
   },
   {
    "file": "sprites/lantern_323.png",
    "nrm": "sprites/lantern_323_n.png",
    "kind": "lantern",
-   "x": 1542,
-   "y": 607,
-   "w": 15,
-   "h": 23,
+   "x": 1543,
+   "y": 605,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1548.6,
-    631.6
+    1552.5,
+    631.1
    ],
-   "sort_y": 631.6
+   "sort_y": 631.1
   },
   {
    "file": "sprites/lantern_324.png",
    "nrm": "sprites/lantern_324_n.png",
    "kind": "lantern",
-   "x": 1423,
-   "y": 1238,
-   "w": 15,
-   "h": 25,
+   "x": 1421,
+   "y": 1232,
+   "w": 19,
+   "h": 29,
    "foot": [
     1430.0,
-    1262.3
+    1258.4
    ],
-   "sort_y": 1262.3
+   "sort_y": 1258.4
   },
   {
    "file": "sprites/lantern_325.png",
    "nrm": "sprites/lantern_325_n.png",
    "kind": "lantern",
-   "x": 1277,
-   "y": 1218,
-   "w": 15,
-   "h": 25,
+   "x": 1275,
+   "y": 1213,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1284.3,
-    1243.0
+    1284.9,
+    1239.1
    ],
-   "sort_y": 1243.0
+   "sort_y": 1239.1
   },
   {
    "file": "sprites/lantern_326.png",
    "nrm": "sprites/lantern_326_n.png",
    "kind": "lantern",
-   "x": 1122,
-   "y": 1264,
-   "w": 15,
-   "h": 25,
+   "x": 1118,
+   "y": 1265,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1128.9,
-    1288.3
+    1127.2,
+    1292.0
    ],
-   "sort_y": 1288.3
+   "sort_y": 1292.0
   },
   {
    "file": "sprites/lantern_327.png",
    "nrm": "sprites/lantern_327_n.png",
    "kind": "lantern",
-   "x": 1020,
-   "y": 1162,
-   "w": 15,
-   "h": 25,
+   "x": 1021,
+   "y": 1158,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1026.8,
-    1186.8
+    1030.1,
+    1184.7
    ],
-   "sort_y": 1186.8
+   "sort_y": 1184.7
   },
   {
    "file": "sprites/lantern_328.png",
    "nrm": "sprites/lantern_328_n.png",
    "kind": "lantern",
-   "x": 1245,
-   "y": 1053,
-   "w": 15,
-   "h": 26,
+   "x": 1244,
+   "y": 1055,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1252.3,
-    1077.5
+    1253.4,
+    1081.4
    ],
-   "sort_y": 1077.5
+   "sort_y": 1081.4
   },
   {
    "file": "sprites/lantern_329.png",
    "nrm": "sprites/lantern_329_n.png",
    "kind": "lantern",
-   "x": 1385,
-   "y": 1021,
-   "w": 15,
-   "h": 26,
+   "x": 1383,
+   "y": 1024,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1392.3,
-    1045.8
+    1392.2,
+    1050.2
    ],
-   "sort_y": 1045.8
+   "sort_y": 1050.2
   },
   {
    "file": "sprites/lantern_330.png",
    "nrm": "sprites/lantern_330_n.png",
    "kind": "lantern",
-   "x": 1548,
-   "y": 1197,
-   "w": 15,
-   "h": 25,
+   "x": 1545,
+   "y": 1199,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1555.3,
-    1221.3
+    1554.7,
+    1225.5
    ],
-   "sort_y": 1221.3
+   "sort_y": 1225.5
   },
   {
    "file": "sprites/lantern_331.png",
    "nrm": "sprites/lantern_331_n.png",
    "kind": "lantern",
-   "x": 1701,
-   "y": 1204,
-   "w": 15,
-   "h": 26,
+   "x": 1836,
+   "y": 1136,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1708.2,
-    1228.5
+    1845.5,
+    1162.4
    ],
-   "sort_y": 1228.5
+   "sort_y": 1162.4
   },
   {
    "file": "sprites/lantern_332.png",
    "nrm": "sprites/lantern_332_n.png",
    "kind": "lantern",
-   "x": 1840,
-   "y": 1142,
-   "w": 15,
-   "h": 20,
+   "x": 1991,
+   "y": 1134,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1846.8,
-    1166.3
+    2000.0,
+    1160.7
    ],
-   "sort_y": 1166.3
+   "sort_y": 1160.7
   },
   {
    "file": "sprites/lantern_333.png",
    "nrm": "sprites/lantern_333_n.png",
    "kind": "lantern",
-   "x": 1992,
-   "y": 1132,
-   "w": 15,
-   "h": 26,
+   "x": 2138,
+   "y": 1101,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1999.2,
-    1156.9
+    2147.1,
+    1127.6
    ],
-   "sort_y": 1156.9
+   "sort_y": 1127.6
   },
   {
    "file": "sprites/lantern_334.png",
    "nrm": "sprites/lantern_334_n.png",
    "kind": "lantern",
-   "x": 2139,
-   "y": 1098,
-   "w": 15,
-   "h": 26,
+   "x": 2110,
+   "y": 991,
+   "w": 19,
+   "h": 29,
    "foot": [
-    2146.1,
-    1123.2
+    2119.5,
+    1018.0
    ],
-   "sort_y": 1123.2
+   "sort_y": 1018.0
   },
   {
    "file": "sprites/lantern_335.png",
    "nrm": "sprites/lantern_335_n.png",
    "kind": "lantern",
-   "x": 2127,
-   "y": 1005,
-   "w": 15,
-   "h": 20,
+   "x": 1962,
+   "y": 950,
+   "w": 19,
+   "h": 29,
    "foot": [
-    2134.5,
-    1029.7
+    1971.8,
+    977.0
    ],
-   "sort_y": 1029.7
+   "sort_y": 977.0
   },
   {
    "file": "sprites/lantern_336.png",
    "nrm": "sprites/lantern_336_n.png",
    "kind": "lantern",
-   "x": 1980,
-   "y": 959,
-   "w": 15,
-   "h": 25,
+   "x": 1813,
+   "y": 935,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1986.8,
-    983.4
+    1822.7,
+    961.6
    ],
-   "sort_y": 983.4
+   "sort_y": 961.6
   },
   {
    "file": "sprites/lantern_337.png",
    "nrm": "sprites/lantern_337_n.png",
    "kind": "lantern",
-   "x": 1828,
-   "y": 942,
-   "w": 15,
-   "h": 25,
+   "x": 1662,
+   "y": 928,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1835.3,
-    966.5
+    1671.4,
+    954.4
    ],
-   "sort_y": 966.5
+   "sort_y": 954.4
   },
   {
    "file": "sprites/lantern_338.png",
    "nrm": "sprites/lantern_338_n.png",
    "kind": "lantern",
-   "x": 1677,
-   "y": 934,
-   "w": 15,
-   "h": 26,
+   "x": 1199,
+   "y": 979,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1684.4,
-    958.9
+    1208.9,
+    1005.4
    ],
-   "sort_y": 958.9
+   "sort_y": 1005.4
   },
   {
    "file": "sprites/lantern_339.png",
    "nrm": "sprites/lantern_339_n.png",
    "kind": "lantern",
-   "x": 1198,
-   "y": 981,
-   "w": 15,
-   "h": 24,
+   "x": 1103,
+   "y": 867,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1204.9,
-    1005.9
+    1112.5,
+    893.5
    ],
-   "sort_y": 1005.9
+   "sort_y": 893.5
   },
   {
    "file": "sprites/lantern_340.png",
    "nrm": "sprites/lantern_340_n.png",
    "kind": "lantern",
-   "x": 1104,
-   "y": 873,
-   "w": 15,
-   "h": 22,
+   "x": 953,
+   "y": 835,
+   "w": 19,
+   "h": 29,
    "foot": [
-    1111.1,
-    897.4
+    962.7,
+    862.0
    ],
-   "sort_y": 897.4
+   "sort_y": 862.0
   },
   {
    "file": "sprites/lantern_341.png",
    "nrm": "sprites/lantern_341_n.png",
    "kind": "lantern",
-   "x": 955,
-   "y": 841,
-   "w": 15,
-   "h": 25,
+   "x": 799,
+   "y": 839,
+   "w": 19,
+   "h": 29,
    "foot": [
-    962.0,
-    865.9
+    808.9,
+    865.5
    ],
-   "sort_y": 865.9
-  },
-  {
-   "file": "sprites/lantern_342.png",
-   "nrm": "sprites/lantern_342_n.png",
-   "kind": "lantern",
-   "x": 802,
-   "y": 845,
-   "w": 15,
-   "h": 10,
-   "foot": [
-    809.1,
-    869.5
-   ],
-   "sort_y": 869.5
+   "sort_y": 865.5
   }
  ]
 }
