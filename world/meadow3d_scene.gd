@@ -142,7 +142,7 @@ func _add_flower_glow() -> void:
 	_flower_glow.name = "FlowerGlow"
 	_flower_glow.z_index = 5
 	add_child(_flower_glow)
-	_flower_glow.setup(_garden_flowers)
+	_flower_glow.setup(_garden_flowers, FlowerGlow.pad_centres(_data.anchors))
 
 
 ## The night level comes from the sky every frame; the glow only changes its alpha, so nothing is redrawn.
