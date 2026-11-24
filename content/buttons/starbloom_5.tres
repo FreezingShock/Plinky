@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ButtonDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/button_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"starbloom_5"
+rarity = &"mythic"
+zone = &"larkmoor"
+row = &"starbloom"
+row_index = 4
+cost_stat = &"foxglove"
+base_cost = 25000
+cost_growth = 10.0
+reward_stat = &"starbloom"
+reward = 4096

@@ -159,6 +159,29 @@ func test_index_tips(t: Object) -> void:
 	t.ok(all_click, "every index card ends with a yellow Click to open! line")
 	t.ok(all_named, "every index card is titled with its name and has a description")
 	t.ok(TipText.CLICK.r > 0.9 and TipText.CLICK.g > 0.8 and TipText.CLICK.b < 0.4, "the call to action is yellow")
+	# A currency wears the rarity of the pads that pay it, under its name, as the pads' own tag does. Sunlight is the starter.
+	var want: Dictionary = {&"sunlight": "STARTER STATISTIC", &"dewdrop": "COMMON STATISTIC", &"clover": "UNCOMMON STATISTIC",
+		&"thistle": "RARE STATISTIC", &"heather": "EPIC STATISTIC", &"foxglove": "LEGENDARY STATISTIC", &"starbloom": "MYTHIC STATISTIC"}
+	var seen_sunlight: bool = false
+	var tags_ok: bool = true
+	for r: Variant in StatIndex.stats(sim):
+		var row: Dictionary = r as Dictionary
+		var sid: StringName = row["id"]
+		if not want.has(sid):
+			continue
+		seen_sunlight = seen_sunlight or sid == &"sunlight"
+		var kick: Array = TipText.index_row(row)["kicker"] as Array
+		tags_ok = tags_ok and not kick.is_empty() and str((kick[0] as Dictionary)["t"]) == str(want[sid])
+	t.ok(seen_sunlight and tags_ok, "each pad-paid currency shows its rarity under the name, Sunlight as STARTER STATISTIC")
+	t.eq(StatIndex.rarity_of_stat(sim, &"seeds"), "", "a currency no pad touches (Seeds) gets no rarity line")
+	t.eq(StatIndex.rarity_of_stat(sim, &"embers"), "common", "Embers, spent by the common Cinder pads, reads Common")
+	var pay_rarity: Dictionary = {}
+	var one_rarity: bool = true
+	for bid: StringName in sim.button_defs:
+		var pb: ButtonDef = sim.button_defs[bid] as ButtonDef
+		one_rarity = one_rarity and (not pay_rarity.has(pb.reward_stat) or pay_rarity[pb.reward_stat] == pb.rarity)
+		pay_rarity[pb.reward_stat] = pb.rarity
+	t.ok(one_rarity, "every pad that pays a currency has the same rarity, so the currency has one")
 	var attrs: Array = StatIndex.attributes(sim)
 	if not attrs.is_empty():
 		t.ok(attrs[0].has("can") and attrs[0].has("currency_name") and attrs[0].has("now"), "attribute rows carry their level, effect and cost")

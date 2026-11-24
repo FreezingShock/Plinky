@@ -67,6 +67,8 @@ var auto_press_active: bool = false
 var _auto_acc: float = 0.0
 var _wild_acc: float = 0.0
 var reset_counts: Dictionary = {}    # reset id -> times done (ZoneResetDef); each adds its bonus to every pad reward
+## Sealed caches: pricing, pulls made since each reset, and the roll. Defs load from content/sealed (ContentLoader).
+var sealed: SealedPulls = SealedPulls.new()
 var rebirth_count: int = 0   # rebirth actions done; unlocks relic slots
 ## While a relic pulse presses a neighbour, the pad that started it (else &""). Read inside the button_pressed handler so
 ## the world can draw the pulse differently. pulse_order counts the neighbours hit by this pulse, from 0.
@@ -201,6 +203,7 @@ func new_game() -> void:
 	press_count = 0
 	rebirth_count = 0
 	reset_counts.clear()
+	sealed.clear()
 	relic_drops = 0
 	mastery.clear()
 	run_stats.clear()
@@ -377,6 +380,7 @@ func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1)
 	if b == null:
 		return BigNum.zero()
 	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
+	gain = gain.mul(BigNum.from_float(zone_pad_mult(b.zone)))
 	if relics != null:
 		gain = gain.mul(BigNum.from_float(relics.zone_mult(b.zone)))
 	if is_hot():
@@ -503,6 +507,16 @@ func luck_level() -> int:
 ## Multiplier on every press reward from the Pad yield attribute.
 func pad_yield_mult() -> float:
 	return 1.0 + effect_total(&"pad_yield") + reset_bonus()
+
+
+## Multiplier on the presses of one zone's pads from its reset's capstone gift (ZoneResetDef.crown_effect). A Bloom Crown
+## doubles the meadow and Larkmoor and nothing else; 1.0 while none is bought.
+func zone_pad_mult(z_id: StringName) -> float:
+	var m: float = 1.0
+	for r: ZoneResetDef in reset_defs.values():
+		if r.crown_effect != &"" and r.zones.has(String(z_id)):
+			m += effect_total(r.crown_effect)
+	return m
 
 
 ## True once the player has rebirthed enough times for this attribute to be bought. Levels bought stay when saves load.
@@ -1082,6 +1096,7 @@ func try_reset(reset_id: StringName) -> bool:
 		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
 	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
 	reset_counts[reset_id] = reset_count(reset_id) + 1
+	sealed.on_reset(reset_id)   # this reset's caches start cheap again
 	rebirth_count += 1   # every zone reset counts toward the relic slots (5 and 20)
 	relics.set_rebirths(rebirth_count)
 	_set_heat(0.0)
@@ -1089,6 +1104,29 @@ func try_reset(reset_id: StringName) -> bool:
 	run_stats.mark_rebirth()
 	reset_done.emit(reset_id, gained)
 	return true
+
+
+## Buys one pull from a sealed cache with its reset's currency and grants the relic it rolls, which returns its id.
+## Returns &"" (and spends nothing) when the cache is unknown, its reset has not been used yet, its pulls for this reset
+## are used up, the pool is empty, or the currency is short.
+func try_sealed_pull(cache_id: StringName) -> StringName:
+	var def: SealedPullDef = sealed.def_of(cache_id)
+	if def == null or reset_count(def.reset_id) <= 0 or sealed.remaining(def) <= 0:
+		return &""
+	var r: ZoneResetDef = reset_defs.get(def.reset_id) as ZoneResetDef
+	if r == null:
+		return &""
+	var price: BigNum = sealed.cost(def)
+	if get_stat(r.currency).lt(price):
+		return &""
+	var id: StringName = sealed.roll(rng, relics, def.min_rank)
+	if id == &"":
+		return &""
+	_set_stat(r.currency, get_stat(r.currency).sub(price).max_zero())
+	sealed.record(def)
+	relics.add_relic(id)
+	_flush()
+	return id
 
 
 ## True once any zone reset has been done or could be done now (opens the Upgrades menu).
@@ -1420,6 +1458,7 @@ func to_dict() -> Dictionary:
 		"press_count": press_count,
 		"rebirth_count": rebirth_count,
 		"reset_counts": reset_counts.duplicate(),
+		"sealed_pulls": sealed.to_dict(),
 		"relic_drops": relic_drops,
 		"last_drop_at": _last_drop_at,
 		"ui_flags": ui_flags.duplicate(true),
@@ -1491,6 +1530,9 @@ func from_dict(d_in: Dictionary) -> bool:
 				reset_counts[StringName(str(k))] = maxi(0, int((rc as Dictionary)[k]))
 	if int(d.get("bloom_count", 0)) > 0 and reset_defs.has(&"bloom") and reset_count(&"bloom") == 0:   # saves from 0.31 kept the count on its own
 		reset_counts[&"bloom"] = int(d.get("bloom_count", 0))
+	var sp: Variant = d.get("sealed_pulls", {})
+	if sp is Dictionary:
+		sealed.from_dict(sp as Dictionary)
 	relic_drops = int(d.get("relic_drops", 0))
 	_last_drop_at = float(d.get("last_drop_at", play_seconds))
 	var uf: Variant = d.get("ui_flags", {})

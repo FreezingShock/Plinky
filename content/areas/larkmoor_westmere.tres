@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/area_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"westmere"
+zone = &"larkmoor"
+display_name = "Westmere"
+order = 7
+icon = "lake"
+theme_role = 7
+blurb = "The west bank of the lake, reached by the trail north of the water. Three more Starbloom pads, paid in Starbloom Petals and costing Foxglove Bells. The Starbloom row runs on here, and each pad costs far more than the last."
+pad_buttons = PackedStringArray("starbloom_4", "starbloom_5", "starbloom_6")

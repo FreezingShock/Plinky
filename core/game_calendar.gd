@@ -66,6 +66,12 @@ func skip_days(days: float) -> void:
 	_emit_changes()
 
 
+## Set the time of day (0 midnight .. 1) and keep the current day. Dev console `time set`.
+func set_day_fraction(f: float) -> void:
+	elapsed_days = floorf(elapsed_days) + clampf(f, 0.0, 0.999999)
+	_emit_changes()
+
+
 ## Jump to the start (06:00) of the given season, same year or the next one (dev console).
 func jump_to_season(season_index: int) -> void:
 	var s: int = clampi(season_index, 0, SEASONS - 1)

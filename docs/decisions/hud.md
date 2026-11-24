@@ -396,6 +396,8 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Reasoning: PC QA found the quarry's "Iron Ore" caption (dark green) hard to read on dark rock. The lift keeps each stat's hue; on the mid quarry rock (8a3a2e) Iron Ore goes from 2.96:1 to 4.9:1, and a test holds every stat caption at 4:1 or better.
 - Not verified in-engine: PC QA should check "Iron Ore" in the quarry at 1x and 3x.
 
+## 2026-11-24: Dev console is a floating window with tab completion
+A draggable, resizable window (not a full-width strip) so the game stays visible behind it, with the input focused on open. Commands are one table in core/dev_commands.gd, so help, Tab and the tests read the same list; the window only adds the node-level commands and layout. Errors use the accent colour with a "!" because the palette has no red role.
 ## 2026-11-24: Welcome Back as a gallery
 - **Model and view split:** `core/welcome_back.gd` builds the four sections and every number as data (pure, tested in `tests/test_welcome_back.gd`). `ui/welcome_card.gd` and `ui/welcome_tile.gd` only draw it. The HUD's `_on_offline` now opens the card instead of a text ModalCard.
 - **Tiles:** 46 px, seven across, so the card is 334 px wide at 640x360 and a full return of about 25 tiles stays under the frame height. Outline is the tier's rarity for currency and the relic's rarity for finds. Amounts sit at the bottom, green for gains and red for spends, through `StatStyle`.
@@ -410,3 +412,38 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Height:** the grid grows with its content up to 190 px, then scrolls. This is the 25+ tile case: the card never leaves the frame, whatever the count.
 - **Tooltips:** tile tips use the beside placement (`"beside": true`) and Collect joins the `tip_avoid` group, so a tip opens beside its tile and never covers the button. Cursor-placed tips ignore that group, which is why the tiles opt in.
 - Not run in-engine from the cloud: the scroll appearing at 25+ tiles and the tip position. PC QA should capture both.
+
+## 2026-11-24: Gain popups fold and stack
+- Same-currency presses within 120 px fold into one number that rolls up to its total (was 40 px, so neighbouring pads never folded). Placement boxes count the stat caption, which is about 2.4 times the number's width, and a popup stacks above another when every fixed lane is taken. Reason: Nathan's Starbloom screenshot had captions overlapping as separate popups.
+
+## 2026-11-24: Gain popups settle every frame
+- Visible popups are pushed up each frame so no two boxes overlap (`PopupLanes.settle`, oldest first). Spawn-time placement alone let overlaps form when popups grew, merged or started late. Relic echoes (delayed popups) now merge and get placed too. Reason: Nathan's v0.62.2 screenshot showed two "+13.24K" popups stacked on each other.
+## 2026-11-24: Title and loading screens follow the day (golden hour)
+- **Time of day comes from the meadow's own sky.** `core/title_mood.gd` samples keyframes by `SkyModel` phase (midnight, dawn, sunrise, morning, noon, afternoon, golden hour, sunset, dusk), and the sun or moon rides `SkyModel.azimuth`. Reason: the title then shows the same arc, golden light and night shade as the game, and the look is tested in pure GDScript.
+- **Palettes are per keyframe, not per zone.** Sky and far land take the eight palette roles, and the meadow ground takes four new ground roles (`g0` to `g3`), so golden hour warms the sky without turning the grass orange. Golden hour and sunset use the README banner's plum-to-orange sunset.
+- **Scenery is graded, not repainted.** The scenery is baked once in meadow indices; the mood's tint multiplies it and a Bayer dither adds the night shade (`boot/title_scenery.gdshader`), the same way `day_night.gdshader` shades the meadow. Fireflies come out at night, birds fly by day.
+- **Smooth transitions, one clock.** The title and loading screens share one `TitleBackground` clock. The chip in the bottom left names the time and runs the sky forward to the next stop over 1.6 s. Reason: nothing snaps.
+- **Reduce Motion (call made):** the clock holds on golden hour, the parallax stays still, the chip jumps instantly, and the screen change cross-fades instead of sweeping. Reason: the sweep is motion, and the fade keeps the same ink colour.
+- **Scene change is a themed wipe** (`boot/title_wipe.gdshader`): a slanted, dithered sweep in the mood's ink with a sun-coloured lead line, used for Continue, New Game, Saves slots and the loading screen's hand-off. Reason: replaces the plain ink dissolve.
+- **Tagline (call made):** "+ Press. Walk. Bloom. +" from the README banner replaces "Press. Tally. Rebirth.", on both screens. Revert if the old line was intended.
+- **Icon:** the 1024 master is drawn by `tools/art/gen_app_icon.py` on a 64 texel grid from the golden keyframe, with the existing walker sprite pasted unchanged. Reason: it matches the title and reads at 16 px.
+- Not run in-engine from the cloud (no Godot here): the shader, the wipe and the chip need a PC look at each time of day and at Reduce Motion.
+
+## 2026-11-24: Capstone gifts get their own unlock moment and icons (minor)
+- **Why:** a capstone is the biggest purchase in a tree, and a plain card buy pop reads the same as a level-1 gift.
+- **Moment:** the first and only level of a crown emits `EventBus.attribute_bought`. `Juice` (`ui/fx/fx_bus.gd`) names it in a banner in its currency's colour, plays the divine relic chime and calls the existing milestone flash and shake. The flash checks Reduce Flashing and the shake checks Reduce Shake, as they already did. The banner is gentle under Reduce Motion.
+- **Gallery:** the card, its tier heading ("Unlocks After 5 Blooms") and its Tip are data-driven, so the crown gets them with no HUD change.
+- **Icons:** `bloom_crown` (a gold crown with a seed gem) and `nucleus_crown` (a teal crystal crown with an ember gem), at 8, 12, 16, 24 and 32 px. They were drawn by one generator from a single outline per size, not hand-placed per size, so they are a deviation from the staged-icon rule. Redraw at PC QA if they read poorly at 640x360.
+- Not run in the engine: check the banner width and the crown icons on the Bloom and Nucleus tabs with a screenshot.
+
+## 2026-11-24: One label per currency that accumulates
+- Nathan's v0.70.0 screenshot showed same-currency gains from neighbouring pads as a column of separate "+1.080Qd Thistle Down" labels. Now a same-stat gain within 200 px of a live label folds into that label. The label holds its spot with no motion, ticks its number up and pops on each gain. It rises and fades only after 0.5 s (`QUIET_AFTER`) with no new gain. Separate labels appear only for different currencies, or for pads more than 200 px apart. Reduce Motion still snaps the number. The 200 px radius and 0.5 s quiet time are my picks and are tunable constants.
+
+## 2026-11-24: Gain labels hold through standing presses and every source combines
+- **Why:** standing presses arrive about every 2 s, longer than the 0.5 s quiet window, so each one started a new label and a column formed (Nathan's "+7.28 Starbloom Petals" screenshot). Pad presses, auto presses, relic echoes and Sunlight bonuses also had their own labels. Reason: Nathan asked for every number label from a button to combine.
+- **Fold range 360 px (supersedes 200 px above).** A same-currency gain within 360 px of a live label folds into it, holding or floating, and running holds take it too. A QA run had two Dewdrop labels 208 px apart. My pick: a pad row or cluster is about that wide.
+- **Adaptive quiet window.** A label of a currency waits 1.5 times that currency's smoothed gain interval (`QUIET_MULT`), kept between 0.5 s (`QUIET_AFTER`) and 4 s (`QUIET_MAX`). So a 2 s cadence holds for 3 s. A gap longer than 4 s is capped so one long pause does not stretch the window.
+- **Floating labels catch gains.** A floating label that takes a same-currency gain holds again where it is. It does not jump or rise while it is holding.
+- **All sources route through one accumulator.** `FxBus.auto_press` used to pass a screen position plus a lift and no caption; it now passes the pad's world position and its caption. `FxBus.bonus_popup` goes through `press()` with Sunlight's caption, so it can fold into a Sunlight label from a pad.
+- Not run in-engine from the cloud: the 2 s cadence, the 360 px fold and the fade timing need a PC look (a standing pad and a bonus at once). Tests cover the cadence, floating capture, a 420 px split and a running fold (`tests/test_popup_lanes.gd`).
+- **Currency rarity goes under the name.** Each currency card in Stats wears the rarity tag its pads wear ("UNCOMMON STATISTIC"), taken from the pads that pay it, or the pads that spend it when none pays it (Embers reads Common). Sunlight is the starter statistic, shown as STARTER STATISTIC in yellow. Currencies no pad touches (Seeds, Core Shards, Rebirths, Prestige, Rebirth Points) show no line. The tag sits in the new `kicker` slot of the shared Tip, so it lands between the name and the description. Not run in-engine from the cloud: the tag width and the kicker spacing need a PC look.

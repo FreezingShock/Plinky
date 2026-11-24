@@ -33,10 +33,24 @@ static func _counts(c: Control, pos: Vector2, view: Vector2) -> bool:
 	var rect: Rect2 = c.get_global_rect()
 	if not rect.has_point(pos):
 		return false
+	if _alpha(c) <= 0.01:
+		return false   # a fully transparent control draws nothing, so it takes no clicks
+	# A full-screen control is GUI only while a menu is open (its dim and its panel). With no menu open it is a
+	# layout root or a faded layer that happens to cover the screen, and must not swallow the world's clicks.
+	var full: bool = view != Vector2.ZERO and rect.size.x >= view.x - 1.0 and rect.size.y >= view.y - 1.0
+	if full and not PadInput.menu_open:
+		return false
 	var panel: bool = c is Panel or c is PanelContainer
-	if not panel:
-		if c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
-			return false
-		if view != Vector2.ZERO and rect.size.x >= view.x - 1.0 and rect.size.y >= view.y - 1.0:
-			return false   # a full-screen layout root must not swallow every click
+	if not panel and c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		return false
 	return true
+
+
+## The opacity a control is drawn with: its own and every ancestor's modulate, so a faded-out layer counts as empty.
+static func _alpha(c: CanvasItem) -> float:
+	var a: float = 1.0
+	var n: Node = c
+	while n is CanvasItem:
+		a *= (n as CanvasItem).modulate.a * (n as CanvasItem).self_modulate.a
+		n = n.get_parent()
+	return a
