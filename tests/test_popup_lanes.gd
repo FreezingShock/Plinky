@@ -145,3 +145,69 @@ func run(t: Object) -> void:
 	t.eq(lbl.shown, lbl.total, "under Reduce Motion the number snaps to its total")
 	PressPopups.instance = null
 	lab.free()
+
+	# --- a steady 2 s cadence (standing presses) keeps one label holding still, never a column
+	var cad := PressPopups.new()
+	cad._ready()
+	for k in 4:
+		cad.clock_override = 2.0 * float(k)
+		cad.press(&"pad_stand", Vector2(100.0, 100.0), 7.28, 0, false, false, false, 0.0, "Starbloom Petals", Color.WHITE)
+	t.eq(cad.live_count(), 1, "a standing press every 2 s folds into one label")
+	var cl: PressPopups.Pop = null
+	for p in cad._pops:
+		if p.live:
+			cl = p
+	t.ok(cl != null and absf(cl.total - 4.0 * 7.28) < 1e-6, "the 2 s label carries all four presses")
+	t.ok(cl != null and cl.hold, "the 2 s label keeps holding while presses keep coming")
+	t.near(cad._quiet_for("Starbloom Petals"), 3.0, 1e-6, "the quiet window follows the 2 s cadence (1.5 x 2 s)")
+	cad._float_if_quiet(cl)
+	t.ok(cl.hold, "a 2 s label does not float before its quiet window has passed")
+	cl.since_bump += 3.0
+	cad._float_if_quiet(cl)
+	t.ok(not cl.hold, "a 2 s label floats once three seconds have passed with no gain")
+	PressPopups.instance = null
+	cad.free()
+
+	# --- a floating label takes a same-currency gain 300 px away and holds again
+	var fc := PressPopups.new()
+	fc._ready()
+	fc.clock_override = 0.0
+	fc.press(&"pad_a", Vector2(100.0, 100.0), 10.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	var fl: PressPopups.Pop = null
+	for p in fc._pops:
+		if p.live:
+			fl = p
+	fl.since_bump = 10.0
+	fc._float_if_quiet(fl)
+	t.ok(not fl.hold, "a quiet label floats before the next gain")
+	fc.press(&"pad_b", Vector2(400.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(fc.live_count(), 1, "a gain 300 px away lands on the floating label")
+	t.ok(fl.hold, "the floating label holds again when it takes the gain")
+	t.near(fl.total, 15.0, 1e-6, "the floating label carries both gains")
+	PressPopups.instance = null
+	fc.free()
+
+	# --- a same-currency gain 420 px away is too far to fold, so it starts its own label
+	var sep := PressPopups.new()
+	sep._ready()
+	sep.clock_override = 0.0
+	sep.press(&"pad_a", Vector2(100.0, 100.0), 10.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	sep.press(&"pad_b", Vector2(520.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(sep.live_count(), 2, "a same-currency gain 420 px away starts its own label")
+	PressPopups.instance = null
+	sep.free()
+
+	# --- a normal press beside a running hold folds into that hold: one number, both amounts
+	var rn := PressPopups.new()
+	rn._ready()
+	rn.clock_override = 0.0
+	rn.press(&"pad_a", Vector2(100.0, 100.0), 3.0, 0, false, true, false, 0.0, "Clover", Color.WHITE)
+	rn.press(&"pad_b", Vector2(130.0, 100.0), 2.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(rn.live_count(), 1, "a normal press 30 px from a running hold folds into it")
+	var rl: PressPopups.Pop = null
+	for p in rn._pops:
+		if p.live:
+			rl = p
+	t.ok(rl != null and absf(rl.total - 5.0) < 1e-6, "the running hold carries both presses (total 5)")
+	PressPopups.instance = null
+	rn.free()

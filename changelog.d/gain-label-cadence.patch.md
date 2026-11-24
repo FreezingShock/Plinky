@@ -1,0 +1,1 @@
+Gain popups of one currency now stay as one label however often the gains arrive. Pad presses, standing presses, auto presses, relic echoes and Sunlight bonuses all add up on it, and it holds still until the gains stop.
