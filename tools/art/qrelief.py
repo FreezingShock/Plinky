@@ -29,13 +29,18 @@ GROUND = np.array([0x4A, 0x1F, 0x2A]) / 255.0
 W, H = 64, 64
 COL0, ROW0 = 32, 40
 RAY = np.array([-1.0, -1.0, -1.0])
+NX = np.array([1.0, 0.0, 0.0])   # the wall that faces the viewer on the +x side
+NY = np.array([0.0, 1.0, 0.0])   # the wall on the +y side
+NZ = np.array([0.0, 0.0, 1.0])   # the top
+ALT_STAGE = 2                    # the second copy on a terrace draws the tier's stage-2 sprite, a different silhouette
 Z0 = 70.0
 _cache: dict = {}
 
 
-def load_relief(tier):
-    """Heightfield columns and colours from the original sprite."""
-    im = np.array(Image.open(os.path.join(LADDER, '%s_game.png' % tier)).convert('RGBA')).astype(float) / 255.0
+def load_relief(tier, stage=None):
+    """Heightfield columns and colours from the original sprite (its stage-n variant if one is given)."""
+    name = '%s_game.png' % tier if stage is None else '%s_s%d_game_f0.png' % (tier, stage)
+    im = np.array(Image.open(os.path.join(LADDER, name)).convert('RGBA')).astype(float) / 255.0
     rows, cols = im.shape[0], im.shape[1]
     alpha = im[..., 3] > 0.5
     top = np.array([np.nonzero(alpha[:, c])[0].min() if alpha[:, c].any() else rows for c in range(cols)])
@@ -93,10 +98,20 @@ def render(height, colour, cols):
     hi = np.nonzero(hit)[0]
     if len(hi) == 0:
         return img.reshape(H, W, 4)
-    # Top faces only: the normal of a heightfield points up.
+    # Which face the ray entered through. Rays move toward -x, -y, -z, so the sample just before the hit is nearer the
+    # viewer: if it was past the back of the footprint the face is the +y wall, if it was in the next column over the
+    # face is the +x wall, otherwise it is the top.
+    Pp = O[hi] + (tHit[hi, None] - 0.2) * RAY
+    xr = Pp[:, 0] - ox
+    yr = Pp[:, 1] - oy
+    ci = ci_hit[hi]
+    side_y = yr >= DEPTH
+    side_x = (~side_y) & (np.floor(xr).astype(int) != ci)
+    normal_shade = np.where(side_y, 0.45 + 0.55 * np.clip(NY @ LIGHT, 0, 1),
+                            np.where(side_x, 0.45 + 0.55 * np.clip(NX @ LIGHT, 0, 1), 0.45 + 0.55 * np.clip(NZ @ LIGHT, 0, 1)))
     hmax = max(float(height.max()), 1e-6)
-    v = (0.45 + 0.55 * np.clip(np.array([0.0, 0.0, 1.0]) @ LIGHT, 0, 1)) * (0.6 + 0.4 * height[ci_hit[hi]] / hmax)
-    col = colour[ci_hit[hi]] * v[:, None]
+    v = normal_shade * (0.6 + 0.4 * height[ci] / hmax)
+    col = colour[ci] * v[:, None]
     img[hi, :3] = np.clip(col, 0, 1)
     img[hi, 3] = 1.0
     img = img.reshape(H, W, 4)
@@ -112,16 +127,17 @@ def render(height, colour, cols):
     return img
 
 
-def relief_rgba(tier):
-    if tier not in _cache:
-        height, colour, cols = load_relief(tier)
-        _cache[tier] = render(height, colour, cols)
-    return _cache[tier]
+def relief_rgba(tier, stage=None):
+    key = (tier, stage)
+    if key not in _cache:
+        height, colour, cols = load_relief(tier, stage)
+        _cache[key] = render(height, colour, cols)
+    return _cache[key]
 
 
-def relief_sprite(tier):
+def relief_sprite(tier, stage=None):
     """Cropped RGBA image and its foot (the ground centre) inside it, as qprops.make returns them."""
-    img = relief_rgba(tier)
+    img = relief_rgba(tier, stage)
     a8 = (np.clip(img, 0, 1) * 255).astype(np.uint8)
     pil = Image.fromarray(a8, 'RGBA')
     left, top, right, bottom = pil.getbbox()

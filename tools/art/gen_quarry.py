@@ -686,12 +686,14 @@ def place_props(T, rng, GL):
     for r in range(6):
         lo = BND[r]; hi = BND[r - 1] if r > 0 else 262.0
         got = 0
-        for _ in range(6000):
+        for _ in range(60000):
             if got >= TIER_PER_ROW:
                 break
             w = trng.uniform(lo + TIER_FOOT + 2, hi - TIER_FOOT - 2); d = trng.uniform(-430, 430)
-            if on_terrace(w, d) and ok('tier_' + qrelief.TIERS[r], w, d, fr=TIER_FOOT):
-                items.append(('tier_' + qrelief.TIERS[r], int(trng.integers(1, 9999)), w, d))
+            # the second copy on a terrace is the tier's stage-2 sprite, so the two do not repeat
+            kind = 'tier_' + qrelief.TIERS[r] + ('_alt' if got == 1 else '')
+            if on_terrace(w, d) and ok(kind, w, d, fr=TIER_FOOT):
+                items.append((kind, int(trng.integers(1, 9999)), w, d))
                 placed.append((w, d, TIER_FOOT)); got += 1
     return items
 
@@ -699,7 +701,7 @@ def place_props(T, rng, GL):
 def bake():
     import qprops
     rng = np.random.default_rng(11)
-    qprops.FOOT.update({'tier_' + t: TIER_FOOT for t in qrelief.TIERS})
+    qprops.FOOT.update({'tier_' + t + sfx: TIER_FOOT for t in qrelief.TIERS for sfx in ('', '_alt')})
     T = build()
     S, Mat, F, DR, PU, PV = render(T)
     lavamask = (Mat == M_LAVA)
@@ -739,7 +741,11 @@ def bake():
     yy, xx = np.mgrid[0:CH, 0:CW]
     for i, (kind, seed, w, d) in enumerate(sorted(items, key=lambda it: it[2] + 0 * it[3])):
         if kind.startswith('tier_'):
-            img, fx, fy = qrelief.relief_sprite(kind[len('tier_'):])
+            name = kind[len('tier_'):]
+            if name.endswith('_alt'):
+                img, fx, fy = qrelief.relief_sprite(name[:-len('_alt')], qrelief.ALT_STAGE)
+            else:
+                img, fx, fy = qrelief.relief_sprite(name)
         else:
             img, fx, fy = qprops.make(kind, seed)
         h = sample_h(T, w, d)
