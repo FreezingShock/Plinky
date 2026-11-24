@@ -1,0 +1,1 @@
+- Welcome Back fits the 640x360 frame. The gallery is six tiles wide, so the card stays clear of the zone card, and a long return scrolls inside the card instead of running off the screen. A tile's tooltip opens beside its tile and never covers Collect.

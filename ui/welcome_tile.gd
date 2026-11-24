@@ -5,7 +5,7 @@ extends Control
 ## the lift cost nothing to animate. Hover or focus lifts the icon a texel and brightens the box. The card binds the
 ## tooltip with Tip.bind, so this node knows nothing about the game.
 
-const W: float = 46.0
+const W: float = 44.0
 const H: float = 36.0
 const ICON: float = 16.0
 

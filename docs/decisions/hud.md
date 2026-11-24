@@ -404,3 +404,9 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Close:** Collect sparks and closes. Esc and the X close without sparks. There is no separate Close button. The sim already banked the time away, so closing either way loses nothing.
 - **Taste call:** the count-up runs on open (staggered, about 1 s for a full return), and Collect is the only sparks moment. Say if you want the count-up off.
 - Not run in-engine from the cloud: the 640x360 layout, the tooltip placement over the card, the spark timing and the sound. PC QA should capture the card after a long absence and after a short one.
+
+## 2026-11-24: Welcome Back fit fixes (after QA on v0.60.0)
+- **Width:** six tiles of 44 px (was seven of 46), so the card is about 300 px and centred at 640x360 it stops short of the zone card's left edge at x 480.
+- **Height:** the grid grows with its content up to 190 px, then scrolls. This is the 25+ tile case: the card never leaves the frame, whatever the count.
+- **Tooltips:** tile tips use the beside placement (`"beside": true`) and Collect joins the `tip_avoid` group, so a tip opens beside its tile and never covers the button. Cursor-placed tips ignore that group, which is why the tiles opt in.
+- Not run in-engine from the cloud: the scroll appearing at 25+ tiles and the tip position. PC QA should capture both.
