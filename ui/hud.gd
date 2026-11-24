@@ -102,6 +102,8 @@ func setup(p_sim: Sim) -> void:
 	var bus: Node = get_node("/root/EventBus")
 	_save_note.connect_bus(bus)
 	bus.offline_gained.connect(_on_offline)
+	bus.button_pressed.connect(_on_gain_pressed)   # every pad press, auto and relic pulses included
+	bus.bonus_gained.connect(_on_gain_bonus)
 	var report: Dictionary = get_node("/root/Save").take_offline_report()
 	if not report.is_empty():
 		_on_offline(report["seconds"], report["gains"])
@@ -241,6 +243,9 @@ func _build_stats() -> void:
 		val.add_theme_color_override("font_color", StatStyle.color(sid))
 		h.add_child(val)
 		_rows[sid] = [val, rate]
+		var gl := HudGainLabel.new()   # "+123" beside the row, outside the panel: one pooled node per row
+		add_child(gl)
+		_gain_labels[sid] = gl
 		Tip.bind_all(h, func() -> Variant:
 			var inc: BigNum = sim.income_per_second(sid)
 			var spec: Dictionary = TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format())
@@ -685,6 +690,7 @@ func _number_key_chip(e: InputEventKey) -> ExpandChip:
 
 
 func _process(delta: float) -> void:
+	_update_gain_labels()
 	_place()
 	_clock += delta
 	if _clock >= REFRESH:
@@ -943,7 +949,74 @@ func _fit_columns() -> void:
 		((_rows[sid2] as Array)[0] as RollValue).custom_minimum_size.x = _val_w + COL_PAD
 
 
-## Park each gain label just right of the panel, level with its row (and fading with it).
+const GAIN_POP_TIME: float = 0.15     ## seconds a gain label takes to pop in
+const GAIN_POP_RISE: float = 5.0      ## pixels a gain label rises from as it pops in
+const GAIN_FLOAT_RISE: float = 6.0    ## pixels a gain label drifts up as it fades out after its hold
+
+var _gain_tally: HudGainTally = HudGainTally.new()
+var _gain_labels: Dictionary = {}     ## stat id -> its HudGainLabel: one pooled node per row, never one per gain
+
+
+func _now_s() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
+
+## A pad press paid out (player, auto, relic pulse): its stat's gain label adds it up.
+func _on_gain_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
+	var def: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
+	if def != null:
+		_note_gain(def.reward_stat, gain, crit)
+
+
+## A bonus paid out (streak, critter): each stat it paid adds to that stat's gain label.
+func _on_gain_bonus(_kind: StringName, gains: Dictionary) -> void:
+	for sid: StringName in gains:
+		_note_gain(sid, gains[sid] as BigNum, false)
+
+
+func _note_gain(stat: StringName, gain: BigNum, crit: bool) -> void:
+	if not _gain_labels.has(stat):
+		return
+	_gain_tally.add(stat, gain, _now_s(), crit)
+	var gl: HudGainLabel = _gain_labels[stat] as HudGainLabel
+	gl.bump()
+	gl.sparkle(3, _gain_colours(stat))
+
+
+## The press tier's colour, as the world numbers take it. Tier 0 uses the stat's own colour.
+func _gain_colour(stat: StringName) -> Color:
+	var tier: int = Juice.last_tier
+	return StatStyle.color(stat) if tier <= 0 else PopupStyle.accent_color(tier, _now_s(), PopupStack.zone)
+
+
+func _gain_colours(stat: StringName) -> Array[Color]:
+	var tier: int = Juice.last_tier
+	if tier <= 0:
+		var own: Array[Color] = [StatStyle.color(stat)]
+		return own
+	return PopupStyle.spark_colors(tier, PopupStack.zone)
+
+
+## Each frame: a stat's gain label follows its tally. It pops in from its first gain, holds while gains keep coming,
+## then fades and drifts up. Hidden when the stat has no run or its row is hidden.
+func _update_gain_labels() -> void:
+	var now: float = _now_s()
+	var calm: bool = _calm()
+	for sid: StringName in _gain_labels:
+		var gl: HudGainLabel = _gain_labels[sid] as HudGainLabel
+		var box: Control = _row_boxes.get(sid) as Control
+		var a: float = _gain_tally.alpha(sid, now) if box != null and box.visible else 0.0
+		if a <= 0.0:
+			gl.set_state(0.0, 0.0, calm)
+			continue
+		var pop: float = 1.0 if calm else minf(_gain_tally.age(sid, now) / GAIN_POP_TIME, 1.0)
+		var rise: float = 0.0 if calm else -(1.0 - pop) * GAIN_POP_RISE + (1.0 - a) * GAIN_FLOAT_RISE
+		gl.show_text(_gain_tally.total_text(sid), _gain_colour(sid))
+		gl.set_state(a * pop, rise, calm)
+	_gain_tally.prune(now)
+
+
+## Park each gain label just right of the panel, level with its row, and the row's income rate just past it.
 func _place_rates() -> void:
 	var show_rates: bool = _opt(&"strip_rates", true)
 	var right: float = _stats_panel.position.x + _stats_panel.size.x + 3.0
@@ -951,15 +1024,23 @@ func _place_rates() -> void:
 	for sid: StringName in _rows:
 		var rate: Label = (_rows[sid] as Array)[1] as Label
 		var box: Control = _row_boxes[sid] as Control
+		var gl: HudGainLabel = _gain_labels.get(sid) as HudGainLabel
+		var gain_w: float = 0.0
+		if gl != null and gl.visible:
+			gain_w = gl.size.x + 3.0
+			var gat: Vector2 = Vector2(right, box.global_position.y - global_position.y + floorf((box.size.y - gl.size.y) * 0.5)).floor()
+			if gl.position != gat:
+				gl.position = gat
 		var show: bool = show_rates and box.visible and rate.text != ""
 		rate.visible = show
 		if not show:
+			widest = maxf(widest, gain_w)
 			continue
-		var at: Vector2 = Vector2(right, box.global_position.y - global_position.y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
+		var at: Vector2 = Vector2(right + gain_w, box.global_position.y - global_position.y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
 		if rate.position != at:
 			rate.position = at
 		rate.modulate.a = box.modulate.a
-		widest = maxf(widest, rate.size.x + 3.0)
+		widest = maxf(widest, gain_w + rate.size.x + 3.0)
 	_rates_w = widest
 
 
