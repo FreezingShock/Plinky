@@ -35,6 +35,7 @@ func run(t: Object) -> void:
 	t.ok(not TexelPad.shows_lock_chip(false, cost), "an open pad draws no cost chip")
 	t.ok(not TexelPad.shows_lock_chip(true, ""), "no cost, no chip")
 	t.eq(TexelPad.LOCK_SIZE, 8, "the chip text uses the font's native 8 px size")
+	t.ok(TexelPad.LOCK_CHIP_Z > 10, "the chip draws above the air layer at z 10, so shimmer and fireflies never cover it")
 	var icon: Texture2D = IconSet.get_icon(String(cost_def.cost_stat), TexelPad.LOCK_ICON)
 	t.ok(icon != null, "the Clover cost stat has an 8 px icon")
 	var text_w: float = TexelPad.LOCK_FONT.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TexelPad.LOCK_SIZE).x

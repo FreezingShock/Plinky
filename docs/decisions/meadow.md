@@ -94,3 +94,8 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** PC QA on v0.58.7: at 1x the digits of "300" ran together, because the 5 px font has no spacing of its own. The chip also sat under the plate, where the walker stands, so the sprite covered part of it.
 - **What:** The chip is beside the plate's right end, centred on the top face, so nothing stands on it. Digits are drawn one glyph at a time with one texel between them. The 6x12 body font would not fit the 12-row chip, so the chip keeps the 5x8 native font.
 - Not run in-engine. The layout test checks the position and the spacing with the real Clover cost.
+
+## 2026-11-24: Cost chip above the air layer
+- **Why:** PC QA on v0.58.8: faint bluish speckles showed behind the last two digits. The chip was drawn in the pad's own `_draw`, and the air layer (`LifeAir`, z 10, fireflies, glow, sparkles and the pad shimmer) draws over every pad.
+- **What:** The chip is a child node of its first pad, at `LOCK_CHIP_Z` 11, so it draws above the air layer. It stays opaque and is shown or hidden as the row's lock changes. `tests/test_pad_plate.gd` asserts the z order.
+- Not run in-engine. Please check the chip on a PC capture for the speckles.
