@@ -1,0 +1,1 @@
+- Bushes and rocks in Larkmoor and the meadow read as seen from above: rocks show a broad, lit top face, bushes sit as low leafy mounds on a wider base, and Larkmoor bushes get the dark pockets in their leaves.

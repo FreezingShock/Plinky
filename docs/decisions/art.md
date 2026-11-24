@@ -271,3 +271,12 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - The fence ring is 44 straight chords, each with posts and two rails. It is placed before the wheat, so the clumps grow inside it. Two walk-in gaps per patch. The whole ring is one batched item and one sprite (`tools/art/gen_farm.py` draws it), so it costs one node. Its foot is on its north edge, so it sorts behind the wheat and props south of it, and it casts no shadow.
 - The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
 - Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
+
+
+## 2026-11-24: Bushes and rocks are re-shaped for the looking-down camera
+- Rocks: a tilted plane shaves each crown flat, so the top reads as one lit face with a bevelled rim. Facets drop from 3 to 5 down to 1 to 3 low side cuts, and the bumpy noise is halved on big rocks. Facets no longer split a stone into pieces.
+- Bushes: the lobes are squashed (height 0.8 of width), smaller crowns ride the top, and a flat skirt sits on the ground so the foot is wider than the crown. Each bush keeps its dark pockets from #361.
+- Larkmoor bushes now get the dark pockets too (the M_DARKF material and ramp, same code as the meadow generator). #361 only changed `gen_meadow3d.py`.
+- `world/larkmoor_life.json`: 9 sway tips no longer sat on palette 4 after the ground changed, so they are removed (1680 to 1671). Nothing else in that file changed.
+- The meadow ground and walkable mask are not re-baked here. Only the meadow bush and rock sprites and `placements3d.json` change.
+- Checked in engine with the cloud's software Vulkan render at game size, in `/mnt/project-files/plinky/bush-rock-looking-down/`. The change is subtle at 1x. Not checked on the PC.
