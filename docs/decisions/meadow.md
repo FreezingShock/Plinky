@@ -136,6 +136,13 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** the plain pulsing ring read as a placeholder, and the arch gives the gate the hover tooltip the forge gate already has.
 - **Not in this slice:** the path to the gate is still baked sand (gen_meadow3d.py). Path edges (stepping stones, flowers) are the next gate-and-path step.
 - **Not run in the cloud:** the look and the draw code in-engine (no Godot here). The PC QA thread should screenshot the gate closed and open.
+## 2026-11-24: Meadow path pass (slice 4 of the meadow rework, after PC QA of v0.61.3)
+- **QA finding:** the stepping stones read as spots at 640x360, the vine and petals on the gate were not visible, the foam was barely visible, and the gate tooltip did not show in captures.
+- **Changed in `tools/art/gen_meadow3d.py`:** the path is wider (6.6 plus or minus 0.6 texels, was 5.4) with a dark rim on the grass just outside it and light pebbles on the surface. Flower verges run along both edges on the first part of the path. Five lantern posts are sprites (lantern is now an exported sprite kind), so they y-sort and add light entries in `world/meadow_life.json`. The last four path segments, the gate approach, get low timber rail fences on both sides instead of verges. A plank boardwalk on pilings runs from the path to the lake, 43 texels at its shortest crossing. The stepping stones stay. The foam band on the stream is the outer 1.8 texels of the channel (was 0.8).
+- **Changed in `world/texel_gate.gd`:** the meadow gate's vines are a continuous leaf ribbon in two phases with a bloom at each tip, drawn over the lattice. Open petals are 2x2 and there are nine of them. `HIT` covers the whole arch including the keystone, so the tooltip can reach the top of it.
+- **Test:** `tests/test_quarry.gd` checks that the meadow arch is hoverable from its keystone to its feet, and that the meadow gate has a tooltip spec.
+- **Not done:** the walkable mask stays terrain-only, so the boardwalk, fences and lanterns do not block the walker. Fewer lanterns than slots: the placement checks reject spots near trees, so the path has five, not one per 40 texels.
+- **Not run in the cloud:** Godot, the headless tests, and the look in-engine. The PC QA thread should screenshot the path, the verges, the boardwalk, the gate closed and open, and hover the gate to confirm the tooltip.
 
 ## 2026-11-24: Thistle row clear of the oak
 - **Why:** the two Thistle pads in Gatehouse Green, at (868,646) and (912,624), sat behind an oak on main. The walk mask does not catch a sprite standing in front of a pad.

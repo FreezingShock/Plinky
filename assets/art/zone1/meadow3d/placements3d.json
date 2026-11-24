@@ -562,6 +562,76 @@
     298.7
    ],
    "sort_y": 298.7
+  },
+  {
+   "file": "sprites/lantern_051.png",
+   "nrm": "sprites/lantern_051_n.png",
+   "kind": "lantern",
+   "x": 171,
+   "y": 223,
+   "w": 13,
+   "h": 26,
+   "foot": [
+    177.0,
+    247.5
+   ],
+   "sort_y": 247.5
+  },
+  {
+   "file": "sprites/lantern_052.png",
+   "nrm": "sprites/lantern_052_n.png",
+   "kind": "lantern",
+   "x": 201,
+   "y": 232,
+   "w": 14,
+   "h": 26,
+   "foot": [
+    207.6,
+    256.7
+   ],
+   "sort_y": 256.7
+  },
+  {
+   "file": "sprites/lantern_053.png",
+   "nrm": "sprites/lantern_053_n.png",
+   "kind": "lantern",
+   "x": 264,
+   "y": 198,
+   "w": 14,
+   "h": 26,
+   "foot": [
+    270.9,
+    223.1
+   ],
+   "sort_y": 223.1
+  },
+  {
+   "file": "sprites/lantern_054.png",
+   "nrm": "sprites/lantern_054_n.png",
+   "kind": "lantern",
+   "x": 311,
+   "y": 177,
+   "w": 14,
+   "h": 25,
+   "foot": [
+    317.1,
+    201.4
+   ],
+   "sort_y": 201.4
+  },
+  {
+   "file": "sprites/lantern_055.png",
+   "nrm": "sprites/lantern_055_n.png",
+   "kind": "lantern",
+   "x": 355,
+   "y": 175,
+   "w": 11,
+   "h": 25,
+   "foot": [
+    360.1,
+    198.9
+   ],
+   "sort_y": 198.9
   }
  ]
 }
