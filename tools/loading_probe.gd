@@ -3,11 +3,13 @@ extends SceneTree
 ## screen into the game) and prints every frame over --slow=<ms> with its phase and PerfStats laps. Summary: time to the
 ## title, time from Play to the game being on screen, and the worst frames of each phase.
 ##
-## godot --headless --path . --script tools/loading_probe.gd -- --slow=40
+## godot --headless --path . --script tools/loading_probe.gd -- --slow=40 --dwell=60
 
 var slow_ms: float = 40.0
 var _phase: String = "boot"
 var _frame: int = 0
+## Frames the title stays up before Play is pressed (a player reading it). --dwell=<frames>, default 60 (about a second on a normal machine).
+var dwell: int = 60
 
 
 func _init() -> void:
@@ -15,6 +17,8 @@ func _init() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--slow="):
 			slow_ms = float(a.trim_prefix("--slow="))
+		elif a.begins_with("--dwell="):
+			dwell = int(a.trim_prefix("--dwell="))
 	PerfStats.tracing = true
 	var boot: Node = (load("res://boot/boot.tscn") as PackedScene).instantiate()
 	root.add_child(boot)
@@ -49,7 +53,7 @@ func _init() -> void:
 				settled = 0
 		elif _phase == "title":
 			settled += 1
-			if settled == 6:
+			if settled == dwell:
 				t_play = Time.get_ticks_usec()
 				print("nodes before play: %d" % root.find_children("*", "", true, false).size())
 				title.call("_on_play")
