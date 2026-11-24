@@ -18,6 +18,7 @@ static var wind: float = 0.2
 static var night: float = 0.0      # 0 day .. 1 deep night
 static var low_sun: float = 0.0    # 1 at golden hour, sunrise and sunset
 static var rain: float = 0.0       # 0..1
+static var wet: float = 0.0        # 0..1 ground wetness (SkyCycle: a lagged rain, 0 under snow)
 
 ## Season mix (spring, summer, autumn, winter), written by SkyCycle with the same weights SeasonParticles gets, so
 ## butterflies and fireflies can follow the calendar: butterflies are a spring and summer thing, fireflies a summer one.
@@ -55,3 +56,42 @@ static func hash01(n: int) -> float:
 ## Ordered-dither threshold for a texel, in (0, 1).
 static func bayer(x: int, y: int) -> float:
 	return (float(BAYER[(y & 3) * 4 + (x & 3)]) + 0.5) / 16.0
+
+
+## True when a critter at texel (x, y) should show at this fade level: a fade of 0.5 draws half the texels, by dither.
+static func dissolved(fade: float, x: int, y: int) -> bool:
+	return fade >= 1.0 or bayer(x, y) < fade
+
+
+## The season mix weighted by the four values in `w` (spring, summer, autumn, winter).
+static func season_mix(w: Array) -> float:
+	var s: Array[float] = season
+	return s[0] * float(w[0]) + s[1] * float(w[1]) + s[2] * float(w[2]) + s[3] * float(w[3])
+
+
+## Distance between two points in the view's 2:1 units: y counts double, as everywhere in the world.
+static func iso_distance(a: Vector2, b: Vector2) -> float:
+	return Vector2(a.x - b.x, (a.y - b.y) * 2.0).length()
+
+
+## True when p is within r texels of any point in pts.
+static func near_any(p: Vector2, pts: Array[Vector2], r: float) -> bool:
+	for q: Vector2 in pts:
+		if p.distance_squared_to(q) < r * r:
+			return true
+	return false
+
+
+## Normalised radius of p inside a water ellipse: below 1 is water, 1 is the edge, above 1 is land.
+static func water_k(p: Vector2, w: Dictionary) -> float:
+	var dx: float = (p.x - float(w.x)) / float(w.rx)
+	var dy: float = (p.y - float(w.y)) / float(w.ry)
+	return sqrt(dx * dx + dy * dy)
+
+
+## True when p lies inside any water ellipse, grown by `grow` (1.0 = exactly the bounding edge).
+static func in_water(p: Vector2, bodies: Array[Dictionary], grow: float) -> bool:
+	for w: Dictionary in bodies:
+		if water_k(p, w) < grow:
+			return true
+	return false

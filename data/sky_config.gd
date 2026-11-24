@@ -23,7 +23,7 @@ extends Resource
 ## Cap on rain intensity, 0..1. Keeps it light.
 @export var rain_max: float = 0.6
 ## Rain drops at full intensity over the 860x500 sky box.
-@export var rain_drops: int = 3000
+@export var rain_drops: int = 900
 
 ## Wind. Calm is the steady breeze, gusts ride above it, rain adds a little.
 @export var wind_calm: float = 0.2
@@ -111,8 +111,18 @@ extends Resource
 @export_group("Ember Quarry light")
 ## Overall lava glow over the quarry (quarry_glow shader). Each source is scaled by its own strength below.
 @export var lava_glow: float = 0.4
-## Extra glow at full night, as a share of lava_glow. The glow rises when the sky goes dark.
+## Extra glow at full night, as a share of lava_glow. The glow rises when the sky goes dark. The quarry's light no longer
+## follows the clock (SkyCycle.underground), so this stays at 0 there; it is kept for any zone that does go dark.
 @export var lava_night_boost: float = 1.0
+## Share of each source's light that the quarry's props take (quarry_prop shader): rocks, crystals and pillars glow
+## when lava, vents, braziers or lamps are near them.
+@export var prop_glow: float = 1.0
+## Wide soft halo around each lava, vent, brazier and lamp (quarry_glow shader): how far it reaches, as a multiple of the
+## source's falloff radius, and how strong it is against the body of the glow.
+@export var glow_halo_reach: float = 2.6
+@export var glow_halo_gain: float = 0.6
+## White-hot centre of each source (quarry_glow shader). Makes the lava read as emissive rather than just orange.
+@export var glow_hot_gain: float = 0.8
 ## Falloff radius in texels: a lava pool (also its light pool in the shade), a lava seam tile, a vent, a brazier, a lamp.
 @export var lava_pool_radius: float = 60.0
 @export var lava_tile_radius: float = 22.0

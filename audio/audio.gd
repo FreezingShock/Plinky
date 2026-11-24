@@ -91,7 +91,8 @@ func _ready() -> void:
 	_shore = AudioStreamPlayer.new()
 	_shore.bus = BUS_AMB
 	add_child(_shore)
-	var bus: Node = get_node_or_null("/root/EventBus")
+	# Only a node inside the live tree can look up an absolute path; a private instance built in a test (no autoloads) skips the wiring.
+	var bus: Node = get_node_or_null("/root/EventBus") if is_inside_tree() else null
 	if bus != null:
 		bus.zone_entered.connect(set_zone)
 		bus.gate_opened.connect(func(_id: StringName) -> void: play(&"gate_open", 1.0, 0.0, BUS_SFX, false))

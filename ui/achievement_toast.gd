@@ -130,6 +130,11 @@ func enqueue(d: AchievementDef) -> void:
 		_begin(_queue.pop_front())
 
 
+## True while a toast is on screen or unfurling, so a tip card can wait for it instead of covering it.
+func is_showing() -> bool:
+	return _phase != Phase.IDLE
+
+
 func queued() -> int:
 	return _queue.size()
 

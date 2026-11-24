@@ -84,8 +84,9 @@ func _ready() -> void:
 	embers.setup(anchors)
 
 
-## Shadows and the day and night shade (world/sky_cycle.gd). The quarry has no seasons and no mountain haze: the
-## shade, the god rays at dawn and dusk, rain and the sun's cast shadows still follow the clock.
+## Shadows and the shade (world/sky_cycle.gd). The quarry is underground, so its light does not follow the clock: the
+## sky holds at midday with no rain, no wind and no day or night shade. The lava, rocks and pads light the zone instead
+## (QuarryLight). The HUD clock still reads the real time.
 func _add_sky(ground_size: Array) -> void:
 	_shadows = SkyShadows.new()
 	_shadows.name = "Shadows"
@@ -97,6 +98,7 @@ func _add_sky(ground_size: Array) -> void:
 	_sky.ground_texture = GROUND
 	_sky.atmosphere = false   # QuarryLight draws the haze instead
 	_sky.seasonal = false     # a themed zone: no season tint or season particles
+	_sky.underground = true   # the light holds at midday, whatever the clock says
 	add_child(_sky)
 	_add_lights()
 

@@ -369,6 +369,14 @@ def make_windmill(rng):
         band = (np.abs(z - 16) < 1.2); m = np.where(band & (d < 1.5), M_BARKT, m)
         roof = np.maximum(np.sqrt(x ** 2 + y ** 2) - (7.2 - (z - 32) * .85), np.abs(z - 36.0) - 4.4)
         sel = roof < d; m = np.where(sel, M_BARKT2, m); d = np.minimum(d, roof)
+        return d, m
+    return f, (12, 12), 42, 11   # the tower only: the sails are their own sprite (make_windmill_sails)
+def make_windmill_sails(rng):
+    """The sails, arms and hub of the windmill as their own sprite. Its grid origin is the hub, so the sprite's foot is the
+    hub and the scene turns the sprite around that point. The shape is the same as the mill's own sails."""
+    def f(x, y, z):
+        x, y, z = x, y + 10.4, z + 35.0                     # back to the mill's frame, where the hub is at (0, 10.4, 35)
+        d = np.full(x.shape, 1e3, np.float32); m = np.full(x.shape, M_WOOD, np.int16)
         for k in range(4):
             ang = .62 + k * 1.5708; ex, ez = math.cos(ang) * 27, math.sin(ang) * 27
             arm = sdf_capsule(x, y, z, (0, 10.4, 35), (ex, 10.4, 35 + ez), .75); sel = arm < d; m = np.where(sel, M_WOOD, m); d = np.minimum(d, arm)
@@ -376,7 +384,7 @@ def make_windmill(rng):
             sel = sail < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, sail)
         hub = sdf_sphere(x, y, z, (0, 10.4, 35), 1.8); sel = hub < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, hub)
         return d, m
-    return f, (26, 24), 58, 11
+    return f, (29, 6), 30, 3   # the grid spans -30..30 in z around the hub (see put's bottom)
 def make_gateway(rng, style='timber'):
     """The two Larkmoor gateways. 'timber': the arrival arch from the meadow, timber posts with a flower-garlanded lintel.
     'stone': the Ember gate, rough stone posts and lintel with ember bloom in the seams, leading on to the quarry."""
@@ -467,11 +475,11 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **k
     big = kw.get('big', True)
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
     mk = dict(oak=make_oak, pine=make_pine, bush=make_bush, rock=lambda r: make_rock(r, big), crystals=make_crystals, stump=make_stump,
-              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge)[kind](rng)
+              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, windmill_sails=make_windmill_sails, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge)[kind](rng)
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
-    voxelize(f, half, top, u, v, z0, scale, rot, sid)
-    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign') or (kind == 'rock' and big)):
+    voxelize(f, half, top, u, v, z0, scale, rot, sid, bottom=kw.get('bottom', -1.0))
+    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
     if count: placed.append((u, v, rad * scale))
     return z0
@@ -511,7 +519,18 @@ for lm in LAY.LANDMARKS:
     if lm['kind'] == 'elder_oak': put('oak', u, v, 1.9, rot=.7, sid='new')
     elif lm['kind'] in ('tower', 'lighthouse', 'obelisk'): put(lm['kind'], u, v, 1.0, rot=0.0)
     elif lm['kind'] == 'great_lantern': put('lantern', u, v, 2.6, rot=0.0)
-    elif lm['kind'] == 'windmill': put('windmill', u, v, 1.0, rot=-.785)
+    elif lm['kind'] == 'windmill':
+        put('windmill', u, v, 1.0, rot=-.785)                    # the tower
+        # the sails, as their own sprite, pivoting on the hub: the mill's point (0, 10.4, 35) in its own frame, rotated by -.785
+        _c, _s = math.cos(-.785), math.sin(-.785)
+        _hu, _hv = u - _s * 10.4, v + _c * 10.4
+        # placed directly, not through put(): put() draws from the placement random stream and takes the next instance
+        # id, and either would move every prop after the windmill. The sails get their own id, far above the rest.
+        _sf, _sh, _st, _sr = make_windmill_sails(None)
+        _sz = float(terrain_h(u, v)) + 35.0                       # the hub sits 35 texels above the tower's foot
+        voxelize(_sf, _sh, _st, _hu, _hv, _sz, 1.0, -.785, 900001, bottom=-30.0)
+        TALL.append(dict(id=900001, kind='windmill_sails', u=_hu, v=_hv, z=_sz, scale=1.0))
+        placed.append((_hu, _hv, _sr))
     elif lm['kind'] == 'stones':
         for k in range(7):
             a_ = k / 7 * 6.283 + .3; put('menhir', u + math.cos(a_) * 15, v + math.sin(a_) * 15, 1.0, rot=a_, count=False, fixed=True)
@@ -870,21 +889,44 @@ os.makedirs(os.path.join(OUT, 'sprites'), exist_ok=True); sprites = []
 # ordinary lanterns share one window around their foot: x from -9 to +9, y from -26 to +2 (measured on every lamp at every
 # facing). The trimmed box used to vary from 10 to 26 texels tall, so no two lamps matched.
 LANTERN_WIN = (9, 26, 19, 29)   # left of the foot, above the foot, width, height
+# the sails are rendered alone, so the parts behind the tower are in their sprite too (the full render keeps only what is visible)
+_sail_on = allp['id'] == 900001
+if _sail_on.any():
+    rgb_sails, id_sails = render_scene(_sail_on); AUX_SAILS = LAST_AUX
+else:
+    rgb_sails, id_sails, AUX_SAILS = rgb_full, id_full, AUX_FULL
+def _largest_part(m):
+    """Keep only the largest 4-connected part of a boolean sprite mask."""
+    seen = np.zeros(m.shape, bool); best = []
+    for y_, x_ in zip(*np.nonzero(m)):
+        if seen[y_, x_]: continue
+        comp = []; stack = [(y_, x_)]; seen[y_, x_] = True
+        while stack:
+            y, x = stack.pop(); comp.append((y, x))
+            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= ny < m.shape[0] and 0 <= nx < m.shape[1] and m[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True; stack.append((ny, nx))
+        if len(comp) > len(best): best = comp
+    out = np.zeros(m.shape, bool)
+    for y, x in best: out[y, x] = True
+    return out
 for t in TALL:
-    ys_, xs_ = np.nonzero(id_full == t['id'])
+    IDM, RGBM, AUXM = (id_sails, rgb_sails, AUX_SAILS) if t['id'] == 900001 else (id_full, rgb_full, AUX_FULL)
+    ys_, xs_ = np.nonzero(IDM == t['id'])
     if len(xs_) < 12: continue
     fx, fy = OXS0 + (t['u'] - t['v']), OYS0 + (t['u'] + t['v']) / 2 - t['z']
     if t['kind'] == 'lantern' and t['scale'] == 1.0:   # the great lantern landmark (scale 2.6) keeps its own crop
         x0, y0 =int(math.floor(fx)) - LANTERN_WIN[0], int(math.floor(fy)) - LANTERN_WIN[1]
         x1, y1 = x0 + LANTERN_WIN[2] - 1, y0 + LANTERN_WIN[3] - 1
-        assert (id_full[y0:y1 + 1, x0:x1 + 1] == t['id']).sum() == len(xs_), 'lantern %d leaves its window' % t['id']
+        assert (IDM[y0:y1 + 1, x0:x1 + 1] == t['id']).sum() == len(xs_), 'lantern %d leaves its window' % t['id']
     else:
         x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
     spr = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
-    m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
-    spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
+    m_ = IDM[y0:y1 + 1, x0:x1 + 1] == t['id']
+    if t['kind'] == 'windmill': m_ = _largest_part(m_)   # the mill is one solid tower; loose pixels up top are sail edge, not tower
+    spr[m_, :3] = RGBM[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(OUT, fn))
-    depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUX_FULL, y0, y1, x0, x1, m_)
+    depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUXM, y0, y1, x0, x1, m_)
     sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------

@@ -25,6 +25,8 @@ const MAX_LIGHT_SOURCES: int = 256
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
 const SWAY_STEP: float = 1.0 / 8.0
+## Phase the light holds at when `underground` is set: 0 midnight, 0.5 midday (sun_of is -1 at 0 and +1 at 0.5).
+const UNDERGROUND_PHASE: float = 0.5
 
 ## Debug and screenshot overrides. Negative = off.
 static var debug_phase: float = -1.0
@@ -40,6 +42,9 @@ var rim_material: ShaderMaterial        # for rocks and crystals: same shader as
 ## Scales the high-sun exposure, contrast and saturation fix. Scenes with brighter, greener ground (Larkmoor) set it above 1.
 var noon_boost: float = 1.0
 var seasonal: bool = true              ## false: no calendar seasons (the Ember Quarry): spring look, no season particles
+## true: the light does not follow the clock (the Ember Quarry is underground). The shade, grade, sun, rim, haze and
+## light pass hold at midday, and weather stays off. The HUD clock still runs on the real time (clock_phase).
+var underground: bool = false
 var night01: float = 0.0                ## 0 day .. 1 full night, from the sun model. QuarryLight reads it for its glow.
 var atmosphere: bool = true             # false: no mountain haze or mist
 ## Where haze and mist are drawn, in world texels. Empty = the whole sky box (the meadow). Larkmoor gives the
@@ -161,7 +166,7 @@ func _ready() -> void:
 	rain_layer.name = "Rain"
 	rain_layer.z_index = 6   # relative to this node: z 11 overall
 	rain_layer.area = area
-	rain_layer.drops = int(round(float(_config.rain_drops) * minf(area.get_area() / AREA.get_area(), 2.0)))   # denser over a bigger field, capped for cost
+	rain_layer.drops = _config.rain_drops   # drops for a screen-sized window; the window follows the camera, so the map size does not matter
 	add_child(rain_layer)
 	particles = SeasonParticles.new()
 	particles.name = "SeasonParticles"
@@ -334,8 +339,18 @@ func _push_season(m: ShaderMaterial, ground: bool) -> void:
 	m.set_shader_parameter("season_snow", _season.ground_snow if ground else _season.prop_snow)
 
 
+## Model time the light is computed at. Underground it is midday, whatever the clock says; the HUD clock keeps _model_time.
+func _light_time(t: float) -> float:
+	return underground_time(model) if underground else _model_time(t)
+
+
+## Model time of midday for this model, the moment an underground zone's light holds at.
+static func underground_time(m: SkyModel) -> float:
+	return (m.clock_of_phase(UNDERGROUND_PHASE) - m.clock_of_phase(m.start_phase)) * m.day_seconds
+
+
 func _update(t: float) -> void:
-	var mt: float = _model_time(t)
+	var mt: float = _light_time(t)
 	_update_season()
 	night01 = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
 	_shade_mat.set_shader_parameter("night", night01 * _config.night_shade)
@@ -350,6 +365,9 @@ func _update(t: float) -> void:
 	var wind: float = model.wind(t)
 	if debug_rain >= 0.0:
 		wind = maxf(wind, 0.5)
+	if underground:      # no weather under the ground
+		rain = 0.0
+		wind = 0.0
 	_shade_mat.set_shader_parameter("rain", rain)
 	MeadowLife.wind = 0.0 if MeadowLife.reduce_motion else wind
 	rain_layer.visible = not MeadowLife.reduce_motion
@@ -480,6 +498,15 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var sun_px := Vector2(clampf(az * 1.2, -1.0, 1.0), -0.6)    # toward the sun on screen, texels per march step
 		var shadow_k: float = _config.ground_shadow * (1.0 - 0.8 * rain01) * (1.0 - night_k * 0.6)
 		var fog_col: Color = _season.tint_haze(_config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7))
+		# rain on the ground (render/shaders/ground_light.gdshader, wet_ground). Puddles are an outdoor calendar thing:
+		# the quarry (not seasonal) keeps its dry ground. Winter rain is snow, so nothing wets under it.
+		var outdoor: float = 1.0 if seasonal else 0.0
+		var snow_w: float = _season.weights[3]
+		var wet01: float = (rain01 if debug_rain >= 0.0 else model.wetness(t)) * outdoor * (1.0 - snow_w)
+		var splash01: float = 0.0 if calm else rain01 * outdoor * (1.0 - snow_w)
+		var puddle_col: Color = Color(0.3, 0.5, 0.5).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water; at night, dark water
+		var glint: float = clampf(maxf(sun_h, 0.0) * 2.0, 0.0, 1.0) * outdoor
+		MeadowLife.wet = wet01
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
 			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
@@ -491,6 +518,14 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
 			gm.set_shader_parameter("fog_col", fog_col)
 			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
+			gm.set_shader_parameter("wet", wet01)
+			# ground mist: the dawn part of the mist curve (the base haze is the far fog's job), gone by midday
+			gm.set_shader_parameter("mist", clampf((model.mist(mt, rain01) - 0.3) / 0.6, 0.0, 1.0) * outdoor)
+			gm.set_shader_parameter("mist_col", fog_col)
+			gm.set_shader_parameter("mist_drift", 0.0 if calm else 1.0)
+			gm.set_shader_parameter("splash", splash01)
+			gm.set_shader_parameter("puddle_col", puddle_col)
+			gm.set_shader_parameter("glint", glint)
 		for pm: ShaderMaterial in _pad_mats:
 			pm.set_shader_parameter("sun_px", sun_px)
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
