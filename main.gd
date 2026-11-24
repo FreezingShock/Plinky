@@ -405,6 +405,7 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	_scene_path = path
 	PerfStats.lap_begin()
 	_free_occluders()
+	ZoneAssets.release()   # the zone being left drops its prop textures; the one being entered is prefetched
 	meadow.queue_free()
 	PerfStats.lap("swap: free old")
 	var packed: PackedScene = _take_prefetched(path)
@@ -440,6 +441,9 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 var _going_back: bool = false
 const OCCLUDER_BUDGET_MS: float = 8.0   ## per frame, while the wipe covers the screen
 var _prefetching: String = ""
+## Zone scenes whose script is loaded on the main thread before the threaded prefetch. Not Larkmoor: its script preloads
+## three large textures, which is the stall the prefetch exists to avoid.
+const WARM_SCRIPTS: Dictionary = {"res://world/quarry_scene.tscn": "res://world/quarry_scene.gd"}
 
 
 ## Starts loading a zone scene and its textures on a worker thread, so the swap under the transition wipe does not
@@ -447,8 +451,14 @@ var _prefetching: String = ""
 func _prefetch_scene(path: String) -> void:
 	if path == _scene_path or path == _prefetching:
 		return
+	if WARM_SCRIPTS.has(path):
+		# Compile the scene's script on the main thread first: loading it on a worker thread logged "Parse Error: Failed"
+		# at the scene's script line (the quarry's script uses several game classes) and fell back to a synchronous load.
+		ResourceLoader.load(WARM_SCRIPTS[path] as String)
+	# the scene first: the loader works through requests in order, and the swap waits on the scene before anything else
 	if ResourceLoader.load_threaded_request(path) == OK:
 		_prefetching = path
+	ZoneAssets.prefetch_scene(path)   # the props' and ground textures, behind the scene
 
 
 ## The prefetched scene when one was requested (waits for it if the worker is not done), else a plain load.

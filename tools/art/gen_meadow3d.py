@@ -64,6 +64,9 @@ def pl_dist(U, V, pts):
 # ---------------- scene layout (screen px -> uv) ----------------
 PATH_S = [(112, 258), (150, 264), (190, 258), (222, 240), (252, 222), (290, 214), (334, 208), (368, 188), (378, 160), (362, 136), (338, 118), (330, 104)]
 PATH = [s2uv(*p) for p in PATH_S]
+# the spur from the main path up to the pond's south-east shore: painted as path material only (no placement uses it)
+SPUR_S = [(224, 238), (217, 231), (211, 224)]
+SPUR = [s2uv(*p) for p in SPUR_S]
 # Two rows of three pads, 44 texels apart on the 2:1 ground grid: Sprout climbs from the spawn, Clover climbs back
 # towards the gate (pad order = ZoneDef.pad_buttons order).
 SPROUT_ROW = [(204, 248), (248, 226), (292, 204)]
@@ -787,6 +790,8 @@ beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
 pw = 6.6 + 1.2 * (n1 - .5)                       # bolder path: wider than the first pass (5.4) so it reads at 640x360
 mat[(dp < pw) & (rockness < .5)] = T_PATH
+dsp = pl_dist(FU, FV, SPUR)                      # pond spur: a 3.6-texel half-width path, off the water
+mat[(dsp < 3.6) & (rockness < .5) & (np.hypot(FU - POND['c'][0], FV - POND['c'][1]) > POND['r'] + 1.0)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
 if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06

@@ -199,13 +199,28 @@ static func lightning_flash(t: float, rain01: float) -> float:
 	var heavy: float = clampf((rain01 - 0.7) / 0.3, 0.0, 1.0)
 	if heavy <= 0.0:
 		return 0.0
-	var w: float = floorf(t / 40.0)
-	var h: float = fposmod(sin(w * 12.9898 + 78.233) * 43758.5453, 1.0)
-	if h < 0.5:
+	var st: float = strike_time(int(floorf(t / 40.0)))
+	if st < 0.0:
 		return 0.0
-	var d: float = t - (w * 40.0 + fposmod(h * 7.31, 1.0) * 36.0)
+	var d: float = t - st
 	if d < 0.0 or d > 0.6:
 		return 0.0
 	var main: float = exp(-d * 14.0)
 	var again: float = 0.55 * exp(-maxf(d - 0.18, 0.0) * 14.0) if d >= 0.18 else 0.0
 	return clampf(maxf(main, again), 0.0, 1.0) * heavy
+
+
+## When the strike in a 40 s window lands (game time), or -1 when that window has none. Half the windows have one, at a
+## hashed moment in the window. Shared by the flash and the thunder, so the rumble follows the same strike.
+static func strike_time(window: int) -> float:
+	var w: float = float(window)
+	var h: float = fposmod(sin(w * 12.9898 + 78.233) * 43758.5453, 1.0)
+	if h < 0.5:
+		return -1.0
+	return w * 40.0 + fposmod(h * 7.31, 1.0) * 36.0
+
+
+## Seconds the thunder trails the flash for a strike in `window` (sound is slower than light): 1.5 to 4.5 s, hashed.
+static func thunder_delay(window: int) -> float:
+	var h: float = fposmod(sin(float(window) * 39.3468 + 12.7) * 24634.6345, 1.0)
+	return 1.5 + 3.0 * h

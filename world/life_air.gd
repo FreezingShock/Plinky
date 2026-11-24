@@ -50,7 +50,7 @@ func setup(data: Dictionary, backdrop_sprite: Sprite2D) -> void:
 	_water.clear()
 	for wb: Variant in data.get("water", []) as Array:
 		_water.append(wb as Dictionary)
-	_img = backdrop_sprite.texture.get_image() if backdrop_sprite.texture != null else null
+	_img = ZoneAssets.backdrop_image(backdrop_sprite.texture) if backdrop_sprite.texture != null else null
 	_origin = Vector2i(roundi(backdrop_sprite.position.x), roundi(backdrop_sprite.position.y))
 	_pads.clear()
 	for p: Variant in data.get("pads", []) as Array:

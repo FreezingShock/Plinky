@@ -112,3 +112,27 @@ func run(t: Object) -> void:
 	t.ok(wet.x > 1.0 and wet.y > 1.0, "lamps swell and brighten in full rain (%.2f, %.2f)" % [wet.x, wet.y])
 	t.ok(SkyModel.lamp_bloom(0.5).y > dry.y and SkyModel.lamp_bloom(0.5).y < wet.y, "the bloom grows with the rain")
 	t.ok(SkyModel.lamp_bloom(3.0) == wet, "the bloom caps at full rain")
+
+	# Thunder follows the strike: the flash is on at the strike time, and the rumble trails it by 1.5 to 4.5 s
+	var strikes: int = 0
+	var agree: bool = true
+	for w in 200:
+		var st: float = SkyModel.strike_time(w)
+		if st < 0.0:
+			continue
+		strikes += 1
+		if SkyModel.lightning_flash(st + 0.01, 1.0) < 0.5:
+			agree = false
+		var dl: float = SkyModel.thunder_delay(w)
+		if dl < 1.5 or dl > 4.5:
+			agree = false
+	t.ok(strikes > 50, "about half the windows have a strike (%d of 200)" % strikes)
+	t.ok(agree, "every strike flashes at its time and its thunder trails by 1.5 to 4.5 s")
+
+	# The rumble is a made stream of the set length, not a file: it must build with no audio driver and stop at its end
+	var scape := AmbientScape.new()
+	var rumble: AudioStreamWAV = scape._thunder()
+	var want: int = int(AmbientScape.THUNDER_RATE * AmbientScape.THUNDER_SECONDS) * 2
+	t.ok(rumble != null and rumble.data.size() == want, "the thunder rumble is made at its set length")
+	t.ok(rumble.loop_mode == AudioStreamWAV.LOOP_DISABLED, "the rumble plays once, not on a loop")
+	scape.free()

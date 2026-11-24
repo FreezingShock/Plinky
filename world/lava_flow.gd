@@ -14,7 +14,7 @@ var _frame: int = -1
 func setup(dir: String, tiles: Array) -> void:
 	for t: Variant in tiles:
 		var d: Dictionary = t as Dictionary
-		var tex: Texture2D = load(dir + String(d.get("file", ""))) as Texture2D
+		var tex: Texture2D = ZoneAssets.texture(dir + String(d.get("file", "")))
 		if tex == null:
 			continue
 		var sp := Sprite2D.new()
