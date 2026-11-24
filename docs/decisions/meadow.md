@@ -119,3 +119,9 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** the path was a plain sand strip. Stones are the cheapest step that makes it read as made.
 - **Not in this slice:** the path's edges are still plain grass, and the lake boardwalk and the Larkmoor path are untouched.
 - **Not run in the cloud:** the look in-engine; PC QA should screenshot the path at 640x360.
+## 2026-11-24: Meadow gate arch (slice 2 of the meadow rework)
+- **Brief (Nathan, via coordinator):** gates and paths between areas must look better and match the area they lead to; the quarry gate reads as ember and stone, so the meadow gate reads as timber and flowers.
+- **Changed:** the meadow gate (zone1) takes `gate_art = &"meadow"` and draws its own arch in `world/texel_gate.gd`: timber posts with cream caps and vines, a flower-garlanded lintel with a keystone bloom, a wooden lattice that shows the green light of Larkmoor once open, and drifting petals while open. It uses the meadow palette, 8 indices like the forge arch.
+- **Why:** the plain pulsing ring read as a placeholder, and the arch gives the gate the hover tooltip the forge gate already has.
+- **Not in this slice:** the path to the gate is still baked sand (gen_meadow3d.py). Path edges (stepping stones, flowers) are the next gate-and-path step.
+- **Not run in the cloud:** the look and the draw code in-engine (no Godot here). The PC QA thread should screenshot the gate closed and open.
