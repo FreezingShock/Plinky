@@ -89,12 +89,12 @@ static func grip() -> StripButton:
 	return b
 
 
-## A frameless hide mark, 10 by 12.
+## A frameless hide mark, 14 by 12 (the glyph is small, the hit area is not).
 static func hide_mark() -> StripButton:
 	var b := StripButton.new()
 	b.glyph = Glyph.CLOSE
 	b.flat = true
-	b.custom_minimum_size = Vector2(10.0, SIZE)
+	b.custom_minimum_size = Vector2(14.0, SIZE)
 	b.size = b.custom_minimum_size
 	return b
 
