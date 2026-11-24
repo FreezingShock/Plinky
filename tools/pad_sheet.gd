@@ -1,5 +1,5 @@
 extends Node
-## Contact sheet of the six tier pads (idle, buyable, locked) on a flat ground. Output: shots/pad_sheet.png
+## Contact sheet of the six Larkmoor tier pads, stages 1 to 5 (one row per stage), on a flat ground. Output: shots/pad_sheet_<mode>.png
 ## Run: godot --path . tools/pad_sheet.tscn   (xvfb-run with the software Vulkan driver on a headless server)
 
 
@@ -15,14 +15,14 @@ func _ready() -> void:
 	var walker: Node2D = Node2D.new()
 	walker.position = Vector2(-900, -900)
 	world.add_child(walker)
-	var tiers: Array[String] = ["sprout", "clover", "thistle", "heather", "foxglove", "starbloom"]
-	for r in 3:
+	var tiers: Array[String] = ["lark_sprout", "lark_clover", "thistle", "heather", "foxglove", "starbloom"]
+	for r in 5:
 		for i in 6:
-			var id: StringName = StringName("%s_%d" % [tiers[i], 1 + (r % 3)])
+			var id: StringName = StringName("%s_%d" % [tiers[i], 1 + r])
 			var pad: TexelPad = TexelPad.new()
 			pad.button_id = id
 			pad.walker = walker
-			pad.position = Vector2(50 + i * 100, 70 + r * 110)
+			pad.position = Vector2(50 + i * 100, 40 + r * 62)
 			world.add_child(pad)
 			if r == 0:
 				sim.stats[&"sunlight"] = BigNum.from_float(1.0e12)

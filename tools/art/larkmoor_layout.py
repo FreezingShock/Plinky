@@ -19,7 +19,7 @@ EMBER_GATE = (760, 268)       # the gate that leads on to Zone 2, set into the n
 # Main route: S -> Gatehouse Green -> fork W (Heronmere) / E (Thistle Rise) -> Old Oak Crossing -> N fork -> Emberwatch.
 PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 520), (770, 486), (762, 454), (752, 420), (756, 386), (770, 350), (766, 310), (760, 268)]
 PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
-PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1100, 548), (1060, 520), (990, 500), (900, 490), (770, 486)]
+PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094, 550), (1090, 536), (1060, 520), (990, 500), (900, 490), (770, 486)]   # the tip now ends at the windmill's south door (1090, 520), so the fold leads somewhere
 # Only the main road runs north: to the Ember gate, top middle. The side trails stop short of the mountainside.
 # West trail: off the east side of the west road, north of the lake and along its north shore, to the Westmere pads on the west bank.
 PATH_WM = [(600, 540), (590, 470), (540, 452), (470, 440), (400, 444), (336, 486)]
@@ -34,14 +34,44 @@ MERE = dict(c=(1120, 392), rx=70, ry=36)
 STREAM = [(430, 330), (520, 372), (610, 430), (700, 452), (800, 458), (900, 450), (990, 438), (1060, 420)]
 BRIDGE = (762, 454)           # where the main path crosses the stream
 
-# Pad rows: a tier is a straight line of three pads on the 2:1 ground grid, 44 texels apart (a 28 wide plate plus a gap
-# the walker can cross). `row(centre, step)` lists them from the first to the last; the order is the order of the tier's
-# pads in ZoneDef.pad_buttons, and the anchors come out in the order the districts are listed below.
-def row(cx, cy, dx, dy):
-    return [(cx - dx, cy - dy), (cx, cy), (cx + dx, cy + dy)]
+# Pad rows: a tier is a row of pads laid on a smooth curve (a Catmull-Rom spline through a few control points) that follows the
+# ground beside a path. `curve_row(ctrl, n)` lists n pads from the first to the last, PAD_GAP apart along the curve (authored
+# units; the whole world is then scaled by S, so 21 becomes 42 texels: a 28 wide plate and a 14 texel gap the walker can cross).
+# The order is the order of the tier's pads in ZoneDef.pad_buttons, and the anchors come out in the order the districts are listed below.
+PAD_GAP = 21.0
 
 
-ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right ("/") or falls to the right ("\\")
+def _catmull(pts, k=24):
+    p = [pts[0]] + list(pts) + [pts[-1]]
+    out = []
+    for i in range(1, len(p) - 2):
+        p0, p1, p2, p3 = p[i - 1], p[i], p[i + 1], p[i + 2]
+        for j in range(k):
+            t = j / k; t2 = t * t; t3 = t2 * t
+            out.append(tuple(0.5 * ((2 * p1[c]) + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2
+                                    + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3) for c in (0, 1)))
+    out.append(tuple(pts[-1]))
+    return out
+
+
+def curve_row(ctrl, n, gap=PAD_GAP):
+    """n points, `gap` apart (screen distance) along the spline through `ctrl`, the first at the start of the curve."""
+    d = _catmull(ctrl)
+    res = [d[0]]
+    acc, need = 0.0, gap
+    for a, b in zip(d, d[1:]):
+        seg = math.hypot(b[0] - a[0], b[1] - a[1])
+        while acc + seg >= need and len(res) < n and seg > 0:
+            t = (need - acc) / seg
+            a = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+            res.append(a)
+            seg = math.hypot(b[0] - a[0], b[1] - a[1]); acc = 0.0
+        acc += seg
+        if len(res) >= n:
+            break
+    assert len(res) == n, 'curve too short for %d pads' % n
+    return [(round(x), round(y)) for x, y in res]
+
 
 # Districts: name, centre, pads (screen coords), landmark. Pads are six rows, listed in the order of their tiers. The
 # common and uncommon rows (Sprout at Heronmere, Clover on the south lake shore) open first, then Thistle, Heather,
@@ -49,21 +79,21 @@ ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right (
 # The Clover row is the fifth entry, so pad_buttons order still lines up, but it stands by the Heronmere lake path, not in
 # Cairnfold's own centre (the area list in content/areas says Heronmere for it). Both rows sit on walkable ground. Lanternwood has none.
 DISTRICTS = [
-    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(864, 642, *ROW_STEP_UP),
+    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=curve_row([(816, 656), (856, 662), (896, 654), (936, 640)], 5),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(534, 600), (578, 622), (622, 644)],
+    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=curve_row([(716, 664), (676, 660), (636, 656), (598, 650)], 5),
          note='West lake with reed shores and a little jetty. The Sprout row runs across the open grass between the main path and the lake, well in from the arrival gate; the Clover row lines the south shore.'),
-    dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=row(840, 534, *ROW_STEP_DOWN),
+    dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
-    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=row(1030, 580, *ROW_STEP_UP),
+    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(990, 608), (1030, 612), (1066, 604), (1100, 586)], 5),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
-    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[(546, 648), (502, 626), (458, 604)],
+    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
          note='Rocky foothills, glowing crystals, a ring of standing stones. Its Clover row sits on the Heronmere south shore, pad 1 nearest the road.'),
     dict(id='lanternwood', name='Lanternwood', c=(960, 330), pads=[],
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
-    dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=row(836, 322, *ROW_STEP_UP),
+    dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=curve_row([(806, 350), (830, 338), (858, 334)], 3),
          note='Last plaza before the quarry. The Starbloom row, and the far gate set in the cliff.'),
-    dict(id='westmere', name='Westmere', c=(332, 512), pads=[(288, 490), (332, 512), (376, 534)],
+    dict(id='westmere', name='Westmere', c=(332, 512), pads=curve_row([(296, 494), (326, 508), (352, 514)], 3),
          note='West bank of the lake, reached by the west trail. No gate. Three more Starbloom pads: the Starbloom row runs on here.'),
 ]
 LANDMARKS = [
@@ -119,7 +149,7 @@ PAD_NUDGE = {
     (534, 600): (540, 594), (622, 644): (622, 648), (796, 512): (806, 512), (1030, 580): (1032, 584),
     (1074, 558): (1074, 574), (546, 648): (544, 652), (502, 626): (500, 632), (792, 344): (800, 366),
 }
-PAD_CLEAR = 20.6
+PAD_CLEAR = 24.8   # 8 texels more than the old 20.6 (authored), for the widened paths (map thread)
 
 
 def _to_uv(sx, sy):

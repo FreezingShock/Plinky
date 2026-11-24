@@ -90,6 +90,7 @@ var _shore: Array[Vector2] = []           # grass tips just outside a water edge
 var _rabbits: Array[Dictionary] = []
 var _ducks: Array[Dictionary] = []
 var _frogs: Array[Dictionary] = []
+var _farm_items: Array[Rect2] = []         # the farm's props (sheds, barn, crates), which chickens walk around
 var _farms: Array[Rect2] = []             # farm yards from the life data ("farm": [[x, y, w, h], ...])
 var _chickens: Array[Dictionary] = []
 var _ripples: Array[Dictionary] = []      # {pos, age}
@@ -130,6 +131,10 @@ func setup(life: Dictionary) -> void:
 	for fr: Variant in life.get("farm", []) as Array:
 		var fa: Array = fr as Array
 		_farms.append(Rect2(float(fa[0]), float(fa[1]), float(fa[2]), float(fa[3])))
+	_farm_items.clear()
+	for ir: Variant in life.get("farm_items", []) as Array:
+		var ia: Array = ir as Array
+		_farm_items.append(Rect2(float(ia[0]), float(ia[1]), float(ia[2]), float(ia[3])))
 	_spawn_chickens()
 	_fly.setup(life)
 
@@ -199,13 +204,29 @@ func _spawn_chickens() -> void:
 	for k: int in _farms.size():
 		var box: Rect2 = _farms[k]
 		var n: int = clampi(roundi(box.get_area() * CHICKEN_PER_AREA), 0, CHICKEN_MAX)
-		for i: int in n:
+		var placed: int = 0
+		for i: int in n * 6:   # the props and pads reject some spots, so try more than the flock size
+			if placed >= n:
+				break
 			var at: Vector2 = box.position + box.size * Vector2(MeadowLife.hash01(k * 31 + i * 7 + 1), MeadowLife.hash01(k * 31 + i * 7 + 2))
-			if MeadowLife.near_any(at, _pads, PAD_KEEP) or MeadowLife.in_water(at, _water, WATER_KEEP):
+			if _chicken_blocked(at):
 				continue
+			placed += 1
 			_chickens.append({"farm": k, "pos": at, "to": at, "lift": 0.0,
 				"wait": CHICKEN_WAIT.x + MeadowLife.hash01(i * 5 + k) * (CHICKEN_WAIT.y - CHICKEN_WAIT.x),
 				"scared": 0.0, "dir": 1.0, "seed": 90 + k * 17 + i, "fade": 0.0})
+
+
+## Chickens keep off the pads, the water and the farm's props, so they never stand in a sprite.
+func _chicken_blocked(p: Vector2) -> bool:
+	return MeadowLife.near_any(p, _pads, PAD_KEEP) or MeadowLife.in_water(p, _water, WATER_KEEP) or _on_farm_prop(p)
+
+
+func _on_farm_prop(p: Vector2) -> bool:
+	for r: Rect2 in _farm_items:
+		if r.grow(2.0).has_point(p):
+			return true
+	return false
 
 
 ## Chickens are out by day, and roost in the coop at night or in rain.
@@ -245,7 +266,7 @@ func _update_chickens(delta: float, wp: Vector2, calm: bool) -> void:
 		if step.length() > 0.2:
 			var speed: float = CHICKEN_RUN if float(c.scared) > 0.0 else CHICKEN_STROLL
 			var nxt: Vector2 = pos + step.normalized() * minf(speed * delta, step.length())
-			if MeadowLife.near_any(nxt, _pads, PAD_KEEP) or MeadowLife.in_water(nxt, _water, WATER_KEEP):
+			if _chicken_blocked(nxt):
 				c.to = pos   # the way is blocked: stop here
 			else:
 				pos = nxt

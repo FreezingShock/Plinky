@@ -287,6 +287,27 @@ func run(t: Object) -> void:
 	MeadowLife.night = keep[0]
 	MeadowLife.rain = keep[2]
 
+	# The real Larkmoor farm (the yard and prop rects in its life data): the flock fills the yard, and while it strolls
+	# no chicken stands on a prop, leaves the yard or sits on a pad.
+	MeadowLife.night = 0.0
+	MeadowLife.rain = 0.0
+	var farm_box: Array = (lark.get("farm", []) as Array)[0] as Array
+	var yard_box := Rect2(float(farm_box[0]), float(farm_box[1]), float(farm_box[2]), float(farm_box[3]))
+	var lark_hens := LifeCritters.new()
+	lark_hens.setup(lark)
+	var lh: Array = lark_hens.get("_chickens") as Array
+	t.eq(lh.size(), LifeCritters.CHICKEN_MAX, "the Larkmoor farm yard gets a full flock (%d)" % lh.size())
+	var bad_steps: int = 0
+	for i: int in 600:
+		lark_hens.update(1.0 / 30.0, far)
+		for h: Variant in lh:
+			var sp: Vector2 = (h as Dictionary).pos as Vector2
+			if lark_hens._on_farm_prop(sp) or not yard_box.has_point(sp) or MeadowLife.near_any(sp, lark_pads, LifeCritters.PAD_KEEP):
+				bad_steps += 1
+	t.eq(bad_steps, 0, "the Larkmoor chickens stroll the yard and never stand on a prop, outside it or on a pad")
+	MeadowLife.night = keep[0]
+	MeadowLife.rain = keep[2]
+
 
 func _vecs(a: Array) -> Array[Vector2]:
 	var out: Array[Vector2] = []

@@ -22,7 +22,7 @@ Output (all positions in the 640x360 frame):
 Usage:
   python3 tools/art/gen_life_anchors.py                       # main's 2D meadow
   python3 tools/art/gen_life_anchors.py --backdrop B --placements P [--out O]
-  python3 tools/art/gen_life_anchors.py --backdrop B --placements P --out O --add-keys   # only flowers and pad_sites
+  python3 tools/art/gen_life_anchors.py --backdrop B --placements P --out O --add-keys [--farm assets/art/zone1b/farm/farm.json]   # only flowers, pad_sites and the farm keys
 Needs Pillow. Deterministic (fixed seed): the JSON only changes when the art or placements change."""
 import argparse, json, os, random
 
@@ -165,6 +165,9 @@ def main() -> None:
     ap.add_argument("--sway-count", type=int, default=SWAY_COUNT)
     ap.add_argument("--add-keys", action="store_true",
                     help="only write flowers and pad_sites into the existing --out file, leaving every other key as it is")
+    ap.add_argument("--farm", default="",
+                    help="with --add-keys: a farm.json. Its yard box goes in as 'farm' and its prop rects as 'farm_items' "
+                         "(chickens keep off the props)")
     args = ap.parse_args()
     if args.bounds:
         GRASS_BOUNDS = tuple(int(v) for v in args.bounds.split(","))
@@ -260,6 +263,12 @@ def main() -> None:
         data = json.load(open(args.out))
         data["flowers"] = flowers
         data["pad_sites"] = [[x, y] for x, y in pl["pad_sites"]]
+        if args.farm:
+            fm = json.load(open(args.farm))
+            cx, cy, bw, bh = fm["box_layout"]
+            s = float(fm["scale"])
+            data["farm"] = [[(cx - bw / 2) * s, (cy - bh / 2) * s, bw * s, bh * s]]
+            data["farm_items"] = [[it["x"], it["y"], it["w"], it["h"]] for it in fm["items"]]
     with open(args.out, "w") as f:
         json.dump(data, f, indent=1)
         f.write("\n")

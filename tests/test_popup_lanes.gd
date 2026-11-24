@@ -32,22 +32,22 @@ func run(t: Object) -> void:
 	var fallback: Vector2 = PopupLanes.pick(origin, box, 13.0, high_wall, lanes)
 	t.ok(lanes.has(fallback) or fallback.y < 0.0, "with no clear slot a lane is still returned")
 
-	# --- merging: same-currency presses on neighbouring pads fold into one number, other currencies do not
+	# --- merging: same-currency presses on one pad fold into one number; a neighbouring pad keeps its own number
 	var pp := PressPopups.new()
 	pp._ready()
 	pp.press(&"pad_a", Vector2(100.0, 100.0), 10.0, 0, false, false, false, 0.0, "Starbloom Petals", Color.WHITE)
-	pp.press(&"pad_b", Vector2(180.0, 100.0), 5.0, 0, false, false, false, 0.0, "Starbloom Petals", Color.WHITE)
-	t.eq(pp.live_count(), 1, "same-currency presses on pads about a pad apart fold into one popup")
+	pp.press(&"pad_a", Vector2(100.0, 100.0), 5.0, 0, false, false, false, 0.0, "Starbloom Petals", Color.WHITE)
+	t.eq(pp.live_count(), 1, "same-currency presses on one pad fold into one popup")
 	var merged: PressPopups.Pop = null
 	for p in pp._pops:
 		if p.live:
 			merged = p
 	t.ok(merged != null and absf(merged.total - 15.0) < 1e-6, "the merged popup carries both amounts")
 	t.ok(merged != null and merged.cap_w > 0.0, "the merged popup keeps its currency caption width")
+	pp.press(&"pad_b", Vector2(180.0, 100.0), 5.0, 0, false, false, false, 0.0, "Starbloom Petals", Color.WHITE)
+	t.eq(pp.live_count(), 2, "a neighbouring pad's gain of the same currency keeps its own number, over its own button")
 	pp.press(&"pad_c", Vector2(120.0, 100.0), 3.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
-	t.eq(pp.live_count(), 2, "a different currency never folds in, even right beside the number")
-	pp.press(&"pad_d", Vector2(600.0, 100.0), 4.0, 0, false, false, false, 0.0, "Starbloom Petals", Color.WHITE)
-	t.eq(pp.live_count(), 3, "a same-currency press far across the screen starts its own number")
+	t.eq(pp.live_count(), 3, "a different currency never folds in, even right beside the number")
 	PressPopups.instance = null
 	pp.free()
 
@@ -107,7 +107,7 @@ func run(t: Object) -> void:
 	PressPopups.instance = null
 	pc.free()
 
-	# --- one label per currency: near gains keep one number going, it holds its spot, floats only once gains stop
+	# --- one label per currency on a pad: repeat gains keep one number going, it holds its spot, floats only once gains stop
 	var lab := PressPopups.new()
 	lab._ready()
 	lab.press(&"pad_a", Vector2(100.0, 100.0), 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
@@ -117,10 +117,10 @@ func run(t: Object) -> void:
 			lbl = p
 	t.ok(lbl != null and lbl.hold, "a new gain starts as a holding label")
 	var spot: Vector2 = lab._pos_of(lbl)
-	var near_pads: Array[Vector2] = [Vector2(160.0, 120.0), Vector2(120.0, 180.0), Vector2(180.0, 160.0)]
-	for k in near_pads.size():
-		lab.press(StringName("pad_near_%d" % k), near_pads[k], 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
-	t.eq(lab.live_count(), 1, "same-currency gains from pads near the label keep one label")
+	var repeat_at: Array[Vector2] = [Vector2(100.0, 100.0), Vector2(100.0, 100.0), Vector2(100.0, 100.0)]
+	for k in repeat_at.size():
+		lab.press(&"pad_a", repeat_at[k], 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	t.eq(lab.live_count(), 1, "repeat same-currency gains from one pad keep one label")
 	t.near(lbl.total, 1080.0 * 4.0, 1e-3, "the one label carries every gain")
 	t.near(lab._pos_of(lbl).x, spot.x, 1e-6, "a label that is still gaining does not move sideways")
 	t.near(lab._pos_of(lbl).y, spot.y, 1e-6, "a label that is still gaining does not rise")
@@ -133,7 +133,7 @@ func run(t: Object) -> void:
 	t.ok(lbl.life > lbl.t0 and lbl.life < 9999.0, "a floating label has a finite life that starts now")
 
 	var before_refold: Vector2 = lab._pos_of(lbl)
-	lab.press(&"pad_late", Vector2(140.0, 130.0), 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	lab.press(&"pad_a", Vector2(100.0, 100.0), 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
 	t.ok(lbl.hold, "a gain landing on a floating label holds it again")
 	t.near(lab._pos_of(lbl).y, before_refold.y, 1e-3, "and the label stays where it was when the gain landed")
 	t.eq(lab.live_count(), 1, "the late gain still lands on the same label")
@@ -168,7 +168,7 @@ func run(t: Object) -> void:
 	PressPopups.instance = null
 	cad.free()
 
-	# --- a floating label takes a same-currency gain 300 px away and holds again
+	# --- a floating label takes a same-pad gain and holds again where it is
 	var fc := PressPopups.new()
 	fc._ready()
 	fc.clock_override = 0.0
@@ -180,30 +180,30 @@ func run(t: Object) -> void:
 	fl.since_bump = 10.0
 	fc._float_if_quiet(fl)
 	t.ok(not fl.hold, "a quiet label floats before the next gain")
-	fc.press(&"pad_b", Vector2(400.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
-	t.eq(fc.live_count(), 1, "a gain 300 px away lands on the floating label")
+	fc.press(&"pad_a", Vector2(100.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(fc.live_count(), 1, "a same-pad gain lands on the floating label")
 	t.ok(fl.hold, "the floating label holds again when it takes the gain")
 	t.near(fl.total, 15.0, 1e-6, "the floating label carries both gains")
 	PressPopups.instance = null
 	fc.free()
 
-	# --- a same-currency gain 420 px away is too far to fold, so it starts its own label
+	# --- a gain from another pad starts its own number, even when it is close
 	var sep := PressPopups.new()
 	sep._ready()
 	sep.clock_override = 0.0
 	sep.press(&"pad_a", Vector2(100.0, 100.0), 10.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
-	sep.press(&"pad_b", Vector2(520.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
-	t.eq(sep.live_count(), 2, "a same-currency gain 420 px away starts its own label")
+	sep.press(&"pad_b", Vector2(130.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(sep.live_count(), 2, "a same-currency gain from another pad starts its own number, 30 px away")
 	PressPopups.instance = null
 	sep.free()
 
-	# --- a normal press beside a running hold folds into that hold: one number, both amounts
+	# --- a normal press on the same pad as a running hold folds into that hold: one number, both amounts
 	var rn := PressPopups.new()
 	rn._ready()
 	rn.clock_override = 0.0
 	rn.press(&"pad_a", Vector2(100.0, 100.0), 3.0, 0, false, true, false, 0.0, "Clover", Color.WHITE)
-	rn.press(&"pad_b", Vector2(130.0, 100.0), 2.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
-	t.eq(rn.live_count(), 1, "a normal press 30 px from a running hold folds into it")
+	rn.press(&"pad_a", Vector2(100.0, 100.0), 2.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(rn.live_count(), 1, "a normal press on the same pad folds into its running hold")
 	var rl: PressPopups.Pop = null
 	for p in rn._pops:
 		if p.live:

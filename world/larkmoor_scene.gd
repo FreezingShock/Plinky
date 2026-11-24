@@ -182,7 +182,9 @@ var _prop_index: Dictionary = {}     # Vector2i chunk -> Array of prop dictionar
 var _loaded: Dictionary = {}         # Vector2i chunk -> Array of the Sprite2D props spawned for it
 var _center: Vector2i = Vector2i(-99999, -99999)
 var _lanterns_lit: bool = false       # lantern pools are added once per scene, not once per spawn
-const LANTERN_STRENGTH: float = 0.9   # pool strength of a lantern (radius: the shrine radius times 0.7)
+const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
+const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
+var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
 const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
 
 
@@ -202,11 +204,12 @@ func _begin(parent: Node2D) -> void:
 		(_prop_index[key] as Array).append(s)
 		if light_lanterns and String(s.kind) == "lantern":
 			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
-					_sky.light_config().pool_shrine_radius * 0.7, LANTERN_STRENGTH)
+					_sky.light_config().pool_shrine_radius * LANTERN_RADIUS_K, LANTERN_STRENGTH)
 
 
 func spawn_occluders(parent: Node2D) -> void:
 	_begin(parent)
+	_add_farm(parent)
 	_refresh_center(_start_point())
 
 
@@ -214,6 +217,7 @@ func spawn_occluders(parent: Node2D) -> void:
 ## under the transition wipe uses it, so the first load does not stall the wipe's peak.
 func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_begin(parent)
+	_add_farm(parent)
 	_center = _chunk_of(_start_point())
 	var start_us: int = Time.get_ticks_usec()
 	for key: Vector2i in _needed_keys(_center):
@@ -225,6 +229,11 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_rebuild_bushes()
 
 
+## The Thistle Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
+func _add_farm(parent: Node2D) -> void:
+	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
+
+
 ## Keep the loaded chunks in step with the walker. Runs every frame, but only does work when the walker changes chunk.
 func _process(_delta: float) -> void:
 	if _occ_parent == null:
@@ -232,6 +241,11 @@ func _process(_delta: float) -> void:
 	var w: Node2D = get_tree().get_first_node_in_group(&"walker") as Node2D
 	if w != null:
 		_refresh_center(w.position)
+	# lamp heads glow only after dark: fade them with the night, and forget the glows of unloaded lanterns
+	var night: float = _sky.night01 if _sky != null else 0.0
+	_glows = _glows.filter(func(g: Variant) -> bool: return is_instance_valid(g))
+	for g in _glows:
+		(g as Sprite2D).modulate.a = night
 
 
 func _exit_tree() -> void:
@@ -240,6 +254,7 @@ func _exit_tree() -> void:
 			if is_instance_valid(sp):
 				(sp as Sprite2D).queue_free()
 	_loaded.clear()
+	_glows.clear()
 
 
 ## Props spawned now, and every prop in the placements (tests and the bench read these).
@@ -319,6 +334,25 @@ func _rebuild_bushes() -> void:
 	react.set_bushes(bushes)
 
 
+## A small dithered bloom for a lamp head: a warm disc with a Bayer-stepped falloff (the meadow's glow style), made once.
+static var _glow_tex: Texture2D = null
+
+static func _glow_texture() -> Texture2D:
+	if _glow_tex == null:
+		var n: int = 24
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		var bayer: Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+		for y in n:
+			for x in n:
+				var d: float = Vector2(x + 0.5 - n * 0.5, y + 0.5 - n * 0.5).length() / (n * 0.5)
+				var fall: float = clampf(1.0 - d, 0.0, 1.0)
+				fall *= fall
+				var q: float = floorf(fall * 4.0 + (float(bayer[(y % 4) * 4 + x % 4]) + 0.5) / 16.0) / 4.0
+				img.set_pixel(x, y, Color(1.0, 0.82, 0.45, q * 0.9))
+		_glow_tex = ImageTexture.create_from_image(img)
+	return _glow_tex
+
+
 func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 	var sp := Sprite2D.new()
 	sp.name = "Occ_" + String(s.file).get_file().get_basename()
@@ -342,4 +376,18 @@ func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
 	if String(s.kind) == "bush":
 		sp.set_meta(&"bush", true)
+	if String(s.kind) == "lantern" and float(s.w) < 20.0 and _sky != null:   # ordinary lamps; the great lantern has its own look
+		# the lamp head sits about 17 texels above the foot; z 6 puts the bloom above the night shade (z 5), so it stays bright
+		var glow := Sprite2D.new()
+		glow.name = "LampGlow"
+		glow.texture = _glow_texture()
+		glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		glow.position = Vector2(0.0, -17.0)
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		glow.material = add
+		glow.z_index = 6
+		glow.modulate.a = _sky.night01
+		sp.add_child(glow)
+		_glows.append(glow)
 	return sp
