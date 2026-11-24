@@ -564,6 +564,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** the open menu matches main pixel for pixel in the tiles and header. The footer labels (Close Menu, Quit To Title, Quit Game) sit 1 px to the right of main's, and that holds after 2.5 s, so it is not the open animation. Not traced yet; likely how MenuTextButton measures its label on its first `_ready`. `tests/run.gd` passes. Two tests now show the menu before reading its tiles.
 - **Not run in-engine:** the focus feel on a real PC.
 
+## 2026-11-24: Gallery Tab order reaches the footer
+- **Decision:** Tab walks the nine tiles in layout order, then Close Menu, Quit To Title and Quit Game, then wraps to the first tile. Shift+Tab reverses it. The footer buttons are kept in `GalleryMenu._footer`.
+- **Why:** each tile's Tab target wrapped straight to the first tile, so the footer was never reached by keyboard (PC keyboard QA on main d52c8521). The arithmetic is in `GalleryMenu.tab_next` and `tab_prev`, tested in `tests/test_gallery.gd`.
+- **Checked:** `tests/run.gd` passes (7960 checks, 0 failed). In a running scene, the Tab walk visits 12 distinct controls and wraps, and Settings' next control is Close Menu.
+- **Not done:** arrow keys from the footer (up and down into the tiles) are not wired. Not run on the PC.
 ## 2026-11-24: A menu takes the screen from an achievement banner at once
 - **Decision:** when a menu opens while a banner is on screen, the banner is hidden on that frame, with no close animation. Its sparks are freed too. The unlock goes back to the front of the queue and shows after the menu closes. Ritual holds keep the animated close.
 - **Why:** the boot achievement banner drew over the open Gallery at zoom 3 (PC QA on main 190d09cd). The banner sits at `TOAST_Z`, which beats the menu's tree order, and the old path ran a 0.3 s close during which the banner stayed on top.

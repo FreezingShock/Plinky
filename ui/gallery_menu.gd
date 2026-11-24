@@ -41,6 +41,7 @@ var is_locked: Callable = Callable()
 var _tiles: Dictionary = {}   # kind -> GalleryTile
 var _clock: float = 0.0
 var _resume: MenuTextButton
+var _footer: Array[MenuTextButton] = []   ## Close Menu, Quit To Title, Quit Game, in Tab order
 var _body: VBoxContainer          ## the built contents, or null while the menu is shut
 
 
@@ -107,15 +108,26 @@ func _build() -> void:
 	actions.add_theme_constant_override("separation", 4)
 	v.add_child(actions)
 	_resume = _action("Close Menu", RelicStyle.good, func() -> void: resume_requested.emit())
-	actions.add_child(_resume)
-	actions.add_child(_action("Quit To Title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit()))
-	actions.add_child(_action("Quit Game", RelicStyle.accent, func() -> void: quit_game_requested.emit()))
+	var quit_title: MenuTextButton = _action("Quit To Title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit())
+	var quit_game: MenuTextButton = _action("Quit Game", RelicStyle.accent, func() -> void: quit_game_requested.emit())
+	_footer = [_resume, quit_title, quit_game]
+	for b: MenuTextButton in _footer:
+		actions.add_child(b)
 	var hint := Label.new()
 	hint.text = "Esc closes the menu."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(hint)
 	_wire_focus()
+
+
+## Pure: the item Tab moves to from item `i` of a focus chain of `n` items, wrapping at the end. Shift+Tab is tab_prev.
+static func tab_next(n: int, i: int) -> int:
+	return (i + 1) % n
+
+
+static func tab_prev(n: int, i: int) -> int:
+	return posmod(i - 1, n)
 
 
 ## Pure: the tile each arrow key goes to from tile `i` of `n` in a grid `cols` wide. Moves wrap around the edges, and a
@@ -147,8 +159,16 @@ func _wire_focus() -> void:
 		t.focus_neighbor_right = t.get_path_to(order[nb["right"]])
 		t.focus_neighbor_top = t.get_path_to(order[nb["up"]])
 		t.focus_neighbor_bottom = t.get_path_to(order[nb["down"]])
-		t.focus_next = t.get_path_to(order[(i + 1) % order.size()])
-		t.focus_previous = t.get_path_to(order[posmod(i - 1, order.size())])
+	# Tab walks the tiles in layout order, then the footer, then wraps to the first tile. Shift+Tab is the reverse.
+	var chain: Array[Control] = []
+	for t: GalleryTile in order:
+		chain.append(t)
+	for b: MenuTextButton in _footer:
+		chain.append(b)
+	for i in chain.size():
+		var c: Control = chain[i]
+		c.focus_next = c.get_path_to(chain[tab_next(chain.size(), i)])
+		c.focus_previous = c.get_path_to(chain[tab_prev(chain.size(), i)])
 
 
 func _action(text: String, accent: Color, on_press: Callable) -> MenuTextButton:
@@ -188,6 +208,7 @@ func _teardown() -> void:
 	_body = null
 	_tiles.clear()
 	_resume = null
+	_footer.clear()
 	_clock = 0.0
 
 
