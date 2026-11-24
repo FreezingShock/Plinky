@@ -37,6 +37,7 @@ const POPUP_LIFT: Vector2 = Vector2(0.0, -18.0)
 var streak: PressStreak = PressStreak.new()
 var _popups: PressPopups
 var _last_anchor: Vector2 = Vector2.ZERO
+var last_tier: int = 0   ## the streak tier of the latest pad press: the HUD gain labels take its colour, as the world numbers do
 
 
 func _ready() -> void:
@@ -79,6 +80,7 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 	var sim: Sim = GameState.sim as Sim
 	var now: float = Time.get_ticks_msec() / 1000.0
 	var tier: int = streak.feed(now, sim.momentum_tier(), sim.config)
+	last_tier = tier
 	var rose: bool = streak.rose
 	var pulse: bool = pulse_from != Vector2.INF
 	var key: StringName = (pad as TexelPad).button_id if pad is TexelPad else StringName(str(pad.get_instance_id()))
