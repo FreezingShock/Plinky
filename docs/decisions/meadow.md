@@ -113,6 +113,12 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
 - Not run in-engine from the cloud. Please check the pads on a PC capture.
 
+## 2026-11-24: Meadow path stones (slice 3 of the meadow rework)
+- **Brief (Nathan, via coordinator):** paths between areas should look better and fit the area they lead to.
+- **Changed:** a small flat stone every ~11 texels along the meadow path, alternating either side of the centre line, placed last in `gen_meadow3d.py` so nothing earlier in the layout moves. Only on open ground near the path; never in water.
+- **Why:** the path was a plain sand strip. Stones are the cheapest step that makes it read as made.
+- **Not in this slice:** the path's edges are still plain grass, and the lake boardwalk and the Larkmoor path are untouched.
+- **Not run in the cloud:** the look in-engine; PC QA should screenshot the path at 640x360.
 ## 2026-11-24: Meadow river fix (after PC QA of #272)
 - **QA finding:** the upper two thirds of the stream read as a pale green checker with orange banks, so foam, not water. Bank spots 16 texels out were walkable in only about a third of cases.
 - **Cause:** the foam test covered the outer 1.6 texels of a 9-texel channel, so about two thirds of it was white water. The bed was only 0.9 deep, which is a light water ramp.
