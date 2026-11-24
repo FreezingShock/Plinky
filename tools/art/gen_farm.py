@@ -1,11 +1,8 @@
 """Larkmoor farm district: sprites for the Thistle Rise farm (world/farm/).
 
-Writes assets/art/zone1b/farm/ (PNG sprites, wheat field frame sheets, farm_preview.png). Pixel scale is Larkmoor's
+Writes assets/art/zone1b/farm/ (PNG props and farm_preview.png). The wheat is not drawn here: tools/bake_wheat.gd bakes it. Pixel scale is Larkmoor's
 (the windmill is about 65 texels wide), so these are about twice the meadow's cozy props. Everything is drawn in the
 meadow palette roles from gen_cozy.py, so the post-process palette and dither treat them like the rest of the meadow.
-
-Wheat fields are one sheet each: 8 gust frames, like gen_cozy's wheat, as a thick mass of rows with mixed stalk
-heights, rounded sides, and a per-field seed so no two fields look stamped. The fields are wheat only: no plots.
 
 Run: python3 tools/art/gen_farm.py   (needs Pillow; the layout is in place_farm.py).
 """
@@ -19,66 +16,11 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from gen_cozy import Canvas, INK, SHADE, DEEP, BASE, LIGHT, ACCENT, EARTH, PAPER  # noqa: E402
+from farm_iso import barn, cart, crates, hay_bale, shed  # noqa: E402  (elevated view, see farm_iso.py)
 
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 
-WHEAT_FRAMES = 8
-# name, frame width, seed. Wider fields are bigger patches; every field shares the height and the 8-frame wave.
-FIELD_SPECS = [('field_a', 96, 11), ('field_b', 96, 23), ('field_c', 128, 37), ('field_d', 160, 51)]
-FIELD_H = 44                    # the row sheets are taller than the old strip: rows stack back to front
-
-
-def barn() -> Canvas:
-    """A gabled barn, 72x56: red-brown walls, plank lines, a loft window, a double door."""
-    c = Canvas(72, 56)
-    c.rect(6, 24, 65, 52, EARTH)                      # walls
-    for x in range(8, 65, 5):                         # plank lines
-        c.seg(x, 25, x, 52, SHADE)
-    for y in range(4, 25):                            # gable roof: a filled triangle
-        half = (y - 4) * (33.0 / 20.0)
-        c.rect(round(36 - half), y, round(36 + half), y, DEEP)
-    c.rect(4, 24, 67, 25, DEEP)                       # eave line
-    c.rect(27, 33, 45, 52, INK)                       # door
-    c.seg(36, 33, 36, 52, SHADE)                      # door split
-    c.rect(31, 14, 41, 20, PAPER)                     # loft window
-    c.seg(36, 14, 36, 20, INK)
-    c.seg(31, 17, 41, 17, INK)
-    c.rect(29, 52, 43, 53, LIGHT)                     # threshold of straw
-    c.outline(INK)
-    return c
-
-
-def shed() -> Canvas:
-    """A lean-to tool shed, 40x34."""
-    c = Canvas(40, 34)
-    c.rect(4, 12, 35, 31, EARTH)
-    for x in range(6, 35, 5):
-        c.seg(x, 13, x, 31, SHADE)
-    for y in range(4, 13):                            # sloping roof
-        span = 1 + (y - 4) * 1.6
-        c.rect(max(0, round(20 - span)), y, min(39, round(20 + span)), y, BASE)
-    c.rect(2, 11, 37, 12, BASE)
-    c.rect(14, 18, 25, 31, INK)                       # doorway
-    c.rect(8, 16, 11, 19, PAPER)                      # small window
-    c.outline(INK)
-    return c
-
-
-def hay_bale(variant: int) -> Canvas:
-    """A round bale on its side, 16x12. variant 1 has a second bale behind it at the top, so stacks read as stacks."""
-    c = Canvas(16, 12)
-    c.ellipse(8, 6, 7.4, 5.2, ACCENT)
-    for y in range(2, 11):                            # straw ridges across the bale
-        if y % 2 == 0:
-            c.seg(2, y, 14, y, LIGHT)
-    c.ellipse(8, 6, 3.2, 2.2, EARTH)                  # the cut face
-    c.seg(6, 4, 10, 8, SHADE)
-    if variant == 1:
-        c.ellipse(9, 1.5, 4.5, 2.6, ACCENT)
-        c.seg(6, 0, 12, 0, LIGHT)
-    c.outline(INK)
-    return c
 
 
 def scarecrow() -> Canvas:
@@ -96,37 +38,6 @@ def scarecrow() -> Canvas:
     c.set(10, 10, INK)
     c.rect(5, 4, 12, 7, DEEP)                         # hat crown
     c.rect(3, 7, 14, 8, DEEP)                         # hat brim
-    c.outline(INK)
-    return c
-
-
-def cart() -> Canvas:
-    """A two-wheeled hay cart, 28x20, with a load of hay and a shaft."""
-    c = Canvas(28, 20)
-    c.rect(4, 8, 23, 12, EARTH)                       # bed
-    for x in range(6, 23, 4):
-        c.seg(x, 8, x, 12, SHADE)
-    c.rect(6, 4, 21, 7, ACCENT)                       # hay load
-    for x in range(7, 21, 3):
-        c.set(x, 5, LIGHT)
-    c.seg(23, 10, 27, 11, EARTH)                      # shaft
-    c.ellipse(8, 15, 4.2, 4.2, INK)                   # wheels
-    c.ellipse(20, 15, 4.2, 4.2, INK)
-    c.ellipse(8, 15, 1.8, 1.8, SHADE)
-    c.ellipse(20, 15, 1.8, 1.8, SHADE)
-    c.outline(INK)
-    return c
-
-
-def crates() -> Canvas:
-    """Two crates, one stacked on the other, 12x12."""
-    c = Canvas(12, 12)
-    c.rect(0, 5, 6, 11, EARTH)
-    c.seg(0, 8, 6, 8, SHADE)
-    c.rect(6, 6, 11, 11, EARTH)
-    c.seg(6, 9, 11, 9, SHADE)
-    c.rect(2, 0, 7, 4, EARTH)                         # top crate
-    c.seg(2, 2, 7, 2, SHADE)
     c.outline(INK)
     return c
 
@@ -154,71 +65,92 @@ def grounded(c: Canvas, lift: int = 2) -> Canvas:
     return out
 
 
-def field_frame(frame: int, seed: int, fw: int, rows: int = 5, fh: int = 44) -> Canvas:
-    """One gust frame of a wheat field: a thick, full mass of wheat from the far edge to the near edge. Each row is a
-    dark under-mass that the stalks grow out of, so there are no bare soil lines or water between the rows. Rows overlap
-    so the field reads as one volume. Heads sit at varying heights, and the stalks bend with the gust: the near rows bend
-    more than the far ones. The silhouette is rounded at the sides, not ruled."""
-    rng = random.Random(seed)
-    c = Canvas(fw, fh)
-    phase = 2.0 * math.pi * frame / WHEAT_FRAMES
-    cx = fw / 2.0
-    base_ys = [14.0 + i * 6.0 for i in range(rows)]        # rows overlap: the far row's heads show above the near one
-    for i, by in enumerate(base_ys):
-        depth = i / max(1, rows - 1)                       # 0 far, 1 near
-        half = fw * (0.40 + 0.11 * depth)
-        by_i = int(round(by))
-        # the under-mass: a dark, dithered band the stalks grow out of, so the row has thickness
-        for x in range(int(cx - half), int(cx + half) + 1):
-            edge = abs(x - cx) / half
-            if edge > 0.9 and rng.random() < (edge - 0.9) * 6.0:
+# Buildings, hay, cart and crates come from farm_iso.py already fitted to their ground (row h - 2), so they are not
+# lifted here. The scarecrow is still a front figure and keeps grounded().
+PROPS = [
+    ('farm_barn', barn),
+    ('farm_shed', shed),
+    ('farm_hay_0', lambda: hay_bale(0)),
+    ('farm_hay_1', lambda: hay_bale(1)),
+    ('farm_scarecrow', lambda: grounded(scarecrow())),
+    ('farm_cart', cart),
+    ('farm_crates', crates),
+]
+
+
+def fence_piece(w: int, h: int, chord) -> Canvas:
+    """One straight piece of a rustic fence, w x h. `chord` is the piece's line from (x0, y0) to (x1, y1) in this box
+    (see place_farm.py). Two rails run along the chord, with a shaded underside on the lower one, and a post every
+    eight texels with a lit cap. Posts stand on the chord; the rails sit above it."""
+    c = Canvas(w, h)
+    px, py, qx, qy = chord
+    length = math.hypot(qx - px, qy - py)
+    # Seeded from the chord, so the same piece breaks the same way on every regeneration.
+    rng = random.Random('%.1f,%.1f,%.1f,%.1f' % (px, py, qx, qy))
+    steps = max(2, int(length * 2))
+
+    def at(t: float, off: float = 0.0):
+        return px + (qx - px) * t, py + (qy - py) * t + off
+
+    # Rails: each rail has up to two gaps where a plank is gone. The rail end beside a gap sags one texel, and the
+    # lower rail keeps its shaded underside wherever it is still there.
+    for off, under in ((-6, None), (-3, SHADE)):
+        gaps = []
+        if length > 20:
+            for _ in range(rng.choice((0, 1, 1, 2))):
+                g = rng.uniform(0.12, 0.88)
+                gaps.append((g, g + rng.uniform(3.0, 7.0) / length))
+        for i in range(steps + 1):
+            t = i / steps
+            if any(a <= t <= b for a, b in gaps):
                 continue
-            for dy in range(0, 4):
-                col = SHADE if (dy == 0 or (x + dy) % 2 == 0) else EARTH
-                c.set(x, by_i - dy, col)
-        bend_amp = 1.0 + 1.8 * depth
-        for x in range(int(cx - half) + 1, int(cx + half) - 1):
-            edge = abs(x - cx) / half
-            if edge > 0.92 and rng.random() < (edge - 0.92) * 5.0:
-                continue
-            taper = 1.0 - 0.35 * edge ** 2                  # a rounded silhouette: shorter stalks towards the sides
-            h = (7.0 + 5.0 * rng.random()) * (0.85 + 0.3 * depth) * taper
-            bend = bend_amp * math.sin(x * 0.35 - phase + i * 0.7)
-            tx, ty = x + bend, by_i - 3 - h
-            c.seg(x, by_i - 3, tx, ty, ACCENT)             # golden straw
-            c.seg(x, by_i - 3, x + bend * 0.5, by_i - 3 - h * 0.5, EARTH)   # darker lower stalk: depth
-            c.set(round(tx), round(ty), EARTH)             # the head
-            if rng.random() < 0.35:                        # a second, lighter head beside it: a fuller canopy
-                c.set(round(tx) + 1, round(ty) + 1, ACCENT)
+            x, y = at(t, off)
+            c.set(round(x), round(y), EARTH)
+            if under is not None:
+                c.set(round(x), round(y + 3), under)
+        for a, _b in gaps:
+            x, y = at(a, off)
+            c.set(round(x), round(y) + 1, EARTH)      # sagging end beside the gap
+
+    # Posts: most stand full height with a lit cap. Some snap short, some lean a texel, and some are missing.
+    n = max(2, int(length / 8) + 1)
+    for i in range(n):
+        if 0 < i < n - 1 and rng.random() < 0.15:
+            continue
+        x, y = at(i / (n - 1))
+        top = rng.choice((4, 5)) if rng.random() < 0.2 else 7
+        lean = 1 if rng.random() < 0.12 else 0
+        c.seg(x, y, x + lean, y - top, EARTH)
+        if top == 7:
+            c.set(round(x + lean), round(y - top), LIGHT)   # lit post cap
+    c.outline(INK)
     return c
 
 
-def field_sheet(seed: int, fw: int) -> Image.Image:
-    sheet = Image.new('RGBA', (fw * WHEAT_FRAMES, 44), (0, 0, 0, 0))
-    for f in range(WHEAT_FRAMES):
-        sheet.paste(field_frame(f, seed, fw).image(), (f * fw, 0))
-    return sheet
-
-
-PROPS = [
-    ('farm_barn', lambda: grounded(barn())),
-    ('farm_shed', lambda: grounded(shed())),
-    ('farm_hay_0', lambda: grounded(hay_bale(0))),
-    ('farm_hay_1', lambda: grounded(hay_bale(1))),
-    ('farm_scarecrow', lambda: grounded(scarecrow())),
-    ('farm_cart', lambda: grounded(cart())),
-    ('farm_crates', lambda: grounded(crates())),
-]
+def fences_from_manifest() -> None:
+    """Writes the whole fence ring as one PNG, from the batch item in farm.json (see place_farm.py). Each piece is drawn
+    in its own box and pasted at its place in the batch, so the ring reads as one fence."""
+    import json
+    with open(os.path.join(OUT, 'farm.json')) as f:
+        items = json.load(f)['items']
+    batch = [it for it in items if it['kind'] == 'farm_fence']
+    if not batch:
+        return
+    it = batch[0]
+    out = Image.new('RGBA', (int(it['w']), int(it['h'])), (0, 0, 0, 0))
+    for p in it['pieces']:
+        piece = fence_piece(int(p['w']), int(p['h']), p['chord']).image()
+        out.alpha_composite(piece, (int(p['x'] - it['x']), int(p['y'] - it['y'])))
+    os.makedirs(os.path.join(OUT, 'fence'), exist_ok=True)
+    out.save(os.path.join(OUT, it['file']))
 
 
 def main() -> int:
     os.makedirs(OUT, exist_ok=True)
+    fences_from_manifest()
     for name, make in PROPS:
         make().image().save(os.path.join(OUT, name + '.png'))
         print('wrote', name)
-    for name, fw, seed in FIELD_SPECS:
-        field_sheet(seed, fw).save(os.path.join(OUT, name + '_sheet.png'))
-        print('wrote', name + '_sheet', fw * WHEAT_FRAMES, 'x 44')
     # Preview: every sprite on one strip, scaled up, for a quick look.
     strip = []
     for name, make in PROPS:

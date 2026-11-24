@@ -73,7 +73,10 @@ def load_placements(path):
                                      "rx": a["rx"], "ry": a["ry"]})
         for s in d.get("sprites", []):
             if s.get("kind") == "lantern":
-                out["lights"].append({"x": s["x"], "y": s["y"] - 12, "r": 9, "kind": "lantern"})
+                if "foot" in s and s["w"] < 20:   # an ordinary lamp: its light sits on the lit window, about 17 above the foot
+                    out["lights"].append({"x": s["foot"][0], "y": s["foot"][1] - 17, "r": 9, "kind": "lantern"})
+                else:
+                    out["lights"].append({"x": s["x"], "y": s["y"] - 12, "r": 9, "kind": "lantern"})
     else:
         for p in d["pads"]:
             out["pads"].append((p["x"], p["y"], p["state"]))

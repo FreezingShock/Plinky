@@ -18,6 +18,9 @@ var speed_factor: float = 1.0
 var motion: WalkerMotion = WalkerMotion.new()
 var _target: Vector2 = Vector2.ZERO
 var _has_target: bool = false
+var _route: PackedVector2Array = PackedVector2Array()   # waypoints round water and trunks to _target (world/walk_mask.gd route())
+var _route_i: int = 0
+var _replans: int = 0
 var _t: float = 0.0
 var _gait: float = 0.0
 var _body: WalkerBody
@@ -66,6 +69,21 @@ func sprint_state() -> int:
 ## Cancels a click-to-walk target (used when the zone scene changes).
 func stop() -> void:
 	_has_target = false
+	_route = PackedVector2Array()
+
+
+## Tap-to-move: walk to `p` (snapped to open ground), round any lake or trunk in the way.
+func go_to(p: Vector2) -> void:
+	_target = WalkMask.nearest_inset(Vector2(clampf(p.x, bounds.position.x, bounds.end.x), clampf(p.y, bounds.position.y, bounds.end.y)))
+	_route = WalkMask.route(position, _target)
+	_route_i = 0
+	_replans = 0
+	_has_target = true
+
+
+## The point the walker is heading for now: the next waypoint of its route, or the tap itself.
+func _goal() -> Vector2:
+	return _route[_route_i] if _route_i < _route.size() else _target
 
 
 ## Brief squash frame, called by main when the walker's pad fires.
@@ -89,17 +107,23 @@ func _process(delta: float) -> void:
 	var blocked: bool = PadInput.menu_open or typing
 	if blocked:
 		_has_target = false   # a tap-to-move walk does not carry on under a menu, as with the click gate
+		_route = PackedVector2Array()
 	var input: Vector2 = Vector2.ZERO if typing else PadInput.move_vector()   # WASD walks in menus too; arrows, d-pad and stick only walk with no menu
 	var dir := Vector2.ZERO
 	if input != Vector2.ZERO:
 		_has_target = false
+		_route = PackedVector2Array()
 		dir = input
 	elif _has_target:
-		var to: Vector2 = _target - position
+		var to: Vector2 = _goal() - position
+		while to.length() < 1.0 and _route_i < _route.size() - 1:
+			_route_i += 1   # reached a waypoint: on to the next
+			to = _goal() - position
 		if to.length() < 1.0:
 			_has_target = false
+			_route = PackedVector2Array()
 		else:
-			dir = to.normalized()
+			dir = Vector2(to.x, to.y * 2.0).normalized()   # the ground is 2:1, so the straight line is taken in ground space
 	if motion.sliding() and _slide_dir != Vector2.ZERO:
 		dir = _slide_dir   # a slide commits to its direction
 		_has_target = false
@@ -119,6 +143,10 @@ func _process(delta: float) -> void:
 		Audio.footstep(MeadowSites.surface_at(position), 1.0)   # the push-off
 		_air_face = _face if dir != Vector2.ZERO else &"front"
 	if motion.just_landed:
+		# a landing in the river sends the walker to the bank it jumped from or towards (WalkMask.landing)
+		if not WalkMask.walkable(position):
+			position = WalkMask.landing(position)
+			_kick_dust(5, Vector2.ZERO)   # a splash
 		_kick_dust(2 + int(motion.land_impact * 2.0), Vector2.ZERO)
 		Audio.footstep(MeadowSites.surface_at(position), clampf(motion.land_impact * 3.0, 0.0, 5.0))   # a hard landing thumps
 		landed.emit(motion.land_impact)
@@ -127,13 +155,19 @@ func _process(delta: float) -> void:
 		var speed: float = SPEED * GameState.sim.walk_speed_mult() * motion.speed_mult()
 		var step := Vector2(dir.x, dir.y * 0.5) * speed * delta
 		if _has_target:
-			step = step.limit_length((_target - position).length())
-		var moved: bool = _try_step(step)
+			step = step.limit_length((_goal() - position).length())
+		var moved: bool = _try_step(step, not motion.grounded)
 		if moved:
 			GameState.sim.feed_momentum(step.length())
 			_last_dir = dir
 		if not moved and _has_target:
-			_has_target = false   # click target was behind water, a cliff or a trunk: stop at the edge
+			if _replans < 3 and _target.distance_to(position) > 2.0:
+				_replans += 1   # something the route did not see: plan again from here
+				_route = WalkMask.route(position, _target)
+				_route_i = 0
+			else:
+				_has_target = false   # click target was behind water, a cliff or a trunk: stop at the edge
+				_route = PackedVector2Array()
 		if not moved and motion.sliding():
 			motion.slide_t = 0.0   # a slide ends at a wall
 		moving = moved
@@ -173,15 +207,16 @@ func _kick_dust(n: int, dir: Vector2) -> void:
 		_body.puff(position + jitter + back * 3.0, back * randf_range(8.0, 20.0) + Vector2(randf_range(-6.0, 6.0), randf_range(-8.0, -2.0)))
 
 
-## Move by step if the new spot is walkable, else slide along x or y. Returns whether the walker moved.
-func _try_step(step: Vector2) -> bool:
+## Move by step if the new spot is walkable, else slide along x or y. In the air (airborne) the walker may also pass
+## over river water, so a jump can clear a narrow channel. Returns whether the walker moved.
+func _try_step(step: Vector2, airborne: bool = false) -> bool:
 	for s: Vector2 in [step, Vector2(step.x, 0.0), Vector2(0.0, step.y)]:
 		if s == Vector2.ZERO:
 			continue
 		var q := Vector2(
 			clampf(position.x + s.x, bounds.position.x, bounds.end.x),
 			clampf(position.y + s.y, bounds.position.y, bounds.end.y))
-		if WalkMask.walkable(q):
+		if WalkMask.walkable(q) or (airborne and WalkMask.is_water(q)):
 			position = q
 			return true
 	return false
@@ -272,9 +307,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# No tap-to-move while a menu is open (the walker is frozen then) or when the click lands on any GUI.
 		if PadInput.menu_open or GuiGuard.covers(get_tree().root, event.position):
 			return
-		var p: Vector2 = (get_parent() as Node2D).to_local(get_global_mouse_position())
-		_target = WalkMask.nearest_inset(Vector2(clampf(p.x, bounds.position.x, bounds.end.x), clampf(p.y, bounds.position.y, bounds.end.y)))
-		_has_target = true
+		go_to((get_parent() as Node2D).to_local(get_global_mouse_position()))
 
 
 static func _key(code: Key) -> bool:

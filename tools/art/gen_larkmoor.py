@@ -16,6 +16,8 @@ _DEAD = LAY.dead_ends()
 assert not _DEAD, 'paths lead nowhere (path index, end): %r' % (_DEAD,)   # every path must reach a gate, pad, landmark or path
 _ON_PATH = LAY.pads_on_path()
 assert not _ON_PATH, 'pads sit on or against a path (move them in larkmoor_layout.PAD_NUDGE): %r' % (_ON_PATH,)
+_OFF = LAY.rows_off()
+assert not _OFF, 'pad rows must hug a path and not overlap (tools/art/plan_rows.py): %r' % (_OFF,)
 import depth_pass, grass_tex
 GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
@@ -90,6 +92,9 @@ log('terrain fields')
 thb = math.atan2(-1, -1)
 a = np.abs((th - thb + np.pi) % (2 * np.pi) - np.pi)
 env_ang = .36 + .64 * (1 - smooth(1.15, 2.7, a))
+# the south and west rim rises as well (it sat at the 0.36 factor): the island reads as a valley ringed by mountains, not a cut-out
+a_sw = np.abs((th - math.radians(85.0) + np.pi) % (2 * np.pi) - np.pi)
+env_ang = np.maximum(env_ang, .8 * (1 - smooth(.9, 1.7, a_sw)))
 m_r = smooth(.76, .985, rr / RE)
 wu_, wv_ = gu + 34 * (fbm2(gu / 60, gv / 60, 2, 20) - .5), gv + 34 * (fbm2(gu / 60, gv / 60, 2, 21) - .5)
 rg = (1 - np.abs(2 * fbm2(wu_ / 64, wv_ / 64, 5, 2) - 1)) ** 1.1
@@ -119,7 +124,8 @@ Hpre = H0.copy()
 GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
 dstr = pl_dist(gu, gv, STREAM)
-sw = 6.4 + 1.2 * np.sin(gu * .13 + gv * .09)
+RIVER_DEPTH = 3.0                              # the river bed sits this far below its surface: deep enough to read as water, not a dither strip
+sw = 7.0 + 1.0 * np.sin(gu * .13 + gv * .09)   # half-width: about 14 texels across, still an easy jump
 D = []
 for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
     n = int(math.hypot(x1 - x0, y1 - y0)); D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
@@ -131,8 +137,10 @@ _bu, _bv = np.nonzero(dstr < sw + 3)
 for c0 in range(0, len(_bu), 20000):
     uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
     dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); HLF[_bu[c0:c0 + 20000], _bv[c0:c0 + 20000]] = hL[dd.argmin(1)]
-wch = (1 - smooth(sw - 2.0, sw + 4.5, dstr)) * (1 - smooth(0, 6, LAKE['r'] * 1.3 - np.hypot(gu - LAKE['c'][0], gv - LAKE['c'][1])))
-H0 = H0 * (1 - wch) + np.minimum(H0, HLF - 1.0) * wch       # bed always sits below the water ribbon
+# the channel is carved all the way to the lake: inside the lake the bowl is already deeper, so nothing changes there, and the rim
+# gets a notch where the river leaves it (the old lake-rim exclusion left a dry gap between the lake and the river)
+wch = (1 - smooth(sw - 2.0, sw + 4.5, dstr))
+H0 = H0 * (1 - wch) + np.minimum(H0, HLF - RIVER_DEPTH) * wch       # bed always sits below the water ribbon
 WH = np.full((N, N), -99.0)
 mask_s = dstr < sw + 1
 iu, iv = np.nonzero(mask_s)
@@ -205,6 +213,7 @@ def voxelize(sdf, half, top, u0, v0, z0, scale=1.0, rot=0.0, sid=1, wl=0.0, bott
 
 # material codes
 (M_FOL, M_BARK, M_PINE, M_ROCK, M_MOSS, M_CRYS, M_WOOD, M_PADT, M_PETA, M_PETB, M_STEM, M_LILY, M_REED, M_CAT, M_BERRY, M_CAP, M_CSTEM, M_PAPER, M_GRASS, M_BARKT, M_BARKT2, M_PEB, M_FACE, M_INK) = range(10, 34)
+M_DARKF = 34   # dark pocket cut into a bush: the shadowed inside of the leaf shell, darkest ramp step (same code as gen_meadow3d.py)
 
 # ---------------- prop models (local coords: x right, y toward camera, z up) ----------------
 def make_oak(rng):
@@ -235,22 +244,61 @@ def make_pine(rng):
         return d, m
     return f, (14, 14), 52, 8.0
 def make_bush(rng):
-    seed = rng.randint(0, 99); balls = [(rng.uniform(-4, 4), rng.uniform(-4, 4), rng.uniform(3.5, 6), rng.uniform(4.2, 6)) for _ in range(4)]
+    seed = rng.randint(0, 99)
+    # seen from above, a bush is a low mound: squashed leaf lobes make the body, smaller crowns ride its top so the upper
+    # surface reads as clumped leaves, and a flat skirt sits on the ground so the foot is wider than the crown
+    lobes = [(rng.uniform(-4, 4), rng.uniform(-4, 4), rng.uniform(3.0, 4.2), rng.uniform(4.4, 5.8)) for _ in range(4)]
+    crowns = [(rng.uniform(-3.5, 3.5), rng.uniform(-3.5, 3.5), rng.uniform(6.2, 7.2), rng.uniform(2.6, 3.4)) for _ in range(3)]
     berries = [(rng.uniform(-6, 6), rng.uniform(-6, 6), rng.uniform(3, 8)) for _ in range(7)] if rng.random() < .6 else []
+    # dark pockets: small holes cut into the upper leaf shell, so the shadowed inside of the bush shows through as
+    # dark clusters. Own rng, so the placement sequence of every other prop is unchanged.
+    frng = random.Random(seed * 131 + 7)
+    pockets = []
+    for _ in range(frng.randint(4, 6)):
+        b = lobes[frng.randrange(len(lobes))]
+        a_ = frng.uniform(0, 6.28); e_ = frng.uniform(.2, .9)        # elevation: the upper, visible part of the lobe
+        rr = b[3] * frng.uniform(.7, .95); ce = math.cos(e_)
+        pockets.append(((b[0] + math.cos(a_) * ce * rr, b[1] + math.sin(a_) * ce * rr, b[2] + math.sin(e_) * rr), frng.uniform(1.8, 2.8)))
     def f(x, y, z):
         d = np.full(x.shape, 99.0, np.float32)
-        for b in balls: d = np.minimum(d, sdf_sphere(x, y, z, b[:3], b[3]))
-        d = d + 1.6 * (vn3(x * .45, y * .45, z * .45, seed) - .5); m = np.full(x.shape, M_FOL, np.int16)
+        for b in lobes: d = np.minimum(d, sdf_ell(x, y, z, b[:3], (b[3], b[3], b[3] * .8)))
+        for b in crowns: d = np.minimum(d, sdf_ell(x, y, z, b[:3], (b[3], b[3], b[3] * .75)))
+        d = np.minimum(d, sdf_ell(x, y, z, (0, 0, .2), (6.6, 5.9, 2.2)))
+        d = d + 1.4 * (vn3(x * .45, y * .45, z * .45, seed) - .5); m = np.full(x.shape, M_FOL, np.int16)
+        for pc, pr in pockets:
+            cut = -sdf_sphere(x, y, z, pc, pr)
+            m = np.where(cut > d, M_DARKF, m); d = np.maximum(d, cut)
+        # contact: a thin, soft-edged dark slab under the bush, a little wider than its skirt, so the foot reads as shade on the ground
+        dc = sdf_ell(x, y, z, (0, 0, 0), (7.4, 6.6, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
+        sel = dc < d; m = np.where(sel, M_DARKF, m); d = np.minimum(d, dc)
         for b in berries:
             db = sdf_sphere(x, y, z, b, 1.0) ; sel = db < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, db)
         return d, m
     return f, (11, 11), 13, 6.5
 def make_rock(rng, big=True):
     seed = rng.randint(0, 99); rx, ry, rz = (rng.uniform(6.5, 9), rng.uniform(5.5, 8), rng.uniform(4.5, 7)) if big else (rng.uniform(3, 4.5), rng.uniform(2.5, 4), rng.uniform(2, 3))
+    # a stone seen from above has a broad top face. A tilted plane shaves the crown flat, so the top reads as one lit
+    # face with a bevelled rim where it meets the sides. One or two low side facets keep the stone faceted. Own rng, so
+    # the placement sequence of every other prop is unchanged.
+    frng = random.Random(seed * 7919 + 17)
+    ta, tb = frng.uniform(.03, .14), frng.uniform(0, 6.283)           # how far the top leans, and which way
+    top_n = (math.sin(ta) * math.cos(tb), math.sin(ta) * math.sin(tb), math.cos(ta))
+    top_off = rz * frng.uniform(.62, .74)                              # cut height above the centre: a broad face, not a point
+    facets = []
+    for _ in range(frng.randint(1, 3)):
+        a_ = frng.uniform(0, 6.283); e_ = frng.uniform(0.0, 0.3)       # elevation: 0 = upright side face
+        facets.append((math.cos(a_) * math.cos(e_), math.sin(a_) * math.cos(e_), math.sin(e_), min(rx, ry, rz) * frng.uniform(.92, 1.1)))
     def f(x, y, z):
         d = sdf_ell(x, y, z, (0, 0, rz * .55), (rx, ry, rz))
-        d = d + (2.4 if big else 1.0) * (vn3(x * .26, y * .26, z * .26, seed) - .5) * 2 + .8 * (vn3(x * .7, y * .7, z * .7, seed + 5) - .5)
-        return d, np.full(x.shape, M_ROCK, np.int16)
+        d = d + (1.6 if big else .8) * (vn3(x * .26, y * .26, z * .26, seed) - .5) * 2 + .6 * (vn3(x * .7, y * .7, z * .7, seed + 5) - .5)
+        zc = z - rz * .55
+        d = np.maximum(d, top_n[0] * x + top_n[1] * y + top_n[2] * zc - top_off)
+        for (nx_, ny_, nz_, off) in facets:
+            d = np.maximum(d, nx_ * x + ny_ * y + nz_ * zc - off)
+        # contact: a thin, soft-edged dark slab at the foot, a little wider than the stone, so the base reads as shade on the ground
+        dc = sdf_ell(x, y, z, (0, 0, 0), (rx + 1.4, ry + 1.2, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
+        m = np.where(dc < d, M_DARKF, M_ROCK).astype(np.int16)
+        return np.minimum(d, dc), m
     return f, (rx + 3, ry + 3), rz * 1.6 + 2, max(rx, ry) + 1
 def make_crystals(rng):
     items = []
@@ -355,12 +403,21 @@ def make_sign(rng):
         return d, m
     return f, (14, 4), 17, 3.0
 def make_lantern(rng):
+    """A garden lantern in the 19 by 29 window (LANTERN_WIN): a stone foot, a timber post, a lamp box whose window is the
+    lit part (paper, lifted in the shade so it reads at night), four dark corner posts, a pitched cap and a finial.
+    The lit window sits at about 17 texels above the foot, where the glow sprite and the lamp's light are placed."""
     def f(x, y, z):
-        d = sdf_capsule(x, y, z, (0, 0, -1), (0, 0, 13), .9); m = np.full(x.shape, M_BARK, np.int16)
-        dl = sdf_box(x, y, z, (0, 0, 17), (2.6, 2.6, 3.2), .4); sel = dl < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, dl)
-        dc = sdf_box(x, y, z, (0, 0, 20.8), (3.6, 3.6, .8), .3); sel = dc < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dc)
+        # the foot is kept within 1.9 texels of the centre: its front corner must stay inside the window's 2 below the foot
+        d = sdf_box(x, y, z, (0, 0, 0.9), (1.9, 1.9, 0.9), .25); m = np.full(x.shape, M_ROCK, np.int16)
+        dp = sdf_capsule(x, y, z, (0, 0, 1.6), (0, 0, 13.4), .55); sel = dp < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dp)
+        dl = sdf_box(x, y, z, (0, 0, 16.2), (1.7, 1.7, 2.8), .2); sel = dl < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, dl)
+        for px, py in ((-2.1, -2.1), (2.1, -2.1), (-2.1, 2.1), (2.1, 2.1)):
+            dc = sdf_capsule(x, y, z, (px, py, 13.4), (px, py, 19.0), .4); sel = dc < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dc)
+        roof = np.maximum(np.abs(x) + np.abs(y) - (4.6 - (z - 19.2) * 1.2), np.maximum(19.0 - z, z - 23.2))   # a hipped cap that overhangs the lamp
+        sel = roof < d; m = np.where(sel, M_BARKT, m); d = np.minimum(d, roof)
+        fin = sdf_capsule(x, y, z, (0, 0, 23.0), (0, 0, 24.3), .45); sel = fin < d; m = np.where(sel, M_INK, m); d = np.minimum(d, fin)
         return d, m
-    return f, (7, 7), 23, 2.5
+    return f, (7, 7), 26, 2.5
 def make_windmill(rng):
     def f(x, y, z):
         r = 9.5 - z * .12
@@ -439,16 +496,48 @@ def make_jetty(rng):
         m = np.where(((np.floor(x / 1.6) % 2) == 0) & (d < .4), M_BARKT2, m)
         return d, m
     return f, (17, 5), 4, 2
+M_BOARD, M_BOARDT, M_RAIL = 60, 61, 62         # wooden decks: brown boards, pale board lines, dark rails and posts
+BRIDGE_HX, BRIDGE_HY, BRIDGE_DZ = 17.5, 14.0, 4.0    # main bridge: half-length along the road, half-width across it (the 24 texel road, half 12, plus clearance), deck height
 def make_bridge(rng):
+    """The main bridge: a planked deck as wide as the main road (28 texels, the 24 texel road plus clearance), over the river on two stone abutments on the
+    banks, with a rail and posts down both sides. Local x runs along the road, across the river."""
+    HX, HY, DZ = BRIDGE_HX, BRIDGE_HY, BRIDGE_DZ
     def f(x, y, z):
-        d = sdf_box(x, y, z, (0, 0, -.6), (16, 6.6, 1.3), .4); m = np.full(x.shape, M_WOOD, np.int16)     # wide deck: 13 texels across
-        for sy_ in (-6.2, 6.2):
-            dr = sdf_box(x, y, z, (0, sy_, 3.0), (16, .7, .7), .25); sel = dr < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dr)
-            for px in (-15, -7.5, 0, 7.5, 15):
-                dp = sdf_capsule(x, y, z, (px, sy_, -3.0), (px, sy_, 3.4), .8); sel = dp < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dp)
-        m = np.where(((np.floor(x / 1.5) % 2) == 0) & (z > .3) & (d < .5), M_WOOD + 0, m)
+        d = sdf_box(x, y, z, (0, 0, DZ - 1.2), (HX, HY, 1.2), .25)              # the deck slab, 2.4 thick
+        m = np.full(x.shape, M_BOARD, np.int16)                                 # warm brown boards, darker than the sand path
+        plank = (np.floor(y / 2.6) % 2) == 0
+        m = np.where(plank & (z > DZ - 1.0), M_BOARDT, m)                       # pale board lines so the deck reads as planks
+        m = np.where((np.floor(x / 4.0) % 2 == 0) & (z > DZ - 1.0) & (np.abs(y) > HY - 1.4), M_BARK, m)   # cross-joints at the edges
+        d = np.minimum(d, sdf_box(x, y, z, (0, 0, DZ - 2.9), (HX - .6, HY - .6, .5), .2))   # a shadow board under the deck edges
+        for sy_ in (-HY + .9, HY - .9):
+            rail = sdf_box(x, y, z, (0, sy_, DZ + 3.0), (HX - 1.0, .8, .8), .3)
+            sel = rail < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, rail)
+            for px in (-HX + 1.2, -HX + 5.6, -HX + 10.0, -HX + 14.4, HX - 14.4, HX - 10.0, HX - 5.6, HX - 1.2):
+                dp = sdf_capsule(x, y, z, (px, sy_, DZ - .6), (px, sy_, DZ + 4.2), .75)
+                sel = dp < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, dp)
+        # stone abutments on the banks, reaching down to the bank ground under the deck
+        for ax in (-(HX - 3.2), HX - 3.2):
+            da = sdf_box(x, y, z, (ax, 0, -4.4), (2.9, HY - .4, 3.6), .6)
+            sel = da < d; m = np.where(sel, M_ROCK, m); d = np.minimum(d, da)
         return d, m
-    return f, (16, 7), 5, 2
+    return f, (HX + 2, HY + 1), DZ + 6, 4
+def make_footbridge(rng):
+    """The footbridge on the west trail: a narrow plank crossing with a low rail, on posts either side of the river."""
+    HX, HY, DZ = 13.0, 5.5, 2.6
+    def f(x, y, z):
+        d = sdf_box(x, y, z, (0, 0, DZ - .9), (HX, HY, .9), .2); m = np.full(x.shape, M_BOARD, np.int16)
+        m = np.where(((np.floor(x / 2.4) % 2) == 0) & (z > DZ - .7), M_BOARDT, m)
+        for sy_ in (-HY + .6, HY - .6):
+            rail = sdf_box(x, y, z, (0, sy_, DZ + 2.0), (HX - .8, .5, .5), .15)
+            sel = rail < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, rail)
+            for px in (-HX + 1.0, HX - 1.0, 0.0):
+                dp = sdf_capsule(x, y, z, (px, sy_, DZ - .4), (px, sy_, DZ + 2.8), .5)
+                sel = dp < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, dp)
+        for ax in (-(HX - 1.8), HX - 1.8):
+            da = sdf_box(x, y, z, (ax, 0, -3.6), (1.6, HY - .3, 3.4), .5)
+            sel = da < d; m = np.where(sel, M_ROCK, m); d = np.minimum(d, da)
+        return d, m
+    return f, (HX + 2, HY + 1), DZ + 4, 3
 log('props defined')
 
 # ---------------- placement (Poisson-style spacing, no stacking, off-grid) ----------------
@@ -469,23 +558,23 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, pa
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
     return True
-def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **kw):
-    rng = random.Random(prng.randint(0, 1 << 30))
+def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, seed=None, **kw):
+    rng = random.Random(prng.randint(0, 1 << 30) if seed is None else seed)   # seed: no draw from the shared stream
     rot = rng.uniform(0, 6.283) if rot is None else rot
     big = kw.get('big', True)
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
     mk = dict(oak=make_oak, pine=make_pine, bush=make_bush, rock=lambda r: make_rock(r, big), crystals=make_crystals, stump=make_stump,
-              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, windmill_sails=make_windmill_sails, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge)[kind](rng)
+              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, windmill_sails=make_windmill_sails, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge, footbridge=make_footbridge)[kind](rng)
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid, bottom=kw.get('bottom', -1.0))
-    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign') or (kind == 'rock' and big)):
+    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign', 'bridge', 'footbridge') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
     if count: placed.append((u, v, rad * scale))
     return z0
 def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
     got = 0
-    r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, tower=11, lighthouse=11, obelisk=6, gateway=10, menhir=3, jetty=3, bridge=3)[kind]
+    r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, tower=11, lighthouse=11, obelisk=6, gateway=10, menhir=3, jetty=3, bridge=3, footbridge=3)[kind]
     for _ in range(n):
         for t in range(tries):
             a_, rd = prng.uniform(0, 6.283), math.sqrt(prng.random()) * rad
@@ -543,43 +632,86 @@ for lm in LAY.LANDMARKS:
         JETTY_AT = (ju, jv); JETTY_C = (ju - 7, jv - 7)
     elif lm['kind'] == 'sign': put('sign', u, v, 1.0)
 # bridge where the main road crosses the stream
-bu, bv = s2uv(*LAY.BRIDGE); put('bridge', bu, bv, 1.0, rot=.785, z_extra=3.0, count=False)
+def _path_dir_uv(pp_uv, p):
+    """Direction (radians, uv frame) of the path segment nearest to uv point p."""
+    best, ang = 1e18, 0.0
+    for (ax, ay), (bx, by) in zip(pp_uv, pp_uv[1:]):
+        vx, vy = bx - ax, by - ay; L2 = vx * vx + vy * vy or 1e-9
+        t = max(0.0, min(1.0, ((p[0] - ax) * vx + (p[1] - ay) * vy) / L2))
+        d = math.hypot(p[0] - ax - vx * t, p[1] - ay - vy * t)
+        if d < best: best, ang = d, math.atan2(vy, vx)
+    return ang
+# the main bridge: its long axis runs along the main road, across the river (13 texels wide)
+bu, bv = s2uv(*LAY.BRIDGE); BRIDGE_ANG = _path_dir_uv(PATHS_UV[0], (bu, bv))
+put('bridge', bu, bv, 1.0, rot=BRIDGE_ANG, z_extra=3.4, count=False, bottom=-12.0)   # the bed sits about 3 below the water, so the deck stands about 4.5 above it
+# the footbridge: the west trail's plank crossing of the river, along the trail
+fu_, fv_ = s2uv(*LAY.FOOT_CROSSING); FOOT_ANG = _path_dir_uv(PATHS_UV[3], (fu_, fv_))
+put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=-10.0)
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
+# trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
+TREE_GAP = dict(oak=6.0, pine=8.0)
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
+    if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
-# lanterns: one size, one rhythm. Every path gets a lamp each LANTERN_STEP texels of its length (screen units), set
-# just off the path edge on whichever side has room. Only the facing varies (four quarter turns, in a fixed order).
-# They keep clear of the junctions and gates (the first and last LANTERN_END texels of a path), the pads (in `placed`)
-# and the walker's spawn. Each lamp is one light for the night pools (gen_life_anchors reads the lantern sprites).
-LANTERN_STEP, LANTERN_END, LANTERN_OFF = 150.0, 70.0, 19.0   # 19: clear of the wider path (half-width up to about 13)
-def _lantern_spots():
-    for pp in LAY.PATHS:
-        seg = [(x1 - x0, y1 - y0, math.hypot(x1 - x0, y1 - y0)) for (x0, y0), (x1, y1) in zip(pp, pp[1:])]
-        total = sum(L_ for _, _, L_ in seg)
-        t = LANTERN_END
-        while t < total - LANTERN_END:
-            acc = 0.0
-            for (x0, y0), (x1, y1), (dx, dy, L_) in zip(pp, pp[1:], seg):
-                if acc + L_ >= t:
-                    f_ = (t - acc) / L_; px, py = x0 + dx * f_, y0 + dy * f_
-                    nx, ny = -dy / L_, dx / L_
-                    yield px, py, nx, ny
-                    break
-                acc += L_
-            t += LANTERN_STEP
+# lanterns: one size, one rhythm per path tier. A road gets a lamp about every LANTERN_STEP['road'] texels of its length
+# (screen units), a lane every LANTERN_STEP['lane'], a trail none ('trail' 400 leaves two, one at each end of its
+# span). Each path's lamps are spread evenly along it with the same LANTERN_END margin at both ends, so the gaps match
+# and no lamp sits on a junction or a gate. A lamp stands LANTERN_OFF texels off the centre line, and the side
+# alternates along a path so the row reads as a rhythm. If that spot is blocked (trees, pads, slope), the lamp slides
+# along its path, up to a third of its step, to the first free spot. No two lamps are closer than LANTERN_MIN, and the
+# great lantern counts, so two paths meeting do not double up. Only the facing varies (four quarter turns, in a fixed
+# order). Each lamp is one light for the night pools, and gen_life_anchors reads the lantern sprites for its glow.
+LANTERN_STEP = {'road': 110.0, 'lane': 200.0, 'trail': 400.0}
+LANTERN_END, LANTERN_OFF, LANTERN_MIN = 70.0, 19.0, 80.0   # 19: clear of the wider path (half-width up to about 13)
+LANTERN_SLIDE = 8.0                                         # texels per slide step along the path
+LANTERN_STREAM_DRAWS = 25     # lamps the old rhythm placed on main after the districts moved: the props after the lanterns keep their random stream
+def _along(pp, t):
+    """Point and unit normal at arc length t along a polyline (clamped to its ends)."""
+    segs = list(zip(pp, pp[1:])); acc = 0.0
+    for k, ((x0, y0), (x1, y1)) in enumerate(segs):
+        L_ = math.hypot(x1 - x0, y1 - y0)
+        if t <= acc + L_ or k == len(segs) - 1:
+            f_ = min(1.0, max(0.0, (t - acc) / L_)); dx, dy = x1 - x0, y1 - y0
+            return x0 + dx * f_, y0 + dy * f_, -dy / L_, dx / L_
+        acc += L_
+def _lantern_slots():
+    """(path index, arc length, preferred side) for every lamp, evenly spread along each path that has a lamp tier."""
+    for pi, (pp, tier) in enumerate(zip(LAY.PATHS, LAY.PATH_TIER)):
+        step = LANTERN_STEP[tier]
+        if step <= 0: continue
+        total = sum(math.hypot(x1 - x0, y1 - y0) for (x0, y0), (x1, y1) in zip(pp, pp[1:]))
+        span = total - 2 * LANTERN_END
+        n = max(1, round(span / step) + 1)
+        for i in range(n):
+            t = LANTERN_END + (span * i / (n - 1) if n > 1 else span / 2)
+            yield pi, t, (1.0 if i % 2 == 0 else -1.0)
 lantern_count = 0
-for k_, (px, py, nx, ny) in enumerate(_lantern_spots()):
-    for sgn in (1.0, -1.0):
-        mx, my = px + nx * LANTERN_OFF * sgn, py + ny * LANTERN_OFF * sgn
-        u, v = s2uv(mx, my)
-        if ok_spot(u, v, 3, path=True, gap=0, slope_max=.7):
-            put('lantern', u, v, 1.0, rot=(k_ % 4) * math.pi / 2)
-            lantern_count += 1
-            break
+lamp_xy = [tuple(lm['at']) for lm in LAY.LANDMARKS if lm['kind'] == 'great_lantern']   # screen positions of lamps already placed
+for pi, t0, side0 in _lantern_slots():
+    step = LANTERN_STEP[LAY.PATH_TIER[pi]]
+    shifts = [0.0] + [s_ * LANTERN_SLIDE for k_ in range(1, int(step / 3 / LANTERN_SLIDE) + 1) for s_ in (k_, -k_)]
+    done = False
+    for sh in shifts:
+        px, py, nx, ny = _along(LAY.PATHS[pi], t0 + sh)
+        for sgn in (side0, -side0):
+            mx, my = px + nx * LANTERN_OFF * sgn, py + ny * LANTERN_OFF * sgn
+            if any(math.hypot(mx - qx, my - qy) < LANTERN_MIN for qx, qy in lamp_xy): continue
+            u, v = s2uv(mx, my)
+            if ok_spot(u, v, 3, path=True, gap=0, slope_max=.7):
+                put('lantern', u, v, 1.0, rot=(lantern_count % 4) * math.pi / 2, seed=lantern_count)
+                lamp_xy.append((mx, my)); lantern_count += 1; done = True
+                break
+        if done: break
+    if not done: log('lamp left out: no free spot on path %d near %.0f' % (pi, t0))
+# the props after the lanterns draw from the same stream they did under the old rhythm, and take the same ids, so only
+# the lanterns change. The old rhythm used LANTERN_STREAM_DRAWS draws and ids; pad what this one did not use.
+assert lantern_count <= LANTERN_STREAM_DRAWS, 'more lamps than the stream was kept for'
+for _ in range(LANTERN_STREAM_DRAWS): prng.randint(0, 1 << 30)
+inst_id[0] += LANTERN_STREAM_DRAWS - lantern_count
 log('lanterns placed', lantern_count)
 log('trees/rocks placed', len(placed))
 
@@ -721,7 +853,8 @@ log('shadows done')
 RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
-        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
+        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: [0, 0, 1, 1]}
+RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
 mat_ = allp['mat']; nz_ = allp['nz']; lraw = allp['wl'].copy()
 light = np.where(isprop | (np.arange(len(u_)) >= len(T['u'])) & False, 0, 0).astype(float)
 # lighting for props (terrain/plinth carried theirs in 'wl')
@@ -927,10 +1060,12 @@ for t in TALL:
     spr[m_, :3] = RGBM[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(OUT, fn))
     depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUXM, y0, y1, x0, x1, m_)
-    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
+    # a bridge sorts 40 texels north of its centre, so the walker on the deck always draws over it (the picture stays put: offset = box - foot)
+    _fy_sort = fy - 40.0 if t['kind'] in ('bridge', 'footbridge') else fy
+    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
-nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
+nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
 wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK)
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)
@@ -940,7 +1075,8 @@ def _deck_strip(cu_, cv_, ang, half_len, half_w, flare):
     dn_ = (FU - cu_) * math.cos(ang) + (FV - cv_) * math.sin(ang); dc_ = -(FU - cu_) * math.sin(ang) + (FV - cv_) * math.cos(ang)
     ends = np.clip((np.abs(dn_) - (half_len - 5)) / 5, 0, 1)
     return (np.abs(dn_) < half_len + 2) & (np.abs(dc_) < half_w + flare * ends)
-wk |= _deck_strip(bu, bv, .785, 16.0, 6.6, 4.0)      # the bridge over the stream, 13 texels wide
+wk |= _deck_strip(bu, bv, BRIDGE_ANG, BRIDGE_HX, BRIDGE_HY, 3.0)      # the bridge over the river: the road's width
+wk |= _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 5.5, 2.0)       # the footbridge on the west trail
 if 'JETTY_C' in globals(): wk |= _deck_strip(JETTY_C[0], JETTY_C[1], .785, 15.0, 4.6, 3.0)   # the lake jetty, walkable out onto the water
 keep_t = np.zeros(len(u_), bool); keep_t[:nT] = True
 render_scene(keep_t)
@@ -976,7 +1112,26 @@ while dq:
 for _a in anchors:
     if _a['kind'] in ('pad', 'gate'):
         q = _near(_a['sx'], _a['sy']); log('walk reach %s %s: %s' % (_a['kind'], (_a['sx'], _a['sy']), bool(q and comp[q[1], q[0]])))
-wm = np.zeros((H, W, 4), np.uint8); wm[..., 3] = 255; wm[comp, :3] = 255
+# Water is what the render draws as water (material T_WATER), except where a bridge deck stands on it. Water is never walkable on
+# the ground; its pixels go in the green channel, so the walker may be in the air over them (a jump) and landing there sends it
+# to the bank (world/walk_mask.gd). Red and blue mark walkable ground.
+deck_pts = _deck_strip(bu, bv, BRIDGE_ANG, BRIDGE_HX, BRIDGE_HY, 3.0) | _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 5.5, 2.0)
+deck_img = np.zeros((H, W), bool); deck_img[_py[tm], _px[tm]] = deck_pts[_win[tm]]
+wat_img = (LAST_AUX['mat'] == T_WATER) & ~deck_img
+walk_img = comp & ~wat_img
+wm = np.zeros((H, W, 4), np.uint8); wm[..., 3] = 255
+wm[walk_img, 0] = 255; wm[walk_img, 2] = 255; wm[wat_img, 1] = 255
+# water connectivity, for the log: the lake, the river and the mere should be one body
+_seen = np.zeros((H, W), bool); _nwat = []
+for _y0, _x0 in zip(*np.nonzero(wat_img)):
+    if _seen[_y0, _x0]: continue
+    _seen[_y0, _x0] = True; _st = [(_y0, _x0)]; _n = 0
+    while _st:
+        _cy, _cx = _st.pop(); _n += 1
+        for _ny, _nx in ((_cy + 1, _cx), (_cy - 1, _cx), (_cy, _cx + 1), (_cy, _cx - 1)):
+            if 0 <= _ny < H and 0 <= _nx < W and wat_img[_ny, _nx] and not _seen[_ny, _nx]: _seen[_ny, _nx] = True; _st.append((_ny, _nx))
+    _nwat.append(_n)
+log('water bodies (texels, largest first): %s' % sorted(_nwat, reverse=True)[:6])
 Image.fromarray(wm).save(os.path.join(OUT, 'walkable.png')); log('walkable fraction %.3f' % comp.mean())
 im.save(os.path.join(OUT, 'preview_full.png'))
 for _name, _sm in (('lake', LAKE_S), ('pond', POND_S)):

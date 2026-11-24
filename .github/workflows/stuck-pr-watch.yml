@@ -6,9 +6,11 @@ name: Stuck PR watch
 # It comments once on each such PR (the comment is updated in place, so it does not spam) and writes a summary table.
 # Schedules run from the default branch only, so this file takes effect once it is merged.
 
+# The schedule runs at :07, :22, :37 and :52, not on the hour. GitHub documents that top-of-hour scheduled runs are the
+# ones most often delayed or dropped under load. Scheduled workflows also need this file on the default branch.
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
 
 permissions:

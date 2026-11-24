@@ -334,6 +334,17 @@ func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> voi
 			draw_rect(Rect2(cx + 1, cy + dy, w, 1), right)
 
 
+## A one texel stripe across the slab's side faces, `row` texels (1..THICK) under the top face's lower edge: the lit left face in
+## `left`, the shaded right face in `right`. The stage 3 to 5 plates wear one, so the slab itself shows how far the row has grown.
+func _side_band(cy: int, hx: int, hy: int, row: int, left: Color, right: Color) -> void:
+	for x in range(-hx, hx + 1):
+		var low: int = 0
+		for dy in range(0, hy + 1):
+			if roundi(float(hx) * (1.0 - float(dy) / (float(hy) + 0.5))) >= absi(x):
+				low = dy
+		draw_rect(Rect2(x, cy + low + row, 1, 1), left if x <= 0 else right)
+
+
 ## Bayer-dithered highlight on the lit (upper-left) rim of the top face, pinned to world texels.
 func _lit_rim(cy: int, hx: int, hy: int, col: Color) -> void:
 	var o: Vector2i = Vector2i(position.round())
@@ -377,6 +388,21 @@ func _draw() -> void:
 	# Side faces: lit left in earth, shaded right in shadow (rule 1: warm only where light hits).
 	for k in range(1, th + 1):
 		_rows(0, top + k, hx, hy, palette[1] if locked else palette[6], ink if locked else palette[1])
+	# Stage plates (Sprout to Starbloom): 3 an inlaid stripe in the tier colour, 4 a second one, 5 gold stripes and studs.
+	var plate_stage: int = 0
+	if FLOWERS.has(flower_row) and not locked:
+		var pbd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
+		if pbd != null:
+			plate_stage = stage_of(pbd.row_index)
+	if plate_stage >= 3:
+		var gold: Color = palette[5]
+		if plate_stage >= 5:
+			_side_band(top, hx, hy, 1, gold, gold.darkened(0.3))
+			_side_band(top, hx, hy, 3, gold, gold.darkened(0.3))
+		else:
+			_side_band(top, hx, hy, 2, stat_color, stat_color.darkened(0.35))
+			if plate_stage >= 4:
+				_side_band(top, hx, hy, 1, stat_color.lightened(0.25), stat_color)
 	# Top face.
 	var face: Color = palette[6]
 	var face_r: Color = palette[6]
@@ -610,6 +636,16 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			if locked and ch != "g":
 				ch = "g"
 			cells.append(Vector3i(rx - 6, base - k, "#dcgW".find(ch)))
+	if stage >= 5 and not locked and _bloom_t <= 0.0:   # the grand pad wears a gold crown over the flower: a band and five points
+		var cy0: int = base - n - 3
+		for cx in range(-3, 4):
+			cells.append(Vector3i(cx, cy0, 5))
+			cells.append(Vector3i(cx, cy0 + 1, 5))
+		for cx in [-3, -1, 1, 3]:
+			cells.append(Vector3i(cx, cy0 - 1, 5))
+		cells.append(Vector3i(0, cy0 - 1, 5))
+		cells.append(Vector3i(0, cy0 - 2, 5))
+		cells.append(Vector3i(0, cy0 + 1, 2))   # a white jewel in the band
 	for c: Vector3i in cells:
 		for o: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 			draw_rect(Rect2(c.x + o.x, c.y + o.y, 1, 1), ink)
@@ -619,6 +655,7 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			1: col = stat_color.darkened(0.35)
 			2, 4: col = Color.WHITE
 			3: col = palette[3] if locked else LEAF
+			5: col = palette[5]
 		draw_rect(Rect2(c.x, c.y, 1, 1), col)
 	if _bloom_t > 0.0 and _bloom_t < 0.7:
 		var r: float = (0.7 - _bloom_t) / 0.7
@@ -636,9 +673,6 @@ func _draw_flowers(top: int, ink: Color) -> void:
 		for gi in spots.size():
 			if (gi + tw) % 3 == 0:
 				draw_rect(Rect2(spots[gi].x, base + spots[gi].y + 3, 1, 1), Color.WHITE)
-	if stage >= 5 and not locked and _bloom_t <= 0.0:   # the grand pad wears a gold crown over the flower
-		for cx in range(-3, 4):
-			draw_rect(Rect2(cx, base - n - 2 - (1 if absi(cx) < 2 else 0), 1, 1), palette[5])
 	var pips: int = 1
 	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if bd != null:

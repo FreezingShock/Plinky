@@ -85,3 +85,11 @@ static func bird_scale(area: StringName, day_fraction: float, daylight_fraction:
 		return 0.0
 	var day: float = daylight(day_fraction, daylight_fraction)
 	return day * _dot(season_weights, BIRDS_BY_SEASON) * (1.0 + 0.3 * dawn(day_fraction, daylight_fraction))
+
+
+## Rain bed gain, 0..1: follows the rain, silent under snow and in the quarry (no weather there). Pure, so the
+## audio scape and its tests read the same rule.
+static func rain_gain(rain01: float, snow_w: float, area: StringName) -> float:
+	if area == AREA_QUARRY:
+		return 0.0
+	return clampf(rain01, 0.0, 1.0) * (1.0 - clampf(snow_w, 0.0, 1.0))

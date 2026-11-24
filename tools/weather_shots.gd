@@ -39,6 +39,18 @@ func _ready() -> void:
 	var anchors: Node = main.meadow.get_node("Anchors")
 	var m: Marker2D = anchors.get_node("District_green") as Marker2D
 	await _goto(m.position + Vector2(0, 10), 2)
+	if "zoom4" in OS.get_cmdline_user_args():
+		await _goto(m.position + Vector2(0, 10), 4)
+		SkyCycle.debug_season = 0
+		SkyCycle.debug_rain = 0.6
+		SkyCycle.debug_phase = 0.5
+		await _wait(30)
+		await _shot("zoom4_rain")
+		await _goto(m.position + Vector2(0, 10), 1)
+		await _wait(30)
+		await _shot("zoom1_rain")
+		get_tree().quit(0)
+		return
 	# name, season (0 spring, 1 summer, 2 autumn, 3 winter), rain (0 clear, 0.6 = the config's rain_max), phase (0.5 noon)
 	var plan: Array = [
 		["spring_clear", 0, 0.0, 0.5],

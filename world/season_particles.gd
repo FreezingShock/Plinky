@@ -11,8 +11,6 @@ const IDX_LIGHT: int = 4
 const IDX_ACCENT: int = 5
 const IDX_EARTH: int = 6
 const MAX_PER_KIND: int = 700
-const REF_VIEW_AREA: float = 332.0 * 192.0   # the view the configured counts are tuned for, in texels
-const MAX_DENSITY: float = 2.5
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var area: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)
@@ -48,9 +46,8 @@ func _total() -> float:
 	return s
 
 
-## How many particles of `kind` (0 petal, 1 sun mote, 2 leaf, 3 snow) are in the air at the moment. `density` scales
-## the configured count, which is for the reference view (the window the particles fall through, see _draw).
-func count_for(kind: int, density: float = 1.0) -> int:
+## How many particles of `kind` (0 petal, 1 sun mote, 2 leaf, 3 snow) are in the air at the moment, per frame.
+func count_for(kind: int) -> int:
 	if config == null or kind >= config.particle_counts.size():
 		return 0
 	var k: float = weights[kind] * boost[kind]
@@ -60,7 +57,7 @@ func count_for(kind: int, density: float = 1.0) -> int:
 		k *= 1.0 - MeadowLife.night            # motes are a daytime thing
 	elif kind == 0 or kind == 2:
 		k *= 1.0 - 0.7 * MeadowLife.rain       # wet petals and leaves stay down
-	var n: int = int(ceilf(float(config.particle_counts[kind]) * k * density))
+	var n: int = int(ceilf(float(config.particle_counts[kind]) * k))
 	return mini(GraphicsQuality.life_scaled(n), MAX_PER_KIND)
 
 
@@ -68,13 +65,12 @@ func _draw() -> void:
 	if config == null or MeadowLife.reduce_motion:
 		return
 	var tb: float = float(maxi(_step, 0)) * STEP
-	# The particles fall through the part of the field on screen (a window that follows the camera), so a zoomed-in
-	# camera shows the same number of petals and snowflakes as a zoomed-out one, and a bigger map costs nothing extra.
+	# The particles fall through the part of the field on screen (a window that follows the camera). The window is the
+	# whole frame at every zoom, so the configured counts are per frame, and a bigger map costs nothing extra.
 	var view: Rect2 = GraphicsQuality.visible_local_rect(self)
 	var field: Rect2 = view if view.has_area() else area
-	var density: float = clampf(field.get_area() / REF_VIEW_AREA, 0.5, MAX_DENSITY)
 	for kind in 4:
-		var n: int = count_for(kind, density)
+		var n: int = count_for(kind)
 		for i in n:
 			_draw_one(kind, i, tb, field)
 
