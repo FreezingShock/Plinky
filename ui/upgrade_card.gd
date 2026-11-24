@@ -246,6 +246,15 @@ func refresh(s: Dictionary) -> void:
 
 
 func _build_delta(s: Dictionary, now: String, nxt: String) -> String:
+	var text: String = _primary_delta(s, now, nxt)
+	# A gift's second effect sits after the first on the same line (no extra height): "+12% -> +14%  +10%/Bloom".
+	var extra: String = String(s.get("second_short", ""))
+	if bool(s["unlocked"]) and extra != "":
+		text += "  [color=#%s]%s[/color]" % [RelicStyle.good.to_html(false), extra]
+	return text
+
+
+func _primary_delta(s: Dictionary, now: String, nxt: String) -> String:
 	var dim: String = RelicStyle.soft().to_html(false)
 	if not bool(s["unlocked"]):
 		return "[color=#%s]%d / %d to unlock[/color]" % [dim, s["rebirths"], s["need"]]

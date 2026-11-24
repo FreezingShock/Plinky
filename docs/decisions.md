@@ -851,6 +851,16 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Taste call for Nathan:** hover puts a faint wash on a card you can afford. Say if you want the hover left off.
 - Not verified in-engine: the sparks, the pop timing and the taller panel. PC QA should check both zones with motion on and off.
 
+## 2026-11-24 Gift second effects and the press proc (minor)
+- **Why:** #237 raised the numbers, but each gift still did one thing. Nathan asked for gifts that matter more, so four gifts now carry a second effect that changes how the game plays.
+- **Schema:** `AttributeDef` gains `effect2` and `per_level2` (default empty and 0). `Sim.effect_total` sums both, so the rest of the game reads a second effect like any other. Existing gifts are unchanged.
+- **Press proc (new effect `press_proc`):** each press has a chance of `per_level2` a level to pay `GameConfig.press_proc_mult` (5) times its reward. Twin Petals and Twin Strike carry it at 0.5% a level, so the cap of 10 gives a 5% chance, about +20% expected press reward. The roll is `Formulas.proc_mult`, which is pure and tested. The roll only draws from the RNG when the effect is owned, so runs without it keep the same random sequence.
+- **Reward-bonus synergy:** Wide Bloom adds 1% a level to `bloom_bonus` and Anvil Plates adds 1% a level to `nucleus_bonus`. Each Bloom or Nucleus then pays that much more on every pad, stacking with the base 25% and with Echo. At cap that is +10% a Bloom, so ten Blooms add 100% on top.
+- **Idle:** the proc runs on presses only, so it raises active play and slightly lengthens the idle ratio. The Bloom bonus applies to pad rewards, and offline tending pays pad rewards too, so it lifts both sides. Neither was measured.
+- **Not done:** no new Bloom-count tier. The existing `unlock_resets` tiers already do the job.
+- **Shown:** the gift card puts the second effect on its line 2, after "now -> next" ("+12% -> +14%  +10%/Bloom"), so the card stays at 52 px and the 180 px list cap holds (per the coordinator, after #242's compact cards). The Upgrades tooltip and the Stats index say "Also now X, next Y". `UpgradeText.second_short` and `second_value` do the text. Line 2 may be too wide for a 150 px card with a long second value, so PC QA should check it at 640x360.
+- **Not shown:** the stat breakdown (`StatSources`) and `TipText.attribute` (no caller in the game, only tests) still show only the primary effect.
+- **Not run in the engine:** the new unit tests run in CI. The idle ratio and pacing still need `tools/sim_bloom.gd` on the PC.
 ## Upgrades menu fit and menu layer (2026-11-24)
 - **Cards:** stacked to three lines (name and level; now to next; pips and cost). The Buy button is gone: the whole card buys, and Enter or Space buys while the card has focus. Two across at 150 px, so the panel is about a third narrower.
 - **Outline and dim:** affordable is a bright green frame; unaffordable is a red frame with the contents dimmed to 55%, so the two read apart. Maxed is gold, locked is dim.

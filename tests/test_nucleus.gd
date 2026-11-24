@@ -73,6 +73,10 @@ func run(t: Object) -> void:
 	t.near(sim.income_per_second(&"embers").to_float(), base_income * (1.0 + 10.0 * furnace.per_level), 1e-6, "Stoked Fire raises Embers income")
 	sim.attr_levels.clear()
 	sim.stats[&"emberheart"] = BigNum.from_float(sim.reset_ref(rid) * 4.0)
+	var plates: AttributeDef = sim.attribute_defs[&"nucleus_plates"]
+	sim.attr_levels[&"nucleus_plates"] = 10
+	t.near(sim.effect_total(&"nucleus_bonus"), 10.0 * plates.per_level2, 1e-9, "Anvil Plates' second effect reaches the Nucleus bonus")
+	sim.attr_levels.clear()
 	var veins: AttributeDef = sim.attribute_defs[&"nucleus_veins"]
 	sim.attr_levels[&"nucleus_veins"] = 10
 	t.eq(sim.reset_gain(rid), int(floorf(4.0 * (1.0 + 10.0 * veins.per_level))), "Shard Veins raise the payout")
