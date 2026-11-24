@@ -1,0 +1,1 @@
+Dev console: `tp area` works right after `tp zone`. The walker waits for the new zone's pads instead of saying the area is in another zone, and a zone change that is followed by another zone change shows the newest zone.

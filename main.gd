@@ -600,6 +600,8 @@ func _build_vents(cols: PackedColorArray) -> void:
 
 
 func _on_zone_entered(zone_id: StringName) -> void:
+	if _crossing:
+		return   # the running crossing ends by following the sim's zone, see below
 	var cross: bool = _zone_scene_path(zone_id) != _scene_path
 	if not cross:
 		_enter_zone_visuals(zone_id)
@@ -617,6 +619,10 @@ func _on_zone_entered(zone_id: StringName) -> void:
 			_clear_spawn())
 	_crossing = false
 	_after_crossing(zone_id)
+	if sim.zone_id != zone_id:
+		# the sim moved on during the wipe (dev console `zone` twice quickly): show the newest zone, not this one
+		_on_zone_entered(sim.zone_id)
+		return
 	_announce_zone_arrival()
 
 
