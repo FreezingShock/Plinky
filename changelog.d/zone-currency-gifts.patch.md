@@ -1,2 +1,0 @@
-- Seeds and Core Shards get a full tooltip: what they are, the next reset's payout, how many gifts are bought and affordable. Clicking their HUD row opens that zone's gifts tab.
-- The gifts menu is centred and wears each zone's colour, keeps one size across tabs and purchases, and the Nucleus tier heads read "Nuclei".
