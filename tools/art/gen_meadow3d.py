@@ -371,6 +371,35 @@ def make_lantern(rng):
         dc = sdf_box(x, y, z, (0, 0, 20.8), (3.6, 3.6, .8), .3); sel = dc < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dc)
         return d, m
     return f, (7, 7), 23, 2.5
+def make_fence_seg(L):
+    """Low timber rail fence, L texels long along local x: two rails and a post every 3.5 texels."""
+    hl = L / 2.0
+    def f(x, y, z):
+        inside = np.abs(x) <= hl
+        px = ((x + hl + 1.75) % 3.5) - 1.75                       # post in the middle of each bay
+        dpst = np.where(inside, sdf_box(px, y, z, (0, 0, 3.5), (.45, .45, 3.5)), 9.0)
+        dr1 = np.where(inside, sdf_box(x, y, z, (0, 0, 2.4), (hl, .32, .42)), 9.0)
+        dr2 = np.where(inside, sdf_box(x, y, z, (0, 0, 5.2), (hl, .32, .42)), 9.0)
+        m = np.full(x.shape, M_WOOD, np.int16)
+        d = np.minimum(dpst, np.minimum(dr1, dr2))
+        return d, m
+    return f
+def make_dock(L, W=4.0):
+    """Boardwalk over the shallows: a plank deck on pilings, with a rail on each side. Local x runs out along the walk."""
+    hl, hw = L / 2.0, W / 2.0
+    def f(x, y, z):
+        inside = np.abs(x) <= hl
+        deck = sdf_box(x, y, z, (0, 0, 1.4), (hl, hw, .45))
+        seam = (np.floor((x + hl) / 1.2) % 2) > .5                  # plank seams: alternate wood and dark gap
+        pil = np.full(x.shape, 9.0)
+        for px_ in np.arange(-hl + 1.0, hl, 3.0):
+            for py_ in (-hw + .8, hw - .8):
+                pil = np.minimum(pil, sdf_box(x, y, z, (px_, py_, -3.5), (.5, .5, 4.5)))
+        rails = np.minimum(sdf_box(x, y, z, (0, -hw + .25, 3.9), (hl, .25, .3)), sdf_box(x, y, z, (0, hw - .25, 3.9), (hl, .25, .3)))
+        d = np.minimum(np.where(inside, deck, 9.0), np.minimum(pil, rails))
+        m = np.where(seam & (np.abs(y) < hw - .3), M_BARK, M_WOOD).astype(np.int16)
+        return d, m
+    return f
 log('props defined')
 
 # ---------------- placement (Poisson-style spacing, no stacking, off-grid) ----------------
@@ -401,7 +430,7 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **k
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid)
-    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals') or (kind == 'rock' and big)):
+    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'lantern') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0))
     if count: placed.append((u, v, rad * scale))
     return z0
@@ -497,6 +526,71 @@ for (ax, ay), (bx, by) in zip(PATH, PATH[1:]):
             put('rock', su, sv, prng.uniform(.55, .7), big=False, count=False, sid=1)
 log('stepping stones placed')
 
+# ---- bolder path pass (placed last, so nothing earlier in the layout moves) ----
+# lanterns: a post every ~40 texels, alternating sides, just outside the rim. Sprites, so they y-sort and light up.
+# gate approach (last four path segments): low timber rail fences along both sides instead of verges.
+# flower verges: a dense low row just outside the rim, both sides, on the rest of the path.
+# boardwalk: from the path toward the lake, the shortest run to open water becomes a plank deck on pilings.
+def seg_frame(ax, ay, bx, by):
+    seg = math.hypot(bx - ax, by - ay); tx, ty = (bx - ax) / seg, (by - ay) / seg
+    return seg, tx, ty, -ty, tx                                      # length, tangent, normal
+PW_MEAN = 6.6
+FENCE_FROM = len(PATH) - 5                                          # segments from here on are the gate approach
+lantern_n = verge_n = fence_n = 0
+for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
+    if si >= FENCE_FROM: continue
+    seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
+    n = max(1, int(round(seg / 40.0)))
+    for k in range(n):
+        f0 = (k + .5) / n; side = 1.0 if (si + k) % 2 == 0 else -1.0
+        found = False
+        for off_ in (PW_MEAN + 1.8, PW_MEAN + 2.8, PW_MEAN + 3.8):   # try just inside, middle and just outside the rim
+            for slide in (0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10):    # first valid spot along the path, nearest the slot first
+                f = f0 + slide / seg
+                if not (0 < f < 1): continue
+                u, v = ax + (bx - ax) * f + nx_ * side * off_, ay + (by - ay) * f + ny_ * side * off_
+                if 7.0 < float(samp(dpath, u, v)) < 13.0 and ok_spot(u, v, 2.5, slope_max=.8, path=False, gap=-.5, hmax=14.0):
+                    put('lantern', u, v, 1.0, count=True); lantern_n += 1; found = True; break
+            if found: break
+for si in range(FENCE_FROM, len(PATH) - 1):
+    (ax, ay), (bx, by) = PATH[si], PATH[si + 1]
+    seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
+    for side in (1.0, -1.0):
+        cu, cv = (ax + bx) / 2 + nx_ * side * (PW_MEAN + 1.9), (ay + by) / 2 + ny_ * side * (PW_MEAN + 1.9)
+        voxelize(make_fence_seg(seg - 2.0), (seg / 2 + 2.5, seg / 2 + 2.5), 7.6, cu, cv, float(terrain_h(cu, cv)), 1.0, math.atan2(ty, tx), 1, bottom=-1.0)
+        fence_n += 1
+for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
+    if si >= FENCE_FROM: continue
+    seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
+    for k in range(max(1, int(seg / 2.6))):
+        f = (k + prng.random()) / max(1, int(seg / 2.6))
+        for side in (1.0, -1.0):
+            if prng.random() > .62: continue
+            off = PW_MEAN + prng.uniform(1.2, 2.4)
+            u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
+            if 7.6 <= float(samp(dpath, u, v)) <= 11.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1); verge_n += 1
+# boardwalk: march from each path point (quarter steps) toward the lake centre; the shortest run to open water wins
+best = None
+for (ax, ay), (bx, by) in zip(PATH, PATH[1:]):
+    for f in (0, .25, .5, .75):
+        pu, pv = ax + (bx - ax) * f, ay + (by - ay) * f
+        dx, dy = LAKE['c'][0] - pu, LAKE['c'][1] - pv; dl = math.hypot(dx, dy); dx, dy = dx / dl, dy / dl
+        for step in range(1, 181):
+            t = step * .5; uu, vv = pu + dx * t, pv + dy * t
+            if float(samp(WD, uu, vv)) > .04:
+                if best is None or t < best[0]: best = (t, pu, pv, dx, dy)
+                break
+DOCK_MAX = 70.0
+if best is not None and best[0] <= DOCK_MAX:
+    t, pu, pv, dx, dy = best; L = t + 6.0                            # six texels out past the shore
+    cu, cv = pu + dx * L / 2, pv + dy * L / 2
+    voxelize(make_dock(L), (L / 2 + 2.5, L / 2 + 2.5), 6.0, cu, cv, max(float(terrain_h(pu, pv)), LEVEL), 1.0, math.atan2(dy, dx), 1, bottom=-9.0)
+    log('boardwalk to lake: %.1f texels from the path' % t)
+else:
+    log('boardwalk: no shore within %.0f texels of the path' % DOCK_MAX)
+log('path pass: lanterns %d, flower verges %d, fence runs %d' % (lantern_n, verge_n, fence_n))
+
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
 log('prop surface points: %d' % len(P['u']))
@@ -523,7 +617,7 @@ mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
 beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
-pw = 5.4 + 1.6 * (n1 - .5)
+pw = 6.6 + 1.2 * (n1 - .5)                       # bolder path: wider than the first pass (5.4) so it reads at 640x360
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
@@ -533,13 +627,16 @@ strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .04 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
 lt -= .22 * ((dp > pw - 1.4) & (dp < pw + .2) & (mat == T_PATH)) * (n2 > .45)        # ruts / worn edge
+# defined edges: a dark rim on the grass just outside the path, and light pebbles scattered across the path surface
+lt -= .2 * ((dp >= pw) & (dp < pw + 1.0) & (mat == T_GRASS) & (wd <= .04))
+lt += .13 * ((mat == T_PATH) & (vn2(FU / 1.3, FV / 1.3, 31) > .62))
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
 pre_slope = np.hypot(samp(GUp, FU, FV), samp(GVp, FU, FV))
 # white water only along a stream's banks (not down the middle of it, which is a flat 0.9 deep bed)
-stream_edge = (dstr > sw - .8).astype(np.float64)   # only the outer edge of the channel: the middle stays water
-foam = isw & (pre_slope > .5) & (wh > LEVEL + .3) & (samp(stream_edge, FU, FV) > .5)
+stream_edge = (dstr > sw - 1.8).astype(np.float64)  # the outer 1.8 texels of the channel (was .8, too thin to read): the middle stays water
+foam = isw & (pre_slope > .35) & (wh > LEVEL + .3) & (samp(stream_edge, FU, FV) > .5)
 mat = np.where(foam, T_FOAM, mat)
 zt = np.where(isw, wh, h)
 nrm[isw] = np.array([0, 0, 1.0])

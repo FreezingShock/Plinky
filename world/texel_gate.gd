@@ -11,7 +11,7 @@ const RADIUS: float = 16.0
 const HALF_SPAN: float = 26.0        ## pillar centres sit this far either side of the gate anchor
 const PILLAR_W: int = 10
 const HEIGHT: int = 46
-const HIT: Rect2 = Rect2(-34.0, -56.0, 68.0, 62.0)
+const HIT: Rect2 = Rect2(-36.0, -62.0, 72.0, 68.0)   ## covers the whole arch, keystone bloom included
 
 var zone_id: StringName
 var art: StringName = &""
@@ -218,10 +218,19 @@ func _draw_meadow(open: bool) -> void:
 		for y: int in [-36, -22, -9]:
 			draw_rect(Rect2(rx, y, rw, 2), timber)
 			draw_rect(Rect2(rx, y, rw, 1), p[5])
-		# a vine creeping across the lattice
-		for y in range(-HEIGHT + 6, -3, 3):
-			var vx: float = rx + 6.0 + float(posmod(y * 7, int(rw - 12.0)))
-			draw_rect(Rect2(floorf(vx), y, 2, 2), leaf)
+		# two vines weaving up the lattice in opposite phase: a leaf ribbon every two rows, drawn over the rails so it reads at 1x
+		var mid: float = rx + rw * 0.5
+		for y: int in range(-HEIGHT + 4, -2, 2):
+			var wave: float = sin(float(y) * 0.42)
+			var vx: float = mid + wave * (rw * 0.34) - 1.0
+			draw_rect(Rect2(floorf(vx), y, 3, 2), p[2])
+			draw_rect(Rect2(floorf(vx) + (1.0 if posmod(y, 4) < 2 else 2.0), y, 2, 1), leaf)
+			var vx2: float = mid - wave * (rw * 0.34) - 1.0
+			draw_rect(Rect2(floorf(vx2), y + 1, 3, 2), p[3])
+			draw_rect(Rect2(floorf(vx2) + (2.0 if posmod(y, 4) < 2 else 1.0), y + 1, 1, 1), p[4])
+		# a bloom at the tip of each vine
+		draw_rect(Rect2(floorf(mid + sin(float(-HEIGHT + 4) * 0.42) * (rw * 0.34)) - 2.0, -HEIGHT + 2, 4, 3), p[7])
+		draw_rect(Rect2(floorf(mid - sin(float(-HEIGHT + 4) * 0.42) * (rw * 0.34)) - 2.0, -HEIGHT + 3, 4, 3), p[5])
 	# posts: timber shaded on the left, lit on the right, a cream cap, and moss and grass at the foot
 	for side: int in [-1, 1]:
 		var cx: int = int(side * HALF_SPAN) - PILLAR_W / 2
@@ -255,10 +264,10 @@ func _draw_meadow(open: bool) -> void:
 	draw_rect(Rect2(-2, -HEIGHT - 8, 4, 4), timber)
 	# petals drifting down through the opening while it is open
 	if open:
-		for i in 5:
-			var px: float = rx + float((i * 13) % int(rw - 2.0))
-			var py: float = -float(HEIGHT) + fmod(_t * (6.0 + float(i)) + float(i) * 9.0, float(HEIGHT - 4))
-			draw_rect(Rect2(floorf(px), floorf(py), 1, 1), p[7] if i % 2 == 0 else p[5])
+		for i in 9:
+			var px: float = rx + 2.0 + fposmod(float(i) * 11.0 + sin(_t * 1.3 + float(i)) * 3.0, rw - 6.0)
+			var py: float = -float(HEIGHT) + fposmod(_t * (5.0 + float(i) * 0.7) + float(i) * 9.0, float(HEIGHT - 4))
+			draw_rect(Rect2(floorf(px), floorf(py), 2, 2), p[7] if i % 2 == 0 else p[5])
 
 
 # ---------------------------------------------------------------- the way back: a cave mouth to the meadow
