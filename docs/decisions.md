@@ -850,5 +850,6 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Reward-bonus synergy:** Wide Bloom adds 1% a level to `bloom_bonus` and Anvil Plates adds 1% a level to `nucleus_bonus`. Each Bloom or Nucleus then pays that much more on every pad, stacking with the base 25% and with Echo. At cap that is +10% a Bloom, so ten Blooms add 100% on top.
 - **Idle:** the proc runs on presses only, so it raises active play and slightly lengthens the idle ratio. The Bloom bonus applies to pad rewards, and offline tending pays pad rewards too, so it lifts both sides. Neither was measured.
 - **Not done:** no new Bloom-count tier. The existing `unlock_resets` tiers already do the job.
-- **Follow-up (UI):** the stat breakdown (`StatSources`) and the card's number show only the primary effect. The blurb names the second one. The Upgrades thread can add the second effect to the card.
+- **Shown:** the gift card has a second line ("also 1% -> 2% a Bloom"), and the Upgrades tooltip and the Stats index say "Also now X, next Y". `UpgradeText.second_value` does the text. The card grew from 56 to 68 px so the line fits. That is a layout change to the gallery card (#232), so PC QA should check a row of cards at 640x360.
+- **Not shown:** the stat breakdown (`StatSources`) and `TipText.attribute` (no caller in the game, only tests) still show only the primary effect.
 - **Not run in the engine:** the new unit tests run in CI. The idle ratio and pacing still need `tools/sim_bloom.gd` on the PC.

@@ -22,7 +22,7 @@ const RED: Color = Color("#d9604c")   ## no red in the palette roles; fixed like
 const TICK_STEPS: int = 8
 const FLY_SECONDS: float = 0.55
 ## Card size at 640x360: two across fit the gallery's list. Inside a card the icon, delta (136) and Buy (80) share one line.
-const CARD_SIZE: Vector2 = Vector2(268.0, 56.0)
+const CARD_SIZE: Vector2 = Vector2(268.0, 68.0)   ## 68 so a gift's second effect fits under the first line
 const SPARKS: int = 7
 const SPARK_LIFE: float = 0.5
 const SPARK_GRAVITY: float = 150.0
@@ -232,6 +232,18 @@ func refresh(s: Dictionary) -> void:
 
 
 func _build_delta(s: Dictionary, now: String, nxt: String) -> String:
+	var text: String = _primary_delta(s, now, nxt)
+	# A gift's second effect gets its own line under the first: "also 1% -> 2% a Bloom".
+	var second_now: String = String(s.get("second_now", ""))
+	if bool(s["unlocked"]) and second_now != "":
+		var dim: String = RelicStyle.soft().to_html(false)
+		var second_next: String = String(s.get("second_next", ""))
+		var second: String = second_now if second_next == "" else "%s -> %s" % [second_now, second_next]
+		text += "\n[color=#%s]also %s[/color]" % [dim, second]
+	return text
+
+
+func _primary_delta(s: Dictionary, now: String, nxt: String) -> String:
 	var dim: String = RelicStyle.soft().to_html(false)
 	if not bool(s["unlocked"]):
 		return "[color=#%s]%s (%d/%d)[/color]" % [dim, s["lock"], s["rebirths"], s["need"]]

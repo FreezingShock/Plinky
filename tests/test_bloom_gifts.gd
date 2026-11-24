@@ -97,6 +97,14 @@ func run(t: Object) -> void:
 	sim.attr_levels.clear()
 	sim.reset_counts[&"bloom"] = 0
 
+	# The second effect reads on the card and in the tooltip, not only in the blurb.
+	t.eq(UpgradeText.second_value(twin, 10, 5.0), "5% for 5x", "Twin Petals' card line names the proc and its payout")
+	t.eq(UpgradeText.second_value(wide, 10, 5.0), "+10% a Bloom", "Wide Bloom's card line reads per Bloom")
+	t.eq(UpgradeText.second_value(sim.attribute_defs[&"bloom_head_start"], 3, 5.0), "", "a gift with one effect has no second line")
+	t.ok(UpgradeText.second_sentence(wide, 4, 5.0).begins_with("Also now"), "the tooltip sentence says now and next")
+	t.ok(UpgradeText.state(sim, wide)["second_now"] == "+0% a Bloom", "the state carries the second effect")
+	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, wide), &"pad_yield")["body"]).contains("Also now"), "the Upgrades tooltip names the second effect")
+
 	# Twin Petals can proc: a press pays out several times over, and the chance grows with each level.
 	var twin: AttributeDef = sim.attribute_defs[&"bloom_twin_petals"]
 	sim.attr_levels[&"bloom_twin_petals"] = 10

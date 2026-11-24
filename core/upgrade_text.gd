@@ -15,6 +15,32 @@ static func amount_at(a: AttributeDef, level: int) -> float:
 	return float(level) * a.per_level
 
 
+## What a gift's second effect gives at `level`, short enough for a card ("+1% a Bloom", "0.5% for 5x"), or "" for none.
+## proc_mult is what a press proc pays (GameConfig.press_proc_mult).
+static func second_value(a: AttributeDef, level: int, proc_mult: float) -> String:
+	if a.effect2 == &"":
+		return ""
+	var pct: String = _trim(float(level) * a.per_level2 * 100.0)
+	match a.effect2:
+		&"press_proc":
+			return "%s%% for %sx" % [pct, _trim(proc_mult)]
+		&"bloom_bonus":
+			return "+%s%% a Bloom" % pct
+		&"nucleus_bonus":
+			return "+%s%% a Nucleus" % pct
+	return "+%s%% %s" % [pct, String(a.effect2).replace("_", " ")]
+
+
+## The sentence a tooltip uses for the second effect, or "" when the gift has none (or is still locked).
+static func second_sentence(a: AttributeDef, level: int, proc_mult: float) -> String:
+	if a.effect2 == &"":
+		return ""
+	var now: String = second_value(a, level, proc_mult)
+	if level >= a.cap:
+		return "Also %s." % now
+	return "Also now %s, next %s." % [now, second_value(a, level + 1, proc_mult)]
+
+
 ## "+120%" or "+5 h". Same string the tooltip and the stats index use for the number.
 static func value(a: AttributeDef, amount: float) -> String:
 	match a.value_kind:
@@ -132,6 +158,8 @@ static func state(sim: Sim, a: AttributeDef) -> Dictionary:
 		"cost_text": cost.format(), "can_afford": not maxed and not sim.attribute_available(a).lt(cost),
 		"currency": a.currency, "currency_name": currency_name(a), "blurb": a.blurb,
 		"lock": lock_text(a, sim), "rebirths": _have_for_lock(sim, a), "need": a.unlock_rebirths,
+		"second_now": second_value(a, lv, sim.config.press_proc_mult),
+		"second_next": "" if maxed else second_value(a, lv + 1, sim.config.press_proc_mult),
 	}
 
 
@@ -157,6 +185,8 @@ static func tip(s: Dictionary, effect: StringName) -> Dictionary:
 	var title: String = "%s %d/%d" % [s["name"], s["level"], s["cap"]]
 	if bool(s["unlocked"]) and not bool(s["maxed"]):
 		body += "\nNow %s, next %s %s." % [s["now"], s["next"], s["unit"]]
+	if bool(s["unlocked"]) and String(s.get("second_now", "")) != "":
+		body += "\n" + (("Also %s." % s["second_now"]) if bool(s["maxed"]) else ("Also now %s, next %s." % [s["second_now"], s["second_next"]]))
 	return {"title": title, "body": body, "hint": hint}
 
 
