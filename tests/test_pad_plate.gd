@@ -27,6 +27,16 @@ func run(t: Object) -> void:
 	t.ok(glow_pad._halo != null and glow_pad._halo.get_parent() == glow_pad, "the glow node is a child of its pad")
 	t.ok(glow_pad._halo != null and glow_pad._halo.visible, "the glow node is visible")
 	t.ok(TexelPad.HALO_Z > 5 and TexelPad.HALO_Z < 10, "the glow sits above the night shade (z 5) and under the air layer (z 10)")
+	# Guard: a bare draw_rect inside the glow's draw code paints the pad, not the glow node, and errors every frame in-engine.
+	var src: String = FileAccess.get_file_as_string("res://world/texel_pad.gd")
+	var in_halo: bool = false
+	var bare_draws: int = 0
+	for line: String in src.split("\n"):
+		if line.begins_with("func "):
+			in_halo = line.begins_with("func _draw_halo") or line.begins_with("func _glint")
+		if in_halo and line.contains("draw_rect(") and not line.contains("_halo.draw_rect("):
+			bare_draws += 1
+	t.eq(bare_draws, 0, "the glow draws only through its own node (_halo.draw_rect)")
 	var night_glow := PadGlow.new()
 	night_glow.night01 = 1.0
 	glow_pad.glow = night_glow
