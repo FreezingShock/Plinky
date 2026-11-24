@@ -722,6 +722,11 @@ func _wire_menus() -> void:
 	var ach_toast := AchievementToast.new()
 	hud.add_child(ach_toast)
 	ach_toast.enabled = func() -> bool: return GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)   # quiet during the tutorial
+	ach_toast.menu_open = func() -> bool: return not menus.open_kinds().is_empty()   # held back while any menu is open
+	ach_toast.play_sfx = func(sfx: StringName, pitch: float, db: float) -> void: Audio.play(sfx, pitch, db)
+	ach_toast.shake = func(amount: float) -> void:
+		if Juice.shake:
+			Juice.shake.add(amount)
 	ach_toast.bind(sim)
 	hud.keep_centered(gallery)
 	hud.keep_centered(update_log)

@@ -22,7 +22,7 @@ const ENTRIES: Array = [
 	[&"travel", "Travel", "menu_travel"],
 	[&"settings", "Settings", "menu_settings"],
 	[&"history", "History", "menu_history"],
-	[&"ledger", "Ledger", "menu_ledger"],
+	[&"ledger", "Achievements", "menu_ledger"],
 	[&"log", "Update Log", "menu_log"],
 ]
 
