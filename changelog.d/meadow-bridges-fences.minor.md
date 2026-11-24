@@ -1,0 +1,1 @@
+The meadow has a footbridge over its stream on the way to the shrine, and the boardwalk out to the lake is wider and easy to step onto. The meadow's rail fences now block the walker, so only the path is open.

@@ -148,3 +148,8 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** the two Thistle pads in Gatehouse Green, at (868,646) and (912,624), sat behind an oak on main. The walk mask does not catch a sprite standing in front of a pad.
 - **What:** the Thistle row moved to centre (864,642), so its pads sit at (820,664), (864,642) and (908,620). Every Larkmoor pad now passes the sprite occlusion check on the regenerated placements, and every footprint is walkable.
 - Not run in-engine. Please check the Thistle row on a PC capture.
+## 2026-11-24: Meadow bridges and fences (after the path pass merged as #282)
+- **Brief (Nathan, via coordinator):** bigger, wider bridges so the water is easy to get onto; fences should block walking unless the walker is meant to pass.
+- **Changed in `tools/art/gen_meadow3d.py`:** the boardwalk to the lake is 6 texels wide (was 4). A footbridge crosses the meadow stream at screen (470, 147), on the line from the gate to the shrine, so the shrine is reachable on foot. Walk strips: each deck (the boardwalk and the footbridge) is walkable along its long axis, flared at both ends. The rail fences block the walker, except the path, which runs clear of them.
+- **Not changed:** the path, the pads, the gate and the lanterns. The meadow pads come from the layout, unchanged.
+- **Not run in the cloud:** the look in-engine, and walking onto the footbridge and the boardwalk. The PC QA thread should check both.

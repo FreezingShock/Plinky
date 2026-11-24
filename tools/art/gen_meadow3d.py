@@ -384,7 +384,7 @@ def make_fence_seg(L):
         d = np.minimum(dpst, np.minimum(dr1, dr2))
         return d, m
     return f
-def make_dock(L, W=4.0):
+def make_dock(L, W=6.0):
     """Boardwalk over the shallows: a plank deck on pilings, with a rail on each side. Local x runs out along the walk."""
     hl, hw = L / 2.0, W / 2.0
     def f(x, y, z):
@@ -527,6 +527,8 @@ for (ax, ay), (bx, by) in zip(PATH, PATH[1:]):
 log('stepping stones placed')
 
 # ---- bolder path pass (placed last, so nothing earlier in the layout moves) ----
+DECKS = []        # walkable decks: (u, v, angle of the long axis, half length, half width)
+FENCE_GEOM = []   # rail fences: (u, v, angle, half length); the walker cannot cross them off the path
 # lanterns: a post every ~40 texels, alternating sides, just outside the rim. Sprites, so they y-sort and light up.
 # gate approach (last four path segments): low timber rail fences along both sides instead of verges.
 # flower verges: a dense low row just outside the rim, both sides, on the rest of the path.
@@ -558,6 +560,7 @@ for si in range(FENCE_FROM, len(PATH) - 1):
     for side in (1.0, -1.0):
         cu, cv = (ax + bx) / 2 + nx_ * side * (PW_MEAN + 1.9), (ay + by) / 2 + ny_ * side * (PW_MEAN + 1.9)
         voxelize(make_fence_seg(seg - 2.0), (seg / 2 + 2.5, seg / 2 + 2.5), 7.6, cu, cv, float(terrain_h(cu, cv)), 1.0, math.atan2(ty, tx), 1, bottom=-1.0)
+        FENCE_GEOM.append((cu, cv, math.atan2(ty, tx), seg / 2 - 1.0))
         fence_n += 1
 for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
     if si >= FENCE_FROM: continue
@@ -586,9 +589,23 @@ if best is not None and best[0] <= DOCK_MAX:
     t, pu, pv, dx, dy = best; L = t + 6.0                            # six texels out past the shore
     cu, cv = pu + dx * L / 2, pv + dy * L / 2
     voxelize(make_dock(L), (L / 2 + 2.5, L / 2 + 2.5), 6.0, cu, cv, max(float(terrain_h(pu, pv)), LEVEL), 1.0, math.atan2(dy, dx), 1, bottom=-9.0)
+    DECKS.append((cu, cv, math.atan2(dy, dx), L / 2, 3.0))
     log('boardwalk to lake: %.1f texels from the path' % t)
 else:
     log('boardwalk: no shore within %.0f texels of the path' % DOCK_MAX)
+# footbridge over the stream, on the way from the gate to the shrine: a short deck across the channel, perpendicular to the water
+_sp = []
+for (ax, ay), (bx, by) in zip(STREAM, STREAM[1:]):
+    for f_ in np.linspace(0, 1, 40): _sp.append((ax + (bx - ax) * f_, ay + (by - ay) * f_, bx - ax, by - ay))
+_bq = min(_sp, key=lambda q: math.hypot(q[0] - GATE[0], q[1] - GATE[1]) + math.hypot(q[0] - SHRINE[0], q[1] - SHRINE[1]))
+_tl = math.hypot(_bq[2], _bq[3]) or 1.0; _tx, _ty = _bq[2] / _tl, _bq[3] / _tl
+_ang = math.atan2(_tx, -_ty)                                  # the deck runs across the stream: along the stream's normal
+_bl = 22.0
+_ends = [(_bq[0] + -_ty * s_ * (_bl / 2 - 2), _bq[1] + _tx * s_ * (_bl / 2 - 2)) for s_ in (-1, 1)]
+_bz = max(float(terrain_h(a_, b_)) for a_, b_ in _ends) + 2.2
+voxelize(make_dock(_bl, W=6.0), (_bl / 2 + 2.5, _bl / 2 + 2.5), 6.0, _bq[0], _bq[1], _bz, 1.0, _ang, 1, bottom=-9.0)
+DECKS.append((_bq[0], _bq[1], _ang, _bl / 2, 3.0))
+log('boardwalk and footbridge placed: %d decks; footbridge at screen (%.0f, %.0f)' % (len(DECKS), OXS0 + (_bq[0] - _bq[1]), OYS0 + (_bq[0] + _bq[1]) / 2 - _bz))
 log('path pass: lanterns %d, flower verges %d, fence runs %d' % (lantern_n, verge_n, fence_n))
 
 # ---------------- gather prop points & shadow height field ----------------
@@ -862,6 +879,16 @@ for t in TALL:
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
 nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0)
 wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK) & (mat != T_MOSS)
+def _deck_strip(cu_, cv_, ang, half_len, half_w, flare):
+    # walkable along a deck: a strip on its long axis, flared at both ends so the walker finds the entry easily
+    dn_ = (FU - cu_) * math.cos(ang) + (FV - cv_) * math.sin(ang); dc_ = -(FU - cu_) * math.sin(ang) + (FV - cv_) * math.cos(ang)
+    ends = np.clip((np.abs(dn_) - (half_len - 5)) / 5, 0, 1)
+    return (np.abs(dn_) < half_len + 2) & (np.abs(dc_) < half_w + flare * ends)
+for (du_, dv_, dang_, dhl_, dhw_) in DECKS:                  # the boardwalk to the lake and the footbridge over the stream
+    wk |= _deck_strip(du_, dv_, dang_, dhl_, dhw_, 4.0)
+for (fu_, fv_, fang_, fhl_) in FENCE_GEOM:                   # the rail fences block the walker: only the path is open
+    fdn_ = (FU - fu_) * math.cos(fang_) + (FV - fv_) * math.sin(fang_); fdc_ = -(FU - fu_) * math.sin(fang_) + (FV - fv_) * math.cos(fang_)
+    wk &= ~((np.abs(fdn_) < fhl_ + 1) & (np.abs(fdc_) < 1.3))
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)
     wk &= np.hypot(FU - t['u'], FV - t['v']) > r_
