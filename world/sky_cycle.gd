@@ -63,6 +63,9 @@ var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _pool_index: Dictionary = {}        # pad pool position -> its entry in _lights (rebuilt after add_light)
 var _pool_index_built: bool = false
 var _pushed: int = 0                    # pools packed for the shader on the last frame
+var _sent_count: int = -1               # last light_count written to the shade material
+var _sent_lights: PackedVector4Array = PackedVector4Array()   # last lights[] written (skipped when unchanged)
+var _sent_tints: PackedVector4Array = PackedVector4Array()    # last light_tint[] written
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
 var _fog_mat: ShaderMaterial          # drifting ground fog (ground_fog.gdshader)
@@ -730,5 +733,14 @@ func _push_lights(t: float, steady: bool) -> void:
 	while arr.size() < MAX_LIGHTS:
 		arr.append(Vector4.ZERO)
 		tints.append(Vector4.ZERO)
-	_shade_mat.set_shader_parameter("lights", arr)
-	_shade_mat.set_shader_parameter("light_tint", tints)
+	# Only write what changed: the pool list is the same frame to frame when the walker stands still, and the shader
+	# stops its loop at light_count, so the empty slots after the packed pools cost nothing.
+	if _pushed != _sent_count:
+		_sent_count = _pushed
+		_shade_mat.set_shader_parameter("light_count", _pushed)
+	if arr != _sent_lights:
+		_sent_lights = arr
+		_shade_mat.set_shader_parameter("lights", arr)
+	if tints != _sent_tints:
+		_sent_tints = tints
+		_shade_mat.set_shader_parameter("light_tint", tints)

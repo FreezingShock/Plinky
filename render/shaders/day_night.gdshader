@@ -24,6 +24,7 @@ uniform vec3 rain_tint : source_color = vec3(0.82, 0.88, 0.92);
 uniform vec3 pool_tint : source_color = vec3(1.0, 0.86, 0.58);
 uniform vec4 lights[56];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused). Must match SkyCycle.MAX_LIGHTS.
 uniform vec4 light_tint[56];   // rgb colour of each pool (a pad's buy colour); a = 0 keeps pool_tint, the warm default. Same order as lights.
+uniform int light_count = 56;  // pools packed at the front of lights[] this frame (SkyCycle); the rest are empty, so the loop stops here
 uniform float pool_strength = 0.9;
 uniform float reflect_amt = 0.0;   // 0..1 rain: each lamp is mirrored in the wet ground just below it (dithered, like puddles)
 
@@ -49,6 +50,9 @@ void fragment() {
 	vec3 tint_sum = vec3(0.0);   // falloff-weighted colour of the pools here, so overlapping pools blend
 	float tint_w = 0.0;
 	for (int i = 0; i < 56; i++) {
+		if (i >= light_count) {
+			break;
+		}
 		vec4 L = lights[i];
 		if (L.w > 0.0) {
 			float d = length((p - L.xy) * vec2(1.0, 2.0)) / max(L.z, 1.0);
