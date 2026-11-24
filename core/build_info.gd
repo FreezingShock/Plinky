@@ -3,7 +3,7 @@ extends RefCounted
 ## Single source of truth for the game version (docs/versioning.md). Shown on the boot screen and the Update Log, stamped on feedback notes. Keep in step with the
 ## export presets' file_version / short_version and the release tag.
 
-const VERSION: String = "0.89.32"
+const VERSION: String = "0.89.33"
 
 const CHANGELOG_PATH: String = "res://CHANGELOG.md"
 
