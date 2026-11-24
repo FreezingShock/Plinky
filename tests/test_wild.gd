@@ -67,6 +67,9 @@ func run(t: Object) -> void:
 	t.eq(LifeWild.owl_share(), 0.0, "summer noon: no owls")
 	MeadowLife.low_sun = 1.0
 	t.ok(LifeWild.deer_share() > 0.8, "golden hour in summer: the deer comes out (%.2f)" % LifeWild.deer_share())
+	MeadowLife.low_sun = 0.1
+	t.ok(LifeWild.deer_share() > 0.34 and LifeWild.deer_share() < 0.9,
+		"late dusk tail (low sun 0.1): one or two deer show (%.2f)" % LifeWild.deer_share())
 	MeadowLife.low_sun = 0.0
 	MeadowLife.night = 1.0
 	t.eq(LifeWild.dragonfly_share(), 0.0, "night: no dragonflies")
