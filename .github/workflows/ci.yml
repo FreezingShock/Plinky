@@ -24,7 +24,6 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v4
-        if: github.event_name != 'pull_request'
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -34,6 +33,14 @@ jobs:
               - '!docs/**'
               - '!changelog.d/**'
               - '!**/*.md'
+      # docs/decisions.md is a pointer to docs/decisions/<topic>.md. A long file means the old monolith came back.
+      - name: Decision log stays split
+        run: |
+          lines=$(wc -l < docs/decisions.md)
+          if [ "$lines" -gt 20 ]; then
+            echo "docs/decisions.md has $lines lines. Put new entries in docs/decisions/<topic>.md (index: docs/decisions/README.md)."
+            exit 1
+          fi
 
   # The three engine jobs run in parallel; each pays only its own import and Godot start-up.
   unit:

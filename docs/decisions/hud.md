@@ -311,3 +311,53 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Popups drew with the popup face at import defaults (grey AA, light hinting), so the 640x360 base upscaled to soft edges. `CrispFont.theme_font` now applies the crisp settings to `PopupLabel` (`PressPopups`, `PopupNumber`, fx_bus).
 - Taste call: no alpha fades. The last 30% of a popup blinks in 8 Hz steps (`PopupStyle.shows_now`); Reduce Flashing holds it solid, then cuts it. Outline stays 2 px. Pixelify has no single pixel unit, so no "native size" applies.
 - Not verified in-engine: PC QA should check "+418K", "+100QnVg!" and the quarry's "Iron Ore" at 1x and 3x, with Reduce Flashing on and off.
+
+## Restored after the #220 split (lost text from the pre-split log)
+
+### Restored lines under: 2026-11-23 Menu tiles always show their names
+- Offline Sunlight uses the same `income_per_second` as the live tick, at idle factor 1 (Dewdrop boost, relics, Bloom and Sun-rate bonuses all included). Only Momentum is absent, because it is zero at load. A QA reading of 0.25/s against 0.88/s on a fresh save came from Dewdrops being 0 at load and later pressed; the new test pins offline rate / live rate = 1.
+
+## 2026-11-23 Zone banner on zone entry only, area card swaps in place
+- Nathan: the full banner plays when entering each zone, not each subarea. Walking into a district (Old Oak Crossing and so on) no longer calls `Banner.announce`; `ZonePanel.set_district` changes the top-right area card instead, with a crossfade of SWAP_OUT 0.1 s then SWAP_IN 0.2 s, stepped in quarters so it dithers. The fade is skipped when "Still banners" (FxConfig.reduce_motion) is on.
+- Larkmoor is a zone (its own ZoneDef, scene and arch), so it gets a zone banner on arrival. This was the one case that used to get none. Its districts get none. If Nathan wants Larkmoor treated as part of the Meadow instead, change `_announce_zone_arrival` only.
+- Zone banner styling: the border and title use the zone's palette role (`ZoneDef.theme_role`), and the panel fill uses the zone palette's ink (index 0) through a new optional `fill` key on the banner spec. Season tint is dropped for zone banners so Meadow and Larkmoor (same palette, different role) read apart. Hold 3 s (`ZONE_BANNER_HOLD`).
+- `ui/district_banner.gd` is no longer used by anything. Left in place for a later cleanup PR.
+- PC QA fixes in the same PR: Banner rebuilds its panel if the HUD that held it was freed (Quit to Title), so a later banner never touches a freed node, and `_tl` starts as a full timeline so no key can be missing. Tip cards hold while a banner shows and the next tip waits for it, so the Welcome card no longer covers a zone banner at 640x360.
+- Not run in-engine from the cloud: the crossfade, the banner palette and the 640x360 overlap need a PC check.
+
+## 2026-11-23 Popup Q gets a tail; popups use a derived font
+- PC QA on v0.45.2: "+100QnVg!" read as "+1000nVg!" at popup size. Correction to the entry above: that atlas check used Spleen 6x12, but popups draw in Pixelify Sans 16 (`PopupLabel` in plinky_theme.tres). The Pixelify Q's tail sat under the bowl and the 2 px popup outline filled the gap, so it read as a 0.
+- Fix: `fonts/PixelifySans-popup.ttf`, a derived copy of Pixelify Sans whose Q has a tail detached from the bowl by the bottom-right notch. Only Q changes, advance width is the same, and the family is renamed "Pixelify Sans Popup". Pixelify Sans is OFL 1.1 with no Reserved Font Name, so the derived copy is allowed. `PopupLabel` uses it. Titles, menus and the stock Q stay as they were. Built by `tools/build_popup_font.py`.
+- Candidates compared at 16 px with the 2 px outline: a filled-corner descender and a stair tail both read as lowercase q, so the detached diagonal was chosen.
+- QA finding 2: "1.5e15" shown as "+30d" at 3x. Not reproduced in the cloud. `NumberFormat.short(1.5e15)` gives "1.5Qd" (checked against a Python mirror of the formatter and now pinned in tests/test_format.gd), and the popup path (`PopupNumber.spawn`, `PressPopups._format`, `FxBus.bonus_popup`) passes the value straight through with no truncation. Nothing in the popup code produces a "d" suffix; the only "d" output is the skip duration in core/dev_commands.gd. Likely a probe or input mismatch. The PC probe should print the label's `.text` to settle it.
+- Not run in engine: no Godot in the cloud. PC QA should check "+100QnVg!" and "+1.5Qd" at 1x and 3x, and "Quarry" in a popup.
+- Offline credit now uses the day or night income rate you left with (the calendar advances after crediting), so offline Sunlight per second equals the live rate; before, advancing the clock first made the rate depend on when you came back (a test caught 1.08x). Verified with the headless suite (4393 checks, 0 failed).
+
+## 2026-11-23 Banners build when they show; season toast lifts above the Momentum meter
+- A zone banner is queued with a `resolve` Callable (Banner, `ui/banner.gd`). It is built when it is about to show, so it names the zone the walker is in then and reads the calendar as it is then. QA saw "Meadow" with a stale date after walking into Larkmoor. The payload had been composed when it was queued, from the boot arrival path, and waited in the queue. A resolved banner that is now indoor or a repeat of one just shown is dropped.
+- The arrival at boot (1.2 s after start) goes through the same path, so it can no longer name a zone the walker has left.
+- Bottom-centre banners lift clear of the Momentum meter (bottom-left, `Banner.avoid` set by the HUD) when the two would overlap. At 640x360 a wide season toast ("Long Light") covered the meter's right half. Lifted only when it overlaps, so the usual position is unchanged. The overlap test is `BannerQueue.bottom_clearance` (pure, tested).
+- Not run in-engine from the cloud: the banner text after a Quit to Title, and the lifted position at 640x360 need a PC check.
+- Offline pay is capped by design: passive income credits at `offline_income_fraction` (0.5) of the rate you left with, in one slice, so tending cannot compound it. This restores the locked rule that idle takes about twice as long as active play. The 12-slice compounding from #197 paid about 294x on a fresh save and is off (`offline_slices = 1`).
+
+## HUD strip polish (2026-11-23)
+- **Stable width:** the value column is 52 px and the gain column 68 px (right-aligned, clipped), so a ticking number never resizes the panel. The strip is a little wider than before when gain rates are on; turn off Strip Gain Rates to drop that column.
+- **Cap:** `HudLayout.cap_for()` is 12 or the zone's own Default if longer, so the count never reads over its cap (the quarry's Default plus Seeds was 11 against a cap of 10). A zone-reset currency (Seeds) shows by default only in its own zone (main's `reset_for_currency` rule); it can still be pinned from the chips.
+- **Edit mode:** the three boxed buttons per row became a frameless grip (drag the row, or Up and Down while the grip has focus) and a frameless hide mark, dim until the row is hovered. This drops the move up and move down buttons, so there is nothing to disable at either end.
+- **Motion:** rows glide to new places, fade out when hidden and fade in when added, the grips and footer ease open in six steps, and chips pop in. All of it snaps under Reduce Motion or Reduce Flashing.
+- Not run in-engine from the cloud; needs a PC capture.
+
+## 2026-11-23 Popups slide clear of the zone panel
+- PC QA: long popups such as "+100QnVg!" were cut off where the zone panel starts (the panel sits top right, x 480 to 632, and draws over the popup layer). Popups were only hidden under menus, never moved for the zone panel.
+- Fix: `PopupClear.slide_clear` (ui/fx/popup_clear.gd) moves a popup left of the first blocker it overlaps, repeating if that lands on another. If there is no room left of the blocker, the popup is skipped for that frame instead of drawn half hidden. `HUD.clear_rects()` supplies the zone panel's global rect through `PopupNumber.keep_clear`, set in the same place as `under_menu`.
+- Menus keep the existing behaviour: popups under an open menu are hidden. The clamp is only for the zone panel.
+- I could not find PR #157 in history, so I could not compare against its clamp. This follows the existing viewport clamp in `_draw_pop`.
+- Not run in engine: no Godot in the cloud. Tests in tests/test_popup_clear.gd cover the geometry. PC QA should check a popup on a pad beside the zone panel, with the panel open and with Travel open.
+
+## 2026-11-23 Upgrades gallery and centred Bloom exit (minor)
+- **Upgrades layout:** one tab per currency group (Prestige, Rebirth Perks, then each zone reset's gifts, named by `ZoneResetDef.menu_title`). Tabs come from the data, so a new reset gets its own tab with no HUD change. Within a tab, gifts are grouped into tiers by their unlock gate, each with a heading ("Tier 1: Open", "Tier 2: Unlocks After 2 Blooms"). Cards sit two across in a scroll list about 3.5 rows tall, so the panel fits above the bottom bar at 640x360.
+- **Card outline:** green when the next level is affordable, red when not (the existing colour-safe tint), gold when maxed, dim while locked. The fill is transparent so the panel shows through. Taste call: gold for maxed is my pick; say if you want maxed to stay green.
+- **Code:** `ui/upgrade_row.gd` is replaced by `ui/upgrade_card.gd` (same buy, hold-to-repeat and tick logic). `UpgradeText` gains `tier_key`, `tier_head` and `tab_name` (pure, tested).
+- **Exit:** the coin, number, rays and ring stay centred. The coin steps down 4 to 3 to 2 to 1 pixels in place and is gone at the end of the exit, the number fades, the rays fold in and one pixel ring closes on the centre. Only a few motes (about ten a second, pixel-sized) drift from the centre into the HUD row, which still rolls up when they land. Calm (Reduce flashing, Still meadow, Calm camera) keeps the coin at full size and only fades it.
+- **Timeline:** `BloomTimeline.fly_progress` is replaced by `exit_progress` and `exit_alpha`. The plan keys (`fly_end` and so on) keep their names so the existing timing tests still apply.
+- Not run in-engine from the cloud: the tab and card layout at 640x360, the card text width at 150 px for the delta line, and the exit motion. `tools/bloom_shot.tscn` now samples the exit densely (`bloom_full_*` frames) for a PC capture.
