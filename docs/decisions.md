@@ -784,3 +784,15 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
+
+
+## 2026-11-24 Shared tooltips for the Stats and Attributes index
+- **Why:** the index had its own hover strip under the grid, which took about 40 texels that the grid could use. Nathan asked for the floating tooltip used in the other menus, one shared and pooled, with a richer layout.
+- **What:** the strip is gone and the grid is taller (`IndexPanel.SCROLL_H` 150 to 200). Each card binds `Tip` to `TipText.index_row`: header with icon, name and stat colour; the level or amount; the effect now and next; the cost and whether it is affordable; the description; then a yellow "Click to open!". The Buy button on an attribute's page says "Click to buy!" when it can be paid for. `roomy` spacing is a spec key.
+- **Pooling:** `TipHost` reuses its rows, labels and icons between shows instead of freeing and rebuilding them.
+- **Stale header:** the "Prestige and RP" line in the Attributes header is removed (Prestige and Rebirth Points went in #209). The index still lists Prestige and RP rows where they apply; that is a separate question.
+- **Display settings:** the hover-to-hint lines are removed. Rows with a hint already get the shared tooltip, so the panel's bottom line now shows only what a press did.
+- **Left alone:** Bloom gift cards (the Upgrades gallery thread owns them), the onboarding tip cards, and the Upgrades tooltips.
+- **Yellow:** `TipText.CLICK` is #ffd93d. Colour-safe modes tint it like other colours.
+- Not run in the engine: Godot does not run in the cloud. The tests in `tests/test_tooltips.gd` were written but not run. PC QA should hover each card, check the tooltip's height and spacing at 640x360 and at a large UI scale, and open and buy on an attribute.
+

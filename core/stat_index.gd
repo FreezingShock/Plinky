@@ -1,7 +1,9 @@
 class_name StatIndex
 extends RefCounted
 ## Rows for the Stats and Attributes index, built from a Sim. Pure data: no nodes, so tests can check it headless.
-## A row is {id, group, name, icon, value, note, tip, pending}. `icon` is a file name under assets/icons.
+## A row is {id, group, name, icon, value, note, tip, desc, pending}. `icon` is a file name under assets/icons.
+## `tip` is the full text for the detail page; `desc` is the one-line description the hover tooltip shows.
+## Attribute rows also carry level, cap, maxed, now, next, cost, can, locked, lock, currency and currency_name.
 
 const STAT_TIPS: Dictionary = {
 	&"sunlight": "Trickles in on its own and pays for the first pads. Dewdrops and Thistle Down make it flow faster. Resets on Bloom.",
@@ -121,22 +123,38 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		var a: AttributeDef = sim.attribute_defs[aid]
 		var lv: int = sim.attr_level(aid)
 		var now: String = effect_text(a, float(lv) * a.per_level)
-		var tip: String = a.blurb if a.blurb != "" else String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
-		if not sim.attr_unlocked(aid):
-			tip += "\n%s." % UpgradeText.lock_text(a, sim)
-		elif lv >= a.cap:
+		var next: String = effect_text(a, float(lv + 1) * a.per_level)
+		var desc: String = a.blurb if a.blurb != "" else String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
+		var locked: bool = not sim.attr_unlocked(aid)
+		var maxed: bool = lv >= a.cap
+		var cost: BigNum = sim.attribute_cost(aid)
+		var lock_msg: String = UpgradeText.lock_text(a, sim) if locked else ""
+		# The full text for the detail page's About tab: description, then the lock, the maxed note or the next level.
+		var tip: String = desc
+		if locked:
+			tip += "\n%s." % lock_msg
+		elif maxed:
 			tip += "\nMaxed out."
 		else:
-			tip += "\nNext level: %s\nCost: %s %s" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format(), UpgradeText.currency_name(a)]
+			tip += "\nNext level: %s\nCost: %s %s" % [next, cost.format(), UpgradeText.currency_name(a)]
 		var perk: bool = a.currency == &"rp"
 		var zr: ZoneResetDef = sim.reset_for_currency(a.currency)
 		var group_name: String = "Rebirth Perks" if perk else (zr.menu_title if zr != null else "Attributes")
 		var r: Dictionary = _row(aid, group_name, a.display_name, attr_icon(a), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap
-		r["maxed"] = lv >= a.cap
+		r["maxed"] = maxed
 		r["color_id"] = &"rp" if perk else (a.currency if zr != null else a.effect)   # StatStyle colour: perks wear their currency's colour
 		r["group_color_id"] = &"rp" if perk else (a.currency if zr != null else &"")
+		# Structured parts for the hover tooltip (TipText.index_row): what it does now, next, and what the next level costs.
+		r["desc"] = desc
+		r["locked"] = locked
+		r["lock"] = lock_msg
+		r["next"] = "" if (maxed or locked) else next
+		r["cost"] = "" if (maxed or locked) else cost.format()
+		r["can"] = not (maxed or locked) and not sim.attribute_available(a).lt(cost)
+		r["currency"] = String(a.currency)
+		r["currency_name"] = UpgradeText.currency_name(a)
 		rows.append(r)
 	return rows
 
@@ -191,7 +209,7 @@ static func _trim(f: float) -> String:
 static func _row(id: StringName, group: String, label: String, icon: String, value: String, note: String, tip: String) -> Dictionary:
 	var nm: String = title_case(label)
 	var short: String = String(SHORT.get(nm, nm))
-	return {"id": id, "group": group, "name": nm, "short": short, "icon": icon, "value": value, "note": note, "tip": tip, "pending": false, "maxed": false, "color_id": id}
+	return {"id": id, "group": group, "name": nm, "short": short, "icon": icon, "value": value, "note": note, "tip": tip, "desc": tip, "pending": false, "maxed": false, "color_id": id}
 
 
 ## "Crit chance" -> "Crit Chance": every word capitalised, the rest left as written.

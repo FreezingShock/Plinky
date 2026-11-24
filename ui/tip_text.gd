@@ -92,17 +92,53 @@ static func zone_button(display_name: String) -> Dictionary:
 	return {"title": display_name, "body": "Travel there. Your progress here is kept."}
 
 
-## Row in the Stats / Attributes index: {id, name, icon, value, note, tip}.
+## Yellow call to action on the last line of a tooltip: "Click to open!" or "Click to buy!".
+const CLICK: Color = Color("ffd93d")
+
+
+static func click_color() -> Color:
+	return AccessOptions.tint(CLICK)
+
+
+## Hover tooltip for a card in the Stats / Attributes index. Built from a StatIndex row: the header wears the stat's
+## colour, then the level or amount, what it does now and next, what the next level costs, the description, and the
+## yellow "Click to open!" at the foot. Pending cards have no action, so they get no yellow line.
 static func index_row(d: Dictionary) -> Dictionary:
-	var id: StringName = StringName(str(d["id"]))
-	var c: Color = StatStyle.color(id)
+	var sc: Color = StatStyle.color(StringName(str(d.get("color_id", d["id"]))))
 	var lines: Array = []
-	if str(d.get("value", "")) != "":
-		lines.append(["Now ", Tip.seg(str(d["value"]), c)])
-	if str(d.get("note", "")) != "":
-		lines.append([Tip.seg(str(d["note"]), StatStyle.gain())])
-	return {"title": str(d["name"]), "title_color": c, "color": c, "icon": str(d.get("icon", "")),
-		"body": str(d["tip"]), "lines": lines}
+	if d.has("cap"):
+		var cur: String = str(d.get("currency", ""))
+		var cc: Color = StatStyle.color(StringName(cur)) if cur != "" else sc
+		lines.append(["Level ", Tip.seg("%d/%d" % [int(d["level"]), int(d["cap"])], sc)])
+		lines.append(["Now ", Tip.seg(str(d.get("now", "")), StatStyle.gain())])
+		if bool(d.get("maxed", false)):
+			lines.append([Tip.seg("Maxed out", RelicStyle.accent)])
+		elif str(d.get("next", "")) != "":
+			lines.append(["Next ", Tip.seg(str(d["next"]), StatStyle.gain())])
+			lines.append(["Costs ", Tip.icon(cur), Tip.seg(str(d["cost"]), StatStyle.buy(bool(d["can"]))), " ", Tip.seg(str(d["currency_name"]), cc)])
+		if bool(d.get("locked", false)):
+			lines.append([Tip.seg(str(d.get("lock", "")), StatStyle.cant())])
+	else:
+		if str(d.get("value", "")) != "":
+			lines.append(["Now ", Tip.seg(str(d["value"]), sc)])
+		if str(d.get("note", "")) != "":
+			lines.append([Tip.seg(str(d["note"]), StatStyle.gain())])
+	var pending: bool = bool(d.get("pending", false))
+	return {"title": str(d["name"]), "title_color": sc, "color": sc, "icon": str(d.get("icon", "")),
+		"body": str(d.get("desc", d.get("tip", ""))), "lines": lines, "roomy": true,
+		"hint": "" if pending else "Click to open!", "hint_color": click_color()}
+
+
+## Tooltip of the Buy button on an attribute's detail page. `cost_text` is the formatted next-level cost.
+static func buy(icon: String, currency_name: String, cost_text: String, can: bool, maxed: bool) -> Dictionary:
+	if maxed:
+		return {"title": "Max Level", "title_color": RelicStyle.accent, "body": "This attribute cannot go any higher.", "roomy": true}
+	var cc: Color = StatStyle.color(StringName(icon))
+	return {"title": "Next Level", "title_color": cc, "color": cc, "icon": icon,
+		"body": "Spend %s to raise this attribute one level." % currency_name,
+		"lines": [["Costs ", Tip.icon(icon), Tip.seg(cost_text, StatStyle.buy(can)), " ", Tip.seg(currency_name, cc)]],
+		"hint": "Click to buy!" if can else "Need more %s." % currency_name,
+		"hint_color": click_color() if can else StatStyle.cant(), "roomy": true}
 
 
 ## A relic in a slot. `owned` stacks, `is_equipped` whether it counts right now, `hint` what a click does.
