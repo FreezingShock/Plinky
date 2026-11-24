@@ -273,9 +273,9 @@
    "file": "sprites/rock_022.png",
    "nrm": "sprites/rock_022_n.png",
    "kind": "rock",
-   "x": 486,
+   "x": 488,
    "y": 212,
-   "w": 23,
+   "w": 21,
    "h": 17,
    "foot": [
     498.3,
@@ -329,9 +329,9 @@
    "file": "sprites/rock_030.png",
    "nrm": "sprites/rock_030_n.png",
    "kind": "rock",
-   "x": 307,
+   "x": 310,
    "y": 285,
-   "w": 23,
+   "w": 20,
    "h": 15,
    "foot": [
     317.8,
@@ -386,9 +386,9 @@
    "nrm": "sprites/rock_036_n.png",
    "kind": "rock",
    "x": 422,
-   "y": 192,
+   "y": 193,
    "w": 22,
-   "h": 18,
+   "h": 17,
    "foot": [
     431.5,
     204.2
@@ -399,9 +399,9 @@
    "file": "sprites/rock_037.png",
    "nrm": "sprites/rock_037_n.png",
    "kind": "rock",
-   "x": 329,
+   "x": 332,
    "y": 214,
-   "w": 24,
+   "w": 21,
    "h": 15,
    "foot": [
     340.5,
@@ -413,10 +413,10 @@
    "file": "sprites/rock_038.png",
    "nrm": "sprites/rock_038_n.png",
    "kind": "rock",
-   "x": 350,
-   "y": 190,
-   "w": 25,
-   "h": 25,
+   "x": 351,
+   "y": 191,
+   "w": 24,
+   "h": 23,
    "foot": [
     362.7,
     206.7
