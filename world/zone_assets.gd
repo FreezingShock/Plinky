@@ -28,13 +28,7 @@ const SCENE_TEXTURES: Dictionary = {
 ## Zone scenes that build the Foxglove Rise farm (world/farm/farm_props.gd): its wheat clumps are generated on workers
 ## and its sprites prefetched, so the swap does not generate about 660 clumps or load 660 sheets on the swap frame.
 const FARM_SCENES: Array[String] = ["res://world/larkmoor_scene.tscn"]
-## The backdrop whose pixels LifeAir reads (water sparkles). Decoded from its lossless source PNG on a worker thread.
-const SCENE_BACKDROPS: Dictionary = {
-	"res://world/larkmoor_scene.tscn": "res://assets/art/zone1b/larkmoor/ground_fg.png",
-}
-
 static var _cache: Dictionary = {}     ## path -> Texture2D, held while its zone is loaded
-static var _decodes: Dictionary = {}   ## source path -> Decode, a backdrop decoded on a worker thread
 static var _pending: Dictionary = {}   ## path -> true, a threaded load that has been requested and not yet taken
 
 
@@ -44,36 +38,14 @@ static func prefetch_scene(scene_path: String) -> void:
 	if manifest != "":
 		prefetch(paths_for_manifest(manifest))
 	prefetch(PackedStringArray(SCENE_TEXTURES.get(scene_path, []) as Array))
-	# The backdrop decode is queued before the farm's clumps, so the scene's _ready never waits behind them on a worker.
-	var backdrop: String = str(SCENE_BACKDROPS.get(scene_path, ""))
-	if backdrop != "" and not _decodes.has(backdrop):
-		var d := Decode.new()
-		d.task = WorkerThreadPool.add_task(_decode.bind(d, backdrop))
-		_decodes[backdrop] = d
 	if FARM_SCENES.has(scene_path):
 		prefetch(FarmProps.prepare())
 
 
-## A backdrop image decoded on a worker thread. `task` is its WorkerThreadPool task; `image` is set by the worker.
-class Decode extends RefCounted:
-	var task: int = -1
-	var image: Image = null
-
-
-static func _decode(d: Decode, path: String) -> void:
-	d.image = Image.load_from_file(path)
-
-
-## The pixels of a backdrop texture, as Texture2D.get_image() gives them. Uses the worker's decode when it was
-## prefetched and matches the texture; otherwise decodes it here.
+## The pixels of a backdrop texture, as Texture2D.get_image() gives them. The texture itself is prefetched on the loader
+## (SCENE_TEXTURES), so only the copy from GPU-side texture to Image runs here. Image.load_from_file on a res:// path was
+## dropped: exported builds do not ship the raw PNG, so it returned null and the decode silently ran here anyway.
 static func backdrop_image(tex: Texture2D) -> Image:
-	var path: String = tex.resource_path
-	if _decodes.has(path):
-		var d: Decode = _decodes[path] as Decode
-		_decodes.erase(path)
-		WorkerThreadPool.wait_for_task_completion(d.task)
-		if d.image != null and d.image.get_width() == tex.get_width() and d.image.get_height() == tex.get_height():
-			return d.image
 	return tex.get_image()
 
 
