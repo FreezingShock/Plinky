@@ -81,3 +81,9 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Tools:** `tools/golden_shots.gd` no longer sets the calendar itself.
 - **Checked in the cloud:** the golden shot set prints HUD clocks 16:38 (golden), 18:38 (sunset), 20:13 (dusk) and 22:08 (night) for the matching pins.
 - **Not verified on the PC:** the batch 85 captures themselves.
+
+## 2026-11-24: Golden shot tool pins match the golden and sunset look (batch 87)
+- **Cause:** QA read the tool's pins as wrong. Sun phase 0.75 reads 19:12 on the clock and 0.76 reads 19:26, both evening and fairly bright. The labels were also off: 0.66 was named 16:30 but reads 16:36 (cloud run: 16:38).
+- **Fix:** `tools/golden_shots.gd` PHASES now uses 0.69 as golden (17:28, sun 0.37 up, full golden look) and 0.73 as sunset (18:37, sun still above the horizon). The other labels are recomputed from `SkyModel.clock_of_phase` at daylight 0.6. Labels are within about 2 minutes of the HUD clock.
+- **Wildlife window, checked:** `MeadowLife.low_sun` (life_wild, life_critters, life_air, cozy_swarm) uses `SkyModel.low_sun`, which is 0.41 at phase 0.69 and 0.95 at 0.73, so the golden and sunset pins both sit inside it. It differs from `SkyModel.golden()` in the morning and afternoon: `low_sun` is 0 at noon, `golden()` keeps 0.35. Wildlife was left as it is, because changing it would alter spawn and behaviour, not only the tool.
+- **Not run in-engine:** the cloud cannot run Godot, so the new captures and clock labels are not checked here. Tool-only change, so no changelog fragment.
