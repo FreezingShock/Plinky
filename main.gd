@@ -172,6 +172,9 @@ func _process(_delta: float) -> void:
 	if _night_sky == null or not is_instance_valid(_night_sky):   # a zone change frees the old sky
 		_night_sky = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
 	pad_glow.night01 = _night_sky.night01 if _night_sky != null else 0.0
+	if _night_sky != null:   # each pad's light pool takes its buy colour (green or red) from the shared shade shader
+		for pad: TexelPad in pads.values():
+			_night_sky.set_pool_tint_at(pad.position, pad.light_tint())
 	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)
