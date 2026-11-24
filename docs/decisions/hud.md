@@ -318,14 +318,6 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Taste call: no alpha fades. The last 30% of a popup blinks in 8 Hz steps (`PopupStyle.shows_now`); Reduce Flashing holds it solid, then cuts it. Outline stays 2 px. Pixelify has no single pixel unit, so no "native size" applies.
 - Not verified in-engine: PC QA should check "+418K", "+100QnVg!" and the quarry's "Iron Ore" at 1x and 3x, with Reduce Flashing on and off.
 
-## 2026-11-24 Achievement banner and the Achievements tile
-- **Layout:** the unlock card is now a wide banner centred across the screen, its middle at 38% of the height (a bit above centre), 380 texels wide, so it sits clear of the bottom bar and the centre of the pads. A taste call made in this thread; Nathan can ask for another height.
-- **Menus:** unlocks are held while any menu is open, and a banner up when a menu opens is cut short and shown again later. This replaces the old z-order-only rule, so a menu is never covered.
-- **Look:** the banner unfurls from a sliver in eight whole steps (no smooth scale), Reduce Flashing turns off the dither ink. Per-section particle styles and chimes use existing sound files, so no new audio was added.
-- **Naming:** the hamburger tile and the window title read "Achievements". The internal id `ledger` and the icon file stay, so saves and tests are unaffected.
-- **Not run in-engine:** Godot is not available in the cloud. Unverified: the banner's real size and position at 640x360 and at other window sizes, the particle look, the unfurl timing and the chimes. PC QA should capture an unlock in each section and check it against an open menu.
-- **Every banner waits for menus (PC QA, 2026-11-24):** the season banner and the zone banners (`Banner`, via `Banner.hold`) and the relic toast also wait while a menu is open, and a banner up when a menu opens is held back to the front of the queue and shown after it closes. PC QA saw the season banner cut across the Upgrades cards, and the achievement toast over Stats and Upgrades. Subtitles and tip cards are unchanged (tips already yield to open menus).
-
 ## 2026-11-24 Tighter achievement banner (Nathan's feedback on #239)
 - **Why:** Nathan said the merged banner had too much blank space and was too intrusive at small sizes. In his screenshot it ran into the right-hand stat strip.
 - **What:** a tighter frame pad (5x3 texels, not the usual 8x6 from theme.md section 5, a deliberate deviation for this one card); the category icon at its native 16 texels; the card is 36% of the HUD width, clamped to 168 to 240 texels, so it scales with the window; the middle sits at 30% of the height, higher than before; the name and description wrap to two lines at most and then end in an ellipsis, so the card cannot grow taller; the shakes are softer (0.06 and 0.14).
