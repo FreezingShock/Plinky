@@ -156,3 +156,19 @@ batching. The first rendered frame after a swap is GPU work (texture upload, fir
 - **Garden redraw, checked and not changed:** a 32-texel redraw pad (redraw once per pad of pan, not every 16 texels) did not cut redraws in a sway-frozen A/B (127 to 121 at zoom 1, 600 texels a second) and made each redraw about 25% dearer (0.97 to 1.25 ms mean). Dropped. Pan redraws are not the lever; the cost is per flower drawn.
 - **Entry hitch:** see [decisions/world.md](decisions/world.md), "Larkmoor's farm builds over the wipe".
 - **Not run on a real GPU:** every number above is a CPU measurement on a software rasteriser. PC QA should run the pan sweep at zoom 1 and 2 on the RTX 3060 Ti and check the wheat's entry under the wipe.
+
+## Larkmoor and quarry entry: the theme recolour (2026-11-24)
+- **Probe:** `tools/larkmoor_entry_probe.gd` enters a zone the way the CI bench does and prints each frame over `--slow=<ms>`, its PerfStats laps, and a split of the frame: the frame's process pass, then a hook that runs last in the pass, then the gap to the next frame. `--pre=larkmoor --zone=zone2` enters the quarry through Larkmoor.
+- **The gap:** the swap frame spent 120 to 170 ms outside every lap and outside process (the process callbacks took about 6 ms). The lap that measures the swap itself (`add_child`, 30 to 45 ms) was not the cost.
+- **Ruled out, each left the gap in place:** freeing the old zone at once (1.7 ms), not releasing the zone's textures, skipping the occluders or the pads, hiding the new zone's subtree, making the sky's screen add synchronous, and 900 sprites or large textures entering a frame (2 ms in a micro-benchmark).
+- **Cause:** `PlinkyTheme.apply` (theme/theme_apply.gd) wrote about 25 colours and style fields one by one, and each write told every Control that uses the theme to restyle itself. Skipping the call removed the gap, so the cost was in those notifications. The writes now run with the signals held back, and the theme announces one change at the end.
+
+| Swap frame | before | after |
+|---|---|---|
+| Probe, Larkmoor entry (headless, low), 2 runs | 124 to 224 ms | 50 to 62 ms |
+| Bench `first frame after add_child`, Larkmoor | 4 to 7 ms | 4 to 5 ms (unchanged) |
+| Bench `first frame after add_child`, quarry | 238 ms | 114 to 116 ms |
+
+- **Still open:** the quarry swap's gap is still 110 to 160 ms in the probe, so the theme was one cause, not the only one. Not attributed yet. The next suspects are Control layout and HUD work queued by the zone change, which the probe cannot show.
+- **Seen once:** `world/sky_cycle.gd:503` (`padded`) got a null image from `get_image()` in one bench run of 3 with this change, and none in the baseline run. Not investigated. It is not in this change.
+- **Not run on a real GPU:** every number is headless. PC QA should time a zone entry on the RTX 3060 Ti.
