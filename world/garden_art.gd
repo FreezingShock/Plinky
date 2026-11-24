@@ -91,10 +91,10 @@ static func field_tint(variant: int) -> int:
 	return (variant - FIELD_FIRST) % FIELD_TINTS
 
 
-## Texels the sprite hangs below its foot row: a flower's ground shadow spills three rows under the foot (it is an oval, not a
-## flat line), and a shrub keeps its one-row shadow.
-static func foot_drop(variant: int) -> int:
-	return 0 if is_shrub(variant) else SHADOW_ROWS - 1
+## Texels the sprite hangs below its foot row: the ground shadow spills three rows under the foot (it is an oval, not a
+## flat line), for flowers and shrubs alike.
+static func foot_drop(_variant: int) -> int:
+	return SHADOW_ROWS - 1
 
 
 ## Position of one frame in the atlas: stat index (STATS), variant, lean (-1, 0, +1), season, then the head state (0 open, 1 shut at
@@ -421,10 +421,8 @@ static func _shrub(cells: Dictionary, layout: Array, season: int, pal: Array[Col
 				var pick: float = _hash(x, y, seed_v + 13)
 				c = pal[0] if pick < 0.5 else (pal[2] if pick < 0.8 else pal[1])
 			cells[Vector2i(x, y)] = c
-	for x in range(-rx, rx + 2):
-		var q := Vector2i(x, ry + 1)
-		if not cells.has(q):
-			cells[q] = Color(SHADOW.r, SHADOW.g, SHADOW.b, SHADOW.a)
+	# the same soft oval under the mound as under a flower, starting one row below its front lip
+	_ground_shadow(cells, rx, ry + 1, SHADOW_ALPHA, Color(SHADOW.r, SHADOW.g, SHADOW.b))
 
 
 ## A one texel ink line round the outside of a field flower (empty cells beside it only).
