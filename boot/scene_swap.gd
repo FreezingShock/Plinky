@@ -14,6 +14,9 @@ const FADE_SECONDS: float = 0.35
 const WARM_FRAMES: int = 4
 const WARM_MAX_FRAMES: int = 40
 const SETTLE_RATIO: float = 0.2
+## The group the arriving game joins while its entry occluders build (main.gd), and the cap on how long a swap waits.
+const ENTRY_BUILDING_GROUP: StringName = &"entry_building"
+const ENTRY_HOLD_MAX_FRAMES: int = 240
 const HOST_NAME: String = "SceneSwap"
 ## Palette index of the sun-coloured lead line (the tagline colour on the loading screen).
 const ACCENT_INDEX: int = 5
@@ -92,11 +95,21 @@ func run(next: PackedScene, same_backdrop: bool = false) -> void:
 	tree.change_scene_to_packed(next)
 	await tree.scene_changed
 	await _warm(tree)
+	await _hold_for_entry(tree)
 	await _reveal(reduce)
 	_rect.visible = false
 	_mat.set_shader_parameter("snapshot", null)
 	held.clear()
 	_busy = false
+
+
+## Holds the reveal while the arriving game is still building its entry occluders over frames (main.gd joins the
+## ENTRY_BUILDING group). Capped, so a build that never ends cannot hold the swap.
+func _hold_for_entry(tree: SceneTree) -> void:
+	for i: int in ENTRY_HOLD_MAX_FRAMES:
+		if tree.get_first_node_in_group(ENTRY_BUILDING_GROUP) == null:
+			return
+		await tree.process_frame
 
 
 ## Lets the arriving scene draw under the cover until it settles (see WARM_FRAMES).

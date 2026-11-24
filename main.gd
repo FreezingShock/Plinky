@@ -89,7 +89,6 @@ func _ready() -> void:
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
 	PerfStats.lap("entry: meadow")
-	_spawn_occluders()
 	_apply_scene_frame(sim.zone_id)
 	PerfStats.lap("entry: occluders and frame")
 	pad_glow = PadGlow.new()
@@ -180,6 +179,7 @@ func _ready() -> void:
 	camera.snap()
 	Audio.start(sim.zone_id)
 	PerfStats.lap("entry: audio")
+	_build_entry_occluders()   # over frames, under the swap cover; SceneSwap holds the reveal until they are in
 
 
 ## Lit pads close together share the light: each pad counts the lit pads within TexelPad.CROWD_RANGE, itself included.
@@ -508,6 +508,15 @@ var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone 
 ## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
 ## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
 ## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
+## The entry's occluders are built a slice a frame (the scene's sliced build, when it has one) so the game's entry frame
+## does not hold the farm and the first chunks (75 to 116 ms on the PC in batch 153). The group tells SceneSwap to hold
+## the reveal until they are in, so no pop-in shows.
+func _build_entry_occluders() -> void:
+	add_to_group(SceneSwap.ENTRY_BUILDING_GROUP)
+	await _spawn_occluders(true)
+	remove_from_group(SceneSwap.ENTRY_BUILDING_GROUP)
+
+
 func _spawn_occluders(sliced: bool = false) -> void:
 	var before: Dictionary = {}
 	for c: Node in world.get_children():
