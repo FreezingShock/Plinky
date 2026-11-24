@@ -895,3 +895,11 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
 - **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
 - Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
+
+## Holding a pad presses at the standing rate (2026-11-24)
+- **Why:** Nathan: "holding down on a button and standing on it should be the same speed." Hold-to-press repeated on its own clock (0.16 s, speeding to 0.07 s, about 6 to 14 presses a second), and a standing walker used the zone's press rate (0.5 a second at base). Two rates for one pad.
+- **Call:** the standing rate wins (`Sim.press_interval()`: zone press rate, times attributes and relics). The faster hold rate was not kept because every pacing number (gate times, costs, the 2x idle rule in docs/balance.md) is tuned on the standing rate. Speeding standing up to hold would be about 15 times faster progression.
+- **How:** one clock per pad, `core/pad_press_timer.gd`. Standing or holding both step it, so they cannot stack into a double rate. The click is the first press, and the repeat comes one interval later. `HoldPress` (ui/fx/hold_press.gd) is removed; `TexelPad.hold_release()` replaces its release.
+- **Taste call to confirm with Nathan:** holding is now slow (zone 1: one press every 2 s). If he wants a fast hold back, it needs a separate hold rate, which breaks "same speed" on purpose.
+- **Stale figure:** `content/config/sim_profiles.tres` still has a "hold" profile at 4.0 presses a second. It is a harness assumption, so it was not changed here; it should be set to the active rate (0.5) if the hold profile is kept.
+- Not verified in-engine. PC QA should hold a pad and stand on one in zone 1 and Larkmoor, and check that the stacked popup still builds while held and folds on release.

@@ -26,7 +26,7 @@ const ATTR_ICONS: Dictionary = {
 }
 const ATTRS: Dictionary = {
 	&"walk_speed": "Walk faster between pads.",
-	&"press_rate": "Hold-to-press repeats faster.",
+	&"press_rate": "Standing on a pad, or holding it, presses at this rate.",
 	&"crit_chance": "A bigger chance for a press to crit.",
 	&"crit_damage": "A critical hit pays more.",
 	&"luck": "Better odds on relic drops.",
