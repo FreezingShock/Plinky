@@ -22,6 +22,8 @@ var _shadows: SkyShadows
 var _ground: Sprite2D
 ## Material for the pad plates (main.gd assigns it): they take the same cast shadows as the ground.
 var pad_material: ShaderMaterial
+var _garden_flowers: Array = []   # the flower list the clearing's gardens were drawn from (world/clearing_gardens.json)
+var _flower_glow: FlowerGlow      # the night light on each field's flowers (world/flower_glow.gd)
 
 
 func _ready() -> void:
@@ -77,7 +79,8 @@ func _add_gardens() -> void:
 	var layer := GardenLayer.new()
 	layer.name = "Gardens"
 	add_child(layer)
-	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
+	_garden_flowers = (parsed as Dictionary).get("flowers", []) as Array
+	layer.setup(_garden_flowers)
 	layer.pusher_group = &"walker"
 
 
@@ -123,10 +126,29 @@ func _add_sky() -> void:
 			water.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
 	_sky.ponds = water
 	add_child(_sky)
+	_add_flower_glow()
 	var water_glow := WaterNightGlow.new()   # night glow on the pond and lake (world/water_night_glow.gd)
 	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
 	water_glow.setup(_sky, load(DIR + "ground_n.png") as Texture2D, _ground.position)
 	_add_lights()
+
+
+## The night light on the clearing's flower fields (world/flower_glow.gd), built from the same flower list the
+## GardenLayer draws. Sits just above the night shade (z 5 of the sky), as on Larkmoor.
+func _add_flower_glow() -> void:
+	if not FlowerGlow.enabled or _garden_flowers.is_empty():
+		return
+	_flower_glow = FlowerGlow.new()
+	_flower_glow.name = "FlowerGlow"
+	_flower_glow.z_index = 5
+	add_child(_flower_glow)
+	_flower_glow.setup(_garden_flowers)
+
+
+## The night level comes from the sky every frame; the glow only changes its alpha, so nothing is redrawn.
+func _process(_delta: float) -> void:
+	if _flower_glow != null and _sky != null:
+		_flower_glow.set_night(_sky.night01)
 
 
 ## Light pools (radii and strength in content/config/sky.tres): the shrine and any lantern in the life data,
