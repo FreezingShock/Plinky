@@ -496,6 +496,7 @@ func _fill_upgrades() -> void:
 		tab.rest_color = RelicStyle.dim
 		tab.show_focus_ring = false   # the ">" marker and the underline show focus; no dotted box
 		tab.pressed.connect(_select_upgrade_tab.bind(cur))
+		tab.focus_entered.connect(_select_upgrade_tab.bind(cur))   # Left and Right move focus along the strip: the page follows the focus
 		_upg_tabs.add_child(tab)
 		_upg_tab_btns[cur] = tab
 	var grid: GridContainer = null
