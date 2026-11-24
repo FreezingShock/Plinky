@@ -49,6 +49,27 @@ static func walkable(p: Vector2) -> bool:
 	return im.get_pixel(x, y).r > 0.5
 
 
+## True when the texel is river water (the mask's green channel). Water is never walkable on the ground, but the
+## walker may be in the air over it: a jump carries it across a narrow river, and landing there sends it to the bank.
+static func is_water(p: Vector2) -> bool:
+	var im: Image = image()
+	if im == null:
+		return false
+	var x: int = int(floorf(p.x)) + offset.x
+	var y: int = int(floorf(p.y)) + offset.y
+	if x < 0 or y < 0 or x >= im.get_width() or y >= im.get_height():
+		return false
+	return im.get_pixel(x, y).g > 0.5
+
+
+## Where a walker that comes down at p ends up: p itself when it may stand there, else the nearest walkable
+## texel, which is the bank it landed beside. Water pushes it back; a cliff or trunk it jumped over does too.
+static func landing(p: Vector2) -> Vector2:
+	if walkable(p):
+		return p
+	return nearest(p, 60)
+
+
 ## Closest walkable texel to p (ring search, vertical distance doubled to match the 2:1 view).
 ## Returns p unchanged when it is already walkable or nothing walkable is within max_r.
 static func nearest(p: Vector2, max_r: int = 80) -> Vector2:

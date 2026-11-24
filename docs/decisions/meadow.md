@@ -195,3 +195,11 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - The sails get their own id, far above the instance counter, and are voxelized directly, not through `put()`, so the placement random stream and every later prop stay where they were.
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
+
+## 2026-11-24: Larkmoor river, jumpable water, bridges and the south-west rim
+- **Water:** one river now runs from Heronmere's north-east shore, through the bridge at (762, 456), into the mere. It is about 14 texels wide with a 3 texel depth. The lake-rim carve no longer leaves a dry gap, so the river and lakes join. The walk mask marks water in green and walkable ground in red and blue, so `WalkMask.is_water()` is one channel read.
+- **Walker:** `texel_walker.gd` lets an airborne step cross water (`_try_step(step, airborne)`). On landing in water, `WalkMask.landing()` returns the nearest walkable texel within 60, and the walker splashes. Reason: a jumpable stream instead of a wall, with no drowning state.
+- **Bridges:** the main bridge is a planked deck with rails, posts and stone abutments (`BRIDGE_HX/HY/DZ` = 17.5, 10.5, 4.0). The footbridge is smaller (13, 3.8, 2.6). Both are tall kinds with `BLOCK_R` 0 and their foot is drawn 40 texels higher, so the walker draws over the deck. Deck texels stay walkable.
+- **Rim:** the south and west edges get a raised ridge (`env_ang` floor of 0.8 from the map edge angle). This is a first pass, not full mountain ranges. Higher ridges with ridged noise are the next pass.
+- **Life data:** `--add-keys` keeps the existing `sway` list and writes only the other keys. After a backdrop change, run the full `gen_life_anchors.py` (no `--add-keys`) first, then the same command again with `--add-keys --farm ...`. Skipping the first run left 430 sway tips off palette 4 (fixed on this PR).
+- **Not run in engine:** the cloud has no PC Godot. The headless suite passes (6149 checks). Walking the bridge and jumping the river still needs a PC walk check from each bank.
