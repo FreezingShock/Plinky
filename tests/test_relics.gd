@@ -179,6 +179,18 @@ func run(t: SceneTree) -> void:
 	cap.equip(&"r_wardens_eye")
 	t.ok(cap.total_effect(RelicDef.Effect.CRIT_CHANCE) <= 1.0, "crit chance from relics stays at or under 100%")
 
+	# Gallery: tiers, per-tier lists, and how each relic is found
+	var gal := RelicInventory.new(cfg, defs)
+	t.eq(gal.tier_ranks(), [0, 1, 2, 3, 4, 5] as Array[int], "tabs: one per rarity that has relics")
+	t.eq(gal.defs_of_rank(0).size(), 6, "Common has six relics")
+	t.eq(gal.defs_of_rank(5).size(), 5, "Mythic has five relics")
+	t.ok(gal.acquire_text(&"r_cash").contains("1 in 10"), "Common find text gives 1 in 10 drops, got: " + gal.acquire_text(&"r_cash"))
+	t.ok(gal.acquire_text(&"r_pulse").begins_with("Drops from presses"), "Mythic find text names the drop source")
+	var rebirth_only := (load("res://content/relics/r_pulse.tres") as RelicDef).duplicate()
+	rebirth_only.id = &"r_rebirth_only"
+	rebirth_only.rarity = load("res://content/rarities/divine.tres")
+	gal.defs[&"r_rebirth_only"] = rebirth_only
+	t.ok(gal.acquire_text(&"r_rebirth_only").contains("rebirths"), "zero-weight tiers say they come from rebirths or achievements")
 	# Walker aura: the highest equipped rarity sets the pool colour and whether Epic and up sparkle
 	var aura := RelicInventory.new(cfg, defs)
 	t.eq(aura.top_equipped_rank(), -1, "no equipped relics means no aura rank")

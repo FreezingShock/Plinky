@@ -458,15 +458,24 @@ func _on_upgrades_shown() -> void:
 		return
 	_fill_upgrades()
 	_upg_tab = _zone_tab()
+	_order_upgrade_tabs()
 	_sync_upgrade_tabs()
 
 
 ## The zone's own gift tab when it shows, else the first tab the player can see.
 func _zone_tab() -> StringName:
 	var here: ZoneResetDef = sim.reset_for_zone()
-	if here != null and UpgradeText.group_shown(sim, here.currency):
+	if here != null and UpgradeText.tab_shown(sim, here.currency):
 		return here.currency
 	return _first_shown_tab()
+
+
+## The strip lists the zone you stand in first; the other zones' tabs follow in reset order.
+func _order_upgrade_tabs() -> void:
+	var here: ZoneResetDef = sim.reset_for_zone()
+	if here == null or not _upg_tab_btns.has(here.currency):
+		return
+	_upg_tabs.move_child(_upg_tab_btns[here.currency] as Control, 0)
 
 
 ## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page of tiers;
@@ -485,6 +494,7 @@ func _fill_upgrades() -> void:
 		tab.label = UpgradeText.tab_name(sim, cur)
 		tab.accent_color = StatStyle.color(cur)
 		tab.rest_color = RelicStyle.dim
+		tab.show_focus_ring = false   # the ">" marker and the underline show focus; no dotted box
 		tab.pressed.connect(_select_upgrade_tab.bind(cur))
 		_upg_tabs.add_child(tab)
 		_upg_tab_btns[cur] = tab
@@ -541,7 +551,7 @@ func _apply_upgrade_tab() -> void:
 	for c2: StringName in _upg_tab_btns:
 		var on: bool = c2 == _upg_tab
 		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
-		b.rest_color = StatStyle.color(c2) if on else RelicStyle.dim
+		b.selected = on
 		b.queue_redraw()
 	_fit_upgrade_list()
 
@@ -555,8 +565,8 @@ func _fit_upgrade_list() -> void:
 ## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
 func _sync_upgrade_tabs() -> void:
 	for cur: StringName in _upg_tab_btns:
-		(_upg_tab_btns[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
-	if _upg_tab == &"" or not UpgradeText.group_shown(sim, _upg_tab):
+		(_upg_tab_btns[cur] as Control).visible = UpgradeText.tab_shown(sim, cur)
+	if _upg_tab == &"" or not UpgradeText.tab_shown(sim, _upg_tab):
 		_upg_tab = _first_shown_tab()
 	_apply_upgrade_tab()   # idempotent: keeps pages and highlight in step on every refresh
 
@@ -564,7 +574,7 @@ func _sync_upgrade_tabs() -> void:
 ## The first tab the player can see, or &"" when none is shown yet.
 func _first_shown_tab() -> StringName:
 	for cur: StringName in _upg_order:
-		if UpgradeText.group_shown(sim, cur):
+		if UpgradeText.tab_shown(sim, cur):
 			return cur
 	return &""
 
@@ -800,7 +810,7 @@ func _refresh() -> void:
 		for sid: StringName in _cur_vals:
 			(_cur_vals[sid] as Label).text = _balance(sid).format()
 		for cur: StringName in _cur_badges:
-			(_cur_badges[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
+			(_cur_badges[cur] as Control).visible = UpgradeText.tab_shown(sim, cur)
 		_sync_upgrade_tabs()
 		for aid: StringName in _attr_rows:
 			(_attr_rows[aid] as UpgradeCard).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
