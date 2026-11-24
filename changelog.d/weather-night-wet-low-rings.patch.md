@@ -1,1 +1,1 @@
-Wet ground and path darken further at night, puddles read lighter by day, and Low quality drops the rain rings and dawn ground mist.
+Wet ground and path darken further at night, puddles read lighter by day, Low quality drops the rain rings and dawn ground mist, near rain streaks are 2 texels wide, and winter drifts get a cool shadow on their edges.

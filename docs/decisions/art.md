@@ -248,7 +248,10 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Night wet** (`ground_light.gdshader`, new uniform `wet_night` = night x wet): wet soil and path darken further at night, from (0.88, 0.92, 0.95) to (0.66, 0.72, 0.8) at full wet. This darkens all wet ground, grass included, not only the path; there is no path mask to pick out the path alone.
 - **Low quality** (`GraphicsQuality.rain_rings_and_mist`, false on Low): the splash rings and the dawn ground mist are skipped. Puddles, drops and wetting stay. Medium and High are unchanged.
 - **Why:** these three were the safe defaults from the weather handoff (recommendations 2, 7 and 8). Nathan has not yet picked the rest.
-- **Not verified in-engine:** the new puddle lift, the night darkening and the Low fallback. The cloud render does not show rain streaks (see the handoff results note), so the look is an eye check on the PC.
+- **Rain streaks** (`sky_rain.gd`, recommendation 3): near streaks are 2 texels wide, far ones stay 1. Same draw count.
+- **Winter drift edges** (`ground_light.gdshader`, `snow_drifts`, recommendation 5): a cool blue shadow on the lip of each drift, where it steps down into flat snow. The drift threshold is unchanged.
+- **Left for the PC look:** the splash ring density (recommendation 4, 14% of cells) and the dawn mist strength (recommendation 6). No in-engine view of either exists yet, so their numbers are unchanged.
+- **Not verified in-engine:** the new puddle lift, the night darkening, the Low fallback, the 2-texel streaks and the drift shadow. The cloud render does not show rain streaks (see the handoff results note), so the look is an eye check on the PC.
 
 ## 2026-11-24: Pad glow crowding (a row of pads does not blow out)
 - Nathan's screenshot: with the rows 42 texels apart, neighbouring halos and light pools added together into one blown-out green blob at night. Halos are additive, and pool strengths sum before the shader clamps them.

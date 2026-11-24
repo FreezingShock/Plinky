@@ -62,9 +62,14 @@ float texel_dip(vec2 uv, vec2 px, float h0) {
 vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
 	float dip = texel_dip(uv, px, h0);
 	float depth = smoothstep(0.15, 0.6, dip) * season_snow;
-	if (depth > thr * 0.5 + 0.12) {
+	float edge = thr * 0.5 + 0.12;
+	if (depth > edge) {
 		float l = dot(c, vec3(0.299, 0.587, 0.114));
 		c = clamp(vec3(0.86, 0.92, 1.0) * (0.8 + 0.25 * l), 0.0, 1.0);
+		// a cool shadow on the lip of each drift, where it steps down into the flat snow
+		if (depth < edge + 0.12) {
+			c *= vec3(0.8, 0.87, 0.97);
+		}
 	}
 	return c;
 }
