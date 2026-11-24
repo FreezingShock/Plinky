@@ -161,7 +161,7 @@ func _ready() -> void:
 	rain_layer.name = "Rain"
 	rain_layer.z_index = 6   # relative to this node: z 11 overall
 	rain_layer.area = area
-	rain_layer.drops = int(round(float(_config.rain_drops) * minf(area.get_area() / AREA.get_area(), 2.0)))   # denser over a bigger field, capped for cost
+	rain_layer.drops = _config.rain_drops   # drops for a screen-sized window; the window follows the camera, so the map size does not matter
 	add_child(rain_layer)
 	particles = SeasonParticles.new()
 	particles.name = "SeasonParticles"
@@ -480,6 +480,14 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var sun_px := Vector2(clampf(az * 1.2, -1.0, 1.0), -0.6)    # toward the sun on screen, texels per march step
 		var shadow_k: float = _config.ground_shadow * (1.0 - 0.8 * rain01) * (1.0 - night_k * 0.6)
 		var fog_col: Color = _season.tint_haze(_config.haze_color.sample(ramp) if _config.haze_color != null else Color(0.62, 0.82, 0.7))
+		# rain on the ground (render/shaders/ground_light.gdshader, wet_ground). Puddles are an outdoor calendar thing:
+		# the quarry (not seasonal) keeps its dry ground. Winter rain is snow, so nothing wets under it.
+		var outdoor: float = 1.0 if seasonal else 0.0
+		var snow_w: float = _season.weights[3]
+		var wet01: float = (rain01 if debug_rain >= 0.0 else model.wetness(t)) * outdoor * (1.0 - snow_w)
+		var splash01: float = 0.0 if calm else rain01 * outdoor * (1.0 - snow_w)
+		var puddle_col: Color = Color(0.3, 0.5, 0.5).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water; at night, dark water
+		var glint: float = clampf(maxf(sun_h, 0.0) * 2.0, 0.0, 1.0) * outdoor
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
 			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
@@ -491,6 +499,10 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
 			gm.set_shader_parameter("fog_col", fog_col)
 			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
+			gm.set_shader_parameter("wet", wet01)
+			gm.set_shader_parameter("splash", splash01)
+			gm.set_shader_parameter("puddle_col", puddle_col)
+			gm.set_shader_parameter("glint", glint)
 		for pm: ShaderMaterial in _pad_mats:
 			pm.set_shader_parameter("sun_px", sun_px)
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))

@@ -1,0 +1,1 @@
+Rain now wets the outdoor ground: the soil darkens, puddles collect in the dips and catch the sky, and drops ring the ground while it rains. Puddles fill during a shower and drain after it, and give way to snow in winter. Rain also reads on screen at every zoom now, not just as a few streaks.

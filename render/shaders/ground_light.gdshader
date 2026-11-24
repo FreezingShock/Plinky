@@ -26,6 +26,12 @@ uniform vec3 shadow_tint : source_color = vec3(0.45, 0.52, 0.80);   // cool colo
 uniform int debug_view = 0;                     // 0 off, 1 albedo, 2 normal, 3 height, 4 shadow only, 5 lit (F6 cycles)
 uniform vec3 fog_col : source_color = vec3(0.7, 0.85, 0.7);
 uniform float fog_amt = 0.0;                    // 0..1 at the far edge
+// Rain (SkyCycle sets these; see wet_ground). wet darkens the soil and fills dips with water, splash is how much
+// rain is landing now (0 under Reduce motion, so the rings stop but the puddles stay), glint is the sun on the water.
+uniform float wet = 0.0;                        // 0..1, a lagged rain: a shower fills puddles and they drain after it
+uniform float splash = 0.0;                     // 0..1 rain landing now: how many ground cells ring at once
+uniform vec3 puddle_col : source_color = vec3(0.2, 0.36, 0.36);
+uniform float glint = 0.0;                      // 0..1: sun on the water, sparkle and sky sheen
 const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);
 varying vec2 wpos;
 
@@ -33,6 +39,52 @@ const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13,
 float bayer4(ivec2 p) {
 	ivec2 q = p & ivec2(3);
 	return (float(BAYER[q.y * 4 + q.x]) + 0.5) / 16.0;
+}
+
+// Rain on the ground, in world texels (iso: y is stretched 2:1 like the season blobs). Soil darkens and cools as it
+// wets. Puddles are smooth noise plus a bonus for dips in the height map, with a Bayer edge, so they sit low and
+// grow with the shower. Drops land as small rings (cells on the iso grid, each with its own drop point and phase).
+// Under snow cover there is no open water: the wet and the puddles fade out.
+vec3 wet_ground(vec3 c, vec2 wp, vec2 uv, vec2 px, float thr, float h0) {
+	float open_k = 1.0 - smoothstep(0.1, 0.5, season_snow);
+	float w = wet * open_k;
+	if (w > 0.001) {
+		c = mix(c, c * vec3(0.88, 0.92, 0.95), 0.6 * w);
+		vec2 iso = vec2(wp.x, wp.y * 2.0);
+		float n = season_vnoise(iso / 9.0 + 31.0) * 0.7 + season_vnoise(iso / 3.0 + 13.0) * 0.3;
+		// the height of the texels four steps away: a texel lower than its surroundings is a dip that holds water
+		float ring_h = (texture(h_tex, uv + vec2(4.0, 0.0) * px).r + texture(h_tex, uv - vec2(4.0, 0.0) * px).r
+				+ texture(h_tex, uv + vec2(0.0, 4.0) * px).r + texture(h_tex, uv - vec2(0.0, 4.0) * px).r) * 0.25 * 255.0;
+		float dip = clamp((ring_h - h0 - 0.5) / 2.0, 0.0, 1.0);
+		float score = n + 0.25 * dip;
+		float edge = 0.9 - 0.25 * w;
+		float cover = smoothstep(edge - 0.04, edge + 0.04, score);   // the Bayer threshold makes the edge dither
+		if (cover > thr) {
+			float sheen = smoothstep(edge + 0.04, edge + 0.16, score);
+			vec3 water = puddle_col * (0.85 + 0.25 * glint);
+			water = mix(water, vec3(0.72, 0.85, 0.47), sheen * 0.6 * glint);   // the sky, lit: palette 4
+			c = water;
+			if (glint > 0.05 && season_hash(floor(wp) + 0.5) > 0.985 - 0.012 * glint) {
+				c = PAL[7];
+			}
+		}
+	}
+	if (splash > 0.01) {
+		vec2 iso = vec2(wp.x, wp.y * 2.0);
+		vec2 cell = floor(iso / 9.0);
+		float h = season_hash(cell + 3.7);
+		if (h < 0.14 * splash) {
+			float h2 = season_hash(cell * 1.7 + 9.1);
+			float age = fract(TIME * (0.7 + 0.5 * h2) + h * 7.0);
+			vec2 at = (cell + vec2(0.25 + 0.5 * h2, 0.25 + 0.5 * fract(h * 13.0))) * 9.0;
+			float d = length(iso - at);
+			float r = age * 5.0;
+			if (abs(d - r) < 0.6 && age < 0.95) {
+				c = mix(c, vec3(0.92, 0.95, 0.9), 0.65 * (1.0 - 0.6 * age));
+			}
+		}
+	}
+	return c;
 }
 
 void vertex() {
@@ -102,6 +154,9 @@ void fragment() {
 	bool is_water = mat_code == 107 || mat_code == 108;
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
+	}
+	if (c.a > 0.5 && debug_view == 0 && !is_water && (wet > 0.001 || splash > 0.01)) {
+		c.rgb = wet_ground(c.rgb, wpos, UV, px, thr, texture(h_tex, UV).r * 255.0);
 	}
 	// depth fog: the far (top) rows fade toward the haze colour, dithered
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;
