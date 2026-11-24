@@ -1,1 +1,0 @@
-The Relics panel is tighter: an All or Owned view control replaces the eye, active buffs line up in columns, the footer is gone, relic cards are larger with no stray letter, and the sealed caches sit side by side.
