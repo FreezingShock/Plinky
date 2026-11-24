@@ -74,9 +74,9 @@ func run(t: Object) -> void:
 	t.eq(lifts[0], 0.0, "the oldest popup never moves")
 	var settled: Array[Rect2] = []
 	for i in stack.size():
-		var r: Rect2 = Rect2(stack[i].position + Vector2(0.0, lifts[i]), stack[i].size)
-		t.eq(PopupLanes.overlaps(r, settled), 0, "settled popup %d clears every older popup" % i)
-		settled.append(r)
+		var moved: Rect2 = Rect2(stack[i].position + Vector2(0.0, lifts[i]), stack[i].size)
+		t.eq(PopupLanes.overlaps(moved, settled), 0, "settled popup %d clears every older popup" % i)
+		settled.append(moved)
 	t.ok(lifts[4] < -60.0, "five popups on one spot climb past 60 px (got %s)" % lifts[4])
 	var apart: Array[Rect2] = [Rect2(0.0, 0.0, 10.0, 10.0), Rect2(50.0, 0.0, 10.0, 10.0)]
 	t.eq(PopupLanes.settle(apart, 2.0)[1], 0.0, "popups that do not touch stay put")
