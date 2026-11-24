@@ -7,8 +7,11 @@ extends PanelContainer
 ## the numbers come from WelcomeBack.build(); this node only draws them. Reduce Motion or Reduce Flashing shows every
 ## amount at once and skips the sparks and the fade.
 
-const COLS: int = 7                 ## tiles across; a row of seven fits the 640x360 frame with the gutter
+const COLS: int = 6                 ## tiles across: six at 44 px keeps the card clear of the zone card at 640x360
 const GAP: int = 2
+const SCROLL_ALLOW: float = 8.0     ## room for the scrollbar when a long return needs one, so the width never changes
+## The grid grows with its content up to this height, then scrolls. Keeps the card on the 360 px frame however many tiles.
+const BODY_MAX_H: float = 190.0
 const OPEN_TIME: float = 0.2
 const CLOSE_TIME: float = 0.2
 const SLIDE: float = 6.0            ## texels the card rises (or sinks while it closes)
@@ -21,6 +24,7 @@ const COLLECT_TAIL: float = 0.3     ## time after the last spark before the card
 const SPARKS: int = 8               ## particles per tile on collect
 const CAP_TEXT: String = "That is the most you can bank offline."
 
+var _scroll: ScrollContainer
 var _body: VBoxContainer
 var _away: Label
 var _cap: Label
@@ -58,11 +62,17 @@ func _init() -> void:
 	_away = Label.new()
 	_away.add_theme_color_override("font_color", StatStyle.PAPER)
 	v.add_child(_away)
-	# The body is always as wide as seven tiles, so the card never changes width between visits.
+	# The body is always as wide as its six tiles, so the card never changes width between visits. It sits in a scroll
+	# box that grows with the content up to BODY_MAX_H, so a long return scrolls instead of leaving the frame.
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.custom_minimum_size.x = COLS * WelcomeTile.W + (COLS - 1) * GAP + SCROLL_ALLOW
+	v.add_child(_scroll)
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", 2)
 	_body.custom_minimum_size.x = COLS * WelcomeTile.W + (COLS - 1) * GAP
-	v.add_child(_body)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_body)
 	_cap = Label.new()
 	_cap.text = CAP_TEXT
 	_cap.add_theme_color_override("font_color", RelicStyle.dim)
@@ -74,6 +84,7 @@ func _init() -> void:
 	var collect := PixelButton.new()
 	collect.text = "Collect"
 	collect.pressed.connect(_on_collect)
+	collect.add_to_group(&"tip_avoid")   # a tile's tip, placed beside the tile, never covers the button
 	row.add_child(collect)
 	_collect = collect
 
@@ -111,6 +122,7 @@ func open(data: Dictionary) -> void:
 			_tiles.append(t)
 			_starts.append(float(index) * step)
 			index += 1
+	_fit_body()
 	reset_size()
 	visible = true
 	_next_reveal = 0
@@ -135,6 +147,7 @@ func is_open() -> bool:
 
 ## Keeps the card centred in the HUD frame, rising a little while it opens and sinking while it closes.
 func place(frame: Vector2) -> void:
+	_fit_body()
 	var p: Vector2 = ((frame - size) * 0.5).floor()
 	p.y = minf(p.y, roundf(frame.y * 0.3))
 	p.y += roundf((1.0 - _fade) * SLIDE)
@@ -277,7 +290,16 @@ func _spec(d: Dictionary, edge: Color, title_color: Color) -> Dictionary:
 	var lines: Array = [[Tip.tag(str(d["rarity_name"]), edge)]]
 	for l_v: Variant in d["lines"]:
 		lines.append([Tip.seg(str(l_v), RelicStyle.text)])
-	return {"title": str(d["name"]), "title_color": title_color, "color": edge, "lines": lines}
+	# beside: the tip opens next to its tile and keeps clear of the tip_avoid group (Collect), not at the cursor.
+	return {"title": str(d["name"]), "title_color": title_color, "color": edge, "lines": lines, "beside": true}
+
+
+## The grid grows with its content up to BODY_MAX_H and then scrolls, so the card always fits the frame.
+func _fit_body() -> void:
+	var want: float = minf(_body.get_combined_minimum_size().y, BODY_MAX_H)
+	if _scroll.custom_minimum_size.y != want:
+		_scroll.custom_minimum_size.y = want
+		reset_size()
 
 
 func _calm() -> bool:
