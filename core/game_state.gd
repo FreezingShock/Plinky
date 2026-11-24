@@ -87,5 +87,10 @@ func buy_attribute(attribute_id: StringName) -> bool:
 	return sim.buy_attribute(attribute_id)
 
 
+## Opens one sealed cache (see SealedPulls). Returns the relic it granted, or &"" when nothing was bought.
+func try_sealed_pull(cache_id: StringName) -> StringName:
+	return sim.try_sealed_pull(cache_id)
+
+
 func enter_zone(zone_id: StringName) -> bool:
 	return sim.enter_zone(zone_id)
