@@ -74,3 +74,10 @@ Thirty-three relics now: the six originals plus 27 with their own mechanics. Eac
 - Tooltips use `press_gain_preview`, which leaves out surges and repeats (they depend on the press itself). `press_gain_average` includes the average surge.
 - Away income is capped at `GameConfig.offline_rate_cap` (0.75 of the awake rate, `content/config/game.tres`), so the three lanterns at max stop there. Idle stays well under active, per #221 and Nathan's idle-about-2x-as-long target. `Sim.offline_fraction()` applies the cap.
 - Balance is not yet run through `tools/sim.gd` (Godot cannot run in the cloud). That run is the PC QA step before this is final.
+
+## Walker aura (2026-11-24)
+`WalkerRelics` (`world/walker_relics.gd`) is a child of the walker. Each equipped relic gets one mote that circles the head in its rarity colour, with a short trail. The highest equipped rarity lights a pool under the feet, and Epic and up sparkle. It reads `RelicInventory` only. Held items are not done yet: each would need its own sprite on the walker atlas.
+
+## Gallery (2026-11-24)
+`RelicPanel` is a gallery. Rarity tabs show found counts, and each tab builds only its own cards. Relics you have not found show as dark silhouettes with `RelicInventory.acquire_text()`, which gives the drop odds from the rarity weights (or "granted by rebirths or achievements" for weight 0). Clicking a card opens the detail view: art, ability (`describe()`), how to find it, and an Equip, Unequip or swap button. Tooltips use the shared `Tip` system.
+

@@ -165,6 +165,42 @@ func pity_due(first_drop: bool) -> float:
 		return config.first_drop_seconds
 	return config.pity_seconds * maxf(0.1, 1.0 - total_effect(RelicDef.Effect.PITY_SPEED))
 
+## How a relic is found, in words, for the gallery: the drop odds from its rarity weight, or the non-drop sources.
+## Pure: reads the weights of every relic, so it stays right when content changes.
+func acquire_text(id: StringName) -> String:
+	if not defs.has(id):
+		return ""
+	var d: RelicDef = defs[id]
+	if d.rarity.weight <= 0.0:
+		return "Granted by rebirths or achievements."
+	var total: float = 0.0
+	var count: int = 0
+	for o: RelicDef in defs.values():
+		if o.rarity.weight > 0.0:
+			total += o.rarity.weight
+			if o.rarity.id == d.rarity.id:
+				count += 1
+	var per: float = d.rarity.weight / float(maxi(count, 1))
+	return "Drops from presses, about 1 in %d drops." % roundi(total / per)
+
+## Rarity ranks that have at least one relic, lowest first. The gallery makes one tab per rank.
+func tier_ranks() -> Array[int]:
+	var out: Array[int] = []
+	for d: RelicDef in defs.values():
+		if not out.has(d.rarity.rank):
+			out.append(d.rarity.rank)
+	out.sort()
+	return out
+
+## Relics of one rarity rank, sorted by name. Empty when the rank has none.
+func defs_of_rank(rank: int) -> Array[RelicDef]:
+	var out: Array[RelicDef] = []
+	for d: RelicDef in defs.values():
+		if d.rarity.rank == rank:
+			out.append(d)
+	out.sort_custom(func(a: RelicDef, b: RelicDef) -> bool: return a.display_name < b.display_name)
+	return out
+
 ## Rolls a drop. Returns the relic id, or &"" for no drop. `luck_level` comes from the Luck attribute.
 ## Rarity is picked by weight first (so Divine stays rare no matter how many relics exist), then a relic within it.
 func roll_drop(rng: RandomNumberGenerator, luck_level: int, force: bool = false) -> StringName:

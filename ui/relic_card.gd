@@ -29,7 +29,8 @@ func _init() -> void:
 	draw.connect(_on_draw)
 
 
-func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = false) -> void:
+## `p_silhouette` draws a relic you have not found: dark art, name hidden, rarity still shown.
+func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = false, p_silhouette: bool = false) -> void:
 	relic = def
 	stacks = p_stacks
 	equipped = p_equipped
@@ -43,6 +44,8 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	add_child(h)
 	var s := RelicSlot.new()
 	s.setup(def, p_stacks, false)
+	if p_silhouette:
+		s.modulate = Color(0.2, 0.2, 0.26, 1.0)
 	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	s.focus_mode = Control.FOCUS_NONE
 	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -53,11 +56,11 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(v)
 	var n := Label.new()
-	n.text = def.display_name
+	n.text = "???" if p_silhouette else def.display_name
 	n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	n.clip_text = true
 	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	n.add_theme_color_override("font_color", def.rarity.readable_color(RelicStyle.ink))
+	n.add_theme_color_override("font_color", RelicStyle.dim if p_silhouette else def.rarity.readable_color(RelicStyle.ink))
 	v.add_child(n)
 	var l2 := HBoxContainer.new()
 	l2.add_theme_constant_override("separation", 4)
@@ -65,7 +68,9 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	v.add_child(l2)
 	# Rarity by name (not colour alone), then a short state mark: On = equipped, Swap = waiting for a slot.
 	l2.add_child(_label(def.rarity.display_name, RelicStyle.dim))
-	if p_picked:
+	if p_silhouette:
+		pass
+	elif p_picked:
 		l2.add_child(_label("Swap", RelicStyle.accent))
 	elif p_equipped:
 		l2.add_child(_label("On", RelicStyle.good))
