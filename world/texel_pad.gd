@@ -49,6 +49,8 @@ static var _forge_tex: Dictionary = {}   # "name_f" -> Texture2D
 ## Pad 2's side sprouts (x, y from the plate base, kind): a small bloom on a stem.
 const BUD: Array[Vector3i] = [Vector3i(0, -4, 0), Vector3i(-1, -3, 0), Vector3i(1, -3, 0), Vector3i(0, -3, 2), Vector3i(0, -2, 3), Vector3i(0, -1, 3), Vector3i(-1, -1, 3), Vector3i(1, -2, 3)]
 const LEAF: Color = Color("3d9a45")
+## Art stages per tier: pad 1 is a single flower, pad 5 a crowned bed.
+const MAX_STAGE: int = 5
 const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
 var tier_row: StringName = &""
 ## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
@@ -66,15 +68,18 @@ var _chip: Node2D = null          # the chip's own node, made for a row's first 
 const HALO_Z: int = 6
 ## Buy glow: an additive radial halo on the ground, larger than the plate. Plate units: 1.0 is the plate's edge.
 const GLOW_INNER: float = 1.1     # the halo starts at the plate's edge (its ink sits just inside this)
-const GLOW_DAY: float = 0.55      # strength by day (0..1): visible, but it stays out of the way of the scene
-const GLOW_NIGHT_GAIN: float = 1.0  # extra strength at full night: about twice as bright at midnight
-const GLOW_SPREAD_DAY: float = 1.1  # how far the halo reaches past the plate, in plate units, by day
-const GLOW_SPREAD_NIGHT: float = 1.6  # and the extra reach at full night
-const GLOW_PEAK: float = 0.75     # peak alpha at the plate's edge, before the strength scales it
+const GLOW_DAY: float = 0.6       # strength by day (0..1): clearly there at noon, still under the scene's light
+const GLOW_NIGHT_GAIN: float = 0.5  # extra strength at full night: 0.6 by day, 0.9 at midnight
+const GLOW_SPREAD_DAY: float = 3.0  # how far the halo reaches past the plate, in plate units, by day (reach ~1.9x the old one)
+const GLOW_SPREAD_NIGHT: float = 2.6  # and the extra reach at full night (reach ~1.8x the old one)
+const GLOW_PEAK: float = 1.0      # peak alpha at the plate's edge, before the strength scales it
 const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
 const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
 static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
+const HAZE_REACH: float = 1.4       # the volumetric bloom above the plate, in plate units
+const HAZE_LIFT: int = 9            # its centre sits this many texels above the plate's top face
+static var _haze_tex: Dictionary = {}   # "ready_step" -> ImageTexture for the bloom
 var _halo: Node2D = null
 var _halo_sig: int = -1
 const LOCK_TOP: int = -6          # the chip's top edge, in pad-local texels: centred on the top face (origin)
@@ -544,6 +549,22 @@ func _draw_forge(top: int, _ink: Color) -> void:
 		draw_rect(Rect2(i * 2 - (pips - 1), top + 4, 1, 1), _ink if locked else stat_color)
 
 
+## Pad 1..MAX_STAGE of a row: its art stage (the Starbloom row runs on to a sixth pad, which wears the last stage too).
+static func stage_of(row_index: int) -> int:
+	return clampi(row_index + 1, 1, MAX_STAGE)
+
+
+## A half-height copy of the tier flower (the bloom's top four rows over the stem's last three) at x offset `ox`, `by` texels
+## above the plate; appended to `cells` (x, y, kind) like the main flower.
+static func _half_flower(cells: Array[Vector3i], rows: Array, n: int, ox: int, by: int) -> void:
+	for k in 7:
+		var ml: String = rows[k] if k < 4 else rows[n - 7 + k]
+		for rx in range(4, 9):
+			var mc: String = ml[rx]
+			if mc != ".":
+				cells.append(Vector3i(rx - 6 + ox, by + k, "#dcgW".find(mc)))
+
+
 ## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier
 ## opens it rises row by row and throws a ring of petals. One pip per pad position (1..3) sits at the front corner.
 func _draw_flowers(top: int, ink: Color) -> void:
@@ -554,22 +575,27 @@ func _draw_flowers(top: int, ink: Color) -> void:
 	if _bloom_t > 0.0:
 		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
 	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
-	var stage: int = 3
+	var stage: int = MAX_STAGE
 	var sbd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if sbd != null:
-		stage = clampi(sbd.row_index + 1, 1, 3)
+		stage = stage_of(sbd.row_index)
 	if not locked and _bloom_t <= 0.0 and stage >= 2:
 		for side in [-1, 1]:
-			if stage == 2:   # pad 2: two small sprouts beside the flower
+			if stage == 2:   # pad 2: a sprout and a smaller bud beside the flower, and a leaf tuft at its foot
 				for bc: Vector3i in BUD:
-					cells.append(Vector3i(bc.x * 1 + side * 9, base + bc.y, bc.z))
-			else:            # pad 3: two half-height flowers of the same tier, so the row reads as a bed
-				for k in 7:
-					var ml: String = rows[k] if k < 4 else rows[n - 7 + k]   # the bloom's top four rows over the stem's last three
-					for rx in range(4, 9):
-						var mc: String = ml[rx]
-						if mc != ".":
-							cells.append(Vector3i(rx - 6 + side * 10, base - 6 + k, "#dcgW".find(mc)))
+					cells.append(Vector3i(bc.x + side * 9, base + bc.y, bc.z))
+					cells.append(Vector3i(bc.x + side * 15, base + bc.y + 2, bc.z))
+				for lc: Vector2i in [Vector2i(5, 0), Vector2i(6, -1), Vector2i(7, -2), Vector2i(4, 1)]:
+					cells.append(Vector3i(side * lc.x, base + lc.y, 3))
+			else:            # pad 3 and up: two half-height flowers of the same tier, so the row reads as a bed
+				_half_flower(cells, rows, n, side * 10, base - 6)
+			if stage >= 4:   # pad 4: the bed widens (a bud at each outer edge) and two taller blooms stand up behind
+				if stage == 4:
+					for bc: Vector3i in BUD:
+						cells.append(Vector3i(bc.x + side * 17, base + bc.y + 1, bc.z))
+				else:        # pad 5: those outer buds are full half flowers
+					_half_flower(cells, rows, n, side * 17, base - 5)
+				_half_flower(cells, rows, n, side * 4, base - 12)
 	for k in shown:
 		var line: String = rows[n - 1 - k]
 		for rx in 13:
@@ -595,12 +621,19 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			var ang: float = float(i) / 10.0 * TAU
 			var q: Vector2 = Vector2(cos(ang) * 14.0, sin(ang) * 7.0) * r
 			draw_rect(Rect2(roundf(q.x), roundf(top - 4 + q.y), 1, 1), Color.WHITE if i % 2 == 0 else stat_color)
-	if stage == 3 and not locked and _bloom_t <= 0.0 and not MeadowLife.reduce_motion:   # twinkling petal glints over the bed
+	if stage >= 3 and not locked and _bloom_t <= 0.0 and not MeadowLife.reduce_motion:   # twinkling petal glints over the bed
 		var tw: int = (Time.get_ticks_msec() / 400) % 3
-		for gi in 3:
-			var gp: Vector2i = [Vector2i(-9, -13), Vector2i(8, -14), Vector2i(0, -20)][gi]
+		var spots: Array[Vector2i] = [Vector2i(-9, -13), Vector2i(8, -14), Vector2i(0, -20)]
+		if stage >= 4:
+			spots.append_array([Vector2i(-16, -10), Vector2i(15, -11), Vector2i(-4, -25)])
+		if stage >= 5:
+			spots.append_array([Vector2i(-22, -7), Vector2i(21, -8), Vector2i(5, -28), Vector2i(0, -14)])
+		for gi in spots.size():
 			if (gi + tw) % 3 == 0:
-				draw_rect(Rect2(gp.x, base + gp.y + 3, 1, 1), Color.WHITE)
+				draw_rect(Rect2(spots[gi].x, base + spots[gi].y + 3, 1, 1), Color.WHITE)
+	if stage >= 5 and not locked and _bloom_t <= 0.0:   # the grand pad wears a gold crown over the flower
+		for cx in range(-3, 4):
+			draw_rect(Rect2(cx, base - n - 2 - (1 if absi(cx) < 2 else 0), 1, 1), palette[5])
 	var pips: int = 1
 	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if bd != null:
@@ -652,7 +685,7 @@ static func glow_night_step(night: float) -> int:
 	return roundi(clampf(night, 0.0, 1.0) * 8.0)
 
 
-## The halo for a state and night step: a soft radial falloff, stepped into 8 alpha levels, one texel per world texel. Built
+## The halo for a state and night step: a soft radial falloff from the pad's centre, stepped into 16 alpha levels, one texel per world texel. Built
 ## once and cached, so the glow costs one texture draw per pad. The colour is the buy-state hex, so the halo reads green or red.
 static func glow_texture(ready: bool, step: int) -> ImageTexture:
 	var key: String = "%d_%d" % [int(ready), step]
@@ -672,14 +705,43 @@ static func glow_texture(ready: bool, step: int) -> ImageTexture:
 			var u: float = float(x) / HALF.x
 			var v: float = float(y) / HALF.y
 			var d: float = sqrt(u * u + v * v)   # plate units: 1.0 is the plate's edge
-			if d <= GLOW_INNER or d >= reach:
+			if d >= reach:
 				continue
-			var f: float = 1.0 - (d - GLOW_INNER) / spread
-			var a: float = snappedf(clampf(f * f * GLOW_PEAK * amount, 0.0, 1.0), 0.125)
+			# Lit from the pad's centre out, so the plate itself takes the light, not only the ground around it. Linear falloff
+			# in 16 steps: the outer part still carries light, and the steps are too fine to read as rings.
+			var f: float = 1.0 - d / reach
+			var a: float = snappedf(clampf(f * GLOW_PEAK * amount, 0.0, 1.0), 1.0 / 16.0)
 			if a > 0.0:
 				img.set_pixel(x + hw, y + hh, Color(col.r, col.g, col.b, a))
 	var tex: ImageTexture = ImageTexture.create_from_image(img)
 	_glow_tex[key] = tex
+	return tex
+
+
+## The volumetric bloom for a state and night step: a small round light with a squared falloff, cached like the halo.
+static func glow_haze_texture(ready: bool, step: int) -> ImageTexture:
+	var key: String = "%d_%d" % [int(ready), step]
+	if _haze_tex.has(key):
+		return _haze_tex[key] as ImageTexture
+	var amount: float = glow_amount(ready, float(step) / 8.0)
+	var hw: int = ceili(HALF.x * HAZE_REACH)
+	var hh: int = ceili(HALF.y * HAZE_REACH)
+	var img: Image = Image.create(2 * hw + 1, 2 * hh + 1, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.0, 0.0, 0.0, 0.0))
+	var col: Color = StatStyle.gain() if ready else StatStyle.cant()
+	for y in range(-hh, hh + 1):
+		for x in range(-hw, hw + 1):
+			var u: float = float(x) / HALF.x
+			var v: float = float(y) / HALF.y
+			var d: float = sqrt(u * u + v * v)
+			if d >= HAZE_REACH:
+				continue
+			var f: float = 1.0 - d / HAZE_REACH
+			var a: float = snappedf(clampf(f * f * 0.6 * amount, 0.0, 1.0), 1.0 / 16.0)
+			if a > 0.0:
+				img.set_pixel(x + hw, y + hh, Color(col.r, col.g, col.b, a))
+	var tex: ImageTexture = ImageTexture.create_from_image(img)
+	_haze_tex[key] = tex
 	return tex
 
 
@@ -721,9 +783,14 @@ func _draw_halo() -> void:
 	var night: float = _night()
 	var ready: bool = pad_state() == PadState.READY
 	# One texture draw: the halo is built once per state and night step (glow_texture), centred on the plate's top face.
-	var tex: ImageTexture = glow_texture(ready, glow_night_step(night))
+	var step: int = glow_night_step(night)
+	var tex: ImageTexture = glow_texture(ready, step)
 	var half: Vector2i = Vector2i(tex.get_width() >> 1, tex.get_height() >> 1)
 	_halo.draw_texture(tex, Vector2(-half.x, top - half.y))
+	# The volumetric bloom: a smaller, airier light hanging over the plate.
+	var haze: ImageTexture = glow_haze_texture(ready, step)
+	var hhalf: Vector2i = Vector2i(haze.get_width() >> 1, haze.get_height() >> 1)
+	_halo.draw_texture(haze, Vector2(-hhalf.x, top - HAZE_LIFT - hhalf.y))
 	# Rarity glints: a small plus on each corner of the plate, just outside it. Epic and up glow in the rarity colour; Legendary and up get a bright heart.
 	if rarity != null and rarity.rank > 0:
 		var rc: Color = _trim if _trim.a > 0.0 else rarity.tint()

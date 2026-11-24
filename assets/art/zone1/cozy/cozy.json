@@ -1,0 +1,346 @@
+{
+ "note": "Written by tools/art/place_cozy.py. Frame coordinates (640x360); x, y is the top-left texel. kind picks the behaviour in world/cozy/cozy_props.gd. Rerun the placer to change the layout.",
+ "items": [
+  {
+   "kind": "cozy_cottage",
+   "file": "cottage.png",
+   "x": 392,
+   "y": 79,
+   "w": 40,
+   "h": 44,
+   "foot": [
+    412.0,
+    122.0
+   ]
+  },
+  {
+   "kind": "cozy_well",
+   "file": "well.png",
+   "x": 440,
+   "y": 164,
+   "w": 20,
+   "h": 24,
+   "foot": [
+    450.0,
+    187.0
+   ]
+  },
+  {
+   "kind": "cozy_fountain_basin",
+   "file": "fountain_basin.png",
+   "x": 289,
+   "y": 150,
+   "w": 28,
+   "h": 16,
+   "foot": [
+    303.0,
+    165.0
+   ]
+  },
+  {
+   "kind": "cozy_wheat",
+   "file": "wheat_sheet.png",
+   "x": 195,
+   "y": 107,
+   "w": 48,
+   "h": 16,
+   "foot": [
+    219.0,
+    122.0
+   ],
+   "phase": 0
+  },
+  {
+   "kind": "cozy_wheat",
+   "file": "wheat_sheet.png",
+   "x": 195,
+   "y": 123,
+   "w": 48,
+   "h": 16,
+   "foot": [
+    219.0,
+    138.0
+   ],
+   "phase": 2
+  },
+  {
+   "kind": "cozy_swing_frame",
+   "file": "swing_frame.png",
+   "x": 120,
+   "y": 121,
+   "w": 32,
+   "h": 34,
+   "foot": [
+    136.0,
+    154.0
+   ]
+  },
+  {
+   "kind": "cozy_campfire_ring",
+   "file": "campfire_ring.png",
+   "x": 110,
+   "y": 157,
+   "w": 20,
+   "h": 10,
+   "foot": [
+    120.0,
+    166.0
+   ]
+  },
+  {
+   "kind": "cozy_bench",
+   "file": "bench.png",
+   "x": 416,
+   "y": 132,
+   "w": 24,
+   "h": 14,
+   "foot": [
+    428.0,
+    145.0
+   ]
+  },
+  {
+   "kind": "cozy_bench",
+   "file": "bench.png",
+   "x": 333,
+   "y": 209,
+   "w": 24,
+   "h": 14,
+   "foot": [
+    345.0,
+    222.0
+   ]
+  },
+  {
+   "kind": "cozy_bench",
+   "file": "bench.png",
+   "x": 235,
+   "y": 175,
+   "w": 24,
+   "h": 14,
+   "foot": [
+    247.0,
+    188.0
+   ]
+  },
+  {
+   "kind": "cozy_blanket",
+   "file": "blanket.png",
+   "x": 428,
+   "y": 190,
+   "w": 22,
+   "h": 9,
+   "foot": [
+    439.0,
+    198.0
+   ]
+  },
+  {
+   "kind": "cozy_signpost",
+   "file": "signpost.png",
+   "x": 353,
+   "y": 78,
+   "w": 14,
+   "h": 26,
+   "foot": [
+    360.0,
+    103.0
+   ]
+  },
+  {
+   "kind": "cozy_signpost",
+   "file": "signpost.png",
+   "x": 93,
+   "y": 154,
+   "w": 14,
+   "h": 26,
+   "foot": [
+    100.0,
+    179.0
+   ]
+  },
+  {
+   "kind": "cozy_stone",
+   "file": "stone_2.png",
+   "x": 245,
+   "y": 246,
+   "w": 7,
+   "h": 5,
+   "foot": [
+    248.5,
+    250.0
+   ]
+  },
+  {
+   "kind": "cozy_stone",
+   "file": "stone_2.png",
+   "x": 226,
+   "y": 188,
+   "w": 7,
+   "h": 5,
+   "foot": [
+    229.5,
+    192.0
+   ]
+  },
+  {
+   "kind": "cozy_wheel",
+   "file": "wheel_sheet.png",
+   "x": 239,
+   "y": 262,
+   "w": 18,
+   "h": 18,
+   "foot": [
+    248.0,
+    279.0
+   ]
+  },
+  {
+   "kind": "cozy_fence",
+   "file": "fence.png",
+   "x": 168,
+   "y": 141,
+   "w": 24,
+   "h": 12,
+   "foot": [
+    180.0,
+    152.0
+   ]
+  },
+  {
+   "kind": "cozy_fence",
+   "file": "fence.png",
+   "x": 192,
+   "y": 141,
+   "w": 24,
+   "h": 12,
+   "foot": [
+    204.0,
+    152.0
+   ]
+  }
+ ],
+ "brooks": [
+  {
+   "points": [
+    [
+     275,
+     232
+    ],
+    [
+     277,
+     231
+    ],
+    [
+     279,
+     231
+    ],
+    [
+     281,
+     231
+    ],
+    [
+     283,
+     231
+    ],
+    [
+     285,
+     231
+    ],
+    [
+     287,
+     231
+    ],
+    [
+     289,
+     231
+    ],
+    [
+     291,
+     231
+    ],
+    [
+     293,
+     231
+    ],
+    [
+     295,
+     231
+    ],
+    [
+     297,
+     230
+    ],
+    [
+     299,
+     229
+    ],
+    [
+     301,
+     228
+    ],
+    [
+     303,
+     227
+    ],
+    [
+     305,
+     226
+    ],
+    [
+     307,
+     225
+    ],
+    [
+     309,
+     224
+    ],
+    [
+     311,
+     223
+    ],
+    [
+     313,
+     222
+    ],
+    [
+     315,
+     221
+    ],
+    [
+     317,
+     220
+    ],
+    [
+     319,
+     219
+    ],
+    [
+     321,
+     218
+    ],
+    [
+     323,
+     217
+    ],
+    [
+     325,
+     216
+    ],
+    [
+     327,
+     216
+    ],
+    [
+     329,
+     216
+    ],
+    [
+     331,
+     216
+    ]
+   ],
+   "width": 3
+  }
+ ]
+}
