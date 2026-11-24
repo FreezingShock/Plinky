@@ -56,11 +56,11 @@ var tier_row: StringName = &""
 ## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
 var flower_row: StringName = &""
 var locked: bool = false
-## Cost chip under a locked row's first pad: the pad's cost and its stat icon, so a closed row shows what it takes before it is pressed.
+## Cost sign on each row's first pad (the one that shows the price, open or locked): a wooden plank on a post, the cost (currency icon and amount)
+## over the reward (stat icon and gain). The plank is one child node, redrawn only when the cost is held or lost.
 const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
-const LOCK_GAP: int = 2           # texels between the icon and the cost digits
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
 const LOCK_CHIP_Z: int = 11       # the chip's z relative to its pad: one above the air layer (z 10), so nothing draws over it
 var _chip: Node2D = null          # the chip's own node, made for a row's first pad only
@@ -87,10 +87,16 @@ const HAZE_LIFT: int = 9            # its centre sits this many texels above the
 static var _haze_tex: Dictionary = {}   # "ready_step" -> ImageTexture for the bloom
 var _halo: Node2D = null
 var _halo_sig: int = -1
-const LOCK_TOP: int = -6          # the chip's top edge, in pad-local texels: centred on the top face (origin)
+const SIGN_X: float = 17.0        # the plank's frame, pad-local texels: beside and behind the plate, clear of the walker's footprint
+const SIGN_Y: float = -27.0
+const SIGN_W: float = 36.0        # widened for long costs, see sign_box
+const SIGN_H: float = 25.0
 const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
 var _lock_icon: Texture2D = null  # the cost stat's 8 px icon, or null when the stat has none
+var _reward_icon: Texture2D = null  # the reward stat's 8 px icon
+var _reward_text: String = ""      # the reward, e.g. "+1"
+var _sign_affordable: bool = false  # the state the sign was last drawn in: the band is green when the cost is held
 ## Clover pads get a gold rim (not the grass green Sprout and Clover share), so the two rows read apart on the lake shore.
 const CLOVER_TRIM: Color = Color("f2c14e")
 var _trim: Color = Color(0.0, 0.0, 0.0, 0.0)
@@ -153,10 +159,12 @@ func _ready() -> void:
 			# A button's cost depends only on its definition, so the chip text is fixed for the pad's life.
 			_lock_cost = Formulas.button_cost(b).format()
 			_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
+			_reward_icon = IconSet.get_icon(String(b.reward_stat), LOCK_ICON)
+			_reward_text = "+" + NumberFormat.short(b.reward)
 			_chip = Node2D.new()
 			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the air layer is at z 10
 			_chip.visible = false
-			_chip.draw.connect(_draw_lock_chip)
+			_chip.draw.connect(_draw_cost_sign)
 			add_child(_chip)
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
@@ -472,43 +480,83 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
-	# The cost chip draws on its own child node, above the air layer: see _draw_lock_chip.
+	# The cost sign draws on its own child node, above the air layer: see _draw_cost_sign.
 
 
-## The cost chip, drawn on the child node _chip at z LOCK_CHIP_Z, above the air layer (z 10), so fireflies, glow and the pad
-## shimmer never draw over it. Opaque: cream fill, ink border and ink digits. It sits beside the plate, not under it, so the
-## walker standing on the plate does not cover it. Whole texels throughout, so the chip stays crisp at 1x.
-func _draw_lock_chip() -> void:
+## The cost sign, drawn on the child node _chip at z LOCK_CHIP_Z, above the air layer (z 10), so fireflies, glow and the pad
+## shimmer never draw over it. A wooden plank on a post, beside and behind the plate so the walker on the plate is not covered.
+## Two rows: the cost over the reward, each with its stat icon. The top band is green when the cost is held and red when not.
+## Whole texels throughout, so it stays crisp at 1x.
+func _draw_cost_sign() -> void:
+	var box: Rect2 = sign_box(_lock_cost, _reward_text)
 	var ink: Color = palette[0]
-	var has_icon: bool = _lock_icon != null
-	var box: Rect2 = lock_chip_box(_lock_cost, has_icon)
-	_chip.draw_rect(box, ink)                   # ink border
-	_chip.draw_rect(box.grow(-1.0), CHIP_CREAM) # cream interior: 10 rows, the 8-row content leaves one cream row above and below
-	var x: float = box.position.x + 3.0         # the content starts 2 cream texels in from the border
-	var base: float = box.position.y + 9.0      # glyph rows are box.y + 2 .. box.y + 9, the icon's rows too
-	if has_icon:
-		_chip.draw_texture(_lock_icon, Vector2(x, box.position.y + 2.0))
-		x += float(LOCK_ICON + LOCK_GAP)
-	# One glyph at a time, one texel apart: the 5 px font has no spacing of its own, so "300" ran together at 1x.
-	for i in _lock_cost.length():
-		var ch: String = _lock_cost.substr(i, 1)
-		_chip.draw_string(LOCK_FONT, Vector2(x, base), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
-		x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + float(LOCK_DIGIT_GAP)
+	var wood: Color = palette[6]
+	var wood_hi: Color = wood.lightened(0.2)
+	var wood_lo: Color = wood.darkened(0.25)
+	var wood_dk: Color = wood.darkened(0.5)
+	var band: Color = StatStyle.gain() if _sign_affordable else StatStyle.cant()
+	var x0: float = box.position.x
+	var y0: float = box.position.y
+	var iw: float = box.size.x - 2.0
+	# Ground shadow, the post behind the board, and its foot
+	_chip.draw_rect(Rect2(x0 + 11.0, y0 + 33.0, 12.0, 1.0), Color(palette[2], 0.3))
+	_chip.draw_rect(Rect2(x0 + 13.0, y0 + 34.0, 8.0, 1.0), Color(palette[2], 0.2))
+	_chip.draw_rect(Rect2(x0 + 14.0, y0 + 25.0, 6.0, 10.0), ink)
+	_chip.draw_rect(Rect2(x0 + 15.0, y0 + 25.0, 4.0, 8.0), wood_lo)
+	_chip.draw_rect(Rect2(x0 + 15.0, y0 + 25.0, 1.0, 8.0), wood_hi)
+	_chip.draw_rect(Rect2(x0 + 15.0, y0 + 31.0, 4.0, 1.0), wood_dk)
+	_chip.draw_rect(Rect2(x0 + 13.0, y0 + 34.0, 8.0, 2.0), ink)
+	# Frame, two planks and their bevels, the seam between them and the bottom shade
+	_chip.draw_rect(box, ink)
+	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 1.0, iw, 11.0), wood)
+	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 12.0, iw, 12.0), wood)
+	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 11.0, iw, 1.0), wood_lo)
+	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 12.0, iw, 1.0), wood_hi)
+	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 1.0, 1.0, 23.0), wood_hi)
+	_chip.draw_rect(Rect2(x0 + box.size.x - 2.0, y0 + 1.0, 1.0, 23.0), wood_lo)
+	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 23.0, iw, 1.0), wood_lo)
+	# Grain, knots and nails
+	_chip.draw_rect(Rect2(x0 + 15.0, y0 + 3.0, 12.0, 1.0), wood_hi)
+	_chip.draw_rect(Rect2(x0 + 21.0, y0 + 7.0, 10.0, 1.0), wood_lo)
+	_chip.draw_rect(Rect2(x0 + 16.0, y0 + 17.0, 14.0, 1.0), wood_hi)
+	_chip.draw_rect(Rect2(x0 + 21.0, y0 + 20.0, 9.0, 1.0), wood_lo)
+	_chip.draw_rect(Rect2(x0 + 26.0, y0 + 6.0, 3.0, 2.0), wood_lo)
+	_chip.draw_rect(Rect2(x0 + 27.0, y0 + 7.0, 1.0, 1.0), wood_dk)
+	_chip.draw_rect(Rect2(x0 + 28.0, y0 + 18.0, 2.0, 2.0), wood_lo)
+	for n: Vector2 in [Vector2(x0 + 3.0, y0 + 20.0), Vector2(x0 + 32.0, y0 + 3.0), Vector2(x0 + 32.0, y0 + 20.0)]:
+		_chip.draw_rect(Rect2(n.x, n.y, 1.0, 1.0), ink)
+		_chip.draw_rect(Rect2(n.x, n.y - 1.0, 1.0, 1.0), CHIP_CREAM)
+	# State band across the top, icon recesses, then the icons
+	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 1.0, iw, 2.0), band)
+	_chip.draw_rect(Rect2(x0 + 2.0, y0 + 4.0, 11.0, 10.0), wood_dk)
+	_chip.draw_rect(Rect2(x0 + 2.0, y0 + 14.0, 11.0, 10.0), wood_dk)
+	if _lock_icon != null:
+		_chip.draw_texture(_lock_icon, Vector2(x0 + 4.0, y0 + 5.0))
+	if _reward_icon != null:
+		_chip.draw_texture(_reward_icon, Vector2(x0 + 4.0, y0 + 15.0))
+	# Cost and reward, cream on wood with a one-texel shadow
+	_chip.draw_string(LOCK_FONT, Vector2(x0 + 15.0, y0 + 13.0), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, wood_dk)
+	_chip.draw_string(LOCK_FONT, Vector2(x0 + 14.0, y0 + 12.0), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, CHIP_CREAM)
+	_chip.draw_string(LOCK_FONT, Vector2(x0 + 15.0, y0 + 23.0), _reward_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, wood_dk)
+	_chip.draw_string(LOCK_FONT, Vector2(x0 + 14.0, y0 + 22.0), _reward_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, CHIP_CREAM)
 
 
-## Shows or hides the chip node as the row's lock changes, and redraws it when it appears.
+## Shows or hides the sign node, and redraws it when it appears or when the cost is newly held or lost.
 func _sync_lock_chip() -> void:
 	if _chip == null:
 		return
-	var show_chip: bool = shows_lock_chip(locked, _lock_cost)
-	if _chip.visible != show_chip:
-		_chip.visible = show_chip
+	var show_sign: bool = shows_cost_sign(_lock_cost)
+	if _chip.visible != show_sign:
+		_chip.visible = show_sign
+		_chip.queue_redraw()
+	if show_sign and affordable != _sign_affordable:
+		_sign_affordable = affordable
 		_chip.queue_redraw()
 
 
-## Whether a pad draws its cost chip: only a locked row's first pad carries a cost, and only when the font loaded.
-static func shows_lock_chip(is_locked: bool, cost: String) -> bool:
-	return is_locked and cost != "" and LOCK_FONT != null
+## Whether a pad draws its cost sign: every row's first pad carries a cost, open or locked, and only when the font loaded.
+static func shows_cost_sign(cost: String) -> bool:
+	return cost != "" and LOCK_FONT != null
 
 
 ## Width of the digits with one texel between each glyph (no gap after the last one).
@@ -519,11 +567,10 @@ static func chip_text_width(text: String) -> float:
 	return w + float(LOCK_DIGIT_GAP * maxi(text.length() - 1, 0))
 
 
-## The cost chip's box in pad-local texels: 12 rows, beside the plate's right end and centred on its top face.
-## 3 texels of chip either side of the icon and digits (1 border, 2 cream).
-static func lock_chip_box(cost: String, has_icon: bool) -> Rect2:
-	var content: float = chip_text_width(cost) + (float(LOCK_ICON + LOCK_GAP) if has_icon else 0.0)
-	return Rect2(HALF.x + 4.0, float(LOCK_TOP), content + 6.0, 12.0)
+## The sign's frame in pad-local texels: the plank is SIGN_H tall, and widens past SIGN_W only for a long cost or reward.
+static func sign_box(cost: String, gain: String) -> Rect2:
+	var tw: float = maxf(chip_text_width(cost), chip_text_width(gain))
+	return Rect2(SIGN_X, SIGN_Y, maxf(SIGN_W, ceilf(tw) + 18.0), SIGN_H)
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.

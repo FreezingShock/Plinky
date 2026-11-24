@@ -87,3 +87,10 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Fix:** `tools/golden_shots.gd` PHASES now uses 0.69 as golden (17:28, sun 0.37 up, full golden look) and 0.73 as sunset (18:37, sun still above the horizon). The other labels are recomputed from `SkyModel.clock_of_phase` at daylight 0.6. Labels are within about 2 minutes of the HUD clock.
 - **Wildlife window, checked:** `MeadowLife.low_sun` (life_wild, life_critters, life_air, cozy_swarm) uses `SkyModel.low_sun`, which is 0.41 at phase 0.69 and 0.95 at 0.73, so the golden and sunset pins both sit inside it. It differs from `SkyModel.golden()` in the morning and afternoon: `low_sun` is 0 at noon, `golden()` keeps 0.35. Wildlife was left as it is, because changing it would alter spawn and behaviour, not only the tool.
 - **Not run in-engine:** the cloud cannot run Godot, so the new captures and clock labels are not checked here. Tool-only change, so no changelog fragment.
+
+## 2026-11-24: Pad costs show on wooden signs, on every row's first pad, open or locked
+- **Cause:** the cost chip showed only on a locked row's first pad. The Starting Clearing sprout rows are open from the start, so their first prices (10 Sunlight) showed only in the hover tooltip.
+- **Fix:** `TexelPad._draw_cost_sign` draws a terracotta plank on a post beside the row's first pad: the cost (currency icon and amount) over the reward (stat icon and gain). Its top band is green when the cost is held and red when not. The plank widens only for a long cost or reward (`TexelPad.sign_box`).
+- **Node cost:** still one child node per row head (the old chip node), redrawn only when the held state flips. No new nodes, so the zone node counts are unchanged.
+- **Checked in the cloud:** `tests/run.gd` 6759 checks, 0 failed. Headless captures of the real `TexelPad` (open and locked) and of the real `main.tscn` opening pads show the signs.
+- **Not verified on the PC:** the Vulkan render of the signs. The cloud renders with OpenGL 3 under xvfb.
