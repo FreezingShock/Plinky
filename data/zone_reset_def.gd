@@ -47,6 +47,12 @@ extends Resource
 @export var fx_marks: String = ".o*O"
 @export var fx_rise: bool = false
 @export var menu_title: String = ""
+## Plural of display_name in tier headings ("Unlocks After 2 Nuclei"). "" adds an "s".
+@export var plural_name: String = ""
+## The currency's own tooltip (its HUD row and Upgrades badge): what it is and how it is earned, and what it buys.
+@export_multiline var currency_body: String = ""
+## One short line over this reset's gifts page in Upgrades: what earns the currency.
+@export var gift_blurb: String = ""
 @export var button_hint: String = ""
 @export_multiline var tip_body: String = ""
 @export var resets_text: String = ""

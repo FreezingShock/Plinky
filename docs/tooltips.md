@@ -40,6 +40,7 @@ An empty spec (null, or nothing in it) shows nothing.
 - Numbers: `StatStyle.BUY_GREEN` for a gain or an affordable cost, `StatStyle.BUY_RED` for a cost you cannot pay (`StatStyle.buy(can)`).
 - Rarity is one all-caps tag in the bold display face (`Tip.tag`, `TipText.rarity_tag`): rarity then type, in rarity colour, e.g. UNCOMMON BUTTON, RARE RELIC. Border uses the rarity colour too. The relic drop toast uses the same face. Currency cards in Stats wear the rarity of the pads that pay them, as a `kicker` under the name. Sunlight reads STARTER STATISTIC in yellow. A currency no pad touches has no line.
 - Copy for existing UI lives in `ui/tip_text.gd`; pad specs in `PadTooltip.spec_for`.
+- Zone currencies (Seeds, Core Shards) use `TipText.currency`: the copy comes from the zone reset (`currency_body`), and the row is clickable only where it opens the gifts. See [decisions/hud.md](decisions/hud.md).
 - Call to action: the last line of a tooltip you can click is yellow, `TipText.click_color()`. Use "Click to open!" for a
   card that opens a page, and "Click to buy!" for a control that buys (the Buy button). A disabled buy says what is
   needed instead, in red, with no yellow line.

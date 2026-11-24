@@ -97,7 +97,41 @@ def style_clumps(XX, YY, nz):
     return D
 
 
-STYLES = {'a': style_clusters, 'b': style_bands, 'c': style_strokes, 'd': style_clumps}
+def style_blades(XX, YY, nz):
+    """E: dense 1-texel vertical blade strokes (the reference's grass read), clumped by noise, sparse on open lawn.
+    Each blade is a light tip over a dark base; tall and short blades mix, and the clumps leave gaps of bare lawn."""
+    H, W = XX.shape; fbm2 = nz['fbm2']
+    D = (fbm2(XX / 40.0, YY * 2 / 40.0, 3, 95) - .5) * .20
+    px, py, r = _anchors(W, H, 3, 3, 31)
+    dens = fbm2(px / 22.0, py * 2 / 22.0, 3, 96)
+    keep = r < np.clip((dens - .36) * 3.0, 0, .85)
+    px, py, r2 = px[keep], py[keep], r[keep]
+    tall = (r2 * 7919 % 1.0) < .45
+    T = np.zeros((H, W))
+    for sel, shape in ((tall, [(0, -3, LIGHT), (0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK)]),
+                       (~tall, [(0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK)])):
+        _stamp(T, px[sel], py[sel], shape)
+    return D + np.clip(T, DARK, LIGHT)
+
+
+def style_stalks(XX, YY, nz):
+    """F: style E's vertical stalks, denser inside each clump, with the crown lit and the base shaded from the upper
+    left. Keeps E's bare lawn between clumps. Added beside E, so the bake default does not change."""
+    H, W = XX.shape; fbm2 = nz['fbm2']
+    D = (fbm2(XX / 40.0, YY * 2 / 40.0, 3, 97) - .5) * .20
+    px, py, r = _anchors(W, H, 3, 3, 33)
+    dens = fbm2(px / 22.0, py * 2 / 22.0, 3, 98)
+    keep = r < np.clip((dens - .30) * 3.4, 0, .92)
+    px, py, r2 = px[keep], py[keep], r[keep]
+    tall = (r2 * 7919 % 1.0) < .55
+    T = np.zeros((H, W))
+    for sel, shape in ((tall, [(0, -3, LIGHT), (0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, 0, DARK * .5)]),
+                       (~tall, [(0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, 0, DARK * .5)])):
+        _stamp(T, px[sel], py[sel], shape)
+    return D + np.clip(T, DARK, LIGHT)
+
+
+STYLES = {'a': style_clusters, 'b': style_bands, 'c': style_strokes, 'd': style_clumps, 'e': style_blades, 'f': style_stalks}
 
 
 def apply(style, l, mask, XX, YY, nz):

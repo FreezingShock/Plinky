@@ -18,8 +18,8 @@ uniform float night = 0.0;
 uniform float rain = 0.0;
 uniform vec3 grade_col : source_color = vec3(1.0);
 uniform float grade_amount = 0.0;
-uniform vec3 night_tint : source_color = vec3(0.32, 0.40, 0.78);
-uniform vec3 deep_tint : source_color = vec3(0.16, 0.20, 0.42);
+uniform vec3 night_tint : source_color = vec3(0.26, 0.42, 0.44);
+uniform vec3 deep_tint : source_color = vec3(0.10, 0.19, 0.20);
 uniform vec3 rain_tint : source_color = vec3(0.82, 0.88, 0.92);
 uniform vec3 pool_tint : source_color = vec3(1.0, 0.86, 0.58);
 uniform vec4 lights[56];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused). Must match SkyCycle.MAX_LIGHTS.
@@ -63,7 +63,7 @@ void fragment() {
 	// night: a smooth, solid cool multiply that thins toward the light pools. No dither at all: a pool edge or dusk
 	// is a soft gradient over many world texels, so it reads as light, never as a grid.
 	float dk = clamp(night * (1.0 - pool) / 0.8, 0.0, 1.0);
-	m *= mix(vec3(1.0), night_tint, 0.62 * dk);
+	m *= mix(vec3(1.0), night_tint, 0.70 * dk);
 	// warm cast inside a pool, smooth the same way, so a lantern is a clean glow
 	float wk = clamp(pool * (0.35 + 0.65 * night) * 2.2, 0.0, 1.0) * smoothstep(0.05, 0.2, pool);
 	m *= mix(vec3(1.0), pcol, 0.8 * wk);

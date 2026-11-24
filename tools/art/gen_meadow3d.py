@@ -216,6 +216,7 @@ def voxelize(sdf, half, top, u0, v0, z0, scale=1.0, rot=0.0, sid=1, wl=0.0, bott
 
 # material codes
 (M_FOL, M_BARK, M_PINE, M_ROCK, M_MOSS, M_CRYS, M_WOOD, M_PADT, M_PETA, M_PETB, M_STEM, M_LILY, M_REED, M_CAT, M_BERRY, M_CAP, M_CSTEM, M_PAPER, M_GRASS, M_BARKT, M_BARKT2, M_PEB, M_FACE, M_INK) = range(10, 34)
+M_DARKF = 34   # dark pocket cut into a bush: the shadowed inside of the leaf shell, darkest ramp step
 
 # ---------------- prop models (local coords: x right, y toward camera, z up) ----------------
 def make_oak(rng):
@@ -248,19 +249,41 @@ def make_pine(rng):
 def make_bush(rng):
     seed = rng.randint(0, 99); balls = [(rng.uniform(-4, 4), rng.uniform(-4, 4), rng.uniform(3.5, 6), rng.uniform(4.2, 6)) for _ in range(4)]
     berries = [(rng.uniform(-6, 6), rng.uniform(-6, 6), rng.uniform(3, 8)) for _ in range(7)] if rng.random() < .6 else []
+    # dark pockets: small holes cut into the upper leaf shell, so the shadowed inside of the bush shows through as
+    # dark clusters. Own rng, so the placement sequence of every other prop is unchanged.
+    frng = random.Random(seed * 131 + 7)
+    pockets = []
+    for _ in range(frng.randint(4, 6)):
+        b = balls[frng.randrange(len(balls))]
+        a_ = frng.uniform(0, 6.28); e_ = frng.uniform(.2, .9)        # elevation: the upper, visible part of the ball
+        rr = b[3] * frng.uniform(.7, .95); ce = math.cos(e_)
+        pockets.append(((b[0] + math.cos(a_) * ce * rr, b[1] + math.sin(a_) * ce * rr, b[2] + math.sin(e_) * rr), frng.uniform(2.0, 3.0)))
     def f(x, y, z):
         d = np.full(x.shape, 99.0, np.float32)
         for b in balls: d = np.minimum(d, sdf_sphere(x, y, z, b[:3], b[3]))
         d = d + 1.6 * (vn3(x * .45, y * .45, z * .45, seed) - .5); m = np.full(x.shape, M_FOL, np.int16)
+        for pc, pr in pockets:
+            cut = -sdf_sphere(x, y, z, pc, pr)
+            m = np.where(cut > d, M_DARKF, m); d = np.maximum(d, cut)
         for b in berries:
             db = sdf_sphere(x, y, z, b, 1.0) ; sel = db < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, db)
         return d, m
     return f, (11, 11), 13, 6.5
 def make_rock(rng, big=True):
     seed = rng.randint(0, 99); rx, ry, rz = (rng.uniform(6.5, 9), rng.uniform(5.5, 8), rng.uniform(4.5, 7)) if big else (rng.uniform(3, 4.5), rng.uniform(2.5, 4), rng.uniform(2, 3))
+    # chunky facets: a few planes cut the stone so each flat face takes its own light step. Their own rng, so the
+    # placement sequence of every other prop is unchanged.
+    frng = random.Random(seed * 7919 + 17)
+    facets = []
+    for _ in range(frng.randint(3, 5)):
+        a_ = frng.uniform(0, 6.28); e_ = frng.uniform(0.1, 0.65)          # elevation: 0 = side face, 1 = top
+        facets.append((math.cos(a_) * math.cos(e_), math.sin(a_) * math.cos(e_), math.sin(e_), min(rx, ry, rz) * frng.uniform(1.0, 1.2)))
     def f(x, y, z):
         d = sdf_ell(x, y, z, (0, 0, rz * .55), (rx, ry, rz))
         d = d + (2.4 if big else 1.0) * (vn3(x * .26, y * .26, z * .26, seed) - .5) * 2 + .8 * (vn3(x * .7, y * .7, z * .7, seed + 5) - .5)
+        zc = z - rz * .55
+        for (nx_, ny_, nz_, off) in facets:
+            d = np.maximum(d, nx_ * x + ny_ * y + nz_ * zc - off)
         return d, np.full(x.shape, M_ROCK, np.int16)
     return f, (rx + 3, ry + 3), rz * 1.6 + 2, max(rx, ry) + 1
 def make_crystals(rng):
@@ -642,7 +665,7 @@ for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
                     seed = prng.randint(0, 1 << 30)
                     f_l, half_l, top_l, _r, _rt = _draw('lantern', seed)
                     if ok_spot(u, v, solid_radius(f_l, half_l, top_l), slope_max=.8, path=False, gap=1.0, hmax=14.0):
-                        put('lantern', u, v, 1.0, count=True, seed=seed); lantern_n += 1; found = True; break
+                        put('lantern', u, v, 1.0, rot=0.0, count=True, seed=seed); lantern_n += 1; found = True; break
                 if found: break
             if found: break
 for si in range(FENCE_FROM, len(PATH) - 1):
@@ -805,7 +828,7 @@ log('shadows done')
 RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 2, 6, 6, 6, 6, 6, 5], T_MOSS: [1, 2, 2, 3, 3], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 5, 5, 7], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
-        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
+        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_DARKF: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
 mat_ = allp['mat']; nz_ = allp['nz']; lraw = allp['wl'].copy()
 light = np.where(isprop | (np.arange(len(u_)) >= len(T['u'])) & False, 0, 0).astype(float)
 # lighting for props (terrain/plinth carried theirs in 'wl')
@@ -975,10 +998,20 @@ Image.fromarray(_fg).save(os.path.join(HERE, 'ground_fg.png'))
 depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(HERE, 'meadow3d-ground-1x_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []
+# ordinary lanterns all face one way (rot 0), so they share one size: every lamp is cropped to the same window around its foot.
+# Measured on all five lamps: left of the foot 5.6 to 6.3 texels, right 6.7 to 7.4, top 25.2 to 25.8, base 0.8 to 2.5 below it.
+LANTERN_WIN = (8, 27, 18, 31)   # left of the foot, above the foot, width, height
 for t in TALL:
     ys_, xs_ = np.nonzero(id_full == t['id'])
     if len(xs_) < 12: continue
-    x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
+    if t['kind'] == 'lantern':
+        fbx, fby = OXS0 + (t['u'] - t['v']) + BLX, OYS0 + (t['u'] + t['v']) / 2 - t['z'] + BLY   # foot in render-buffer pixels
+        x0, y0 = int(math.floor(fbx)) - LANTERN_WIN[0], int(math.floor(fby)) - LANTERN_WIN[1]
+        x1, y1 = x0 + LANTERN_WIN[2] - 1, y0 + LANTERN_WIN[3] - 1
+        assert 0 <= x0 and x1 < W and 0 <= y0 and y1 < H, 'lantern %d window leaves the render' % t['id']
+        assert (id_full[y0:y1 + 1, x0:x1 + 1] == t['id']).sum() == len(xs_), 'lantern %d leaves its window' % t['id']
+    else:
+        x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
     spr = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
     m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
     spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255

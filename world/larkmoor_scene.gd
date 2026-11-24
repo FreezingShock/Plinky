@@ -9,6 +9,7 @@ const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1b/larkmoor/backdr
 const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg.png")
 const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
+const GARDEN_PATH: String = "res://world/larkmoor_gardens.json"
 const DISTRICT_RADIUS: float = 220.0   # texels (2x the old 110 with the frame); the banner shows the nearest district inside this
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
@@ -79,6 +80,7 @@ func _ready() -> void:
 		anchors.add_child(m)
 	_ground = ground
 	_add_life(ground)
+	_add_gardens()
 	_add_sky()
 
 
@@ -148,6 +150,19 @@ func district_at(p: Vector2) -> Dictionary:
 	return best
 
 
+## The flower gardens around each statistic's pads: one node draws them all (world/garden_layer.gd), above the grass and under
+## the props, pads and walker, so a garden costs a single node however many flowers it holds.
+func _add_gardens() -> void:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(GARDEN_PATH))
+	if not parsed is Dictionary:
+		return
+	var layer := GardenLayer.new()
+	layer.name = "Gardens"
+	add_child(layer)
+	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
+	layer.pusher_group = &"walker"
+
+
 func _add_life(ground: Sprite2D) -> void:
 	var life: Dictionary = MeadowLife.load_data(LIFE_PATH)
 	if life.is_empty():
@@ -207,7 +222,7 @@ func _begin(parent: Node2D) -> void:
 		(_prop_index[key] as Array).append(s)
 		if light_lanterns and String(s.kind) == "lantern":
 			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
-					_sky.light_config().pool_shrine_radius * LANTERN_RADIUS_K, LANTERN_STRENGTH)
+					_sky.light_config().pool_shrine_radius * LANTERN_RADIUS_K, LANTERN_STRENGTH, &"lantern")
 
 
 func spawn_occluders(parent: Node2D) -> void:
@@ -344,16 +359,17 @@ static var _glow_tex: Texture2D = null
 
 static func _glow_texture() -> Texture2D:
 	if _glow_tex == null:
-		var n: int = 24
+		# a warm dithered bloom: a bright core that falls off over about 16 texels, six Bayer steps, no smooth edge
+		var n: int = 32
 		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 		var bayer: Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 		for y in n:
 			for x in n:
 				var d: float = Vector2(x + 0.5 - n * 0.5, y + 0.5 - n * 0.5).length() / (n * 0.5)
 				var fall: float = clampf(1.0 - d, 0.0, 1.0)
-				fall *= fall
-				var q: float = floorf(fall * 4.0 + (float(bayer[(y % 4) * 4 + x % 4]) + 0.5) / 16.0) / 4.0
-				img.set_pixel(x, y, Color(1.0, 0.82, 0.45, q * 0.9))
+				fall = fall * sqrt(fall)
+				var q: float = floorf(fall * 6.0 + (float(bayer[(y % 4) * 4 + x % 4]) + 0.5) / 16.0) / 6.0
+				img.set_pixel(x, y, Color(1.0, 0.8, 0.42, q))
 		_glow_tex = ImageTexture.create_from_image(img)
 	return _glow_tex
 

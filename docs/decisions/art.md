@@ -236,6 +236,13 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Verified in the cloud:** Godot 4.7.2 headless under xvfb with lavapipe. Tests 5346 checks, 0 failed. Shaders compile, and the screenshot set (tools/weather_shots.tscn) was checked by eye.
 - **Not verified on the PC:** how puddles and rings look at zoom 1 and 4, the feel of the drop speed, and the night puddles against the moonlit path.
 
+## 2026-11-24: Lantern art, lamp glow and lamps by night only
+- **Art:** `make_lantern` is a garden lantern in the same 19 by 29 window: a stone foot (kept within 1.9 texels, so its front corner stays inside the window), a thin timber post, a lit window (the paper colour lifted in the shade) framed by four dark corner posts, a hipped timber cap that overhangs the window, and a dark finial.
+- **Glow sprite:** `LampGlow` (`larkmoor_scene.gd`) is a 32 texel dithered bloom, warm, with six Bayer steps and a bright core. It was 24 texels with four steps and a squared falloff, which read dim.
+- **Pools by night only:** lantern pools are added with kind `&"lantern"`. `SkyCycle._push_lights` scales their strength by `lamp_light_k(night01)` (a smoothstep from 0.1 to 0.5 night), and a lamp at zero takes no shader slot. Before, the shader's warm cast ran at about 0.35 of full strength by day, so each lamp left a warm patch on a sunny lawn.
+- **Why:** lamps should be on at dusk and off by day, and the glow should read at night without a flat blob.
+- **Not touched:** `day_night.gdshader` (the pool shape and its colour math). The lamp pool is still the same falloff and warm cast; only its strength changes.
+- **Not verified in-engine on the PC:** whether the lit window reads as warm enough next to the green pad pools at night.
 ## 2026-11-24: Pad glow crowding (a row of pads does not blow out)
 - Nathan's screenshot: with the rows 42 texels apart, neighbouring halos and light pools added together into one blown-out green blob at night. Halos are additive, and pool strengths sum before the shader clamps them.
 - Fix: each lit pad counts the lit pads within `TexelPad.CROWD_RANGE` (48 texels, a little over one row). Its halo and its shader pool are scaled by `crowd_scale(n) = 1 / max(1, n * 0.5)`. A lone pad or a pair keeps full light, and any crowd adds up to about two pads' worth at its busiest point.
@@ -247,3 +254,25 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Each row is a thick mass over a dark under-mass, and rows overlap, so no soil or water shows between them. Water streams were dropped at Nathan's request.
 - world/farm/farm_wheat.gdshader pushes the stalks away from the walker. Tips move, the rows' bases stay, and the push falls off with distance. FarmWheat feeds it the walker's position, and the push is zero under Reduce Motion.
 - The parting is subtle at Larkmoor's zoom, so it needs a look on Nathan's PC.
+
+## 2026-11-24: Larkmoor wheat is clumps of stalks, placed in organic patches, and parts around the walker
+- Nathan's notes: each stalk needs its own shading and shadow, the walker must sort by Y and stand out above the wheat, the rustle must be real bending and parting rather than a blur, the fields need organic outlines, and the stalks should be bigger.
+- The wheat is now clumps. `world/farm/wheat_clump.gd` generates each clump from a seed: stalks with a dark root, a golden body, a darker side on some, a lit head, a dark root mass for thickness, and a dithered contact shadow. Each gust frame bends the tips.
+- `tools/art/place_farm.py` places the clumps in four wobbly patches. Each clump is a prop with its own foot, so the walker sorts against every clump by Y. The old rectangular fields and their fence runs are gone.
+- `tools/bake_wheat.gd` bakes eight gust frames per clump into `assets/art/zone1b/farm/wheat/`. Far clumps play the sheets.
+- `world/farm/farm_wheat.gd` redraws the clumps near the walker each frame from their stalks. Each stalk leans away from the walker and grows towards the tip, and the walker's push point follows a soft spring that bounces back after the walker passes. Under Reduce Motion nothing parts.
+- Not changed here: the grass blades. Those belong to the grass and ground work.
+- Not verified on the PC: how the parting reads at the player's own zoom and speed.
+
+
+## 2026-11-24: Larkmoor wheat is re-laid denser inside the farm box, with a fence ring around each patch
+- Five patches now sit on the walkable ground the placer allows inside the farm box (`tools/art/place_farm.py`). The box clips the old patch outlines, and cliffs and the mere cut the east side, so the old patches were partly off the grass.
+- Clumps are smaller (28 to 32 canvas texels wide), on a tighter grid. Clumps may overlap each other a little (`WHEAT_DX`/`WHEAT_DY`), so the patches read thick, not stacked. Everything else keeps the 4 texel gap.
+- The fence ring is 44 straight chords, each with posts and two rails. It is placed before the wheat, so the clumps grow inside it. Two walk-in gaps per patch. The whole ring is one batched item and one sprite (`tools/art/gen_farm.py` draws it), so it costs one node. Its foot is on its north edge, so it sorts behind the wheat and props south of it, and it casts no shadow.
+- The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
+- Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
+
+## 2026-11-24: Stalk grass style F added beside E (not default)
+- Audit: the live ground props (stumps, mushrooms, reeds, tufts) are SDF 3D renders from the elevated iso camera, so they already match the mockup D view. The flat read is the grass texture only.
+- Added style `f` (`style_stalks` in `tools/art/grass_tex.py`): style E's vertical stalks, denser inside each clump, with the crown lit and the base shaded from the upper left. E's bare lawn between clumps is kept. Compared A, E and F as ground-only crops in `/mnt/project-files/plinky/ground-grass/grass_styles_a_e_f_ground.png`. F reads most like the stalk field of mockup D.
+- Default stays `a` and no baked asset changes. The switch to a grass style belongs to the art-style thread. Recommended pick: F, for Nathan to confirm on PC at noon, since dawn grading hides texture.

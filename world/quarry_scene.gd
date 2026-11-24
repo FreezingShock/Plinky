@@ -114,7 +114,10 @@ func _add_lights() -> void:
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 	for a: Dictionary in _data.anchors:
 		match String(a.kind):
-			"gate", "arch":
+			"gate":
+				# the forge gate's own light: ember red-orange, so it reads as the portal's glow, not the warm default
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8, &"fixed", Color(1.0, 0.42, 0.2, 1.0))
+			"arch":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"lava":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.lava_pool_radius, 1.0)
