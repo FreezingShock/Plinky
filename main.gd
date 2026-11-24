@@ -171,6 +171,8 @@ func _ready() -> void:
 	bus.bonus_gained.connect(_on_bonus_gained)
 	bus.season_changed.connect(_on_season_changed)
 	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
+	PerfStats.lap("entry: pre zone visuals")
+	_warm_pads(sim.zone_id)
 	_enter_zone_visuals(sim.zone_id)
 	get_tree().create_timer(1.2).timeout.connect(_announce_zone_arrival)
 	_clear_spawn()
@@ -388,6 +390,15 @@ func _build_pads() -> void:
 
 ## `sliced` spreads the heavy part (the zone's prop sprites) over several frames; only a swap under the transition
 ## wipe uses it, and awaits the result. Startup and reset keep the one-frame build.
+## Holds a zone's pad resources before its pads are built (TexelPad.warm_zone), so the build does not load them cold.
+func _warm_pads(zone_id: StringName) -> void:
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	if z != null:
+		PerfStats.lap_begin()
+		TexelPad.warm_zone(sim, z)
+		PerfStats.lap("zone: warm pads")
+
+
 func _enter_zone_visuals(zone_id: StringName, sliced: bool = false) -> void:
 	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
@@ -676,6 +687,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
 	WalkMask.prefetch(_zone_mask_path(zone_id))   # the walk mask too, so the first walk there does not load it
 	await transitions.cross_zone(func() -> void:
+		_warm_pads(zone_id)
 		await _enter_zone_visuals(zone_id, true)
 		if _clear_spawn_pending:
 			_clear_spawn_pending = false
