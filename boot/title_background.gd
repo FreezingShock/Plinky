@@ -132,7 +132,3 @@ func skip_to_next() -> void:
 	_seek_to = clock + seconds
 	_seek_t = 0.0
 
-
-## 0 shows the scene, 1 covers it with ink.
-func set_dissolve(amount: float) -> void:
-	_mat.set_shader_parameter("dissolve", clampf(amount, 0.0, 1.0))

@@ -6,8 +6,8 @@ extends VBoxContainer
 ## Opening one spends the currency, rolls a relic and shows SealedPullOverlay. Tooltips use the shared Tip.
 
 const GAP: int = 4
-const CARD_H: float = 38.0
-const PICTURE: float = 24.0
+const CARD_H: float = 46.0
+const PICTURE: float = 18.0
 const CARD_GOLD: Color = Color("f2c94c")
 const PULL_HINT: String = "Click to open!"
 
@@ -16,7 +16,7 @@ var _pictures: Dictionary = {}  ## cache id -> TextureRect
 var _names: Dictionary = {}     ## cache id -> Label
 var _prices: Dictionary = {}    ## cache id -> Label: price and pulls left on one line
 var _borders: Dictionary = {}   ## cache id -> last border Color applied, so the styles are only rebuilt on a change
-var _row: VBoxContainer
+var _row: GridContainer
 var _bus: Node = null
 
 
@@ -28,8 +28,11 @@ func _init() -> void:
 	head.text = "Sealed Caches"
 	head.add_theme_color_override("font_color", RelicStyle.dim)
 	add_child(head)
-	_row = VBoxContainer.new()
-	_row.add_theme_constant_override("separation", GAP)
+	# Two caches side by side: each is a small card with its name, price and pulls left.
+	_row = GridContainer.new()
+	_row.columns = 2
+	_row.add_theme_constant_override("h_separation", GAP)
+	_row.add_theme_constant_override("v_separation", GAP)
 	_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_child(_row)
 
@@ -145,7 +148,7 @@ func refresh() -> void:
 			_borders[def.id] = border
 		card.modulate = Color(1.0, 1.0, 1.0, 1.0) if used else Color(1.0, 1.0, 1.0, 0.5)
 		var detail: Label = _prices[def.id] as Label
-		detail.text = ("%s %s, %d of %d left" % [NumberFormat.format(price), unit, left, def.cap_per_reset]) if used else "Unlocks after first %s" % currency
+		detail.text = ("%s %s\n%d of %d left" % [NumberFormat.format(price), unit, left, def.cap_per_reset]) if used else "Unlocks after\nfirst %s" % currency
 		detail.add_theme_color_override("font_color", border if used else RelicStyle.dim)
 
 

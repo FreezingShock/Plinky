@@ -30,13 +30,16 @@ const KIND: Dictionary = {
 	"windmill": {"size": Vector2(0.6, 0.95), "strength": 0.9, "length": 1.15, "soft": 0.05},
 	"lighthouse": {"size": Vector2(0.5, 1.0), "strength": 0.9, "length": 1.1, "soft": 0.05},
 	"obelisk": {"size": Vector2(0.45, 1.0), "strength": 0.85, "length": 1.0, "soft": 0.1},
-	"ruin": {"size": Vector2(0.75, 0.7), "strength": 0.75, "length": 0.9, "soft": 0.12},
+	"ruin": {"size": Vector2(0.75, 0.7), "strength": 0.6, "length": 0.9, "soft": 0.12},
 	"gateway": {"size": Vector2(0.9, 0.8), "strength": 0.8, "length": 0.8, "soft": 0.1},
 	"spire": {"size": Vector2(0.45, 0.95), "strength": 0.85, "length": 1.1, "soft": 0.1},
 	"lintel": {"size": Vector2(0.9, 0.7), "strength": 0.7, "length": 0.7, "soft": 0.2},
 	"gate_pillar": {"size": Vector2(0.5, 0.9), "strength": 0.8, "length": 0.9, "soft": 0.1},
 }
 const DEFAULT_KIND: Dictionary = {"size": Vector2(0.6, 0.45), "strength": 0.4, "length": 0.6, "soft": 0.35}
+## Ruins cast from one size, not their sprite size: a ruin's sprite depends on its walls, so a thin or low one would otherwise
+## cast a faint shadow beside a big one. Strength 0.6 sits between flowers (0.35) and trees (1.0).
+const RUIN_SHADOW_SIZE: Vector2 = Vector2(22.0, 26.0)
 const SHADE: Color = Color(0.28, 0.38, 0.56)
 const SHADE_DEEP: Color = Color(0.12, 0.18, 0.36)   # at low sun the ground is dark, so the shadow goes deeper to stay readable
 const WALKER_SIZE: Vector2 = Vector2(11.0, 17.0)   # width of the walker's shadow and the height it stretches from
@@ -115,7 +118,8 @@ func add_caster(src: Sprite2D, kind: String, size: Vector2) -> void:
 	_ensure_layers()
 	var k: Dictionary = KIND.get(kind, DEFAULT_KIND) as Dictionary
 	var share: Vector2 = k.size as Vector2
-	_push({"src": src, "foot": src.position, "w": size.x * share.x, "h": size.y * share.y,
+	var cast_size: Vector2 = RUIN_SHADOW_SIZE if kind == "ruin" else size
+	_push({"src": src, "foot": src.position, "w": cast_size.x * share.x, "h": cast_size.y * share.y,
 			"strength": float(k.strength), "soft": float(k.soft), "len": float(k.length), "blob": false})
 
 

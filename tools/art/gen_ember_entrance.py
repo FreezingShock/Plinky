@@ -465,7 +465,7 @@ def decor_list():
         (crate_stack(), 1450, 547, "crates"), (barrels(), 1424, 562, "barrels"), (timber_pile(), 1408, 534, "timber"),
         (ore_pile(3), 1580, 556, "ore"), (cart_tipped(), 1598, 574, "cart"), (pick_rack(), 1586, 526, "rack"),
         (boulder(4, 34, 22), 1438, 580, "boulder"), (boulder(9, 26, 18), 1644, 566, "boulder"),
-        (ore_pile(7, 22), 1470, 580, "ore"), (crate_stack(), 1620, 544, "crates"),
+        (ore_pile(7, 22), 1470, 580, "ore"), (crate_stack(), 1630, 544, "crates"),
     ]
 
 

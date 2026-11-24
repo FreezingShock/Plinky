@@ -110,10 +110,6 @@ static func currency(sid: StringName, display_name: String, have: String, r: Zon
 		"hint": "Click to open!" if clickable else "", "hint_color": click_color()}
 
 
-static func zone_button(display_name: String) -> Dictionary:
-	return {"title": display_name, "body": "Travel there. Your progress here is kept."}
-
-
 ## Yellow call to action on the last line of a tooltip: "Click to open!" or "Click to buy!".
 const CLICK: Color = Color("ffd93d")
 
