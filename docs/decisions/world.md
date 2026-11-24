@@ -74,3 +74,10 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **What:** `world/walk_mask.gd` checks every pixel of each 4x4 cell and closes the cell on any blocked pixel. The old centre check is gone, since the full check covers it.
 - **Measured:** `tests/run.gd` 6651 checks, 0 failed. `tools/route_probe.tscn` (real walker, Larkmoor pads): main had 5 misses, this change has 3 (pads 5 and 9 now route). The other 3 are the same on main. Time 93 s with the change, 106 s on main, within run noise.
 - Not run in-engine: the play-through of the Westmere and Heronmere routes on a PC.
+
+## 2026-11-24: A pinned time of day moves the calendar clock (dusk pins no longer show daylight on the HUD)
+- **Cause:** `SkyCycle.debug_phase` (tools and screenshots) pinned only the sky, so the HUD clock stayed on the real time. The golden tool also set the calendar to the sun phase, which is a different scale from the clock (a sun phase of 0.73 is not clock 0.73), so its labels did not match the sky.
+- **Fix:** `SkyCycle._pin_clock` sets the calendar to `SkyModel.clock_of_phase(debug_phase)` whenever it is off by more than 0.005 of a day. The sky still takes the exact pin in `_model_time`, and the sky and calendar agree because `phase_of_clock` inverts `clock_of_phase`. Pure rule: `SkyCycle.clock_pin_needed`.
+- **Tools:** `tools/golden_shots.gd` no longer sets the calendar itself.
+- **Checked in the cloud:** the golden shot set prints HUD clocks 16:38 (golden), 18:38 (sunset), 20:13 (dusk) and 22:08 (night) for the matching pins.
+- **Not verified on the PC:** the batch 85 captures themselves.

@@ -39,11 +39,8 @@ func _ready() -> void:
 	for ph: Array in PHASES:
 		if not only.is_empty() and not any_match(String(ph[0]), only):
 			continue
+		# The pin is a sun phase. SkyCycle moves the calendar clock to match it, so the HUD label agrees with the sky.
 		SkyCycle.debug_phase = float(ph[1])
-		# Pin the HUD clock to the same phase so the label matches the sky and does not drift between runs.
-		var cal: GameCalendar = Calendar.core()
-		if cal != null:
-			cal.set_day_fraction(float(ph[1]))
 		await _wait(45)
 		get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/golden_%s.png" % String(ph[0])))
 		print("shot ", ph[0], " clock ", Calendar.now().get("clock_text", "?"))
