@@ -37,6 +37,9 @@ uniform float glint = 0.0;                      // 0..1: sun on the water, spark
 // Ground mist (SkyCycle: thick at dawn, gone by midday). A dithered low haze drifts over the ground.
 uniform float mist = 0.0;                       // 0..1
 uniform vec3 mist_col : source_color = vec3(0.82, 0.9, 0.88);
+// Fallen blossom (SkyCycle: spring outdoors, none under snow). Pale petals gather in soft drifts on the iso grid.
+uniform float blossom = 0.0;                    // 0..1: spring x outdoor
+uniform vec3 blossom_col : source_color = vec3(0.95, 0.72, 0.8);
 uniform float mist_drift = 1.0;                 // 0 under Reduce motion: the haze holds still
 const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);
 varying vec2 wpos;
@@ -70,6 +73,17 @@ vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
 		if (depth < edge + 0.12) {
 			c *= vec3(0.8, 0.87, 0.97);
 		}
+	}
+	return c;
+}
+
+// Fallen petals: a patch mask gathers them in drifts, and a per-texel hash scatters a sparse few inside each drift.
+vec3 fallen_blossom(vec3 c, vec2 wp, float thr) {
+	vec2 iso = vec2(wp.x, wp.y * 2.0);
+	float patch = season_vnoise(iso / 9.0 + 5.0) * 0.7 + season_vnoise(iso / 3.0 + 11.0) * 0.3;
+	float dens = smoothstep(0.45, 0.75, patch) * blossom;
+	if (dens > thr && season_hash(floor(iso) + 0.5) < 0.25) {
+		c = mix(c, blossom_col, 0.9);
 	}
 	return c;
 }
@@ -190,6 +204,9 @@ void fragment() {
 	}
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (wet > 0.001 || splash > 0.01)) {
 		c.rgb = wet_ground(c.rgb, wpos, UV, px, thr, texture(h_tex, UV).r * 255.0);
+	}
+	if (c.a > 0.5 && debug_view == 0 && !is_water && blossom > 0.01) {
+		c.rgb = fallen_blossom(c.rgb, wpos, thr);
 	}
 	if (c.a > 0.5 && debug_view == 0 && mist > 0.01) {
 		// a low haze in soft patches on the iso grid; it lies thicker in the hollows (texel_dip), and the edge is dithered

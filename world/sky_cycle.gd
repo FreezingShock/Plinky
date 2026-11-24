@@ -520,6 +520,10 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var splash01: float = 0.0 if (calm or not rings_mist) else rain01 * outdoor * (1.0 - snow_w)
 		var puddle_col: Color = Color(0.46, 0.64, 0.64).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water, lighter by day; at night, dark water
 		var glint: float = clampf(maxf(sun_h, 0.0) * 2.0, 0.0, 1.0) * outdoor
+		# fallen blossom: the petal colour from the season's petal list, else the paper tone
+		var blossom_col: Color = Color(0.95, 0.72, 0.8)
+		if particles != null and particles.config != null and particles.config.petal_colors.size() > 0:
+			blossom_col = particles.config.petal_colors[0]
 		MeadowLife.wet = wet01
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
@@ -542,6 +546,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("splash", splash01)
 			gm.set_shader_parameter("puddle_col", puddle_col)
 			gm.set_shader_parameter("glint", glint)
+			gm.set_shader_parameter("blossom", _season.weights[0] * outdoor * (1.0 - snow_w))
+			gm.set_shader_parameter("blossom_col", blossom_col)
 		for pm: ShaderMaterial in _pad_mats:
 			pm.set_shader_parameter("sun_px", sun_px)
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
