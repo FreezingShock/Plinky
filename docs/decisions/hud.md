@@ -519,3 +519,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** the other toasts. Relic and achievement toasts already use AsciiBox. The subtitle bar keeps its ink plate with no green frame, on purpose, so captions read over the world.
 - **Check in-engine:** hold Shift and tap Ctrl. The tag should show cream text in the notched green frame, centred over the panel, with no resize of the Momentum panel.
 - **Not run in-engine:** the cloud cannot run Godot.
+
+## 2026-11-24: Upgrades menu uses a tier rail
+- **Decision:** each zone's gift page is a tier rail on the left (one row per tier, its gate in the tier's colour, e.g. "2  Requires 1 Bloom") and the chosen tier's gifts two across on the right. The rail follows the mouse, Up and Down with keyboard and pad, and opens on the frontier tier (the first tier with a gift open and not maxed). Tier colours are palette roles 3, 6, 4, 5, 7, then the currency colour for a sixth tier.
+- **Why:** the old page stacked six tiers in one scrolling list with small cards, which read as cluttered. Nathan picked the rail from three mockups (tier chips, a five-across gallery, the rail), and asked for coloured tiers and "Requires N Bloom(s)" gates.
+- **Not chosen:** the five-across gallery (all 15 gifts at once, too dense) and the tier chips (cramped gate labels at 640 px). A description line under the gifts was dropped at Nathan's request; the shared Tip on each card carries the detail.
+- **Kept:** `UpgradeText.tier_head` keeps its "Unlocks After" wording, which tests read. The rail uses the new `UpgradeText.tier_gate`.
+- **Checked:** `tests/run.gd` passes headless (6839 checks, 0 failed). The gifts capture (`tools/gifts_shot.tscn`) and a tier-switch check ran under Godot 4.7.2 with lavapipe. The panel stays 523 by 262 across tiers and tabs.
+- **Not run in-engine on the PC:** the look on a real GPU, and the feel of the rail hover and focus.
