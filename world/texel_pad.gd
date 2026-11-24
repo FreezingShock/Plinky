@@ -54,11 +54,14 @@ var tier_row: StringName = &""
 ## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
 var flower_row: StringName = &""
 var locked: bool = false
-## Cost hint drawn under a locked row's first pad, so a closed row reads as "needs this stat" before it is pressed.
+## Cost chip under a locked row's first pad: the pad's cost and its stat icon, so a closed row shows what it takes before it is pressed.
 const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
+const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
+const LOCK_GAP: int = 2           # texels between the icon and the cost digits
 const CHIP_CREAM: Color = Color("f6efd9")
-var _lock_hint: String = ""
+var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
+var _lock_icon: Texture2D = null  # the cost stat's 8 px icon, or null when the stat has none
 ## Clover pads get a gold rim (not the grass green Sprout and Clover share), so the two rows read apart on the lake shore.
 const CLOVER_TRIM: Color = Color("f2c14e")
 var _trim: Color = Color(0.0, 0.0, 0.0, 0.0)
@@ -106,9 +109,10 @@ func _ready() -> void:
 		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
 		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
-		var cost_def: StatDef = _sim().stat_defs.get(b.cost_stat) as StatDef
-		if b.row_index == 0 and cost_def != null:
-			_lock_hint = "Needs %s" % cost_def.display_name
+		if b.row_index == 0:
+			# A button's cost depends only on its definition, so the chip text is fixed for the pad's life.
+			_lock_cost = Formulas.button_cost(b).format()
+			_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
 			stat_color = CLOVER_TRIM   # gems and pip take the Clover gold, not the Clover reward green
@@ -394,26 +398,31 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
-	# A locked row's first pad names what it needs, under the plate: native 8 px glyphs on a cream chip with an ink border.
-	# Whole texels throughout (integer width, integer origin), so the text stays crisp at 1x.
-	if shows_lock_chip(locked, _lock_hint):
-		var box: Rect2 = lock_chip_box(_lock_hint)
+	# A locked row's first pad shows its cost and stat icon under the plate: 8 px icon and digits on a cream chip with an ink
+	# border. Whole texels throughout, so the chip stays crisp at 1x.
+	if shows_lock_chip(locked, _lock_cost):
+		var has_icon: bool = _lock_icon != null
+		var box: Rect2 = lock_chip_box(_lock_cost, has_icon)
 		draw_rect(box, ink)                   # ink border
-		draw_rect(box.grow(-1.0), CHIP_CREAM) # cream interior: 10 rows, the 8-row glyphs leave one cream row above and below
-		# Same call shape as the 16 px version that drew, at the font's native size. The baseline sits at THICK + 12, which
-		# puts the glyph rows at THICK + 5 .. THICK + 12, centred in the cream.
-		draw_string(LOCK_FONT, Vector2(box.position.x, float(THICK + 12)), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, box.size.x, LOCK_SIZE, ink)
+		draw_rect(box.grow(-1.0), CHIP_CREAM) # cream interior: 10 rows, the 8-row content leaves one cream row above and below
+		var x: float = box.position.x + 3.0   # the content starts 2 cream texels in from the border
+		if has_icon:
+			draw_texture(_lock_icon, Vector2(x, float(THICK + 5)))
+			x += float(LOCK_ICON + LOCK_GAP)
+		# Baseline at THICK + 12 puts the digit rows at THICK + 5 .. THICK + 12, the same rows as the icon.
+		draw_string(LOCK_FONT, Vector2(x, float(THICK + 12)), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
 
 
-## Whether a pad draws its cost chip: only a locked row's first pad carries a hint, and only when the font loaded.
-static func shows_lock_chip(is_locked: bool, hint: String) -> bool:
-	return is_locked and hint != "" and LOCK_FONT != null
+## Whether a pad draws its cost chip: only a locked row's first pad carries a cost, and only when the font loaded.
+static func shows_lock_chip(is_locked: bool, cost: String) -> bool:
+	return is_locked and cost != "" and LOCK_FONT != null
 
 
-## The cost chip's box in pad-local texels: 12 rows under the plate, 3 texels of pad either side of the text.
-static func lock_chip_box(hint: String) -> Rect2:
-	var tw: float = LOCK_FONT.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
-	return Rect2(-tw * 0.5 - 3.0, float(THICK + 3), tw + 6.0, 12.0)
+## The cost chip's box in pad-local texels: 12 rows under the plate, 3 texels of pad either side of the icon and digits.
+static func lock_chip_box(cost: String, has_icon: bool) -> Rect2:
+	var tw: float = LOCK_FONT.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
+	var content: float = tw + (float(LOCK_ICON + LOCK_GAP) if has_icon else 0.0)
+	return Rect2(-content * 0.5 - 3.0, float(THICK + 3), content + 6.0, 12.0)
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
