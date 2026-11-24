@@ -133,8 +133,6 @@ func _ready() -> void:
 	_wire_menus()
 	hud.move_child(hud.bottom_bar(), -1)
 	hud.move_child(hud.menu_chip(), -1)   # chips stay above every open menu, so they stay clickable
-	hud.bottom_bar().z_index = 1   # menus come to the front of the HUD when shown (MenuAnim.bring_front); the chips stay above them
-	hud.menu_chip().z_index = 1
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
 	add_child(window_frame)

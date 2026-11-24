@@ -17,8 +17,8 @@ var t: float = 0.0   ## wipe progress 0 (hidden) to 1 (shown); a reversed animat
 var _tween: Tween
 
 
-## Keeps a menu above the HUD's own pieces (meters, the relic bar, toasts, the sprint trail). Shown menus move to the end of
-## their parent so they draw last, and the bottom bar and menu chip sit at z 1 (main.gd), so they stay clickable above them.
+## Keeps a menu above the HUD's own pieces (meters, the relic bar, toasts, the sprint trail, and the HUD chips). Shown menus
+## move to the end of their parent so they draw last, so no HUD piece draws over an open menu.
 static func bring_front(p: Control) -> void:
 	var par: Node = p.get_parent()
 	if par != null and p.visible:
