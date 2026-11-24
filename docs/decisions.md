@@ -897,3 +897,7 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Menus:** no tap-to-move at all while a menu is open, since the walker is frozen then and a late walk after the menu closes would surprise.
 - **Chosen over** `gui_get_hovered_control()`, because the hovered control is only updated on mouse motion and can be stale on a click. The check runs on the click's own position.
 - Not verified in-engine: a click on the Relics panel, the HUD and a tooltip, and a click on empty meadow next to a panel edge. PC QA should check all four.
+## Upgrade tabs follow keyboard focus (2026-11-24)
+- **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
+- **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
+- Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
