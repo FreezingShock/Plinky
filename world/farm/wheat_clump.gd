@@ -50,7 +50,7 @@ static func generate(seed_value: int, w: int, h: int, stage: int) -> Dictionary:
 	var band_y: float = h - 5.0
 	var rx: float = w * 0.47 - SIDE_MARGIN
 	var ry: float = maxf(h * 0.16, 2.0)
-	var count: int = int(w * 3.2) if stage == STAGE_GOLD else (int(w * 2.4) if stage == STAGE_BROWN else int(w * 1.4))
+	var count: int = int(w * 4.2) if stage == STAGE_GOLD else (int(w * 2.4) if stage == STAGE_BROWN else int(w * 1.4))
 	var max_h: float = h - 8.0
 	var stalks: Array = []
 	var tries: int = 0
