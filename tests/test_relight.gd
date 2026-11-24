@@ -27,6 +27,22 @@ func run(t: Object) -> void:
 		var gh: Image = Image.load_from_file(dir2 + "ground_h.png")
 		t.ok(g != null and gn != null and gh != null and g.get_size() == gn.get_size() and g.get_size() == gh.get_size(),
 				"%s: ground G-buffer (normal and height) matches the ground art size" % dir2)
+	# Larkmoor's whole map gets the sun: a 9 by 9 grid over the world rect (corners included) must all carry relight data.
+	var lm: Image = Image.load_from_file("res://assets/art/zone1b/larkmoor/ground_n.png")
+	var unlit: int = 0
+	var probes: int = 0
+	if lm != null:
+		for gy: int in 9:
+			for gx: int in 9:
+				var x: int = int(lerpf(290.0, 2750.0, gx / 8.0))
+				var y: int = int(lerpf(70.0, 1630.0, gy / 8.0))
+				var px: Color = lm.get_pixel(x, y)
+				var code: int = int(roundf(px.b * 255.0))
+				probes += 1
+				if px.a <= 0.0 or code < 10 or code >= 110:
+					unlit += 1
+	t.ok(lm != null and probes == 81, "Larkmoor: relight data loads for the map grid")
+	t.eq(unlit, 0, "Larkmoor: every grid point over the map, corners included, is relit by the sun")
 	for dir3: String in SCENES:
 		var gfull: Image = Image.load_from_file(dir3 + "ground.png")
 		var gfg: Image = Image.load_from_file(dir3 + "ground_fg.png")

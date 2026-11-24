@@ -1034,6 +1034,7 @@ Image.fromarray(_fg).save(os.path.join(OUT, 'ground_fg.png'))
 
 # ground G-buffer (same contract as gen_meadow3d.py): normal + material + baked light, and world height
 depth_pass.write_relight_data(os.path.join(OUT, 'ground_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
+depth_pass.fill_unbaked_ground(os.path.join(OUT, 'ground_n.png'))   # the map's edges outside the render mask
 depth_pass.write_height(os.path.join(OUT, 'ground_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(OUT, 'sprites'), exist_ok=True); sprites = []
 # ordinary lanterns share one window around their foot: x from -9 to +9, y from -26 to +2 (measured on every lamp at every
