@@ -79,6 +79,16 @@ func rain(t: float) -> float:
 	return rain_max * smoothstep(rain_threshold, rain_threshold + 0.25, n)
 
 
+## One line on the sky for the clock tooltip: rain or snow falling, or clear with the ground still wet. Pure, so tests
+## can read it. `rain01` is the rain now (0..1), `snow_k` the winter weight (0..1), `wet01` the ground's wetness.
+static func weather_words(rain01: float, snow_k: float, wet01: float) -> String:
+	if rain01 > 0.05:
+		return "Snow is falling." if snow_k > 0.5 else "Rain is falling. Puddles are filling."
+	if wet01 > 0.15:
+		return "Clear now. The puddles are drying."
+	return "Clear skies."
+
+
 ## How wet the ground is, 0..1: the mean rain over the last WET_WINDOW seconds, so puddles fill during a shower and
 ## drain slowly after it (a minute of rain takes about the same time to dry). Pure, sampled the same way as rain().
 const WET_WINDOW: float = 45.0

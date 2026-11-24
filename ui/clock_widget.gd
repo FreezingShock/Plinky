@@ -164,8 +164,9 @@ func _tip_spec() -> Dictionary:
 		event_line = "\n%s: %s" % [_events.name_of(int(n["season"])), _events.blurb_of(int(n["season"]))]
 	return {
 		"title": "%s, %s" % [String(n["season_name"]), String(n["month_name"])],
-		"body": "Day %d of %d. Year %d. %s\n%s, %s.%s" % [int(n["day"]), int(n["days_in_month"]), int(n["year"]),
-				String(n["season_blurb"]), String(n["clock_text"]), "daylight" if bool(n["is_day"]) else "night", event_line],
+		"body": "Day %d of %d. Year %d. %s\n%s, %s.%s\n%s" % [int(n["day"]), int(n["days_in_month"]), int(n["year"]),
+				String(n["season_blurb"]), String(n["clock_text"]), "daylight" if bool(n["is_day"]) else "night", event_line,
+				SkyModel.weather_words(MeadowLife.rain, MeadowLife.season[3], MeadowLife.wet)],
 		"hint": "%s begins in %s." % [next_name, left],
 		"color": _cal.season_color(int(n["season"])),
 	}

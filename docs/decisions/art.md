@@ -216,6 +216,10 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Wetness** is `SkyModel.wetness(t)`: the mean rain over the last 45 s, so puddles fill during a shower and drain after it. Pure, sampled like `rain()`, covered by `tests/test_weather.gd`.
 - **Ground** (`ground_light.gdshader`, `wet_ground`): the soil darkens by up to 60%. Puddles are smooth noise plus a bonus for dips in the height map, against an edge that falls as the ground wets, with a Bayer edge. They take a sky colour, with a palette-4 glint in the sun. Drop rings are a cell grid on the iso plane; at full rain 14% of cells ring at once. Under Reduce motion the rings stop and the puddles stay. Snow cover turns puddles off, winter rain is snow, and the quarry (not seasonal) keeps dry ground.
 - **Rain** (`sky_rain.gd`): drops fall through the camera's window, not the whole field. Larkmoor's field is 2540x1640 texels, so 6000 drops left about 36 streaks on screen. Now 900 drops fill the reference view, scaled by the view's area (0.5 to 2.5x), and the cost does not grow with the map.
+- **Petals and snow** (`season_particles.gd`) had the same bug: they spread over the whole field, so about 3 petals showed on screen. They now use the same camera window and density scale as the rain.
+- **Snow drifts:** in winter, snow lies deeper in the height-map hollows (`texel_dip`, shared with the puddles), with a dithered edge.
+- **Dawn mist:** the dawn part of `SkyModel.mist` (base haze ignored) lays a dithered low haze over the ground, drifting slowly, and holds still under Reduce motion.
+- **Clock tooltip:** one line from `SkyModel.weather_words` (rain, snow, or clear with the ground drying). Pure, tested.
 - **Why:** rain barely read on screen, and wet ground is the cue that says it is raining.
 - **Verified in the cloud:** Godot 4.7.2 headless under xvfb with lavapipe. Tests 5346 checks, 0 failed. Shaders compile, and the screenshot set (tools/weather_shots.tscn) was checked by eye.
 - **Not verified on the PC:** how puddles and rings look at zoom 1 and 4, the feel of the drop speed, and the night puddles against the moonlit path.

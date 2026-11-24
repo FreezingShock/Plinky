@@ -42,6 +42,12 @@ func run(t: Object) -> void:
 		t.ok(just > 0.1, "the ground is still wet just after the rain stops (%.2f)" % just)
 		t.ok(later < just or later < 0.01, "the ground dries after the rain stops (%.2f then %.2f)" % [just, later])
 
+	# The clock tooltip's weather line.
+	t.ok(SkyModel.weather_words(0.0, 0.0, 0.0) == "Clear skies.", "clear weather reads as clear skies")
+	t.ok(SkyModel.weather_words(0.5, 0.0, 0.5).begins_with("Rain"), "rain reads as rain")
+	t.ok(SkyModel.weather_words(0.5, 1.0, 0.5).begins_with("Snow"), "winter rain reads as snow")
+	t.ok(SkyModel.weather_words(0.0, 0.0, 0.6).contains("drying"), "clear with wet ground says it is drying")
+
 	# No rain configured: nothing gets wet.
 	m.rain_max = 0.0
 	t.ok(m.wetness(500.0) == 0.0, "no rain at all means dry ground")

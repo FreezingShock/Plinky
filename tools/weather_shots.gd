@@ -53,6 +53,8 @@ func _ready() -> void:
 	plan.append_array([
 		["night_rain", 1, 0.6, 0.0, false],
 		["spring_rain_calm", 0, 0.6, 0.5, true],
+		["spring_dawn", 0, 0.0, 0.25],
+		["autumn_dawn", 2, 0.0, 0.25],
 	])
 	for p: Array in plan:
 		SkyCycle.debug_season = int(p[1])

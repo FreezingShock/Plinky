@@ -11,6 +11,8 @@ const IDX_LIGHT: int = 4
 const IDX_ACCENT: int = 5
 const IDX_EARTH: int = 6
 const MAX_PER_KIND: int = 700
+const REF_VIEW_AREA: float = 332.0 * 192.0   # the view the configured counts are tuned for, in texels
+const MAX_DENSITY: float = 2.5
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var area: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)
@@ -46,8 +48,9 @@ func _total() -> float:
 	return s
 
 
-## How many particles of `kind` (0 petal, 1 sun mote, 2 leaf, 3 snow) are in the air at the moment.
-func count_for(kind: int) -> int:
+## How many particles of `kind` (0 petal, 1 sun mote, 2 leaf, 3 snow) are in the air at the moment. `density` scales
+## the configured count, which is for the reference view (the window the particles fall through, see _draw).
+func count_for(kind: int, density: float = 1.0) -> int:
 	if config == null or kind >= config.particle_counts.size():
 		return 0
 	var k: float = weights[kind] * boost[kind]
@@ -57,8 +60,7 @@ func count_for(kind: int) -> int:
 		k *= 1.0 - MeadowLife.night            # motes are a daytime thing
 	elif kind == 0 or kind == 2:
 		k *= 1.0 - 0.7 * MeadowLife.rain       # wet petals and leaves stay down
-	var area_k: float = minf(area.get_area() / 430000.0, 2.0)
-	var n: int = int(ceilf(float(config.particle_counts[kind]) * k * area_k))
+	var n: int = int(ceilf(float(config.particle_counts[kind]) * k * density))
 	return mini(GraphicsQuality.life_scaled(n), MAX_PER_KIND)
 
 
@@ -66,33 +68,34 @@ func _draw() -> void:
 	if config == null or MeadowLife.reduce_motion:
 		return
 	var tb: float = float(maxi(_step, 0)) * STEP
+	# The particles fall through the part of the field on screen (a window that follows the camera), so a zoomed-in
+	# camera shows the same number of petals and snowflakes as a zoomed-out one, and a bigger map costs nothing extra.
 	var view: Rect2 = GraphicsQuality.visible_local_rect(self)
-	var culling: bool = view.has_area()
+	var field: Rect2 = view if view.has_area() else area
+	var density: float = clampf(field.get_area() / REF_VIEW_AREA, 0.5, MAX_DENSITY)
 	for kind in 4:
-		var n: int = count_for(kind)
+		var n: int = count_for(kind, density)
 		for i in n:
-			_draw_one(kind, i, tb, view, culling)
+			_draw_one(kind, i, tb, field)
 
 
-func _draw_one(kind: int, i: int, tb: float, view: Rect2, culling: bool) -> void:
+func _draw_one(kind: int, i: int, tb: float, field: Rect2) -> void:
 	var seed_i: int = i * 13 + kind * 977 + 5
 	var ph: float = MeadowLife.hash01(seed_i)
 	var ph2: float = MeadowLife.hash01(seed_i + 3)
-	var h: float = area.size.y
+	var h: float = field.size.y
 	var speed: float
 	match kind:
 		0: speed = config.petal_speed * (0.7 + 0.6 * ph2)
 		1: speed = -4.0 * (0.5 + ph2)                          # motes drift up
 		2: speed = config.leaf_speed * (0.7 + 0.6 * ph2)
 		_: speed = config.snow_speed * (0.6 + 0.8 * ph2) * (1.0 + 0.8 * snow_precip)
-	var y: float = area.position.y + fposmod(ph * h + tb * speed, h)
+	var y: float = field.position.y + fposmod(ph * h + tb * speed, h)
 	var sway_amp: float = 4.0 if kind == 3 else (14.0 if kind != 1 else 6.0)
-	var drift: float = (0.25 + 0.8 * wind) * (y - area.position.y) * (0.3 if kind == 3 else 0.5)
-	var x: float = area.position.x + fposmod(ph2 * area.size.x + drift + sin(tb * (0.8 + ph) + ph * 6.28) * sway_amp, area.size.x)
+	var drift: float = (0.25 + 0.8 * wind) * (y - field.position.y) * (0.3 if kind == 3 else 0.5)
+	var x: float = field.position.x + fposmod(ph2 * field.size.x + drift + sin(tb * (0.8 + ph) + ph * 6.28) * sway_amp, field.size.x)
 	var px: int = int(floorf(x))
 	var py: int = int(floorf(y))
-	if culling and not view.has_point(Vector2(px, py)):
-		return
 	match kind:
 		0:
 			var col: Color = config.petal_colors[i % config.petal_colors.size()] if config.petal_colors.size() > 0 else palette[IDX_PAPER]

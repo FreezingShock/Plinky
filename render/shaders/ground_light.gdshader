@@ -32,6 +32,10 @@ uniform float wet = 0.0;                        // 0..1, a lagged rain: a shower
 uniform float splash = 0.0;                     // 0..1 rain landing now: how many ground cells ring at once
 uniform vec3 puddle_col : source_color = vec3(0.2, 0.36, 0.36);
 uniform float glint = 0.0;                      // 0..1: sun on the water, sparkle and sky sheen
+// Ground mist (SkyCycle: thick at dawn, gone by midday). A dithered low haze drifts over the ground.
+uniform float mist = 0.0;                       // 0..1
+uniform vec3 mist_col : source_color = vec3(0.82, 0.9, 0.88);
+uniform float mist_drift = 1.0;                 // 0 under Reduce motion: the haze holds still
 const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);
 varying vec2 wpos;
 
@@ -45,6 +49,24 @@ float bayer4(ivec2 p) {
 // wets. Puddles are smooth noise plus a bonus for dips in the height map, with a Bayer edge, so they sit low and
 // grow with the shower. Drops land as small rings (cells on the iso grid, each with its own drop point and phase).
 // Under snow cover there is no open water: the wet and the puddles fade out.
+// How far this texel sits below its ring of texels four steps away: 0 on flat ground, 1 in a clear hollow.
+float texel_dip(vec2 uv, vec2 px, float h0) {
+	float ring_h = (texture(h_tex, uv + vec2(4.0, 0.0) * px).r + texture(h_tex, uv - vec2(4.0, 0.0) * px).r
+			+ texture(h_tex, uv + vec2(0.0, 4.0) * px).r + texture(h_tex, uv - vec2(0.0, 4.0) * px).r) * 0.25 * 255.0;
+	return clamp((ring_h - h0 - 0.5) / 2.0, 0.0, 1.0);
+}
+
+// Winter drifts: snow lies deeper in the hollows, with a dithered edge, so the low ground goes white first.
+vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
+	float dip = texel_dip(uv, px, h0);
+	float depth = smoothstep(0.15, 0.6, dip) * season_snow;
+	if (depth > thr * 0.5 + 0.12) {
+		float l = dot(c, vec3(0.299, 0.587, 0.114));
+		c = clamp(vec3(0.86, 0.92, 1.0) * (0.8 + 0.25 * l), 0.0, 1.0);
+	}
+	return c;
+}
+
 vec3 wet_ground(vec3 c, vec2 wp, vec2 uv, vec2 px, float thr, float h0) {
 	float open_k = 1.0 - smoothstep(0.1, 0.5, season_snow);
 	float w = wet * open_k;
@@ -52,10 +74,8 @@ vec3 wet_ground(vec3 c, vec2 wp, vec2 uv, vec2 px, float thr, float h0) {
 		c = mix(c, c * vec3(0.88, 0.92, 0.95), 0.6 * w);
 		vec2 iso = vec2(wp.x, wp.y * 2.0);
 		float n = season_vnoise(iso / 9.0 + 31.0) * 0.7 + season_vnoise(iso / 3.0 + 13.0) * 0.3;
-		// the height of the texels four steps away: a texel lower than its surroundings is a dip that holds water
-		float ring_h = (texture(h_tex, uv + vec2(4.0, 0.0) * px).r + texture(h_tex, uv - vec2(4.0, 0.0) * px).r
-				+ texture(h_tex, uv + vec2(0.0, 4.0) * px).r + texture(h_tex, uv - vec2(0.0, 4.0) * px).r) * 0.25 * 255.0;
-		float dip = clamp((ring_h - h0 - 0.5) / 2.0, 0.0, 1.0);
+		// a dip holds water (texel_dip)
+		float dip = texel_dip(uv, px, h0);
 		float score = n + 0.25 * dip;
 		float edge = 0.9 - 0.25 * w;
 		float cover = smoothstep(edge - 0.04, edge + 0.04, score);   // the Bayer threshold makes the edge dither
@@ -155,8 +175,21 @@ void fragment() {
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
 	}
+	if (c.a > 0.5 && debug_view == 0 && !is_water && season_snow > 0.2) {
+		c.rgb = snow_drifts(c.rgb, UV, px, thr, texture(h_tex, UV).r * 255.0);
+	}
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (wet > 0.001 || splash > 0.01)) {
 		c.rgb = wet_ground(c.rgb, wpos, UV, px, thr, texture(h_tex, UV).r * 255.0);
+	}
+	if (c.a > 0.5 && debug_view == 0 && mist > 0.01) {
+		// a low haze in soft patches on the iso grid; it lies thicker in the hollows (texel_dip), and the edge is dithered
+		vec2 iso = vec2(wpos.x, wpos.y * 2.0);
+		float m = season_vnoise(iso / 16.0 + vec2(TIME * 0.6, 0.0) * mist_drift) * 0.7
+				+ season_vnoise(iso / 6.0 - vec2(TIME * 0.9, 0.0) * mist_drift) * 0.3;
+		float dens = smoothstep(0.3, 0.75, m) * mist * (0.55 + 0.45 * texel_dip(UV, px, texture(h_tex, UV).r * 255.0));
+		if (dens > thr) {
+			c.rgb = mix(c.rgb, mist_col, 0.45);
+		}
 	}
 	// depth fog: the far (top) rows fade toward the haze colour, dithered
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;
