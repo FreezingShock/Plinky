@@ -60,6 +60,22 @@ static func format(b: BigNum) -> String:
 	return "-" + s if b.m < 0.0 else s
 
 
+## The whole amount with thousands commas ("858,100,000,000,000"), for tooltips. Fractions and anything past 10^15 fall
+## back to the short form, so it never shows digits the number does not have.
+static func exact(b: BigNum) -> String:
+	if b.m == 0.0:
+		return "0"
+	if b.e < 0 or b.e > 14:
+		return format(b)
+	var digits: String = str(roundi(absf(b.m) * pow(10.0, b.e)))
+	var out: String = ""
+	for i in digits.length():
+		if i > 0 and (digits.length() - i) % 3 == 0:
+			out += ","
+		out += digits[i]
+	return "-" + out if b.m < 0.0 else out
+
+
 static func _trim(v: float, decimals: int) -> String:
 	var s: String = ("%." + str(decimals) + "f") % v
 	if s.contains("."):
