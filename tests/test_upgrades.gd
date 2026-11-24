@@ -68,7 +68,6 @@ func run(t: Object) -> void:
 	for a: AttributeDef in gated:
 		var want: String = "Unlocks At %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
 		t.eq(UpgradeText.tier_head(sim, a), want, "%s is headed by its Rebirth gate" % a.id)
-	t.eq(UpgradeText.tab_name(sim, &"prestige"), "Prestige", "the Prestige tab")
-	t.eq(UpgradeText.tab_name(sim, &"rp"), "Rebirth Perks", "the Rebirth Perks tab")
-	for cur: StringName in UpgradeText.currencies(sim):
+	for cur: StringName in UpgradeText.tab_currencies(sim):
 		t.ok(UpgradeText.tab_name(sim, cur) != "", "%s has a tab name" % cur)
+	t.ok(not UpgradeText.tab_currencies(sim).has(&"prestige") and not UpgradeText.tab_currencies(sim).has(&"rp"), "Prestige and Rebirth Perks have no tab")

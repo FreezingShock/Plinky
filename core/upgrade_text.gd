@@ -52,6 +52,15 @@ static func group_head(sim: Sim, currency: StringName) -> String:
 	return r.menu_title.to_upper() if r != null and r.menu_title != "" else String(currency).to_upper()
 
 
+## One tab per zone reset's gift group, in reset order. Prestige and Rebirth Perks are no longer tabs (removed with the
+## Rebirth ladder, #209), so their upgrades have no page unless a reset pays in that currency.
+static func tab_currencies(sim: Sim) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for r: ZoneResetDef in sim.resets_ordered():
+		out.append(r.currency)
+	return out
+
+
 ## Every currency the Upgrades header and menu know, in menu order.
 static func currencies(sim: Sim) -> Array[StringName]:
 	var out: Array[StringName] = [&"prestige", &"rp"]

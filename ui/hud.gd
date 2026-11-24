@@ -449,7 +449,7 @@ func _on_upgrades_shown() -> void:
 func _fill_upgrades() -> void:
 	if not _attr_rows.is_empty():
 		return
-	_upg_order = UpgradeText.currencies(sim)
+	_upg_order = UpgradeText.tab_currencies(sim)
 	for cur: StringName in _upg_order:
 		var page := VBoxContainer.new()
 		page.add_theme_constant_override("separation", 4)
