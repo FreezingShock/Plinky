@@ -6,8 +6,10 @@ extends RefCounted
 
 const DEADZONE: float = 0.3
 
-## True while any menu is open. The walker stands still then, so the stick and arrows drive menu focus instead.
+## True while any menu is open. Only WASD walks then; arrows, d-pad and the stick drive menu focus instead.
 static var menu_open: bool = false
+## True while Settings waits for a key to rebind. Those keys belong to the rebind, so the walker ignores them.
+static var key_capture: bool = false
 static var _ready: bool = false
 
 
@@ -61,12 +63,24 @@ static func should_release_focus(menu_just_closed: bool, has_focus_owner: bool) 
 	return menu_just_closed and has_focus_owner
 
 
-## Walk input, screen space, length at most 1 (stick tilt gives partial speed). Zero while a menu is open.
+## Walk input, screen space, length at most 1 (stick tilt gives partial speed). While a menu is open only WASD
+## walks, so the arrows, d-pad and stick keep moving menu focus (Godot's ui_* actions, which WASD is not part of).
 static func move_vector() -> Vector2:
 	ensure()
 	if menu_open:
-		return Vector2.ZERO
+		return menu_walk_vector()
 	return Input.get_vector(&"plinky_left", &"plinky_right", &"plinky_up", &"plinky_down")
+
+
+## WASD as a walk vector, read from the physical keys like the plinky_* actions. Used while a menu is open.
+static func menu_walk_vector() -> Vector2:
+	return walk_from_keys(Input.is_physical_key_pressed(KEY_A), Input.is_physical_key_pressed(KEY_D),
+			Input.is_physical_key_pressed(KEY_W), Input.is_physical_key_pressed(KEY_S))
+
+
+## Four held keys to a walk vector: opposite keys cancel, a diagonal is scaled to length 1.
+static func walk_from_keys(left: bool, right: bool, up: bool, down: bool) -> Vector2:
+	return Vector2(int(right) - int(left), int(down) - int(up)).limit_length(1.0)
 
 
 ## Right-stick camera pan, length at most 1.
