@@ -1,0 +1,1 @@
+- Clicking the Core Shards row opens the Nucleus Gifts tab from any zone. From the meadow it used to land on the Bloom tab.
