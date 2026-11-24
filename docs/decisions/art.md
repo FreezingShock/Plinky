@@ -401,6 +401,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests pass; the fog halo is tested in `tests/test_weather.gd`.
 - **Not verified on the PC:** how far the spread reads at dawn in a real mist.
 
+## 2026-11-24: Ruin walk block and shadow size
+- **What:** the walk block for a ruin is 12.5 texels, so the walker's front stop is outside all of its stone. Rubble sits within 8.5 texels of the foot. Ruins cast from one fixed shadow size at strength 0.6, not from their sprite size.
+- **Why:** PC QA found the walker's legs covered by stone on 9 of 11 ruins, and shadows that ranged from almost none to stronger than trees, because each shadow followed its sprite's size.
+- **Not verified in-engine:** the frames from PC QA batch 124 were not re-checked after this change. Walk reach to all 32 pads and the gate passes in the generator.
 ## Farm wheat density restored to mockup carpet (2026-11-24)
 - In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
 - Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
