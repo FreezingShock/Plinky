@@ -94,8 +94,9 @@ static func unit(a: AttributeDef) -> String:
 static func lock_text(a: AttributeDef, sim: Sim = null) -> String:
 	if a.unlock_resets > 0:
 		var r: ZoneResetDef = sim.reset_for_currency(a.currency) if sim != null else null
-		var nm: String = r.display_name if r != null else "resets"
-		return "Unlocks after %d %s" % [a.unlock_resets, nm + ("s" if a.unlock_resets != 1 and r != null else "")]
+		if r == null:
+			return "Unlocks after %d resets" % a.unlock_resets
+		return "Unlocks after %d %s %s" % [a.unlock_resets, r.display_name, "reset" if a.unlock_resets == 1 else "resets"]
 	return "Unlocks at %d Rebirths" % a.unlock_rebirths
 
 

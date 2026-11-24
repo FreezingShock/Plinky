@@ -25,7 +25,7 @@ func run(t: Object) -> void:
 	sim.stats[&"seeds"] = BigNum.from_float(500.0)
 	t.ok(sim.attr_unlocked(&"bloom_head_start"), "the first gifts are open from the start")
 	t.ok(not sim.attr_unlocked(pods.id) and not sim.buy_attribute(pods.id), "Seed Pods wait for the first Bloom")
-	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom" % pods.unlock_resets, "lock text names the reset")
+	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom reset" % pods.unlock_resets, "lock text names the reset")
 	sim.reset_counts[&"bloom"] = wild.unlock_resets
 	t.ok(sim.attr_unlocked(wild.id) and sim.buy_attribute(wild.id), "gifts unlock by Blooms done")
 	sim.reset_counts[&"bloom"] = 0
