@@ -258,9 +258,19 @@ def make_bush(rng):
     return f, (11, 11), 13, 6.5
 def make_rock(rng, big=True):
     seed = rng.randint(0, 99); rx, ry, rz = (rng.uniform(6.5, 9), rng.uniform(5.5, 8), rng.uniform(4.5, 7)) if big else (rng.uniform(3, 4.5), rng.uniform(2.5, 4), rng.uniform(2, 3))
+    # chunky facets: a few planes cut the stone so each flat face takes its own light step. Their own rng, so the
+    # placement sequence of every other prop is unchanged.
+    frng = random.Random(seed * 7919 + 17)
+    facets = []
+    for _ in range(frng.randint(3, 5)):
+        a_ = frng.uniform(0, 6.28); e_ = frng.uniform(0.1, 0.65)          # elevation: 0 = side face, 1 = top
+        facets.append((math.cos(a_) * math.cos(e_), math.sin(a_) * math.cos(e_), math.sin(e_), min(rx, ry, rz) * frng.uniform(1.0, 1.2)))
     def f(x, y, z):
         d = sdf_ell(x, y, z, (0, 0, rz * .55), (rx, ry, rz))
         d = d + (2.4 if big else 1.0) * (vn3(x * .26, y * .26, z * .26, seed) - .5) * 2 + .8 * (vn3(x * .7, y * .7, z * .7, seed + 5) - .5)
+        zc = z - rz * .55
+        for (nx_, ny_, nz_, off) in facets:
+            d = np.maximum(d, nx_ * x + ny_ * y + nz_ * zc - off)
         return d, np.full(x.shape, M_ROCK, np.int16)
     return f, (rx + 3, ry + 3), rz * 1.6 + 2, max(rx, ry) + 1
 def make_crystals(rng):
