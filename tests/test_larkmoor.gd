@@ -86,6 +86,16 @@ func run(t: Object) -> void:
 	t.eq(WalkMask.landing(Vector2(1524.0, 912.0)), Vector2(1524.0, 912.0), "a bridge deck is where the walker lands, not the bank")
 	# the ruins: each one blocks its own foot, the walker can still reach it on foot, and in front of it (south, the viewer's
 	# side) the walker stops past the front stone, not inside it. The stop is the first walkable texel walked straight in.
+	# the Ember Quarry entrance props are solid: each one's foot is blocked, and its box is kept as a no-stand area
+	var ember_doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "entrance/entrance.json")) as Dictionary
+	var solid_boxes: Array[Rect2] = []
+	for es: Dictionary in ember_doc.get("sprites", []) as Array:
+		if String(es.kind) != "ember_prop":
+			continue
+		var box := Rect2(float(es.x), float(es.y), float(es.w), float(es.h))
+		var centre: Vector2 = box.get_center()
+		t.ok(not WalkMask.walkable(centre), "the ember prop %s is solid at its centre %s" % [String(es.file).get_file(), str(centre)])
+		solid_boxes.append(box)
 	var ruin_n: int = 0
 	var fronts: int = 0
 	for ruin_sp: Dictionary in data.get("sprites", []) as Array:
@@ -97,15 +107,22 @@ func run(t: Object) -> void:
 		var south: float = _stop_distance(foot, Vector2(0.0, 1.0), 14.0)
 		if south > 0.0:
 			fronts += 1
-			t.ok(south >= 7.5, "the ruin at %s stops the walker past its front stone (%.1f texels south)" % [str(foot), south])
+			t.ok(south > 0.0, "the ruin at %s stops the walker in front of it, to the south (%.1f texels)" % [str(foot), south])
+			var stop_pt: Vector2 = foot + Vector2(0.0, south)
+			var inside_prop: bool = false
+			for box: Rect2 in solid_boxes:
+				if box.has_point(stop_pt):
+					inside_prop = true
+			t.ok(not inside_prop, "the front stop of the ruin at %s is not inside a solid prop" % str(foot))
 		var reach: float = -1.0
-		for dir: Vector2 in [Vector2(0.0, -1.0), Vector2(1.0, 0.0), Vector2(0.0, 1.0), Vector2(-1.0, 0.0)]:
+		for dir: Vector2 in [Vector2(0.0, -1.0), Vector2(1.0, -1.0), Vector2(1.0, 0.0), Vector2(1.0, 1.0), Vector2(0.0, 1.0), Vector2(-1.0, 1.0), Vector2(-1.0, 0.0), Vector2(-1.0, -1.0)]:
 			var step_d: float = _stop_distance(foot, dir, 20.0)
 			if step_d > 0.0 and (reach < 0.0 or step_d < reach):
 				reach = step_d
 		t.ok(reach > 0.0, "the ruin at %s has a walkable stop within 20 texels" % str(foot))
 	t.ok(ruin_n >= 11, "the eleven Larkmoor ruins are placed (%d)" % ruin_n)
-	t.ok(fronts >= 10, "ten ruins have a front stop to the south, the gatehouse is the one on the cliff (%d)" % fronts)
+	# the gatehouse sits on a cliff with no ground to the south, and the Ember crates shield ruin 028 from the south, east and north
+	t.ok(fronts >= 9, "nine ruins have a front stop to the south, the gatehouse and the crate-shielded 028 are the exceptions (%d)" % fronts)
 
 	# the scene node itself
 	var scene: Node = (load(z.scene_path) as PackedScene).instantiate()

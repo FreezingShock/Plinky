@@ -405,3 +405,8 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
 - Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
 - FarmWheat caches each clump's global centre once instead of recomputing it per frame.
+
+## 2026-11-24: Ember entrance props are solid on the walk mask
+- The walker could stand inside the Ember Quarry crates, where the prop sorts in front and hides him. The mask now zeroes each solid ember prop's drawn box (entrance/entrance.json, kind ember_prop), since a footprint circle left the walker hidden.
+- Tiny flat decor stays walkable (none in the file today). Tests check every solid prop's centre is blocked and no ruin front stop sits in a prop box.
+- Side effect: ruin 028 has no straight approach from N, E, S or W now. It is reached on a diagonal, and the crates shield it. Left for Nathan to decide whether to move crates_2.
