@@ -92,6 +92,15 @@ dpath = np.minimum.reduce([pl_dist(gu, gv, pp) for pp in PATHS_UV])
 HALF = dict(road=12.0, lane=7.5, trail=4.0)
 dtier = {t: np.minimum.reduce([pl_dist(gu, gv, pp) for pp, tr in zip(PATHS_UV, LAY.PATH_TIER) if tr == t]) for t in HALF}
 dedge = np.minimum.reduce([dtier[t] - HALF[t] for t in HALF])
+# the lighthouse grove trail (the last path, a trail) runs through a canopy, so it gets its own open corridor: no tree crown,
+# flower or tuft may come within GROVE_CLEAR of its line (or of the plaza at the lighthouse foot). dgrove is that distance,
+# and the plaza is a small widened disc of earth at the foot (FOOT_R), so the walker can stop there.
+assert LAY.PATH_TIER[-1] == 'trail'
+GROVE_UV = PATHS_UV[len(LAY.PATHS) - 1]
+LH_UV = s2uv(*[lm['at'] for lm in LAY.LANDMARKS if lm['id'] == 'lighthouse'][0])
+FOOT_R = 7.0
+GROVE_CLEAR = 12.0
+dgrove = np.minimum(pl_dist(gu, gv, GROVE_UV), np.hypot(gu - LH_UV[0], gv - LH_UV[1]) - FOOT_R + HALF['trail'])
 dgate = np.minimum(np.hypot(gu - GATE[0], gv - GATE[1]), np.hypot(gu - GATE2[0], gv - GATE2[1]))
 log('terrain fields')
 thb = math.atan2(-1, -1)
@@ -559,6 +568,7 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, pa
         if shore and float(samp(DW, uu, vv)) < 3.5: return False
     if float(samp(WD, u, v)) > -.5: return False
     if path and float(samp(dedge, u, v)) < r + path_clear: return False
+    if path and float(samp(dgrove, u, v)) < r + GROVE_CLEAR: return False   # the grove trail's corridor stays open through the canopy
     if min(np.hypot(u - GATE[0], v - GATE[1]), np.hypot(u - GATE2[0], v - GATE2[1])) < r + 26: return False
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
@@ -724,7 +734,7 @@ log('trees/rocks placed', len(placed))
 def cluster(kind, cu_, cv_, spread, n, **kw):
     for _ in range(n):
         u, v = cu_ + prng.gauss(0, spread), cv_ + prng.gauss(0, spread)
-        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > (13.5 if kind == 'flower' else 5.5) and float(terrain_h(u, v)) < 10:
+        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > (13.5 if kind == 'flower' else 5.5) and float(samp(dgrove, u, v)) > GROVE_CLEAR and float(terrain_h(u, v)) < 10:
             put(kind, u, v, prng.uniform(.85, 1.2) * (1.45 if kind == 'flower' else 1.0), count=False, sid=1)
 for _ in range(150 if not FAST else 8): cluster('tuft', prng.uniform(60, 760), prng.uniform(60, 760), 7, prng.randint(3, 7))
 for _ in range(100 if not FAST else 6): cluster('flower', prng.uniform(60, 760), prng.uniform(60, 760), 6, prng.randint(5, 10))
@@ -775,7 +785,7 @@ for pp in PATHS_UV:
                 off = prng.uniform(VERGE_BAND[0], VERGE_BAND[1] + 12.0)   # centre-line offset: the widest path's half-width (12) is added to the band; dedge filters the rest
                 u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
                 if vn2(u / 9.0, v / 9.0, 53) < .5: continue   # drifts, not a ring
-                if VERGE_BAND[0] <= float(samp(dedge, u, v)) <= VERGE_BAND[1] and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                if VERGE_BAND[0] <= float(samp(dedge, u, v)) <= VERGE_BAND[1] and float(samp(dgrove, u, v)) > GROVE_CLEAR and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
                     put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1)
 log('path drifts placed')
 
@@ -810,6 +820,8 @@ dtr = {t: samp(dtier[t], FU, FV) for t in HALF}
 on_path = {t: (dtr[t] < HALF[t] * edge_noise) & (rockness < .85) for t in HALF}
 mat[on_path['road'] | on_path['lane']] = T_PATH
 mat[on_path['trail'] & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
+# the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
+mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
