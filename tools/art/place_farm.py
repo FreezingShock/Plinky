@@ -258,7 +258,8 @@ EDGE_SIZES = [(24, 22), (26, 24)]       # smaller clumps along a field's edge, s
 EDGE_BAND = 5.0                         # layout texels: clumps whose foot is this close to the edge use EDGE_SIZES
 EDGE_INSET = 2.0                        # layout texels: a clump's foot stays this far inside the field's edge
 GRID_X = 10.0                           # layout texels between clump centres across a row
-GRID_Y = 8.0                            # layout texels between rows (the placer keeps clumps 9 x 6 apart at least)
+GRID_Y = 6.0                            # layout texels between rows; clumps still keep WHEAT_DX or WHEAT_DY apart
+WHEAT_RADIUS = 12                       # layout texels: how far a clump may slide from its grid point to find room
 
 
 def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
@@ -280,7 +281,7 @@ def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
                 sizes = EDGE_SIZES if edge > -EDGE_BAND else CLUMP_SIZES
                 w, h = sizes[rng.randrange(len(sizes))]
                 stage = 2 if f.tone(gx, gy) > 0.38 and rng.random() < 0.7 else 1
-                at = placer.place(w, h, gx, gy, radius=5, tag='wheat')
+                at = placer.place(w, h, gx, gy, radius=WHEAT_RADIUS, tag="wheat")
                 if at is None:
                     continue
                 x, y = at
