@@ -142,3 +142,26 @@ func run(t: Object) -> void:
 		tail_solid = tail_solid and PopupStyle.shows_now(0.85, age, false)
 	t.ok(tail_on > 0 and tail_off > 0, "the last 30% blinks off and on in whole steps")
 	t.ok(tail_solid, "Reduce Flashing keeps the popup solid to its end, with no blink")
+
+	# --- pad captions stay readable on dark rock
+	var rock: Color = Color("1a1c22")
+	t.ok(_contrast(StatStyle.COLORS[&"ironore"] as Color, rock) < 4.5, "the old Iron Ore caption colour was under 4.5:1 on rock")
+	var worst: float = 99.0
+	for id: StringName in StatStyle.COLORS.keys():
+		worst = minf(worst, _contrast(PopupStyle.caption_color(StatStyle.COLORS[id] as Color), rock))
+	t.ok(worst >= 4.5, "every stat caption keeps 4.5:1 contrast on dark rock (worst %.2f)" % worst)
+
+
+## WCAG relative contrast between two colours, for the caption test.
+static func _contrast(a: Color, b: Color) -> float:
+	var la: float = _lum(a)
+	var lb: float = _lum(b)
+	return (maxf(la, lb) + 0.05) / (minf(la, lb) + 0.05)
+
+
+static func _lum(c: Color) -> float:
+	return 0.2126 * _lin(c.r) + 0.7152 * _lin(c.g) + 0.0722 * _lin(c.b)
+
+
+static func _lin(v: float) -> float:
+	return v / 12.92 if v <= 0.03928 else pow((v + 0.055) / 1.055, 2.4)
