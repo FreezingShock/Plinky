@@ -39,6 +39,22 @@ func run(t: Object) -> void:
 			t.ok(int(nb[k]) >= 0 and int(nb[k]) < 7, "tile %d %s is a real tile" % [i, k])
 	for k: StringName in kinds:
 		t.ok(GalleryMenu.COLORS.has(k) and g.tile(k).accent.a > 0.0, "the %s tile has its own section colour" % k)
+
+	# Layout: Play, then Info, then Settings alone; the grid is as wide as its four columns, so no strip is left over.
+	var order: Array = []
+	for e: Array in GalleryMenu.ENTRIES:
+		order.append(e[0])
+	t.eq(order.slice(0, 4), [&"upgrades", &"relics", &"attributes", &"travel"], "Play tiles come first")
+	t.eq(order.slice(4, 8), [&"stats", &"history", &"ledger", &"log"], "Info tiles come next")
+	t.eq(order[8], &"settings", "Settings comes last")
+	var grouped: int = 0
+	for n: int in GalleryMenu.GROUPS:
+		grouped += n
+	t.eq(grouped, GalleryMenu.ENTRIES.size(), "every tile is in a row group")
+	t.ok((g.tile(&"settings").size_flags_horizontal & Control.SIZE_EXPAND) != 0, "the lone Settings tile stretches to the full width")
+	t.ok((g.tile(&"upgrades").size_flags_horizontal & Control.SIZE_EXPAND) == 0, "the grid tiles keep their own width")
+	var n8: Dictionary = GalleryMenu.neighbors(9, GalleryMenu.COLUMNS, 8)
+	t.ok(n8["up"] == 4 and n8["down"] == 0, "Settings: up goes to the Info row, down wraps to the first Play tile")
 	g.free()
 
 	t.eq(DisplayPanel.title_case("Mute all"), "Mute All", "settings labels display in Title Case")

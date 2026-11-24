@@ -9,6 +9,9 @@ static var ui_theme: Theme  # set by fx_bus from the Main control's theme
 ## Set by the HUD: true if a screen point is under an open menu panel. The overlay layer sits above the HUD, so world
 ## popups ("+93.3") would draw over menus; they are hidden there instead. Popups the HUD spawns itself are never hidden.
 static var under_menu: Callable = Callable()
+## Set by the HUD: screen rectangles (Array[Rect2]) that world popups slide clear of, the zone panel while it is up.
+## A popup with no room beside the rectangle is skipped for that frame, not cut off.
+static var keep_clear: Callable = Callable()
 
 static func _covered(parent: Node, pos: Vector2) -> bool:
 	return parent is CanvasLayer and under_menu.is_valid() and bool(under_menu.call(pos))
