@@ -1,0 +1,1 @@
+HUD stat strip is snugger: the value column is sized to the widest value shown and each gain label only to its own text (only the rows that have a gain reserve room for one), both only grow so ticking numbers never resize it, and the panel and row padding are smaller.
