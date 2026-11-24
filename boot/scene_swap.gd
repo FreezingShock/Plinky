@@ -67,12 +67,15 @@ func _ready() -> void:
 	add_child(_rect)
 
 
-## Captures the current frame, swaps to `next` under it, then reveals. A failed capture just swaps.
+## Captures the current frame, swaps to `next` under it, then reveals. A failed capture just swaps. A request that arrives
+## while another swap is still running waits for it, so it is never dropped (a dropped Play left the title stuck).
 func run(next: PackedScene, same_backdrop: bool = false) -> void:
-	if _busy or next == null:
+	if next == null:
 		return
-	_busy = true
 	var tree: SceneTree = get_tree()
+	while _busy:
+		await tree.process_frame
+	_busy = true
 	if same_backdrop:
 		tree.change_scene_to_packed(next)
 		await tree.scene_changed
