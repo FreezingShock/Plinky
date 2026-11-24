@@ -4,8 +4,9 @@ extends RefCounted
 ## the forest edge at dawn and dusk, and owls in the pine crowns at night. LifeCritters owns one and draws it from LifeAir's
 ## _draw, so it adds no nodes. The light, the season and the rain decide how many of each are out (the *_share helpers,
 ## read once a frame): the first ceil(share * count) of them are out, so the crowd follows the light instead of a roll.
-## Where they go is chosen near the walker when they can be, so the player sees them where they walk. A walker close by
-## sends a dragonfly darting, a deer into the trees, and an owl to another perch. Under reduce motion nothing travels or
+## They only come out within REACH of the walker, and a creature that has been left far behind dissolves and re-forms inside
+## REACH, so the player sees them where they walk. A walker close by sends a dragonfly darting, a deer into the trees, and
+## an owl to another perch. Under reduce motion nothing travels or
 ## jumps: dragonflies hover where they are, and fish, deer and owls stay put. Palette indices, drawn with MeadowLife.blit.
 
 const DRAGON_MAX: int = 6
@@ -14,7 +15,8 @@ const DRAGON_HOVER: Vector2 = Vector2(1.0, 3.0)   # seconds over a spot before t
 const DRAGON_SHY: float = 30.0              # walker distance that sends a dragonfly off
 const DRAGON_FLEE: float = 1.5              # seconds a scared dragonfly keeps darting
 const WATER_INNER: float = 0.8              # wildlife keeps inside this normalised radius of the water
-const NEAR_WALKER: float = 160.0            # a spot this close (iso texels) to the walker is a good place to go
+const REACH: float = 200.0                  # wildlife comes out only this close (iso texels) to the walker, so it is on screen
+const GONE: float = 300.0                   # past this a creature dissolves and re-forms inside REACH
 const FISH_EVERY: Vector2 = Vector2(2.5, 6.0)     # seconds between one body's leaps
 const FISH_TIME: float = 0.7                # seconds in the air
 const FISH_HEIGHT: float = 10.0             # texels a leap rises at its peak
@@ -147,7 +149,11 @@ static func _rank_out(rank: int, count: int, share: float) -> bool:
 func _update_dragons(delta: float, wp: Vector2, calm: bool) -> void:
 	var share: float = dragonfly_share()
 	for d: Dictionary in _dragons:
-		d.fade = move_toward(float(d.fade), 1.0 if _rank_out(int(d.rank), DRAGON_MAX, share) else 0.0, FADE_RATE * delta)
+		var shown: bool = _rank_out(int(d.rank), DRAGON_MAX, share)
+		if shown and float(d.fade) <= 0.0 and MeadowLife.iso_distance(d.pos as Vector2, wp) > GONE:
+			_relocate_dragon(d, wp)
+		var near: bool = MeadowLife.iso_distance(d.pos as Vector2, wp) <= GONE
+		d.fade = move_toward(float(d.fade), 1.0 if shown and near else 0.0, FADE_RATE * delta)
 		if float(d.fade) <= 0.0 or calm:
 			continue
 		var pos: Vector2 = d.pos as Vector2
@@ -167,21 +173,23 @@ func _update_dragons(delta: float, wp: Vector2, calm: bool) -> void:
 				_dart(d, wp, false)
 
 
-## Picks a dragonfly's next spot over the water. Away means a spot the walker is well clear of; otherwise a spot near the walker.
+## A dissolved dragonfly that the walker has left far behind re-forms over water inside REACH. None in reach: it stays hidden.
+func _relocate_dragon(d: Dictionary, wp: Vector2) -> void:
+	var spot: Vector2 = _water_within(wp, int(d.seed) * 31 + int(_t * 4.0), DRAGON_SHY * 2.0, REACH)
+	if spot.is_finite():
+		d.pos = spot
+		d.to = spot
+		d.hover = _range(DRAGON_HOVER, int(d.seed) + 5)
+
+
+## Picks a dragonfly's next spot over the water. Away means a spot the walker is well clear of (but still in reach);
+## otherwise a spot near the walker. No such water: it hovers where it is.
 func _dart(d: Dictionary, wp: Vector2, away: bool) -> void:
-	var n: int = _water.size()
-	if n == 0:
-		return
 	var seed_n: int = int(d.seed) * 29 + int(_t * 4.0)
 	var to: Vector2 = d.pos as Vector2
-	if away:
-		for tries: int in 8:
-			var cand: Vector2 = _water_point((seed_n + tries) % n, seed_n * 7 + tries * 3)
-			if MeadowLife.iso_distance(cand, wp) > DRAGON_SHY * 2.0:
-				to = cand
-				break
-	else:
-		to = _near_water_point(wp, seed_n)
+	var spot: Vector2 = _water_within(wp, seed_n, DRAGON_SHY * 2.0 if away else 0.0, REACH)
+	if spot.is_finite():
+		to = spot
 	d.to = to
 	d.hover = _range(DRAGON_HOVER, seed_n + 5)
 
@@ -202,7 +210,10 @@ func _update_fish(delta: float, wp: Vector2, calm: bool) -> void:
 			continue
 		f.timer = _range(FISH_EVERY, int(f.body) * 11 + int(_t * 2.0) + 3)
 		if MeadowLife.hash01(int(f.body) * 17 + int(_t * 5.0)) < share:
-			f.pos = _near_water_point(wp, int(f.body) * 13 + int(_t * 9.0))
+			var spot: Vector2 = _water_within(wp, int(f.body) * 13 + int(_t * 9.0), 0.0, REACH)
+			if not spot.is_finite():
+				continue   # no water near the walker: no leap this time
+			f.pos = spot
 			f.flip = MeadowLife.hash01(int(_t * 6.0) + int(f.body)) < 0.5
 			f.t = 0.0
 			f.jump = true
@@ -213,7 +224,15 @@ func _update_deers(delta: float, wp: Vector2, calm: bool) -> void:
 		return
 	var share: float = deer_share()
 	for d: Dictionary in _deers:
-		d.fade = move_toward(float(d.fade), 1.0 if _rank_out(int(d.rank), DEER_MAX, share) else 0.0, FADE_RATE * delta)
+		var shown: bool = _rank_out(int(d.rank), DEER_MAX, share)
+		if shown and float(d.fade) <= 0.0 and MeadowLife.iso_distance(d.pos as Vector2, wp) > GONE:
+			var spot: Vector2 = _edge_within(wp, int(d.seed) * 23 + int(_t * 3.0), 0.0, REACH)
+			if spot.is_finite():
+				d.pos = spot
+				d.to = spot
+				d.wait = 0.0
+		var near: bool = MeadowLife.iso_distance(d.pos as Vector2, wp) <= GONE
+		d.fade = move_toward(float(d.fade), 1.0 if shown and near else 0.0, FADE_RATE * delta)
 		if float(d.fade) <= 0.0 or calm:
 			continue
 		var pos: Vector2 = d.pos as Vector2
@@ -244,7 +263,8 @@ func _update_deers(delta: float, wp: Vector2, calm: bool) -> void:
 			d.wait = float(d.wait) - delta
 			if float(d.wait) <= 0.0:
 				d.wait = _range(DEER_WAIT, int(d.seed) * 5 + int(_t * 3.0) + 41)
-				d.to = _edge_near(wp, int(d.seed) * 23 + int(_t * 3.0))
+				var graze: Vector2 = _edge_within(wp, int(d.seed) * 23 + int(_t * 3.0), 0.0, REACH)
+				d.to = graze if graze.is_finite() else pos
 
 
 func _update_owls(delta: float, wp: Vector2, calm: bool) -> void:
@@ -262,7 +282,14 @@ func _update_owls(delta: float, wp: Vector2, calm: bool) -> void:
 			o.fly = OWL_FLY_TIME
 			continue
 		var want: bool = _rank_out(int(o.rank), OWL_MAX, share)
-		o.fade = move_toward(float(o.fade), 1.0 if want else 0.0, FADE_RATE * delta)
+		if want and float(o.fade) <= 0.0 and MeadowLife.iso_distance(perch, wp) > GONE:
+			var spot: int = _perch_within(wp, int(o.seed), int(o.perch))
+			if spot >= 0:
+				o.perch = spot
+				o.next = spot
+				perch = _perches[spot]
+		var near: bool = MeadowLife.iso_distance(perch, wp) <= GONE
+		o.fade = move_toward(float(o.fade), 1.0 if want and near else 0.0, FADE_RATE * delta)
 		o.blink = float(o.blink) - delta
 		if float(o.blink) <= 0.0:
 			o.shut = OWL_BLINK_TIME
@@ -270,8 +297,11 @@ func _update_owls(delta: float, wp: Vector2, calm: bool) -> void:
 		o.shut = maxf(float(o.shut) - delta, 0.0)
 
 
-## A perch the walker is well clear of, starting after the current one.
+## A perch the walker is well clear of, starting after the current one. A perch still in reach is preferred.
 func _far_perch(wp: Vector2, current: int) -> int:
+	var band: int = _perch_within(wp, current + 1, current)
+	if band >= 0:
+		return band
 	for k: int in _perches.size():
 		var c: int = (current + 1 + k) % _perches.size()
 		if MeadowLife.iso_distance(_perches[c], wp) > OWL_SHY * 2.0:
@@ -279,29 +309,46 @@ func _far_perch(wp: Vector2, current: int) -> int:
 	return current
 
 
-## A forest-edge spot, preferring one near the walker so a deer shows where the player is walking.
-func _edge_near(wp: Vector2, seed_n: int) -> Vector2:
+## A perch whose distance from the walker is between OWL_SHY * 2 and REACH, starting at index seed_n; -1 when none is.
+func _perch_within(wp: Vector2, seed_n: int, current: int) -> int:
+	var count: int = _perches.size()
+	if count == 0:
+		return -1
+	for k: int in count:
+		var c: int = (seed_n + k) % count
+		var dist: float = MeadowLife.iso_distance(_perches[c], wp)
+		if c != current and dist >= OWL_SHY * 2.0 and dist <= REACH:
+			return c
+	return -1
+
+
+## A forest-edge spot whose distance from the walker is between near_min and reach, or Vector2.INF when none is.
+func _edge_within(wp: Vector2, seed_n: int, near_min: float, reach: float) -> Vector2:
 	var near: Array[Vector2] = []
 	for e: Vector2 in _edge:
-		if MeadowLife.iso_distance(e, wp) < NEAR_WALKER:
+		var dist: float = MeadowLife.iso_distance(e, wp)
+		if dist >= near_min and dist <= reach:
 			near.append(e)
-	var pool: Array[Vector2] = near if not near.is_empty() else _edge
-	return pool[int(MeadowLife.hash01(seed_n) * float(pool.size())) % pool.size()]
+	if near.is_empty():
+		return Vector2.INF
+	return near[int(MeadowLife.hash01(seed_n) * float(near.size())) % near.size()]
 
 
 func _blocked(p: Vector2) -> bool:
 	return MeadowLife.near_any(p, _pads, DEER_PAD_KEEP) or MeadowLife.in_water(p, _water, 1.1)
 
 
-## A point in some water body, preferring one near the walker.
-func _near_water_point(wp: Vector2, seed_n: int) -> Vector2:
+## A water point whose distance from the walker is between near_min and reach, or Vector2.INF when no water is that close.
+func _water_within(wp: Vector2, seed_n: int, near_min: float, reach: float) -> Vector2:
 	var n: int = _water.size()
-	var first: Vector2 = _water_point(seed_n % n, seed_n * 7)
-	for tries: int in 12:
+	if n == 0:
+		return Vector2.INF
+	for tries: int in 24:
 		var cand: Vector2 = _water_point((seed_n + tries) % n, seed_n * 13 + tries * 5)
-		if MeadowLife.iso_distance(cand, wp) < NEAR_WALKER:
+		var dist: float = MeadowLife.iso_distance(cand, wp)
+		if dist >= near_min and dist <= reach:
 			return cand
-	return first
+	return Vector2.INF
 
 
 ## A point inside water body b, chosen by hash and kept inside WATER_INNER of its edge.

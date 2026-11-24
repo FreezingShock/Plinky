@@ -23,6 +23,11 @@ func run(t: Object) -> void:
 	t.ok((lark.get("forest_edge", []) as Array).size() >= 6, "Larkmoor has forest-edge grass for the deer")
 	t.ok((lark.get("perches", []) as Array).size() >= 3, "Larkmoor has owl perches in the pines")
 	var far: Vector2 = Vector2(-9000.0, -9000.0)
+	var lake: Vector2 = Vector2(float(water[0].x), float(water[0].y))   # the lake's middle: a walker here sees dragonflies and fish
+	var edge_first: Array = (lark.get("forest_edge", []) as Array)[0] as Array
+	var edge_wp: Vector2 = Vector2(float(edge_first[0]), float(edge_first[1]) + 60.0)   # just off the forest edge: the deer in reach, not scared
+	var perch_first: Array = (lark.get("perches", []) as Array)[0] as Array
+	var owl_wp: Vector2 = Vector2(float(perch_first[0]), float(perch_first[1]) + 60.0)   # below the first perch: the owl in reach
 
 	# Sprites: every row of one sprite is the same width, so the runs line up.
 	for rows: Array in [LifeWild.DRAGON_UP, LifeWild.DRAGON_DOWN, LifeWild.FISH_ART, LifeWild.DEER_ART,
@@ -63,7 +68,7 @@ func run(t: Object) -> void:
 	wild.setup(lark, water)
 	var dragons: Array = wild.get("_dragons") as Array
 	for i: int in 180:
-		wild.update(1.0 / 30.0, far)
+		wild.update(1.0 / 30.0, lake)
 	var over: int = 0
 	for d: Variant in dragons:
 		if MeadowLife.in_water((d as Dictionary).pos as Vector2, water, 1.0):
@@ -72,11 +77,29 @@ func run(t: Object) -> void:
 	var d0: Dictionary = dragons[0] as Dictionary
 	var before: Vector2 = d0.pos as Vector2
 	for i: int in 60:
-		wild.update(1.0 / 30.0, far)
+		wild.update(1.0 / 30.0, lake)
 	t.ok((d0.pos as Vector2).distance_to(before) > 1.0 or float(d0.fade) > 0.9, "a dragonfly hovers and darts over the water")
 	var near_d: Vector2 = (d0.pos as Vector2) + Vector2(5.0, 0.0)
 	wild.update(1.0 / 30.0, near_d)
 	t.ok(float(d0.flee) > 0.0, "a walker close by sends a dragonfly darting away")
+
+	# Presence: far from any water no dragonfly is out, and at the lake they come out within reach of the walker.
+	var far_wild := LifeWild.new()
+	far_wild.setup(lark, water)
+	for i: int in 120:
+		far_wild.update(1.0 / 30.0, far)
+	var out_far: int = 0
+	for d: Variant in far_wild.get("_dragons") as Array:
+		if float((d as Dictionary).fade) > 0.0:
+			out_far += 1
+	t.eq(out_far, 0, "far from the water no dragonfly is out")
+	for i: int in 60:
+		far_wild.update(1.0 / 30.0, lake)
+	var at_lake: int = 0
+	for d: Variant in far_wild.get("_dragons") as Array:
+		if float((d as Dictionary).fade) > 0.5 and MeadowLife.iso_distance((d as Dictionary).pos as Vector2, lake) <= LifeWild.REACH:
+			at_lake += 1
+	t.ok(at_lake >= 1, "at the lake the dragonflies come out within reach of the walker (%d)" % at_lake)
 
 	# Fish: they leap in daylight when the walker is not in the way (reduce motion keeps them down).
 	MeadowLife.season = _w(0.0, 1.0, 0.0, 0.0)
@@ -84,7 +107,7 @@ func run(t: Object) -> void:
 	fish_wild.setup(lark, water)
 	var leaps: int = 0
 	for i: int in 1200:
-		fish_wild.update(1.0 / 30.0, far)
+		fish_wild.update(1.0 / 30.0, lake)
 		for f: Variant in fish_wild.get("_fish") as Array:
 			if bool((f as Dictionary).jump) and float((f as Dictionary).t) < 1.0 / 30.0 + 0.001:
 				leaps += 1
@@ -95,7 +118,7 @@ func run(t: Object) -> void:
 	var deer_wild := LifeWild.new()
 	deer_wild.setup(lark, water)
 	for i: int in 90:
-		deer_wild.update(1.0 / 30.0, far)
+		deer_wild.update(1.0 / 30.0, edge_wp)
 	var deer: Dictionary = (deer_wild.get("_deers") as Array)[0] as Dictionary
 	t.ok(float(deer.fade) > 0.5, "at dusk the deer comes out to the forest edge")
 	var deer_at: Vector2 = deer.pos as Vector2
@@ -114,7 +137,7 @@ func run(t: Object) -> void:
 	var owl_wild := LifeWild.new()
 	owl_wild.setup(lark, water)
 	for i: int in 90:
-		owl_wild.update(1.0 / 30.0, far)
+		owl_wild.update(1.0 / 30.0, owl_wp)
 	var owls: Array = owl_wild.get("_owls") as Array
 	t.ok(owls.size() >= 1, "Larkmoor has an owl on a perch")
 	var o0: Dictionary = owls[0] as Dictionary
@@ -135,11 +158,12 @@ func run(t: Object) -> void:
 	t.ok(not LifeWild._rank_out(0, 3, 0.0), "no share, nothing out")
 	var edge0: Array = (lark.get("forest_edge", []) as Array)[0] as Array
 	var e_here: Vector2 = Vector2(float(edge0[0]), float(edge0[1]))
-	var picked: Vector2 = deer_wild._edge_near(e_here, 5)
-	t.ok(MeadowLife.iso_distance(picked, e_here) < LifeWild.NEAR_WALKER, "a deer picks a forest-edge spot near the walker")
+	var picked: Vector2 = deer_wild._edge_within(e_here, 5, 0.0, LifeWild.REACH)
+	t.ok(picked.is_finite() and MeadowLife.iso_distance(picked, e_here) < LifeWild.REACH, "a deer picks a forest-edge spot within reach of the walker")
 	var water_mid: Vector2 = Vector2(float(water[0].x), float(water[0].y))
-	var wpick: Vector2 = deer_wild._near_water_point(water_mid, 9)
-	t.ok(MeadowLife.iso_distance(wpick, water_mid) < LifeWild.NEAR_WALKER, "a dragonfly or fish picks water near the walker")
+	var wpick: Vector2 = deer_wild._water_within(water_mid, 9, 0.0, LifeWild.REACH)
+	t.ok(wpick.is_finite() and MeadowLife.iso_distance(wpick, water_mid) < LifeWild.REACH, "a dragonfly or fish picks water within reach of the walker")
+	t.ok(not deer_wild._water_within(far, 9, 0.0, LifeWild.REACH).is_finite(), "no water in reach of a far walker: nothing to pick")
 
 	# Reduce motion: the dragonflies hover, and the fish and the deer stay put.
 	MeadowLife.reduce_motion = true
@@ -149,11 +173,9 @@ func run(t: Object) -> void:
 	var calm := LifeWild.new()
 	calm.setup(lark, water)
 	for i: int in 60:
-		calm.update(1.0 / 30.0, far)
+		calm.update(1.0 / 30.0, lake)
 	var calm_d: Dictionary = (calm.get("_dragons") as Array)[0] as Dictionary
 	var calm_at: Vector2 = calm_d.pos as Vector2
-	var calm_deer: Dictionary = (calm.get("_deers") as Array)[0] as Dictionary
-	var deer_start: Vector2 = calm_deer.pos as Vector2
 	var jumped: bool = false
 	for i: int in 300:
 		calm.update(1.0 / 30.0, calm_at + Vector2(4.0, 0.0))
@@ -161,6 +183,15 @@ func run(t: Object) -> void:
 			if bool((f as Dictionary).jump):
 				jumped = true
 	t.ok((calm_d.pos as Vector2).distance_to(calm_at) < 0.001, "reduce motion: a dragonfly does not dart")
+	var calm_edge := LifeWild.new()
+	calm_edge.setup(lark, water)
+	for i: int in 90:
+		calm_edge.update(1.0 / 30.0, edge_wp)
+	var calm_deer: Dictionary = (calm_edge.get("_deers") as Array)[0] as Dictionary
+	var deer_start: Vector2 = calm_deer.pos as Vector2
+	t.ok(float(calm_deer.fade) > 0.5, "reduce motion: the deer still comes out at dusk")
+	for i: int in 300:
+		calm_edge.update(1.0 / 30.0, edge_wp)
 	t.ok((calm_deer.pos as Vector2).distance_to(deer_start) < 0.001, "reduce motion: the deer stays where it is")
 	t.ok(not jumped, "reduce motion: the fish do not leap")
 
