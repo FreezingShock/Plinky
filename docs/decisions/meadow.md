@@ -168,3 +168,10 @@ Larkmoor's frame is now 2x (3040 by 1840 texels), `S = 2.0` in `larkmoor_layout.
 
 ## 2026-11-24: Westmere, the west subarea (Starbloom row extended)
 Larkmoor gets a west subarea on the lake's west bank, reached by a trail off the west road, north of the lake. It has no gate. Its three pads extend the Starbloom row (starbloom_4 to 6, row indexes 3 to 5) rather than adding a tier, so the locked eight-tier ladder and its test stay as they are. Rewards are 8 times the last pad each step (512, 4096, 32768), costs 5, 5 and 5 times the last (5000, 25000, 125000). Those numbers are not pacing-checked. The zone's pad list grows to 21 and the area count to 8.
+
+## 2026-11-24: Wider paths, one lantern size, lamp glows, windmill branch ends at the mill
+Paths: the half-width goes from 6.6 to about 10.5 to 12.7 texels, one ground material, with a noise-wobbled edge and no rim band or pebbles. Rocks keep 11 texels back from a path (`path_clear`), so no rock border. Flowers no longer sit on a fixed verge line: they go in patches 13 to 24 texels off the path.
+Lanterns: every ordinary lantern is cut to one 19 by 29 window around its foot (measured on every lamp at every facing), so the size and lamp height match. The great lantern landmark is unchanged. 24 lanterns are placed now (25 before), because the wider path and the 19-texel offset reject one spot. Pools: radius 62 and strength 1.0, and each lamp head has a small dithered bloom that fades in with the night.
+Light slots: 56 in the shader, enough for Larkmoor's 50 pools. The nearest-to-walker packing still applies beyond that.
+Windmill: the east branch was a fold whose tip stopped in open grass beside the mill. The tip now ends at the mill's south door. The sails are still baked into the windmill sprite; splitting them out for the farm is the next slice.
+Not run in-engine: the headless test suite passes (5335 checks), but the night look and the path width need a PC screenshot.

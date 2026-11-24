@@ -19,7 +19,7 @@ const PAD_SHADER: Shader = preload("res://render/shaders/pad_shadow.gdshader")
 const LIGHT_SHADER: Shader = preload("res://render/shaders/light_grade.gdshader")
 ## Light pools the shader can take per frame (render/shaders/day_night.gdshader, lights[MAX_LIGHTS]). When more pools exist,
 ## the walker's pool always goes in and the rest go in nearest the walker, so the ones on screen are the ones that light.
-const MAX_LIGHTS: int = 48
+const MAX_LIGHTS: int = 56
 ## Pools kept in memory. Larkmoor has about 50 (21 pads, gate, arch, 26 lanterns, walker); this is a generous ceiling.
 const MAX_LIGHT_SOURCES: int = 256
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
