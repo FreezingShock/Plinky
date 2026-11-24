@@ -72,10 +72,11 @@ func _add_life(ground: Sprite2D) -> void:
 	var life: Dictionary = MeadowLife.load_data()
 	if life.is_empty():
 		return
-	var lg := LifeGround.new()
-	lg.name = "LifeGround"
-	add_child(lg)  # after Ground, so the sway draws over the grass
-	lg.setup(ground, life.get("sway", []) as Array)
+	# Interactive blades replace the 120 baked sway tips on this meadow: every blade bends with the wind and the walker.
+	var blades := GrassBlades.new()
+	blades.name = "GrassBlades"
+	add_child(blades)  # after Ground, so the blades draw over the grass
+	blades.setup(ground, life.get("pads", []) as Array, Palettes.colors(Palettes.MEADOW))
 	var air := LifeAir.new()
 	air.name = "LifeAir"
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
@@ -86,7 +87,7 @@ func _add_life(ground: Sprite2D) -> void:
 	react.z_index = 10
 	add_child(react)
 	react.setup(life, life.get("sway", []) as Array)
-	lg.pusher_group = &"walker"
+
 
 
 ## Day/night shade, rain and wind (world/sky_cycle.gd). Added after the life layers; its own z indices place it.
