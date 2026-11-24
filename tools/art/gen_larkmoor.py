@@ -19,7 +19,7 @@ assert not _ON_PATH, 'pads sit on or against a path (move them in larkmoor_layou
 _OFF = LAY.rows_off()
 assert not _OFF, 'pad rows must hug a path and not overlap (tools/art/plan_rows.py): %r' % (_OFF,)
 import depth_pass, grass_tex
-GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
+GRASS = os.environ.get('GRASS', 'f')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
 DEPTH = None
 OUT = os.environ.get('LARK_OUT') or os.path.join(HERE, '..', '..', 'assets', 'art', 'zone1b', 'larkmoor')
@@ -890,6 +890,8 @@ dif = np.clip(allp['nx'] * L[0] + allp['ny'] * L[1] + allp['nz'] * L[2], 0, 1)
 lp = .04 + 1.05 * dif
 tex = vn3(u_ * .8, v_ * .8, z_ * .8, 3) - .5
 lp += np.where(np.isin(mat_, [M_FOL, M_PINE, M_MOSS]), tex * .55 + (vn3(u_ * 2.2, v_ * 2.2, z_ * 2.2, 9) - .5) * .4, 0)
+# pine tiers: upward-facing tier tops lift a band, downward ledges drop one (the ramp is only four bands)
+lp += np.where(mat_ == M_PINE, .7 * np.clip((nz_ - .1) / .4, 0, 1) - .45 * np.clip((-nz_ - .05) / .35, 0, 1), 0)
 lp += np.where(np.isin(mat_, [M_ROCK]), tex * .5, 0) + np.where(mat_ == M_BARK, tex * .35, 0) + np.where(mat_ == M_FOL, (z_ - 20) * .012, 0)
 lp += np.where(mat_ == M_CRYS, .10, 0) + np.where(mat_ == M_PAPER + 20, .5, 0) + np.where(mat_ == M_GRASS, (z_ - samp(H0, u_, v_)) * .035 - .05, 0)
 lp += np.where(mat_ == M_LILY, .12, 0)

@@ -309,6 +309,16 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Added style `f` (`style_stalks` in `tools/art/grass_tex.py`): style E's vertical stalks, denser inside each clump, with the crown lit and the base shaded from the upper left. E's bare lawn between clumps is kept. Compared A, E and F as ground-only crops in `/mnt/project-files/plinky/ground-grass/grass_styles_a_e_f_ground.png`. F reads most like the stalk field of mockup D.
 - Default stays `a` and no baked asset changes. The switch to a grass style belongs to the art-style thread. Recommended pick: F, for Nathan to confirm on PC at noon, since dawn grading hides texture.
 
+## 2026-11-24: Trees to the looking-down angle (audit)
+| Date | Decision | Why |
+|------|----------|-----|
+| 2026-11-24 | Oaks are already on the elevated 3/4 view. Crowns are lit from the upper left, the right side and underside take shadow, and the trunk shows. No change | Audit against wheat mockup D (style-guide "Camera angle standard"). Oak crown tops read as tops. |
+| 2026-11-24 | Pines get a light bias on their tier tops: upward-facing normals lift the baked light, downward ledges drop it (`tools/art/gen_larkmoor.py`, `tools/art/gen_meadow3d.py`). Silhouettes, footprints and placement stay identical | Each tier's top reads from above. The four-band pine ramp is kept, so the runtime re-pick (`prop_ramps.gdshaderinc`) is unchanged. |
+| 2026-11-24 | Conifers (material code 12) skip the seasonal foliage recolour in `render/shaders/wind_sway.gdshader`, so pines keep their green all year, snow included | The pink on pines was the spring blossom tint from `content/config/calendar.tres` (prop colour 0.96, 0.58, 0.72 at half strength), applied to every green texel. Blossom and autumn belong on broadleaf foliage. Snow on pines is a deliberate loss; revisit if Nathan wants it. |
+| 2026-11-24 | Tried wider tier steps. Rejected: the silhouettes got lumpy and grew detached tails | Those tails look worse than the gain at game zoom. |
+| 2026-11-24 | Not done: a dedicated pine tier-top band. That needs a fifth pine ramp band in `RAMP` and a regenerated `prop_ramps.gdshaderinc` | Larger change. Make it after Nathan picks a direction from mockups. |
+- Checked in the cloud render only (xvfb, software Vulkan), not on the PC. The pink pines in Lanternwood (spring blossom tint on conifers) are fixed by the conifer rule above; the before and after shots were taken at 09:03 and 09:10 in-game, so the light differs a little between them.
+- The conifer rule is runtime and applies to the committed sprites now. The tier light is generator-only in this PR: the sprite bake is not regenerated here, because `main` is re-baking Larkmoor under other threads. The next bake of `gen_larkmoor.py` and `gen_meadow3d.py` picks it up, and placement and the walkable mask do not change.
 ## 2026-11-24: Meadow grass blades are a shader layer, not nodes (interactive blades, slice 1)
 - `world/grass_blades.gd` + `world/grass_blades.gdshader`: one quad over the meadow ground. Blades are generated per texel from a hash (one base per 3x3 cell, patch density from value noise), so there are no nodes per blade and nothing extra loads.
 - Blades draw only on grass texels (the ground is palette-exact), so paths, dirt, water and pad plates stay clear. The wind wave and the walker bend use the same rules as `LifeGround.bend`. The node owns its material and sets the wind and pusher uniforms; gameplay still emits nothing new.
@@ -316,6 +326,15 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Checked in the cloud render only (xvfb, lavapipe): no shader errors, tests pass. Not verified on the PC: the wind and walker bend, and the look at noon.
 - Follow-up on the same PR: each rock and bush gets a thin, soft-edged dark contact slab under its foot, wider than the stone, so the base reads as shade on the ground. Rock tops are flatter (tilt .03 to .14). After main moved under the PR, the Larkmoor ground was regenerated, then `gen_gardens.py` (flower placement reads the ground) and the sway tips were refreshed; 6 sway tips were removed. Suite: 6428 checks, 0 failed.
 
+## 2026-11-24: Grass style F is the default for the meadow and Larkmoor
+- Nathan picked F on the decision card (A, E and F compared at bake, in engine at dawn, and at pinned noon and golden hour).
+- Empirics: A, E and F have the same colour mix (within about 0.5 points) and speckle density. They differ only in arrangement. F reads as stalks at 3x; at 1x the change is subtle under the dawn and noon grades.
+- Changed: `GRASS` default is `f` in `tools/art/gen_meadow3d.py` and `tools/art/gen_larkmoor.py`. Baked `ground.png`, `ground_n.png` and `ground_fg.png` for both zones. Heights, backdrops and sprites are unchanged, since grass does not touch them.
+- Regenerated for the new ground: `world/meadow_life.json` (53 sway tips had left palette 4) and `world/larkmoor_life.json` (sway, flowers, pads and water from `tools/art/gen_life_anchors.py` with `--bounds 0,0,3040,1840`; farm, perches and forest edge kept), and `world/larkmoor_gardens.json` from `tools/art/gen_gardens.py`.
+- Larkmoor life counts on F: sway tips 1674 (same as before), butterfly flower spots 240 down to 185.
+- Withdrawn: an earlier count of 193 sway tips came from a bounds mistake (the default 640 window), not from F. Use `--bounds 0,0,3040,1840` for Larkmoor life.
+- The Larkmoor A bake reproduces the committed ground exactly (0 texels differ), so the pipeline is trusted for both zones.
+- Open: PR #378 and #395 put the blade shader over the grass. Their threads judge the combined look in engine and thin the blades if they double up.
 ## 2026-11-24: Larkmoor grass blades draw per loaded chunk, in one node
 - `GrassBlades` gets a chunked mode. It draws one shader rect per loaded prop chunk (`chunk_loaded` / `chunk_unloaded` from `LarkmoorScene`), in a single node, so the grass follows the streaming and adds no node count. The rects are in zone texels, the same space as the blades.
 - Pushers are a list of up to 6 points: the walker and the rabbits, chickens and frogs that are showing (`LifeCritters.ground_pushers`, read-only). Ducks are not included yet.

@@ -85,8 +85,15 @@ def _rect_dist(px, py, x0, y0, x1, y1):
 
 class Ground:
     def __init__(self):
-        walk = np.array(Image.open(os.path.join(ZONE, 'walkable.png')).convert('L'))
-        self.walk = walk == 255
+        # walkable.png is RGBA since #376, and the game's walk mask (world/walk_mask.gd) reads it the same way: magenta
+        # (255, 0, 255) is walkable ground, green (0, 255, 0) is water, black is not walkable.
+        wrgb = np.array(Image.open(os.path.join(ZONE, 'walkable.png')).convert('RGB')).astype(int)
+        self.walk = (wrgb[..., 0] == 255) & (wrgb[..., 1] == 0) & (wrgb[..., 2] == 255)
+        self.water = (wrgb[..., 0] == 0) & (wrgb[..., 1] == 255) & (wrgb[..., 2] == 0)
+        # The sand path as drawn: ACCENT (242, 230, 160) and its near-sand texels in ground.png. LAY.PATHS is a different
+        # frame from the drawn ground, so fences are checked against the picture, not against the path points.
+        gr, gg, gb = g_rgb = np.array(Image.open(os.path.join(ZONE, 'ground.png')).convert('RGB')).astype(int)[..., :3].transpose(2, 0, 1)
+        self.sand = (gr >= 225) & (gg >= 210) & (gb <= 180) & (gr - gb >= 50)
         g = np.array(Image.open(os.path.join(ZONE, 'ground.png')).convert('RGB')).astype(int)
         r, gg, b = g[..., 0], g[..., 1], g[..., 2]
         self.grass = (gg - r >= 15) & (gg >= b + 8) & (r < 200)
@@ -99,6 +106,18 @@ class Ground:
         self.gates = [(x * S, y * S) for (x, y) in (LAY.EMBER_GATE, LAY.HOLLOW_GATE)]
         m = LAY.MERE
         self.mere = (m['c'][0] * S, m['c'][1] * S, (m['rx'] + MERE_MARGIN) * S, (m['ry'] + MERE_MARGIN) * S)
+
+    def fence_ok(self, x0, y0, x1, y1):
+        """A fence is a blocker: it stays inside the canvas, off the water and off the sand paths. A chord that would sit
+        on a path is dropped, so the ring leaves a gap where a path meets it and the path stays open. Buildings and wheat
+        are checked by the placer's taken rects, not here."""
+        if x0 < 0 or y0 < 0 or x1 > self.W or y1 > self.H:
+            return False
+        if self.water[y0:y1, x0:x1].any():
+            return False
+        if self.sand[y0:y1, x0:x1].any():             # the drawn sand path, from ground.png: a chord never sits on it
+            return False
+        return True
 
     def ok_rect(self, x0, y0, x1, y1):
         """True when the canvas rect [x0, x1) x [y0, y1) is walkable grass and clear of every constraint."""
@@ -216,6 +235,7 @@ FIELDS = [
     FF.Field('blob', 1000, 470, 1.35, True, 2),
     FF.Field('blob', 1065, 580, 1.05, False, 3),
     FF.Field('notched', 1075, 470, 0.80, True, 4),
+    FF.Field('notched', 1000, 600, 0.90, True, 7),   # the fifth field, south-west of the yard
 ]
 CLUMP_SIZES = [(32, 28), (28, 26), (32, 26), (30, 28)]     # canvas texels (w, h): smaller clumps, tighter grid, more stalks
 EDGE_SIZES = [(24, 22), (26, 24)]       # smaller clumps along a field's edge, so the irregular outline reads
@@ -263,6 +283,26 @@ FENCE_GATES = 2                         # walk-in gaps per field
 SOIL_PAD = 2                            # canvas texels of air kept between the soil and any building or prop
 
 
+class YardRing:
+    """The farmyard: a rectangle around the barn, shed, hay, cart, crates and scarecrow, fenced like a field with one
+    walk-in gate. It only has the parts _fence_items reads (cx, cy, gates, contour), so it is never wheat or soil."""
+
+    def __init__(self, x0: float, y0: float, x1: float, y1: float, gates: int = 1):
+        self.cx, self.cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+        self.box = (x0, y0, x1, y1)
+        self.gates = gates
+
+    def contour(self, offset: float, n: int = 96):
+        x0, y0, x1, y1 = self.box
+        return [(x0 - offset, y0 - offset), (x1 + offset, y0 - offset), (x1 + offset, y1 + offset),
+                (x0 - offset, y1 + offset)]
+
+
+# The yard covers every building target (layout texels, from TARGETS and SIZES): the barn and shed at the top, the scarecrow,
+# cart and hay in the middle, and the crates at the bottom.
+YARD = YardRing(1005, 402, 1180, 628)
+
+
 def _fence_items(ground: Ground, placer: Placer, fields: list, start: int):
     """A rustic fence ring around each field, outside the clumps, with walk-in gaps.
 
@@ -288,7 +328,7 @@ def _fence_items(ground: Ground, placer: Placer, fields: list, start: int):
                 i += 1
             t = (target - acc) / seg[i] if seg[i] > 0 else 0.0
             pts.append((ring[i][0] + (ring[i + 1][0] - ring[i][0]) * t, ring[i][1] + (ring[i + 1][1] - ring[i][1]) * t))
-        gates = [rng.uniform(0, 2 * math.pi) for _ in range(FENCE_GATES)]
+        gates = [rng.uniform(0, 2 * math.pi) for _ in range(getattr(f, 'gates', FENCE_GATES))]
         mean_r = total / (2 * math.pi)
         half_gate = (FENCE_GATE / 2.0) / mean_r
         for k in range(count):
@@ -300,7 +340,7 @@ def _fence_items(ground: Ground, placer: Placer, fields: list, start: int):
             y0 = int(math.floor(min(ay, by))) - 8          # room above the line for the posts
             x1 = int(math.ceil(max(ax, bx))) + 2
             y1 = int(math.ceil(max(ay, by))) + 2
-            if not _inside_box(x0, y0, x1, y1) or not ground.ok_rect(x0, y0, x1, y1):
+            if not _inside_box(x0, y0, x1, y1) or not ground.fence_ok(x0, y0, x1, y1):
                 continue
             if not placer.clear_of_taken(x0, y0, x1, y1):
                 continue
@@ -390,7 +430,7 @@ def build(map_only: bool = False) -> dict:
         items.append({'kind': kind, 'file': FILES[kind], 'x': x, 'y': y, 'w': w, 'h': h,
                       'foot': [x + w / 2.0, y + h - 2.0], 'sort_y': float(y + h - 2)})
     # The fence ring goes before the wheat: it marks each field's paddock, and the clumps grow inside it.
-    pieces = _fence_items(ground, placer, FIELDS, 0)
+    pieces = _fence_items(ground, placer, FIELDS + [YARD], 0)
     for it in pieces:
         placer.taken.append((it['x'], it['y'], it['x'] + it['w'], it['y'] + it['h']))
         placer.tags.append('fence')
