@@ -30,6 +30,7 @@ const COMBO_WINDOW_MS: int = 650            # presses closer than this build the
 const COMBO_STEPS: Array[int] = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]   # semitones, C major pentatonic, 2 octaves
 const FADE_S: float = 2.0
 const WORLD_FADE_PER_S: float = 0.8          # shore and birds fade in and out over ~1.2 s, never pop
+const LAVA_DB: float = -5.0                  # Ember Quarry only, under the forge crackle
 const SHORE_DB: float = -4.0                 # at the water's edge; meadow_amb sits at -3, so the lake blends in
 const BIRD_DB: float = -9.0
 const BIRD_GAP_S: Vector2 = Vector2(2.5, 7.0)
@@ -46,6 +47,8 @@ var _amb: AudioStreamPlayer
 var _scape: AmbientScape      # layered day/night/season loops and the bird density, see audio/ambient_scape.gd
 var _loading: AudioStreamPlayer
 var _shore: AudioStreamPlayer
+var _lava: AudioStreamPlayer       # Ember Quarry lava murmur, faded in by set_zone
+var _lava_tw: Tween
 var _meadow_world: bool = true      # shore and birds play everywhere except the quarry (on until a quarry zone says otherwise)
 var _water_target: float = 0.0
 var _tree_target: float = 0.0
@@ -91,6 +94,10 @@ func _ready() -> void:
 	_shore = AudioStreamPlayer.new()
 	_shore.bus = BUS_AMB
 	add_child(_shore)
+	_lava = AudioStreamPlayer.new()
+	_lava.bus = BUS_AMB
+	_lava.volume_db = -60.0
+	add_child(_lava)
 	# Only a node inside the live tree can look up an absolute path; a private instance built in a test (no autoloads) skips the wiring.
 	var bus: Node = get_node_or_null("/root/EventBus") if is_inside_tree() else null
 	if bus != null:
@@ -99,6 +106,7 @@ func _ready() -> void:
 		bus.rebirth_done.connect(func(_p: BigNum) -> void: play(&"rebirth", 1.0, 0.0, BUS_SFX, false))
 		bus.button_denied.connect(func(_id: StringName) -> void: play(&"ui_back", 0.8, -4.0, BUS_UI))
 		bus.offline_gained.connect(func(_s: float, _g: Dictionary) -> void: play(&"relic_uncommon", 1.0, -6.0))
+		bus.attribute_bought.connect(func(_id: StringName, _level: int) -> void: purchase())
 	if is_inside_tree():   # a private instance under test is not in the tree yet
 		get_tree().node_added.connect(_on_node_added)
 
@@ -355,8 +363,13 @@ func relic(rarity: StringName) -> void:
 
 
 var _step_i: int = 0
-const STEP_DB: Dictionary = {&"grass": -6.0, &"sand": -4.0, &"wood": -8.0, &"cinder": -5.0}   # wood knocks hottest, so it sits lowest
-## Call once per footfall. surface is &"grass", &"sand", &"wood" or &"cinder" (MeadowSites.surface_at); four
+const STEP_DB: Dictionary = {&"grass": -6.0, &"sand": -4.0, &"wood": -8.0, &"cinder": -5.0, &"dirt": -6.0, &"wheat": -4.0}   # wood knocks hottest, so it sits lowest
+## A bought upgrade: a short two-note chime. Lives on the SFX bus; no jitter, so repeats sound the same.
+func purchase() -> void:
+	play(&"purchase", 1.0, -2.0, BUS_SFX, false)
+
+
+## Call once per footfall. surface is &"grass", &"sand", &"wood", &"cinder", &"dirt" or &"wheat" (MeadowSites.surface_at); four
 ## variants each, never the same twice in a row. Unknown surfaces fall back to the old plain step.
 ## extra_db makes a step heavier or lighter than a walking one: a sprint adds a little, a hard landing a lot.
 func footstep(surface: StringName = &"", extra_db: float = 0.0) -> void:
@@ -463,6 +476,7 @@ func set_zone(zone_id: StringName) -> void:
 	if _scape != null:
 		_scape.set_area(AmbientMix.area_of(zone_id))
 	_crossfade_music("quarry" if quarry else "meadow")
+	_fade_lava(quarry)
 	cue.emit("[Quarry music]" if quarry else "[Meadow music]")
 	var a: AudioStream = _stream("quarry_amb" if quarry else "meadow_amb", "amb")
 	if a != null:
@@ -471,6 +485,25 @@ func set_zone(zone_id: StringName) -> void:
 		_amb.stream = a
 		_amb.volume_db = -3.0 if quarry else MEADOW_AMB_DB
 		_amb.play()
+
+
+## The lava murmur only plays in the Ember Quarry. It fades in and out like the other beds.
+func _fade_lava(on: bool) -> void:
+	var s: AudioStream = _stream("lava", "amb")
+	if on and s != null:
+		if s is AudioStreamOggVorbis:
+			(s as AudioStreamOggVorbis).loop = true
+		if _lava.stream != s:
+			_lava.stream = s
+		if not _lava.playing:
+			_lava.volume_db = -60.0
+			_lava.play()
+	if _lava_tw != null and _lava_tw.is_valid():
+		_lava_tw.kill()   # a quick return to the quarry must not be stopped by the last fade-out
+	_lava_tw = create_tween()
+	_lava_tw.tween_property(_lava, "volume_db", LAVA_DB if on else -60.0, FADE_S)
+	if not on:
+		_lava_tw.tween_callback(_lava.stop)
 
 
 func _crossfade_music(name: String) -> void:

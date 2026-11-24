@@ -432,8 +432,79 @@ def cinder():
         x += np.sin(2 * np.pi * (72 + 5 * i) * t) * np.exp(-t / 0.04) * 0.5
         write(f"{d}/step_cinder_{i}.ogg", norm(fade(x, 3), 0.34))
 
+# ---------------------------------------------------------------- SOUND PASS 2 (dirt, wheat, purchase, lava)
+# Own RNG again, so none of the files above change bytes. Every sound here is synthesised in this file.
+xrng = np.random.default_rng(24112028)
+
+def dirt():
+    global xrng
+    xrng = np.random.default_rng(24112029)   # reseeded per sound, so the bytes do not depend on call order
+    """Packed earth under the walker: a soft low thud with a little grit, no crunch (that is sand or cinder)."""
+    d = os.path.join(ROOT, "sfx")
+    for i in range(4):
+        t = t_(0.2); x = np.zeros(len(t))
+        f = 62 + 6 * i
+        x += np.sin(2 * np.pi * f * t) * np.exp(-t / 0.035) * 0.9
+        x += np.sin(2 * np.pi * f * 2.4 * t) * np.exp(-t / 0.012) * 0.12
+        for _ in range(int(xrng.integers(3, 6))):
+            m = int(xrng.uniform(0.004, 0.010) * SR)
+            g = fft_filter(xrng.standard_normal(m), lo=350, hi=1300) * np.hanning(m)
+            place(x, g * xrng.uniform(0.25, 0.6), xrng.uniform(0.004, 0.05))
+        x += fft_filter(xrng.standard_normal(len(t)), lo=200, hi=900) * np.exp(-t / 0.05) * 0.25
+        write(f"{d}/step_dirt_{i}.ogg", norm(fade(x, 3), 0.30))
+
+def wheat():
+    global xrng
+    xrng = np.random.default_rng(24112030)   # reseeded per sound, so the bytes do not depend on call order
+    """Walking through wheat: a dry stalk brush, a few quick high rustles over a soft swish."""
+    d = os.path.join(ROOT, "sfx")
+    for i in range(4):
+        t = t_(0.34); x = np.zeros(len(t))
+        swish = fft_filter(xrng.standard_normal(len(t)), lo=1200, hi=4200)
+        x += swish * np.sin(np.pi * np.clip(t / 0.34, 0, 1)) ** 2 * 0.22
+        for _ in range(int(xrng.integers(5, 9))):
+            m = int(xrng.uniform(0.012, 0.030) * SR)
+            r = fft_filter(xrng.standard_normal(m), lo=2000, hi=6500) * np.hanning(m) ** 1.5
+            place(x, r * xrng.uniform(0.3, 0.9), xrng.uniform(0.0, 0.26))
+        write(f"{d}/step_wheat_{i}.ogg", norm(fade(x, 4), 0.26))
+
+def purchase():
+    global xrng
+    xrng = np.random.default_rng(24112031)   # reseeded per sound, so the bytes do not depend on call order
+    """A bought upgrade: two soft glassy plinks climbing the pentatonic, a little air after. Short, so it stays pleasant on repeat."""
+    t = t_(0.9); x = np.zeros(len(t))
+    place(x, plink(76, 0.6, 0.9, 0.12), 0.0)
+    place(x, plink(81, 0.7, 0.8, 0.14), 0.085)
+    place(x, plink(88, 0.8, 0.5, 0.16) * 0.45, 0.17)
+    tt = t_(0.9)   # a little air after the chime; own RNG, not reverb(), which would advance the shared rng
+    x += fft_filter(xrng.standard_normal(len(tt)), lo=2000, hi=7000) * np.exp(-tt / 0.07) * 0.08
+    write(f"{ROOT}/sfx/purchase.ogg", norm(fade(x, 4), 0.5))
+
+def lava():
+    global xrng
+    xrng = np.random.default_rng(24112032)   # reseeded per sound, so the bytes do not depend on call order
+    """Ember Quarry lava: a slow low murmur, with soft bubbles that rise in pitch and pop. 24 s seamless loop."""
+    d2 = 24.0; n2 = int((d2 + 2) * SR); t2 = np.arange(n2) / SR
+    e = fft_filter(xrng.standard_normal(n2), lo=50, hi=260) * (0.45 + 0.25 * np.sin(2 * np.pi * t2 / 9.0)) * 0.55
+    e += fft_filter(xrng.standard_normal(n2), lo=500, hi=1800) * (0.04 + 0.03 * np.sin(2 * np.pi * t2 / 4.0) ** 2)
+    for _ in range(64):
+        k = int(xrng.uniform(0.05, 0.11) * SR); at = xrng.uniform(0, d2 - 0.2)
+        tk = np.arange(k) / SR; f0 = xrng.uniform(260, 380); f1 = f0 * xrng.uniform(1.5, 2.1)
+        f = f0 + (f1 - f0) * tk / tk[-1]
+        bloop = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tk / 0.022) * np.minimum(1, tk / 0.003)
+        place(e, bloop * xrng.uniform(0.2, 0.45), at)
+    for _ in range(18):   # a few bigger pops where the surface breaks
+        k = int(0.05 * SR); at = xrng.uniform(0, d2 - 0.1); tk = np.arange(k) / SR
+        pop = fft_filter(xrng.standard_normal(k), lo=600, hi=3000) * np.exp(-tk / 0.008)
+        place(e, pop * xrng.uniform(0.25, 0.5), at)
+    write(f"{ROOT}/amb/lava.ogg", norm(loop_xf(e), 0.2), q=3)
+
 if __name__ == "__main__":
     what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world", "scape", "cinder", "press"]
+    if "dirt" in what: dirt()
+    if "wheat" in what: wheat()
+    if "purchase" in what: purchase()
+    if "lava" in what: lava()
     if "cinder" in what: cinder()
     if "sfx" in what: sfx()
     if "music" in what: music_all()
