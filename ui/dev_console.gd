@@ -22,6 +22,7 @@ static var _history: PackedStringArray = PackedStringArray()
 
 var cmds: DevCommands
 var _sim: Sim
+var _built: bool = false   ## the UI is built on the first open, not on the game's entry frame (see _ensure_built)
 var _ctx: Dictionary = {}
 var _title: PanelContainer
 var _log: RichTextLabel
@@ -46,9 +47,19 @@ static func attach(parent: Control, sim: Sim, ctx: Dictionary = {}) -> DevConsol
 	var c := DevConsole.new()
 	c.name = "DevConsole"
 	c._ctx = ctx
-	parent.add_child(c)
-	c._build(sim)
+	c._sim = sim
+	c.visible = false
+	c.process_mode = Node.PROCESS_MODE_ALWAYS   # the toggle key is read even while the console is closed
+	parent.add_child(c)   # its UI is built on the first open: building it here cost about 36 ms on the game's entry frame
 	return c
+
+
+## Builds the UI once, the first time the console opens.
+func _ensure_built() -> void:
+	if _built:
+		return
+	_built = true
+	_build(_sim)
 
 
 func _build(sim: Sim) -> void:
@@ -444,6 +455,7 @@ func toggle() -> void:
 func open() -> void:
 	if not SettingsRegistry.dev_tools_enabled():
 		return
+	_ensure_built()
 	visible = true
 	_place()
 	var w: Node2D = _walker()

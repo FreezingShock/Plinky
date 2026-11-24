@@ -252,7 +252,11 @@ func _process(delta: float) -> void:
 		_update_loading(delta)
 	# The flower atlas bakes a slice a frame until it exists. Once the loader is done, a bigger slice finishes it, and the
 	# leave waits for it (below), so the game never bakes the rest on its first frame.
+	PerfStats.lap_begin()
+	PerfStats.lap_begin()
 	GardenArt.prepare_slice(GardenArt.BAKE_CATCHUP_MS if _loader.is_finished() else GardenArt.BAKE_SLICE_MS)
+	PerfStats.lap("boot: atlas slice")
+	PerfStats.lap("boot: atlas slice")
 
 
 func _update_loading(delta: float) -> void:

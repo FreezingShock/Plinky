@@ -203,11 +203,15 @@ static func _pack_atlas() -> void:
 		rects[int((_plan[i] as Dictionary).idx)] = Rect2(x, y, w, h)
 		x += w + ATLAS_GUTTER
 		shelf = maxi(shelf, h)
+	PerfStats.lap("atlas: rects")
 	var sheet := Image.create(ATLAS_WIDTH, y + shelf + ATLAS_GUTTER, false, Image.FORMAT_RGBA8)
 	sheet.fill(Color(0.0, 0.0, 0.0, 0.0))
+	PerfStats.lap("atlas: sheet fill")
 	for i in _baked.size():
 		sheet.blit_rect(_baked[i], Rect2i(Vector2i.ZERO, _baked[i].get_size()), Vector2i(rects[int((_plan[i] as Dictionary).idx)].position))
+	PerfStats.lap("atlas: blit")
 	_atlas = ImageTexture.create_from_image(sheet)
+	PerfStats.lap("atlas: upload")
 	_atlas_rects = rects
 	_atlas_count = _baked.size()
 	_plan = []
