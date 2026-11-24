@@ -106,3 +106,9 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** the old stream was dry for about half its length, so it never read as water, and the lake's rim was a flat dark bowl. Foam down the whole mountain stream read as a pale column, not water.
 - **Side effects:** the bigger lake takes two oaks and a crystal cluster that stood on its edge; the walkable area is 10.2% (was 11.1%) and every pad and the gate are still reachable (generator check).
 - **Not run in the cloud:** the in-engine look and the sound sites (`MeadowSites` shore loudness) on the PC. The headless tests were not run here (no Godot in this container).
+## 2026-11-24: Clover stays green inside its gold rim; Dewdrop row moves in
+- **Why:** Nathan asked why the Clover pads were yellow (screenshots from PC QA). The gold for the Clover rim was also set as the stat colour, so the gems and flowers went gold. Nathan also said the Dewdrop pads sat too close to the arrival gate.
+- **Clover:** the gold is now only the rim, lit rim and rarity ring. The gems, pip and flowers keep the Clover reward green.
+- **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (634,568), (678,590), (722,612), beside the main path north of the gatehouse tower. The nearest pad is 111 texels from the arrival gate, up from 31. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
+- **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
+- Not run in-engine from the cloud. Please check the pads on a PC capture.
