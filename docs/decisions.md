@@ -785,6 +785,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
 
+## Hamburger menu layout (2026-11-24)
+- **Why:** the menu's footer set the panel width, so the 3-column tile grid sat in a wide empty strip on the right (Nathan's v0.49.0 screenshot). The tile order also put Settings and Stats in the middle of the gameplay tiles.
+- **What:** four columns, so the grid is exactly as wide as the menu. Tiles run Play (Upgrades, Relics, Attributes, Travel), then Info (Stats, History, Ledger, Update Log), with Settings alone on a full-width row. Groups are split by a dotted rule. `GalleryMenu.GROUPS` sets the row sizes. Keyboard and d-pad order follows the same sequence.
+- **Taste pick, easy to reverse:** Settings is a full-width bar, not a small centred tile. If Nathan prefers a square tile, drop the `n == 1` expand line in `ui/gallery_menu.gd`.
+- Not run in engine: no Godot in the cloud. `tests/test_gallery.gd` covers the order, groups and Settings neighbours. PC QA should check the menu at 1920x1080 and 800x600 for the empty strip, the footer alignment and the focus landing on Upgrades.
+
 ## 2026-11-23 Upgrades gallery and centred Bloom exit (minor)
 - **Upgrades layout:** one tab per currency group (Prestige, Rebirth Perks, then each zone reset's gifts, named by `ZoneResetDef.menu_title`). Tabs come from the data, so a new reset gets its own tab with no HUD change. Within a tab, gifts are grouped into tiers by their unlock gate, each with a heading ("Tier 1: Open", "Tier 2: Unlocks After 2 Blooms"). Cards sit two across in a scroll list about 3.5 rows tall, so the panel fits above the bottom bar at 640x360.
 - **Card outline:** green when the next level is affordable, red when not (the existing colour-safe tint), gold when maxed, dim while locked. The fill is transparent so the panel shows through. Taste call: gold for maxed is my pick; say if you want maxed to stay green.
