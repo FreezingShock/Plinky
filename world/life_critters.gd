@@ -308,13 +308,16 @@ static func frog_share() -> float:
 	return by_season * wet
 
 
-## Ground points the grass bends away from: rabbits, chickens, ducks and frogs that are showing (fade > 0), in frame texels.
+## Ground points the grass bends away from, in frame texels: rabbits, chickens and frogs that are showing (fade > 0),
+## and every duck (ducks on the water push nothing, the blades only draw on grass).
 func ground_pushers() -> PackedVector2Array:
 	var out: PackedVector2Array = PackedVector2Array()
 	for group: Array in [_rabbits, _chickens, _frogs]:
 		for c: Dictionary in group:
 			if float(c.fade) > 0.0:
 				out.append(c.pos as Vector2)
+	for d: Dictionary in _ducks:
+		out.append(d.pos as Vector2)
 	return out
 
 

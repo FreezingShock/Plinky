@@ -25,6 +25,7 @@ const SHADOW_STRIDE: Array[float] = [2.0, 1.34, 1.0]        # march stride multi
 const AO_TAPS: Array[int] = [2, 4, 4]                       # ground occlusion taps
 const SCREEN_GRADE: Array[bool] = [false, true, true]      # the full-frame light grade reads the screen texture (a back-buffer copy)
 const RAIN_RINGS_MIST: Array[bool] = [false, true, true]   # splash rings and dawn ground mist (ground_light.gdshader taps); first to go on Low
+const GRASS_BLADES: Array[bool] = [false, true, true]         # interactive grass blades (world/grass_blades.gd); Low keeps the baked-tip LifeGround
 const CULL_MARGIN: float = 24.0                             # texels beyond the view still drawn, so edges never pop
 
 static var path: String = "user://graphics.cfg"
@@ -117,6 +118,12 @@ static func shadow_stride() -> float:
 static func ao_taps() -> int:
 	load_settings()
 	return AO_TAPS[level]
+
+
+## False on Low: the interactive grass blades are off and the old baked sway tips (LifeGround) draw instead.
+static func grass_blades() -> bool:
+	load_settings()
+	return GRASS_BLADES[level]
 
 
 ## False on Low: the light grade pass is skipped (it is the only shader that reads the finished screen).

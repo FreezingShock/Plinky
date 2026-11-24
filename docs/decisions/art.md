@@ -314,3 +314,9 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - `LifeGround` is no longer placed in Larkmoor or the meadow. The class stays for its tests.
 - Pad plates are skipped by colour (they are not grass colours), not by the pad clearance, because Larkmoor has 31 pads and the shader holds 8.
 - Checked in the cloud only (xvfb, lavapipe): no shader errors, `tests/run.gd` passes (6539 checks), `tools/larkmoor_shots.tscn` runs. Not verified on the PC.
+
+## 2026-11-24: Grass blades: Low quality keeps the old tips, and the shader checks fewer cells
+- `GraphicsQuality.GRASS_BLADES` is `[false, true, true]`. On Low the blades hide and `LifeGround` (the baked tips, with the existing Low stride and step) draws instead. The check runs every frame, so a level change takes effect without a reload.
+- Cost, measured in the cloud (lavapipe, CPU-rasterised, so absolute numbers are not PC numbers; High, 150 frames per phase, `tools/bench.gd`): meadow noon average 40.2 ms with blades off, 57.1 ms with the first shader, 47.1 ms after the cell-limited shader. Larkmoor noon 58.9 / 64.7 / 56.1 ms. The blades' cost is per-pixel ALU over the whole screen, and the cell limit trims it about 17% on the meadow. Not measured on a GPU.
+- The shader now checks only the cells that can reach a pixel (2 texels to each side, 2 below), not all 15 candidates. Output is the same except where two blades overlap a texel, where the first one found wins.
+- Ducks are in the pusher list (`LifeCritters.ground_pushers`).

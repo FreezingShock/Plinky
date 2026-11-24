@@ -24,6 +24,8 @@ var _t: float = 0.0
 var pusher_group: StringName = &"walker"
 ## Extra pusher points each frame (rabbits and other critters), in the same frame texels as the walker. Empty = none.
 var critter_source: Callable = Callable()
+## The old baked-tip layer (LifeGround). It draws only when the blades are off (GraphicsQuality.grass_blades).
+var fallback: CanvasItem
 
 
 ## backdrop_sprite: the ground sprite (its texture size and position set the covered area).
@@ -83,6 +85,12 @@ func _rebuild_rects() -> void:
 
 func _process(delta: float) -> void:
 	if _mat == null:
+		return
+	var on: bool = GraphicsQuality.grass_blades()
+	visible = on
+	if fallback != null:
+		fallback.visible = not on
+	if not on:
 		return
 	var still: bool = MeadowLife.reduce_motion
 	if not still:
