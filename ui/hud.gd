@@ -65,7 +65,8 @@ var _sug_grid: GridContainer
 var _sug_note: Label
 var _count_label: Label
 var _layout_sig: String = ""
-const SUG_COLUMNS: int = 6
+const SUG_COLUMNS: int = 4   ## add chips per line to start with; _place_edit refits it to the footer bar
+var _foot_bar: HBoxContainer
 const CTL_W: float = 28.0   ## width of the grip and hide mark that open at the left of every row in edit mode (the mark has room around it)
 
 
@@ -1068,6 +1069,7 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	_sug_note.add_theme_color_override("font_color", RelicStyle.dim)
 	_foot_edit.add_child(_sug_note)
 	var bar := HBoxContainer.new()
+	_foot_bar = bar
 	bar.add_theme_constant_override("separation", 3)
 	_foot_edit.add_child(bar)
 	_count_label = Label.new()
@@ -1142,6 +1144,10 @@ func _set_edit_t(t: float) -> void:
 func _place_edit() -> void:
 	if _foot_edit == null or _edit_t <= 0.0:
 		return
+	# The chips wrap into as many per line as the count, Reset and Done bar is wide, so the grid never widens the panel.
+	var cols: int = clampi(int((_foot_bar.get_combined_minimum_size().x + 2.0) / (StripButton.CHIP_SIZE + 2.0)), 3, 6)
+	if _sug_grid.columns != cols:
+		_sug_grid.columns = cols
 	var need: Vector2 = _foot_edit.get_combined_minimum_size()
 	_foot_edit.position = Vector2.ZERO
 	_foot_edit.size = Vector2(maxf(_foot_clip.size.x, need.x), need.y)
