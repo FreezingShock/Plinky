@@ -1,1 +1,0 @@
-Larkmoor is twice as big in each direction (3040 by 1840 texels, up from 1520 by 920). The island grows a north lobe and a bottom-right land, with a new north-west trail and two bottom-right trails. Lanterns are re-placed in one size along every path, about every 150 texels, facing varies. Tall-prop counts are unchanged to hold the scene's node budget.
