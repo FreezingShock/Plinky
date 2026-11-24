@@ -1,1 +1,0 @@
-The five pad stages now read apart at a glance: stage 3 plates wear a tier-colour stripe, stage 4 a double stripe, and stage 5 gold stripes under a bigger outlined gold crown. The Thistle field is thicker around its row.
