@@ -102,7 +102,7 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 
 ## 2026-11-24: Meadow water rework
 - **Brief (Nathan, via coordinator):** the meadow map is nice but needs to be larger and more polished; rework the lake, shoreline and streams and keep the mountains' look (they grow with the map).
-- **Changed:** the lake radius 46 to 54 texels (still a bowl with the same shore blend); the stream bed is cut 0.9 below its own downhill water surface, so the river is one continuous ribbon instead of a dry channel with gaps; white water only on the stream banks, not down the middle; 90 shore reeds (was 46) and 60 lily pads on the lake (was 42).
+- **Changed:** the lake radius 46 to 54 texels (about 17 percent wider) (still a bowl with the same shore blend); the stream bed is cut 0.9 below its own downhill water surface, so the river is one continuous ribbon instead of a dry channel with gaps; white water only on the stream banks, not down the middle; 90 shore reeds (was 46) and 60 lily pads on the lake (was 42).
 - **Why:** the old stream was dry for about half its length, so it never read as water, and the lake's rim was a flat dark bowl. Foam down the whole mountain stream read as a pale column, not water.
 - **Side effects:** the bigger lake takes two oaks and a crystal cluster that stood on its edge; the walkable area is 10.2% (was 11.1%) and every pad and the gate are still reachable (generator check).
 - **Not run in the cloud:** the in-engine look and the sound sites (`MeadowSites` shore loudness) on the PC. The headless tests were not run here (no Godot in this container).
