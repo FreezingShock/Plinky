@@ -296,9 +296,13 @@ func _process(_delta: float) -> void:
 	# the flowers follow the season, and shut their heads once it is dark
 	if _gardens != null:
 		var cal: Node = get_node_or_null(^"/root/Calendar")   # an autoload: named by path, since --script tests have no autoloads
+		var hour: int = 12
 		if cal != null:
-			_gardens.season = int((cal.call(&"now") as Dictionary).get("season", GardenArt.SEASON_SUMMER))
+			var snap: Dictionary = cal.call(&"now") as Dictionary
+			_gardens.season = int(snap.get("season", GardenArt.SEASON_SUMMER))
+			hour = int(snap.get("hour", 12))
 		_gardens.closed = night > 0.6
+		_gardens.dew = not _gardens.closed and hour >= 5 and hour < 9   # the first morning hours: drops on the open heads
 
 
 func _exit_tree() -> void:

@@ -1,6 +1,6 @@
 extends SceneTree
-## Contact sheets of the garden flowers, one PNG per season: each row is a statistic (open heads, then the same row shut at
-## night), each column a variant (four small flowers, two shrubs, six field flowers), all at 4x with nearest filtering.
+## Contact sheets of the garden flowers, one PNG per season: each row is a statistic in three head states (open, shut at night,
+## dew at dawn), each column a variant (four small flowers, two shrubs, six field flowers), all at 4x with nearest filtering.
 ## Pure GardenArt, so it runs with --script (no autoloads).
 ## Run: godot --headless --path . --script tools/garden_sheet.gd -- out=<dir>/garden_sheet   (writes <prefix>_<season>.png)
 ## With no display, wrap it in xvfb-run. Look at the PNGs.
@@ -25,15 +25,15 @@ func _init() -> void:
 			ch = maxi(ch, s.y)
 	cw += 2
 	ch += 2
-	var rows: int = GardenArt.STATS.size() * 2
+	var rows: int = GardenArt.STATS.size() * 3
 	for season in 4:
 		var sheet := Image.create(cw * VARIANTS.size() * SCALE, ch * rows * SCALE, false, Image.FORMAT_RGBA8)
 		sheet.fill(Color("1d3b2e"))
 		var row: int = 0
 		for stat: StringName in GardenArt.STATS:
-			for closed in [false, true]:
+			for state in 3:
 				for i in VARIANTS.size():
-					var img: Image = GardenArt.frame(stat, VARIANTS[i], 0, season, closed).get_image()
+					var img: Image = GardenArt.frame(stat, VARIANTS[i], 0, season, state == 1, state == 2).get_image()
 					img.resize(img.get_width() * SCALE, img.get_height() * SCALE, Image.INTERPOLATE_NEAREST)
 					var at := Vector2i(i * cw * SCALE + SCALE, row * ch * SCALE + (ch - 1) * SCALE - img.get_height() + SCALE)
 					sheet.blend_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), at)

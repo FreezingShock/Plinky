@@ -24,6 +24,8 @@ const LEAF_DARK: String = "28683a"
 const LEAF_LIGHT: String = "7ccf6a"
 const SEED: String = "6b4a2a"
 const FROST: String = "eaf6ff"
+const DEW: String = "f4fbff"      # the bright drops on an open head at dawn
+const STATES: int = 3              # head states in the atlas: open, shut at night, dew at dawn
 const SHADOW: Color = Color(0.04, 0.14, 0.10, 0.42)   # soft ground shadow: a translucent dark green, so grass shows through
 const FOLD_CLOSED: float = 0.56   # the petal radius when a head is shut at night
 const FOLD_SPRING: float = 0.74   # spring heads are half open buds
@@ -55,6 +57,7 @@ const SHRUBS: Array = [[5, 3, 11], [6, 4, 29]]
 static var _frames: Dictionary = {}   # "stat:variant:lean:season:closed" -> ImageTexture
 static var _atlas: Texture2D = null             # every frame of every stat, season and night state, one texture (see atlas())
 static var _atlas_rects: Array[Rect2] = []      # where each frame sits in _atlas, indexed by frame_index()
+static var _atlas_count: int = 0                # how many distinct frames the atlas holds
 const ATLAS_WIDTH: int = 512
 const ATLAS_GUTTER: int = 1
 
@@ -90,9 +93,21 @@ static func foot_drop(variant: int) -> int:
 	return 1 if is_field(variant) else 0
 
 
-## Position of one frame in the atlas: stat index (STATS), variant, lean (-1, 0, +1), season, then open (0) or closed (1).
-static func frame_index(stat_index: int, variant: int, lean: int, season: int = SEASON_SUMMER, closed: bool = false) -> int:
-	return (((stat_index * variant_count(&"") + variant) * 3 + lean + 1) * 4 + season) * 2 + (1 if closed else 0)
+## Position of one frame in the atlas: stat index (STATS), variant, lean (-1, 0, +1), season, then the head state (0 open, 1 shut at
+## night, 2 dew at dawn). A frame that looks the same whatever the lean or state (shrubs, and winter stalks) has one canonical index.
+static func frame_index(stat_index: int, variant: int, lean: int, season: int = SEASON_SUMMER, closed: bool = false, dew: bool = false) -> int:
+	var c: Dictionary = _canonical(variant, lean, season, closed, dew)
+	return (((stat_index * variant_count(&"") + variant) * 3 + int(c.lean) + 1) * 4 + int(c.season)) * STATES + int(c.state)
+
+
+## The arguments that change a frame's pixels: shrubs ignore lean and state, winter has no head to shut or dew.
+static func _canonical(variant: int, lean: int, season: int, closed: bool, dew: bool) -> Dictionary:
+	if is_shrub(variant):
+		return {"lean": 0, "season": season, "state": 0}
+	var state: int = 2 if dew else (1 if closed else 0)
+	if season == SEASON_WINTER:
+		state = 0
+	return {"lean": lean, "season": season, "state": state}
 
 
 ## Every frame of every statistic, season and night state in one texture, built the first time it is asked for. GardenLayer draws
@@ -111,43 +126,59 @@ static func atlas_rect(index: int) -> Rect2:
 
 
 static func _build_atlas() -> void:
+	var total: int = STATS.size() * variant_count(&"") * 3 * 4 * STATES
 	var images: Array[Image] = []
-	for stat: StringName in STATS:
+	var indices: Array[int] = []
+	for stat_index in STATS.size():
+		var stat: StringName = STATS[stat_index]
 		for v in variant_count(stat):
 			for lean: int in [-1, 0, 1]:
 				for season in 4:
-					for closed in [false, true]:
-						images.append(_bake(stat, v, 0 if is_shrub(v) else lean, season, closed))
+					for state in STATES:
+						var idx: int = frame_index(stat_index, v, lean, season, state == 1, state == 2)
+						if indices.has(idx):
+							continue
+						indices.append(idx)
+						var c: Dictionary = _canonical(v, lean, season, state == 1, state == 2)
+						images.append(_bake(stat, v, int(c.lean), int(c.season), int(c.state) == 1, int(c.state) == 2))
+	# tallest first, so each shelf holds frames of one height and little space is lost under the short ones
+	var order: Array[int] = []
+	for i in images.size():
+		order.append(i)
+	order.sort_custom(func(a: int, b: int) -> bool: return images[a].get_height() > images[b].get_height())
 	var rects: Array[Rect2] = []
+	rects.resize(total)
 	var x: int = ATLAS_GUTTER
 	var y: int = ATLAS_GUTTER
 	var shelf: int = 0
-	for img: Image in images:
+	for i: int in order:
+		var img: Image = images[i]
 		var w: int = img.get_width()
 		var h: int = img.get_height()
 		if x + w + ATLAS_GUTTER > ATLAS_WIDTH:
 			x = ATLAS_GUTTER
 			y += shelf + ATLAS_GUTTER
 			shelf = 0
-		rects.append(Rect2(x, y, w, h))
+		rects[indices[i]] = Rect2(x, y, w, h)
 		x += w + ATLAS_GUTTER
 		shelf = maxi(shelf, h)
 	var sheet := Image.create(ATLAS_WIDTH, y + shelf + ATLAS_GUTTER, false, Image.FORMAT_RGBA8)
 	sheet.fill(Color(0.0, 0.0, 0.0, 0.0))
 	for i in images.size():
-		sheet.blit_rect(images[i], Rect2i(Vector2i.ZERO, images[i].get_size()), Vector2i(rects[i].position))
+		sheet.blit_rect(images[i], Rect2i(Vector2i.ZERO, images[i].get_size()), Vector2i(rects[indices[i]].position))
 	_atlas = ImageTexture.create_from_image(sheet)
 	_atlas_rects = rects
+	_atlas_count = images.size()
 
 
 ## The baked sprite for `stat`/`variant` leaning -1, 0 or +1 in `season` (0 spring to 3 winter), open or `closed`.
 ## The head's top rows shift a texel with the lean and the stem foot stays put. Shrubs do not lean.
-static func frame(stat: StringName, variant: int, lean: int, season: int = SEASON_SUMMER, closed: bool = false) -> Texture2D:
-	var lean_used: int = 0 if is_shrub(variant) else lean
-	var key: String = "%s:%d:%d:%d:%d" % [stat, variant, lean_used, season, 1 if closed else 0]
+static func frame(stat: StringName, variant: int, lean: int, season: int = SEASON_SUMMER, closed: bool = false, dew: bool = false) -> Texture2D:
+	var c: Dictionary = _canonical(variant, lean, season, closed, dew)
+	var key: String = "%s:%d:%d:%d:%d" % [stat, variant, int(c.lean), int(c.season), int(c.state)]
 	if _frames.has(key):
 		return _frames[key] as Texture2D
-	var tex: ImageTexture = ImageTexture.create_from_image(_bake(stat, variant, lean_used, season, closed))
+	var tex: ImageTexture = ImageTexture.create_from_image(_bake(stat, variant, int(c.lean), int(c.season), int(c.state) == 1, int(c.state) == 2))
 	_frames[key] = tex
 	return tex
 
@@ -161,7 +192,7 @@ static func _palette(stat: StringName) -> Array[Color]:
 	return out
 
 
-static func _bake(stat: StringName, variant: int, lean: int, season: int, closed: bool) -> Image:
+static func _bake(stat: StringName, variant: int, lean: int, season: int, closed: bool, dew: bool) -> Image:
 	var cells: Dictionary = {}   # Vector2i -> Color, centred on x = 0; y grows downward, the head sits around y = 0
 	if is_shrub(variant):
 		_shrub(cells, SHRUBS[variant - FLOWER_VARIANTS] as Array, season, _palette(stat))
@@ -230,6 +261,8 @@ static func _bake(stat: StringName, variant: int, lean: int, season: int, closed
 		cells[Vector2i(2, y)] = Color(LEAF_DARK) if i == 0 else Color(LEAF_DARK).darkened(0.1)
 	if season != SEASON_WINTER:
 		_head(cells, rx, ry, n, sharp, phase, fold, petal, shade, light, heart)
+		if dew and not closed:
+			_dew(cells, rx, ry, stat_seed(stat), heart)
 	# the soft shadow under the foot, only where nothing is drawn yet
 	for x in range(-rx - 1, rx + 2):
 		var q := Vector2i(x, foot)
@@ -262,6 +295,21 @@ static func _head(cells: Dictionary, rx: int, ry: int, n: int, sharp: float, pha
 			if r <= 0.34:
 				c = heart
 			cells[Vector2i(x, y)] = c
+
+
+## Dew at dawn: a few pale drops on the lit petals of an open head, placed by the same hash as everything else.
+static func _dew(cells: Dictionary, rx: int, ry: int, seed_v: int, heart: Color) -> void:
+	for y in range(-ry, ry + 1):
+		for x in range(-rx, rx + 1):
+			var q := Vector2i(x, y)
+			if not cells.has(q) or (cells[q] as Color).is_equal_approx(heart):
+				continue
+			if _hash(x, y, seed_v + 29) < 0.16:
+				cells[q] = Color(DEW)
+
+
+static func stat_seed(stat: StringName) -> int:
+	return STATS.find(stat) * 101 + 7
 
 
 ## A leafy mound seen from above: lit upper-left, a darker front lip for depth, petal dots on top and a soft shadow.

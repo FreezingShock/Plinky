@@ -44,13 +44,15 @@ func run(t: Object) -> void:
 		for v in GardenArt.variant_count(GardenArt.STATS[s]):
 			for lean in [-1, 0, 1]:
 				for season in 4:
-					for closed in [false, true]:
-						var src: Rect2 = GardenArt.atlas_rect(GardenArt.frame_index(s, v, lean, season, closed))
-						var frame_img: Image = GardenArt.frame(GardenArt.STATS[s], v, lean, season, closed).get_image()
+					for state in 3:   # open, shut at night, dew at dawn
+						var closed: bool = state == 1
+						var dew: bool = state == 2
+						var src: Rect2 = GardenArt.atlas_rect(GardenArt.frame_index(s, v, lean, season, closed, dew))
+						var frame_img: Image = GardenArt.frame(GardenArt.STATS[s], v, lean, season, closed, dew).get_image()
 						checked += 1
 						if Vector2(frame_img.get_size()) == src.size and atlas_img.get_region(Rect2i(src)).get_data() == frame_img.get_data():
 							same_pixels += 1
-	t.eq(same_pixels, checked, "all %d atlas frames (every season and night state) match their own sprites" % checked)
+	t.eq(same_pixels, checked, "all %d atlas frames (every season and head state) match their own sprites" % checked)
 	var rows_lookup: GardenLayer = GardenLayer.new()
 	rows_lookup.setup([[10, 5, 0, 0], [11, 5, 1, 0], [12, 9, 2, 0], [13, 9, 3, 0], [14, 20, 4, 0]])
 	t.eq(rows_lookup._first_row(0.0), 0, "the row lookup starts at the first flower")
