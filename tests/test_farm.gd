@@ -11,7 +11,7 @@ const SCALE: float = 2.0
 const FENCE_PREFIX: String = "farm_fence"                # the fence ring's pieces (see place_farm.py)
 const WHEAT_PREFIX: String = "farm_wheat"                # the wheat clumps, which overlap a little (see place_farm.py)
 const SOIL_PREFIX: String = "farm_soil"                  # the tilled soil decals: ground, drawn behind everything
-const NODE_BUDGET: int = 240                           # the farm's own nodes: one sprite per item, plus the driver
+const NODE_BUDGET: int = 60                           # the farm's own nodes: one sprite per item except the wheat, plus the driver
 
 
 func run(t: Object) -> void:
@@ -160,20 +160,19 @@ func run(t: Object) -> void:
 	var parent := Node2D.new()
 	FarmProps.spawn(parent, null, null, null, data)
 	var sprites: int = 0
-	var clumps_animated: int = 0
+	var clumps_driven: int = 0
 	var driver: int = 0
 	var channel_nodes: int = 0
 	for n: Node in parent.get_children():
 		if n is Sprite2D:
 			sprites += 1
-			if (n as Sprite2D).region_enabled:
-				clumps_animated += 1
 		elif n is FarmWheat:
 			driver += 1
+			clumps_driven = (n as FarmWheat).clump_count()
 		elif n is CozyBrook:
 			channel_nodes += 1
-	t.eq(sprites, items.size(), "the farm spawns one sprite per item")
-	t.eq(clumps_animated, wheat, "every wheat clump is an animated sheet")
+	t.eq(sprites, items.size() - wheat, "the farm spawns one sprite per item, except the wheat")
+	t.eq(clumps_driven, wheat, "every wheat clump is a canvas item owned by the one driver, not a node")
 	t.eq(driver, 1, "one wheat driver drives the clumps")
 	t.eq(channel_nodes, 1, "the channel spawns as one node")
 	t.ok(parent.get_child_count() <= NODE_BUDGET, "the farm adds at most %d nodes (%d)" % [NODE_BUDGET, parent.get_child_count()])

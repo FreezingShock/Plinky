@@ -1,7 +1,9 @@
 class_name FarmWheat
 extends Node
-## Keeps the farm's wheat alive. Every clump is a sprite that plays its baked gust sheet on the life clock (the same clock
-## as the cozy wheat). When the walker comes near a clump, that clump is redrawn each frame from its stalks instead: each
+## Keeps the farm's wheat alive. Every clump is a canvas item that plays its baked gust sheet on the life clock (the same
+## clock as the cozy wheat). The clumps are RenderingServer canvas items, not nodes: this one node owns all of them, so 170-odd
+## clumps cost one node against the Larkmoor node ceiling. Each item is a child of the farm's y-sorted prop parent at its
+## foot, so the walker, the trees and the props still sort against every clump by Y exactly as sprites did. When the walker comes near a clump, that clump is redrawn each frame from its stalks instead: each
 ## stalk leans away from the walker, and the walker's position follows a soft spring, so the stalks part as the walker
 ## comes in, stay parted while it stands, and spring back with a slight bounce after it passes. Far clumps keep the cheap
 ## sheet. Under Reduce Motion the sheets hold still and nothing parts. This is presentation only: it reads the walker and
@@ -16,7 +18,8 @@ const MAX_STEP: float = 1.0 / 30.0   # longest simulated step, so a hitch cannot
 const NOWHERE: Vector2 = Vector2(-99999.0, -99999.0)
 const FIELD_RATE: float = 0.5        # gust frames per life step, as the cozy wheat
 
-var _clumps: Array[Dictionary] = []  # {sprite, clump, sheet, phase, frame, live, tex}
+var _clumps: Array[Dictionary] = []  # {rid, origin, offset, clump, sheet, phase, frame, live, tex}
+var _parent: Node2D                  # the y-sorted prop parent the clump items hang off
 var _walker: Node2D
 var _at: Vector2 = NOWHERE           # the push point, on the spring
 var _vel: Vector2 = Vector2.ZERO
@@ -38,10 +41,40 @@ static func spring_step(at: Vector2, vel: Vector2, target: Vector2, delta: float
 	return [at + v * dt, v]
 
 
-## Adds a clump sprite (already holding its baked sheet) with its generated stalks.
-func add_clump(sp: Sprite2D, clump: Dictionary, phase: int) -> void:
-	_clumps.append({"sprite": sp, "clump": clump, "sheet": sp.texture, "phase": phase, "frame": 0, "live": false,
-		"tex": null})
+## Adds a clump (its baked sheet and generated stalks) as a canvas item under `parent`, standing at `foot` (the item's
+## y-sort point), whose top-left corner is `origin`. Both are in `parent`'s space.
+func add_clump(parent: Node2D, origin: Vector2, foot: Vector2, sheet: Texture2D, clump: Dictionary, phase: int) -> void:
+	_parent = parent
+	var rid: RID = RenderingServer.canvas_item_create()
+	RenderingServer.canvas_item_set_parent(rid, parent.get_canvas_item())
+	RenderingServer.canvas_item_set_transform(rid, Transform2D(0.0, foot))
+	RenderingServer.canvas_item_set_default_texture_filter(rid, RenderingServer.CANVAS_ITEM_TEXTURE_FILTER_NEAREST)
+	var c: Dictionary = {"rid": rid, "origin": origin, "offset": origin - foot, "clump": clump, "sheet": sheet,
+		"phase": phase, "frame": 0, "live": false, "tex": null}
+	_clumps.append(c)
+	_draw_sheet(c)
+
+
+func clump_count() -> int:
+	return _clumps.size()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for c: Dictionary in _clumps:
+			RenderingServer.free_rid(c.rid as RID)
+		_clumps.clear()
+
+
+## Draws a clump's current gust frame from its baked sheet.
+func _draw_sheet(c: Dictionary) -> void:
+	var clump: Dictionary = c.clump as Dictionary
+	var w: int = int(clump.w)
+	var h: int = int(clump.h)
+	var rid: RID = c.rid as RID
+	RenderingServer.canvas_item_clear(rid)
+	RenderingServer.canvas_item_add_texture_rect_region(rid, Rect2(c.offset as Vector2, Vector2(w, h)),
+		(c.sheet as Texture2D).get_rid(), Rect2(float(int(c.frame) * w), 0.0, float(w), float(h)))
 
 
 func _process(delta: float) -> void:
@@ -63,29 +96,26 @@ func _process(delta: float) -> void:
 	_step = step
 	var push: float = push_for(calm)
 	for c: Dictionary in _clumps:
-		var sp: Sprite2D = c.sprite as Sprite2D
-		if not is_instance_valid(sp):
-			continue
 		if stepped:
 			c.frame = CozyAnimator.frame_at(step, WheatClump.FRAMES, int(c.phase), FIELD_RATE, calm)
 		var clump: Dictionary = c.clump as Dictionary
 		var w: int = int(clump.w)
 		var h: int = int(clump.h)
-		var centre: Vector2 = sp.to_global(sp.offset + Vector2(w * 0.5, h * 0.5))
+		var origin: Vector2 = c.origin as Vector2
+		var centre: Vector2 = _parent.to_global(origin + Vector2(w * 0.5, h * 0.5))
 		var near: bool = push > 0.0 and _at.distance_to(centre) < LIVE_RANGE
 		if near:
-			var local: Vector2 = sp.to_local(_at) - sp.offset
+			var local: Vector2 = _parent.to_local(_at) - origin
 			var img: Image = WheatClump.rasterize(clump, int(c.frame), local, push, PUSH_RADIUS)
 			if c.tex == null:
 				c.tex = ImageTexture.create_from_image(img)
 			else:
 				(c.tex as ImageTexture).update(img)
-			sp.texture = c.tex as ImageTexture
-			sp.region_enabled = false
-		elif bool(c.live):
-			sp.texture = c.sheet as Texture2D
-			sp.region_enabled = true
-			sp.region_rect = Rect2(float(int(c.frame) * w), 0.0, float(w), float(h))
-		elif stepped:
-			sp.region_rect = Rect2(float(int(c.frame) * w), 0.0, float(w), float(h))
+			if not bool(c.live):
+				var rid: RID = c.rid as RID
+				RenderingServer.canvas_item_clear(rid)
+				RenderingServer.canvas_item_add_texture_rect(rid, Rect2(c.offset as Vector2, Vector2(w, h)),
+					(c.tex as ImageTexture).get_rid())
+		elif bool(c.live) or stepped:
+			_draw_sheet(c)
 		c.live = near
