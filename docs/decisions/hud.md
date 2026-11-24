@@ -456,3 +456,17 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Kept:** repeat gains from one pad still add up on one number, and the adaptive quiet window still applies. Crowded pads still shift labels sideways or stack them above the button (`PopupLanes`).
 - **Sunlight bonuses** have their own key, so they fold only with each other and not with a pad's Sunlight number. Say so if that splits a Sunlight number you wanted combined.
 - Not run in-engine from the cloud: PC QA should check a neighbouring pad's gain and a standing press on one pad.
+
+## 2026-11-24: Zone currencies open their gifts and show a full card
+- **Why:** Seeds and Core Shards only said "You have X". Nathan wanted the card to say what the currency is and how it is earned, and a click to take you to the gifts it buys.
+- **Rule:** a zone currency's HUD row and its Upgrades badge use `TipText.currency` (copy in `ZoneResetDef.currency_body`, the page line in `gift_blurb`). The row is clickable, and its card ends on "Click to open!". A click opens Upgrades on that zone's tab, and a click while the menu is open only moves to the tab. The badge's card has no call to action, since the menu is already open.
+- **Gifts menu:** each page has a centred head in its currency colour, tier heads take the zone colour, and the grid is centred. The list has one height for every tab (the tallest tab, up to the cap), so a tab switch or a buy never resizes the panel. The header balances have a fixed width. `ZoneResetDef.plural_name` fixes "Nucleuss" to "Nuclei".
+- Not run in-engine from the cloud: the Seeds card, the Bloom and Nucleus pages and the one-size panel were rendered headless under xvfb (`tools/gifts_shot.tscn`). The Core Shards card was covered by a world gate tooltip in that harness and is checked by `tests/test_zone_currency.gd`. PC QA should click both rows and both tabs.
+## 2026-11-24: HUD gain label beside each statistic
+- **Why:** Nathan wants the stat strip to show what a stat just earned, without a per-gain number in the world. The new label is a small "+123" right of the stats panel, level with its row, with the income rate ("+x/s") moved just past it.
+- **Source:** `EventBus.button_pressed` (every pad press, auto and relic pulses included) and `EventBus.bonus_gained` (streak and critter payouts). Idle income is not a gain here, so the label stays hidden while a stat only ticks up passively.
+- **Behaviour:** a run starts at the stat's first gain and sums every gain until HOLD (3 s) after the last one, then fades and drifts up over OUT (0.4 s). A gain during the run keeps adding to the same number; a gain after the run starts again from zero. It hides when its row is hidden.
+- **Colour:** the streak tier of the latest pad press (`Juice.last_tier`), using the same `PopupStyle` colours as the world numbers. Tier 0 uses the stat's own colour. A bonus payout uses whatever tier the last press had.
+- **Performance:** one pooled `HudGainLabel` per row, and the sums live in `HudGainTally`. No node is made per gain. Sparkles are a fixed pool of six per label.
+- **Reduce Motion:** the label keeps its fade and drops the rise, the jump and the sparkles.
+- Not run in-engine from the cloud: check the label's position beside a long value, the "+x/s" moving past it, and the sparkles on a crit.

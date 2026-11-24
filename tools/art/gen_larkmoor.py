@@ -16,6 +16,8 @@ _DEAD = LAY.dead_ends()
 assert not _DEAD, 'paths lead nowhere (path index, end): %r' % (_DEAD,)   # every path must reach a gate, pad, landmark or path
 _ON_PATH = LAY.pads_on_path()
 assert not _ON_PATH, 'pads sit on or against a path (move them in larkmoor_layout.PAD_NUDGE): %r' % (_ON_PATH,)
+_OFF = LAY.rows_off()
+assert not _OFF, 'pad rows must hug a path and not overlap (tools/art/plan_rows.py): %r' % (_OFF,)
 import depth_pass, grass_tex
 GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
@@ -571,7 +573,7 @@ for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 7
 LANTERN_STEP = {'road': 110.0, 'lane': 200.0, 'trail': 400.0}
 LANTERN_END, LANTERN_OFF, LANTERN_MIN = 70.0, 19.0, 80.0   # 19: clear of the wider path (half-width up to about 13)
 LANTERN_SLIDE = 8.0                                         # texels per slide step along the path
-LANTERN_STREAM_DRAWS = 24     # lamps the old rhythm placed: the props after the lanterns keep their random stream
+LANTERN_STREAM_DRAWS = 25     # lamps the old rhythm placed on main after the districts moved: the props after the lanterns keep their random stream
 def _along(pp, t):
     """Point and unit normal at arc length t along a polyline (clamped to its ends)."""
     segs = list(zip(pp, pp[1:])); acc = 0.0
@@ -610,8 +612,11 @@ for pi, t0, side0 in _lantern_slots():
                 break
         if done: break
     if not done: log('lamp left out: no free spot on path %d near %.0f' % (pi, t0))
-# the props after the lanterns draw from the same stream they did under the old rhythm, so only the lanterns change
+# the props after the lanterns draw from the same stream they did under the old rhythm, and take the same ids, so only
+# the lanterns change. The old rhythm used LANTERN_STREAM_DRAWS draws and ids; pad what this one did not use.
+assert lantern_count <= LANTERN_STREAM_DRAWS, 'more lamps than the stream was kept for'
 for _ in range(LANTERN_STREAM_DRAWS): prng.randint(0, 1 << 30)
+inst_id[0] += LANTERN_STREAM_DRAWS - lantern_count
 log('lanterns placed', lantern_count)
 log('trees/rocks placed', len(placed))
 

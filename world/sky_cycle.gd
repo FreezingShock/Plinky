@@ -213,12 +213,11 @@ func _pond_array() -> Array:
 func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
 	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
-	_lights.append({"pos": pos, "radius": radius, "strength": strength, "kind": kind, "tint": Color(0.0, 0.0, 0.0, 0.0)})
+	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": Color(0.0, 0.0, 0.0, 0.0)})
 
 
-## Tints the pad pool at `pos` with `col` (a buy colour). Alpha 0 keeps the warm default. Pads are added with kind &"pad",
-## and the pool nearest `pos` within 1.5 texels is the one that changes.
-func set_pool_tint_at(pos: Vector2, col: Color) -> void:
+## The pad pool nearest `pos` within 1.5 texels, or an empty dictionary. Pads are added with kind &"pad".
+func _pad_pool_at(pos: Vector2) -> Dictionary:
 	var best: Dictionary = {}
 	var best_d: float = 1.5
 	for L: Dictionary in _lights:
@@ -228,8 +227,21 @@ func set_pool_tint_at(pos: Vector2, col: Color) -> void:
 		if d < best_d:
 			best_d = d
 			best = L
+	return best
+
+
+## Tints the pad pool at `pos` with `col` (a buy colour). Alpha 0 keeps the warm default.
+func set_pool_tint_at(pos: Vector2, col: Color) -> void:
+	var best: Dictionary = _pad_pool_at(pos)
 	if not best.is_empty():
 		best.tint = col
+
+
+## Scales the pad pool at `pos` to `share` of its own strength (1 = full). Used so a crowd of pads does not stack into one blow-out.
+func set_pool_strength_at(pos: Vector2, share: float) -> void:
+	var best: Dictionary = _pad_pool_at(pos)
+	if not best.is_empty():
+		best.strength = float(best.base) * share
 
 
 ## Light pools sent to the shader on the last frame (tests read this).
@@ -470,7 +482,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	if shadows != null:
 		var len: float = model.shadow_length(mt, _config.shadow_len_noon, _config.shadow_len_low, _config.shadow_len_moon)
 		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon, rain01),
-				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip, "low": low_sun_k})
+				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip, "low": low_sun_k,
+				"soft": _config.shadow_softness})
 	# rim light on props: whole-texel direction toward the light, warm when the sun is low, cool under the moon
 	var low: float = model.low_sun(mt)
 	var night_k: float = clampf(-model.sun_of(model.phase(mt)) * 2.0, 0.0, 1.0)
@@ -513,6 +526,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
 			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k) * GraphicsQuality.shadow_stride())
+			gm.set_shader_parameter("shadow_soft", _config.shadow_softness)
 			gm.set_shader_parameter("march_steps", GraphicsQuality.shadow_steps())
 			gm.set_shader_parameter("ao_taps", GraphicsQuality.ao_taps())
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
@@ -531,6 +545,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			pm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
 			pm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
+			pm.set_shader_parameter("shadow_soft", _config.shadow_softness)
 	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
 	if rim_key != _rim_key:
 		_rim_key = rim_key
@@ -569,9 +584,13 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var night01: float = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
 	var noon01: float = smoothstep(0.7, 1.0, model.elevation(mt)) * (1.0 - 0.6 * rain01)
 	var nb: float = noon01 * noon_boost
-	_light_mat.set_shader_parameter("noon_tint", Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.95, 0.88), clampf(nb * 0.6, 0.0, 1.0)))
+	# the warm noon cast is a tint on top of the autumn ground, which is already orange; it stays at the meadow's level
+	# (noon01, not noon_boost) so Larkmoor's noon stops stacking orange on orange
+	_light_mat.set_shader_parameter("noon_tint", Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.95, 0.88), clampf(noon01 * 0.6, 0.0, 1.0)))
 	_light_mat.set_shader_parameter("exposure", 1.0 - _config.noon_exposure * nb)
-	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * nb)
+	# Saturation: the noon boost of a brighter scene (noon_boost) goes into exposure and contrast only. Scaling the
+	# saturation too pushed Larkmoor's autumn ground into the orange and green cast.
+	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * noon01)
 	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01) + _config.noon_contrast * nb)
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette

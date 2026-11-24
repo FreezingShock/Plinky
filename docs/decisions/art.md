@@ -243,3 +243,24 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Why:** lamps should be on at dusk and off by day, and the glow should read at night without a flat blob.
 - **Not touched:** `day_night.gdshader` (the pool shape and its colour math). The lamp pool is still the same falloff and warm cast; only its strength changes.
 - **Not verified in-engine on the PC:** whether the lit window reads as warm enough next to the green pad pools at night.
+## 2026-11-24: Pad glow crowding (a row of pads does not blow out)
+- Nathan's screenshot: with the rows 42 texels apart, neighbouring halos and light pools added together into one blown-out green blob at night. Halos are additive, and pool strengths sum before the shader clamps them.
+- Fix: each lit pad counts the lit pads within `TexelPad.CROWD_RANGE` (48 texels, a little over one row). Its halo and its shader pool are scaled by `crowd_scale(n) = 1 / max(1, n * 0.5)`. A lone pad or a pair keeps full light, and any crowd adds up to about two pads' worth at its busiest point.
+- Why this and not a max blend: the halo and pool are additive on purpose (they light the ground), and changing the blend mode would change every pad. Scaling by crowd keeps one pad looking as it does now.
+- Not verified in-engine: no Godot binary was available in this session, so the 5-pad row at night was not rendered. The 48-texel range and the 0.5 share are guesses to tune on the PC.
+
+## 2026-11-24: Larkmoor wheat is thick, with no plots, and parts around the walker
+- The fields are wheat only. The tilled plots and greens were removed: crops in spring took the sway shader's blossom recolour, and Nathan asked for wheat only.
+- Each row is a thick mass over a dark under-mass, and rows overlap, so no soil or water shows between them. Water streams were dropped at Nathan's request.
+- world/farm/farm_wheat.gdshader pushes the stalks away from the walker. Tips move, the rows' bases stay, and the push falls off with distance. FarmWheat feeds it the walker's position, and the push is zero under Reduce Motion.
+- The parting is subtle at Larkmoor's zoom, so it needs a look on Nathan's PC.
+
+## 2026-11-24: Larkmoor wheat is clumps of stalks, placed in organic patches, and parts around the walker
+- Nathan's notes: each stalk needs its own shading and shadow, the walker must sort by Y and stand out above the wheat, the rustle must be real bending and parting rather than a blur, the fields need organic outlines, and the stalks should be bigger.
+- The wheat is now clumps. `world/farm/wheat_clump.gd` generates each clump from a seed: stalks with a dark root, a golden body, a darker side on some, a lit head, a dark root mass for thickness, and a dithered contact shadow. Each gust frame bends the tips.
+- `tools/art/place_farm.py` places the clumps in four wobbly patches. Each clump is a prop with its own foot, so the walker sorts against every clump by Y. The old rectangular fields and their fence runs are gone.
+- `tools/bake_wheat.gd` bakes eight gust frames per clump into `assets/art/zone1b/farm/wheat/`. Far clumps play the sheets.
+- `world/farm/farm_wheat.gd` redraws the clumps near the walker each frame from their stalks. Each stalk leans away from the walker and grows towards the tip, and the walker's push point follows a soft spring that bounces back after the walker passes. Under Reduce Motion nothing parts.
+- Not changed here: the grass blades. Those belong to the grass and ground work.
+- Not verified on the PC: how the parting reads at the player's own zoom and speed.
+

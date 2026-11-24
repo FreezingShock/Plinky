@@ -3,7 +3,7 @@ extends RefCounted
 
 func run(t: Object) -> void:
 	var sim: Sim = t.make_sim()
-	t.eq(sim.areas_in_zone(&"larkmoor").size(), 8, "Larkmoor lists its eight districts, Westmere included")
+	t.eq(sim.areas_in_zone(&"larkmoor").size(), 9, "Larkmoor lists its nine districts, Westmere included")
 	t.eq(sim.areas_in_zone(&"zone1").size(), 2, "the Meadow has two areas")
 	for z: ZoneDef in sim.zone_defs.values():
 		var seen: Dictionary = {}

@@ -51,7 +51,7 @@ func _ready() -> void:
 	await _wait(40)
 	await _shot("lm_start")
 	var anchors: Node = main.meadow.get_node("Anchors")
-	for d: String in ["green", "heronmere", "thistle", "oak", "cairnfold", "lanternwood", "emberwatch"]:
+	for d: String in ["green", "reedgate", "heronmere", "thistle", "oak", "cairnfold", "lanternwood", "emberwatch"]:
 		var m: Marker2D = anchors.get_node("District_" + d) as Marker2D
 		await _goto(main.walker.position, 2)
 		await _goto(m.position + Vector2(0, 10), 2)

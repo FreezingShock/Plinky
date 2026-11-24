@@ -14,6 +14,7 @@ uniform vec2 sun_px = vec2(-1.0, -1.0);
 uniform float shadow_amt = 0.0;
 uniform float shadow_slope = 2.6;
 uniform float shadow_reach = 2.0;
+uniform float shadow_soft = 0.0;                 // same feathered march as ground_light.gdshader
 uniform vec3 shadow_tint : source_color = vec3(0.45, 0.52, 0.80);
 
 varying vec2 wpos;
@@ -29,11 +30,12 @@ void fragment() {
 		vec2 uv = (floor(wpos) + vec2(0.5) - ground_origin) / sz;
 		float h0 = texture(h_tex, uv).r * 255.0 + pad_lift;
 		float sh = 0.0;
+		float pen = 0.5 + 6.0 * shadow_soft;
 		for (int k = 1; k <= 12; k++) {
 			float hn = texture(h_tex, uv + sun_px * float(k) * shadow_reach * px).r * 255.0;
-			if (hn > 0.5 && hn - h0 > shadow_slope * float(k) * shadow_reach) {
-				sh = 1.0;
-			}
+			float over = hn - h0 - shadow_slope * float(k) * shadow_reach;
+			float hit = smoothstep(-pen, pen, over) * step(0.5, hn);
+			sh = max(sh, hit * (1.0 - shadow_soft * float(k) / 13.0));
 		}
 		COLOR.rgb *= mix(vec3(1.0), shadow_tint, min(shadow_amt, 1.0) * sh);
 	}
