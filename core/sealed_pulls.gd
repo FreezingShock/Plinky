@@ -23,7 +23,8 @@ func def_of(cache_id: StringName) -> SealedPullDef:
 ## Caches in a stable order (by id), so the strip never reorders when content changes.
 func ordered() -> Array[SealedPullDef]:
 	var keys: Array = defs.keys()
-	keys.sort()
+	# StringName `<` compares internal pointers, not text, so sort on the string itself.
+	keys.sort_custom(func(a: Variant, b: Variant) -> bool: return String(a) < String(b))
 	var out: Array[SealedPullDef] = []
 	for k: Variant in keys:
 		out.append(defs[k] as SealedPullDef)
