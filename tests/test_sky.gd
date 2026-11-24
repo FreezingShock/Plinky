@@ -109,3 +109,5 @@ func run(t: Object) -> void:
 	var pi: Image = padded.get_image()
 	t.near(pi.get_pixel(0, 0).a, 0.0, 1e-6, "pad columns are transparent")
 	t.near(pi.get_pixel(SkyCycle.SWAY_PAD, 0).a, 1.0, 1e-6, "sprite pixels sit after the pad")
+	# A missing texture must not crash the sky (the 'texture has no image data' race): it comes back as it was.
+	t.ok(SkyCycle.padded(null) == null, "padding nothing gives nothing")
