@@ -149,3 +149,10 @@ renderer. Not settled. Needs a timed swap on the PC (RTX 3060 Ti) before the num
 
 Not done: the Ember Quarry still draws 183 props as one node each (one draw call each). Atlasing them is the next step for
 batching. The first rendered frame after a swap is GPU work (texture upload, first draws), which only the PC can measure.
+
+## Camera pan sweep and Larkmoor entry (2026-11-24)
+- **Probe:** `tools/larkmoor_pan_sweep.gd` pans the camera in a sine (free mode, the walker still) at 120, 300 and 600 texels a second, at zooms 1, 2 and 4, 360 frames each. It counts pop-in frames (an on-screen chunk with props not yet loaded), chunk loads and their cost, and the trace labels. `-- --still-sway` holds the flowers (Reduce Motion), so only pan-driven redraws remain.
+- **Result (lavapipe, High, 1280x720):** 0 pop-in frames at every speed and zoom. Node peak 891 against the 1300 budget. Chunk loads cost 0.2 ms mean and 4.4 to 7.2 ms at worst, at zoom 1 and 600 texels a second.
+- **Garden redraw, checked and not changed:** a 32-texel redraw pad (redraw once per pad of pan, not every 16 texels) did not cut redraws in a sway-frozen A/B (127 to 121 at zoom 1, 600 texels a second) and made each redraw about 25% dearer (0.97 to 1.25 ms mean). Dropped. Pan redraws are not the lever; the cost is per flower drawn.
+- **Entry hitch:** see [decisions/world.md](decisions/world.md), "Larkmoor's farm builds over the wipe".
+- **Not run on a real GPU:** every number above is a CPU measurement on a software rasteriser. PC QA should run the pan sweep at zoom 1 and 2 on the RTX 3060 Ti and check the wheat's entry under the wipe.
