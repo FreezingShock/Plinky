@@ -109,14 +109,14 @@ func run(t: Object) -> void:
 	sh.add_caster(src, "oak", Vector2(40.0, 50.0))
 	var p: Dictionary = {"foot": 1.0, "tip": 0.4}
 	sh.set_sun(-1.0, 1.0, 1.0, p)
-	var tf_left: Transform2D = (sh._items[0].sprite as Sprite2D).transform
+	var tf_left: Transform2D = (sh._items[0].xf as Transform2D)
 	var tip_left: Vector2 = tf_left * Vector2(0.0, -1.0)
 	t.ok(tip_left.x > 100.0 + 20.0, "dawn shadow falls to the right (tip x %.1f)" % tip_left.x)
 	sh.set_sun(1.0, 1.0, 1.0, p)
-	var tip_right: Vector2 = (sh._items[0].sprite as Sprite2D).transform * Vector2(0.0, -1.0)
+	var tip_right: Vector2 = (sh._items[0].xf as Transform2D) * Vector2(0.0, -1.0)
 	t.ok(tip_right.x < 100.0 - 20.0, "dusk shadow falls to the left (tip x %.1f)" % tip_right.x)
 	sh.set_sun(0.0, 0.2, 1.0, p)
-	var tip_noon: Vector2 = (sh._items[0].sprite as Sprite2D).transform * Vector2(0.0, -1.0)
+	var tip_noon: Vector2 = (sh._items[0].xf as Transform2D) * Vector2(0.0, -1.0)
 	t.ok(tip_noon.distance_to(Vector2(100.0, 100.0)) < tip_left.distance_to(Vector2(100.0, 100.0)) * 0.6,
 			"noon shadow is shorter than dawn")
 	# Per-object shadows: a tree throws the strong shadow, a bush a faint one; softness reaches the shader.
