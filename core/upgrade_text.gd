@@ -15,6 +15,47 @@ static func amount_at(a: AttributeDef, level: int) -> float:
 	return float(level) * a.per_level
 
 
+## What a gift's second effect gives at `level`, short enough for a card ("+1% a Bloom", "0.5% for 5x"), or "" for none.
+## proc_mult is what a press proc pays (GameConfig.press_proc_mult).
+static func second_value(a: AttributeDef, level: int, proc_mult: float) -> String:
+	if a.effect2 == &"":
+		return ""
+	var pct: String = _trim(float(level) * a.per_level2 * 100.0)
+	match a.effect2:
+		&"press_proc":
+			return "%s%% for %sx" % [pct, _trim(proc_mult)]
+		&"bloom_bonus":
+			return "+%s%% a Bloom" % pct
+		&"nucleus_bonus":
+			return "+%s%% a Nucleus" % pct
+	return "+%s%% %s" % [pct, String(a.effect2).replace("_", " ")]
+
+
+## The compact form for a card's second line, short enough to sit after "now -> next": "5% for 5x", "+10%/Bloom".
+static func second_short(a: AttributeDef, level: int, proc_mult: float) -> String:
+	if a.effect2 == &"":
+		return ""
+	var pct: String = _trim(float(level) * a.per_level2 * 100.0)
+	match a.effect2:
+		&"press_proc":
+			return "%s%% for %sx" % [pct, _trim(proc_mult)]
+		&"bloom_bonus":
+			return "+%s%%/Bloom" % pct
+		&"nucleus_bonus":
+			return "+%s%%/Nuc" % pct
+	return "+%s%%" % pct
+
+
+## The sentence a tooltip uses for the second effect, or "" when the gift has none (or is still locked).
+static func second_sentence(a: AttributeDef, level: int, proc_mult: float) -> String:
+	if a.effect2 == &"":
+		return ""
+	var now: String = second_value(a, level, proc_mult)
+	if level >= a.cap:
+		return "Also %s." % now
+	return "Also now %s, next %s." % [now, second_value(a, level + 1, proc_mult)]
+
+
 ## "+120%" or "+5 h". Same string the tooltip and the stats index use for the number.
 static func value(a: AttributeDef, amount: float) -> String:
 	match a.value_kind:
@@ -52,6 +93,15 @@ static func group_head(sim: Sim, currency: StringName) -> String:
 	return r.menu_title.to_upper() if r != null and r.menu_title != "" else String(currency).to_upper()
 
 
+## One tab per zone reset's gift group, in reset order. Prestige and Rebirth Perks are no longer tabs (removed with the
+## Rebirth ladder, #209), so their upgrades have no page unless a reset pays in that currency.
+static func tab_currencies(sim: Sim) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for r: ZoneResetDef in sim.resets_ordered():
+		out.append(r.currency)
+	return out
+
+
 ## Every currency the Upgrades header and menu know, in menu order.
 static func currencies(sim: Sim) -> Array[StringName]:
 	var out: Array[StringName] = [&"prestige", &"rp"]
@@ -66,6 +116,8 @@ static func currencies(sim: Sim) -> Array[StringName]:
 static func group_shown(sim: Sim, currency: StringName) -> bool:
 	var r: ZoneResetDef = sim.reset_for_currency(currency)
 	if r != null:
+		if r != sim.reset_for_zone():
+			return false   # only the zone you are in shows its own gifts
 		return sim.reset_count(r.id) > 0 or sim.reset_unlocked(r.id) or not sim.get_stat(currency).is_zero()
 	if currency == &"rp":
 		return sim.rebirth_here() and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
@@ -85,8 +137,9 @@ static func unit(a: AttributeDef) -> String:
 static func lock_text(a: AttributeDef, sim: Sim = null) -> String:
 	if a.unlock_resets > 0:
 		var r: ZoneResetDef = sim.reset_for_currency(a.currency) if sim != null else null
-		var nm: String = r.display_name if r != null else "resets"
-		return "Unlocks after %d %s" % [a.unlock_resets, nm + ("s" if a.unlock_resets != 1 and r != null else "")]
+		if r == null:
+			return "Unlocks after %d resets" % a.unlock_resets
+		return "Unlocks after %d %s %s" % [a.unlock_resets, r.display_name, "reset" if a.unlock_resets == 1 else "resets"]
 	return "Unlocks at %d Rebirths" % a.unlock_rebirths
 
 
@@ -122,6 +175,9 @@ static func state(sim: Sim, a: AttributeDef) -> Dictionary:
 		"cost_text": cost.format(), "can_afford": not maxed and not sim.attribute_available(a).lt(cost),
 		"currency": a.currency, "currency_name": currency_name(a), "blurb": a.blurb,
 		"lock": lock_text(a, sim), "rebirths": _have_for_lock(sim, a), "need": a.unlock_rebirths,
+		"second_now": second_value(a, lv, sim.config.press_proc_mult),
+		"second_short": second_short(a, lv, sim.config.press_proc_mult) if sim.attr_unlocked(a.id) else "",
+		"second_next": "" if maxed else second_value(a, lv + 1, sim.config.press_proc_mult),
 	}
 
 
@@ -147,7 +203,37 @@ static func tip(s: Dictionary, effect: StringName) -> Dictionary:
 	var title: String = "%s %d/%d" % [s["name"], s["level"], s["cap"]]
 	if bool(s["unlocked"]) and not bool(s["maxed"]):
 		body += "\nNow %s, next %s %s." % [s["now"], s["next"], s["unit"]]
+	if bool(s["unlocked"]) and String(s.get("second_now", "")) != "":
+		body += "\n" + (("Also %s." % s["second_now"]) if bool(s["maxed"]) else ("Also now %s, next %s." % [s["second_now"], s["second_next"]]))
 	return {"title": title, "body": body, "hint": hint}
+
+
+## The tab name of a currency's group in the Upgrades gallery: Prestige, Rebirth Perks, or the zone reset's own menu title.
+static func tab_name(sim: Sim, currency: StringName) -> String:
+	if currency == &"prestige":
+		return "Prestige"
+	if currency == &"rp":
+		return "Rebirth Perks"
+	var r: ZoneResetDef = sim.reset_for_currency(currency)
+	if r == null:
+		return String(currency).capitalize()
+	return r.menu_title if r.menu_title != "" else r.display_name
+
+
+## Two upgrades share a tier when their unlock gates match. `ordered()` sorts by these gates, so tiers come out in order.
+static func tier_key(a: AttributeDef) -> String:
+	return "%d/%d" % [a.unlock_rebirths, a.unlock_resets]
+
+
+## The heading over a tier of the Upgrades gallery: "Open" for the start, else the gate in Title Case.
+static func tier_head(sim: Sim, a: AttributeDef) -> String:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency)
+		var nm: String = r.display_name if r != null else "Reset"
+		return "Unlocks After %d %s" % [a.unlock_resets, nm if a.unlock_resets == 1 else nm + "s"]
+	if a.unlock_rebirths > 0:
+		return "Unlocks At %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
+	return "Open"
 
 
 ## 3 -> "3", 2.5 -> "2.5".

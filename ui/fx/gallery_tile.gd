@@ -97,7 +97,7 @@ static func dither_lit(cx: int, cy: int, density: float) -> bool:
 func _draw_sweep() -> void:
 	if sweep_t >= 1.0 or locked:
 		return
-	var cols: int = int(W / CELL)
+	var cols: int = int(size.x / CELL)   # the full width, so a stretched tile sweeps across all of it
 	var rows: int = int(H / CELL)
 	var half: float = float(SWEEP_BAND) * 0.5
 	var centre: float = lerpf(-half, float(cols + rows / 3) + half, sweep_t)

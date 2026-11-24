@@ -25,7 +25,7 @@ func run(t: Object) -> void:
 	sim.stats[&"seeds"] = BigNum.from_float(500.0)
 	t.ok(sim.attr_unlocked(&"bloom_head_start"), "the first gifts are open from the start")
 	t.ok(not sim.attr_unlocked(pods.id) and not sim.buy_attribute(pods.id), "Seed Pods wait for the first Bloom")
-	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom" % pods.unlock_resets, "lock text names the reset")
+	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom reset" % pods.unlock_resets, "lock text names the reset")
 	sim.reset_counts[&"bloom"] = wild.unlock_resets
 	t.ok(sim.attr_unlocked(wild.id) and sim.buy_attribute(wild.id), "gifts unlock by Blooms done")
 	sim.reset_counts[&"bloom"] = 0
@@ -87,6 +87,35 @@ func run(t: Object) -> void:
 	t.ok(float(s3.press_count) > before, "the Wildflower blooms a pad with nothing in stock")
 	t.ok(s3.get_stat(&"dewdrop").to_float() > 0.0, "and it pays out")
 
+	# Wide Bloom's second effect adds to every Bloom's bonus, on top of its pad reward.
+	var wide: AttributeDef = sim.attribute_defs[&"bloom_wide"]
+	sim.reset_counts[&"bloom"] = 3
+	sim.attr_levels[&"bloom_wide"] = 4
+	t.near(sim.effect_total(&"bloom_bonus"), 4.0 * wide.per_level2, 1e-9, "Wide Bloom's second effect reaches the Bloom bonus")
+	t.near(sim.reset_bonus(), 3.0 * ((sim.reset_defs[&"bloom"] as ZoneResetDef).bonus_per_use + 4.0 * wide.per_level2), 1e-9, "each Bloom carries it")
+	t.near(sim.effect_total(&"pad_yield"), 4.0 * wide.per_level, 1e-9, "and the first effect still pays on presses")
+	sim.attr_levels.clear()
+	sim.reset_counts[&"bloom"] = 0
+
+	# Twin Petals can proc: a press pays out several times over, and the chance grows with each level.
+	var twin: AttributeDef = sim.attribute_defs[&"bloom_twin_petals"]
+	sim.attr_levels[&"bloom_twin_petals"] = 10
+	t.near(sim.effect_total(&"press_proc"), 10.0 * twin.per_level2, 1e-9, "Twin Petals' proc chance")
+	sim.attr_levels.clear()
+	t.near(Formulas.proc_mult(0.0, 0.5, 5.0), 5.0, 1e-9, "a roll under the chance pays the proc multiple")
+	t.near(Formulas.proc_mult(0.9, 0.5, 5.0), 1.0, 1e-9, "a roll over the chance pays the press as normal")
+	t.near(Formulas.proc_mult(0.0, 0.0, 5.0), 1.0, 1e-9, "no chance, no proc")
+	# The second effect reads on the card and in the tooltip, not only in the blurb.
+	t.eq(UpgradeText.second_value(twin, 10, 5.0), "5% for 5x", "Twin Petals' card line names the proc and its payout")
+	t.eq(UpgradeText.second_value(wide, 10, 5.0), "+10% a Bloom", "Wide Bloom's card line reads per Bloom")
+	t.eq(UpgradeText.second_value(sim.attribute_defs[&"bloom_head_start"], 3, 5.0), "", "a gift with one effect has no second line")
+	t.ok(UpgradeText.second_sentence(wide, 4, 5.0).begins_with("Also now"), "the tooltip sentence says now and next")
+	t.ok(UpgradeText.state(sim, wide)["second_now"] == "+0% a Bloom", "the state carries the second effect")
+	t.eq(UpgradeText.second_short(twin, 10, 5.0), "5% for 5x", "the card's second line for Twin Petals")
+	t.eq(UpgradeText.second_short(wide, 10, 5.0), "+10%/Bloom", "the card's second line for Wide Bloom")
+	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, wide), &"pad_yield")["body"]).contains("Also now"), "the Upgrades tooltip names the second effect")
+
+
 	# The pure pieces: the HUD countdown clock and the animation timeline.
 	t.near(RollValue.timed_progress(0.0, 1.4), 0.0, 1e-9, "a countdown starts at the old value")
 	t.near(RollValue.timed_progress(1.4, 1.4), 1.0, 1e-9, "and lands exactly at its span")
@@ -114,7 +143,26 @@ func run(t: Object) -> void:
 		t.ok(monotone, "the number only climbs")
 		t.eq(BloomTimeline.icon_scale(float(p["burst"]) - 0.01, p), 0, "no icon before the burst")
 		t.eq(BloomTimeline.icon_scale(float(p["up_end"]), p), BloomTimeline.SETTLED_SCALE, "the icon settles at a whole pixel scale")
-		t.eq(BloomTimeline.icon_scale(float(p["fly_end"]) + 0.01, p), 0, "and is gone after the fly-out")
+		t.eq(BloomTimeline.icon_scale(float(p["fly_end"]) + 0.01, p), 0, "and is gone at the end of the exit")
+		t.eq(BloomTimeline.icon_scale(float(p["hold_end"]) + 0.01, p), BloomTimeline.SETTLED_SCALE if calm else BloomTimeline.EXIT_SCALES[0], "the exit starts by stepping the coin down in place")
+		t.near(BloomTimeline.exit_alpha(float(p["hold_end"]), p), 1.0, 1e-9, "the number is fully shown until the exit")
+		t.near(BloomTimeline.exit_alpha(float(p["fly_end"]), p), 0.0, 1e-9, "and fades out by the end of it")
+		var steps_down: bool = true
+		var last_scale: int = 99
+		var tx: float = float(p["hold_end"])
+		while tx < float(p["fly_end"]):
+			var sc: int = BloomTimeline.icon_scale(tx, p)
+			steps_down = steps_down and sc <= last_scale
+			last_scale = sc
+			tx += 0.01
+		t.ok(steps_down, "the exit only ever steps the coin smaller (calm %s)" % calm)
+		if calm:
+			var still: bool = true
+			var tc: float = float(p["hold_end"])
+			while tc < float(p["fly_end"]):
+				still = still and BloomTimeline.icon_scale(tc, p) == BloomTimeline.SETTLED_SCALE
+				tc += 0.02
+			t.ok(still, "calm keeps the coin still through its fade")
 		t.near(BloomTimeline.veil_at(float(p["total"]), p), 0.0, 1e-9, "the veil is gone at the end")
 		t.near(BloomTimeline.flash_at(float(p["burst"]) + 1.0, p), 0.0, 1e-9, "the flash is brief")
 	t.near(float(BloomTimeline.plan(false)["count"]), float(BloomTimeline.COUNT), 1e-9, "the countdown span matches the timeline")

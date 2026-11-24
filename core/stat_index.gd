@@ -128,6 +128,8 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 			tip += "\nMaxed out."
 		else:
 			tip += "\nNext level: %s\nCost: %s %s" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format(), UpgradeText.currency_name(a)]
+		if sim.attr_unlocked(aid) and a.effect2 != &"":
+			tip += "\n" + UpgradeText.second_sentence(a, lv, sim.config.press_proc_mult)
 		var perk: bool = a.currency == &"rp"
 		var zr: ZoneResetDef = sim.reset_for_currency(a.currency)
 		var group_name: String = "Rebirth Perks" if perk else (zr.menu_title if zr != null else "Attributes")

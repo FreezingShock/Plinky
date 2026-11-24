@@ -129,26 +129,26 @@
   {
    "kind": "pad",
    "state": "ready",
-   "u": 286.0,
-   "v": 330.0,
-   "sx": 716,
-   "sy": 375.5
+   "u": 454.0,
+   "v": 710.0,
+   "sx": 504,
+   "sy": 642.6
   },
   {
    "kind": "pad",
    "state": "ready",
-   "u": 242.0,
-   "v": 330.0,
-   "sx": 672,
-   "sy": 353.3
+   "u": 410.0,
+   "v": 710.0,
+   "sx": 460,
+   "sy": 620.0
   },
   {
    "kind": "pad",
    "state": "ready",
-   "u": 198.0,
-   "v": 330.0,
-   "sx": 628,
-   "sy": 332.2
+   "u": 366.0,
+   "v": 710.0,
+   "sx": 416,
+   "sy": 591.7
   },
   {
    "kind": "pad",
@@ -354,9 +354,9 @@
    "file": "sprites/menhir_016.png",
    "nrm": "sprites/menhir_016_n.png",
    "kind": "menhir",
-   "x": 529,
+   "x": 528,
    "y": 289,
-   "w": 7,
+   "w": 8,
    "h": 14,
    "foot": [
     531.5,
@@ -1266,7 +1266,7 @@
    "kind": "bush",
    "x": 902,
    "y": 399,
-   "w": 27,
+   "w": 24,
    "h": 20,
    "foot": [
     915.4,
@@ -1295,7 +1295,7 @@
    "x": 848,
    "y": 418,
    "w": 22,
-   "h": 19,
+   "h": 18,
    "foot": [
     862.6,
     433.2
@@ -1404,187 +1404,229 @@
    "file": "sprites/rock_094.png",
    "nrm": "sprites/rock_094_n.png",
    "kind": "rock",
-   "x": 711,
-   "y": 345,
-   "w": 22,
-   "h": 18,
+   "x": 706,
+   "y": 346,
+   "w": 27,
+   "h": 21,
    "foot": [
-    723.6,
-    357.6
+    718.2,
+    361.2
    ],
-   "sort_y": 357.6
+   "sort_y": 361.2
   },
   {
    "file": "sprites/rock_095.png",
    "nrm": "sprites/rock_095_n.png",
    "kind": "rock",
-   "x": 783,
-   "y": 358,
-   "w": 17,
-   "h": 9,
+   "x": 718,
+   "y": 363,
+   "w": 20,
+   "h": 20,
    "foot": [
-    796.9,
-    373.7
+    729.0,
+    376.5
    ],
-   "sort_y": 373.7
+   "sort_y": 376.5
   },
   {
    "file": "sprites/crystals_096.png",
    "nrm": "sprites/crystals_096_n.png",
    "kind": "crystals",
    "x": 518,
-   "y": 286,
-   "w": 18,
-   "h": 37,
+   "y": 298,
+   "w": 21,
+   "h": 36,
    "foot": [
-    530.8,
-    317.0
+    527.5,
+    328.8
    ],
-   "sort_y": 317.0
+   "sort_y": 328.8
   },
   {
    "file": "sprites/crystals_097.png",
    "nrm": "sprites/crystals_097_n.png",
    "kind": "crystals",
-   "x": 515,
-   "y": 324,
-   "w": 27,
-   "h": 39,
+   "x": 544,
+   "y": 310,
+   "w": 31,
+   "h": 30,
    "foot": [
-    525.7,
-    354.1
+    560.7,
+    337.1
    ],
-   "sort_y": 354.1
+   "sort_y": 337.1
   },
   {
    "file": "sprites/crystals_098.png",
    "nrm": "sprites/crystals_098_n.png",
    "kind": "crystals",
-   "x": 652,
-   "y": 251,
-   "w": 22,
-   "h": 43,
+   "x": 646,
+   "y": 270,
+   "w": 28,
+   "h": 37,
    "foot": [
-    660.0,
-    292.6
+    667.1,
+    303.0
    ],
-   "sort_y": 292.6
+   "sort_y": 303.0
   },
   {
    "file": "sprites/crystals_099.png",
    "nrm": "sprites/crystals_099_n.png",
    "kind": "crystals",
-   "x": 647,
-   "y": 274,
-   "w": 36,
-   "h": 40,
+   "x": 657,
+   "y": 247,
+   "w": 23,
+   "h": 34,
    "foot": [
-    663.1,
-    308.9
+    663.0,
+    278.9
    ],
-   "sort_y": 308.9
+   "sort_y": 278.9
   },
   {
    "file": "sprites/rock_100.png",
    "nrm": "sprites/rock_100_n.png",
    "kind": "rock",
-   "x": 541,
-   "y": 319,
-   "w": 18,
-   "h": 17,
+   "x": 836,
+   "y": 356,
+   "w": 30,
+   "h": 21,
    "foot": [
-    550.5,
-    332.0
+    851.3,
+    370.9
    ],
-   "sort_y": 332.0
+   "sort_y": 370.9
   },
   {
    "file": "sprites/rock_101.png",
    "nrm": "sprites/rock_101_n.png",
    "kind": "rock",
-   "x": 1066,
-   "y": 480,
-   "w": 16,
-   "h": 14,
+   "x": 733,
+   "y": 292,
+   "w": 29,
+   "h": 17,
    "foot": [
-    1075.3,
-    489.4
+    746.2,
+    305.0
    ],
-   "sort_y": 489.4
+   "sort_y": 305.0
+  },
+  {
+   "file": "sprites/rock_103.png",
+   "nrm": "sprites/rock_103_n.png",
+   "kind": "rock",
+   "x": 550,
+   "y": 479,
+   "w": 29,
+   "h": 19,
+   "foot": [
+    565.8,
+    492.4
+   ],
+   "sort_y": 492.4
   },
   {
    "file": "sprites/rock_104.png",
    "nrm": "sprites/rock_104_n.png",
    "kind": "rock",
-   "x": 592,
-   "y": 510,
-   "w": 27,
-   "h": 22,
+   "x": 543,
+   "y": 433,
+   "w": 34,
+   "h": 21,
    "foot": [
-    601.9,
-    525.5
+    561.2,
+    446.3
    ],
-   "sort_y": 525.5
+   "sort_y": 446.3
+  },
+  {
+   "file": "sprites/rock_105.png",
+   "nrm": "sprites/rock_105_n.png",
+   "kind": "rock",
+   "x": 755,
+   "y": 576,
+   "w": 28,
+   "h": 20,
+   "foot": [
+    768.8,
+    589.8
+   ],
+   "sort_y": 589.8
   },
   {
    "file": "sprites/rock_106.png",
    "nrm": "sprites/rock_106_n.png",
    "kind": "rock",
-   "x": 694,
-   "y": 657,
-   "w": 24,
-   "h": 15,
+   "x": 716,
+   "y": 646,
+   "w": 33,
+   "h": 23,
    "foot": [
-    705.6,
-    668.0
+    730.9,
+    662.0
    ],
-   "sort_y": 668.0
+   "sort_y": 662.0
   },
   {
-   "file": "sprites/rock_107.png",
-   "nrm": "sprites/rock_107_n.png",
+   "file": "sprites/rock_108.png",
+   "nrm": "sprites/rock_108_n.png",
    "kind": "rock",
-   "x": 913,
-   "y": 270,
-   "w": 26,
-   "h": 21,
+   "x": 1061,
+   "y": 630,
+   "w": 22,
+   "h": 18,
    "foot": [
-    926.5,
-    285.9
+    1070.0,
+    642.9
    ],
-   "sort_y": 285.9
+   "sort_y": 642.9
+  },
+  {
+   "file": "sprites/rock_109.png",
+   "nrm": "sprites/rock_109_n.png",
+   "kind": "rock",
+   "x": 566,
+   "y": 514,
+   "w": 23,
+   "h": 17,
+   "foot": [
+    578.3,
+    526.5
+   ],
+   "sort_y": 526.5
   },
   {
    "file": "sprites/rock_110.png",
    "nrm": "sprites/rock_110_n.png",
    "kind": "rock",
-   "x": 1081,
-   "y": 451,
+   "x": 589,
+   "y": 463,
    "w": 21,
-   "h": 13,
+   "h": 15,
    "foot": [
-    1091.2,
-    460.0
+    600.6,
+    474.9
    ],
-   "sort_y": 460.0
+   "sort_y": 474.9
   },
   {
-   "file": "sprites/rock_111.png",
-   "nrm": "sprites/rock_111_n.png",
+   "file": "sprites/rock_112.png",
+   "nrm": "sprites/rock_112_n.png",
    "kind": "rock",
-   "x": 918,
-   "y": 380,
-   "w": 25,
-   "h": 17,
+   "x": 703,
+   "y": 638,
+   "w": 26,
+   "h": 16,
    "foot": [
-    930.5,
-    392.9
+    713.6,
+    649.4
    ],
-   "sort_y": 392.9
+   "sort_y": 649.4
   },
   {
-   "file": "sprites/lantern_114.png",
-   "nrm": "sprites/lantern_114_n.png",
+   "file": "sprites/lantern_113.png",
+   "nrm": "sprites/lantern_113_n.png",
    "kind": "lantern",
    "x": 860,
    "y": 320,
@@ -1595,6 +1637,20 @@
     344.7
    ],
    "sort_y": 344.7
+  },
+  {
+   "file": "sprites/lantern_114.png",
+   "nrm": "sprites/lantern_114_n.png",
+   "kind": "lantern",
+   "x": 920,
+   "y": 310,
+   "w": 13,
+   "h": 26,
+   "foot": [
+    926.0,
+    334.7
+   ],
+   "sort_y": 334.7
   },
   {
    "file": "sprites/lantern_115.png",

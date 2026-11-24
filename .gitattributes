@@ -10,3 +10,7 @@
 assets/art/**/placements3d.json linguist-generated=true
 world/*_life.json linguist-generated=true
 CHANGELOG.md linguist-generated=true
+# Append-only logs: a local `git merge main` keeps both sides' new lines instead of conflicting. (Local merges only;
+# GitHub's web merge ignores merge drivers.) Check the result still reads well after a union merge.
+docs/decisions.md merge=union
+docs/decisions/*.md merge=union

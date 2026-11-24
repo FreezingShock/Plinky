@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RelicDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://data/relic_def.gd" id="1"]
+[ext_resource type="Resource" path="res://content/rarities/legendary.tres" id="2"]
+[ext_resource type="Texture2D" path="res://assets/icons/relics/r_oathstone.png" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = &"r_oathstone"
+display_name = "Oathstone"
+rarity = ExtResource("2")
+icon = ExtResource("3")
+effect = 11
+stacking = 1
+per_stack = 0.12
+max_stacks = 0
+description = "{value} of your presses cost nothing."

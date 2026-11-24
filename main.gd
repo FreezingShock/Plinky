@@ -669,6 +669,7 @@ func _wire_relics() -> void:
 	relic_panel = panel
 	panel.visible = false
 	hud.add_child(panel)
+	MenuAnim.front_on_show(panel)
 	panel.bind(inv)
 	hud.relic_panel_toggled.connect(func(_open: bool) -> void: menus.toggle(&"relics"))
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
@@ -690,10 +691,12 @@ func _wire_index() -> void:
 func _wire_display() -> void:
 	display_panel = DisplayPanel.new()
 	hud.add_child(display_panel)
+	MenuAnim.front_on_show(display_panel)
 	display_panel.bind(get_window())
 	hud.settings_toggled.connect(func(_open: bool) -> void: menus.toggle(&"settings"))
 	feedback_panel = FeedbackPanel.new()
 	hud.add_child(feedback_panel)
+	MenuAnim.front_on_show(feedback_panel)
 	feedback_panel.bind(GameState.sim)
 	display_panel.feedback_requested.connect(_toggle_feedback)
 

@@ -793,3 +793,88 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Not run in-engine:** Godot is not available in the cloud. Unverified: the banner's real size and position at 640x360 and at other window sizes, the particle look, the unfurl timing and the chimes. PC QA should capture an unlock in each section and check it against an open menu.
 - **Every banner waits for menus (PC QA, 2026-11-24):** the season banner and the zone banners (`Banner`, via `Banner.hold`) and the relic toast also wait while a menu is open, and a banner up when a menu opens is held back to the front of the queue and shown after it closes. PC QA saw the season banner cut across the Upgrades cards, and the achievement toast over Stats and Upgrades. Subtitles and tip cards are unchanged (tips already yield to open menus).
 
+## Relic abilities expansion (2026-11-24)
+- **Why:** Nathan asked for many more relics, each with a unique ability rather than a stat bump. Six relics were not enough variety.
+- **What:** 27 relics across Common to Mythic (4 to 6 each), using 11 new effect kinds appended to `RelicDef.Effect` so existing `.tres` values keep their meaning. Divine and Special are unchanged (weight 0, granted by rebirths and achievements).
+- **Chosen:** each relic gets a distinct trigger (zone, period, heat, repeat, drop, refund, offline rate, pity timer) so a relic reads as its own ability. Some effect kinds appear at two or three rarities with different numbers and triggers; that is a deliberate tier ladder.
+- **Random sequence:** a new roll (free presses) only runs when a Free Presses relic is equipped, so runs without one keep the same random sequence.
+- **Offline cap:** away income is capped at 0.75 of the awake rate (`offline_rate_cap`). Without the cap, three max lanterns reached 1.12, which broke the rule that idle takes about 2x as long as active (#221). Set by the coordinator on 2026-11-24. `tools/sim.gd` has not been run on the new relics yet; that is the PC QA step.
+- **Not verified in-engine:** the new scripts were written and read but not run in Godot here. CI's unit and sim jobs run the new relic tests and the sim paths.
+
+
+## Larkmoor Clover row by the Heronmere lake (2026-11-24)
+- **Why:** Nathan's feedback on the Clover pads from #223. The row stood in Cairnfold's north, far from spawn, and it looked locked, so he asked why it stayed shut until a Dewdrop pad was pressed.
+- **Layout:** the Clover row now stands on the lake shore below the Sprout row, pad 1 nearest the road, at (504,652), (460,630), (416,608). It keeps its fifth slot in `DISTRICTS`, so the pad order still matches `pad_buttons`. The Cairnfold area now lists no pads, and Heronmere lists Sprout then Clover. Cairnfold's own district centre is unchanged.
+- **Unlock kept:** Clover opens when the last Sprout pad is pressed, as before. The cost is Dewdrops. The tooltip says so, and the first pad of a locked row now draws "Needs <cost>" under its plate.
+- **Budget:** the regenerated layout has 100 props against 96 before. All 18 pads are reachable from spawn on the walk mask. The CI play job checks the node ceiling.
+- Not run in-engine from the cloud.
+- **Sway tips:** `world/larkmoor_life.json` was regenerated from the new backdrop with the command in the 2026-11-23 Larkmoor entry (`--bounds 190,110,1340,725 --sway-count 420`). The old tips sat on the old ground, so `tests/test_life.gd` failed in CI. Checked here: all 420 tips sit on the palette colour the old tips used. Not run in engine.
+
+
+## Hamburger menu layout (2026-11-24)
+- **Why:** the menu's footer set the panel width, so the 3-column tile grid sat in a wide empty strip on the right (Nathan's v0.49.0 screenshot). The tile order also put Settings and Stats in the middle of the gameplay tiles.
+- **What:** four columns, so the grid is exactly as wide as the menu. Tiles run Play (Upgrades, Relics, Attributes, Travel), then Info (Stats, History, Ledger, Update Log), with Settings alone on a full-width row. Groups are split by a dotted rule. `GalleryMenu.GROUPS` sets the row sizes. Keyboard and d-pad order follows the same sequence.
+- **Taste pick, easy to reverse:** Settings is a full-width bar, not a small centred tile. If Nathan prefers a square tile, drop the `n == 1` expand line in `ui/gallery_menu.gd`.
+- Not run in engine: no Godot in the cloud. `tests/test_gallery.gd` covers the order, groups and Settings neighbours. PC QA should check the menu at 1920x1080 and 800x600 for the empty strip, the footer alignment and the focus landing on Upgrades.
+
+## 2026-11-23 Upgrades gallery and centred Bloom exit (minor)
+- **Upgrades layout:** one tab per currency group (Prestige, Rebirth Perks, then each zone reset's gifts, named by `ZoneResetDef.menu_title`). Tabs come from the data, so a new reset gets its own tab with no HUD change. Within a tab, gifts are grouped into tiers by their unlock gate, each with a heading ("Tier 1: Open", "Tier 2: Unlocks After 2 Blooms"). Cards sit two across in a scroll list about 3.5 rows tall, so the panel fits above the bottom bar at 640x360.
+- **Card outline:** green when the next level is affordable, red when not (the existing colour-safe tint), gold when maxed, dim while locked. The fill is transparent so the panel shows through. Taste call: gold for maxed is my pick; say if you want maxed to stay green.
+- **Code:** `ui/upgrade_row.gd` is replaced by `ui/upgrade_card.gd` (same buy, hold-to-repeat and tick logic). `UpgradeText` gains `tier_key`, `tier_head` and `tab_name` (pure, tested).
+- **Exit:** the coin, number, rays and ring stay centred. The coin steps down 4 to 3 to 2 to 1 pixels in place and is gone at the end of the exit, the number fades, the rays fold in and one pixel ring closes on the centre. Only a few motes (about ten a second, pixel-sized) drift from the centre into the HUD row, which still rolls up when they land. Calm (Reduce flashing, Still meadow, Calm camera) keeps the coin at full size and only fades it.
+- **Timeline:** `BloomTimeline.fly_progress` is replaced by `exit_progress` and `exit_alpha`. The plan keys (`fly_end` and so on) keep their names so the existing timing tests still apply.
+- Not run in-engine from the cloud: the tab and card layout at 640x360, the card text width at 150 px for the delta line, and the exit motion. `tools/bloom_shot.tscn` now samples the exit densely (`bloom_full_*` frames) for a PC capture.
+
+## 2026-11-24 Bigger Bloom and Nucleus gifts (minor)
+- **Why:** most gifts were small nudges (+6% pad reward per level, +50 starting Sunlight). Nathan asked for gifts that matter more, and for existing ones to be improved before new ones are added.
+- **Chosen:** keep the gift list and the tiers (unlock by Blooms or Nucleus count). Raise the per-level value of the gifts that already move the game most, in data only (`content/attributes/bloom_*.tres`, `nucleus_*.tres`). No script change, so the Upgrades layout (#232) is untouched and the menu text reads the new numbers itself.
+- **Changed (per level, cap 10 unless noted):**
+
+| Gift | Before | After | At cap |
+|---|---|---|---|
+| Head Start (starting Sunlight) | 50 | 120 | 510 to 1,210 start; sprout 3 (1,000) now affordable at once |
+| Deep Soil (Sunlight income) | 10% | 15% | +100% to +150% |
+| Wide Bloom (pad reward) | 6% | 12% | +60% to +120% |
+| Seed Pods (Seeds per Bloom) | 15% | 30% | +150% to +300% |
+| Twin Petals (double press) | 4% | 6% | +40% to +60% |
+| Bramble (crit chance) | 2% | 3% | +20% to +30% |
+| Rooted Study (pad XP) | 15% | 25% | +75% to +125% |
+| Anvil Plates (pad reward) | 6% | 12% | +60% to +120% |
+| Shard Veins (Core Shards per Nucleus) | 15% | 30% | +150% to +300% |
+| Stoked Fire (Embers income) | 10% | 15% | +100% to +150% |
+| Flint Edge (crit chance) | 2% | 3% | +20% to +30% |
+| Anvil Study (pad XP) | 15% | 25% | +75% to +125% |
+| Twin Strike (double press) | 4% | 6% | +40% to +60% |
+
+- **Left alone, on purpose:** Warm Start already opens cinder 3 (600 Embers) at its cap of 1,010, so it does not need more. Wildflower, Dew Sprites, Forge Hands and Heart Strike already press or pay for free at up to 1 to 1.6 a second, and raising them would push idle past the 2x target. Bloom Echo and Core Echo already add 0.25 per Bloom before their own bonus. Roots and Banked Rows keep flowers and rows, which is already the strongest effect in each list. Long Dusk and Slow Burn stay at +4 hours of offline cap, since offline is already 0.5x.
+- **Pacing:** not checked. `tools/sim.gd` (the CI sim gate) plays without attributes, so it cannot see these changes. `tools/sim_bloom.gd` plays with the meadow gifts, but Godot does not run in the cloud. Before this ships, the PC QA run should run `tools/sim_bloom.gd` and report minutes per Bloom and the idle:active ratio. Head Start is the one most likely to shift the first cycle.
+- **Tests:** `tests/test_nucleus.gd` had the old values (0.10 and 0.15) written in. It now reads them from the gift, so the test follows the data.
+- Not run in the engine: the tests and both sims. The menu text and the gift cards are data-driven, so they read the new numbers without a screenshot change, but PC QA should still check a Bloom and a Nucleus card for text width.
+## Upgrades card feedback (2026-11-24)
+- **Base:** built on #230's gallery (tabs, tiers, two-across `UpgradeCard`, centred exit). The gallery layout was not redone.
+- **Whole card buys:** a click anywhere on the card buys (press starts the hold, release ends it). The Buy button still takes its own press and keyboard focus, so a click on it never buys twice. The card's press does not touch `_skip_pressed`.
+- **Feedback:** the card pops (1.04 to 1), seven pixel sparks leave its centre (drawn, so no nodes), and the currency's header badge pops (1.18 to 1). All of it is skipped under Reduce Motion or Reduce Flashing, and the sounds stay.
+- **Sizes:** the card is 56 px tall (was 50) and the list is 232 px (was 196), about four rows. Not checked in-engine: whether the taller panel clears the zone panel and the bottom bar at 640x360.
+- **Lock text:** "Unlocks after 1 Nucleus reset" (was "Nucleuss").
+- **Taste call for Nathan:** hover puts a faint wash on a card you can afford. Say if you want the hover left off.
+- Not verified in-engine: the sparks, the pop timing and the taller panel. PC QA should check both zones with motion on and off.
+
+## 2026-11-24 Gift second effects and the press proc (minor)
+- **Why:** #237 raised the numbers, but each gift still did one thing. Nathan asked for gifts that matter more, so four gifts now carry a second effect that changes how the game plays.
+- **Schema:** `AttributeDef` gains `effect2` and `per_level2` (default empty and 0). `Sim.effect_total` sums both, so the rest of the game reads a second effect like any other. Existing gifts are unchanged.
+- **Press proc (new effect `press_proc`):** each press has a chance of `per_level2` a level to pay `GameConfig.press_proc_mult` (5) times its reward. Twin Petals and Twin Strike carry it at 0.5% a level, so the cap of 10 gives a 5% chance, about +20% expected press reward. The roll is `Formulas.proc_mult`, which is pure and tested. The roll only draws from the RNG when the effect is owned, so runs without it keep the same random sequence.
+- **Reward-bonus synergy:** Wide Bloom adds 1% a level to `bloom_bonus` and Anvil Plates adds 1% a level to `nucleus_bonus`. Each Bloom or Nucleus then pays that much more on every pad, stacking with the base 25% and with Echo. At cap that is +10% a Bloom, so ten Blooms add 100% on top.
+- **Idle:** the proc runs on presses only, so it raises active play and slightly lengthens the idle ratio. The Bloom bonus applies to pad rewards, and offline tending pays pad rewards too, so it lifts both sides. Neither was measured.
+- **Not done:** no new Bloom-count tier. The existing `unlock_resets` tiers already do the job.
+- **Shown:** the gift card puts the second effect on its line 2, after "now -> next" ("+12% -> +14%  +10%/Bloom"), so the card stays at 52 px and the 180 px list cap holds (per the coordinator, after #242's compact cards). The Upgrades tooltip and the Stats index say "Also now X, next Y". `UpgradeText.second_short` and `second_value` do the text. Line 2 may be too wide for a 150 px card with a long second value, so PC QA should check it at 640x360.
+- **Not shown:** the stat breakdown (`StatSources`) and `TipText.attribute` (no caller in the game, only tests) still show only the primary effect.
+- **Not run in the engine:** the new unit tests run in CI. The idle ratio and pacing still need `tools/sim_bloom.gd` on the PC.
+## Upgrades menu fit and menu layer (2026-11-24)
+- **Cards:** stacked to three lines (name and level; now to next; pips and cost). The Buy button is gone: the whole card buys, and Enter or Space buys while the card has focus. Two across at 150 px, so the panel is about a third narrower.
+- **Outline and dim:** affordable is a bright green frame; unaffordable is a red frame with the contents dimmed to 55%, so the two read apart. Maxed is gold, locked is dim.
+- **Uniform tiers:** each tier's grid has a fixed width, so tier 2 matches tier 1.
+- **Height:** the list takes what its tab needs, up to 180 px, then scrolls.
+- **Menu layer:** a shown menu moves to the end of its parent (`MenuAnim.bring_front`), so the relic bar, momentum meter, sprint trail and HUD chips all draw under it. No HUD piece draws over an open menu. Every menu is covered: animated ones through `MenuAnim.attach`, the rest through `MenuAnim.front_on_show`.
+- **Tab highlight:** one function (`Hud._apply_upgrade_tab`) sets the page and the highlight together, and runs on every select and refresh. Opening the menu picks the current zone's tab.
+- Not verified in-engine: the new size at 640x360, the z order against each HUD piece, the dim levels. PC QA should check both zones and a click, a hold and a Enter buy.
+

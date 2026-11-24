@@ -161,7 +161,7 @@ func _process(delta: float) -> void:
 		_hold_back()
 		return
 	if not _active:
-		if queue.pending.is_empty() or _held():
+		if queue.pending.is_empty() or _held() or FxConfig.bloom_running:   # held while a menu is open or a reset animation plays
 			return
 		_source = queue.next()
 		var resolved: Dictionary = _resolve(_source)

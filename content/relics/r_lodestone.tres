@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RelicDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://data/relic_def.gd" id="1"]
+[ext_resource type="Resource" path="res://content/rarities/rare.tres" id="2"]
+[ext_resource type="Texture2D" path="res://assets/icons/relics/r_lodestone.png" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = &"r_lodestone"
+display_name = "Lodestone"
+rarity = ExtResource("2")
+icon = ExtResource("3")
+effect = 14
+stacking = 1
+per_stack = 0.1
+max_stacks = 0
+description = "The relic pity timer runs {value} faster."
