@@ -11,6 +11,7 @@ func run(t: Object) -> void:
 		t.ok(kinds.has(k), "the gallery has a %s tile" % k)
 
 	var g := GalleryMenu.new()
+	g.visible = true   # the tiles are built on open, so the menu is shown before its tiles are read
 	t.eq(g.tile(&"settings").label, "Settings", "tiles carry their label")
 	t.ok(g.tile(&"log").big_icon != null, "tiles carry a big icon")
 	g.is_locked = func(k: StringName) -> bool: return k == &"relics"
