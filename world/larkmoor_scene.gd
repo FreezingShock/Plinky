@@ -351,10 +351,13 @@ func _process(_delta: float) -> void:
 	_drain_warm()
 	# lamp heads glow only after dark: fade them with the night, and forget the glows of unloaded lanterns
 	var night: float = _sky.night01 if _sky != null else 0.0
+	# rain: the lamp heads swell and brighten with the light pools (SkyModel.lamp_bloom), capped at full
+	var bloom: Vector2 = SkyModel.lamp_bloom(MeadowLife.rain)
 	for i in range(_glows.size() - 1, -1, -1):
 		var g: Variant = _glows[i]
 		if is_instance_valid(g):
-			(g as Sprite2D).modulate.a = night
+			(g as Sprite2D).modulate.a = clampf(night * bloom.y, 0.0, 1.0)
+			(g as Sprite2D).scale = Vector2.ONE * bloom.x
 		else:
 			_glows.remove_at(i)
 	# the flowers follow the season, and shut their heads once it is dark
