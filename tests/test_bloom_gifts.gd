@@ -25,7 +25,7 @@ func run(t: Object) -> void:
 	sim.stats[&"seeds"] = BigNum.from_float(500.0)
 	t.ok(sim.attr_unlocked(&"bloom_head_start"), "the first gifts are open from the start")
 	t.ok(not sim.attr_unlocked(pods.id) and not sim.buy_attribute(pods.id), "Seed Pods wait for the first Bloom")
-	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom" % pods.unlock_resets, "lock text names the reset")
+	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom reset" % pods.unlock_resets, "lock text names the reset")
 	sim.reset_counts[&"bloom"] = wild.unlock_resets
 	t.ok(sim.attr_unlocked(wild.id) and sim.buy_attribute(wild.id), "gifts unlock by Blooms done")
 	sim.reset_counts[&"bloom"] = 0
@@ -114,7 +114,26 @@ func run(t: Object) -> void:
 		t.ok(monotone, "the number only climbs")
 		t.eq(BloomTimeline.icon_scale(float(p["burst"]) - 0.01, p), 0, "no icon before the burst")
 		t.eq(BloomTimeline.icon_scale(float(p["up_end"]), p), BloomTimeline.SETTLED_SCALE, "the icon settles at a whole pixel scale")
-		t.eq(BloomTimeline.icon_scale(float(p["fly_end"]) + 0.01, p), 0, "and is gone after the fly-out")
+		t.eq(BloomTimeline.icon_scale(float(p["fly_end"]) + 0.01, p), 0, "and is gone at the end of the exit")
+		t.eq(BloomTimeline.icon_scale(float(p["hold_end"]) + 0.01, p), BloomTimeline.SETTLED_SCALE if calm else BloomTimeline.EXIT_SCALES[0], "the exit starts by stepping the coin down in place")
+		t.near(BloomTimeline.exit_alpha(float(p["hold_end"]), p), 1.0, 1e-9, "the number is fully shown until the exit")
+		t.near(BloomTimeline.exit_alpha(float(p["fly_end"]), p), 0.0, 1e-9, "and fades out by the end of it")
+		var steps_down: bool = true
+		var last_scale: int = 99
+		var tx: float = float(p["hold_end"])
+		while tx < float(p["fly_end"]):
+			var sc: int = BloomTimeline.icon_scale(tx, p)
+			steps_down = steps_down and sc <= last_scale
+			last_scale = sc
+			tx += 0.01
+		t.ok(steps_down, "the exit only ever steps the coin smaller (calm %s)" % calm)
+		if calm:
+			var still: bool = true
+			var tc: float = float(p["hold_end"])
+			while tc < float(p["fly_end"]):
+				still = still and BloomTimeline.icon_scale(tc, p) == BloomTimeline.SETTLED_SCALE
+				tc += 0.02
+			t.ok(still, "calm keeps the coin still through its fade")
 		t.near(BloomTimeline.veil_at(float(p["total"]), p), 0.0, 1e-9, "the veil is gone at the end")
 		t.near(BloomTimeline.flash_at(float(p["burst"]) + 1.0, p), 0.0, 1e-9, "the flash is brief")
 	t.near(float(BloomTimeline.plan(false)["count"]), float(BloomTimeline.COUNT), 1e-9, "the countdown span matches the timeline")
