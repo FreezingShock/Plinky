@@ -435,3 +435,6 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Gallery:** the card, its tier heading ("Unlocks After 5 Blooms") and its Tip are data-driven, so the crown gets them with no HUD change.
 - **Icons:** `bloom_crown` (a gold crown with a seed gem) and `nucleus_crown` (a teal crystal crown with an ember gem), at 8, 12, 16, 24 and 32 px. They were drawn by one generator from a single outline per size, not hand-placed per size, so they are a deviation from the staged-icon rule. Redraw at PC QA if they read poorly at 640x360.
 - Not run in the engine: check the banner width and the crown icons on the Bloom and Nucleus tabs with a screenshot.
+
+## 2026-11-24: Title peak has no whole-column lit switch
+- The far-mountain lit face and snow used `slope > 0.5` per column, so every column flipped at once and drew a straight vertical edge down the central peak (PC QA, v0.68.0, at 640x360 x 337 to 362). They now use `smoothstep(0.1, 0.9, slope)` as a dithered weight, so the boundary is a dithered gradient. Not confirmed in-engine yet: the numpy port changed only 144 texels and did not reproduce the edge, so PC QA should compare the same six keyframes after merge.
