@@ -793,6 +793,16 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Offline cap:** away income is capped at 0.75 of the awake rate (`offline_rate_cap`). Without the cap, three max lanterns reached 1.12, which broke the rule that idle takes about 2x as long as active (#221). Set by the coordinator on 2026-11-24. `tools/sim.gd` has not been run on the new relics yet; that is the PC QA step.
 - **Not verified in-engine:** the new scripts were written and read but not run in Godot here. CI's unit and sim jobs run the new relic tests and the sim paths.
 
+
+## Larkmoor Clover row by the Heronmere lake (2026-11-24)
+- **Why:** Nathan's feedback on the Clover pads from #223. The row stood in Cairnfold's north, far from spawn, and it looked locked, so he asked why it stayed shut until a Dewdrop pad was pressed.
+- **Layout:** the Clover row now stands on the lake shore below the Sprout row, pad 1 nearest the road, at (504,652), (460,630), (416,608). It keeps its fifth slot in `DISTRICTS`, so the pad order still matches `pad_buttons`. The Cairnfold area now lists no pads, and Heronmere lists Sprout then Clover. Cairnfold's own district centre is unchanged.
+- **Unlock kept:** Clover opens when the last Sprout pad is pressed, as before. The cost is Dewdrops. The tooltip says so, and the first pad of a locked row now draws "Needs <cost>" under its plate.
+- **Budget:** the regenerated layout has 100 props against 96 before. All 18 pads are reachable from spawn on the walk mask. The CI play job checks the node ceiling.
+- Not run in-engine from the cloud.
+- **Sway tips:** `world/larkmoor_life.json` was regenerated from the new backdrop with the command in the 2026-11-23 Larkmoor entry (`--bounds 190,110,1340,725 --sway-count 420`). The old tips sat on the old ground, so `tests/test_life.gd` failed in CI. Checked here: all 420 tips sit on the palette colour the old tips used. Not run in engine.
+
+
 ## Hamburger menu layout (2026-11-24)
 - **Why:** the menu's footer set the panel width, so the 3-column tile grid sat in a wide empty strip on the right (Nathan's v0.49.0 screenshot). The tile order also put Settings and Stats in the middle of the gameplay tiles.
 - **What:** four columns, so the grid is exactly as wide as the menu. Tiles run Play (Upgrades, Relics, Attributes, Travel), then Info (Stats, History, Ledger, Update Log), with Settings alone on a full-width row. Groups are split by a dotted rule. `GalleryMenu.GROUPS` sets the row sizes. Keyboard and d-pad order follows the same sequence.
