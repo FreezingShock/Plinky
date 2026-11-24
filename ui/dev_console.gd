@@ -54,7 +54,7 @@ func _build(sim: Sim) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	custom_minimum_size = MIN_SIZE
-	add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 6.0, 4.0))
+	add_theme_stylebox_override("panel", _solid(RelicStyle.ink, RelicStyle.edge, 1, 6.0, 4.0))
 	cmds = DevCommands.new(sim)
 	_register_extra()
 
@@ -73,6 +73,7 @@ func _build(sim: Sim) -> void:
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log.custom_minimum_size = Vector2(0.0, 40.0)
 	_log.add_theme_color_override("default_color", RelicStyle.text)
+	_log.add_theme_stylebox_override("normal", _solid(RelicStyle.ink, RelicStyle.ink, 0, 2.0, 2.0))
 	v.add_child(_log)
 
 	_strip = RichTextLabel.new()
@@ -91,10 +92,14 @@ func _build(sim: Sim) -> void:
 	_line = LineEdit.new()
 	_line.placeholder_text = "type a command, or help"
 	_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_line.add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.BUTTON, 6.0, 2.0))
-	_line.add_theme_stylebox_override("focus", AsciiBox.make(AsciiBox.Kind.HOVER, 6.0, 2.0))
+	_line.custom_minimum_size = Vector2(0.0, 20.0)
+	_line.add_theme_stylebox_override("normal", _solid(RelicStyle.ink, RelicStyle.edge, 1, 6.0, 3.0))
+	_line.add_theme_stylebox_override("focus", _solid(RelicStyle.ink, RelicStyle.accent, 1, 6.0, 3.0))
+	_line.add_theme_stylebox_override("read_only", _solid(RelicStyle.ink, RelicStyle.edge, 1, 6.0, 3.0))
 	_line.add_theme_color_override("font_color", RelicStyle.text)
+	_line.add_theme_color_override("font_placeholder_color", RelicStyle.dim)
 	_line.add_theme_color_override("caret_color", RelicStyle.accent)
+	_line.add_theme_constant_override("caret_width", 2)
 	_line.text_submitted.connect(_submit)
 	_line.text_changed.connect(_on_text_changed)
 	_line.gui_input.connect(_line_input)
@@ -118,7 +123,7 @@ func _build(sim: Sim) -> void:
 
 func _make_title() -> PanelContainer:
 	var bar := PanelContainer.new()
-	bar.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.BUTTON, 4.0, 1.0))
+	bar.add_theme_stylebox_override("panel", _solid(RelicStyle.ink, RelicStyle.edge, 1, 4.0, 1.0))
 	bar.mouse_default_cursor_shape = Control.CURSOR_MOVE
 	bar.focus_mode = Control.FOCUS_NONE
 	bar.gui_input.connect(_on_title_input)
@@ -135,9 +140,9 @@ func _make_title() -> PanelContainer:
 	var btn_close := Button.new()
 	btn_close.text = "x"
 	btn_close.focus_mode = Control.FOCUS_NONE
-	btn_close.add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.BUTTON, 3.0, 0.0))
-	btn_close.add_theme_stylebox_override("hover", AsciiBox.make(AsciiBox.Kind.HOVER, 3.0, 0.0))
-	btn_close.add_theme_stylebox_override("pressed", AsciiBox.make(AsciiBox.Kind.PRESSED, 3.0, 0.0))
+	btn_close.add_theme_stylebox_override("normal", _solid(RelicStyle.ink, RelicStyle.ink, 0, 3.0, 0.0))
+	btn_close.add_theme_stylebox_override("hover", _solid(RelicStyle.ink, RelicStyle.accent, 1, 3.0, 0.0))
+	btn_close.add_theme_stylebox_override("pressed", _solid(RelicStyle.ink, RelicStyle.accent, 1, 3.0, 0.0))
 	btn_close.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	btn_close.add_theme_color_override("font_color", RelicStyle.text)
 	btn_close.add_theme_color_override("font_hover_color", RelicStyle.accent)
@@ -575,3 +580,17 @@ static func _esc(s: String) -> String:
 
 static func _hex(c: Color) -> String:
 	return c.to_html(false)
+
+
+## A flat, square box: a solid fill, an optional border and padding. Used for everything the text sits on, so the
+## log and input stay readable (the dithered AsciiBox fill is for decoration, not for text).
+static func _solid(bg: Color, border: Color, width: int, pad_x: float, pad_y: float) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.set_border_width_all(width)
+	sb.content_margin_left = pad_x
+	sb.content_margin_right = pad_x
+	sb.content_margin_top = pad_y
+	sb.content_margin_bottom = pad_y
+	return sb
