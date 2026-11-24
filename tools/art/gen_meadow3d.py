@@ -469,6 +469,19 @@ for B, nl, rmin in ((LAKE, 60, 2.2), (POND, 9, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
+# stepping stones along the path: a small flat stone every ~11 texels, alternating either side of the centre line.
+# Placed last so nothing earlier in the layout moves. Only on open ground near the path (never in water).
+for (ax, ay), (bx, by) in zip(PATH, PATH[1:]):
+    seg = math.hypot(bx - ax, by - ay); n = max(1, int(seg / 11.0))
+    nx_, ny_ = -(by - ay) / seg, (bx - ax) / seg
+    for k in range(n):
+        f = (k + .5) / n
+        u, v = ax + (bx - ax) * f, ay + (by - ay) * f
+        side = 1.0 if k % 2 == 0 else -1.0
+        su, sv = u + nx_ * side * 2.2, v + ny_ * side * 2.2
+        if float(samp(WD, su, sv)) < -.5 and float(samp(dpath, su, sv)) < 9.0:
+            put('rock', su, sv, prng.uniform(.55, .7), big=False, count=False, sid=1)
+log('stepping stones placed')
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}

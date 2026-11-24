@@ -112,3 +112,10 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (634,568), (678,590), (722,612), beside the main path north of the gatehouse tower. The nearest pad is 111 texels from the arrival gate, up from 31. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
 - **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
 - Not run in-engine from the cloud. Please check the pads on a PC capture.
+
+## 2026-11-24: Meadow path stones (slice 3 of the meadow rework)
+- **Brief (Nathan, via coordinator):** paths between areas should look better and fit the area they lead to.
+- **Changed:** a small flat stone every ~11 texels along the meadow path, alternating either side of the centre line, placed last in `gen_meadow3d.py` so nothing earlier in the layout moves. Only on open ground near the path; never in water.
+- **Why:** the path was a plain sand strip. Stones are the cheapest step that makes it read as made.
+- **Not in this slice:** the path's edges are still plain grass, and the lake boardwalk and the Larkmoor path are untouched.
+- **Not run in the cloud:** the look in-engine; PC QA should screenshot the path at 640x360.
