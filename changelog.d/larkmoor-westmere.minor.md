@@ -1,0 +1,1 @@
+Larkmoor has a new west subarea, Westmere, on the lake's west bank, reached by a trail north of the water. It holds three more Starbloom pads, the top of the Starbloom row, with costs that continue the ladder.
