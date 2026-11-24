@@ -76,6 +76,22 @@ def write_relight_data(path, aux, y0, y1, x0, x1, mask):
     Image.fromarray(d).save(path)
 
 
+# Ground texels the scene render never saw (outside its mask) get no material and no baked light, so the runtime
+# relight skipped them and the painted ground showed raw and dark at the map's edges. They take the terrain ramp (code
+# 100), a flat normal and the island's median baked light, so the sun lights them like the rest of the ground.
+UNBAKED_GROUND_CODE, UNBAKED_GROUND_LIGHT = 100, 166
+
+
+def fill_unbaked_ground(path):
+    """Give every ground texel with no material and no baked light a flat terrain value. Idempotent."""
+    from PIL import Image
+    d = np.array(Image.open(path).convert('RGBA'))
+    empty = (d[..., 2] == 0) & (d[..., 3] == 0)
+    d[empty] = [128, 128, UNBAKED_GROUND_CODE, UNBAKED_GROUND_LIGHT]
+    Image.fromarray(d, 'RGBA').save(path)
+    return int(empty.sum())
+
+
 def write_height(path, z, mask):
     """Greyscale world height for AO and shadows: 1..255 inside the scene (z scaled to the scene's own range), 0 outside."""
     from PIL import Image
