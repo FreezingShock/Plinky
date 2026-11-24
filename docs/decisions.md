@@ -1,4 +1,4 @@
-# Plinky decisions log
+# Decision log has moved
 
 Format: date, decision, one line of reasoning. Newest at the bottom. The build agent appends here. Project-side decisions made in the Claude Project go here too (SPEC section 8).
 
@@ -913,3 +913,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Yellow:** `TipText.CLICK` is #ffd93d. Colour-safe modes tint it like other colours.
 - Not run in the engine: Godot does not run in the cloud. The tests in `tests/test_tooltips.gd` were written but not run. PC QA should hover each card, check the tooltip's height and spacing at 640x360 and at a large UI scale, and open and buy on an attribute.
 
+The log is now split by topic. Start at [docs/decisions/README.md](decisions/README.md) and open only the topic file you need.
