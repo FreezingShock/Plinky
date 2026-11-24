@@ -266,6 +266,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Changed in `content/areas/*.tres` (display_name), `assets/art/zone1b/larkmoor/placements3d.json` (district names), `tools/art/larkmoor_layout.py`, and code and tool comments. The farm keeps its own name and now sits in Foxglove Rise. | Keeps the layout, the art data and the in-game names in step, so a regenerate does not bring the old names back. |
 | Checks: `tests/run.gd` 7783 checks, 0 failed, on current main (v0.94.0) plus these renames. Not run in-engine: the banner and district text on a PC. | Name changes only, so the tests cover the lookups. |
 
+## 2026-11-24: Foxglove and Starbloom north, a second thickening
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` raises the Foxglove row to n 120 and small 56, and the Starbloom north row to n 136 and small 62. Result on current main: Foxglove 297, Starbloom north 282, Westmere 314 (unchanged). | After #385 merged, main's inputs had moved the counts (Foxglove 273, Starbloom north 261), so the thin rows were below the roughly 300 target. Extra attempts saturate near 280 for Starbloom north, because the spacing rule is the limit. |
+| The garden layer stays one node whatever the flower count, so the node ceiling is not affected. | Larkmoor's node ceiling is about 1350. |
+| Not run in-engine: the look at night and on a real GPU. | The cloud renderer stops after about six night shots. |
+
 ## 2026-11-24: Foxglove and Starbloom fields thicker
 | Decision | Why |
 |---|---|
