@@ -665,7 +665,7 @@ for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
                     seed = prng.randint(0, 1 << 30)
                     f_l, half_l, top_l, _r, _rt = _draw('lantern', seed)
                     if ok_spot(u, v, solid_radius(f_l, half_l, top_l), slope_max=.8, path=False, gap=1.0, hmax=14.0):
-                        put('lantern', u, v, 1.0, count=True, seed=seed); lantern_n += 1; found = True; break
+                        put('lantern', u, v, 1.0, rot=0.0, count=True, seed=seed); lantern_n += 1; found = True; break
                 if found: break
             if found: break
 for si in range(FENCE_FROM, len(PATH) - 1):
@@ -998,10 +998,20 @@ Image.fromarray(_fg).save(os.path.join(HERE, 'ground_fg.png'))
 depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(HERE, 'meadow3d-ground-1x_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []
+# ordinary lanterns all face one way (rot 0), so they share one size: every lamp is cropped to the same window around its foot.
+# Measured on all five lamps: left of the foot 5.6 to 6.3 texels, right 6.7 to 7.4, top 25.2 to 25.8, base 0.8 to 2.5 below it.
+LANTERN_WIN = (8, 27, 18, 31)   # left of the foot, above the foot, width, height
 for t in TALL:
     ys_, xs_ = np.nonzero(id_full == t['id'])
     if len(xs_) < 12: continue
-    x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
+    if t['kind'] == 'lantern':
+        fbx, fby = OXS0 + (t['u'] - t['v']) + BLX, OYS0 + (t['u'] + t['v']) / 2 - t['z'] + BLY   # foot in render-buffer pixels
+        x0, y0 = int(math.floor(fbx)) - LANTERN_WIN[0], int(math.floor(fby)) - LANTERN_WIN[1]
+        x1, y1 = x0 + LANTERN_WIN[2] - 1, y0 + LANTERN_WIN[3] - 1
+        assert 0 <= x0 and x1 < W and 0 <= y0 and y1 < H, 'lantern %d window leaves the render' % t['id']
+        assert (id_full[y0:y1 + 1, x0:x1 + 1] == t['id']).sum() == len(xs_), 'lantern %d leaves its window' % t['id']
+    else:
+        x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
     spr = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
     m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
     spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255

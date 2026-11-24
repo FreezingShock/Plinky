@@ -93,6 +93,10 @@ const VARIANTS: Dictionary = {
 }
 
 static var _frames: Dictionary = {}   # "stat:variant:lean" -> ImageTexture (lean 0 upright, -1 left, 1 right)
+static var _atlas: Texture2D = null             # every frame of every stat, one texture (see atlas())
+static var _atlas_rects: Array[Rect2] = []      # where each frame sits in _atlas, indexed by frame_index()
+const ATLAS_WIDTH: int = 512
+const ATLAS_GUTTER: int = 1
 
 
 ## How many hand-drawn variants (flowers and shrubs) a statistic has.
@@ -131,10 +135,66 @@ static func frame(stat: StringName, variant: int, lean: int) -> Texture2D:
 	var key: String = "%s:%d:%d" % [stat, variant, lean]
 	if _frames.has(key):
 		return _frames[key] as Texture2D
+	var tex: ImageTexture = ImageTexture.create_from_image(_image(stat, variant, lean))
+	_frames[key] = tex
+	return tex
+
+
+## Position of one frame in the atlas: stat index (STATS), then variant, then lean (-1, 0, +1).
+static func frame_index(stat_index: int, variant: int, lean: int) -> int:
+	return (stat_index * variant_count(&"") + variant) * 3 + lean + 1
+
+
+## Every frame of every statistic in one texture, built the first time it is asked for. GardenLayer draws from it: the
+## canvas batches consecutive draws of one texture, so a garden is a few draw calls, not one per flower, and nothing is
+## baked while the world is on screen (before, each new variant was baked on the first frame it was seen).
+static func atlas() -> Texture2D:
+	if _atlas == null:
+		_build_atlas()
+	return _atlas
+
+
+## Where frame `index` (see frame_index) sits inside atlas(), in texels.
+static func atlas_rect(index: int) -> Rect2:
+	if _atlas == null:
+		_build_atlas()
+	return _atlas_rects[index]
+
+
+static func _build_atlas() -> void:
+	PerfStats.lap_begin()
+	var images: Array[Image] = []
+	for stat: StringName in STATS:
+		for v in variant_count(stat):
+			for lean: int in [-1, 0, 1]:
+				images.append(_image(stat, v, lean))
+	var rects: Array[Rect2] = []
+	var x: int = ATLAS_GUTTER
+	var y: int = ATLAS_GUTTER
+	var shelf: int = 0
+	for img: Image in images:
+		var w: int = img.get_width()
+		var h: int = img.get_height()
+		if x + w + ATLAS_GUTTER > ATLAS_WIDTH:
+			x = ATLAS_GUTTER
+			y += shelf + ATLAS_GUTTER
+			shelf = 0
+		rects.append(Rect2(x, y, w, h))
+		x += w + ATLAS_GUTTER
+		shelf = maxi(shelf, h)
+	var sheet := Image.create(ATLAS_WIDTH, y + shelf + ATLAS_GUTTER, false, Image.FORMAT_RGBA8)
+	sheet.fill(Color(0.0, 0.0, 0.0, 0.0))
+	for i in images.size():
+		sheet.blit_rect(images[i], Rect2i(Vector2i.ZERO, images[i].get_size()), Vector2i(rects[i].position))
+	_atlas = ImageTexture.create_from_image(sheet)
+	_atlas_rects = rects
+	PerfStats.lap("garden atlas")
+
+
+## One frame as pixels: a hand-drawn variant or a field flower.
+static func _image(stat: StringName, variant: int, lean: int) -> Image:
 	if is_field(variant):
-		var ft: ImageTexture = ImageTexture.create_from_image(_field_image(stat, variant, lean))
-		_frames[key] = ft
-		return ft
+		return _field_image(stat, variant, lean)
 	var rows: Array = (VARIANTS[stat] as Array)[variant]
 	var w: int = (rows[0] as String).length()
 	var h: int = rows.size()
@@ -160,9 +220,7 @@ static func frame(stat: StringName, variant: int, lean: int) -> Texture2D:
 				"g": c = Color(LEAF)
 				"G", "s": c = Color(LEAF_DARK)
 			img.set_pixel(x + pad + shift, y, c)
-	var tex: ImageTexture = ImageTexture.create_from_image(img)
-	_frames[key] = tex
-	return tex
+	return img
 
 
 ## A field flower: the pad's flower table at its scale, a one texel ink outline, a leaning top half. Padded one texel each side so

@@ -237,3 +237,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - **Forest edge:** `EDGE_SPACING` 60 to 50 in `gen_life_anchors.py`. The tighter tree clearance cost one deer-edge tip (5 against the test floor of 6); the spacing change brings it back to 6.
 - **Tests:** `tests/run.gd` 6418 checks, 0 failed (Godot 4.7 headless, lavapipe).
 - **Not yet:** the verge flower ring still follows the centre line (slice 3 replaces it), so it sits closer to the road edge than before. The bridge and water are the water thread's; the road is now 24 texels wide, so the bridge needs to span at least that.
+
+## 2026-11-24: Meadow lanterns one size, lit after dark
+| Decision | Why |
+|---|---|
+| Every meadow lantern faces the same way (`rot=0`), and the export crops each one to one window around its foot: 8 texels left, 9 right, 27 above, 3 below (18 by 31). The generator asserts that every lantern voxel lands inside it. The sprites are 18 by 31 instead of 11 to 13 by 26 to 28. | The lanterns got a random quarter-turn from their seed, so the bounding boxes came out in four sizes. The PC QA saw four scale groups. Larkmoor's lamps already use the fixed-window method. |
+| The placement stream is unchanged: the seed is still drawn for every candidate, so no other prop moves. Only the five lantern sprites, `rock_038_n` (its normals read the lantern beside it) and the lantern entries of `placements3d.json` changed in `assets/art/zone1/meadow3d/`. | Keeps the diff to the lanterns. |
+| `_add_lights` gives lantern life lights kind `lantern`, the same kind Larkmoor uses, so their pools scale with the night (`SkyCycle.lamp_light_k`). They were kind `fixed` and burned at full strength by day. | The meadow lanterns were lit at noon. Larkmoor's were not. |
+| `tests/test_lighting.gd` checks that each meadow lantern life light is a night pool and that the lantern sprites share one size. `tools/lantern_shots.tscn -- meadow` shoots the meadow lanterns at night, dusk and noon. | Regression guard, and the shot tool for the PC check. |
+| A fresh bake on main matches the committed placements except `bush_027`'s width. Some committed sprite and ground files already differed from a fresh bake before this change (`oak_018_n`, `crystals_039_n`, `bush_027`'s width, the ground images and the preview). They were left alone. | Keeps this PR to the lanterns. |
+| Not verified on the PC. Cloud shots (xvfb, software Vulkan) only. In the four cloud shots the meadow's night is much brighter than Larkmoor's (mean luminance about 84 against 62), so the lamp glow reads less there. | Lighting is for the sky owner to tune, not this change. |
