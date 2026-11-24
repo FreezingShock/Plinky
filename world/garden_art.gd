@@ -129,7 +129,38 @@ static func atlas_rect(index: int) -> Rect2:
 	return _atlas_rects[index]
 
 
+static var _atlas_task: int = -1                 ## the worker task composing the atlas, when prepare() started one
+static var _atlas_composed: Dictionary = {}      ## what that task made: sheet, rects and count
+
+
+## Composes the atlas on a worker thread (pure image work, no rendering), so the game's first frame does not bake it.
+## atlas() makes the texture on the main thread. Safe to call again; a no-op once the atlas exists.
+static func prepare() -> void:
+	if _atlas != null or _atlas_task >= 0:
+		return
+	_atlas_task = WorkerThreadPool.add_task(_compose_task)
+
+
+static func _compose_task() -> void:
+	_atlas_composed = _compose_atlas()
+
+
 static func _build_atlas() -> void:
+	var composed: Dictionary
+	if _atlas_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_atlas_task)
+		_atlas_task = -1
+		composed = _atlas_composed
+		_atlas_composed = {}
+	else:
+		composed = _compose_atlas()
+	_atlas = ImageTexture.create_from_image(composed.sheet as Image)
+	_atlas_rects = composed.rects as Array[Rect2]
+	_atlas_count = int(composed.count)
+
+
+## The atlas image and where each frame sits in it. Pure image work, so it can run on a worker.
+static func _compose_atlas() -> Dictionary:
 	var total: int = STATS.size() * variant_count(&"") * 3 * 4 * STATES
 	var images: Array[Image] = []
 	var indices: Array[int] = []
@@ -170,9 +201,7 @@ static func _build_atlas() -> void:
 	sheet.fill(Color(0.0, 0.0, 0.0, 0.0))
 	for i in images.size():
 		sheet.blit_rect(images[i], Rect2i(Vector2i.ZERO, images[i].get_size()), Vector2i(rects[indices[i]].position))
-	_atlas = ImageTexture.create_from_image(sheet)
-	_atlas_rects = rects
-	_atlas_count = images.size()
+	return {"sheet": sheet, "rects": rects, "count": images.size()}
 
 
 ## The baked sprite for `stat`/`variant` leaning -1, 0 or +1 in `season` (0 spring to 3 winter), open or `closed`.

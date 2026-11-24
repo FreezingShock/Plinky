@@ -79,6 +79,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# The loading screen fills any window like the title does. Main turns this off again.
 	DisplaySettings.set_pregame_fill(get_window(), true)
+	GardenArt.prepare()   # the flower atlas composes on a worker while the loading screen runs, not on the game's first frame
 	_pal = Palettes.colors(Palettes.MEADOW)
 
 	_handoff = handoff

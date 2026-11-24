@@ -176,3 +176,9 @@ batching. The first rendered frame after a swap is GPU work (texture upload, fir
 ## Walk mask on the return paths (2026-11-24)
 - `WalkMask.image()` loaded the zone's walkable map on the main thread on its first use after a zone change. That was a synchronous `load()` of about 34 ms, and it fell on the first walk in the new zone, so the return to the meadow and the return from the Quarry showed it.
 - Fix: `WalkMask.prefetch(path)` queues the map on `ZoneAssets` when the zone is entered, and `image()` takes it from there. Probe: the 34 ms load is gone from the return frames. Headless frame times are noisy, so the total gain on the PC is not measured yet.
+
+## Boot, title to game, and the loading screen (2026-11-24)
+- **Probe:** `tools/loading_probe.gd` runs the boot screen, waits for the title, presses Play (which goes through the loading screen into the game) and prints each slow frame with its phase and laps. It needs a real window: under `--headless` the swap never draws, so run it with `xvfb-run` (this run used OpenGL, not Vulkan, because Xvfb has no VK_KHR_surface).
+- **Found:** `GardenArt.atlas()` baked the flower atlas on the game's first frame, about 750 ms on the software renderer. `GardenArt.prepare()` now composes it on a worker from the boot screen. The pure image work is in `_compose_atlas`; the texture is still made on the main thread. The game's first frame drops to about 7 ms.
+- **Numbers (xvfb, OpenGL, software renderer; not the PC):** boot to title 1.8 to 2.5 s. Play to game 2.6 to 2.9 s, down from 3.8 to 5.4 s before the atlas change. The worst frame in the loading phase is 340 to 530 ms; it still holds about 300 ms the probe does not label, probably the deferred scene change (freeing the boot screen and instantiating the game).
+- **Not measured:** on the PC GPU. Shader compile on the first frames is driver-side and only the PC can show it.
