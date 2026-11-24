@@ -100,3 +100,39 @@ def dead_ends(tol=30.0):
                 reached = any(_seg_dist(end[0], end[1], qq[k][0], qq[k][1], qq[k + 1][0], qq[k + 1][1]) <= tol for k in range(len(qq) - 1))
             if not reached: bad.append((i, end))
     return bad
+
+
+# ---- pads beside the path ----
+# A pad plate is about 14 texels from its centre and a path rim is 6.6 more, so a pad needs about 21 texels of clear
+# ground from every path (uv distance). PAD_NUDGE moves the pads that sat on or against a path onto the verge: each
+# new spot is 24 to 34 texels off, in the same district. This table is the only place Larkmoor pads move.
+PAD_NUDGE = {
+    (534, 600): (540, 594), (622, 644): (622, 648), (796, 512): (806, 512), (1030, 580): (1032, 584),
+    (1074, 558): (1074, 574), (546, 648): (544, 652), (502, 626): (500, 632), (792, 344): (800, 366),
+}
+PAD_CLEAR = 20.6
+
+
+def _to_uv(sx, sy):
+    d = sx - OX; s = (sy - OY) * 2
+    return (s + d) / 2.0, (s - d) / 2.0
+
+
+def path_gap(p):
+    """Uv distance from a screen point to the nearest path centre line."""
+    pu, pv = _to_uv(*p)
+    best = 1e9
+    for pp in PATHS:
+        uv = [_to_uv(*q) for q in pp]
+        for k in range(len(uv) - 1):
+            best = min(best, _seg_dist(pu, pv, uv[k][0], uv[k][1], uv[k + 1][0], uv[k + 1][1]))
+    return best
+
+
+def pads_on_path():
+    """Pads whose plate would touch a path. gen_larkmoor.py refuses to build while this list is not empty."""
+    return [p for d in DISTRICTS for p in d['pads'] if path_gap(p) < PAD_CLEAR]
+
+
+for _d in DISTRICTS:
+    _d['pads'] = [PAD_NUDGE.get(tuple(p), tuple(p)) for p in _d['pads']]
