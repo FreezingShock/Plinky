@@ -566,7 +566,7 @@ func area_mastery(z_id: StringName) -> Dictionary:
 ## Seconds between repeat presses while standing on a pad.
 func press_interval() -> float:
 	var z: ZoneDef = current_zone()
-	var rate: float = (z.press_rate if z != null else 1.0) * (1.0 + effect_total(&"press_rate"))
+	var rate: float = (z.press_rate if z != null else ZoneDef.BASE_PRESS_RATE) * (1.0 + effect_total(&"press_rate"))
 	if relics != null:
 		rate *= relics.multiplier(RelicDef.Effect.PRESS_RATE)
 	return 1.0 / maxf(rate, 0.001)

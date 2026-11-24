@@ -208,7 +208,23 @@ func _pond_array() -> Array:
 func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
 	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
-	_lights.append({"pos": pos, "radius": radius, "strength": strength, "kind": kind})
+	_lights.append({"pos": pos, "radius": radius, "strength": strength, "kind": kind, "tint": Color(0.0, 0.0, 0.0, 0.0)})
+
+
+## Tints the pad pool at `pos` with `col` (a buy colour). Alpha 0 keeps the warm default. Pads are added with kind &"pad",
+## and the pool nearest `pos` within 1.5 texels is the one that changes.
+func set_pool_tint_at(pos: Vector2, col: Color) -> void:
+	var best: Dictionary = {}
+	var best_d: float = 1.5
+	for L: Dictionary in _lights:
+		if L.kind != &"pad":
+			continue
+		var d: float = (L.pos as Vector2).distance_to(pos)
+		if d < best_d:
+			best_d = d
+			best = L
+	if not best.is_empty():
+		best.tint = col
 
 
 ## Light pools sent to the shader on the last frame (tests read this).
@@ -564,19 +580,24 @@ func _push_lights(t: float, steady: bool) -> void:
 				continue
 			pos = _walker.position
 		var q: Vector2 = pos - focus
-		picks.append({"pos": pos, "radius": float(L.radius), "strength": float(L.strength),
+		picks.append({"pos": pos, "radius": float(L.radius), "strength": float(L.strength), "tint": L.tint as Color,
 				"walker": is_walker, "d": Vector2(q.x, q.y * 2.0).length_squared()})
 	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if a.walker != b.walker:
 			return a.walker
 		return float(a.d) < float(b.d))
 	var arr := PackedVector4Array()
+	var tints := PackedVector4Array()
 	_pushed = mini(picks.size(), MAX_LIGHTS)
 	for i in _pushed:
 		var P: Dictionary = picks[i]
 		var ppos: Vector2 = P.pos
 		var flick: float = light_flicker(t, int(ppos.x), steady)
 		arr.append(Vector4(ppos.x, ppos.y - 4.0, float(P.radius) + flick, float(P.strength)))
+		var c: Color = P.tint
+		tints.append(Vector4(c.r, c.g, c.b, c.a))
 	while arr.size() < MAX_LIGHTS:
 		arr.append(Vector4.ZERO)
+		tints.append(Vector4.ZERO)
 	_shade_mat.set_shader_parameter("lights", arr)
+	_shade_mat.set_shader_parameter("light_tint", tints)
