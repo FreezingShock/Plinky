@@ -87,6 +87,8 @@ var critter_active: bool = false
 var critter_left: float = 0.0
 var _critter_next: float = 60.0
 var _streak_row: StringName = &""
+## The pad of the last real (non-pulse) press, for the Repeat Press relics. Not saved: a fresh load starts with none.
+var _last_pad: StringName = &""
 var _streak_next: int = 0
 var _streak_at: float = 0.0
 var _streak_ready_at: float = 0.0
@@ -359,8 +361,11 @@ func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1)
 	if b == null:
 		return BigNum.zero()
 	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
+	if relics != null:
+		gain = gain.mul(BigNum.from_float(relics.zone_mult(b.zone)))
 	if is_hot():
 		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
+		gain = gain.mul(BigNum.from_float(1.0 + _relic_total(RelicDef.Effect.HOT_GAIN)))
 	return gain
 
 
@@ -369,17 +374,23 @@ func press_gain_preview(button_id: StringName) -> BigNum:
 	return press_gain(button_id)
 
 
-## Expected reward per press: the preview times the average crit and double-press boosts.
+## Expected reward per press: the preview times the average crit, double-press and surge boosts.
 func press_gain_average(button_id: StringName) -> BigNum:
 	var chance: float = crit_chance(button_id)
 	var dbl: float = _double_chance()
-	var boost: float = (1.0 + chance * (crit_damage(button_id) - 1.0)) * (1.0 + clampf(dbl, 0.0, 1.0))
+	var surge: float = relics.surge_average() if relics != null else 1.0
+	var boost: float = (1.0 + chance * (crit_damage(button_id) - 1.0)) * (1.0 + clampf(dbl, 0.0, 1.0)) * surge
 	return press_gain(button_id).mul(BigNum.from_float(boost))
 
 
 ## Chance a press counts twice: relics plus the Twin Petals gift.
 func _double_chance() -> float:
-	return (relics.total_effect(RelicDef.Effect.DOUBLE_CHANCE) if relics != null else 0.0) + effect_total(&"double_chance")
+	return _relic_total(RelicDef.Effect.DOUBLE_CHANCE) + effect_total(&"double_chance")
+
+
+## Summed total of one relic effect from the equipped relics. 0 with no inventory (tests, early boot).
+func _relic_total(effect: RelicDef.Effect) -> float:
+	return relics.total_effect(effect) if relics != null else 0.0
 
 
 ## MULT_GAIN relics apply to rewards that go into a stat flagged relics_boost_gain.
@@ -453,7 +464,7 @@ func walk_speed_mult() -> float:
 
 ## Crit chance, 0 to 1. Pass a button id to include that pad's mastery bonus.
 func crit_chance(button_id: StringName = &"") -> float:
-	var c: float = effect_total(&"crit_chance")
+	var c: float = effect_total(&"crit_chance") + _relic_total(RelicDef.Effect.CRIT_CHANCE)
 	if button_id != &"":
 		c += mastery.crit_chance_bonus(button_id)
 	return clampf(c, 0.0, 1.0)
@@ -511,7 +522,10 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 		if allow_pulse:
 			button_denied.emit(button_id)
 		return false
-	if not god_mode and not free:
+	# Free Presses relics: a refunded press still needs the stock on hand, it just takes nothing.
+	# The roll only happens when such a relic is equipped, so runs without one keep the same random sequence.
+	var refunded: bool = not free and _relic_total(RelicDef.Effect.PRESS_REFUND) > 0.0 and rng.randf() < _relic_total(RelicDef.Effect.PRESS_REFUND)
+	if not god_mode and not free and not refunded:
 		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
 	var chance: float = crit_chance(button_id)
 	var crit: bool = chance > 0.0 and rng.randf() < chance
@@ -522,12 +536,16 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	var dbl: float = _double_chance()
 	if dbl > 0.0 and rng.randf() < dbl:
 		presses = 2
-	var gain: BigNum = press_gain(button_id, crit_mult, presses)
+	# Surge relics: the press that lands on a surge index (every period-th press of the run) gets extra reward.
+	var surge: float = relics.surge_mult(press_count + 1) if relics != null else 1.0
+	# Echo Stone and Echo Ring: pressing the same pad as the last real press pays more. Pulses don't count.
+	var echo: float = 1.0 + _relic_total(RelicDef.Effect.REPEAT_GAIN) if allow_pulse and button_id == _last_pad else 1.0
+	var gain: BigNum = press_gain(button_id, crit_mult, presses).mul(BigNum.from_float(surge * echo))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
 	_open_next_tier(b)
 	run_stats.on_press(crit)
-	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * (1.0 + effect_total(&"mastery_xp")))
+	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * (1.0 + effect_total(&"mastery_xp") + _relic_total(RelicDef.Effect.MASTERY_XP)))
 	_check_gates()
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
@@ -535,10 +553,16 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	if levels_up > 0:
 		mastery_leveled.emit(button_id, mastery.level(button_id))
 	if allow_pulse:
+		_last_pad = button_id
 		_update_streak(b)
 		var drop: StringName = _roll_relic_drop()
 		if drop != &"":
 			relics.add_relic(drop)
+			# Golden Hour: a relic drop also pays a share of this press's reward.
+			var drop_share: float = _relic_total(RelicDef.Effect.DROP_REWARD)
+			if drop_share > 0.0:
+				_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain.mul(BigNum.from_float(drop_share))))
+				_flush()
 		var pulse: float = relics.total_effect(RelicDef.Effect.PULSE_CHANCE)
 		if pulse > 0.0 and rng.randf() < pulse:
 			pulse_source = button_id
@@ -716,7 +740,7 @@ func _roll_relic_drop() -> StringName:
 	if play_seconds - _last_roll_at < rc.roll_interval * events.relic_roll_mult(calendar.season_index()):
 		return &""
 	_last_roll_at = play_seconds
-	var due: float = rc.first_drop_seconds if relic_drops == 0 else rc.pity_seconds
+	var due: float = relics.pity_due(relic_drops == 0)
 	var force: bool = play_seconds - _last_drop_at >= due
 	var drop: StringName = relics.roll_drop(rng, luck_level(), force)
 	if drop != &"":
@@ -1187,7 +1211,8 @@ func apply_offline(seconds: float) -> float:
 	# income, as it would if you were pressing, instead of the whole stretch paying at the rate you left with.
 	var slices: int = maxi(1, config.offline_slices)
 	var slice_secs: float = secs / float(slices)
-	var sb: BigNum = BigNum.from_float(slice_secs * config.offline_income_fraction)
+	# Night Lantern and other OFFLINE_RATE relics add to the share of income that time away pays.
+	var sb: BigNum = BigNum.from_float(slice_secs * (config.offline_income_fraction + _relic_total(RelicDef.Effect.OFFLINE_RATE)))
 	for i in slices:
 		for s: StatDef in stat_defs.values():
 			if s.passive:
@@ -1258,7 +1283,7 @@ func _offline_relics(secs: float) -> Array[StringName]:
 	var last_drop: float = _last_drop_at
 	var t: float = step_s
 	while t <= secs and found.size() < config.offline_relic_max_drops:
-		var due: float = rc.first_drop_seconds if relic_drops == 0 else rc.pity_seconds
+		var due: float = relics.pity_due(relic_drops == 0)
 		var drop: StringName = relics.roll_drop(rng, luck_level(), now + t - last_drop >= due)
 		if drop != &"":
 			relics.add_relic(drop)

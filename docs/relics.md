@@ -49,3 +49,27 @@ Frames: `assets/ui/rarity/` (from art/icons/rarity, 20x20, 16x16 icon at offset 
 - Why not caps: a hard cap sends drops to the rarer relics once the common one is full. Everything capped by about 3 hours of play, so the relic system ended there.
 - Drops only roll on a press (at most once per second). Rolls are not per second of wall time, so a player who is not pressing gets no relics.
 - Numbers and the pacing effect are in `docs/balance.md` section 11.3.
+
+## Abilities (2026-11-24)
+Thirty-three relics now: the six originals plus 27 with their own mechanics. Each new effect is a `RelicDef.Effect` kind appended after the originals, so saved `.tres` values and save files keep their meaning.
+
+| Effect | What it does | Where it hooks in |
+|---|---|---|
+| `DROP_CHANCE` | multiplies the relic drop roll (1 + total) | `RelicInventory.roll_drop` |
+| `CRIT_CHANCE` | adds to crit chance (chance-combined) | `Sim.crit_chance` |
+| `OFFLINE_RATE` | adds to the share of income that time away pays (base 0.5) | `Sim.apply_offline` |
+| `SURGE` | every `period`th press of the run gains `value` (`RelicInventory.surge_mult`) | `Sim._press` |
+| `ZONE_GAIN` | multiplies press reward on pads of the zone in `zone` | `Sim.press_gain` |
+| `PRESS_REFUND` | chance a press costs nothing (stock still needed) | `Sim._press` |
+| `MASTERY_XP` | adds to pad mastery XP per press | `Sim._press` |
+| `HOT_GAIN` | multiplies press reward while Heat is hot (Ember Quarry) | `Sim.press_gain` |
+| `PITY_SPEED` | shortens the relic pity timer, floored at a tenth | `RelicInventory.pity_due` |
+| `REPEAT_GAIN` | multiplies a press that lands on the same pad as the last real press | `Sim._press` |
+| `DROP_REWARD` | a relic drop also pays a share of that press's reward | `Sim._press` |
+
+- `RelicDef.zone` (zone id such as `zone1`, `zone2`, `larkmoor`) and `RelicDef.period` are new fields. Both are empty or zero for other effects.
+- Divine and Special are unchanged: weight 0, granted by rebirths and achievements. No new ones yet.
+- Counts: Common 6, Uncommon 6, Rare 6, Epic 5, Legendary 5, Mythic 5 (Divine and Special not counted).
+- Icons: `tools/art/gen_relic_icons.py` draws every relic at 8, 12, 16, 24 and 32 px. Mock sheet: `/mnt/project-files/plinky-relics/relic_icons_sheet.png`.
+- Tooltips use `press_gain_preview`, which leaves out surges and repeats (they depend on the press itself). `press_gain_average` includes the average surge.
+- Balance is not yet tuned against `tools/sim.gd`. The offline caps add up: with Night Lantern, Tide Lantern and Eternal Lantern all at max, time away pays 1.12 of the rate. Check this against the idle to active target before the next balance pass.

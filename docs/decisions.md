@@ -778,3 +778,11 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
+
+## Relic abilities expansion (2026-11-24)
+- **Why:** Nathan asked for many more relics, each with a unique ability rather than a stat bump. Six relics were not enough variety.
+- **What:** 27 relics across Common to Mythic (4 to 6 each), using 11 new effect kinds appended to `RelicDef.Effect` so existing `.tres` values keep their meaning. Divine and Special are unchanged (weight 0, granted by rebirths and achievements).
+- **Chosen:** each relic gets a distinct trigger (zone, period, heat, repeat, drop, refund, offline rate, pity timer) so a relic reads as its own ability. Some effect kinds appear at two or three rarities with different numbers and triggers; that is a deliberate tier ladder.
+- **Random sequence:** a new roll (free presses) only runs when a Free Presses relic is equipped, so runs without one keep the same random sequence.
+- **Flag for Nathan:** offline pay can reach 1.12 of the awake rate with the three lanterns at max. Taste call: lower the caps or keep it as a reward for idle play. My pick is to keep it and recheck with `tools/sim.gd`.
+- **Not verified in-engine:** the new scripts were written and read but not run in Godot here. CI's unit and sim jobs run the new relic tests and the sim paths.

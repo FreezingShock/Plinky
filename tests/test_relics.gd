@@ -9,7 +9,7 @@ func run(t: SceneTree) -> void:
 		if f.begins_with("_") or not f.ends_with(".tres"):
 			continue
 		defs.append(load("res://content/relics/" + f))
-	t.ok(defs.size() == 6, "six relics load, got %d" % defs.size())
+	t.ok(defs.size() == 33, "33 relics load (6 original, 27 expansion), got %d" % defs.size())
 	var inv := RelicInventory.new(cfg, defs)
 
 	# Stacking
@@ -113,3 +113,69 @@ func run(t: SceneTree) -> void:
 	var sw: Array[Dictionary] = q.preview_change(&"r_rate", &"r_cash")
 	t.ok(sw.size() == 2, "swap preview lists both effects")
 	t.ok(RelicDef.effect_name(RelicDef.Effect.CASH_MULT) == "Passive Income", "effect names are Title Case")
+
+	# Expansion: every relic is complete, ids are unique, and each rarity has a full set
+	var seen: Dictionary = {}
+	var per_rarity: Dictionary = {}
+	var complete: bool = true
+	for d: RelicDef in defs:
+		seen[d.id] = int(seen.get(d.id, 0)) + 1
+		per_rarity[d.rarity.id] = int(per_rarity.get(d.rarity.id, 0)) + 1
+		if d.display_name.is_empty() or d.description.is_empty() or d.icon == null or d.rarity == null:
+			complete = false
+		if d.effect == RelicDef.Effect.SURGE and d.period < 2:
+			complete = false
+		if d.effect == RelicDef.Effect.ZONE_GAIN and not [&"zone1", &"zone2", &"larkmoor"].has(d.zone):
+			complete = false
+	t.ok(complete, "every relic has a name, text, icon, rarity, and a period or zone where it needs one")
+	t.ok(seen.values().all(func(n: int) -> bool: return n == 1), "relic ids are unique")
+	for r: StringName in [&"common", &"uncommon", &"rare", &"epic", &"legendary", &"mythic"]:
+		t.ok(int(per_rarity.get(r, 0)) >= 5, "%s has at least 5 relics, has %d" % [r, int(per_rarity.get(r, 0))])
+	for e: int in RelicDef.Effect.values():
+		t.ok(RelicDef.effect_name(e as RelicDef.Effect) != "Bonus", "effect %d has a name" % e)
+
+	# Surge: every period-th press of the run, one stack of Surge Drum is +50%
+	var sg := RelicInventory.new(cfg, defs)
+	sg.add_relic(&"r_surge_drum")
+	sg.equip(&"r_surge_drum")
+	t.near(sg.surge_mult(9), 1.0, 1e-9, "no surge on press 9")
+	t.near(sg.surge_mult(10), 1.5, 1e-9, "surge on press 10")
+	t.near(sg.surge_mult(20), 1.5, 1e-9, "surge on press 20")
+	t.near(sg.surge_average(), 1.05, 1e-9, "average surge is value over period")
+	sg.unequip(&"r_surge_drum")
+	t.near(sg.surge_mult(10), 1.0, 1e-9, "unequipped surge does nothing")
+
+	# Zone gain: only in its zone
+	var zg := RelicInventory.new(cfg, defs)
+	zg.add_relic(&"r_meadow_honey")
+	zg.equip(&"r_meadow_honey")
+	t.near(zg.zone_mult(&"zone1"), 1.12, 1e-9, "Meadow Honey helps the Meadow")
+	t.near(zg.zone_mult(&"zone2"), 1.0, 1e-9, "Meadow Honey does nothing in the Quarry")
+
+	# Pity speed: shortens the pity timer, never the first drop, never below a tenth
+	var pz := RelicInventory.new(cfg, defs)
+	pz.add_relic(&"r_hourglass_ages", 50)
+	pz.equip(&"r_hourglass_ages")
+	t.near(pz.pity_due(true), cfg.first_drop_seconds, 1e-9, "first drop timer untouched")
+	t.ok(pz.pity_due(false) < cfg.pity_seconds and pz.pity_due(false) >= cfg.pity_seconds * 0.1, "pity timer shorter, floored at a tenth")
+
+	# Drop chance: Lucky Penny at 4 stacks is +60% on the drop roll (base 0.5 -> 0.8)
+	var lpc: RelicConfig = cfg.duplicate()
+	lpc.base_drop_chance = 0.5
+	var lp := RelicInventory.new(lpc, defs)
+	lp.add_relic(&"r_lucky_penny", 4)
+	lp.equip(&"r_lucky_penny")
+	var lrng := RandomNumberGenerator.new()
+	lrng.seed = 11
+	var hits: int = 0
+	for i in 20000:
+		if lp.roll_drop(lrng, 0) != &"":
+			hits += 1
+	t.ok(absf(hits / 20000.0 - 0.8) < 0.02, "Lucky Penny lifts drop chance to about 80%%, got %.3f" % (hits / 20000.0))
+
+	# Capped chances never pass 100%
+	var cap := RelicInventory.new(cfg, defs)
+	cap.add_relic(&"r_wardens_eye", 200)
+	cap.equip(&"r_wardens_eye")
+	t.ok(cap.total_effect(RelicDef.Effect.CRIT_CHANCE) <= 1.0, "crit chance from relics stays at or under 100%")
+
