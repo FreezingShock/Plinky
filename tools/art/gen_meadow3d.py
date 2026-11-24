@@ -365,12 +365,17 @@ def make_sign(rng):
         return d, m
     return f, (14, 4), 17, 3.0
 def make_lantern(rng):
+    # a front-readable garden lantern: a dark iron post on a foot plate, a bracket, a glass lamp box that holds the light,
+    # a dark cap and a finial. The glass is the brightest thing on the post, so it reads as the light source at dusk.
     def f(x, y, z):
-        d = sdf_capsule(x, y, z, (0, 0, -1), (0, 0, 13), .9); m = np.full(x.shape, M_BARK, np.int16)
-        dl = sdf_box(x, y, z, (0, 0, 17), (2.6, 2.6, 3.2), .4); sel = dl < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, dl)
-        dc = sdf_box(x, y, z, (0, 0, 20.8), (3.6, 3.6, .8), .3); sel = dc < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dc)
+        d = sdf_capsule(x, y, z, (0, 0, 0), (0, 0, 14), .75); m = np.full(x.shape, M_INK, np.int16)
+        dfoot = sdf_box(x, y, z, (0, 0, .9), (2.2, 2.2, .9), .3); sel = dfoot < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dfoot)
+        dbr = sdf_box(x, y, z, (0, 0, 14.6), (2.3, .6, .6), .2); sel = dbr < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dbr)
+        dl = sdf_box(x, y, z, (0, 0, 18.0), (2.4, 2.4, 3.0), .35); sel = dl < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, dl)
+        dr = sdf_box(x, y, z, (0, 0, 21.9), (3.4, 3.4, .8), .3); sel = dr < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dr)
+        dfin = sdf_capsule(x, y, z, (0, 0, 22.8), (0, 0, 24.6), .5); sel = dfin < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dfin)
         return d, m
-    return f, (7, 7), 23, 2.5
+    return f, (8, 8), 25, 2.8
 def make_fence_seg(L):
     """Low timber rail fence, L texels long along local x: two rails and a post every 3.5 texels."""
     hl = L / 2.0
@@ -406,12 +411,15 @@ log('props defined')
 prng = random.Random(7)
 WATERNEAR = None
 def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5):
+    # r is the real footprint: it sets spacing and the path clearance. The trunk must stand on land, so the water and
+    # edge probes use at most 9 texels, and a crown may overhang a shallow bank.
+    base = min(r, 9.0)
     if not (0 < u < N - 1 and 0 < v < N - 1): return False
-    if np.hypot(u - CU, v - CV) > Re(math.atan2(v - CV, u - CU)) * .9 - r * .5: return False
+    if np.hypot(u - CU, v - CV) > Re(math.atan2(v - CV, u - CU)) * .9 - base * .5: return False
     h = float(terrain_h(u, v))
     if h > hmax or float(slope_at(u, v)) > slope_max: return False
     for a_ in range(0, 360, 60):
-        uu, vv = u + math.cos(math.radians(a_)) * r * .8, v + math.sin(math.radians(a_)) * r * .8
+        uu, vv = u + math.cos(math.radians(a_)) * base * .8, v + math.sin(math.radians(a_)) * base * .8
         if float(samp(WD, uu, vv)) > -.5: return False
         if shore and float(samp(DW, uu, vv)) < 3.5: return False
     if float(samp(WD, u, v)) > -.5: return False
@@ -420,30 +428,68 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5):
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
     return True
-def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **kw):
-    rng = random.Random(prng.randint(0, 1 << 30))
-    rot = rng.uniform(0, 6.283) if rot is None else rot
+# Minimum clear gap between two counted props, on top of their real footprints. Trees stand apart, bushes and stones tuck in.
+# Crowns may touch but not stack: an oak is about 18 texels of crown, so its gap is near zero. Bushes bunch loosely.
+MIN_GAP = dict(oak=-5.0, pine=-2.0, crystals=2.0, rock=1.5, stump=1.5, bush=0.5, sign=1.0, lantern=1.0)
+FOOT_KINDS = ('oak', 'pine', 'bush', 'crystals', 'rock', 'stump', 'sign', 'lantern')   # props that take ground and get checked
+PLACED_KIND = []     # (u, v, footprint, kind) for every counted prop, read by check_layout
+ANCHOR_PTS = []      # (u, v, radius, kind) for pads, gate, shrine and spawn
+
+def _draw(kind, seed, big=True):
+    # one seed fixes a prop's rotation and shape, so a footprint probe and the real placement always agree
+    rng = random.Random(seed)
+    rot = rng.uniform(0, 6.283)
+    if kind == 'rock': f, half, top, rad = make_rock(rng, big)
+    else: f, half, top, rad = dict(oak=make_oak, pine=make_pine, bush=make_bush, crystals=make_crystals, stump=make_stump,
+                                    mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign,
+                                    lantern=make_lantern)[kind](rng)
+    return f, half, top, rad, rot
+
+def solid_radius(sdf, half, top):
+    # widest horizontal reach of a prop's solid, read from its own SDF on a few heights (local texels, centred on its foot).
+    # The bounding box is far bigger than the crown, so spacing uses this instead.
+    xs = np.linspace(-half[0], half[0], 37, dtype=np.float32); ys = np.linspace(-half[1], half[1], 37, dtype=np.float32)
+    X, Y = np.meshgrid(xs, ys, indexing='ij')
+    best = 0.0
+    for z in np.linspace(top * .12, top * .9, 6):
+        d, _ = sdf(X, Y, np.full(X.shape, z, np.float32))
+        ins = np.broadcast_to(np.asarray(d), X.shape) < 0
+        if ins.any(): best = max(best, float(np.sqrt(X[ins] ** 2 + Y[ins] ** 2).max()))
+    return best
+
+def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, seed=None, **kw):
     big = kw.get('big', True)
+    seed = prng.randint(0, 1 << 30) if seed is None else seed
+    f, half, top, rad, rot_ = _draw(kind, seed, big)
+    rot = rot_ if rot is None else rot
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
-    mk = dict(oak=make_oak, pine=make_pine, bush=make_bush, rock=lambda r: make_rock(r, big), crystals=make_crystals, stump=make_stump,
-              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern)[kind](rng)
-    f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid)
     if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'lantern') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0))
-    if count: placed.append((u, v, rad * scale))
+    if count:
+        fp = solid_radius(f, half, top) * scale
+        placed.append((u, v, fp)); PLACED_KIND.append((u, v, fp, kind))
     return z0
+
 def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
     got = 0
-    r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3)[kind]
+    if kind in ('oak', 'pine'): rad = rad * 1.35   # a crown is big: groves get room, so the count holds without stacking
+    gap = kw.get('gap', MIN_GAP.get(kind, 1.5))
+    okw = {k: w for k, w in kw.items() if k in ('slope_max', 'shore', 'path', 'hmax')}
+    big = kw.get('big', True)
     for _ in range(n):
-        for t in range(tries):
-            a_, rd = prng.uniform(0, 6.283), math.sqrt(prng.random()) * rad
-            u, v = cu_ + math.cos(a_) * rd, cv_ + math.sin(a_) * rd
+        for t in range(tries * 2):   # more tries: a crown needs room, so groves fill in on the second look
+            a_, frac = prng.uniform(0, 6.283), math.sqrt(prng.random())
+            # natural falloff: the outer ring of a grove is sparser, so groves thin out at their edge instead of ending in a hard ring
+            if prng.random() > .45 + .55 * (1 - frac): continue
+            u, v = cu_ + math.cos(a_) * frac * rad, cv_ + math.sin(a_) * frac * rad
             sc = prng.uniform(*scale_rng)
-            if ok_spot(u, v, r_fp * sc, **{k: w for k, w in kw.items() if k in ('slope_max', 'shore', 'path', 'hmax', 'gap')}):
-                put(kind, u, v, sc, **{k: w for k, w in kw.items() if k == 'big'}); got += 1; break
+            seed = prng.randint(0, 1 << 30)
+            f, half, top, _rad, _rot = _draw(kind, seed, big)
+            fp = solid_radius(f, half, top) * sc
+            if ok_spot(u, v, fp, gap=gap, **okw):
+                put(kind, u, v, sc, seed=seed, **{k: w for k, w in kw.items() if k == 'big'}); got += 1; break
     return got
 SC = lambda p: s2uv(*p)
 # anchors the game draws itself (player spawn, pads, gate, shrine): positions only, nothing baked
@@ -451,7 +497,11 @@ for (sx, sy, st) in PADS_S: anchors.append(dict(kind='pad', state=st, **dict(zip
 anchors.append(dict(kind='gate', u=GATE[0], v=GATE[1], sx=330, sy=96))
 anchors.append(dict(kind='player_spawn', sx=164, sy=264, u=s2uv(164, 264)[0], v=s2uv(164, 264)[1]))
 SHRINE = s2uv(572, 196); anchors.append(dict(kind='shrine', u=SHRINE[0], v=SHRINE[1], sx=572, sy=196))
-for a_ in anchors: placed.append((a_['u'], a_['v'], 14 if a_['kind'] == 'pad' else 12 if a_['kind'] != 'gate' else 18))
+# pads get a wide keep-out: a prop or lantern near a plate hides it, and the walker's spawn must stay clear too
+ANCHOR_R = dict(pad=20, gate=18, player_spawn=18, shrine=14)
+for a_ in anchors:
+    r_a = ANCHOR_R[a_['kind']]
+    placed.append((a_['u'], a_['v'], r_a)); ANCHOR_PTS.append((a_['u'], a_['v'], r_a, a_['kind']))
 # keep the gaps between a row's pads clear, and the ground just south of each plate (a tall tree standing there would
 # hide the pad behind its crown)
 for _row in (SPROUT_ROW, CLOVER_ROW):
@@ -542,15 +592,23 @@ for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
     seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
     n = max(1, int(round(seg / 40.0)))
     for k in range(n):
-        f0 = (k + .5) / n; side = 1.0 if (si + k) % 2 == 0 else -1.0
+        f0 = (k + .5) / n; side0 = 1.0 if (si + k) % 2 == 0 else -1.0
         found = False
-        for off_ in (PW_MEAN + 1.8, PW_MEAN + 2.8, PW_MEAN + 3.8):   # try just inside, middle and just outside the rim
-            for slide in (0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10):    # first valid spot along the path, nearest the slot first
-                f = f0 + slide / seg
-                if not (0 < f < 1): continue
-                u, v = ax + (bx - ax) * f + nx_ * side * off_, ay + (by - ay) * f + ny_ * side * off_
-                if 7.0 < float(samp(dpath, u, v)) < 13.0 and ok_spot(u, v, 2.5, slope_max=.8, path=False, gap=-.5, hmax=14.0):
-                    put('lantern', u, v, 1.0, count=True); lantern_n += 1; found = True; break
+        # the slot's own side first, then the far side: a grove on one bank can crowd the other side out
+        for side in (side0, -side0):
+            for off_ in (PW_MEAN + 3.6, PW_MEAN + 4.6, PW_MEAN + 5.6, PW_MEAN + 6.6):   # a few texels past the rim, never on the walk line
+                for slide in (0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10, 13, -13, 16, -16, 20, -20, 24, -24, 28, -28, 32, -32):   # nearest the slot first
+                    f = f0 + slide / seg
+                    if not (0 < f < 1): continue
+                    u, v = ax + (bx - ax) * f + nx_ * side * off_, ay + (by - ay) * f + ny_ * side * off_
+                    # off the walk line: the walker's band is the rim (PW_MEAN), so the post stands a few texels past it
+                    if not (PW_MEAN + 3.4 < float(samp(dpath, u, v)) < 14.0): continue
+                    # the lantern's real footprint (not a guess) keeps it off rocks, trees, pads and the spawn
+                    seed = prng.randint(0, 1 << 30)
+                    f_l, half_l, top_l, _r, _rt = _draw('lantern', seed)
+                    if ok_spot(u, v, solid_radius(f_l, half_l, top_l), slope_max=.8, path=False, gap=1.0, hmax=14.0):
+                        put('lantern', u, v, 1.0, count=True, seed=seed); lantern_n += 1; found = True; break
+                if found: break
             if found: break
 for si in range(FENCE_FROM, len(PATH) - 1):
     (ax, ay), (bx, by) = PATH[si], PATH[si + 1]
@@ -590,6 +648,28 @@ if best is not None and best[0] <= DOCK_MAX:
 else:
     log('boardwalk: no shore within %.0f texels of the path' % DOCK_MAX)
 log('path pass: lanterns %d, flower verges %d, fence runs %d' % (lantern_n, verge_n, fence_n))
+
+# ---------------- layout check: props never overlap each other, a pad, the gate, the spawn or the path ----------------
+def check_layout():
+    bad = []
+    for i, (ui, vi, ri, ki) in enumerate(PLACED_KIND):
+        for uj, vj, rj, kj in PLACED_KIND[i + 1:]:
+            dd = math.hypot(ui - uj, vi - vj)
+            # the later prop is the candidate, so its own gap sets the required distance, exactly as ok_spot does
+            if dd < ri + rj + MIN_GAP.get(kj, 1.5) - .5: bad.append(('prop/prop', ki, kj, round(dd, 1)))
+        for ua, va, ra, ka in ANCHOR_PTS:
+            dd = math.hypot(ui - ua, vi - va)
+            if dd < ri + ra + MIN_GAP.get(ki, 1.5) - .5: bad.append(('prop/%s' % ka, ki, round(dd, 1)))
+        dp = float(samp(dpath, ui, vi))
+        if ki == 'lantern':
+            if not (PW_MEAN + 3.0 <= dp <= 14.5): bad.append(('lantern on the walk line', round(dp, 1)))
+        elif dp < ri: bad.append(('prop on the path', ki, round(dp, 1)))
+    for k_ in sorted(set(p_[3] for p_ in PLACED_KIND)):
+        fp_ = [p_[2] for p_ in PLACED_KIND if p_[3] == k_]
+        log('  footprint %-8s n=%2d  mean %.1f  max %.1f' % (k_, len(fp_), sum(fp_) / len(fp_), max(fp_)))
+    log('layout check: %d props, %d problems' % (len(PLACED_KIND), len(bad)))
+    assert not bad, bad[:8]
+check_layout()
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
