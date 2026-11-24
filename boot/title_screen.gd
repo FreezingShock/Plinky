@@ -89,6 +89,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ui_theme: Theme = load(THEME_PATH) as Theme
 	theme = ui_theme
+	# Pre-game screens fill any window (the game letterboxes). Main turns this off again.
+	DisplaySettings.set_pregame_fill(get_window(), true)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	CrispFont.apply(DISPLAY_FONT)
 	_pal = Palettes.colors(Palettes.MEADOW)
@@ -126,6 +128,11 @@ func _build_walker() -> void:
 	_walker.stretch_mode = TextureRect.STRETCH_KEEP
 	_walker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_walker)
+
+
+## Where the 640x360 art sits in the visible canvas (centred, whole texels). Art positions add this; screen positions don't.
+func _art_origin() -> Vector2:
+	return ((size - Vector2(640.0, 360.0)) * 0.5).round()
 
 
 ## Left column: logo, tagline, then the framed menu.
@@ -182,7 +189,7 @@ func _build_column() -> void:
 ## The time chip: names the time of day on screen, and a click runs the sky forward to the next one.
 func _build_time_chip() -> void:
 	_chip = _button("", "", _pal[5], _on_time_chip)
-	_chip.position = Vector2(MENU_X, CHIP_Y)
+	_chip.position = Vector2(MENU_X, CHIP_Y + _art_origin().y)
 	add_child(_chip)
 
 
@@ -411,4 +418,6 @@ func _process(delta: float) -> void:
 	_walker.modulate = Color.WHITE.lerp(tint, 0.5)
 	# Both scenes share one smoothed parallax, so the walker and the layers move as a set.
 	_scenery.parallax = _bg.parallax
-	_walker.position = Vector2(WALKER_FEET.x - float(WALKER_CELL) * 0.5, WALKER_FEET.y - WALKER_BASE_Y) + TitleScenery.layer_shift(_bg.parallax, TitleScenery.NEAR_K)
+	var origin: Vector2 = _art_origin()
+	_walker.position = Vector2(WALKER_FEET.x - float(WALKER_CELL) * 0.5, WALKER_FEET.y - WALKER_BASE_Y) + origin + TitleScenery.layer_shift(_bg.parallax, TitleScenery.NEAR_K)
+	_chip.position = Vector2(MENU_X, CHIP_Y + origin.y)

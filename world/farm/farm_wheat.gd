@@ -102,7 +102,9 @@ func _process(delta: float) -> void:
 		var w: int = int(clump.w)
 		var h: int = int(clump.h)
 		var origin: Vector2 = c.origin as Vector2
-		var centre: Vector2 = _parent.to_global(origin + Vector2(w * 0.5, h * 0.5))
+		if not c.has("centre"):
+			c.centre = _parent.to_global(origin + Vector2(w * 0.5, h * 0.5))      # clumps never move: work it out once
+		var centre: Vector2 = c.centre as Vector2
 		var near: bool = push > 0.0 and _at.distance_to(centre) < LIVE_RANGE
 		if near:
 			var local: Vector2 = _parent.to_local(_at) - origin

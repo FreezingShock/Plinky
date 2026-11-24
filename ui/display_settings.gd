@@ -20,6 +20,9 @@ const MIN_PIXEL_SCALE: int = 2
 ## True now that the 3D meadow (PR #4) provides the 840x480 backdrop bleed. Set false to letterbox Wide view at 640x360.
 static var bleed_ready: bool = true
 static var scale_mode: int = Scale.FIT
+## True while a pre-game screen (loading, title) is up. It expands the view to fill the window, so the backdrop
+## covers any aspect ratio. The game turns it off and keeps the letterboxed view (KEEP).
+static var pregame_fill: bool = false
 static var fullscreen: bool = false
 ## Window size the player picked in the menu. ZERO means free: the window is whatever size it was dragged to.
 static var resolution: Vector2i = Vector2i.ZERO
@@ -122,15 +125,23 @@ static func apply(win: Window) -> void:
 		win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	if win.content_scale_size != base:
 		win.content_scale_size = base
-	# Always letterbox the base size. In Wide view the base is the bleed, so the whole bleed is shown,
-	# centred by Godot, with black beyond it. EXPAND gave an off-centre frame on ultrawide.
-	var aspect: int = Window.CONTENT_SCALE_ASPECT_KEEP
+	# The game always letterboxes the base size: in Wide view the whole bleed is shown, centred by Godot, with black
+	# beyond it. Pre-game screens expand instead, so their backdrop fills any window (see pregame_fill).
+	var aspect: int = Window.CONTENT_SCALE_ASPECT_EXPAND if pregame_fill else Window.CONTENT_SCALE_ASPECT_KEEP
 	if win.content_scale_aspect != aspect:
 		win.content_scale_aspect = aspect
 	var stretch: int = Window.CONTENT_SCALE_STRETCH_INTEGER if pixel_active(win) else Window.CONTENT_SCALE_STRETCH_FRACTIONAL
 	if win.content_scale_stretch != stretch:
 		win.content_scale_stretch = stretch
 	RenderingServer.set_default_clear_color(Color.BLACK)
+
+
+## Turn the pre-game fill on or off and apply it. Called by the loading and title screens (on) and by the game (off).
+static func set_pregame_fill(win: Window, on: bool) -> void:
+	if pregame_fill == on:
+		return
+	pregame_fill = on
+	apply(win)
 
 
 static func set_scale_mode(win: Window, mode: int) -> void:
