@@ -81,3 +81,11 @@ The Audio autoload, footsteps, ambient soundscape, world-life sounds and press s
 - **Lava:** a second Ambience player, faded in by `set_zone` in the quarry and out elsewhere. Sits at -5 dB, under the forge crackle.
 - **Why:** Nathan's sound list (audio pass, 2026-11-24). Wiring waited for his approval of the preview.
 - **Not verified by ear:** the cloud has no audio output. Levels were measured with ffmpeg volumedetect. The farm frame coordinates were checked against `farm.json`, not against the walker in-engine.
+
+## 2026-11-24: Thunder trails each heavy-rain lightning strike
+- **Look:** none. Sound only. The rumble is made in code (no file, like the rain bed) and plays once.
+- **Schedule:** `SkyModel.strike_time(window)` is now the one place the strike hash lives. `lightning_flash` and the thunder both read it, so the rumble follows the same strike the screen flashes for. `SkyModel.thunder_delay` gives 1.5 to 4.5 s after the flash, hashed per window.
+- **Where:** `AmbientScape._storm` polls each 0.25 s and reads `MeadowLife.sky_time`, which `SkyCycle._update_light` writes from the sky's own clock.
+- **Silent:** in the quarry (no weather), in snow (rain is snow), and below 70% rain.
+- **Checked in the cloud:** `tests/run.gd` 7911 checks, 0 failed. The schedule and the rumble's length are tested. No audio driver in the cloud, so the sound itself is not heard here.
+- **Not verified on the PC:** how loud the rumble sits against the rain bed.

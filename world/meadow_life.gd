@@ -19,6 +19,7 @@ static var night: float = 0.0      # 0 day .. 1 deep night
 static var low_sun: float = 0.0    # 1 at golden hour, sunrise and sunset
 static var rain: float = 0.0       # 0..1
 static var wet: float = 0.0        # 0..1 ground wetness (SkyCycle: a lagged rain, 0 under snow)
+static var sky_time: float = 0.0    # the sky's game time in seconds (SkyCycle), so the thunder follows the lightning schedule
 
 ## Season mix (spring, summer, autumn, winter), written by SkyCycle with the same weights SeasonParticles gets, so
 ## butterflies and fireflies can follow the calendar: butterflies are a spring and summer thing, fireflies a summer one.
