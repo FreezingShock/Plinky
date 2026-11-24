@@ -772,6 +772,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Edit mode:** the three boxed buttons per row became a frameless grip (drag the row, or Up and Down while the grip has focus) and a frameless hide mark, dim until the row is hovered. This drops the move up and move down buttons, so there is nothing to disable at either end.
 - **Motion:** rows glide to new places, fade out when hidden and fade in when added, the grips and footer ease open in six steps, and chips pop in. All of it snaps under Reduce Motion or Reduce Flashing.
 - Not run in-engine from the cloud; needs a PC capture.
+## 2026-11-23 Popups slide clear of the zone panel
+- PC QA: long popups such as "+100QnVg!" were cut off where the zone panel starts (the panel sits top right, x 480 to 632, and draws over the popup layer). Popups were only hidden under menus, never moved for the zone panel.
+- Fix: `PopupClear.slide_clear` (ui/fx/popup_clear.gd) moves a popup left of the first blocker it overlaps, repeating if that lands on another. If there is no room left of the blocker, the popup is skipped for that frame instead of drawn half hidden. `HUD.clear_rects()` supplies the zone panel's global rect through `PopupNumber.keep_clear`, set in the same place as `under_menu`.
+- Menus keep the existing behaviour: popups under an open menu are hidden. The clamp is only for the zone panel.
+- I could not find PR #157 in history, so I could not compare against its clamp. This follows the existing viewport clamp in `_draw_pop`.
+- Not run in engine: no Godot in the cloud. Tests in tests/test_popup_clear.gd cover the geometry. PC QA should check a popup on a pad beside the zone panel, with the panel open and with Travel open.
 
 
 ## CI uid guard (2026-11-23)
