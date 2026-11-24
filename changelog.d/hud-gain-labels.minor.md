@@ -1,1 +1,0 @@
-A HUD gain label now sits beside each statistic in the stats panel. It shows the sum of that stat's recent gains, such as +123, in the press tier's colour, and it stays for three seconds after the last gain before it fades.
