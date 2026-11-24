@@ -82,10 +82,11 @@ class Iso:
 
 
 def tile_fn(base: int, joint: int, x_off: float = 0.0):
-    """Roof tiles: rows 2 texels tall, each row staggered by half a tile, joints in a second colour."""
+    """Roof tiles: courses 3 texels tall, a joint line at the top of each course, staggered by half a tile."""
     def fn(x: int, y: int) -> int:
-        row = y // 2
-        return joint if (x + row * 2 + int(x_off)) % 4 == 0 and y % 2 == 0 else base
+        course = y // 3
+        at_top = y % 3 == 0
+        return joint if at_top and (x + course * 3 + int(x_off)) % 6 < 5 else base
     return fn
 
 
@@ -107,7 +108,7 @@ def gable_building(cv: Canvas, L: float, W: float, H: float, rise: float, porch:
     iso.line((0, 0, H), (xr, 0, H), LIGHT)                          # far eave
 
     # Shaded wall (Y face): EARTH with a SHADE dither, so the shadow stays inside the palette.
-    iso.fill([(0, y1, 0), (xr, y1, 0), (xr, y1, H), (0, y1, H)], dither(SHADE, EARTH, 0.45))
+    iso.fill([(0, y1, 0), (xr, y1, 0), (xr, y1, H), (0, y1, H)], dither(SHADE, EARTH, 0.22))
     for X in _steps(3, xr - 1, 3):
         iso.line((X, y1, 0), (X, y1, H), SHADE)
 
