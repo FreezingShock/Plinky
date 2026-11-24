@@ -336,6 +336,7 @@ func open_detail(id: StringName) -> void:
 		_detail_box.visible = true
 		_back.visible = true
 		_scroll.scroll_vertical = 0
+		_wire_focus()
 		_grab.call_deferred(_back))
 
 
@@ -501,6 +502,7 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 	var tail := Control.new()   # keeps the last card clear of the scroll edge
 	tail.custom_minimum_size = Vector2(1, 4)
 	_grid_box.add_child(tail)
+	_wire_focus()
 
 
 func _fill_detail(d: Dictionary) -> void:
@@ -585,6 +587,32 @@ func _source_card(s: Dictionary) -> Control:
 	v.add_child(how)
 	p.custom_minimum_size.x = 188
 	return p
+
+
+## Pure: the item `step` places from item `i` of a focus ring of `n` items, wrapping at both ends (step is 1 or -1).
+static func ring_step(n: int, i: int, step: int) -> int:
+	return posmod(i + step, n)
+
+
+## Tab walks the two tabs, then the gift cards (or the Back button on a detail page), and wraps at both ends, forward
+## and back. Godot wraps Tab forward by itself but not Shift+Tab from the first control, so the ring is wired here.
+## Called whenever the cards are rebuilt and when a detail page opens.
+func _wire_focus() -> void:
+	if not is_inside_tree() or _tabs.is_empty() or _grid_box == null:
+		return
+	var ring: Array[Control] = []
+	for t: PixelButton in _tabs:
+		ring.append(t)
+	if detail_open():
+		ring.append(_back)
+	else:
+		for card: IndexCard in _cards.values():
+			ring.append(card)
+	var n: int = ring.size()
+	for i in n:
+		var c: Control = ring[i]
+		c.focus_next = c.get_path_to(ring[ring_step(n, i, 1)])
+		c.focus_previous = c.get_path_to(ring[ring_step(n, i, -1)])
 
 
 func _focus_first(quiet: bool = false) -> void:

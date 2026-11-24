@@ -138,9 +138,8 @@ func run(t: Object) -> void:
 	t.ok(banner.visible, "the banner shows once the menu closes")
 	t.ok(sfx_played.size() >= 1, "the banner plays its section chime")
 	menu_open[0] = true
-	banner._process(0.05)   # the menu is seen: the banner starts to close
-	banner._process(1.0)    # and the close finishes
-	t.ok(not banner.visible, "a menu opening over the banner closes it")
+	banner._process(0.05)   # the menu is seen: the banner goes at once, no close animation
+	t.ok(not banner.visible, "a menu opening over the banner hides it on the same frame")
 	t.ok(banner.queued() >= 1, "the cut-short banner goes back in the queue")
 	banner.free()
 
