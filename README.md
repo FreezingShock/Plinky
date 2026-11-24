@@ -59,7 +59,7 @@ Each zone has its own ladder of currencies. Meadow pads pay the flower ladder, a
     </td>
     <td align="center" width="33%">
       <img src="docs/readme/zones/larkmoor.png" alt="Larkmoor: a lake valley with Heronmere, Lanternwood and Cairnfold" width="100%">
-      <br><b>Larkmoor</b><br><sub>Reedgate and Heronmere by the lake, plus Lanternwood, Cairnfold and Emberwatch. Sprout and Clover rows.</sub>
+      <br><b>Larkmoor</b><br><sub>Reedgate and Heronmere by the lake, plus Lanternwood, Cairnfold and Starbloom Terrace. Sprout and Clover rows.</sub>
     </td>
     <td align="center" width="33%">
       <img src="docs/readme/zones/quarry.png" alt="The Ember Quarry: a forge floor lit by lava, with ore veins and a glowing ember core" width="100%">

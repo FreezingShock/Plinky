@@ -19,7 +19,7 @@ assert not _ON_PATH, 'pads sit on or against a path (move them in larkmoor_layou
 _OFF = LAY.rows_off()
 assert not _OFF, 'pad rows must hug a path and not overlap (tools/art/plan_rows.py): %r' % (_OFF,)
 import depth_pass, grass_tex
-GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
+GRASS = os.environ.get('GRASS', 'f')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
 DEPTH = None
 OUT = os.environ.get('LARK_OUT') or os.path.join(HERE, '..', '..', 'assets', 'art', 'zone1b', 'larkmoor')
@@ -87,11 +87,19 @@ rr = np.hypot(gu - CU, gv - CV); th = np.arctan2(gv - CV, gu - CU)
 def Re(t): return R * (1 + .07 * np.sin(3 * t + 1.0) + .05 * np.sin(5 * t + 2.3) + .03 * np.sin(9 * t + .5))
 RE = Re(th)
 dpath = np.minimum.reduce([pl_dist(gu, gv, pp) for pp in PATHS_UV])
+# path hierarchy: each tier has its own half-width (texels) and its own material. dtier[t] is the distance to the nearest
+# path of that tier; dedge is the distance to the nearest path EDGE (negative on a path), used for decor clearance.
+HALF = dict(road=12.0, lane=7.5, trail=4.0)
+dtier = {t: np.minimum.reduce([pl_dist(gu, gv, pp) for pp, tr in zip(PATHS_UV, LAY.PATH_TIER) if tr == t]) for t in HALF}
+dedge = np.minimum.reduce([dtier[t] - HALF[t] for t in HALF])
 dgate = np.minimum(np.hypot(gu - GATE[0], gv - GATE[1]), np.hypot(gu - GATE2[0], gv - GATE2[1]))
 log('terrain fields')
 thb = math.atan2(-1, -1)
 a = np.abs((th - thb + np.pi) % (2 * np.pi) - np.pi)
 env_ang = .36 + .64 * (1 - smooth(1.15, 2.7, a))
+# the south and west rim rises as well (it sat at the 0.36 factor): the island reads as a valley ringed by mountains, not a cut-out
+a_sw = np.abs((th - math.radians(85.0) + np.pi) % (2 * np.pi) - np.pi)
+env_ang = np.maximum(env_ang, .8 * (1 - smooth(.9, 1.7, a_sw)))
 m_r = smooth(.76, .985, rr / RE)
 wu_, wv_ = gu + 34 * (fbm2(gu / 60, gv / 60, 2, 20) - .5), gv + 34 * (fbm2(gu / 60, gv / 60, 2, 21) - .5)
 rg = (1 - np.abs(2 * fbm2(wu_ / 64, wv_ / 64, 5, 2) - 1)) ** 1.1
@@ -121,7 +129,8 @@ Hpre = H0.copy()
 GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
 dstr = pl_dist(gu, gv, STREAM)
-sw = 6.4 + 1.2 * np.sin(gu * .13 + gv * .09)
+RIVER_DEPTH = 3.0                              # the river bed sits this far below its surface: deep enough to read as water, not a dither strip
+sw = 7.0 + 1.0 * np.sin(gu * .13 + gv * .09)   # half-width: about 14 texels across, still an easy jump
 D = []
 for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
     n = int(math.hypot(x1 - x0, y1 - y0)); D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
@@ -133,8 +142,10 @@ _bu, _bv = np.nonzero(dstr < sw + 3)
 for c0 in range(0, len(_bu), 20000):
     uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
     dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); HLF[_bu[c0:c0 + 20000], _bv[c0:c0 + 20000]] = hL[dd.argmin(1)]
-wch = (1 - smooth(sw - 2.0, sw + 4.5, dstr)) * (1 - smooth(0, 6, LAKE['r'] * 1.3 - np.hypot(gu - LAKE['c'][0], gv - LAKE['c'][1])))
-H0 = H0 * (1 - wch) + np.minimum(H0, HLF - 1.0) * wch       # bed always sits below the water ribbon
+# the channel is carved all the way to the lake: inside the lake the bowl is already deeper, so nothing changes there, and the rim
+# gets a notch where the river leaves it (the old lake-rim exclusion left a dry gap between the lake and the river)
+wch = (1 - smooth(sw - 2.0, sw + 4.5, dstr))
+H0 = H0 * (1 - wch) + np.minimum(H0, HLF - RIVER_DEPTH) * wch       # bed always sits below the water ribbon
 WH = np.full((N, N), -99.0)
 mask_s = dstr < sw + 1
 iu, iv = np.nonzero(mask_s)
@@ -490,16 +501,48 @@ def make_jetty(rng):
         m = np.where(((np.floor(x / 1.6) % 2) == 0) & (d < .4), M_BARKT2, m)
         return d, m
     return f, (17, 5), 4, 2
+M_BOARD, M_BOARDT, M_RAIL = 60, 61, 62         # wooden decks: brown boards, pale board lines, dark rails and posts
+BRIDGE_HX, BRIDGE_HY, BRIDGE_DZ = 17.5, 14.0, 4.0    # main bridge: half-length along the road, half-width across it (the 24 texel road, half 12, plus clearance), deck height
 def make_bridge(rng):
+    """The main bridge: a planked deck as wide as the main road (28 texels, the 24 texel road plus clearance), over the river on two stone abutments on the
+    banks, with a rail and posts down both sides. Local x runs along the road, across the river."""
+    HX, HY, DZ = BRIDGE_HX, BRIDGE_HY, BRIDGE_DZ
     def f(x, y, z):
-        d = sdf_box(x, y, z, (0, 0, -.6), (16, 6.6, 1.3), .4); m = np.full(x.shape, M_WOOD, np.int16)     # wide deck: 13 texels across
-        for sy_ in (-6.2, 6.2):
-            dr = sdf_box(x, y, z, (0, sy_, 3.0), (16, .7, .7), .25); sel = dr < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dr)
-            for px in (-15, -7.5, 0, 7.5, 15):
-                dp = sdf_capsule(x, y, z, (px, sy_, -3.0), (px, sy_, 3.4), .8); sel = dp < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dp)
-        m = np.where(((np.floor(x / 1.5) % 2) == 0) & (z > .3) & (d < .5), M_WOOD + 0, m)
+        d = sdf_box(x, y, z, (0, 0, DZ - 1.2), (HX, HY, 1.2), .25)              # the deck slab, 2.4 thick
+        m = np.full(x.shape, M_BOARD, np.int16)                                 # warm brown boards, darker than the sand path
+        plank = (np.floor(y / 2.6) % 2) == 0
+        m = np.where(plank & (z > DZ - 1.0), M_BOARDT, m)                       # pale board lines so the deck reads as planks
+        m = np.where((np.floor(x / 4.0) % 2 == 0) & (z > DZ - 1.0) & (np.abs(y) > HY - 1.4), M_BARK, m)   # cross-joints at the edges
+        d = np.minimum(d, sdf_box(x, y, z, (0, 0, DZ - 2.9), (HX - .6, HY - .6, .5), .2))   # a shadow board under the deck edges
+        for sy_ in (-HY + .9, HY - .9):
+            rail = sdf_box(x, y, z, (0, sy_, DZ + 3.0), (HX - 1.0, .8, .8), .3)
+            sel = rail < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, rail)
+            for px in (-HX + 1.2, -HX + 5.6, -HX + 10.0, -HX + 14.4, HX - 14.4, HX - 10.0, HX - 5.6, HX - 1.2):
+                dp = sdf_capsule(x, y, z, (px, sy_, DZ - .6), (px, sy_, DZ + 4.2), .75)
+                sel = dp < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, dp)
+        # stone abutments on the banks, reaching down to the bank ground under the deck
+        for ax in (-(HX - 3.2), HX - 3.2):
+            da = sdf_box(x, y, z, (ax, 0, -4.4), (2.9, HY - .4, 3.6), .6)
+            sel = da < d; m = np.where(sel, M_ROCK, m); d = np.minimum(d, da)
         return d, m
-    return f, (16, 7), 5, 2
+    return f, (HX + 2, HY + 1), DZ + 6, 4
+def make_footbridge(rng):
+    """The footbridge on the west trail: a narrow plank crossing with a low rail, on posts either side of the river."""
+    HX, HY, DZ = 13.0, 5.5, 2.6
+    def f(x, y, z):
+        d = sdf_box(x, y, z, (0, 0, DZ - .9), (HX, HY, .9), .2); m = np.full(x.shape, M_BOARD, np.int16)
+        m = np.where(((np.floor(x / 2.4) % 2) == 0) & (z > DZ - .7), M_BOARDT, m)
+        for sy_ in (-HY + .6, HY - .6):
+            rail = sdf_box(x, y, z, (0, sy_, DZ + 2.0), (HX - .8, .5, .5), .15)
+            sel = rail < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, rail)
+            for px in (-HX + 1.0, HX - 1.0, 0.0):
+                dp = sdf_capsule(x, y, z, (px, sy_, DZ - .4), (px, sy_, DZ + 2.8), .5)
+                sel = dp < d; m = np.where(sel, M_RAIL, m); d = np.minimum(d, dp)
+        for ax in (-(HX - 1.8), HX - 1.8):
+            da = sdf_box(x, y, z, (ax, 0, -3.6), (1.6, HY - .3, 3.4), .5)
+            sel = da < d; m = np.where(sel, M_ROCK, m); d = np.minimum(d, da)
+        return d, m
+    return f, (HX + 2, HY + 1), DZ + 4, 3
 log('props defined')
 
 # ---------------- placement (Poisson-style spacing, no stacking, off-grid) ----------------
@@ -515,7 +558,7 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, pa
         if float(samp(WD, uu, vv)) > -.5: return False
         if shore and float(samp(DW, uu, vv)) < 3.5: return False
     if float(samp(WD, u, v)) > -.5: return False
-    if path and float(samp(dpath, u, v)) < r + path_clear: return False
+    if path and float(samp(dedge, u, v)) < r + path_clear: return False
     if min(np.hypot(u - GATE[0], v - GATE[1]), np.hypot(u - GATE2[0], v - GATE2[1])) < r + 26: return False
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
@@ -526,17 +569,17 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, see
     big = kw.get('big', True)
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
     mk = dict(oak=make_oak, pine=make_pine, bush=make_bush, rock=lambda r: make_rock(r, big), crystals=make_crystals, stump=make_stump,
-              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, windmill_sails=make_windmill_sails, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge)[kind](rng)
+              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, windmill_sails=make_windmill_sails, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge, footbridge=make_footbridge)[kind](rng)
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid, bottom=kw.get('bottom', -1.0))
-    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign') or (kind == 'rock' and big)):
+    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign', 'bridge', 'footbridge') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
     if count: placed.append((u, v, rad * scale))
     return z0
 def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
     got = 0
-    r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, tower=11, lighthouse=11, obelisk=6, gateway=10, menhir=3, jetty=3, bridge=3)[kind]
+    r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, tower=11, lighthouse=11, obelisk=6, gateway=10, menhir=3, jetty=3, bridge=3, footbridge=3)[kind]
     for _ in range(n):
         for t in range(tries):
             a_, rd = prng.uniform(0, 6.283), math.sqrt(prng.random()) * rad
@@ -594,7 +637,21 @@ for lm in LAY.LANDMARKS:
         JETTY_AT = (ju, jv); JETTY_C = (ju - 7, jv - 7)
     elif lm['kind'] == 'sign': put('sign', u, v, 1.0)
 # bridge where the main road crosses the stream
-bu, bv = s2uv(*LAY.BRIDGE); put('bridge', bu, bv, 1.0, rot=.785, z_extra=3.0, count=False)
+def _path_dir_uv(pp_uv, p):
+    """Direction (radians, uv frame) of the path segment nearest to uv point p."""
+    best, ang = 1e18, 0.0
+    for (ax, ay), (bx, by) in zip(pp_uv, pp_uv[1:]):
+        vx, vy = bx - ax, by - ay; L2 = vx * vx + vy * vy or 1e-9
+        t = max(0.0, min(1.0, ((p[0] - ax) * vx + (p[1] - ay) * vy) / L2))
+        d = math.hypot(p[0] - ax - vx * t, p[1] - ay - vy * t)
+        if d < best: best, ang = d, math.atan2(vy, vx)
+    return ang
+# the main bridge: its long axis runs along the main road, across the river (13 texels wide)
+bu, bv = s2uv(*LAY.BRIDGE); BRIDGE_ANG = _path_dir_uv(PATHS_UV[0], (bu, bv))
+put('bridge', bu, bv, 1.0, rot=BRIDGE_ANG, z_extra=3.4, count=False, bottom=-12.0)   # the bed sits about 3 below the water, so the deck stands about 4.5 above it
+# the footbridge: the west trail's plank crossing of the river, along the trail
+fu_, fv_ = s2uv(*LAY.FOOT_CROSSING); FOOT_ANG = _path_dir_uv(PATHS_UV[3], (fu_, fv_))
+put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=-10.0)
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
 # trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
 TREE_GAP = dict(oak=6.0, pine=8.0)
@@ -649,7 +706,7 @@ for pi, t0, side0 in _lantern_slots():
             mx, my = px + nx * LANTERN_OFF * sgn, py + ny * LANTERN_OFF * sgn
             if any(math.hypot(mx - qx, my - qy) < LANTERN_MIN for qx, qy in lamp_xy): continue
             u, v = s2uv(mx, my)
-            if ok_spot(u, v, 3, path=True, gap=0, slope_max=.7):
+            if ok_spot(u, v, 3, path=False, gap=0, slope_max=.7):   # the offset keeps a lamp clear of its own path's edge (dedge)
                 put('lantern', u, v, 1.0, rot=(lantern_count % 4) * math.pi / 2, seed=lantern_count)
                 lamp_xy.append((mx, my)); lantern_count += 1; done = True
                 break
@@ -671,7 +728,7 @@ def cluster(kind, cu_, cv_, spread, n, **kw):
             put(kind, u, v, prng.uniform(.85, 1.2) * (1.45 if kind == 'flower' else 1.0), count=False, sid=1)
 for _ in range(150 if not FAST else 8): cluster('tuft', prng.uniform(60, 760), prng.uniform(60, 760), 7, prng.randint(3, 7))
 for _ in range(100 if not FAST else 6): cluster('flower', prng.uniform(60, 760), prng.uniform(60, 760), 6, prng.randint(5, 10))
-for _ in range(50 if not FAST else 0): cluster('flower', *SC((1030 + prng.uniform(-110, 110), 560 + prng.uniform(-50, 50))), 8, prng.randint(8, 14))   # Thistle Rise fields
+for _ in range(50 if not FAST else 0): cluster('flower', *SC((1030 + prng.uniform(-110, 110), 560 + prng.uniform(-50, 50))), 8, prng.randint(8, 14))   # Foxglove Rise fields
 for (sx, sy, st) in PADS_S:
     u, v = s2uv(sx, sy); cluster('tuft', u + 14, v - 6, 6, 4); cluster('flower', u - 12, v + 8, 5, 5)
 log('cover placed', len(placed))
@@ -700,23 +757,27 @@ for B, nl, rmin in ((LAKE, 130, 2.2), (POND, 40, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
-# flower verges: a dense low row just outside the rim, both sides of every path. Placed last, after the lilies, so nothing earlier moves.
+# flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
+# texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
+# drifts are (about half the ground), so the flowers gather in patches with bare grass between them. Placed last, after
+# the lilies, so nothing earlier moves.
+VERGE_BAND = (9.0, 30.0)
 for pp in PATHS_UV:
     for (ax, ay), (bx, by) in zip(pp, pp[1:]):
         seg = math.hypot(bx - ax, by - ay)
         if seg < 1: continue
         tx, ty = (bx - ax) / seg, (by - ay) / seg; nx_, ny_ = -ty, tx
-        n = max(1, int(seg / 2.6))
+        n = max(1, int(seg / 1.6))
         for k in range(n):
             f = (k + prng.random()) / n
             for side in (1.0, -1.0):
-                if prng.random() > .6: continue
-                off = 13.0 + prng.uniform(0.0, 9.0)   # outside the wider path, and jittered: no rigid line of flowers
+                if prng.random() > .5: continue
+                off = prng.uniform(VERGE_BAND[0], VERGE_BAND[1] + 12.0)   # centre-line offset: the widest path's half-width (12) is added to the band; dedge filters the rest
                 u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
-                if vn2(u / 8.0, v / 8.0, 53) < .42: continue   # patches, not a verge
-                if 13.5 <= float(samp(dpath, u, v)) <= 24.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                if vn2(u / 9.0, v / 9.0, 53) < .5: continue   # drifts, not a ring
+                if VERGE_BAND[0] <= float(samp(dedge, u, v)) <= VERGE_BAND[1] and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
                     put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1)
-log('path verges placed')
+log('path drifts placed')
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
@@ -733,7 +794,7 @@ wd = samp(WD, FU, FV); wh = samp(WH, FU, FV)
 dp = samp(dpath, FU, FV)
 tone = fbm2(FU / 14, FV / 14, 2, 11); n1 = vn2(FU / 5, FV / 5, 3); n2 = vn2(FU / 2.2, FV / 2.2, 8)
 # materials: 0 grass 1 rock 2 sand 3 wet 4 path 5 frost
-T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM = 100, 101, 102, 103, 104, 105, 106, 107, 108
+T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM, T_TRAIL = 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
 mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
 mat[rockness > .5] = T_ROCK
@@ -741,10 +802,15 @@ mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
 beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
-pw = 10.5 + 2.2 * (n1 - .5)                      # about 1.7 times the old half-width (6.6): a wide, walkable trodden lane
-# the path's edge is ragged, not a ruler line: its half-width wobbles with noise, and rock only cuts it where the slope is steep
-pw_edge = pw * (1 + .22 * (vn2(FU / 7, FV / 7, 41) - .5))
-mat[(dp < pw_edge) & (rockness < .85)] = T_PATH
+# path hierarchy: a road (wide), a lane (medium) and a trail (narrow). Roads and lanes are trodden (T_PATH); a trail is
+# worn, darker ground (T_TRAIL). Each tier's edge is ragged, not a ruler line: its half-width wobbles with noise, and rock
+# only cuts it where the slope is steep. Shade falls off at each tier's own edge (dn is in units of the old half-width).
+edge_noise = 1 + .22 * (vn2(FU / 7, FV / 7, 41) - .5)
+dtr = {t: samp(dtier[t], FU, FV) for t in HALF}
+on_path = {t: (dtr[t] < HALF[t] * edge_noise) & (rockness < .85) for t in HALF}
+mat[on_path['road'] | on_path['lane']] = T_PATH
+mat[on_path['trail'] & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
+dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
 if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
@@ -754,8 +820,9 @@ lt -= .07 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
 # worn path, one material: a soft tone shift that follows the noise, with no dark rim on the grass and no pebble speckle
 # (those read as a hard edging band). The trodden ground and the turf meet through the ragged edge above.
-lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * (mat == T_PATH)
-lt -= .10 * smooth(pw * .5, pw, dp) * (mat == T_PATH) * (n2 > .45)
+on_trod = np.isin(mat, [T_PATH, T_TRAIL])
+lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
+lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -798,10 +865,11 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: [0, 0, 1, 1]}
+RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
 mat_ = allp['mat']; nz_ = allp['nz']; lraw = allp['wl'].copy()
 light = np.where(isprop | (np.arange(len(u_)) >= len(T['u'])) & False, 0, 0).astype(float)
 # lighting for props (terrain/plinth carried theirs in 'wl')
@@ -810,6 +878,8 @@ dif = np.clip(allp['nx'] * L[0] + allp['ny'] * L[1] + allp['nz'] * L[2], 0, 1)
 lp = .04 + 1.05 * dif
 tex = vn3(u_ * .8, v_ * .8, z_ * .8, 3) - .5
 lp += np.where(np.isin(mat_, [M_FOL, M_PINE, M_MOSS]), tex * .55 + (vn3(u_ * 2.2, v_ * 2.2, z_ * 2.2, 9) - .5) * .4, 0)
+# pine tiers: upward-facing tier tops lift a band, downward ledges drop one (the ramp is only four bands)
+lp += np.where(mat_ == M_PINE, .7 * np.clip((nz_ - .1) / .4, 0, 1) - .45 * np.clip((-nz_ - .05) / .35, 0, 1), 0)
 lp += np.where(np.isin(mat_, [M_ROCK]), tex * .5, 0) + np.where(mat_ == M_BARK, tex * .35, 0) + np.where(mat_ == M_FOL, (z_ - 20) * .012, 0)
 lp += np.where(mat_ == M_CRYS, .10, 0) + np.where(mat_ == M_PAPER + 20, .5, 0) + np.where(mat_ == M_GRASS, (z_ - samp(H0, u_, v_)) * .035 - .05, 0)
 lp += np.where(mat_ == M_LILY, .12, 0)
@@ -964,6 +1034,7 @@ Image.fromarray(_fg).save(os.path.join(OUT, 'ground_fg.png'))
 
 # ground G-buffer (same contract as gen_meadow3d.py): normal + material + baked light, and world height
 depth_pass.write_relight_data(os.path.join(OUT, 'ground_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
+depth_pass.fill_unbaked_ground(os.path.join(OUT, 'ground_n.png'))   # the map's edges outside the render mask
 depth_pass.write_height(os.path.join(OUT, 'ground_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(OUT, 'sprites'), exist_ok=True); sprites = []
 # ordinary lanterns share one window around their foot: x from -9 to +9, y from -26 to +2 (measured on every lamp at every
@@ -1007,10 +1078,12 @@ for t in TALL:
     spr[m_, :3] = RGBM[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(OUT, fn))
     depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUXM, y0, y1, x0, x1, m_)
-    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
+    # a bridge sorts 40 texels north of its centre, so the walker on the deck always draws over it (the picture stays put: offset = box - foot)
+    _fy_sort = fy - 40.0 if t['kind'] in ('bridge', 'footbridge') else fy
+    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
-nT = len(T['u']); BLOCK_R = dict(oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
+nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
 wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK)
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)
@@ -1020,7 +1093,8 @@ def _deck_strip(cu_, cv_, ang, half_len, half_w, flare):
     dn_ = (FU - cu_) * math.cos(ang) + (FV - cv_) * math.sin(ang); dc_ = -(FU - cu_) * math.sin(ang) + (FV - cv_) * math.cos(ang)
     ends = np.clip((np.abs(dn_) - (half_len - 5)) / 5, 0, 1)
     return (np.abs(dn_) < half_len + 2) & (np.abs(dc_) < half_w + flare * ends)
-wk |= _deck_strip(bu, bv, .785, 16.0, 6.6, 4.0)      # the bridge over the stream, 13 texels wide
+wk |= _deck_strip(bu, bv, BRIDGE_ANG, BRIDGE_HX, BRIDGE_HY, 3.0)      # the bridge over the river: the road's width
+wk |= _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 5.5, 2.0)       # the footbridge on the west trail
 if 'JETTY_C' in globals(): wk |= _deck_strip(JETTY_C[0], JETTY_C[1], .785, 15.0, 4.6, 3.0)   # the lake jetty, walkable out onto the water
 keep_t = np.zeros(len(u_), bool); keep_t[:nT] = True
 render_scene(keep_t)
@@ -1056,7 +1130,26 @@ while dq:
 for _a in anchors:
     if _a['kind'] in ('pad', 'gate'):
         q = _near(_a['sx'], _a['sy']); log('walk reach %s %s: %s' % (_a['kind'], (_a['sx'], _a['sy']), bool(q and comp[q[1], q[0]])))
-wm = np.zeros((H, W, 4), np.uint8); wm[..., 3] = 255; wm[comp, :3] = 255
+# Water is what the render draws as water (material T_WATER), except where a bridge deck stands on it. Water is never walkable on
+# the ground; its pixels go in the green channel, so the walker may be in the air over them (a jump) and landing there sends it
+# to the bank (world/walk_mask.gd). Red and blue mark walkable ground.
+deck_pts = _deck_strip(bu, bv, BRIDGE_ANG, BRIDGE_HX, BRIDGE_HY, 3.0) | _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 5.5, 2.0)
+deck_img = np.zeros((H, W), bool); deck_img[_py[tm], _px[tm]] = deck_pts[_win[tm]]
+wat_img = (LAST_AUX['mat'] == T_WATER) & ~deck_img
+walk_img = comp & ~wat_img
+wm = np.zeros((H, W, 4), np.uint8); wm[..., 3] = 255
+wm[walk_img, 0] = 255; wm[walk_img, 2] = 255; wm[wat_img, 1] = 255
+# water connectivity, for the log: the lake, the river and the mere should be one body
+_seen = np.zeros((H, W), bool); _nwat = []
+for _y0, _x0 in zip(*np.nonzero(wat_img)):
+    if _seen[_y0, _x0]: continue
+    _seen[_y0, _x0] = True; _st = [(_y0, _x0)]; _n = 0
+    while _st:
+        _cy, _cx = _st.pop(); _n += 1
+        for _ny, _nx in ((_cy + 1, _cx), (_cy - 1, _cx), (_cy, _cx + 1), (_cy, _cx - 1)):
+            if 0 <= _ny < H and 0 <= _nx < W and wat_img[_ny, _nx] and not _seen[_ny, _nx]: _seen[_ny, _nx] = True; _st.append((_ny, _nx))
+    _nwat.append(_n)
+log('water bodies (texels, largest first): %s' % sorted(_nwat, reverse=True)[:6])
 Image.fromarray(wm).save(os.path.join(OUT, 'walkable.png')); log('walkable fraction %.3f' % comp.mean())
 im.save(os.path.join(OUT, 'preview_full.png'))
 for _name, _sm in (('lake', LAKE_S), ('pond', POND_S)):

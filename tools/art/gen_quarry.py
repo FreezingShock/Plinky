@@ -17,6 +17,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import qrelief   # the tier art seen from above, placed on each terrace (tools/art/qrelief.py)
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(ROOT, 'assets', 'art', 'zone2', 'quarry')
 FAST = '--fast' in sys.argv
@@ -126,6 +127,8 @@ def pl_dist(pts):
 ROWW = [150, 78, 6, -66, -138, -210]            # pad row depth (w)
 BND = [106, 34, -38, -110, -182, -254]          # terrace step k lies between row k and k+1
 TH_K = [16.0, 20.0, 17.0, 21.0, 18.0, 22.0]       # terrace rise at each step
+TIER_PER_ROW = 2                                  # tier reliefs on each terrace
+TIER_FOOT = 11.0                                  # their ground footprint radius (a 2:1 ellipse: 2r wide, r deep)
 RAMP_D = [110, -120, 125, -115, 120]            # where the road climbs step k
 FRONT = 12                                      # the road runs this far in front of a pad row
 HUB = (206, 0)
@@ -585,7 +588,7 @@ def place_props(T, rng, GL):
     items = []
     placed = []
 
-    def ok(kind, w, d, on_mesa=False, need_walk=True, road=14, lava_gap=3):
+    def ok(kind, w, d, on_mesa=False, need_walk=True, road=14, lava_gap=3, fr=None):
         iu, iv = (int(round(x)) for x in uv(w, d))
         if not (4 < iu < N - 4 and 4 < iv < N - 4) or E[iu, iv] > (0.9 if need_walk else 1.0):
             return False
@@ -601,7 +604,7 @@ def place_props(T, rng, GL):
                 return False
         if flat[iu, iv] < road:
             return False
-        r = qprops.FOOT[kind]
+        r = qprops.FOOT[kind] if fr is None else fr
         for pw, pd in padpts:
             if abs(d - pd) < 40 and -52 < (w - pw) < 14:     # keep pads and their art clear
                 return False
@@ -672,12 +675,33 @@ def place_props(T, rng, GL):
         near = any(lava[int(round(a)), int(round(b))] for a, b in (uv(w + 6, d), uv(w - 6, d), uv(w, d + 12), uv(w, d - 12)))
         if near and ok('lava_rock', w, d, lava_gap=-3):
             items.append(('lava_rock', int(rng.integers(1, 9999)), w, d)); placed.append((w, d, 5)); got += 1
+    # the six tier reliefs (tools/art/qrelief.py), TIER_PER_ROW on each terrace: row r's own tier art, from above
+    def on_terrace(w, d):
+        for dw, dd in ((TIER_FOOT, 0), (-TIER_FOOT, 0), (0, 2 * TIER_FOOT), (0, -2 * TIER_FOOT)):
+            iu, iv = (int(round(x)) for x in uv(w + dw, d + dd))
+            if not (0 <= iu < N and 0 <= iv < N) or not walk[iu, iv] or flat[iu, iv] < 8:
+                return False
+        return True
+    trng = np.random.default_rng(23)   # its own stream, so the props placed above stay where they were
+    for r in range(6):
+        lo = BND[r]; hi = BND[r - 1] if r > 0 else 262.0
+        got = 0
+        for _ in range(60000):
+            if got >= TIER_PER_ROW:
+                break
+            w = trng.uniform(lo + TIER_FOOT + 2, hi - TIER_FOOT - 2); d = trng.uniform(-430, 430)
+            # the second copy on a terrace is the tier's stage-2 sprite, so the two do not repeat
+            kind = 'tier_' + qrelief.TIERS[r] + ('_alt' if got == 1 else '')
+            if on_terrace(w, d) and ok(kind, w, d, fr=TIER_FOOT):
+                items.append((kind, int(trng.integers(1, 9999)), w, d))
+                placed.append((w, d, TIER_FOOT)); got += 1
     return items
 
 
 def bake():
     import qprops
     rng = np.random.default_rng(11)
+    qprops.FOOT.update({'tier_' + t + sfx: TIER_FOOT for t in qrelief.TIERS for sfx in ('', '_alt')})
     T = build()
     S, Mat, F, DR, PU, PV = render(T)
     lavamask = (Mat == M_LAVA)
@@ -716,7 +740,14 @@ def bake():
     sprites = []
     yy, xx = np.mgrid[0:CH, 0:CW]
     for i, (kind, seed, w, d) in enumerate(sorted(items, key=lambda it: it[2] + 0 * it[3])):
-        img, fx, fy = qprops.make(kind, seed)
+        if kind.startswith('tier_'):
+            name = kind[len('tier_'):]
+            if name.endswith('_alt'):
+                img, fx, fy = qrelief.relief_sprite(name[:-len('_alt')], qrelief.ALT_STAGE)
+            else:
+                img, fx, fy = qrelief.relief_sprite(name)
+        else:
+            img, fx, fy = qprops.make(kind, seed)
         h = sample_h(T, w, d)
         px, py = scr(w, d, h)
         x0 = int(round(px - fx)); y0 = int(round(py - fy))

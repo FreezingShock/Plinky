@@ -57,6 +57,9 @@ var _cards: Dictionary = {}              # row id -> IndexCard
 var _key: String = ""
 var _clock: float = 0.0
 var _busy: bool = false                  ## a page wipe is running
+var _body: VBoxContainer                 ## the built contents, or null while the window is shut
+var _page_tween: Tween                   ## the running page wipe
+var _blink: Tween                        ## the total's blink after a buy
 ## Set by Main: buys the next level of an attribute (GameState.buy_attribute), so there is one purchase path.
 var buyer: Callable = Callable()
 
@@ -64,9 +67,17 @@ var buyer: Callable = Callable()
 func _init() -> void:
 	visible = false
 	add_theme_stylebox_override("panel", AsciiBox.panel())
+	# Only the frame exists while the window is shut. The body (header, tabs, cards, detail page) is built on open and
+	# freed on hide, so the closed window holds no cards at boot.
+	visibility_changed.connect(_on_visibility)
+
+
+## Builds the body. Called by _ensure when the window opens, never at boot.
+func _build() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	add_child(v)
+	_body = v
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
 	v.add_child(head)
@@ -114,6 +125,8 @@ func _init() -> void:
 	_build_detail()
 	_scroll.add_child(_detail_box)
 	_detail_box.visible = false
+	_icon_sheet = load("res://assets/icons/%s_sheet.png" % SHEETS[tab]) as Texture2D
+	_set_frame(0)
 
 
 func _build_detail() -> void:
@@ -263,6 +276,7 @@ func open_tab(t: int) -> void:
 		return
 	var was_open: bool = is_open()
 	tab = clampi(t, 0, 1)
+	_ensure()
 	_show_grid_now()
 	_sync_tabs()
 	if was_open:
@@ -322,12 +336,67 @@ func open_detail(id: StringName) -> void:
 		_detail_box.visible = true
 		_back.visible = true
 		_scroll.scroll_vertical = 0
+		_wire_focus()
 		_grab.call_deferred(_back))
 
 
 func close_panel() -> void:
 	if _anim != null:
 		_anim.close()
+
+
+## Builds the body if it is not there yet.
+func _ensure() -> void:
+	if _body == null:
+		_build()
+
+
+## Shown: build the body if open_tab has not. Hidden (the close wipe is done): free it.
+func _on_visibility() -> void:
+	if not visible:
+		_teardown()
+	elif _body == null:
+		_build()
+		_show_grid_now()
+		_sync_tabs()
+
+
+## Frees the body and every node and reference in it, after tooltips are hidden and running tweens are stopped, so
+## nothing points at a freed node. The tab is kept, so the next open starts on the same one.
+func _teardown() -> void:
+	Tip.hide_all()
+	if _page_tween != null:
+		_page_tween.kill()
+	if _blink != null:
+		_blink.kill()
+	_busy = false
+	_clock = 0.0
+	detail_id = &""
+	_key = ""
+	if _body != null:
+		remove_child(_body)
+		_body.queue_free()
+	_body = null
+	_icon = null
+	_title = null
+	_tabs.clear()
+	_scroll = null
+	_grid_box = null
+	_detail_box = null
+	_d_icon = null
+	_d_name = null
+	_d_total = null
+	_d_buff = null
+	_d_tip = null
+	_d_bar = null
+	_d_level = null
+	_d_head = null
+	_dtabs.clear()
+	_d_pages.clear()
+	_buy = null
+	_d_sources = null
+	_back = null
+	_cards.clear()
 
 
 # ---------------------------------------------------------------- animation
@@ -340,7 +409,8 @@ func _page(swap: Callable) -> void:
 		swap.call()
 		return
 	_busy = true
-	var t := create_tween()
+	_page_tween = create_tween()
+	var t: Tween = _page_tween
 	t.set_speed_scale(0.2 if slow_mo else 1.0)
 	t.tween_method(_anim.reveal.set_cover, 0.0, 1.0, PAGE_OUT)
 	t.tween_callback(swap)
@@ -389,7 +459,7 @@ func _show_grid_now() -> void:
 
 
 func _refresh(force: bool = false) -> void:
-	if sim == null:
+	if sim == null or _body == null:
 		return
 	var rows: Array[Dictionary] = _data()
 	var key: String = str(tab)
@@ -432,6 +502,7 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 	var tail := Control.new()   # keeps the last card clear of the scroll edge
 	tail.custom_minimum_size = Vector2(1, 4)
 	_grid_box.add_child(tail)
+	_wire_focus()
 
 
 func _fill_detail(d: Dictionary) -> void:
@@ -475,7 +546,8 @@ func _on_buy() -> void:
 	_refresh()
 	if FxConfig.reduce_flashing:
 		return
-	var t := create_tween()    # blink the total: stepped, like the other HUD pops
+	_blink = create_tween()    # blink the total: stepped, like the other HUD pops
+	var t: Tween = _blink
 	for i in 3:
 		t.tween_property(_d_total, "modulate", Color(2.0, 2.0, 1.5), 0.0)
 		t.tween_interval(0.08)
@@ -515,6 +587,32 @@ func _source_card(s: Dictionary) -> Control:
 	v.add_child(how)
 	p.custom_minimum_size.x = 188
 	return p
+
+
+## Pure: the item `step` places from item `i` of a focus ring of `n` items, wrapping at both ends (step is 1 or -1).
+static func ring_step(n: int, i: int, step: int) -> int:
+	return posmod(i + step, n)
+
+
+## Tab walks the two tabs, then the gift cards (or the Back button on a detail page), and wraps at both ends, forward
+## and back. Godot wraps Tab forward by itself but not Shift+Tab from the first control, so the ring is wired here.
+## Called whenever the cards are rebuilt and when a detail page opens.
+func _wire_focus() -> void:
+	if not is_inside_tree() or _tabs.is_empty() or _grid_box == null:
+		return
+	var ring: Array[Control] = []
+	for t: PixelButton in _tabs:
+		ring.append(t)
+	if detail_open():
+		ring.append(_back)
+	else:
+		for card: IndexCard in _cards.values():
+			ring.append(card)
+	var n: int = ring.size()
+	for i in n:
+		var c: Control = ring[i]
+		c.focus_next = c.get_path_to(ring[ring_step(n, i, 1)])
+		c.focus_previous = c.get_path_to(ring[ring_step(n, i, -1)])
 
 
 func _focus_first(quiet: bool = false) -> void:

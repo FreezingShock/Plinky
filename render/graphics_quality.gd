@@ -24,6 +24,7 @@ const SHADOW_STEPS: Array[int] = [6, 9, 12]                 # ground relight hei
 const SHADOW_STRIDE: Array[float] = [2.0, 1.34, 1.0]        # march stride multiplier, so fewer taps still reach as far
 const AO_TAPS: Array[int] = [2, 4, 4]                       # ground occlusion taps
 const SCREEN_GRADE: Array[bool] = [false, true, true]      # the full-frame light grade reads the screen texture (a back-buffer copy)
+const RAIN_RINGS_MIST: Array[bool] = [false, true, true]   # splash rings and dawn ground mist (ground_light.gdshader taps); first to go on Low
 const CULL_MARGIN: float = 24.0                             # texels beyond the view still drawn, so edges never pop
 
 static var path: String = "user://graphics.cfg"
@@ -124,6 +125,12 @@ static func screen_grade() -> bool:
 	return SCREEN_GRADE[level]
 
 
+## False on Low: the splash rings and the dawn ground mist are skipped. The puddles stay.
+static func rain_rings_and_mist() -> bool:
+	load_settings()
+	return RAIN_RINGS_MIST[level]
+
+
 ## `full` scaled by the level's particle share, never below 2 so a burst still reads as a burst.
 static func particle_count(full: int) -> int:
 	load_settings()
@@ -147,5 +154,14 @@ static func life_scaled(full: int) -> int:
 static func visible_local_rect(node: CanvasItem) -> Rect2:
 	if not node.is_inside_tree():
 		return Rect2()
-	var to_local: Transform2D = (node.get_viewport_transform() * node.get_global_transform()).affine_inverse()
-	return (to_local * node.get_viewport().get_visible_rect()).grow(CULL_MARGIN)
+	# The window in pixels. get_visible_rect() is the base canvas size (640x360), which the viewport transform stretches to
+	# the window, so mapping it through the transform covered only the top-left corner of the screen whenever the window was
+	# bigger than the base size.
+	var screen: Rect2 = Rect2(Vector2.ZERO, Vector2(node.get_viewport().size))
+	return local_rect_of(screen, node.get_viewport_transform(), node.get_global_transform())
+
+
+## `screen` (window pixels) mapped into a node's local space through the viewport and global transforms, grown by CULL_MARGIN.
+static func local_rect_of(screen: Rect2, viewport_transform: Transform2D, global_transform: Transform2D) -> Rect2:
+	var to_local: Transform2D = (viewport_transform * global_transform).affine_inverse()
+	return (to_local * screen).grow(CULL_MARGIN)

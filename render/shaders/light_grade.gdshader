@@ -17,6 +17,7 @@ uniform vec3 light_col : source_color = vec3(1.0, 0.88, 0.62);
 uniform vec3 shade_col : source_color = vec3(0.62, 0.68, 0.88);
 uniform float side_amount = 0.0;                 // sun-side lift / away-side shade across the frame
 uniform float split_amount = 0.0;                // highlight warm / shadow cool by luminance
+uniform float flash = 0.0;                        // 0..1: lightning, a cool-white lift on the whole frame (SkyCycle; 0 under Reduce flashing)
 uniform float sat = 1.0;                         // saturation about luminance, richer in the golden hours
 uniform float contrast = 1.0;                    // about a dark-mid pivot, so shadows deepen and highlights open
 uniform vec3 noon_tint = vec3(1.0);              // pulls the green out of a bright high-sun frame
@@ -55,5 +56,6 @@ void fragment() {
 	float l2 = dot(c, vec3(0.299, 0.587, 0.114));
 	c = mix(vec3(l2), c, sat);
 	c = (c - 0.42) * contrast + 0.42;
+	c = mix(c, c * 1.35 + vec3(0.08, 0.09, 0.12), flash * 0.6);
 	COLOR = vec4(clamp(c, 0.0, 1.0), 1.0);
 }

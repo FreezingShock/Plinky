@@ -24,9 +24,12 @@ const LEAF_DARK: String = "28683a"
 const LEAF_LIGHT: String = "7ccf6a"
 const SEED: String = "6b4a2a"
 const FROST: String = "eaf6ff"
-const DEW: String = "f4fbff"      # the bright drops on an open head at dawn
+const DEW: String = "ffffff"      # the bright drops on an open head at dawn
 const STATES: int = 3              # head states in the atlas: open, shut at night, dew at dawn
 const SHADOW: Color = Color(0.04, 0.14, 0.10, 0.42)   # soft ground shadow: a translucent dark green, so grass shows through
+const SHADOW_ALPHA: Array[float] = [0.42, 0.24, 0.1]   # the shadow's three rows, from the foot down
+const RIME_ALPHA: Array[float] = [0.55, 0.3, 0.12]     # the same oval as a pale winter rime
+const SHADOW_ROWS: int = 3
 const FOLD_CLOSED: float = 0.56   # the petal radius when a head is shut at night
 const FOLD_SPRING: float = 0.74   # spring heads are half open buds
 
@@ -88,9 +91,10 @@ static func field_tint(variant: int) -> int:
 	return (variant - FIELD_FIRST) % FIELD_TINTS
 
 
-## Texels the sprite hangs below its foot row: a field flower's ink outline adds one row under its ground shadow.
-static func foot_drop(variant: int) -> int:
-	return 1 if is_field(variant) else 0
+## Texels the sprite hangs below its foot row: the ground shadow spills three rows under the foot (it is an oval, not a
+## flat line), for flowers and shrubs alike.
+static func foot_drop(_variant: int) -> int:
+	return SHADOW_ROWS - 1
 
 
 ## Position of one frame in the atlas: stat index (STATS), variant, lean (-1, 0, +1), season, then the head state (0 open, 1 shut at
@@ -243,33 +247,65 @@ static func _bake(stat: StringName, variant: int, lean: int, season: int, closed
 		petal = petal.lerp(Color(LEAF_LIGHT), 0.1)
 		heart = heart.lerp(Color(LEAF_LIGHT), 0.25)
 	var foot: int = ry + stem + 1
-	var stem_top: int = 0 if season != SEASON_WINTER else -ry
-	var leaf_row: int = ry + 2 if season != SEASON_WINTER else 0
+	if stat == &"clover" and season != SEASON_WINTER:
+		foot = maxi(foot, 2 * _clover_radius(rx, fold) + 4)   # the stalk shows under the lowest leaflet, the shadow stays clear of it
+	# winter field stalks differ by tint: each tint adds three texels of height, tints 1 and 3 carry a dry seed head, tint 2 is fully frosted
+	# and tint 0 has only a frosted tip
+	var tint_w: int = field_tint(variant) if is_field(variant) and season == SEASON_WINTER else 0
+	var stem_top: int = 0 if season != SEASON_WINTER else -ry - tint_w * 3
+	var leaf_row: int = ry + 2 if season != SEASON_WINTER else foot - 2   # winter: the dead leaves lie at the stalk's foot
 	for y in range(stem_top, foot):
 		cells[Vector2i(0, y)] = Color(LEAF_DARK)
+	if season == SEASON_WINTER:
+		if is_field(variant) and (tint_w == 1 or tint_w == 3):
+			# a dry seed head on the stalk, with one frosted shoulder so it reads at 1x
+			cells[Vector2i(0, stem_top)] = Color(SEED)
+			for x in [-1, 0, 1]:
+				cells[Vector2i(x, stem_top + 1)] = Color(SEED)
+			cells[Vector2i(0, stem_top + 2)] = Color(SEED).darkened(0.25)
+			cells[Vector2i(-1, stem_top)] = Color(FROST)
+		else:
+			# frost: the stalk's top rows are white, and tint 2 adds a crown either side, so a bare stalk reads at 1x
+			for y in [stem_top, stem_top + 1]:
+				cells[Vector2i(0, y)] = Color(FROST)
+			if not (is_field(variant) and tint_w == 0):
+				for x in [-1, 1]:
+					cells[Vector2i(x, stem_top + 1)] = Color(FROST)
+					cells[Vector2i(x, stem_top + 2)] = Color("b9d6e0")
 	var leaf_color: Color = Color(LEAF) if season != SEASON_WINTER else Color(LEAF_DARK)
 	if season == SEASON_AUTUMN:
 		leaf_color = Color("b8702e")
-	for i in leaves:
-		var y: int = leaf_row + i
-		if y >= foot:
-			break
-		var tip: Color = Color(FROST) if season == SEASON_WINTER else leaf_color
-		cells[Vector2i(-1, y)] = tip
-		cells[Vector2i(-2, y)] = tip if i == 0 else leaf_color
-		cells[Vector2i(1, y)] = Color(LEAF_DARK) if season != SEASON_AUTUMN else Color("7a4220")
-		cells[Vector2i(2, y)] = Color(LEAF_DARK) if i == 0 else Color(LEAF_DARK).darkened(0.1)
+	# the basal leaves lie flat round the stem foot, drawn as a small ring seen from above, not as side-on bars: lit on the
+	# upper-left, darker on the lower-right, and frosted in winter
+	if leaves > 0:
+		for dy in [-1, 0, 1]:
+			for dx in [-2, -1, 0, 1, 2]:
+				if (dx == 0 and dy == 0) or float(dx * dx) / 4.0 + float(dy * dy) > 1.0:
+					continue
+				var lit: bool = dx < 0 or dy < 0
+				var c: Color = leaf_color if lit else Color(LEAF_DARK)
+				if season == SEASON_WINTER:
+					c = Color(FROST) if lit else Color("9fc0cc")
+				elif season == SEASON_AUTUMN and not lit:
+					c = Color("7a4220")
+				cells[Vector2i(dx, leaf_row + dy)] = c
+	var extent: Vector2i = Vector2i(rx, ry)   # how far the head reaches, for the dew
 	if season != SEASON_WINTER:
-		_head(cells, rx, ry, n, sharp, phase, fold, petal, shade, light, heart)
+		if stat == &"clover":
+			extent = _clover(cells, rx, fold, petal, shade, light, heart)
+		else:
+			_head(cells, rx, ry, n, sharp, phase, fold, petal, shade, light, heart)
 		if dew and not closed:
-			_dew(cells, rx, ry, stat_seed(stat), heart)
-	# the soft shadow under the foot, only where nothing is drawn yet
-	for x in range(-rx - 1, rx + 2):
-		var q := Vector2i(x, foot)
-		if not cells.has(q):
-			cells[q] = Color(SHADOW.r, SHADOW.g, SHADOW.b, SHADOW.a)
+			_dew(cells, extent.x, extent.y, stat_seed(stat), heart)
+	# the outline goes round the plant only, so the ground shadow below is never inked
 	if outline:
 		_outline(cells)
+	# the ground shadow: an oval under the foot, widest on the foot row and fainter as it drops away. In winter a pale rime
+	# lies on the ground instead. Only where nothing is drawn yet.
+	if season == SEASON_WINTER:
+		_ground_shadow(cells, rx, foot, RIME_ALPHA, Color(0.78, 0.9, 0.94))
+	else:
+		_ground_shadow(cells, rx, foot, SHADOW_ALPHA, Color(SHADOW.r, SHADOW.g, SHADOW.b))
 	return _to_image(cells, lean)
 
 
@@ -297,6 +333,46 @@ static func _head(cells: Dictionary, rx: int, ry: int, n: int, sharp: float, pha
 			cells[Vector2i(x, y)] = c
 
 
+## Leaflet radius of the four-leaf clover: half the head's radius across, shrunk when the head shuts.
+static func _clover_radius(rx: int, fold: float) -> int:
+	return maxi(1, roundi(float(rx) * 0.5 * fold))
+
+
+## Four-leaf clover seen from above: four round leaflets, north, east, south and west of a cream heart, with a gap of one or two
+## texels between them so each leaf reads on its own. The leaflets are lit upper-left like the petals of the other heads.
+## Returns how far the plant reaches from its centre, for the dew.
+static func _clover(cells: Dictionary, rx: int, fold: float, petal: Color, shade: Color, light: Color, heart: Color) -> Vector2i:
+	var r: int = _clover_radius(rx, fold)
+	var d: int = r + 2                                     # leaflet centre, two texels out from the heart
+	var centres: Array[Vector2i] = [Vector2i(0, -d), Vector2i(d, 0), Vector2i(0, d), Vector2i(-d, 0)]
+	for c: Vector2i in centres:
+		for y in range(-r, r + 1):
+			for x in range(-r, r + 1):
+				var dx: float = float(x) / float(r)
+				var dy: float = float(y) / float(r)
+				if dx * dx + dy * dy > 1.0 + 0.5 / float(r * r):
+					continue
+				var lit: float = -(dx * 0.7 + dy * 0.7)
+				var col: Color = petal
+				if lit > 0.45:
+					col = light
+				elif lit < -0.25:
+					col = shade
+				cells[c + Vector2i(x, y)] = col
+	cells[Vector2i.ZERO] = heart
+	return Vector2i(d + r, d + r)
+
+
+## An oval ground shadow under the foot row. Each row below is narrower and fainter than the one above.
+static func _ground_shadow(cells: Dictionary, rx: int, foot: int, alphas: Array[float], rgb: Color) -> void:
+	for dy in alphas.size():
+		var half: int = rx + 1 - dy * 2
+		for x in range(-half, half + 1):
+			var q := Vector2i(x, foot + dy)
+			if not cells.has(q):
+				cells[q] = Color(rgb.r, rgb.g, rgb.b, alphas[dy])
+
+
 ## Dew at dawn: a few pale drops on the lit petals of an open head, placed by the same hash as everything else.
 static func _dew(cells: Dictionary, rx: int, ry: int, seed_v: int, heart: Color) -> void:
 	for y in range(-ry, ry + 1):
@@ -304,7 +380,7 @@ static func _dew(cells: Dictionary, rx: int, ry: int, seed_v: int, heart: Color)
 			var q := Vector2i(x, y)
 			if not cells.has(q) or (cells[q] as Color).is_equal_approx(heart):
 				continue
-			if _hash(x, y, seed_v + 29) < 0.16:
+			if _hash(x, y, seed_v + 29) < 0.24:
 				cells[q] = Color(DEW)
 
 
@@ -351,16 +427,14 @@ static func _shrub(cells: Dictionary, layout: Array, season: int, pal: Array[Col
 			elif lit_amount < -0.3:
 				c = dark
 			var h: float = _hash(x, y, seed_v + 7)
-			if season == SEASON_WINTER and c == lit and h < 0.3:
+			if season == SEASON_WINTER and c == lit and h < 0.5:
 				c = Color(FROST)
 			elif h < dots:
 				var pick: float = _hash(x, y, seed_v + 13)
 				c = pal[0] if pick < 0.5 else (pal[2] if pick < 0.8 else pal[1])
 			cells[Vector2i(x, y)] = c
-	for x in range(-rx, rx + 2):
-		var q := Vector2i(x, ry + 1)
-		if not cells.has(q):
-			cells[q] = Color(SHADOW.r, SHADOW.g, SHADOW.b, SHADOW.a)
+	# the same soft oval under the mound as under a flower, starting one row below its front lip
+	_ground_shadow(cells, rx, ry + 1, SHADOW_ALPHA, Color(SHADOW.r, SHADOW.g, SHADOW.b))
 
 
 ## A one texel ink line round the outside of a field flower (empty cells beside it only).

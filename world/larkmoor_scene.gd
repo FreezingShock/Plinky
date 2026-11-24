@@ -10,6 +10,7 @@ const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg
 const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
 const GARDEN_PATH: String = "res://world/larkmoor_gardens.json"
+const ENTRANCE_PATH: String = "res://assets/art/zone1b/larkmoor/entrance/entrance.json"   # the Ember Quarry cave entrance props (world/ember_entrance.gd)
 const DISTRICT_RADIUS: float = 220.0   # texels (2x the old 110 with the frame); the banner shows the nearest district inside this
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
@@ -24,6 +25,7 @@ var world_rect: Rect2 = Rect2(260.0, 40.0, 2520.0, 1620.0)   # 2x the old frame;
 var mask_offset: Vector2i = Vector2i.ZERO
 var placements_path: String = DIR + "placements3d.json"
 var ground_path: String = DIR + "ground.png"
+var _blades: GrassBlades
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd), as in the meadow.
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
@@ -40,6 +42,7 @@ var districts: Array[Dictionary] = []   # {id, name, pos}
 
 func _ready() -> void:
 	_data = JSON.parse_string(FileAccess.get_file_as_string(placements_path))
+	_merge_entrance()
 	var w: Array = _data.get("world", []) as Array
 	if w.size() == 4:
 		world_rect = Rect2(float(w[0]), float(w[1]), float(w[2]), float(w[3]))
@@ -89,6 +92,16 @@ func _ready() -> void:
 	_add_sky()
 
 
+## The cave entrance props live in their own file so a regenerated placements3d.json keeps them. They join the sprite
+## list before the chunk index is built, so they stream, light and cast shadows like any other prop.
+func _merge_entrance() -> void:
+	if not FileAccess.file_exists(ENTRANCE_PATH):
+		return
+	var e: Variant = JSON.parse_string(FileAccess.get_file_as_string(ENTRANCE_PATH))
+	if e is Dictionary:
+		(_data.sprites as Array).append_array((e as Dictionary).get("sprites", []) as Array)
+
+
 ## Day/night shade, rain and wind over the whole world (world/sky_cycle.gd).
 func _add_sky() -> void:
 	_shadows = SkyShadows.new()
@@ -100,11 +113,31 @@ func _add_sky() -> void:
 	_sky.noon_boost = 1.7   # Larkmoor's ground is brighter and greener than the meadow's, so its noon needs more exposure drop and a warmer cast
 	_sky.shadows = _shadows
 	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
-	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
-	pad_material = _sky.pad_material(load(DIR + "ground_h.png") as Texture2D, _ground.position)
+	_ground.material = _sky.ground_material(ZoneAssets.texture(DIR + "ground_n.png"), ZoneAssets.texture(DIR + "ground_h.png"))
+	pad_material = _sky.pad_material(ZoneAssets.texture(DIR + "ground_h.png"), _ground.position)
 	_place_atmosphere()
 	add_child(_sky)
+	_add_flower_glow()
+	var water_glow := WaterNightGlow.new()   # night glow on the lake and river (world/water_night_glow.gd)
+	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
+	water_glow.setup(_sky, ZoneAssets.texture(DIR + "ground_n.png"), _ground.position)
 	_add_lights()
+	var entrance := EmberEntrance.new()   # the neon sign and the ember glow at the mine mouth, above the night shade
+	add_child(entrance)
+	entrance.setup(_sky)
+	_sky.add_light(Vector2(1520.0, 500.0), _sky.light_config().pool_gate_radius, 0.8, &"fixed", Color(1.0, 0.42, 0.2, 1.0))
+
+
+## The night light on the flower fields (world/flower_glow.gd). Sits just above the night shade (z 5 of the sky), so it
+## stays lit in the dark, and it is built once from the same flowers as the gardens.
+func _add_flower_glow() -> void:
+	if not FlowerGlow.enabled or _garden_flowers.is_empty():
+		return
+	_flower_glow = FlowerGlow.new()
+	_flower_glow.name = "FlowerGlow"
+	_flower_glow.z_index = 5
+	add_child(_flower_glow)
+	_flower_glow.setup(_garden_flowers, FlowerGlow.pad_centres(_data.anchors))
 
 
 ## Haze over the mountain strip along the top of the backdrop (all the way across: there is no island in front of
@@ -164,7 +197,8 @@ func _add_gardens() -> void:
 	var layer := GardenLayer.new()
 	layer.name = "Gardens"
 	add_child(layer)
-	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
+	_garden_flowers = (parsed as Dictionary).get("flowers", []) as Array
+	layer.setup(_garden_flowers)
 	layer.pusher_group = &"walker"
 	_gardens = layer
 
@@ -173,21 +207,37 @@ func _add_life(ground: Sprite2D) -> void:
 	var life: Dictionary = MeadowLife.load_data(LIFE_PATH)
 	if life.is_empty():
 		return
-	var lg := LifeGround.new()
-	lg.name = "LifeGround"
-	add_child(lg)
-	lg.setup(ground, life.get("sway", []) as Array)
+	# Interactive blades (world/grass_blades.gd): one node, one shader rect per loaded prop chunk, so the grass follows
+	# the streaming and costs no node per blade. The chunk signals below are the streaming's own (_load_chunk, _unload_chunk).
+	_blades = GrassBlades.new()
+	_blades.name = "GrassBlades"
+	add_child(_blades)
+	_blades.use_chunks()
+	_blades.setup(ground, [], Palettes.colors(Palettes.MEADOW))  # pad plates are not grass colours, so the blades skip them
+	chunk_loaded.connect(_on_chunk_blades_loaded)
+	chunk_unloaded.connect(_on_chunk_blades_unloaded)
 	var air := LifeAir.new()
 	air.name = "LifeAir"
 	air.z_index = 10
 	add_child(air)
 	air.setup(life, ground)
+	_blades.critter_source = air.ground_pushers
 	react = LifeReact.new()  # bushes rustle, birds scatter, shore ripples, grass bends (world/life_react.gd)
 	react.name = "LifeReact"
 	react.z_index = 10
 	add_child(react)
 	react.setup(life, life.get("sway", []) as Array, 14)  # a bigger meadow, more birds
-	lg.pusher_group = &"walker"
+
+
+## The grass chunk for a loaded prop chunk (same rect the streaming uses, in zone texels).
+func _on_chunk_blades_loaded(key: Vector2i) -> void:
+	if _blades != null:
+		_blades.add_chunk(key, Rect2(Vector2(key) * CHUNK, Vector2(CHUNK, CHUNK)))
+
+
+func _on_chunk_blades_unloaded(key: Vector2i) -> void:
+	if _blades != null:
+		_blades.remove_chunk(key)
 
 
 ## Props load by chunk. The map is cut into CHUNK-texel squares. The chunks within LOAD_RING of the walker's chunk are
@@ -205,9 +255,14 @@ const KEEP_RING: int = 2
 ## camera pans back and forth). Both are clamped to the map, so no chunk is made past the canvas.
 const VIEW_MARGIN_LOAD: int = 1
 const VIEW_MARGIN_KEEP: int = 2
-## The walker's ring always loads. Chunks outside it (the view) load only while the whole scene is under this many nodes,
-## so the view can never push a zone past the 1350 ceiling (docs/perf.md). Larkmoor's tour stops already sit near it.
+## Node ceilings (docs/perf.md caps a zone at 1350). The chunks next to the walker always load. The outer walker ring
+## (LOAD_RING) loads only while the scene is under RING_NODE_CEILING, and the view beyond it only under VIEW_NODE_BUDGET.
+## The check counts the nodes live, but nothing else in the tree is checked when it runs: a menu or HUD row built after a
+## load can push the count past its ceiling. So NODE_HARD_CEILING is enforced every frame: while the count is over it,
+## one loaded chunk off the walker's keep ring and off the screen unloads, the farthest first (see _shed_one).
 const VIEW_NODE_BUDGET: int = 1300
+const RING_NODE_CEILING: int = 1330
+const NODE_HARD_CEILING: int = 1340
 
 var _view: Rect2i = Rect2i()          # chunks on screen now, no margin (empty when the scene is outside the tree)
 var _view_load: Rect2i = Rect2i()     # _view grown by VIEW_MARGIN_LOAD
@@ -225,14 +280,29 @@ const SPAWN_BUDGET_MS: float = 2.0       # chunk spawns per frame: at least one,
 const WARM_BUDGET_MS: float = 1.0        # texture warm-up per frame, only while no chunk is waiting to spawn
 const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
-var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
+var _lamp_node: Node2D = null         # one node draws every loaded lamp head's glow (_draw_lamps): one batch, not a child sprite per lamp
+var _lamp_pts: Array[Vector2] = []    # the glow centre of each loaded lamp head, rebuilt when a chunk loads or unloads
+var _lamps_dirty: bool = true
+var _lamp_scale: float = 1.0          # the rain bloom (SkyModel.lamp_bloom): the glow size, the same for every lamp
 var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
+var _garden_flowers: Array = []          # the flower list the gardens were drawn from (world/larkmoor_gardens.json)
+var _flower_glow: FlowerGlow             # the night light on each field's flowers (world/flower_glow.gd)
 const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
 
 
 ## Index the props by chunk and light the lanterns. Nothing is spawned yet; the caller loads the chunks around the start.
 func _begin(parent: Node2D) -> void:
 	_occ_parent = parent
+	if _lamp_node == null and _sky != null:
+		_lamp_node = Node2D.new()
+		_lamp_node.name = "LampGlows"
+		_lamp_node.z_index = 6   # above the night shade (z 5), as the per-lamp glows were
+		var lamp_add := CanvasItemMaterial.new()
+		lamp_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_lamp_node.material = lamp_add
+		_lamp_node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_lamp_node.draw.connect(_draw_lamps)
+		parent.add_child(_lamp_node)
 	_prop_index.clear()
 	_loaded.clear()
 	_center = Vector2i(-99999, -99999)
@@ -283,7 +353,7 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_rebuild_bushes()
 
 
-## The Thistle Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
+## The Foxglove Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
 func _add_farm(parent: Node2D) -> void:
 	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
 
@@ -296,15 +366,18 @@ func _process(_delta: float) -> void:
 	if w != null:
 		_refresh_center(w.position)
 	_drain_spawns()
+	_shed_over_ceiling()
 	_drain_warm()
-	# lamp heads glow only after dark: fade them with the night, and forget the glows of unloaded lanterns
+	# lamp heads glow only after dark, and swell and brighten in the rain (SkyModel.lamp_bloom, capped at full)
 	var night: float = _sky.night01 if _sky != null else 0.0
-	for i in range(_glows.size() - 1, -1, -1):
-		var g: Variant = _glows[i]
-		if is_instance_valid(g):
-			(g as Sprite2D).modulate.a = night
-		else:
-			_glows.remove_at(i)
+	var bloom: Vector2 = SkyModel.lamp_bloom(MeadowLife.rain)
+	if _lamp_node != null:
+		_lamp_node.modulate.a = clampf(night * bloom.y, 0.0, 1.0)
+		if not is_equal_approx(bloom.x, _lamp_scale):
+			_lamp_scale = bloom.x
+			_lamp_node.queue_redraw()
+	if _lamps_dirty:
+		_rebuild_lamps()
 	# the flowers follow the season, and shut their heads once it is dark
 	if _gardens != null:
 		var cal: Node = get_node_or_null(^"/root/Calendar")   # an autoload: named by path, since --script tests have no autoloads
@@ -314,6 +387,8 @@ func _process(_delta: float) -> void:
 			_gardens.season = int(snap.get("season", GardenArt.SEASON_SUMMER))
 			hour = int(snap.get("hour", 12))
 		_gardens.closed = night > 0.6
+		if _flower_glow != null:
+			_flower_glow.set_night(night)
 		_gardens.dew = not _gardens.closed and hour >= 5 and hour < 9   # the first morning hours: drops on the open heads
 
 
@@ -327,7 +402,10 @@ func _exit_tree() -> void:
 	_queued.clear()
 	_warm_queue.clear()
 	_warmed.clear()
-	_glows.clear()
+	_lamp_pts.clear()
+	if _lamp_node != null:
+		_lamp_node.queue_free()
+		_lamp_node = null
 	_tex_cache.clear()
 	_mat_cache.clear()
 
@@ -398,12 +476,21 @@ func _wanted_load(key: Vector2i, c: Vector2i) -> bool:
 	return _chunk_dist(key, c) <= LOAD_RING or _view_load.has_point(key)
 
 
-## The walker's ring always loads. Any other chunk loads only while the scene plus its props stay under VIEW_NODE_BUDGET.
+## Whether a chunk may load now: the scene's nodes now, plus the chunk's props and one more, against the ceilings above.
 func _budget_allows(key: Vector2i) -> bool:
-	if _chunk_dist(key, _center) <= LOAD_RING:
-		return true
 	var props: int = (_prop_index[key] as Array).size() if _prop_index.has(key) else 0
-	return int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) + props + 1 <= VIEW_NODE_BUDGET
+	var after: int = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) + props + 1
+	return may_load(_chunk_dist(key, _center), after)
+
+
+## The rule behind _budget_allows: the nearest chunks always load, the outer ring under RING_NODE_CEILING, the view under
+## VIEW_NODE_BUDGET. Pure, so the tests can check the ceilings without a scene.
+static func may_load(dist: int, nodes_after: int) -> bool:
+	if dist <= 1:
+		return true
+	if dist <= LOAD_RING:
+		return nodes_after <= RING_NODE_CEILING
+	return nodes_after <= VIEW_NODE_BUDGET
 
 
 ## A loaded chunk stays while the walker's keep ring or the view's keep margin still covers it.
@@ -464,6 +551,32 @@ func _refresh_center(p: Vector2, immediate: bool = false) -> void:
 	# the bush list holds the sprites of loaded chunks, and a freed sprite must not stay in it (LifeReact reads them every frame)
 	if immediate or unloaded:
 		_rebuild_bushes()
+
+
+## Whether a node count is over NODE_HARD_CEILING, so chunks must be shed. Pure, so the tests can check the ceiling.
+static func may_shed(nodes: int) -> bool:
+	return nodes > NODE_HARD_CEILING
+
+
+## While the node count is over NODE_HARD_CEILING, unloads one chunk a frame: the farthest loaded chunk that is off the
+## screen and beyond the walker's own chunk ring. A chunk on screen is never shed, so this costs no pop-in while the
+## count is under the ceiling, and it only runs when something outside the streaming (a menu, the HUD) has pushed it over.
+func _shed_over_ceiling() -> void:
+	if not may_shed(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))):
+		return
+	var victim: Vector2i = Vector2i.ZERO
+	var found: bool = false
+	var far: int = 1
+	for key: Vector2i in _loaded.keys():
+		var d: int = _chunk_dist(key, _center)
+		if d > far and not _view_keep.has_point(key):
+			far = d
+			victim = key
+			found = true
+	if not found:
+		return
+	_unload_chunk(victim)
+	_rebuild_bushes()
 
 
 ## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. At least one, so the queue always moves.
@@ -531,6 +644,7 @@ func _load_chunk(key: Vector2i) -> void:
 		for s: Dictionary in _prop_index[key]:
 			list.append(_spawn_one(_occ_parent, s))
 	_loaded[key] = list
+	_lamps_dirty = true
 	PerfStats.lap("chunk load")
 	chunk_loaded.emit(key)
 
@@ -543,6 +657,7 @@ func _unload_chunk(key: Vector2i) -> void:
 				_shadows.remove_caster(sp as Sprite2D)
 			(sp as Sprite2D).queue_free()
 	_loaded.erase(key)
+	_lamps_dirty = true
 	PerfStats.lap("chunk unload")
 	chunk_unloaded.emit(key)
 
@@ -559,6 +674,30 @@ func _rebuild_bushes() -> void:
 				bushes.append(sp)
 	react.set_bushes(bushes)
 	PerfStats.lap("bushes")
+
+
+## The lamp head sits this far above a lantern's foot. Its glow is centred there.
+const LAMP_HEAD: Vector2 = Vector2(0.0, -17.0)
+
+
+## The glow centre of each loaded lamp head. Rebuilt when a chunk loads or unloads, not every frame.
+func _rebuild_lamps() -> void:
+	_lamps_dirty = false
+	_lamp_pts.clear()
+	for key: Vector2i in _loaded.keys():
+		for sp in _loaded[key]:
+			if is_instance_valid(sp) and (sp as Sprite2D).has_meta(&"lamp"):
+				_lamp_pts.append((sp as Sprite2D).position + LAMP_HEAD)
+	if _lamp_node != null:
+		_lamp_node.queue_redraw()
+
+
+## Draws every lamp glow in one node, the same size and place as the per-lamp sprites it replaces.
+func _draw_lamps() -> void:
+	var tex: Texture2D = _glow_texture()
+	var size: Vector2 = tex.get_size() * _lamp_scale
+	for p: Vector2 in _lamp_pts:
+		_lamp_node.draw_texture_rect(tex, Rect2(p - size * 0.5, size), false)
 
 
 ## A small dithered bloom for a lamp head: a warm disc with a Bayer-stepped falloff (the meadow's glow style), made once.
@@ -621,22 +760,10 @@ func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 			if s.has("nrm"):
 				sp.material = _prop_mat(false, String(s.nrm))
 	parent.add_child(sp)
-	if _shadows != null:
+	if _shadows != null and not String(s.kind).begins_with("ember_flat"):   # cave, rails and dirt are flat on the ground or the cliff
 		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
 	if String(s.kind) == "bush":
 		sp.set_meta(&"bush", true)
 	if String(s.kind) == "lantern" and float(s.w) < 20.0 and _sky != null:   # ordinary lamps; the great lantern has its own look
-		# the lamp head sits about 17 texels above the foot; z 6 puts the bloom above the night shade (z 5), so it stays bright
-		var glow := Sprite2D.new()
-		glow.name = "LampGlow"
-		glow.texture = _glow_texture()
-		glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		glow.position = Vector2(0.0, -17.0)
-		var add := CanvasItemMaterial.new()
-		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-		glow.material = add
-		glow.z_index = 6
-		glow.modulate.a = _sky.night01
-		sp.add_child(glow)
-		_glows.append(glow)
+		sp.set_meta(&"lamp", true)   # its glow is drawn by _lamp_node, one batch for every lamp
 	return sp

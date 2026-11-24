@@ -55,17 +55,11 @@ func setup(p_sim: Sim) -> void:
 	_value.custom_minimum_size.x = 42
 	_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(_value)
-	_sprint = _title("", RelicStyle.accent)
+	_sprint = _title("", RelicStyle.text)
+	_sprint.add_theme_constant_override("outline_size", 0)   # the frame gives the contrast; an ink outline eats the thin glyph strokes and dims them
 	_sprint.top_level = true   # outside the container's layout, so showing it never resizes the panel
-	var plate := StyleBoxFlat.new()   # a dark backing, so the busy ground never shows through the letters
-	plate.bg_color = Color("14161c")
-	plate.set_border_width_all(1)
-	plate.border_color = RelicStyle.edge
-	plate.content_margin_left = 4.0
-	plate.content_margin_right = 4.0
-	plate.content_margin_top = 0.0
-	plate.content_margin_bottom = 1.0
-	_sprint.add_theme_stylebox_override("normal", plate)
+	# The notched AsciiBox frame the panel and the relic and achievement toasts use, with cream text, so the tag reads as part of the HUD.
+	_sprint.add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.PANEL, 6.0, 2.0))
 	_sprint.visible = false
 	add_child(_sprint)
 	Tip.bind_all(self, Callable(self, "_spec"))
@@ -133,11 +127,12 @@ func _update_sprint_label(panel_on: bool) -> void:
 	if st != _sprint_state:
 		_sprint_state = st
 		_sprint.text = WalkerMotion.sprint_text(st)
-		_sprint.add_theme_color_override("font_color", RelicStyle.accent if st == 1 else RelicStyle.good)
+		_sprint.add_theme_color_override("font_color", RelicStyle.text)   # one colour for both states, like every other HUD tag
 		_sprint.reset_size()
 	_sprint.visible = st > 0
 	if st > 0:
-		_sprint.global_position = global_position + Vector2(0.0, -_sprint.size.y - 1.0)
+		# Centred over the panel. The tag's width changes with its state, so this runs every frame it shows.
+		_sprint.global_position = global_position + Vector2(floorf((size.x - _sprint.size.x) * 0.5), -_sprint.size.y - 1.0)
 
 
 func _apply() -> void:

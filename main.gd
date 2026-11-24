@@ -27,6 +27,7 @@ var walker: TexelWalker
 var gate: TexelGate
 var arch_gate: TexelGate   ## drawn at the Arch anchor of zones with gate art: the way back
 var pads: Dictionary = {}  # button id -> TexelPad
+var _crowd_sig: int = -1   # signature of the pads the crowd was last counted for (_update_pad_crowding)
 var critter: TexelCritter
 var pointer: PadPointer
 var pad_glow: PadGlow
@@ -165,6 +166,14 @@ func _ready() -> void:
 
 ## Lit pads close together share the light: each pad counts the lit pads within TexelPad.CROWD_RANGE, itself included.
 func _update_pad_crowding() -> void:
+	# The crowd only changes when a pad unlocks or the pads are rebuilt: a cheap signature says so, and the O(n^2) count
+	# runs only then, not every frame.
+	var sig: int = pads.size()
+	for p: TexelPad in pads.values():
+		sig = (sig * 31 + p.get_instance_id() + (1 if p.locked else 0)) & 0x3fffffff
+	if sig == _crowd_sig:
+		return
+	_crowd_sig = sig
 	for a: TexelPad in pads.values():
 		var n: int = 0
 		for b: TexelPad in pads.values():
@@ -203,6 +212,9 @@ func _process(_delta: float) -> void:
 
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
 func _update_tooltip() -> void:
+	if FxConfig.bloom_running:   # nothing hovers over a ritual: no world tip while Bloom or Nucleus plays
+		tooltip.hide_tip()
+		return
 	var over: Control = get_viewport().gui_get_hovered_control()
 	var m: Vector2 = world.get_local_mouse_position()
 	# only a control that takes the click blocks the world tooltip: a PASS control (the clock chip) is hovered too, but lets the
@@ -393,6 +405,7 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	_scene_path = path
 	PerfStats.lap_begin()
 	_free_occluders()
+	ZoneAssets.release()   # the zone being left drops its prop textures; the one being entered is prefetched
 	meadow.queue_free()
 	PerfStats.lap("swap: free old")
 	var packed: PackedScene = _take_prefetched(path)
@@ -428,6 +441,9 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 var _going_back: bool = false
 const OCCLUDER_BUDGET_MS: float = 8.0   ## per frame, while the wipe covers the screen
 var _prefetching: String = ""
+## Zone scenes whose script is loaded on the main thread before the threaded prefetch. Not Larkmoor: its script preloads
+## three large textures, which is the stall the prefetch exists to avoid.
+const WARM_SCRIPTS: Dictionary = {"res://world/quarry_scene.tscn": "res://world/quarry_scene.gd"}
 
 
 ## Starts loading a zone scene and its textures on a worker thread, so the swap under the transition wipe does not
@@ -435,8 +451,14 @@ var _prefetching: String = ""
 func _prefetch_scene(path: String) -> void:
 	if path == _scene_path or path == _prefetching:
 		return
+	if WARM_SCRIPTS.has(path):
+		# Compile the scene's script on the main thread first: loading it on a worker thread logged "Parse Error: Failed"
+		# at the scene's script line (the quarry's script uses several game classes) and fell back to a synchronous load.
+		ResourceLoader.load(WARM_SCRIPTS[path] as String)
+	# the scene first: the loader works through requests in order, and the swap waits on the scene before anything else
 	if ResourceLoader.load_threaded_request(path) == OK:
 		_prefetching = path
+	ZoneAssets.prefetch_scene(path)   # the props' and ground textures, behind the scene
 
 
 ## The prefetched scene when one was requested (waits for it if the worker is not done), else a plain load.
@@ -573,12 +595,14 @@ func _zone_banner() -> Dictionary:
 	if calendar != null and calendar.has_method("now"):
 		cal = calendar.call("now") as Dictionary
 	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
-	var phase: float = sky.clock_phase() if sky != null else 0.5
+	# sky.clock_phase() is the sun phase; the banner's fallback needs the clock fraction, so convert it with the sky's daylight.
+	var clock: float = sky.model.clock_of_phase(sky.clock_phase()) if sky != null else 0.5
+	var daylight: float = sky.model.daylight_fraction if sky != null else 0.6
 	if sky == null or not sky.seasonal:  # themed zones have no seasons: keep the time, drop the date
 		for k: String in ["season", "season_name", "month_name", "day"]:
 			cal.erase(k)
 	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(zone_id))
-	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, phase, "", cols[clampi(z.theme_role, 0, 7)])
+	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, clock, "", cols[clampi(z.theme_role, 0, 7)], daylight)
 	spec["fill"] = cols[0]
 	spec["duration"] = ZONE_BANNER_HOLD
 	spec["key"] = "zone:" + String(zone_id)

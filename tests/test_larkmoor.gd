@@ -16,6 +16,15 @@ func run(t: Object) -> void:
 	t.eq(scene_script.call("chunk_range", Rect2(170.0, 10.0, 100.0, 100.0), 0), Rect2i(1, 0, 1, 1), "a view inside one chunk covers that chunk")
 	t.eq(scene_script.call("chunk_range", Rect2(170.0, 10.0, 100.0, 100.0), 1), Rect2i(0, -1, 3, 3), "the view margin adds a chunk on every side")
 	t.eq(scene_script.call("chunk_range", Rect2(150.0, 0.0, 200.0, 10.0), 0), Rect2i(0, 0, 3, 1), "a view that straddles two chunk edges covers both")
+	# node ceilings for chunk loads: the nearest chunks always load, the outer ring and the view stop at their ceilings
+	t.ok(scene_script.call("may_load", 1, 99999) as bool, "the chunks beside the walker load whatever the node count")
+	t.ok(scene_script.call("may_load", 2, 1330) as bool, "the outer walker ring loads up to 1330 nodes")
+	t.ok(not (scene_script.call("may_load", 2, 1331) as bool), "the outer walker ring stops above 1330 nodes")
+	t.ok(scene_script.call("may_load", 3, 1300) as bool, "the view loads up to 1300 nodes")
+	t.ok(not (scene_script.call("may_load", 3, 1301) as bool), "the view stops above 1300 nodes")
+	# the hard ceiling: over 1340 nodes a chunk off the screen is shed, whatever raised the count
+	t.ok(not (scene_script.call("may_shed", 1340) as bool), "1340 nodes is still within the hard ceiling")
+	t.ok(scene_script.call("may_shed", 1341) as bool, "1341 nodes sheds a chunk")
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
@@ -63,6 +72,18 @@ func run(t: Object) -> void:
 	var world: Array = data.get("world", []) as Array
 	t.ok(world.size() == 4 and float(world[2]) > 1000.0, "world rect is bigger than the 640x360 frame")
 	t.ok(not WalkMask.walkable(Vector2(5.0, 5.0)), "open water at the corner is not walkable")
+	# the river: one course from Heronmere into the mere. Its water is never walkable on foot, but the mask flags it, so the
+	# walker can jump it. Landing in it sends the walker to the nearest bank. Both bridge decks stand on the river.
+	var river := Vector2(1400.0, 927.0)   # across the river at x 1400: water from y 922 to 932, walkable banks either side
+	t.ok(not WalkMask.walkable(river) and WalkMask.is_water(river), "the river is water: not walkable on foot, flagged for a jump")
+	t.ok(not WalkMask.is_water(Vector2(1400.0, 900.0)) and WalkMask.walkable(Vector2(1400.0, 900.0)), "dry bank beside the river is walkable and not water")
+	t.ok(WalkMask.walkable(Vector2(1400.0, 917.0)) and WalkMask.walkable(Vector2(1400.0, 935.0)), "walkable banks on both sides of the river")
+	var bank: Vector2 = WalkMask.landing(river)
+	t.ok(WalkMask.walkable(bank) and bank.distance_to(river) <= 8.0, "landing in the river sends the walker to the nearest bank (%s)" % str(bank))
+	t.eq(WalkMask.landing(Vector2(1400.0, 900.0)), Vector2(1400.0, 900.0), "a walkable spot is where the walker lands")
+	t.ok(WalkMask.walkable(Vector2(1524.0, 912.0)) and not WalkMask.is_water(Vector2(1524.0, 912.0)), "the main bridge deck is walkable over the river")
+	t.ok(WalkMask.walkable(Vector2(1188.0, 974.0)), "the footbridge deck on the west trail is walkable")
+	t.eq(WalkMask.landing(Vector2(1524.0, 912.0)), Vector2(1524.0, 912.0), "a bridge deck is where the walker lands, not the bank")
 
 	# the scene node itself
 	var scene: Node = (load(z.scene_path) as PackedScene).instantiate()
@@ -84,6 +105,9 @@ func run(t: Object) -> void:
 	scene.call("spawn_occluders", props)
 	var placements: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "placements3d.json")) as Dictionary
 	var sprites: Array = placements.sprites as Array
+	# the Ember Quarry cave entrance props live in their own file and the scene merges them into the placements
+	var entrance: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "entrance/entrance.json")) as Dictionary
+	sprites = sprites + (entrance.get("sprites", []) as Array)
 	var lanterns: int = 0
 	for sp: Dictionary in sprites:
 		if String(sp.kind) == "lantern":

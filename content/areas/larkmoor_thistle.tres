@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = &"thistle"
 zone = &"larkmoor"
-display_name = "Thistle Rise"
+display_name = "Foxglove Rise"
 order = 3
 icon = "flower"
 theme_role = 6

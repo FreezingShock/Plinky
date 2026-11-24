@@ -50,6 +50,7 @@ func _init() -> void:
 			var worst_missing: int = 0
 			var max_nodes: int = 0
 			for i: int in SETTLE_FRAMES:
+				cam.set("_free", true)
 				cam.pan = pan
 				await process_frame
 				var missing: int = _missing_on_screen(scene)
@@ -57,7 +58,7 @@ func _init() -> void:
 					popin_frames += 1
 				worst_missing = maxi(worst_missing, missing)
 				max_nodes = maxi(max_nodes, Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
-			print("%4d  %-16s %13d  %12d  %12d  %5d" % [zoom, str(pan), popin_frames, worst_missing, int(scene.call("loaded_prop_count")), max_nodes])
+			print("%4d  %-16s %13d  %12d  %12d  %5d  view=%s walker=%s cam_pan=%s" % [zoom, str(pan), popin_frames, worst_missing, int(scene.call("loaded_prop_count")), max_nodes, str(scene.get("_view")), str((main.get("walker") as Node2D).position), str(cam.pan)])
 		cam.pan = Vector2.ZERO
 		await _frames(30)
 	quit(0)

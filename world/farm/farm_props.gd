@@ -1,16 +1,17 @@
 class_name FarmProps
 extends RefCounted
-## The Larkmoor farm district (Thistle Rise): organic patches of wheat that gust and part around the walker, a barn, a
+## The Larkmoor farm district (Foxglove Rise): irregular fields of wheat on tilled soil that gust and part around the walker, a barn, a
 ## shed, a scarecrow, hay bales, a cart and crates. The layout comes from assets/art/zone1b/farm/farm.json
 ## (tools/art/place_farm.py); the props from tools/art/gen_farm.py; the wheat sheets from tools/bake_wheat.gd, drawn by
 ## WheatClump from each clump's seed. Plain props are sprites at their foot with the meadow's rim light and a cast
-## shadow. Wheat clumps are sprites at their foot too, so the walker sorts against them by Y, and FarmWheat animates them.
+## shadow. Wheat clumps are canvas items at their foot, owned by FarmWheat (no node each), so the walker sorts against them by Y.
 
 const MANIFEST: String = "res://assets/art/zone1b/farm/farm.json"
 const DIR: String = "res://assets/art/zone1b/farm/"
 const FIELD_PREFIX: String = "farm_wheat"   # every wheat clump's kind starts with this
 const FIELD_FRAME_W: int = 48                 # default for an item without its own width
 const FENCE_PREFIX: String = "farm_fence"     # the fence ring: one sprite for the whole ring, low and open
+const SOIL_PREFIX: String = "farm_soil"       # the tilled soil under each field: a ground decal, drawn behind everything
 
 
 static func load_manifest() -> Dictionary:
@@ -25,10 +26,15 @@ static func is_field(kind: String) -> bool:
 	return kind.begins_with(FIELD_PREFIX)
 
 
-## True when a farm item of this kind casts a drop shadow. Wheat is ground cover and does not, and the fence ring is
-## low and open (one sprite over its whole box, so a shadow would cover the field).
+## True when a farm item of this kind is the soil under a field: flat on the ground, so it takes no rim light and casts no shadow.
+static func is_soil(kind: String) -> bool:
+	return kind.begins_with(SOIL_PREFIX)
+
+
+## True when a farm item of this kind casts a drop shadow. Wheat is ground cover and does not, the fence ring is
+## low and open (one sprite over its whole box, so a shadow would cover the field), and soil is flat on the ground.
 static func casts_shadow(kind: String) -> bool:
-	return not is_field(kind) and not kind.begins_with(FENCE_PREFIX)
+	return not is_field(kind) and not kind.begins_with(FENCE_PREFIX) and not is_soil(kind)
 
 
 ## Adds the farm under `parent`, which must be the y-sorted prop parent. Pass `manifest` to test with other data.
@@ -52,6 +58,13 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 		var fa: Array = item.get("foot", []) as Array
 		var foot := Vector2(float(fa[0]), float(fa[1]))
 		var origin := Vector2(float(item.get("x", 0)), float(item.get("y", 0)))
+		if is_field(kind):
+			# Wheat is a canvas item owned by the driver, not a node: it sorts by Y like a sprite and costs no node.
+			var w: int = int(item.get("w", FIELD_FRAME_W))
+			var h: int = int(item.get("h", FIELD_FRAME_W))
+			var clump: Dictionary = WheatClump.generate(int(item.get("seed", 0)), w, h, int(item.get("stage", 1)))
+			wheat.add_clump(parent, origin, foot, tex, clump, int(item.get("phase", 0)))
+			continue
 		var sp := Sprite2D.new()
 		sp.name = "Farm%d_%s" % [n, kind.trim_prefix("farm_")]
 		n += 1
@@ -60,16 +73,7 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 		sp.centered = false
 		sp.position = foot
 		sp.offset = origin - foot
-		if is_field(kind):
-			var w: int = int(item.get("w", FIELD_FRAME_W))
-			var h: int = int(item.get("h", FIELD_FRAME_W))
-			sp.region_enabled = true
-			sp.region_rect = Rect2(0.0, 0.0, float(w), float(h))
-			parent.add_child(sp)
-			var clump: Dictionary = WheatClump.generate(int(item.get("seed", 0)), w, h, int(item.get("stage", 1)))
-			wheat.add_clump(sp, clump, int(item.get("phase", 0)))
-			continue
-		if rim != null:
+		if rim != null and not is_soil(kind):
 			sp.material = rim
 		parent.add_child(sp)
 		if shadows != null and casts_shadow(kind):

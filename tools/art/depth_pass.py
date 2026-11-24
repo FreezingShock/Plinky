@@ -70,10 +70,26 @@ def write_relight_data(path, aux, y0, y1, x0, x1, mask):
     d[..., 0] = np.clip((aux['nu'][sl] * .5 + .5) * 255, 0, 255)
     d[..., 1] = np.clip((aux['nv'][sl] * .5 + .5) * 255, 0, 255)
     mat = aux['mat'][sl]
-    lit = mask & (aux['out'][sl] != 0) & (mat >= 10) & (mat < 110)
+    lit = mask & (aux['out'][sl] != 0) & (mat >= 10) & (mat < 112)
     d[..., 2] = np.where(lit, mat, 0)
     d[..., 3] = np.where(mask, np.clip(np.round((aux['l'][sl] + L_ENC_OFF) / L_ENC_SCALE * 255), 1, 255), 0)
     Image.fromarray(d).save(path)
+
+
+# Ground texels the scene render never saw (outside its mask) get no material and no baked light, so the runtime
+# relight skipped them and the painted ground showed raw and dark at the map's edges. They take the terrain ramp (code
+# 100), a flat normal and the island's median baked light, so the sun lights them like the rest of the ground.
+UNBAKED_GROUND_CODE, UNBAKED_GROUND_LIGHT = 100, 166
+
+
+def fill_unbaked_ground(path):
+    """Give every ground texel with no material and no baked light a flat terrain value. Idempotent."""
+    from PIL import Image
+    d = np.array(Image.open(path).convert('RGBA'))
+    empty = (d[..., 2] == 0) & (d[..., 3] == 0)
+    d[empty] = [128, 128, UNBAKED_GROUND_CODE, UNBAKED_GROUND_LIGHT]
+    Image.fromarray(d, 'RGBA').save(path)
+    return int(empty.sum())
 
 
 def write_height(path, z, mask):
@@ -85,7 +101,7 @@ def write_height(path, z, mask):
     Image.fromarray(d).save(path)
 
 
-def write_ramp_include(path, ramp, pal, mat_lo=10, mat_hi=110):
+def write_ramp_include(path, ramp, pal, mat_lo=10, mat_hi=112):
     """Shader include with the palette and the per-material ramps, so the shader quantises to the same colours as the baker."""
     starts, lens, idx = [], [], []
     for m in range(mat_hi):

@@ -60,6 +60,8 @@ var _rays_rect: ColorRect
 var _warm: int = 4                  # frames the rays stay drawn after the scene loads, so their shader compiles at load, not at the first sunset
 var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
+var _pool_index: Dictionary = {}        # pad pool position -> its entry in _lights (rebuilt after add_light)
+var _pool_index_built: bool = false
 var _pushed: int = 0                    # pools packed for the shader on the last frame
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
@@ -214,10 +216,21 @@ func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = 
 	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
 	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": tint})
+	_pool_index.clear()
+	_pool_index_built = false
 
 
 ## The pad pool nearest `pos` within 1.5 texels, or an empty dictionary. Pads are added with kind &"pad".
 func _pad_pool_at(pos: Vector2) -> Dictionary:
+	# Exact hits come from a position index (a pad pool sits on its anchor), so the per-pad calls each frame are O(1).
+	# Anything else falls back to the nearest-pad scan below.
+	if not _pool_index_built:
+		_pool_index_built = true
+		for L: Dictionary in _lights:
+			if L.kind == &"pad" and not _pool_index.has(L.pos):
+				_pool_index[L.pos] = L
+	if _pool_index.has(pos):
+		return _pool_index[pos] as Dictionary
 	var best: Dictionary = {}
 	var best_d: float = 1.5
 	for L: Dictionary in _lights:
@@ -321,6 +334,10 @@ func _find_calendar() -> void:
 ## Mix the four seasons by their weights and push the result to every ground and prop material.
 func _update_season() -> void:
 	var w: Array[float] = [1.0, 0.0, 0.0, 0.0]
+	# A pinned season moves the calendar too. Before this, only the sky changed: the clock still read the real season and
+	# the flowers, which take their season from Calendar.now(), never got frost. Pure check: pin_jump_needed.
+	if pin_jump_needed(debug_season, _cal.season_index() if _cal != null else -1):
+		_cal.jump_to_season(debug_season)
 	if debug_season >= 0:
 		w = [0.0, 0.0, 0.0, 0.0]
 		w[clampi(debug_season, 0, 3)] = 1.0
@@ -357,11 +374,34 @@ func _light_time(t: float) -> float:
 
 
 ## Model time of midday for this model, the moment an underground zone's light holds at.
+## A time pin (debug_phase, tools and screenshots) moves the calendar too, so the HUD clock reads the pinned time as the
+## sky does. The sky takes the pin directly in _model_time; this keeps the calendar in step with it. Pure rule: clock_pin_needed.
+func _pin_clock() -> void:
+	if debug_phase < 0.0 or _cal == null or model == null:
+		return
+	var want: float = model.clock_of_phase(debug_phase)
+	if clock_pin_needed(want, _cal.day_fraction()):
+		_cal.set_day_fraction(want)
+
+
+## True when the calendar's day fraction is off the pinned clock `want` by more than a little (0.005 of a day, about
+## 1.5 s at the default day length). Both wrap at 1, so 0.999 and 0.001 are close. Pure, so the rule is tested.
+static func clock_pin_needed(want: float, now: float) -> bool:
+	return absf(fposmod(now - want + 0.5, 1.0) - 0.5) > 0.005
+
+
+## True when a season pin is set and the calendar is in another season, so the calendar must jump to the pin.
+## `current` is the calendar's season, or -1 with no calendar yet (then nothing can jump). Pure, so the rule is tested.
+static func pin_jump_needed(pin: int, current: int) -> bool:
+	return pin >= 0 and current >= 0 and current != clampi(pin, 0, 3)
+
+
 static func underground_time(m: SkyModel) -> float:
 	return (m.clock_of_phase(UNDERGROUND_PHASE) - m.clock_of_phase(m.start_phase)) * m.day_seconds
 
 
 func _update(t: float) -> void:
+	_pin_clock()
 	var mt: float = _light_time(t)
 	_update_season()
 	night01 = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
@@ -381,6 +421,7 @@ func _update(t: float) -> void:
 		rain = 0.0
 		wind = 0.0
 	_shade_mat.set_shader_parameter("rain", rain)
+	_shade_mat.set_shader_parameter("reflect_amt", clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0))
 	MeadowLife.wind = 0.0 if MeadowLife.reduce_motion else wind
 	rain_layer.visible = not MeadowLife.reduce_motion
 	var snow_w: float = _season.weights[3]
@@ -469,6 +510,7 @@ static func padded(tex: Texture2D) -> Texture2D:
 
 ## Sun, shadows, rim light, haze, mist, rays, vignette and light pools for this moment.
 func _update_light(t: float, mt: float, rain: float) -> void:
+	MeadowLife.sky_time = t   # the storm schedule (thunder, lightning) reads the sky's own clock
 	MeadowLife.night = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
 	MeadowLife.low_sun = model.low_sun(mt)
 	MeadowLife.rain = clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0)
@@ -516,9 +558,15 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var outdoor: float = 1.0 if seasonal else 0.0
 		var snow_w: float = _season.weights[3]
 		var wet01: float = (rain01 if debug_rain >= 0.0 else model.wetness(t)) * outdoor * (1.0 - snow_w)
-		var splash01: float = 0.0 if calm else rain01 * outdoor * (1.0 - snow_w)
-		var puddle_col: Color = Color(0.3, 0.5, 0.5).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water; at night, dark water
+		var rings_mist: bool = GraphicsQuality.rain_rings_and_mist()   # Low drops the rings and the dawn mist; the puddles stay
+		var splash01: float = 0.0 if (calm or not rings_mist) else rain01 * outdoor * (1.0 - snow_w)
+		var puddle_col: Color = Color(0.46, 0.64, 0.64).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water, lighter by day; at night, dark water
+		puddle_col = puddle_col.lerp(Color(0.42, 0.56, 0.66), 0.5 * night_k)   # at night the water catches the moon, not black
 		var glint: float = clampf(maxf(sun_h, 0.0) * 2.0, 0.0, 1.0) * outdoor
+		# fallen blossom: the petal colour from the season's petal list, else the paper tone
+		var blossom_col: Color = Color(0.95, 0.72, 0.8)
+		if particles != null and particles.config != null and particles.config.petal_colors.size() > 0:
+			blossom_col = particles.config.petal_colors[0]
 		MeadowLife.wet = wet01
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
@@ -533,13 +581,16 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("fog_col", fog_col)
 			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
 			gm.set_shader_parameter("wet", wet01)
+			gm.set_shader_parameter("wet_night", night_k * wet01)
 			# ground mist: the dawn part of the mist curve (the base haze is the far fog's job), gone by midday
-			gm.set_shader_parameter("mist", clampf((model.mist(mt, rain01) - 0.3) / 0.6, 0.0, 1.0) * outdoor)
+			gm.set_shader_parameter("mist", clampf((model.mist(mt, rain01) - 0.3) / 0.6, 0.0, 1.0) * outdoor * (1.0 if rings_mist else 0.0))
 			gm.set_shader_parameter("mist_col", fog_col)
 			gm.set_shader_parameter("mist_drift", 0.0 if calm else 1.0)
 			gm.set_shader_parameter("splash", splash01)
 			gm.set_shader_parameter("puddle_col", puddle_col)
 			gm.set_shader_parameter("glint", glint)
+			gm.set_shader_parameter("blossom", _season.weights[0] * outdoor * (1.0 - snow_w))
+			gm.set_shader_parameter("blossom_col", blossom_col)
 		for pm: ShaderMaterial in _pad_mats:
 			pm.set_shader_parameter("sun_px", sun_px)
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
@@ -560,6 +611,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var drift: float = 0.0 if calm else floorf(mt / maxf(_config.mist_drift_seconds, 1.0) * 860.0)
 	_haze_mat.set_shader_parameter("drift", drift)
 	# ground fog: thickest at dawn and dusk, heavier in rain, drifting sideways; world-anchored dither
+	MeadowLife.fog = model.mist(mt, rain01) * (1.0 if seasonal else 0.0)   # the mist the lamps spread into
 	var fog_amt: float = _config.fog_ground * _season.fog_mult * model.mist(mt, rain01) * (1.0 - 0.5 * clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0))
 	_fog_rect.visible = atmosphere and fog_amt > 0.01
 	_fog_mat.set_shader_parameter("amount", fog_amt)
@@ -591,6 +643,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	# Saturation: the noon boost of a brighter scene (noon_boost) goes into exposure and contrast only. Scaling the
 	# saturation too pushed Larkmoor's autumn ground into the orange and green cast.
 	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * noon01)
+	# lightning: a brief cool lift in heavy rain; zero under Reduce motion or Reduce flashing (steady)
+	_light_mat.set_shader_parameter("flash", 0.0 if steady else SkyModel.lightning_flash(t, rain01))
 	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01) + _config.noon_contrast * nb)
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
@@ -633,6 +687,8 @@ func _push_lights(t: float, steady: bool) -> void:
 	var focus: Vector2 = _walker.position if _walker != null else area.get_center()
 	var picks: Array[Dictionary] = []
 	var lamp_k: float = lamp_light_k(night01)
+	var bloom: Vector2 = SkyModel.lamp_bloom(MeadowLife.rain)   # rain: lamps swell and warm
+	var halo: float = SkyModel.fog_halo(MeadowLife.fog)         # mist: the same lamps spread into the fog
 	for L: Dictionary in _lights:
 		var is_walker: bool = L.kind == &"walker"
 		var pos: Vector2 = L.pos
@@ -644,7 +700,9 @@ func _push_lights(t: float, steady: bool) -> void:
 		var strength: float = float(L.strength) * (lamp_k if L.kind == &"lantern" else 1.0)
 		if strength <= 0.0:
 			continue   # a lamp by day takes no slot in the shader
-		picks.append({"pos": pos, "radius": float(L.radius), "strength": strength, "tint": L.tint as Color,
+		strength *= bloom.y   # the shader caps the pool at 1.0
+		var radius: float = float(L.radius) * bloom.x * halo
+		picks.append({"pos": pos, "radius": radius, "strength": strength, "tint": L.tint as Color,
 				"walker": is_walker, "d": Vector2(q.x, q.y * 2.0).length_squared()})
 	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if a.walker != b.walker:

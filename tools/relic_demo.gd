@@ -36,6 +36,7 @@ func _ready() -> void:
 	panel.position = Vector2(16, 16)
 	add_child(panel)
 	panel.bind(inv)
+	panel.visible = true   # the gallery builds its nodes when it shows
 	var bar := RelicBar.new()
 	bar.position = Vector2(560, 12)
 	add_child(bar)

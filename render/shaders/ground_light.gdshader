@@ -30,12 +30,16 @@ uniform float fog_amt = 0.0;                    // 0..1 at the far edge
 // Rain (SkyCycle sets these; see wet_ground). wet darkens the soil and fills dips with water, splash is how much
 // rain is landing now (0 under Reduce motion, so the rings stop but the puddles stay), glint is the sun on the water.
 uniform float wet = 0.0;                        // 0..1, a lagged rain: a shower fills puddles and they drain after it
+uniform float wet_night = 0.0;                  // 0..1, night x wet: the wet soil and path go darker under the moon
 uniform float splash = 0.0;                     // 0..1 rain landing now: how many ground cells ring at once
 uniform vec3 puddle_col : source_color = vec3(0.2, 0.36, 0.36);
 uniform float glint = 0.0;                      // 0..1: sun on the water, sparkle and sky sheen
 // Ground mist (SkyCycle: thick at dawn, gone by midday). A dithered low haze drifts over the ground.
 uniform float mist = 0.0;                       // 0..1
 uniform vec3 mist_col : source_color = vec3(0.82, 0.9, 0.88);
+// Fallen blossom (SkyCycle: spring outdoors, none under snow). Pale petals gather in soft drifts on the iso grid.
+uniform float blossom = 0.0;                    // 0..1: spring x outdoor
+uniform vec3 blossom_col : source_color = vec3(0.95, 0.72, 0.8);
 uniform float mist_drift = 1.0;                 // 0 under Reduce motion: the haze holds still
 const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);
 varying vec2 wpos;
@@ -61,9 +65,25 @@ float texel_dip(vec2 uv, vec2 px, float h0) {
 vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
 	float dip = texel_dip(uv, px, h0);
 	float depth = smoothstep(0.15, 0.6, dip) * season_snow;
-	if (depth > thr * 0.5 + 0.12) {
+	float edge = thr * 0.5 + 0.12;
+	if (depth > edge) {
 		float l = dot(c, vec3(0.299, 0.587, 0.114));
 		c = clamp(vec3(0.86, 0.92, 1.0) * (0.8 + 0.25 * l), 0.0, 1.0);
+		// a cool shadow on the lip of each drift, where it steps down into the flat snow
+		if (depth < edge + 0.12) {
+			c *= vec3(0.8, 0.87, 0.97);
+		}
+	}
+	return c;
+}
+
+// Fallen petals: a patch mask gathers them in drifts, and a per-texel hash scatters a sparse few inside each drift.
+vec3 fallen_blossom(vec3 c, vec2 wp, float thr) {
+	vec2 iso = vec2(wp.x, wp.y * 2.0);
+	float patch = season_vnoise(iso / 9.0 + 5.0) * 0.7 + season_vnoise(iso / 3.0 + 11.0) * 0.3;
+	float dens = smoothstep(0.45, 0.75, patch) * blossom;
+	if (dens > thr && season_hash(floor(iso) + 0.5) < 0.25) {
+		c = mix(c, blossom_col, 0.9);
 	}
 	return c;
 }
@@ -72,7 +92,7 @@ vec3 wet_ground(vec3 c, vec2 wp, vec2 uv, vec2 px, float thr, float h0) {
 	float open_k = 1.0 - smoothstep(0.1, 0.5, season_snow);
 	float w = wet * open_k;
 	if (w > 0.001) {
-		c = mix(c, c * vec3(0.88, 0.92, 0.95), 0.6 * w);
+		c = mix(c, c * mix(vec3(0.88, 0.92, 0.95), vec3(0.66, 0.72, 0.8), wet_night), 0.6 * w);
 		vec2 iso = vec2(wp.x, wp.y * 2.0);
 		float n = season_vnoise(iso / 9.0 + 31.0) * 0.7 + season_vnoise(iso / 3.0 + 13.0) * 0.3;
 		// a dip holds water (texel_dip)
@@ -120,7 +140,7 @@ void fragment() {
 	if (relight > 0.0 && c.a > 0.5) {
 		vec4 d = texture(nrm_tex, UV);
 		int code = int(d.b * 255.0 + 0.5);
-		if (code >= 10 && code < 110 && RAMP_LEN[code] > 0) {
+		if (code >= 10 && code < 112 && RAMP_LEN[code] > 0) {
 			vec3 n = vec3(d.rg * 2.0 - 1.0, 0.0);
 			n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
 			float lb = d.a * 1.8 - 0.4;
@@ -175,7 +195,7 @@ void fragment() {
 	// Water (material 107) and its foam (108) keep their own palette in every season: the water ramp's greens
 	// (47,107,85) pass the "green texel" test in season_recolor and were dyed orange like the grass.
 	int mat_code = int(texture(nrm_tex, UV).b * 255.0 + 0.5);
-	bool is_water = mat_code == 107 || mat_code == 108;
+	bool is_water = mat_code == 107 || mat_code == 108 || mat_code == 110 || mat_code == 111;
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
 	}
@@ -184,6 +204,9 @@ void fragment() {
 	}
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (wet > 0.001 || splash > 0.01)) {
 		c.rgb = wet_ground(c.rgb, wpos, UV, px, thr, texture(h_tex, UV).r * 255.0);
+	}
+	if (c.a > 0.5 && debug_view == 0 && !is_water && blossom > 0.01) {
+		c.rgb = fallen_blossom(c.rgb, wpos, thr);
 	}
 	if (c.a > 0.5 && debug_view == 0 && mist > 0.01) {
 		// a low haze in soft patches on the iso grid; it lies thicker in the hollows (texel_dip), and the edge is dithered

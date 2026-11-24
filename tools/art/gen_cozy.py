@@ -13,7 +13,8 @@ Run: python3 tools/art/gen_cozy.py   (from the repo root). Pure Pillow, no numpy
 import math
 import os
 import sys
-from PIL import Image
+import numpy as np
+from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -72,29 +73,8 @@ class Canvas:
         return im
 
 
-def bench() -> Canvas:
-    cv = Canvas(24, 14)
-    cv.rect(1, 0, 22, 1, EARTH)        # backrest slat, top
-    cv.rect(1, 3, 22, 4, EARTH)        # backrest slat, bottom (row 2 stays a gap: reads as a plank line)
-    cv.rect(0, 6, 23, 7, EARTH)        # seat
-    cv.rect(0, 6, 23, 6, ACCENT)       # sun on the seat's top edge
-    cv.rect(2, 8, 3, 12, EARTH)        # legs
-    cv.rect(20, 8, 21, 12, EARTH)
-    cv.outline()
-    return cv
 
 
-def blanket() -> Canvas:
-    """A round picnic rug with stripes. Not a checker: the wooden pads are checkered, and a rug must not read as a pad."""
-    cv = Canvas(22, 9)
-    cv.ellipse(10.5, 4.5, 10.5, 4.5, PAPER)
-    for x in range(22):
-        if x % 6 in (0, 1):
-            for y in range(9):
-                if (x + 0.5 - 10.5) ** 2 / 10.5 ** 2 + (y + 0.5 - 4.5) ** 2 / 4.5 ** 2 <= 1.0:
-                    cv.set(x, y, ACCENT)
-    cv.outline()
-    return cv
 
 
 def swing_frame() -> Canvas:
@@ -145,29 +125,8 @@ def cottage() -> Canvas:
     return cv
 
 
-def fence() -> Canvas:
-    cv = Canvas(24, 12)
-    cv.rect(0, 3, 23, 4, EARTH)
-    cv.rect(0, 7, 23, 8, EARTH)
-    cv.rect(0, 1, 1, 11, EARTH)                       # one post per segment, at its left end
-    cv.set(0, 1, ACCENT)
-    cv.outline()
-    return cv
 
 
-def signpost() -> Canvas:
-    cv = Canvas(14, 26)
-    cv.rect(6, 9, 7, 25, EARTH)
-    cv.rect(1, 2, 11, 9, EARTH)
-    for y in range(3, 9):                             # arrow head pointing right
-        if 4 <= y <= 7:
-            cv.set(12, y, EARTH)
-        if 5 <= y <= 6:
-            cv.set(13, y, EARTH)
-    cv.rect(3, 4, 9, 4, PAPER)                        # two lines of lettering
-    cv.rect(3, 7, 8, 7, PAPER)
-    cv.outline()
-    return cv
 
 
 def campfire_ring() -> Canvas:
@@ -206,18 +165,117 @@ def fountain_basin() -> Canvas:
     return cv
 
 
-def stone(variant: int) -> Canvas:
-    cv = Canvas(7, 5)
-    shapes = [
-        [(1, 0, 5, 0), (0, 1, 6, 3), (1, 4, 5, 4)],
-        [(2, 0, 4, 0), (0, 1, 6, 2), (0, 3, 5, 3), (1, 4, 4, 4)],
-        [(1, 1, 5, 1), (0, 2, 6, 3), (2, 4, 4, 4)],
-    ][variant % 3]
-    for x0, y0, x1, y1 in shapes:
-        cv.rect(x0, y0, x1, y1, PAPER)
-    cv.rect(0, 3, 6, 3, SHADE) if variant % 2 == 0 else cv.rect(1, 4, 5, 4, SHADE)
+
+
+# ---- Looking-down redraws (elevated 2:1 iso, the view of the meadow's 3D props) -----------------------------------
+# Bench, blanket, fence, signpost and the stepping stones are drawn from above: each top face shows, the lit side
+# faces lower-left, the shadowed side faces lower-right, and the dark side is dithered. Canvases are cropped to their
+# pixels with a 1-texel ink outline; `origin` is the ground point under the prop, in canvas texels (the foot).
+BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+_WORK = 96
+_OX, _OY = 48, 70
+
+
+def _iso(X: float, Y: float, Z: float = 0.0) -> tuple:
+    return (_OX + X - Y, _OY + (X + Y) / 2.0 - Z)
+
+
+def _pmask(pts: list) -> "np.ndarray":
+    m = Image.new('L', (_WORK, _WORK), 0)
+    ImageDraw.Draw(m).polygon([tuple(p) for p in pts], fill=255)
+    return np.array(m) > 0
+
+
+def _emask(cx: float, cy: float, rx: float, ry: float) -> "np.ndarray":
+    m = Image.new('L', (_WORK, _WORK), 0)
+    ImageDraw.Draw(m).ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=255)
+    return np.array(m) > 0
+
+
+def _box(X0: float, X1: float, Y0: float, Y1: float, Z0: float, Z1: float) -> tuple:
+    top = _pmask([_iso(X0, Y0, Z1), _iso(X1, Y0, Z1), _iso(X1, Y1, Z1), _iso(X0, Y1, Z1)])
+    lit = _pmask([_iso(X0, Y1, Z0), _iso(X1, Y1, Z0), _iso(X1, Y1, Z1), _iso(X0, Y1, Z1)])
+    dark = _pmask([_iso(X1, Y0, Z0), _iso(X1, Y1, Z0), _iso(X1, Y1, Z1), _iso(X1, Y0, Z1)])
+    return top, lit, dark
+
+
+def _cyl(cx: float, cy: float, r: float, z0: float, z1: float) -> tuple:
+    sx, sy = _iso(cx, cy, z1)
+    rx, ry = r * 1.41, r * 0.71
+    top = _emask(sx, sy, rx, ry)
+    side = np.zeros((_WORK, _WORK), bool)
+    for k in range(int(round(z1 - z0)) + 1):
+        side |= _emask(sx, sy + k, rx, ry)
+    return top, side & ~top
+
+
+def _paint(layers: list, name: str) -> Canvas:
+    """layers: (mask, fill) in paint order. fill is an index, or (a, b, frac): a dithered mix, b where the Bayer cell < frac."""
+    grid = np.full((_WORK, _WORK), -1, np.int8)
+    for mask, fill in layers:
+        if isinstance(fill, tuple):
+            a, b, frac = fill
+            thr = np.array(BAYER4, float) / 16.0
+            tiled = np.tile(thr, (_WORK // 4, _WORK // 4))
+            grid[mask] = np.where(tiled[mask] < frac, b, a)
+        else:
+            grid[mask] = fill
+    solid = grid >= 0
+    ys, xs = np.nonzero(solid)
+    x0, y0 = int(xs.min()) - 1, int(ys.min()) - 1
+    cv = Canvas(int(xs.max()) - x0 + 2, int(ys.max()) - y0 + 2)
+    for y, x in zip(ys, xs):
+        cv.set(int(x) - x0, int(y) - y0, int(grid[y, x]))
     cv.outline()
+    cv.origin = (_OX - x0, _OY - y0)
     return cv
+
+
+def bench() -> Canvas:
+    layers = []
+    for X0, X1, Y0, Y1, Z0, Z1 in [(-9, 9, -2.5, 2.5, 4, 7), (-9, 9, -5.0, -4.0, 4, 8)]:
+        t, l, d = _box(X0, X1, Y0, Y1, Z0, Z1)
+        layers += [(d, (EARTH, INK, 0.55)), (l, EARTH), (t, ACCENT)]
+    for X in (-7.0, 7.0):
+        t, l, d = _box(X - 1.0, X + 1.0, -4.5, 4.5, 0, 4)
+        layers += [(d, (INK, EARTH, 0.55)), (l, EARTH)]
+    return _paint(layers, 'bench')
+
+
+def blanket() -> Canvas:
+    """A flat rug on the ground: from above, the top is the whole read. Stripes, not a checker (pads are checkered)."""
+    top = _pmask([_iso(-7, -4, 0.2), _iso(7, -4, 0.2), _iso(7, 4, 0.2), _iso(-7, 4, 0.2)])
+    stripes = np.zeros((_WORK, _WORK), bool)
+    for k in range(-3, 4):
+        stripes |= _pmask([_iso(-7 + 2 * k, -4, 0.2), _iso(-6 + 2 * k, -4, 0.2), _iso(-6 + 2 * k, 4, 0.2), _iso(-7 + 2 * k, 4, 0.2)])
+    return _paint([(top, PAPER), (top & stripes, ACCENT)], 'blanket')
+
+
+def fence() -> Canvas:
+    layers = []
+    for X in (-6.0, 6.0):
+        t, l, d = _box(X - 0.7, X + 0.7, -0.7, 0.7, 0, 9)
+        layers += [(d, (EARTH, INK, 0.5)), (l, EARTH), (t, EARTH)]
+    for z in (3.0, 6.5):
+        t, l, d = _box(-6.0, 6.0, -0.6, 0.6, z, z + 1.4)
+        layers += [(d, (EARTH, INK, 0.5)), (l, EARTH), (t, ACCENT)]
+    return _paint(layers, 'fence')
+
+
+def signpost() -> Canvas:
+    layers = []
+    t, l, d = _box(-0.8, 0.8, -0.8, 0.8, 0, 22)
+    layers += [(d, (EARTH, INK, 0.5)), (l, EARTH), (t, EARTH)]
+    t, l, d = _box(-0.6, 0.6, -6, 6, 15, 21)
+    layers += [(d, (PAPER, EARTH, 0.5)), (l, PAPER), (t, PAPER)]
+    return _paint(layers, 'signpost')
+
+
+def stone(variant: int) -> Canvas:
+    r = (1.3, 1.5, 1.7)[variant % 3]
+    t, s = _cyl(0, 0, r, 0, 1.6)
+    return _paint([(s, (ACCENT, DEEP, 0.5)), (t, PAPER)], 'stone')
+
 
 
 WHEEL_SIZE: int = 18
