@@ -249,10 +249,10 @@ static func _bake(stat: StringName, variant: int, lean: int, season: int, closed
 	var foot: int = ry + stem + 1
 	if stat == &"clover" and season != SEASON_WINTER:
 		foot = maxi(foot, 2 * _clover_radius(rx, fold) + 4)   # the stalk shows under the lowest leaflet, the shadow stays clear of it
-	# winter field stalks differ by tint: the tint adds height, tints 1 and 3 carry a dry seed head, tint 2 is fully frosted
+	# winter field stalks differ by tint: each tint adds three texels of height, tints 1 and 3 carry a dry seed head, tint 2 is fully frosted
 	# and tint 0 has only a frosted tip
 	var tint_w: int = field_tint(variant) if is_field(variant) and season == SEASON_WINTER else 0
-	var stem_top: int = 0 if season != SEASON_WINTER else -ry - tint_w
+	var stem_top: int = 0 if season != SEASON_WINTER else -ry - tint_w * 3
 	var leaf_row: int = ry + 2 if season != SEASON_WINTER else foot - 2   # winter: the dead leaves lie at the stalk's foot
 	for y in range(stem_top, foot):
 		cells[Vector2i(0, y)] = Color(LEAF_DARK)
