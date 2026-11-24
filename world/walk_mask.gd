@@ -24,10 +24,18 @@ static func use(mask_path: String, mask_offset: Vector2i = OFFSET) -> void:
 	_tried = false
 
 
+## Starts loading a zone's mask on a worker, so the first walk there does not load it on the main thread (a synchronous
+## load of the walkable map cost about 34 ms on the return to the meadow). An empty path means the meadow's mask.
+static func prefetch(mask_path: String) -> void:
+	var p: String = PATH if mask_path == "" else mask_path
+	if p != path or _img == null:
+		ZoneAssets.prefetch(PackedStringArray([p]))
+
+
 static func image() -> Image:
 	if not _tried:
 		_tried = true
-		var tex: Texture2D = load(path) as Texture2D   # imported resource: works in exports too
+		var tex: Texture2D = ZoneAssets.texture(path)   # prefetched on a worker when the zone was entered, else loaded here
 		if tex != null:
 			_img = tex.get_image()
 	return _img
