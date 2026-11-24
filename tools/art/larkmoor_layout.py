@@ -16,7 +16,7 @@ SPAWN = (760, 676)
 HOLLOW_GATE = (760, 716)      # arrival arch (decor + exit back to the onboarding meadow)
 EMBER_GATE = (760, 268)       # the gate that leads on to Zone 2, set into the northern cliff
 
-# Main route: S -> Gatehouse Green -> fork W (Heronmere) / E (Thistle Rise) -> Old Oak Crossing -> N fork -> Emberwatch.
+# Main route: S -> Thistledown Green -> fork W (Heronmere) / E (Foxglove Rise) -> Heather Hollow -> N fork -> Starbloom Terrace.
 PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 520), (770, 486), (762, 454), (752, 420), (756, 386), (770, 350), (766, 310), (760, 268)]
 PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094, 550), (1090, 536), (1060, 520), (990, 500), (900, 490), (770, 486)]   # the tip now ends at the windmill's south door (1090, 520), so the fold leads somewhere
@@ -31,11 +31,18 @@ PATH_TIER = ['road', 'lane', 'lane', 'trail']
 # They give the new north and bottom-right land its shape. Width w is in radians.
 LOBES = [(-135.0, 0.20, 0.55), (0.0, 0.16, 0.50)]
 
-# Water: a big lake in the west, a mere in the north-east, a stream that cuts the middle (bridge on the main route).
+# Water: one connected river. It leaves Heronmere's north-east shore, bends east through the middle and runs into the mere in
+# the north-east, so the three bodies of water read as one system (no orphan puddles). The channel is about 13 texels wide, and
+# the walker can jump it (world/texel_walker.gd: a jump may carry the walker over water, and landing in water pushes it to the bank).
+# Control points for a smooth, meandering course; _catmull() densifies them below. The river crosses two paths: the main road
+# (BRIDGE, the wide bridge) and the west trail (FOOT_CROSSING, a plank footbridge).
 LAKE = dict(c=(470, 520), rx=118, ry=60)
 MERE = dict(c=(1120, 392), rx=70, ry=36)
-STREAM = [(430, 330), (520, 372), (610, 430), (700, 452), (800, 458), (900, 450), (990, 438), (1060, 420)]
-BRIDGE = (762, 454)           # where the main path crosses the stream
+STREAM_CTRL = [(500, 512), (534, 506), (566, 500), (594, 488), (630, 476), (680, 466), (730, 460), (762, 456), (806, 462),
+               (856, 458), (910, 446), (964, 436), (1016, 426), (1062, 410), (1100, 398)]
+STREAM = []                   # filled from STREAM_CTRL once _catmull() exists (below)
+BRIDGE = (762, 456)           # where the main path crosses the river
+FOOT_CROSSING = (594, 487)    # where the west trail crosses the river
 
 # Pad rows: a tier is a row of pads laid on a smooth curve (a Catmull-Rom spline through a few control points) that follows the
 # ground beside a path. `curve_row(ctrl, n)` lists n pads from the first to the last, PAD_GAP apart along the curve (authored
@@ -55,6 +62,9 @@ def _catmull(pts, k=24):
                                     + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3) for c in (0, 1)))
     out.append(tuple(pts[-1]))
     return out
+
+
+STREAM[:] = _catmull(STREAM_CTRL, 10)
 
 
 def curve_row(ctrl, n, gap=PAD_GAP):
@@ -82,13 +92,13 @@ def curve_row(ctrl, n, gap=PAD_GAP):
 # A district with a row takes its centre from the row (_lay_rows). Lanternwood and Cairnfold (the stones) have no pads, so
 # their entries sit in the list without moving the pad order.
 DISTRICTS = [
-    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=curve_row([(816, 656), (856, 662), (896, 654), (936, 640)], 5),
+    dict(id='green', name='Thistledown Green', c=(760, 640), pads=curve_row([(816, 656), (856, 662), (896, 654), (936, 640)], 5),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
     dict(id='reedgate', name='Reedgate', c=(670, 624), pads=curve_row([(716, 664), (676, 660), (636, 656), (598, 650)], 5),
          note='Where the west road leaves the main road for the lake, with the first reeds beside it. The Sprout row lines the road.'),
-    dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
+    dict(id='oak', name='Heather Hollow', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
-    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(986, 640), (1026, 648), (1064, 646), (1100, 632)], 5),
+    dict(id='thistle', name='Foxglove Rise', c=(1030, 560), pads=curve_row([(986, 640), (1026, 648), (1064, 646), (1100, 632)], 5),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
     dict(id='heronmere', name='Heronmere', c=(540, 637), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
          note='West lake with reed shores and a little jetty. The Clover row lines the road along the south shore, pad 1 nearest the arrival gate.'),
@@ -96,7 +106,7 @@ DISTRICTS = [
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
     dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[],
          note='Rocky foothills, glowing crystals, a ring of standing stones. No pads.'),
-    dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=curve_row([(806, 350), (830, 338), (858, 334)], 3),
+    dict(id='emberwatch', name='Starbloom Terrace', c=(760, 310), pads=curve_row([(806, 350), (830, 338), (858, 334)], 3),
          note='Last plaza before the quarry. The Starbloom row, and the far gate set in the cliff.'),
     dict(id='westmere', name='Westmere', c=(332, 512), pads=curve_row([(296, 494), (326, 508), (352, 514)], 3),
          note='West bank of the lake, reached by the west trail. No gate. Three more Starbloom pads: the Starbloom row runs on here.'),
@@ -122,6 +132,7 @@ GROVES = [
     ('crystals', (520, 340), 40, 2), ('crystals', (640, 296), 40, 2), ('crystals', (1100, 300), 40, 1),
     ('oak', (1150, 620), 45, 3), ('bush', (1110, 720), 40, 4),                  # new bottom-right land
     ('rock', (470, 250), 40, 2), ('pine', (440, 230), 40, 3),                   # new north-west land
+    ('pine', (1190, 380), 40, 4), ('oak', (1010, 240), 50, 4), ('bush', (1150, 470), 40, 4),   # north-east candidates: the forest edge, and oaks and bushes at the watchtower grove's density
 ]
 
 
@@ -206,7 +217,7 @@ for _d in DISTRICTS:
 # keep their texel size, so grove counts scale by S squared to keep the same density. The scene loads props by chunk around
 # the walker (world/larkmoor_scene.gd), which keeps the live node count under the 1350 ceiling.
 def _apply_scale():
-    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, GROVES
+    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, FOOT_CROSSING, PAD_CLEAR, GROVES
     def sc(p): return (p[0] * S, p[1] * S)
     W, H = round(W * S), round(H * S)
     OX, OY = OX * S, OY * S
@@ -219,6 +230,7 @@ def _apply_scale():
     LAKE['rx'], LAKE['ry'] = LAKE['rx'] * S, LAKE['ry'] * S
     MERE['rx'], MERE['ry'] = MERE['rx'] * S, MERE['ry'] * S
     STREAM[:] = [sc(q) for q in STREAM]
+    FOOT_CROSSING = sc(FOOT_CROSSING)
     for d in DISTRICTS:
         d['c'] = sc(d['c']); d['pads'] = [sc(q) for q in d['pads']]
     for lm in LANDMARKS: lm['at'] = sc(lm['at'])

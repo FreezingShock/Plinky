@@ -59,7 +59,57 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 ## 2026-11-24: Larkmoor props stream by camera view, under a node budget
 - **Why:** the walker ring alone (LOAD_RING 2) leaves the screen edges empty when the camera is panned away from the walker, so props pop in at the edge. The on-screen area is also larger than the ring at some zooms.
 - **What:** `_set_view` reads `GraphicsQuality.visible_local_rect(self)` once per sync. A chunk is wanted when it is in the walker ring or on screen plus `VIEW_MARGIN_LOAD` (1 chunk). A loaded chunk stays while it is in the walker's keep ring or within `VIEW_MARGIN_KEEP` (2 chunks) of the screen, so an edge does not churn. Both are clamped to the map (`_map_chunks`). The queue is ranked walker ring, then on screen, then the margin (`_queue_rank`).
-- **Budget:** chunks outside the walker ring load only while the scene's node count plus the chunk's props stays under `VIEW_NODE_BUDGET` (1300), so the view never takes a zone past the 1350 ceiling. The walker ring always loads, so tour stops near the ceiling lose view margin first, not walker props.
+- **Budget:** chunks outside the walker ring load only while the scene's node count plus the chunk's props stays under `VIEW_NODE_BUDGET` (1300). The outer walker ring loads under `RING_NODE_CEILING` (1330). The walker's own chunks always load. Tour stops near the ceiling lose view margin first, not walker props.
+- **Hard ceiling (2026-11-24, PC QA):** the check only runs when the streaming moves, so a menu or HUD row built after a load can push the count past 1350 (QA saw 1357 on the diagonal at zoom 1). `NODE_HARD_CEILING` (1340) is checked every frame: while over it, one loaded chunk off the screen and beyond the walker's ring unloads, the farthest first (`_shed_over_ceiling`). It does nothing under the ceiling, so it costs no pop-in in normal play.
 - **Bush list:** an unload now rebuilds the rustle list (`_rebuild_bushes`). Before, a view-only unload left freed sprites in `LifeReact`, which cast-errored every frame.
-- **Measured (headless, no renderer, Godot 4.7.2, `tools/larkmoor_view_probe.gd`):** at zoom 1, 2 and 4, five pans each (the walker spot plus 900 and 600 texels away, and a diagonal), every frame checked: 0 frames with an on-screen chunk unloaded. Max node count 1154 at zoom 1 and 1121 at zoom 2, both on the diagonal pan; 1105 at zoom 4. Baseline idle at the spawn was 995 nodes, now 1005.
+- **Measured (headless, no renderer, Godot 4.7.2, `tools/larkmoor_view_probe.gd`):** at zoom 1, 2 and 4, five pans each (the walker spot plus 900 and 600 texels away, and a diagonal), every frame checked: 0 frames with an on-screen chunk unloaded. Max node count 1154 at zoom 1 and 1121 at zoom 2, both on the diagonal pan; 1105 at zoom 4. Baseline idle at the spawn was 995 nodes, now 1005. With the 1300 budget and the hard ceiling (same probe, 2026-11-24): still 0 pop-in frames at every zoom and pan, peak 1298. The diagonal leg (`tools/larkmoor_hitch_probe.gd`) peaks at 1300 headless.
 - **Not run in-engine:** frame time, pan feel and the edge look. The PC pass should pan at zoom 1 and 2 and watch the edges.
+
+## 2026-11-24: Larkmoor lamp glows draw in one node
+- **What:** the lamp-head glows were one child Sprite2D per lamp. They are now one `LampGlows` node (z 6, additive) that draws every loaded lamp's glow (`_draw_lamps`). The positions are rebuilt when a chunk loads or unloads (`_rebuild_lamps`), not every frame. The rain multipliers from #454 are unchanged: alpha is `night * bloom.y`, size is `bloom.x`, and the node applies them once.
+- **Why:** one batch instead of one draw per lamp. In an A/B on the 1951 to 2092 band, hiding the lamp glows cut the average from 15.6 to 13.0 ms.
+- **Checked:** cloud render at night and in rain matches main within about 3 units per channel (rain thread). On the PC, night and rain at zoom 1 and 3 match main (batch 116).
+- **Not done:** spawning a chunk's props over several frames was tried and dropped. It cut the frame-4 spike on the reload walk from 33 to 18 ms but pushed frame 5 from about 13 to 20 to 22 ms. The untimed cost of those frames is still open.
+
+## 2026-11-24: A pinned season moves the calendar (winter pin now reaches the clock and the flowers)
+- **Cause:** `SkyCycle.debug_season` (tools and screenshots) only changed the sky's season weights. The HUD clock, the flower gardens (frost comes from `Calendar.now()`) and the sim's season bonuses all read the real calendar, so a winter pin showed snow on the ground but still read Early Spring and drew no frost.
+- **Fix:** `SkyCycle._update_season` jumps the calendar to the pin (`GameCalendar.jump_to_season`) whenever the calendar is in another season. Pure rule: `SkyCycle.pin_jump_needed(pin, current)`.
+- **Scope:** only when the pin is set, which is tools and tests. Normal play never sets it.
+- **Not verified on the PC:** whether frost reads clearly at zoom 1 and 4 once the flowers switch.
+## 2026-11-24: Walk grid cells are open only when every pixel is walkable
+- **Why:** the Larkmoor path-tier PR (#406) changed trees, and its route test failed on one Westmere route: a waypoint step crossed a 3-cell hole in the walk mask. The hole was on main too. `WalkMask._build_grid` sampled only a cell's corners and centre, so a hole smaller than a cell could sit inside an open cell and a route could cut across it.
+- **What:** `world/walk_mask.gd` checks every pixel of each 4x4 cell and closes the cell on any blocked pixel. The old centre check is gone, since the full check covers it.
+- **Measured:** `tests/run.gd` 6651 checks, 0 failed. `tools/route_probe.tscn` (real walker, Larkmoor pads): main had 5 misses, this change has 3 (pads 5 and 9 now route). The other 3 are the same on main. Time 93 s with the change, 106 s on main, within run noise.
+- Not run in-engine: the play-through of the Westmere and Heronmere routes on a PC.
+
+## 2026-11-24: A pinned time of day moves the calendar clock (dusk pins no longer show daylight on the HUD)
+- **Cause:** `SkyCycle.debug_phase` (tools and screenshots) pinned only the sky, so the HUD clock stayed on the real time. The golden tool also set the calendar to the sun phase, which is a different scale from the clock (a sun phase of 0.73 is not clock 0.73), so its labels did not match the sky.
+- **Fix:** `SkyCycle._pin_clock` sets the calendar to `SkyModel.clock_of_phase(debug_phase)` whenever it is off by more than 0.005 of a day. The sky still takes the exact pin in `_model_time`, and the sky and calendar agree because `phase_of_clock` inverts `clock_of_phase`. Pure rule: `SkyCycle.clock_pin_needed`.
+- **Tools:** `tools/golden_shots.gd` no longer sets the calendar itself.
+- **Checked in the cloud:** the golden shot set prints HUD clocks 16:38 (golden), 18:38 (sunset), 20:13 (dusk) and 22:08 (night) for the matching pins.
+- **Not verified on the PC:** the batch 85 captures themselves.
+
+## 2026-11-24: Golden shot tool pins match the golden and sunset look (batch 87)
+- **Cause:** QA read the tool's pins as wrong. Sun phase 0.75 reads 19:12 on the clock and 0.76 reads 19:26, both evening and fairly bright. The labels were also off: 0.66 was named 16:30 but reads 16:36 (cloud run: 16:38).
+- **Fix:** `tools/golden_shots.gd` PHASES now uses 0.69 as golden (17:28, sun 0.37 up, full golden look) and 0.73 as sunset (18:37, sun still above the horizon). The other labels are recomputed from `SkyModel.clock_of_phase` at daylight 0.6. Labels are within about 2 minutes of the HUD clock.
+- **Wildlife window, checked:** `MeadowLife.low_sun` (life_wild, life_critters, life_air, cozy_swarm) uses `SkyModel.low_sun`, which is 0.41 at phase 0.69 and 0.95 at 0.73, so the golden and sunset pins both sit inside it. It differs from `SkyModel.golden()` in the morning and afternoon: `low_sun` is 0 at noon, `golden()` keeps 0.35. Wildlife was left as it is, because changing it would alter spawn and behaviour, not only the tool.
+- **Not run in-engine:** the cloud cannot run Godot, so the new captures and clock labels are not checked here. Tool-only change, so no changelog fragment.
+
+## 2026-11-24: Pad costs show on wooden signs, on every row's first pad, open or locked
+- **Cause:** the cost chip showed only on a locked row's first pad. The Starting Clearing sprout rows are open from the start, so their first prices (10 Sunlight) showed only in the hover tooltip.
+- **Fix:** `TexelPad._draw_cost_sign` draws a terracotta plank on a post beside the row's first pad: the cost (currency icon and amount) over the reward (stat icon and gain). Its top band is green when the cost is held and red when not. The plank widens only for a long cost or reward (`TexelPad.sign_box`).
+- **Node cost:** still one child node per row head (the old chip node), redrawn only when the held state flips. No new nodes, so the zone node counts are unchanged.
+- **Checked in the cloud:** `tests/run.gd` 6759 checks, 0 failed. Headless captures of the real `TexelPad` (open and locked) and of the real `main.tscn` opening pads show the signs.
+- **Not verified on the PC:** the Vulkan render of the signs. The cloud renders with OpenGL 3 under xvfb.
+
+## 2026-11-24: Pad cost signs show the live tooltip values and sit under the night shade
+- **Cause:** the sign showed "+1" from the button definition, while the tooltip shows the live gain (`Sim.press_gain_preview`, e.g. +439B). The sign also drew at z 11, above the night shade (z 5), so it stayed fully lit at night.
+- **Fix:** `TexelPad._refresh_sign` reads the cost (`Formulas.button_cost`) and the gain (`press_gain_preview`) with the same `format()` the tooltip uses, every 0.2 s, and redraws only when a value changes. The plank is a fixed 50 texels wide, so it never resizes. A value that is too wide drops its fraction first (`fit_sign_text`). The sign's z is now `LOCK_CHIP_Z` 4, between the plate (0) and the shade (5).
+- **Checked in the cloud:** `tests/run.gd` 6841 checks, 0 failed. Midnight and noon captures of the real `main.tscn`.
+- **Not verified on the PC:** the night look. In the cloud capture a sign inside a pad's glow still reads brighter than the dark ground, as the pad and the ground beside it do. The PC night shot is the check.
+
+## 2026-11-24: Quarry scene prefetch warms its script (gate walk parse error)
+- **QA finding:** walking onto the Larkmoor Ember gate logged `Parse Error: Failed` at `res://world/quarry_scene.tscn:7` (the script line) on every head tested, including before the entrance art. Direct zone-2 boots, which load on the main thread, were clean.
+- **Likely cause:** `main.gd` `_prefetch_scene` loads the scene on a worker thread, and the quarry script uses several game classes. The threaded load failed and `_take_prefetched` fell back to a plain synchronous `load`, so the quarry still opened (log error and a small stall).
+- **Changed:** `_prefetch_scene` first loads the scene's script on the main thread for scenes in `WARM_SCRIPTS` (the quarry only; Larkmoor's script preloads large textures, so warming it would bring the stall back). The threaded request then reuses the compiled script.
+- **Not run in-engine:** this is a read-the-code fix. PC QA should walk onto the gate and confirm the error is gone.

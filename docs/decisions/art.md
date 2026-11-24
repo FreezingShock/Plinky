@@ -288,6 +288,14 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
 - Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
 
+## 2026-11-24: Larkmoor wheat grows in irregular fields on tilled soil
+- Nathan picked two real-field shapes from mockups (g1 and g3) and asked for them to be placed irregularly round the farm. Shapes follow the irregular fields of varying size in satellite imagery of Germany (NASA imagery, via Geography Realm's "Agricultural Patterns Visible from Space"). `tools/art/farm_fields.py` builds them: a "notched" field (two lobes and a bite out of one edge) and a "blob" (a body, a bulge and a bump), as rounded rectangles in ground space, noise-warped, scaled and mirrored. Four fields (two of each) are placed by `FIELDS` in `tools/art/place_farm.py` where the walkable grass has room, found by a search over the farm box. The buildings and props (TARGETS) are untouched and belong to the barn thread.
+- Each field has a soil decal (`assets/art/zone1b/farm/soil/`, kind `farm_soil_N`): dark soil in furrows (EARTH dithered with INK), a headland a few texels wider than the wheat, and an edge that dissolves into grass through a 4x4 Bayer band. It is drawn only on walkable grass and never over a building or prop. Its foot is on its north edge, so it sorts behind everything south of it. It takes no rim light and casts no shadow (`FarmProps.is_soil`).
+- The wheat is wheat only, golden and late (brown), with no green sprouts (Nathan: not that tone of green anywhere). Roots, the root mass and the contact shadow are INK, not green, so the clumps sit on the soil. Colours are the eight palette roles only.
+- The fence ring follows each field's outline at 12 layout texels, 34 pieces with two walk-in gaps per field, placed before the wheat. It keeps the broken look from #367.
+- The silhouette cut: a stalk in front of the walker, within 9 texels of his column, stops 14 texels above his feet, so wheat tops do not cover him. It only runs for clumps near him, so it follows Reduce Motion (no push, no cut).
+- Numbers: 4 fields, 51 clumps (45 golden, 6 brown), 4 soil decals, 34 fence pieces in one node. Tests 6537 checks, 0 failed. Bench (low quality, cloud, software GL): Larkmoor 1211 to 1215 nodes at peak against the 1350 ceiling.
+- Checked in cloud captures only (xvfb, software GL), not on the PC. The field variation (short and thin patches) is subtle because tall wheat in front hides anything behind it from this camera.
 
 ## 2026-11-24: Bushes and rocks are re-shaped for the looking-down camera
 - Rocks: a tilted plane shaves each crown flat, so the top reads as one lit face with a bevelled rim. Facets drop from 3 to 5 down to 1 to 3 low side cuts, and the bumpy noise is halved on big rocks. Facets no longer split a stone into pieces.
@@ -301,6 +309,16 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Added style `f` (`style_stalks` in `tools/art/grass_tex.py`): style E's vertical stalks, denser inside each clump, with the crown lit and the base shaded from the upper left. E's bare lawn between clumps is kept. Compared A, E and F as ground-only crops in `/mnt/project-files/plinky/ground-grass/grass_styles_a_e_f_ground.png`. F reads most like the stalk field of mockup D.
 - Default stays `a` and no baked asset changes. The switch to a grass style belongs to the art-style thread. Recommended pick: F, for Nathan to confirm on PC at noon, since dawn grading hides texture.
 
+## 2026-11-24: Trees to the looking-down angle (audit)
+| Date | Decision | Why |
+|------|----------|-----|
+| 2026-11-24 | Oaks are already on the elevated 3/4 view. Crowns are lit from the upper left, the right side and underside take shadow, and the trunk shows. No change | Audit against wheat mockup D (style-guide "Camera angle standard"). Oak crown tops read as tops. |
+| 2026-11-24 | Pines get a light bias on their tier tops: upward-facing normals lift the baked light, downward ledges drop it (`tools/art/gen_larkmoor.py`, `tools/art/gen_meadow3d.py`). Silhouettes, footprints and placement stay identical | Each tier's top reads from above. The four-band pine ramp is kept, so the runtime re-pick (`prop_ramps.gdshaderinc`) is unchanged. |
+| 2026-11-24 | Conifers (material code 12) skip the seasonal foliage recolour in `render/shaders/wind_sway.gdshader`, so pines keep their green all year, snow included | The pink on pines was the spring blossom tint from `content/config/calendar.tres` (prop colour 0.96, 0.58, 0.72 at half strength), applied to every green texel. Blossom and autumn belong on broadleaf foliage. Snow on pines is a deliberate loss; revisit if Nathan wants it. |
+| 2026-11-24 | Tried wider tier steps. Rejected: the silhouettes got lumpy and grew detached tails | Those tails look worse than the gain at game zoom. |
+| 2026-11-24 | Not done: a dedicated pine tier-top band. That needs a fifth pine ramp band in `RAMP` and a regenerated `prop_ramps.gdshaderinc` | Larger change. Make it after Nathan picks a direction from mockups. |
+- Checked in the cloud render only (xvfb, software Vulkan), not on the PC. The pink pines in Lanternwood (spring blossom tint on conifers) are fixed by the conifer rule above; the before and after shots were taken at 09:03 and 09:10 in-game, so the light differs a little between them.
+- The conifer rule is runtime and applies to the committed sprites now. The tier light came in with PR #392 as generator code only. The follow-up bake (`gen_larkmoor.py` and `gen_meadow3d.py` on main after #399) regenerated the pine sprites and normal maps and the Larkmoor preview. Placement, the walkable mask and `ground.png` are unchanged. Five stale Larkmoor pine sprites (067, 068, 069, 129, 279) that no placement uses were left in place.
 ## 2026-11-24: Meadow grass blades are a shader layer, not nodes (interactive blades, slice 1)
 - `world/grass_blades.gd` + `world/grass_blades.gdshader`: one quad over the meadow ground. Blades are generated per texel from a hash (one base per 3x3 cell, patch density from value noise), so there are no nodes per blade and nothing extra loads.
 - Blades draw only on grass texels (the ground is palette-exact), so paths, dirt, water and pad plates stay clear. The wind wave and the walker bend use the same rules as `LifeGround.bend`. The node owns its material and sets the wind and pusher uniforms; gameplay still emits nothing new.
@@ -308,6 +326,15 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Checked in the cloud render only (xvfb, lavapipe): no shader errors, tests pass. Not verified on the PC: the wind and walker bend, and the look at noon.
 - Follow-up on the same PR: each rock and bush gets a thin, soft-edged dark contact slab under its foot, wider than the stone, so the base reads as shade on the ground. Rock tops are flatter (tilt .03 to .14). After main moved under the PR, the Larkmoor ground was regenerated, then `gen_gardens.py` (flower placement reads the ground) and the sway tips were refreshed; 6 sway tips were removed. Suite: 6428 checks, 0 failed.
 
+## 2026-11-24: Grass style F is the default for the meadow and Larkmoor
+- Nathan picked F on the decision card (A, E and F compared at bake, in engine at dawn, and at pinned noon and golden hour).
+- Empirics: A, E and F have the same colour mix (within about 0.5 points) and speckle density. They differ only in arrangement. F reads as stalks at 3x; at 1x the change is subtle under the dawn and noon grades.
+- Changed: `GRASS` default is `f` in `tools/art/gen_meadow3d.py` and `tools/art/gen_larkmoor.py`. Baked `ground.png`, `ground_n.png` and `ground_fg.png` for both zones. Heights, backdrops and sprites are unchanged, since grass does not touch them.
+- Regenerated for the new ground: `world/meadow_life.json` (53 sway tips had left palette 4) and `world/larkmoor_life.json` (sway, flowers, pads and water from `tools/art/gen_life_anchors.py` with `--bounds 0,0,3040,1840`; farm, perches and forest edge kept), and `world/larkmoor_gardens.json` from `tools/art/gen_gardens.py`.
+- Larkmoor life counts on F: sway tips 1674 (same as before), butterfly flower spots 240 down to 185.
+- Withdrawn: an earlier count of 193 sway tips came from a bounds mistake (the default 640 window), not from F. Use `--bounds 0,0,3040,1840` for Larkmoor life.
+- The Larkmoor A bake reproduces the committed ground exactly (0 texels differ), so the pipeline is trusted for both zones.
+- Open: PR #378 and #395 put the blade shader over the grass. Their threads judge the combined look in engine and thin the blades if they double up.
 ## 2026-11-24: Larkmoor grass blades draw per loaded chunk, in one node
 - `GrassBlades` gets a chunked mode. It draws one shader rect per loaded prop chunk (`chunk_loaded` / `chunk_unloaded` from `LarkmoorScene`), in a single node, so the grass follows the streaming and adds no node count. The rects are in zone texels, the same space as the blades.
 - Pushers are a list of up to 6 points: the walker and the rabbits, chickens and frogs that are showing (`LifeCritters.ground_pushers`, read-only). Ducks are not included yet.
@@ -320,3 +347,51 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Cost, measured in the cloud (lavapipe, CPU-rasterised, so absolute numbers are not PC numbers; High, 150 frames per phase, `tools/bench.gd`): meadow noon average 40.2 ms with blades off, 57.1 ms with the first shader, 47.1 ms after the cell-limited shader. Larkmoor noon 58.9 / 64.7 / 56.1 ms. The blades' cost is per-pixel ALU over the whole screen, and the cell limit trims it about 17% on the meadow. Not measured on a GPU.
 - The shader now checks only the cells that can reach a pixel (2 texels to each side, 2 below), not all 15 candidates. Output is the same except where two blades overlap a texel, where the first one found wins.
 - Ducks are in the pusher list (`LifeCritters.ground_pushers`).
+## 2026-11-24: Lightning in heavy rain (recommendation 9, third of three)
+- **Look:** a brief cool-white lift on the whole frame in heavy rain (rain at 70% of max and up), made in the light grade pass (`light_grade.gdshader`, uniform `flash`). A strike flickers twice over about half a second.
+- **Schedule:** `SkyModel.lightning_flash(t, rain01)`, pure. Each 40 s window has a strike half the time, at a hashed moment, so the same time always gives the same flash and the test can check it.
+- **Flashing:** zero under Reduce motion or Reduce flashing (`steady` in `SkyCycle._update_light`). Reduce flashing defaults off, so lightning plays by default, as the handoff asked.
+- **Low quality:** the light grade pass is skipped on Low (`GraphicsQuality.screen_grade`), so Low shows no lightning. Thunder sound is not included.
+- **Not verified in-engine:** how strong the lift reads on the PC, and how often a strike falls in a real downpour.
+## 2026-11-24: Larkmoor farm fields, edge groves and fences are re-laid (Nathan picked mockup C)
+- **Decision:** `tools/art/place_farm.py` now lays seven fields (the original four plus three on the open grass south of them, found by a search over free walkable grass), a taller farm box (`BOX` is `(1090, 548, 260, 276)` layout texels, so it runs south of the yard), two tree groves on the south and east edge, and fences that follow the outside of each run.
+- **Paths:** the old placer kept 12 canvas texels from the drawn sand. Wheat and soil now keep `FIELD_SAND_CLEAR` (22 canvas texels, 11 layout), fence chords `FENCE_SAND_CLEAR` (10). The walkable mask counts paths as walkable, so every check reads the drawn sand pixels in `ground.png`, never the mask. Nathan's mockup feedback traced to this.
+- **Continuous fields:** fields may touch (their soil decals overlap, so the bed runs together). `SOIL_REACH` (7 layout texels) takes the soil up to within 5 of the fence at `FENCE_OFFSET` 12. A fence chord inside a neighbouring field's soil is dropped, and a run shorter than `FENCE_MIN_RUN` (3 chords) is dropped, so there are no inner fences and no stubs.
+- **Packing:** `GRID_X` 7.5 and `GRID_Y` 4.5 layout texels, `WHEAT_DX` 15 and `WHEAT_DY` 9 canvas texels, and a clump foot may stand 3 texels outside the outline (`EDGE_INSET`), so the wheat fills out to the soil with only light overlap. 176 clumps, up from 57.
+- **Groves:** the biggest oaks and pines (`TREE_FILES`) are copied into `assets/art/zone1b/farm/trees/` and placed as plain props (`farm_tree_N`). The placer checks only the trunk foot, so a crown may hang past the grass. This avoids editing `gen_larkmoor.py`, which other threads own. Ten trees fit; the free grass south and east is narrow.
+- **Budget:** the bench (low quality, headless) shows Larkmoor at 1178 nodes at peak against the 1350 ceiling. The farm test's node budget goes from 120 to 240.
+- **Checked:** in the cloud with Godot 4.7.2 under xvfb and software Vulkan (shots in `/mnt/project-files/plinky/farm-edge-in-engine/`), tests 7740 checks, 0 failed. Not checked on the PC. `tools/farm_edge_shots.tscn` captures the farm at day and night (`-- zoom=1|2`).
+
+## 2026-11-24: Pad beds drawn from above
+Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mockups/` on the project files, over the stalks and the planter. The beds are baked by `tools/art/gen_pad_beds.py` into a leaf layer, a shade layer and a greyscale bloom layer, so the stat colour and the colour-blind tint still apply at runtime. The side sprouts, the gold crown and the twinkle glints are now in the art or gone; a glint pass can come back on the bloom tops.
+## 2026-11-24: Walker is redrawn from above with 8 facings (Nathan picked mockup B)
+- **Look:** mockup B of the three walker mockups. The walker is drawn from the elevated, looking-down view: a lit shoulder top plane, a domed hood with the face set lower in it, and lit toe caps. The silhouette, cloak colours, scarf and satchel stay.
+- **Facings:** N, NE, E, SE, S, SW, W, NW. Five are drawn (E, SE, S, NE, N) and SW, W and NW are mirrors at runtime, so the art is not duplicated. The mirror keeps light from the upper left, as the other flipped sprites do.
+- **Idle keeps the last facing,** so the walker stays turned the way it last moved. It used to snap to front.
+- **Atlas:** 55 cells in 8 columns (512 x 448). `world/walker_pose.gd` holds the cell numbers and the octant mapping, and `tests/test_walker_pose.gd` checks them.
+- **Not verified in-engine on the PC:** the diagonal three-quarter views and the sprint tails at normal zoom. Checked in the cloud with Godot 4.7.2 under xvfb, `tests/run.gd` passes (7890 checks) and `tools/walker_cells_shot.gd` draws every facing and phase through `WalkerBody`.
+## 2026-11-24: Rain glow and moonlit puddles (Nathan picked mockup C of three)
+- **Look:** in rain, each lamp pool grows 35% wider and 40% brighter (`SkyModel.lamp_bloom`, full rain at 1.0). The flower-field glow grows 50% (`FlowerGlow.RAIN_BLOOM`). Each lamp is mirrored in the wet ground 14 texels below it, dithered by the Bayer matrix so it reads as puddle glints, not a sheen. Night puddles lighten toward a moon grey-teal instead of black.
+- **Where:** `SkyCycle._push_lights` (bloom), `day_night.gdshader` (`reflect_amt`, mirror summed in the same pool loop), `SkyCycle._update_light` (puddle colour, reflect amount), `FlowerGlow._apply_alpha` (flower bloom; alpha now follows rain even with Reduce motion on).
+- **Rejected:** a stronger bloom (about twice the first) floods the flower fields in blue, so it is not the look.
+- **Pure:** `SkyModel.lamp_bloom` is tested in `tests/test_weather.gd` (dry unchanged, wet brighter, monotone, capped).
+- **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests 7787 checks, 0 failed. Night and dusk, clear and rain, in `tools/weather_mock_shots.tscn`. Frame times in `tools/weather_perf.tscn` are within noise of the old build on software Vulkan, so the cost is not measured on a GPU.
+- **Not verified on the PC:** how strong the mirror reads on a real GPU, and the night look at full quality.
+- **Not in this change yet:** drips off trees and roofs, the sound layers, and the fog and snow pass. These need their own mockups.
+
+## 2026-11-24: Pad signs clear of the beds, mounds fuller
+- **Nathan's note (PC QA, batch 103):** the plank sign sat over the pad's centre bed, and the mound was not clearly separable at zoom 1.
+- **How:** `SIGN_X` moves from 17 to 26 texels, which clears the bed's right edge (x 24) and the plate's right corner. The plank keeps its height and width, so the text and the post still fit. `tools/art/gen_pad_beds.py` raises the head radii about 15% (`HEAD_R` 1 to 5: 4.2, 3.4, 3.1, 2.8, 2.6). It regenerates `assets/art/zone1/pads/`.
+- **Check:** the headless suite passes (7941 checks). An in-engine contact sheet (`tools/pad_sheet.tscn -- rich`, xvfb with lavapipe) shows the sign beside the bed and the stage 1 and 2 mounds as separate domes at 1x.
+- **Not checked:** the night and dusk tones, and the walker's footprint against the moved sign. PC QA should look at those.
+## 2026-11-24: Farm wheat clumps are canvas items under one node (Larkmoor was over the node cap)
+- **Decision:** `FarmWheat` creates each clump as a `RenderingServer` canvas item parented to the y-sorted prop parent, at the clump's foot, instead of a `Sprite2D` per clump. One node owns all 176. The items y-sort against the walker, trees and props exactly as the sprites did, because the renderer sorts a parent's child items by their transform origin. Plain props, trees, the fence and soil stay `Sprite2D` (they take the rim material or shadows).
+- **Why:** #434 laid 176 clumps, which put Larkmoor at 1357 against the 1350 ceiling. The bench now shows about 1000 nodes at peak. A single draw node would have lost the per-clump sort with the walker.
+- **Same look:** same sheet frames, same live redraw near the walker, same nearest filter. Day shots at five spots match before and after except for the gust and sun clock. Tests 7941 checks, 0 failed. Not run on the PC.
+
+## 2026-11-24: Lamps spread into mist (Nathan picked "fog halo only" of three)
+- **Look:** at full mist each lamp pool grows 60% wider (`SkyModel.fog_halo`, `FOG_HALO` 0.6). Clear air leaves the lamps as they were. Mist comes from `SkyModel.mist` (dawn, dusk and after rain), and `MeadowLife.fog` carries it to the lights. Outdoor scenes only.
+- **Not changed:** the lamp-head glow sprites do not grow with mist, only the light pools. That keeps this change off the batched lamp glows (#463).
+- **Rejected for now:** tree drips off the crowns. They are small in still frames and need a look in motion on the PC first. The prototype is kept in the project files, not committed.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests pass; the fog halo is tested in `tests/test_weather.gd`.
+- **Not verified on the PC:** how far the spread reads at dawn in a real mist.

@@ -8,6 +8,8 @@ const MAX_FRAMES: int = 900
 const TITLE_SETTLE_SECONDS: float = 1.5
 const GAME_HOLD_SECONDS: float = 1.5
 
+var _settle: float = TITLE_SETTLE_SECONDS
+
 var _out: String = ""
 var _frames: int = 0
 var _elapsed: float = 0.0
@@ -27,6 +29,11 @@ func _ready() -> void:
 		driver.set_meta("driver", true)
 		get_tree().root.add_child.call_deferred(driver)
 		return
+	# TRANSITION_SETTLE=<seconds> presses Play that long after the title appears (default 1.5). Pressing during the
+	# title's own reveal is the race that stalls Play (see the same-backdrop notes in docs/decisions/hud.md).
+	var env_settle: String = OS.get_environment("TRANSITION_SETTLE")
+	if env_settle != "":
+		_settle = env_settle.to_float()
 	var env_out: String = OS.get_environment("TRANSITION_OUT")
 	_out = env_out if env_out != "" else "/tmp/transition_frames"
 	DirAccess.make_dir_recursive_absolute(_out)
@@ -63,8 +70,8 @@ func _process(delta: float) -> void:
 	if _state == "boot" and scene is TitleScreen:
 		_state = "title"
 		_state_t = 0.0
-	elif _state == "title" and _state_t >= TITLE_SETTLE_SECONDS:
-		_event("press play")
+	elif _state == "title" and _state_t >= _settle:
+		_event("press play swap_busy=%s" % str(SceneSwap.is_busy()))
 		(scene as TitleScreen)._on_play()
 		_state = "swapping"
 		_state_t = 0.0

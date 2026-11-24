@@ -203,6 +203,20 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
 
+## 2026-11-24: Larkmoor wildlife presence (PC QA on v0.83.3)
+- **QA:** dragonflies at most one by day, no fish or deer seen, nothing at dusk.
+- **Counts follow the light by rank:** the first ceil(share * count) of each kind are out (`LifeWild._rank_out`). Before, one hash decided whether the single deer and each dragonfly was out, so a bad seed hid the whole kind.
+- **More of each:** six dragonflies (was three), three deer (was one), three owls (was two), fish leap every 2.5 to 6 s (was 5 to 16).
+- **Near the walker:** dragonflies, fish and deer pick their next spot near the walker when one exists (`NEAR_WALKER` = 160 iso texels), so they show where the player walks. Scared creatures still go away from the walker.
+- **Readable sprites:** dragonfly with paper wings and a gold head (9 x 3), gold fish with a paper eye (8 x 3), earth-brown deer with a paper belly (10 x 8).
+- **Not run in engine:** the dusk deer on PC. The deer is visible in the cloud render at 1x, but its colour on PC is unchecked.
+## 2026-11-24: Larkmoor river, jumpable water, bridges and the south-west rim
+- **Water:** one river now runs from Heronmere's north-east shore, through the bridge at (762, 456), into the mere. It is about 14 texels wide with a 3 texel depth. The lake-rim carve no longer leaves a dry gap, so the river and lakes join. The walk mask marks water in green and walkable ground in red and blue, so `WalkMask.is_water()` is one channel read.
+- **Walker:** `texel_walker.gd` lets an airborne step cross water (`_try_step(step, airborne)`). On landing in water, `WalkMask.landing()` returns the nearest walkable texel within 60, and the walker splashes. Reason: a jumpable stream instead of a wall, with no drowning state.
+- **Bridges:** the main bridge is a planked deck with rails, posts and stone abutments (`BRIDGE_HX/HY/DZ` = 17.5, 10.5, 4.0). The footbridge is smaller (13, 3.8, 2.6). Both are tall kinds with `BLOCK_R` 0 and their foot is drawn 40 texels higher, so the walker draws over the deck. Deck texels stay walkable.
+- **Rim:** the south and west edges get a raised ridge (`env_ang` floor of 0.8 from the map edge angle). This is a first pass, not full mountain ranges. Higher ridges with ridged noise are the next pass.
+- **Life data:** `--add-keys` keeps the existing `sway` list and writes only the other keys. After a backdrop change, run the full `gen_life_anchors.py` (no `--add-keys`) first, then the same command again with `--add-keys --farm ...`. Skipping the first run left 430 sway tips off palette 4 (fixed on this PR).
+- **Not run in engine:** the cloud has no PC Godot. The headless suite passes (6149 checks). Walking the bridge and jumping the river still needs a PC walk check from each bank.
 ## 2026-11-24: Larkmoor tree spacing (review slice 1)
 - Trees now keep a real gap between crowns: `TREE_GAP` oak 6 and pine 8 texels in `gen_larkmoor.py` (the old gap was 1.5, so trees stood in walls). The north-east pine groves go from 14 and 8 down to 10 and 6 (the two groves at (1040, 330) and (1120, 330)). Thinner than that dropped the forest-edge count under the test floor (`forest_edge` >= 6, `tests/test_wild.gd`), so the groves stay at 10 and 6.
 - Regen order after the grove change: `gen_larkmoor.py`, then `gen_life_anchors.py` (base run), then `gen_life_anchors.py --add-keys --farm assets/art/zone1b/farm/farm.json` (writes `perches`, `forest_edge` and `farm_items`), then `gen_gardens.py` (its flowers test checks the ground pixels).
@@ -228,6 +242,15 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Flower pads change the slab itself from stage 3: a one texel tier-colour stripe on the side faces (stage 3), a second lighter one (stage 4), gold stripes on rows 1 and 3 (stage 5). The stage 5 crown is now an outlined gold band with five points and a white jewel, one texel above the flower. Stripes and crown are skipped on locked pads. | Stages 3 to 5 differed only by flower count and a one texel crown line, so they blurred together at 1x. Reviewed in `tools/pad_sheet.tscn`. |
 | The Thistle garden reaches 100 uv (was 82) with 100 big flowers per plate (was 66). | The row's field was a thin strip beside the road. |
 | `tools/garden_shots.gd` takes `-- phase=0.95` to shoot a row at night. | Night review of the rows. Software Vulkan hits the shader-instance limit after about six night shots; shoot the later rows by themselves. |
+## 2026-11-24: Larkmoor path hierarchy (review slice 2)
+- **Tiers, in widths:** `HALF` in `gen_larkmoor.py` gives each tier its own half-width: road 12, lane 7.5, trail 4 texels (before: one 10.5 for every path). The tiers are the existing `PATH_TIER` in `larkmoor_layout.py` (main route road; west and east forks lanes; windmill track trail).
+- **Materials:** roads and lanes keep the trodden path material (`T_PATH`). Trails get their own worn ground, `T_TRAIL` (109), a darker ramp, so a narrow track reads as used but not paved. Grass texture never lands on either.
+- **Edges:** each tier's edge keeps the ragged noise and the rock cut. Shade falls off at each tier's own edge.
+- **Decor clearance:** `ok_spot` now measures from the nearest path EDGE (`dedge`), not the centre line, so trees and bushes keep clear of a wide road without the trail's narrow edge pushing them out. Expect fewer props right beside the main road.
+- **Lamps:** the lamp check drops the path-edge test (`path=False`): the 19-texel offset already clears a lane or trail, and the edge test had removed every road lamp (15 lamps against 23; now 23, none closer than 80).
+- **Forest edge:** `EDGE_SPACING` 60 to 50 in `gen_life_anchors.py`. The tighter tree clearance cost one deer-edge tip (5 against the test floor of 6); the spacing change brings it back to 6.
+- **Tests:** `tests/run.gd` 6418 checks, 0 failed (Godot 4.7 headless, lavapipe).
+- **Not yet:** the verge flower ring still follows the centre line (slice 3 replaces it), so it sits closer to the road edge than before. The bridge and water are the water thread's; the road is now 24 texels wide, so the bridge needs to span at least that.
 
 ## 2026-11-24: Starting Clearing flower fields
 | Decision | Why |
@@ -235,6 +258,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | `tools/art/gen_clearing_gardens.py` writes `world/clearing_gardens.json` (format 2, 163 flowers) for the Sprout row (dewdrop) and the Clover row (clover). `world/meadow3d_scene.gd` draws it with one `GardenLayer` node, the same as Larkmoor. The meadow's ground and placements are read as they are, so no art regen was needed. | The Starting Clearing pads were the only ones without a field. The 3-pad rows keep their count (the tutorial). |
 | Field distances use the ground's own path, water and dirt colours (the Larkmoor palette, which the meadow shares), so no flowers sit on the path. | Nothing new to tune by hand. |
 | Checks: `tests/run.gd` 6429 checks, 0 failed. Screenshots in the cloud (xvfb, lavapipe): `tools/clearing_shots.tscn`. | The fields are in, but the meadow already has many baked flower beds and a gate banner covers part of the view. PC QA should judge the read at 1x and 2x, and night. |
+
+## 2026-11-24: Larkmoor district names follow their rows
+| Decision | Why |
+|---|---|
+| Renamed four districts: Gatehouse Green to Thistledown Green (Thistle row), Old Oak Crossing to Heather Hollow (Heather row, the oak stays as its landmark), Thistle Rise to Foxglove Rise (Foxglove row), Emberwatch to Starbloom Terrace (Starbloom north row). Reedgate, Heronmere, Westmere, Lanternwood and Cairnfold keep their names. | Nathan asked for each area to be named after its row. "Thistle Rise" sat on the Foxglove row, and the Thistle row was in Gatehouse Green. The gate and landmark wording (Emberwatch gate, ember_watchtower) is unchanged. |
+| Changed in `content/areas/*.tres` (display_name), `assets/art/zone1b/larkmoor/placements3d.json` (district names), `tools/art/larkmoor_layout.py`, and code and tool comments. The farm keeps its own name and now sits in Foxglove Rise. | Keeps the layout, the art data and the in-game names in step, so a regenerate does not bring the old names back. |
+| Checks: `tests/run.gd` 7783 checks, 0 failed, on current main (v0.94.0) plus these renames. Not run in-engine: the banner and district text on a PC. | Name changes only, so the tests cover the lookups. |
 
 ## 2026-11-24: Foxglove and Starbloom fields thicker
 | Decision | Why |
@@ -257,3 +287,72 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | `tests/test_lighting.gd` checks that each meadow lantern life light is a night pool and that the lantern sprites share one size. `tools/lantern_shots.tscn -- meadow` shoots the meadow lanterns at night, dusk and noon. | Regression guard, and the shot tool for the PC check. |
 | A fresh bake on main matches the committed placements except `bush_027`'s width. Some committed sprite and ground files already differed from a fresh bake before this change (`oak_018_n`, `crystals_039_n`, `bush_027`'s width, the ground images and the preview). They were left alone. | Keeps this PR to the lanterns. |
 | Not verified on the PC. Cloud shots (xvfb, software Vulkan) only. In the four cloud shots the meadow's night is much brighter than Larkmoor's (mean luminance about 84 against 62), so the lamp glow reads less there. | Lighting is for the sky owner to tune, not this change. |
+
+## 2026-11-24: Larkmoor wildlife in reach of the walker
+| Decision | Why |
+|---|---|
+| Dragonflies, fish, deer and owls only come out within `REACH` (200 iso texels) of the walker. A creature the walker has left more than `GONE` (300) behind fades out and re-forms inside `REACH` at the next fade-in. Nothing is placed where no one can see it, and nothing is hidden behind a far spot. | PC QA on v0.85.36 saw no creatures. The probe in the real Larkmoor scene showed the dragonflies, deer and fish drifting over the lake and the forest edge about 650 texels from the start, outside the on-screen rect (about 225 by 148 at zoom 2). |
+| Owls pick a perch in reach (`_perch_within`) when the old one is out of reach. Fish leap only at water in reach. Deer graze only edge spots in reach. A dragonfly that is scared darts to water between `DRAGON_SHY * 2` and `REACH`. | Keeps every visible creature near the walker, with no new nodes. |
+| `tests/test_wild.gd` moves the walker to the lake, the forest edge and the perch for the tests that need to see a creature, and checks that far from the water none is out. | The old tests put the walker far away, which now hides everything by design. |
+| Verified in-game with a temporary probe in the real Larkmoor scene (xvfb, software Vulkan, removed after). At the start nothing is in reach. At the lake shore four dragonflies are out and on screen. Not verified on the PC. | The lake is about 650 texels from the start, so the start view shows no wildlife by design. |
+## 2026-11-24: Larkmoor path drifts, darker trail, north-east groves (review slice 3)
+- **Why:** review items 3 to 5 of the Larkmoor environment handoff. The verge flowers ringed every path edge, the trail tint sat too close to the lane, and the forest-edge tip count sat exactly on its test floor (6).
+- **Drifts:** the verge ring is now patches. Candidates sit 9 to 30 texels from the path edge (`dedge`, so a road, a lane and a trail all keep the same clearance), and a slow noise field (`vn2(u/9, v/9)`, above .5) decides where the drifts are. Nothing hugs an edge, and bare grass shows between drifts.
+- **Trail:** the trail ramp is `[6, 6, 6, 1]`: earth brown in the light, with the dark tone kept for the brightest spots. The old ramp `[6, 5, 5, 1]` read as the lane's cream. Road stays 24 texels wide (half-width 12), so the water thread's bridge must span 24 texels.
+- **Groves:** three north-east candidates (pine at 1190,380; oak at 1010,240; bush at 1150,470). The forest-edge count goes 6 to 7. The density bar is the lighthouse grove at 640,590 (oak, 4 per group, radius 60).
+- **Regen:** `gen_larkmoor.py`, then `gen_life_anchors.py --bounds 380,220,2680,1450 --sway-count 1680`, then `--add-keys --farm assets/art/zone1b/farm/farm.json`, then `gen_gardens.py`. Lamps 23, flowers 240 (life), gardens 2238.
+- Not run in-engine yet: the zoom 1 and zoom 3 captures, and the walk test.
+
+## 2026-11-24: Larkmoor dragonflies larger at 1x
+| Decision | Why |
+|---|---|
+| Dragonfly sprites go from 9 by 3 to 11 by 5 texels (wings up and down), with a wider gold body. The draw origin moves to match (`-5, -2`). Fish and owls are unchanged. | PC QA said the wildlife reads thin at 1x. At 9 texels the dragonflies were specks over the lake. |
+| Not in this change: ambient creatures near the Larkmoor start position. The nearest water and forest edge are about 650 texels from the start, and rabbits and other ground critters are placed from the anchor data. Adding start-area creatures needs an anchor placement decision. | Kept this PR to what can be checked here. |
+
+## 2026-11-24: Larkmoor start view has rabbits and butterflies; deer at dusk
+| Decision | Why |
+|---|---|
+| `larkmoor_life.json` gets a `start` key, the Larkmoor `player_spawn` anchor from `assets/art/zone1b/larkmoor/placements3d.json` (1520, 1349.5). The generator's `--add-keys` path does not write it, so it survives a regenerate. | The start view had no wildlife within reach. The start is the one place every player sees first. |
+| Two rabbits are placed at the grass tips nearest the start, within 260 iso texels and 30 texels apart (`START_RABBITS`, `START_REACH`). Other rabbits keep their random spots. | Rabbits stay near their burrow (wander 30), so they stay in the start view. |
+| The first two butterflies start on the flower beds within 260 iso texels of the start. Their flits stay local, so they stay in that area. They are out in any season with butterfly share 0.2 or more, so they show in autumn too. | Autumn share is 0.35, and the usual hash gate hid both start butterflies in the probe. |
+| Deer share now also rises in the dusk light (`sin(PI * night)`, at most 0.9), and not at full night. Golden hour (low sun) still brings them out too. | Probe at 19.2 h and 19.6 h (night 0.2 to 0.5): no deer, though owls and dragonflies were out. The deer followed low sun only. |
+| Verified in the real Larkmoor scene (temporary probes, removed): at the start, 2 rabbits and 2 butterflies on screen over three checks. At noon, golden hour, dusk and night, dragonflies, deer and owls appear at the lake, forest edge and perch as their share says. Not verified on PC. | Coordinator asked for the start view and the golden-hour and dusk check. |
+
+## 2026-11-24: Rabbits move; start rabbits clear of the walker and out by day
+| Decision | Why |
+|---|---|
+| Each rabbit has a grazing pool: every grass tip within `RABBIT_WANDER` (90 iso texels, was 30) of its burrow spot, built at spawn (`_pool_near`). A graze hop picks from that pool and takes `distance / RABBIT_GRAZE_SPEED` (30 texels a second), at least `RABBIT_GRAZE_TIME`. | The old graze picker drew from all 1673 grass tips and kept only those within 30 texels of the burrow. Each burrow had 1 to 3 such tips, so rabbits almost never found a target and sat still. Probe: 0 moves in 600 frames before, about 25 percent of frames hopping after. |
+| The two start rabbits sit at least `START_CLEAR` (90 iso texels) from the arrival point. Inside `RABBIT_WATCH` (42) of the walker a rabbit sits up and watches and does not graze. | The start rabbits were 23 and 29 texels from the spawn, so they froze while the walker stood there, which reads as a prop. |
+| The two start rabbits are out by day too (`start_pair`). The rest keep the day share, which is low by day (rabbits come out at dusk). | At noon only about 2 of 8 rabbits were out, so the start view often showed none. |
+| `tests/test_wild.gd` checks the start rabbits clear the spawn, are out by day, and hop when the walker is away. Motion is on for that check, since the reduce-motion section runs before it. | Regression guard. |
+| Not changed: the forest edge has only 8 points in the zone and none near Old Oak Crossing, so deer cannot appear there. Dragonflies need a season with a share (none in winter by design), and the walker in reach of the lake. | Separate data and design questions, reported to the coordinator. |
+
+- **2026-11-24, Old Oak Crossing deer:** the hub has no woods, only the lone elder oak, so the forest-edge rule finds no spot there. `tools/art/gen_life_anchors.py` `oak_ring_points()` adds three grass tips 20 to 60 texels from the trunk (`OAK_TRUNK`), clear of every pad, to `forest_edge`. Added to `world/larkmoor_life.json` by hand-run of the same function, leaving the other keys as they were. Not run in engine.
+
+## 2026-11-24: Ember Quarry cave entrance (Larkmoor, north gate)
+- **Brief (Nathan, via coordinator):** make the way into Ember Quarry a landmark: a mountain cave cut into the cliff, a mineshaft, lanterns, several distinct organic decor props, dirt around it, and a glowing neon EMBER QUARRY sign with a down arrow either side. Nathan picked mockup B (timber headframe).
+- **Perspective:** Larkmoor is a 2:1 elevated orthographic view with the cliff facing the camera (like the gateway and tower sprites). The cave has no vanishing point: widths stay constant and depth only moves things up the screen. Boxes are front-facing with a top strip, not 45 degree cubes. Every post stands on a stone footing.
+- **Pipeline:** `tools/art/gen_ember_entrance.py export` writes `assets/art/zone1b/larkmoor/entrance/` (sprites, `entrance.json`). `larkmoor_scene.gd` merges its sprites into the placements, so a regenerated `placements3d.json` does not drop them. `mock <dir> B` renders day and night mockups on the real cliff.
+- **Nodes:** 12 prop sprites and 2 lanterns (76 texels apart: ordinary lamps keep 75) (chunk streamed) plus one `EmberEntrance` node (`world/ember_entrance.gd`) for the sign and glow. Under the 1350 ceiling.
+- **Walk-in:** the lane x 1510 to 1534 stays clear of decor (checked by `tests/test_ember_entrance.gd`). Cave, rails and dirt are flat sprites sorted behind the walker. The gate anchor and its trigger are unchanged.
+- **Accessibility:** Reduce Flashing stops the neon flicker and Reduce Motion freezes the glints; the sign then stays steadily lit.
+- **Not run in the cloud:** Godot and the headless tests. PC QA should screenshot day, dusk and night and walk through the gate.
+
+## 2026-11-24: Ember Quarry entrance polish (after Nathan's "refine" ask)
+- **Art:** inside the mine mouth only the nearest frame keeps a lintel and sill; deeper frames are bare posts on footings, so the tunnel reads as depth, not rungs. The far glow is larger and brighter, sleepers are lighter, and the rock around the arch uses fewer pale highlights so it sits closer to the cliff.
+- **Immersion:** `EmberEntrance` draws 12 embers rising out of the mine (a pure function of the clock, 8 steps per second, 1 texel each), a cave fire that breathes in steps, and lifts the neon and cave glow with `MeadowLife.rain` (a heavy rain counts as 0.7 of night). Reduce Motion removes the sparks and freezes the glints; Reduce Flashing stops the breathing and the neon flicker.
+- **Checked:** `tools/art/gen_ember_entrance.py mock <dir> B` renders day, dusk, night and rain tiles on the real cliff (`times_B.png`). The in-engine look is still for PC QA.
+
+## 2026-11-24: Starting Clearing opened up (option B, neater)
+- **Brief (Nathan):** the Starting Clearing is too cluttered. Expand it and redraw its flat 2D assets into the looking-down view. Nathan picked option B after three composite mockups (open glade, grove cut-through, sand loop). The neater B version and the front-lantern and pond-path notes came next.
+- **Change:** `tools/art/clearing_layout.py` (run once on the committed meadow) drops the 3 rocks inside the pad strip and the 2 lanterns nearest the camera from `placements3d.json`, and makes the ground under them walkable in `walkable.png` where it is grass or path (706 texels). It moves the cozy benches, the blanket and the fountain onto the rim, drops one fence run, and re-places the redrawn props by their ground foot. Pads, gate, spawn, water and the flower stats are untouched.
+- **Art:** `tools/art/gen_cozy.py` redraws the bench, blanket, fence, signposts and stepping stones from above (2:1 iso, lit upper-left, dithered dark side, 1-texel ink outline). The cottage, well, swing, campfire, wheel and wheat are still flat; their constants in `world/cozy/cozy_props.gd` are tied to the flat sprites, so they need a separate pass. The fountain sprite is also still flat, for the same reason.
+- **Flowers:** `world/clearing_gardens.json` is regenerated (157 flowers, format 2, same keys and entry shape, so the flower glow contract holds). Fields are derived from positions.
+- **Not done:** the pond path. The sand path is baked into `ground.png`, and a cleaner spur needs a `gen_meadow3d.py` change and a full meadow regen, so it is a follow-up.
+- **Checked:** `tests/run.gd` 7777 checks, 0 failed (Godot 4.7.2 headless). Screenshots from `tools/clearing_shots.tscn` (xvfb) render. The gate banner and tips cover the 2x sprout view, so PC QA should judge the read at 1x and 2x, at day and night.
+
+## 2026-11-24: Pond spur on the meadow path
+- **Brief (Nathan, via coordinator):** make the path to the pond better.
+- **Change:** `tools/art/gen_meadow3d.py` paints a 3.6-texel path spur (`SPUR_S`) from the main path to the pond's south-east shore, as path material only. Placement and the random sequence are untouched. `ground.png` and `ground_fg.png` get the new spur; the normal and height maps stay as committed. `world/meadow_life.json` is regenerated from the patched ground and placements (4 light pools now, the two removed lanterns no longer glow), and `world/clearing_gardens.json` is regenerated (153 flowers).
+- **Why a window, not a full regen:** running `gen_meadow3d.py` on current main does not reproduce the committed `ground.png`. About 16,900 texels differ, spread across the whole meadow, and the normal and height maps differ far more. A full regen would change the look of the entire meadow, so only a 20-texel disc around the spur (centre frame (214, 228)) takes the regenerated colour. The placements are identical on a rerun, so no prop moves.
+- **Open:** the spur's in-engine read is hidden by the HUD and the pad sign in the cloud shots. PC QA should check it at 1x and 2x, day and night. A generator rerun in the future will change the meadow, so do it deliberately.

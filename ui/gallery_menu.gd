@@ -41,14 +41,23 @@ var is_locked: Callable = Callable()
 var _tiles: Dictionary = {}   # kind -> GalleryTile
 var _clock: float = 0.0
 var _resume: MenuTextButton
+var _footer: Array[MenuTextButton] = []   ## Close Menu, Quit To Title, Quit Game, in Tab order
+var _body: VBoxContainer          ## the built contents, or null while the menu is shut
 
 
 func _init() -> void:
 	visible = false
 	add_theme_stylebox_override("panel", AsciiBox.panel())
+	# Only the frame exists while the menu is shut. The tiles and footer are built on open and freed on hide.
+	visibility_changed.connect(_on_visibility)
+
+
+## Builds the tiles, the header and the footer. Called by _ensure when the menu opens, never at boot.
+func _build() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	add_child(v)
+	_body = v
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
 	v.add_child(head)
@@ -99,14 +108,26 @@ func _init() -> void:
 	actions.add_theme_constant_override("separation", 4)
 	v.add_child(actions)
 	_resume = _action("Close Menu", RelicStyle.good, func() -> void: resume_requested.emit())
-	actions.add_child(_resume)
-	actions.add_child(_action("Quit To Title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit()))
-	actions.add_child(_action("Quit Game", RelicStyle.accent, func() -> void: quit_game_requested.emit()))
+	var quit_title: MenuTextButton = _action("Quit To Title", RelicStyle.accent, func() -> void: quit_to_title_requested.emit())
+	var quit_game: MenuTextButton = _action("Quit Game", RelicStyle.accent, func() -> void: quit_game_requested.emit())
+	_footer = [_resume, quit_title, quit_game]
+	for b: MenuTextButton in _footer:
+		actions.add_child(b)
 	var hint := Label.new()
 	hint.text = "Esc closes the menu."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(hint)
+	_wire_focus()
+
+
+## Pure: the item Tab moves to from item `i` of a focus chain of `n` items, wrapping at the end. Shift+Tab is tab_prev.
+static func tab_next(n: int, i: int) -> int:
+	return (i + 1) % n
+
+
+static func tab_prev(n: int, i: int) -> int:
+	return posmod(i - 1, n)
 
 
 ## Pure: the tile each arrow key goes to from tile `i` of `n` in a grid `cols` wide. Moves wrap around the edges, and a
@@ -125,7 +146,9 @@ static func neighbors(n: int, cols: int, i: int) -> Dictionary:
 
 
 ## Arrows, d-pad and Tab walk the grid (locked tiles included, so you can see what is coming).
-func _ready() -> void:
+func _wire_focus() -> void:
+	if not is_inside_tree():   # the paths need the tiles in a tree; a menu that is shown off-tree (tests) skips it
+		return
 	var order: Array[GalleryTile] = []
 	for e: Array in ENTRIES:
 		order.append(_tiles[e[0]] as GalleryTile)
@@ -136,8 +159,16 @@ func _ready() -> void:
 		t.focus_neighbor_right = t.get_path_to(order[nb["right"]])
 		t.focus_neighbor_top = t.get_path_to(order[nb["up"]])
 		t.focus_neighbor_bottom = t.get_path_to(order[nb["down"]])
-		t.focus_next = t.get_path_to(order[(i + 1) % order.size()])
-		t.focus_previous = t.get_path_to(order[posmod(i - 1, order.size())])
+	# Tab walks the tiles in layout order, then the footer, then wraps to the first tile. Shift+Tab is the reverse.
+	var chain: Array[Control] = []
+	for t: GalleryTile in order:
+		chain.append(t)
+	for b: MenuTextButton in _footer:
+		chain.append(b)
+	for i in chain.size():
+		var c: Control = chain[i]
+		c.focus_next = c.get_path_to(chain[tab_next(chain.size(), i)])
+		c.focus_previous = c.get_path_to(chain[tab_prev(chain.size(), i)])
 
 
 func _action(text: String, accent: Color, on_press: Callable) -> MenuTextButton:
@@ -151,6 +182,34 @@ func _action(text: String, accent: Color, on_press: Callable) -> MenuTextButton:
 
 func resume_button() -> MenuTextButton:
 	return _resume
+
+
+## Shown: build the contents if they are not there. Hidden (the close wipe is done): free them.
+func _on_visibility() -> void:
+	if visible:
+		_ensure()
+	else:
+		_teardown()
+
+
+func _ensure() -> void:
+	if _body != null:
+		return
+	_build()
+	reset_size()   # the HUD centres the menu by its size, so it must match the contents it now has
+
+
+## Frees the tiles and footer. Tooltips hide first; the frame, the wipe and the close X stay.
+func _teardown() -> void:
+	Tip.hide_all()
+	if _body != null:
+		remove_child(_body)
+		_body.queue_free()
+	_body = null
+	_tiles.clear()
+	_resume = null
+	_footer.clear()
+	_clock = 0.0
 
 
 static func version_text() -> String:

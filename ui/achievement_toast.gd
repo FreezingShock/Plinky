@@ -48,6 +48,7 @@ var _show: float = 0.0               ## how far open the banner is, 0 to 1
 var _from: float = 0.0               ## the show value a close starts from
 var _requeue: bool = false           ## the banner was cut short by a menu or ritual: show it again later
 var _card_h: float = 0.0
+var _sparks: Node = null             ## the burst of the banner on screen, freed with it when a menu takes the screen
 var _full: float = MIN_WIDTH         ## the card's full width for this HUD size
 
 
@@ -151,6 +152,9 @@ func _calm() -> bool:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# A menu takes the screen: a banner on it goes at once, sparks and all, and comes back when the menu closes.
+	if _phase != Phase.IDLE and menu_open.is_valid() and bool(menu_open.call()):
+		_shelve()
 	match _phase:
 		Phase.IDLE:
 			if _t >= 0.0 and not _queue.is_empty() and not _blocked():
@@ -180,6 +184,16 @@ func _process(delta: float) -> void:
 func _enter(p: int) -> void:
 	_phase = p
 	_t = 0.0
+
+
+## Put the banner on the shelf for a menu: hidden at once, no close animation, its sparks freed, and the unlock queued
+## again at the front. Ritual holds keep the animated close (_close).
+func _shelve() -> void:
+	if _sparks != null and is_instance_valid(_sparks):
+		_sparks.queue_free()
+	_sparks = null
+	_requeue = true
+	_finish()
 
 
 func _close(requeue: bool) -> void:
@@ -265,6 +279,7 @@ func _burst(d: AchievementDef, titled: bool) -> void:
 	sp.position = Vector2(area.x * 0.5, area.y * CENTRE_Y)
 	sp.z_index = TOAST_Z
 	host.add_child(sp)
+	_sparks = sp
 	var n: int = GraphicsQuality.particle_count(AchievementStyle.count_of(shape, titled))
 	sp.spawn(shape, colors, n, Vector2(_full * 0.5, _card_h * 0.5))
 

@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = &"oak"
 zone = &"larkmoor"
-display_name = "Old Oak Crossing"
+display_name = "Heather Hollow"
 order = 4
 icon = "tree"
 theme_role = 5

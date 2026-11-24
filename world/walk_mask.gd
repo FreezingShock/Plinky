@@ -49,6 +49,27 @@ static func walkable(p: Vector2) -> bool:
 	return im.get_pixel(x, y).r > 0.5
 
 
+## True when the texel is river water (the mask's green channel). Water is never walkable on the ground, but the
+## walker may be in the air over it: a jump carries it across a narrow river, and landing there sends it to the bank.
+static func is_water(p: Vector2) -> bool:
+	var im: Image = image()
+	if im == null:
+		return false
+	var x: int = int(floorf(p.x)) + offset.x
+	var y: int = int(floorf(p.y)) + offset.y
+	if x < 0 or y < 0 or x >= im.get_width() or y >= im.get_height():
+		return false
+	return im.get_pixel(x, y).g > 0.5
+
+
+## Where a walker that comes down at p ends up: p itself when it may stand there, else the nearest walkable
+## texel, which is the bank it landed beside. Water pushes it back; a cliff or trunk it jumped over does too.
+static func landing(p: Vector2) -> Vector2:
+	if walkable(p):
+		return p
+	return nearest(p, 60)
+
+
 ## Closest walkable texel to p (ring search, vertical distance doubled to match the 2:1 view).
 ## Returns p unchanged when it is already walkable or nothing walkable is within max_r.
 static func nearest(p: Vector2, max_r: int = 80) -> Vector2:
@@ -138,19 +159,20 @@ static func _build_grid() -> void:
 	var data: PackedByteArray = im.get_data()
 	var bpp: int = data.size() / maxi(w * h, 1)   # bytes per pixel; the first byte is red for every format the mask loads as
 	var solid: Array[Vector2i] = []
+	# a cell is open only when every pixel in it is walkable. Checking the corners alone let a blocked hole smaller than a
+	# cell (a tree footprint, a rock edge) sit inside an open cell, so a route could cut straight across it.
 	for cy in rows:
 		for cx in cols:
 			var open: bool = true
-			for oy: int in [0, CELL - 1]:
-				for ox: int in [0, CELL - 1]:
+			for oy in CELL:
+				if not open:
+					break
+				for ox in CELL:
 					var px: int = mini(cx * CELL + ox, w - 1)
 					var py: int = mini(cy * CELL + oy, h - 1)
 					if data[(py * w + px) * bpp] <= 127:
 						open = false
-			if open:
-				var mx: int = mini(cx * CELL + CELL / 2, w - 1)
-				var my: int = mini(cy * CELL + CELL / 2, h - 1)
-				open = data[(my * w + mx) * bpp] > 127
+						break
 			if not open:
 				solid.append(Vector2i(cx, cy))
 	for c: Vector2i in solid:

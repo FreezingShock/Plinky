@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = &"emberwatch"
 zone = &"larkmoor"
-display_name = "Emberwatch"
+display_name = "Starbloom Terrace"
 order = 7
 icon = "tower"
 theme_role = 6

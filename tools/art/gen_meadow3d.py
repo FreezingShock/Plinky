@@ -7,7 +7,7 @@ import numpy as np, math, random, json, os, sys, time
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import depth_pass, grass_tex
-GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
+GRASS = os.environ.get('GRASS', 'f')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAST = '--fast' in sys.argv
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
@@ -64,6 +64,9 @@ def pl_dist(U, V, pts):
 # ---------------- scene layout (screen px -> uv) ----------------
 PATH_S = [(112, 258), (150, 264), (190, 258), (222, 240), (252, 222), (290, 214), (334, 208), (368, 188), (378, 160), (362, 136), (338, 118), (330, 104)]
 PATH = [s2uv(*p) for p in PATH_S]
+# the spur from the main path up to the pond's south-east shore: painted as path material only (no placement uses it)
+SPUR_S = [(224, 238), (217, 231), (211, 224)]
+SPUR = [s2uv(*p) for p in SPUR_S]
 # Two rows of three pads, 44 texels apart on the 2:1 ground grid: Sprout climbs from the spawn, Clover climbs back
 # towards the gate (pad order = ZoneDef.pad_buttons order).
 SPROUT_ROW = [(204, 248), (248, 226), (292, 204)]
@@ -787,6 +790,8 @@ beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
 pw = 6.6 + 1.2 * (n1 - .5)                       # bolder path: wider than the first pass (5.4) so it reads at 640x360
 mat[(dp < pw) & (rockness < .5)] = T_PATH
+dsp = pl_dist(FU, FV, SPUR)                      # pond spur: a 3.6-texel half-width path, off the water
+mat[(dsp < 3.6) & (rockness < .5) & (np.hypot(FU - POND['c'][0], FV - POND['c'][1]) > POND['r'] + 1.0)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
 if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
@@ -854,6 +859,8 @@ dif = np.clip(allp['nx'] * L[0] + allp['ny'] * L[1] + allp['nz'] * L[2], 0, 1)
 lp = .04 + 1.05 * dif
 tex = vn3(u_ * .8, v_ * .8, z_ * .8, 3) - .5
 lp += np.where(np.isin(mat_, [M_FOL, M_PINE, M_MOSS]), tex * .55 + (vn3(u_ * 2.2, v_ * 2.2, z_ * 2.2, 9) - .5) * .4, 0)
+# pine tiers: upward-facing tier tops lift a band, downward ledges drop one (the ramp is only four bands)
+lp += np.where(mat_ == M_PINE, .7 * np.clip((nz_ - .1) / .4, 0, 1) - .45 * np.clip((-nz_ - .05) / .35, 0, 1), 0)
 lp += np.where(np.isin(mat_, [M_ROCK]), tex * .5, 0) + np.where(mat_ == M_BARK, tex * .35, 0) + np.where(mat_ == M_FOL, (z_ - 20) * .012, 0)
 lp += np.where(mat_ == M_CRYS, .10, 0) + np.where(mat_ == M_PAPER + 20, .5, 0) + np.where(mat_ == M_GRASS, (z_ - samp(H0, u_, v_)) * .035 - .05, 0)
 lp += np.where(mat_ == M_LILY, .12, 0)
@@ -997,6 +1004,8 @@ def render_scene(keep):
 tall_ids = np.array([t['id'] for t in TALL])
 rgb_full, id_full = render_scene(np.ones(len(u_), bool))
 AUX_FULL = LAST_AUX
+# the glowing sea (tools/art/water_sea_mask.py): flat deep and shallow sea colours, so the relight leaves them as painted
+RAMP.update({110: [1], 111: [2]})
 depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP, PAL)
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
@@ -1011,7 +1020,7 @@ _fg[FAR_CUT, 3] = 0
 Image.fromarray(_fg).save(os.path.join(HERE, 'ground_fg.png'))
 
 # ground G-buffer, same size as the ground art: normal + material + baked light (relight data) and world height.
-# Terrain materials are codes 100..109, so write_relight_data accepts mat < 110 (the ramp include is sized to match).
+# Terrain materials are codes 100..111, so write_relight_data accepts mat < 112 (the ramp include is sized to match).
 depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(HERE, 'meadow3d-ground-1x_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []

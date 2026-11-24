@@ -261,6 +261,18 @@ static func tier_head(sim: Sim, a: AttributeDef) -> String:
 	return "Open"
 
 
+## The gate on a tier's rail row: "Open" for the start, else what it requires, e.g. "Requires 1 Bloom", "Requires 2 Nuclei".
+static func tier_gate(sim: Sim, a: AttributeDef) -> String:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency)
+		var nm: String = r.display_name if r != null else "Reset"
+		var plural: String = (r.plural_name if r != null and r.plural_name != "" else nm + "s")
+		return "Requires %d %s" % [a.unlock_resets, nm if a.unlock_resets == 1 else plural]
+	if a.unlock_rebirths > 0:
+		return "Requires %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
+	return "Open"
+
+
 ## 3 -> "3", 2.5 -> "2.5".
 static func _trim(f: float) -> String:
 	var s: String = "%.1f" % f
