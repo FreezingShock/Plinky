@@ -606,3 +606,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Decision:** `DisplaySettings.pregame_fill` switches the root's content scale to EXPAND while the loading and title screens are up. `main.gd` switches it back to KEEP, so the game keeps its 640x360 (or bleed) letterbox. The art stays centred on its 640x360 grid (`art_origin` in `title_background.gdshader`, `_origin` in `title_scenery.gd`), and the sky, hills, ground, pines, grass and birds are drawn past it, so there is no edge.
 - **Why:** Nathan asked for the loading and title screens to fill the display like the game. Measured headless, the game and the title both letterboxed on non-16:9 windows. Nathan then chose to fill the pre-game screens only (the decision card in the project thread), because the title art is procedural and the meadow art is baked. The game keeps the KEEP letterbox.
 - **Not verified in-engine:** the scene-swap cover when the game hands off to the title (the captured frame is at the old aspect). Headless captures at 800x600, 1024x768, 1600x1000, 2560x1080 and the loading screen were checked by eye. PC QA should check windowed and fullscreen at several sizes, and the title-to-game and game-to-title swaps.
+
+## 2026-11-24: Update Log is one text block, not a label per line (menu cost)
+- **Decision:** the Update Log puts every version and note in one `RichTextLabel`, coloured per line (headings take the accent, notes the text colour). Brackets in a note are escaped. The rows still come from `rows_from`.
+- **Why:** the log built one `Label` per heading and note, about 1150 nodes. The menu probe measured 91 to 146 ms per open, and the nodes stayed after close. One text block cuts the node count by about 1150 and the open cost to a few milliseconds.
+- **Checked:** `tests/run.gd` passes. A new check covers the escaping and the colour tags.
+- **Not run in-engine:** how the log scrolls and wraps on a PC at zoom 1 and 3.
