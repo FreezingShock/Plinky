@@ -34,8 +34,8 @@ const BREATH_TIME: float = 3.0          # seconds for one slow breath
 const BREATH_DEPTH: float = 0.12        # how far the breath dims the glow (0 = none)
 ## The field light stays off the pad plates: under each plate it is cut to PAD_CUT, easing back to full by PAD_CUT_EDGE
 ## (plate units, diamond-ellipse norm). The pad rings then read against dark ground, not against the field.
-const PAD_CUT: float = 0.3
-const PAD_CUT_EDGE: float = 1.6
+const PAD_CUT: float = 0.5
+const PAD_CUT_EDGE: float = 1.2
 const START_DELAY_FRAMES: int = 8       # frames after a zone's glow is set up before its bake starts on a worker
 
 var _fields: Array = []   # built layers: {"tex": ImageTexture, "pos": Vector2, "a": float}
