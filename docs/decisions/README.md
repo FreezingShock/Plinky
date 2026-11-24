@@ -12,9 +12,9 @@ Before you start a task, find the topic that matches it and read that file. Then
 | [quarry](quarry.md) | Ember Quarry (zone 2): blockout, map, forge ladder, Embers, Cinder, Reforge, quarry balance. | 7 |
 | [art](art.md) | Lighting, night, day and weather, dither, props, pads, grass, shaders, palettes, icons. | 26 |
 | [audio](audio.md) | Audio autoload, footsteps, ambient soundscape, world-life and press sounds. | 5 |
-| [hud](hud.md) | HUD strip, menus, galleries, tooltips, popups, title and settings, window, History, Ledger. | 44 |
-| [balance](balance.md) | Economy numbers, Mastery, Momentum, Hold-to-buy, Rebirth and zone resets, relic stacks, balance sims. | 12 |
-| [ci-workflow](ci-workflow.md) | CI jobs, release stamping, changelog rules, performance passes, docs and repo hygiene. | 8 |
+| [hud](hud.md) | HUD strip, menus, galleries, tooltips, popups, title and settings, window, History, Ledger. | 41 |
+| [balance](balance.md) | Economy numbers, Mastery, Momentum, Hold-to-buy, Rebirth and zone resets, relic stacks, balance sims. | 11 |
+| [ci-workflow](ci-workflow.md) | CI jobs, release stamping, changelog rules, performance passes, docs and repo hygiene. | 6 |
 
 ## Notes
 - Entries are kept in full, including old ones. Nothing is deleted. Superseded entries are marked **Superseded** on the entry, with what replaced them.

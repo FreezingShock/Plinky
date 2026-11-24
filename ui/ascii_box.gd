@@ -1,9 +1,10 @@
 class_name AsciiBox
 extends StyleBox
 ## Notched, dithered frame drawn texel by texel (Spleen has no box-drawing glyphs).
-## Kinds: PANEL, BUTTON, HOVER, PRESSED, DISABLED. Colours come from RelicStyle (zone palette).
+## Kinds: PANEL, BUTTON, HOVER, PRESSED, DISABLED, SELECT, CARD. Colours come from RelicStyle (zone palette).
+## CARD is the notched outline with no fill unless fill_override is set, so a gallery card can be a transparent frame.
 
-enum Kind { PANEL, BUTTON, HOVER, PRESSED, DISABLED, SELECT }
+enum Kind { PANEL, BUTTON, HOVER, PRESSED, DISABLED, SELECT, CARD }
 
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
@@ -68,7 +69,8 @@ func _draw(ci: RID, rect: Rect2) -> void:
 		Kind.SELECT:   # tiles: a solid lifted panel in accent (or the edge override), so the label never sits on noise
 			edge = RelicStyle.accent if edge_override.a == 0.0 else edge_override
 			fill = RelicStyle.ink.lerp(RelicStyle.edge, 0.22)
-	_px(ci, x, y, w, h, fill)
+	if kind != Kind.CARD or fill_override.a > 0.0:   # a card is only an outline unless it asks for a fill
+		_px(ci, x, y, w, h, fill)
 	# 1 texel border with the corners notched.
 	_px(ci, x + 2, y, w - 4, 1, edge)
 	_px(ci, x + 2, y + h - 1, w - 4, 1, edge)
