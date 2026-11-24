@@ -45,4 +45,9 @@ func run(t: Object) -> void:
 	t.ok(panel.is_open() and panel.tab == IndexPanel.Tab.ATTRIBUTES, "toggling the other tab switches")
 	panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)
 	t.ok(not panel.is_open(), "toggling the open tab closes it")
+	# Focus ring: Shift+Tab from the first control wraps to the last, and Tab from the last wraps to the first.
+	t.eq(IndexPanel.ring_step(5, 0, -1), 4, "Shift+Tab from the first ring item wraps to the last")
+	t.eq(IndexPanel.ring_step(5, 4, 1), 0, "Tab from the last ring item wraps to the first")
+	t.eq(IndexPanel.ring_step(5, 2, 1), 3, "Tab moves one item on inside the ring")
+	t.eq(IndexPanel.ring_step(5, 2, -1), 1, "Shift+Tab moves one item back inside the ring")
 	host.free()   # frees the panel and its overlay together

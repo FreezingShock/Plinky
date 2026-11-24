@@ -569,3 +569,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** the Gallery footer (Close Menu, Quit To Title, Quit Game) sat 1 px right in the lazy build (PR #464) and not in the eager build. A/B probe, footer button widths: before 120 / 128 / 114 eager and 120 / 127 / 113 lazy; after 119 / 127 / 113 in both. Positions are now 136 / 259 / 390 in both builds.
 - **Checked:** the footer crop is pixel-identical between the eager and lazy builds with this change. The footer text is 1 px narrower on `Close Menu` and `Quit To Title` than the old eager build showed, which is the crisp measurement.
 - **Not run in-engine:** the footer on a real PC.
+
+## 2026-11-24: Stats and Attributes wire their own Tab ring (keyboard focus)
+- **Decision:** `IndexPanel` sets `focus_next` and `focus_previous` on its two tabs and its gift cards, as one ring that wraps at both ends. On a detail page the ring is the two tabs and Back. It is rewired when the cards rebuild and when a detail page opens.
+- **Why:** PC QA (batch 118, keyboard only, zoom 1 and 3): Tab walked all 22 Stats controls in order and wrapped, but Shift+Tab from the first control stopped instead of wrapping. Godot's default focus order does not wrap backward on its own.
+- **Checked:** `tests/run.gd` passes (7959 checks, 0 failed), including the ring arithmetic (`IndexPanel.ring_step`). The wiring itself needs a scene in the tree, which the test runner does not have.
+- **Not run in-engine:** Shift+Tab from the first and last control on a PC. Upgrades has the same backward stop and is not changed here.
