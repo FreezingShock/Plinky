@@ -16,6 +16,10 @@ const SHADERS: Array[String] = [
 	"res://render/shaders/ground_light.gdshader",
 	"res://render/shaders/ground_fog.gdshader",
 	"res://render/shaders/light_grade.gdshader",
+	"res://render/shaders/quarry_prop.gdshader",   # the Ember Quarry's props, glow, haze and heat shimmer: a first
+	"res://render/shaders/quarry_glow.gdshader",   # draw in the zone swap compiled them mid-wipe
+	"res://render/shaders/quarry_haze.gdshader",
+	"res://render/shaders/heat_shimmer.gdshader",
 ]
 const FRAMES: int = 4
 

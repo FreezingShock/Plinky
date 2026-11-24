@@ -393,6 +393,7 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	_scene_path = path
 	PerfStats.lap_begin()
 	_free_occluders()
+	ZoneAssets.release()   # the zone being left drops its prop textures; the one being entered is prefetched
 	meadow.queue_free()
 	PerfStats.lap("swap: free old")
 	var packed: PackedScene = _take_prefetched(path)
@@ -435,8 +436,10 @@ var _prefetching: String = ""
 func _prefetch_scene(path: String) -> void:
 	if path == _scene_path or path == _prefetching:
 		return
+	# the scene first: the loader works through requests in order, and the swap waits on the scene before anything else
 	if ResourceLoader.load_threaded_request(path) == OK:
 		_prefetching = path
+	ZoneAssets.prefetch_scene(path)   # the props' and ground textures, behind the scene
 
 
 ## The prefetched scene when one was requested (waits for it if the worker is not done), else a plain load.
