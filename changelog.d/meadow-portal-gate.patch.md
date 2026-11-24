@@ -1,0 +1,1 @@
+The meadow gate opens onto a green swirl like the forge portal: a dithered spiral fills the doorway, with a cream rim and a green spill on the ground. Shut, the swirl glows faintly behind the lattice.
