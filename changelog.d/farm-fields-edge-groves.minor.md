@@ -1,0 +1,1 @@
+The Larkmoor farm gets seven fields instead of five, packed edge to edge with the new wheat. Neighbouring fields run together as one tilled bed, the soil reaches up to the fence, and the fences follow the outside of each run with no stubs. Fields, wheat and fences keep clear of the paths, and two oak and pine groves fill the south and east edge.
