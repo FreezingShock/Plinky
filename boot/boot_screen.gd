@@ -28,7 +28,9 @@ const WALKER_FPS: float = 8.0
 const WALKER_BASE_Y: float = 56.0
 const TIP_SECONDS: float = 3.4
 const TIP_BLANK_SECONDS: float = 0.15
-const DISSOLVE_SECONDS: float = 0.6
+const WIPE_SECONDS: float = 0.9
+## Time of day the loading screen opens at: sunrise.
+const BOOT_PHASE: float = 0.25
 const TIPS: Array[String] = [
 	"Stand on a pad to press it at your press rate. Hold the mouse on a pad to keep pressing.",
 	"Relics drop on every successful press. Equip them in your relic slots.",
@@ -45,7 +47,7 @@ var _phase: Phase = Phase.LOADING
 var _loader: BootLoader
 var _elapsed: float = 0.0
 var _shown: float = 0.0
-var _bg: BootBackground
+var _bg: TitleBackground
 var _motes: BootMotes
 var _track: Control
 var _walker: TextureRect
@@ -68,8 +70,10 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pal = Palettes.colors(Palettes.MEADOW)
 
-	_bg = BootBackground.new()
+	_bg = TitleBackground.new()
 	add_child(_bg)
+	# The loading screen opens at sunrise, then runs through the day like the title does.
+	_bg.set_phase_now(BOOT_PHASE)
 	_motes = BootMotes.new()
 	add_child(_motes)
 	_build_column()
@@ -122,7 +126,7 @@ func _build_column() -> void:
 	column.add_child(title)
 
 	var tagline := Label.new()
-	tagline.text = "Press. Tally. Rebirth."
+	tagline.text = TitleScreen.TAGLINE
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tagline.add_theme_font_override("font", BODY_FONT)
 	tagline.add_theme_color_override("font_color", _pal[5])
@@ -277,9 +281,10 @@ func _start_leave() -> void:
 	var skip: bool = TitleScreen.skip_requested()
 	TitleScreen.game_scene = game
 	var next: PackedScene = game if skip else (load(TitleScreen.TITLE_SCENE) as PackedScene)
-	var tween := create_tween()
-	tween.tween_method(_bg.set_dissolve, 0.0, 1.0, DISSOLVE_SECONDS)
-	tween.tween_callback(func() -> void: get_tree().change_scene_to_packed(next))
+	var wipe := TitleWipe.new()
+	add_child(wipe)
+	wipe.setup(_bg.role(0), _bg.role(5))
+	wipe.play(WIPE_SECONDS, TitleBackground.still(), func() -> void: get_tree().change_scene_to_packed(next))
 
 
 func _animate_walker(delta: float) -> void:
