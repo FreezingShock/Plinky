@@ -62,8 +62,7 @@ float texel_dip(vec2 uv, vec2 px, float h0) {
 }
 
 // Winter drifts: snow lies deeper in the hollows, with a dithered edge, so the low ground goes white first.
-vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
-	float dip = texel_dip(uv, px, h0);
+vec3 snow_drifts(vec3 c, float thr, float dip) {
 	float depth = smoothstep(0.15, 0.6, dip) * season_snow;
 	float edge = thr * 0.5 + 0.12;
 	if (depth > edge) {
@@ -88,15 +87,14 @@ vec3 fallen_blossom(vec3 c, vec2 wp, float thr) {
 	return c;
 }
 
-vec3 wet_ground(vec3 c, vec2 wp, vec2 uv, vec2 px, float thr, float h0) {
+vec3 wet_ground(vec3 c, vec2 wp, float thr, float dip) {
 	float open_k = 1.0 - smoothstep(0.1, 0.5, season_snow);
 	float w = wet * open_k;
 	if (w > 0.001) {
 		c = mix(c, c * mix(vec3(0.88, 0.92, 0.95), vec3(0.66, 0.72, 0.8), wet_night), 0.6 * w);
 		vec2 iso = vec2(wp.x, wp.y * 2.0);
 		float n = season_vnoise(iso / 9.0 + 31.0) * 0.7 + season_vnoise(iso / 3.0 + 13.0) * 0.3;
-		// a dip holds water (texel_dip)
-		float dip = texel_dip(uv, px, h0);
+		// a dip holds water (texel_dip, computed once per texel in fragment)
 		float score = n + 0.25 * dip;
 		float edge = 0.9 - 0.25 * w;
 		float cover = smoothstep(edge - 0.04, edge + 0.04, score);   // the Bayer threshold makes the edge dither
@@ -137,6 +135,7 @@ void fragment() {
 	vec4 base = c;
 	vec2 px = TEXTURE_PIXEL_SIZE;
 	float thr = bayer4(ivec2(floor(wpos)));
+	float h_here = texture(h_tex, UV).r * 255.0;   // one height fetch, shared by the shadow march, dip and snow/wet/mist
 	if (relight > 0.0 && c.a > 0.5) {
 		vec4 d = texture(nrm_tex, UV);
 		int code = int(d.b * 255.0 + 0.5);
@@ -146,7 +145,7 @@ void fragment() {
 			float lb = d.a * 1.8 - 0.4;
 			float l = lb + 1.05 * (max(dot(n, normalize(sun_dir)), 0.0) - max(dot(n, BASE_DIR), 0.0)) * relight;
 			// height march toward the sun: a higher texel in the way puts this one in shadow; a high ring around it is occlusion
-			float h0 = texture(h_tex, UV).r * 255.0;
+			float h0 = h_here;
 			float sh = 0.0;
 			float occ = 0.0;
 			// No cast shadow and no occlusion to apply means no taps to spend (identical result, most of the day's cost).
@@ -196,14 +195,19 @@ void fragment() {
 	// (47,107,85) pass the "green texel" test in season_recolor and were dyed orange like the grass.
 	int mat_code = int(texture(nrm_tex, UV).b * 255.0 + 0.5);
 	bool is_water = mat_code == 107 || mat_code == 108 || mat_code == 110 || mat_code == 111;
+	// The height dip of this texel (four taps), used by snow, wet and mist below. Water keeps it for the mist, as before.
+	float dip_here = 0.0;
+	if (c.a > 0.5 && debug_view == 0 && (season_snow > 0.2 || wet > 0.001 || mist > 0.01)) {
+		dip_here = texel_dip(UV, px, h_here);
+	}
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
 	}
 	if (c.a > 0.5 && debug_view == 0 && !is_water && season_snow > 0.2) {
-		c.rgb = snow_drifts(c.rgb, UV, px, thr, texture(h_tex, UV).r * 255.0);
+		c.rgb = snow_drifts(c.rgb, thr, dip_here);
 	}
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (wet > 0.001 || splash > 0.01)) {
-		c.rgb = wet_ground(c.rgb, wpos, UV, px, thr, texture(h_tex, UV).r * 255.0);
+		c.rgb = wet_ground(c.rgb, wpos, thr, dip_here);
 	}
 	if (c.a > 0.5 && debug_view == 0 && !is_water && blossom > 0.01) {
 		c.rgb = fallen_blossom(c.rgb, wpos, thr);
@@ -213,7 +217,7 @@ void fragment() {
 		vec2 iso = vec2(wpos.x, wpos.y * 2.0);
 		float m = season_vnoise(iso / 16.0 + vec2(TIME * 0.6, 0.0) * mist_drift) * 0.7
 				+ season_vnoise(iso / 6.0 - vec2(TIME * 0.9, 0.0) * mist_drift) * 0.3;
-		float dens = smoothstep(0.3, 0.75, m) * mist * (0.55 + 0.45 * texel_dip(UV, px, texture(h_tex, UV).r * 255.0));
+		float dens = smoothstep(0.3, 0.75, m) * mist * (0.55 + 0.45 * dip_here);
 		if (dens > thr) {
 			c.rgb = mix(c.rgb, mist_col, 0.45);
 		}
