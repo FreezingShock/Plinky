@@ -183,7 +183,9 @@ func _process(_delta: float) -> void:
 func _update_tooltip() -> void:
 	var over: Control = get_viewport().gui_get_hovered_control()
 	var m: Vector2 = world.get_local_mouse_position()
-	var blocked: bool = over != null and over.mouse_filter != Control.MOUSE_FILTER_IGNORE
+	# only a control that takes the click blocks the world tooltip: a PASS control (the clock chip) is hovered too, but lets the
+	# pointer through, so a gate under it still shows its tooltip
+	var blocked: bool = over != null and over.mouse_filter == Control.MOUSE_FILTER_STOP
 	var shown: bool = false
 	for pad: TexelPad in pads.values():
 		pad.hovered = not blocked and not shown and pad.hit(m)
