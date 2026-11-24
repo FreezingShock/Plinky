@@ -409,4 +409,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
 - Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
 - FarmWheat caches each clump's global centre once instead of recomputing it per frame.
+
+## 2026-11-24: Pad signs choose a clear spot
+- **Nathan's note:** a pad's cost sign covered the next pad's bed in a Starbloom row, and it happens on many pads across zones.
+- **How:** `TexelPad.SIGN_SPOTS` lists eight spots relative to the pad (right and left of the plate, lifted in steps). `choose_sign_spot` returns the first one whose plank and post clear every bed and plate on the zone and this pad's press spot. `main.gd` gives every pad the zone's positions once they are placed (`set_sign_neighbours`). The default spot is still the first choice, so a pad with room keeps its look.
+- **Check:** `tests/test_pad_signs.gd` checks a synthetic neighbour that used to sit under the sign, and every row-first pad in the Larkmoor, meadow and quarry layouts. The suite passes. In-engine, the quarry rows and the hub shot show each sign beside its pad with no overlap.
+- **Note:** the left-hand spots are mirrors of the right-hand ones, so a sign there sits off the right edge of a tight zoom-3 crop. That is not a missing sign.
 - Follow-up (same day): finer wheat. Clumps 20-26 texels wide with 4.2 stalks per texel of width (was 3.2), spacing 7x4, grid 4.3x2.5. 661 clumps, still one driver node; Larkmoor stays at 818 nodes and frame p95 is unchanged in the bench, so no zoom LOD was added.
