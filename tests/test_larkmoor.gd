@@ -84,6 +84,28 @@ func run(t: Object) -> void:
 	t.ok(WalkMask.walkable(Vector2(1524.0, 912.0)) and not WalkMask.is_water(Vector2(1524.0, 912.0)), "the main bridge deck is walkable over the river")
 	t.ok(WalkMask.walkable(Vector2(1188.0, 974.0)), "the footbridge deck on the west trail is walkable")
 	t.eq(WalkMask.landing(Vector2(1524.0, 912.0)), Vector2(1524.0, 912.0), "a bridge deck is where the walker lands, not the bank")
+	# the ruins: each one blocks its own foot, the walker can still reach it on foot, and in front of it (south, the viewer's
+	# side) the walker stops past the front stone, not inside it. The stop is the first walkable texel walked straight in.
+	var ruin_n: int = 0
+	var fronts: int = 0
+	for ruin_sp: Dictionary in data.get("sprites", []) as Array:
+		if String(ruin_sp.kind) != "ruin":
+			continue
+		ruin_n += 1
+		var foot := Vector2(float(ruin_sp.foot[0]), float(ruin_sp.foot[1]))
+		t.ok(not WalkMask.walkable(foot), "the ruin at %s blocks its own foot" % str(foot))
+		var south: float = _stop_distance(foot, Vector2(0.0, 1.0), 14.0)
+		if south > 0.0:
+			fronts += 1
+			t.ok(south >= 7.5, "the ruin at %s stops the walker past its front stone (%.1f texels south)" % [str(foot), south])
+		var reach: float = -1.0
+		for dir: Vector2 in [Vector2(0.0, -1.0), Vector2(1.0, 0.0), Vector2(0.0, 1.0), Vector2(-1.0, 0.0)]:
+			var step_d: float = _stop_distance(foot, dir, 20.0)
+			if step_d > 0.0 and (reach < 0.0 or step_d < reach):
+				reach = step_d
+		t.ok(reach > 0.0, "the ruin at %s has a walkable stop within 20 texels" % str(foot))
+	t.ok(ruin_n >= 11, "the eleven Larkmoor ruins are placed (%d)" % ruin_n)
+	t.ok(fronts >= 10, "ten ruins have a front stop to the south, the gatehouse is the one on the cliff (%d)" % fronts)
 
 	# the scene node itself
 	var scene: Node = (load(z.scene_path) as PackedScene).instantiate()
@@ -178,3 +200,13 @@ func run(t: Object) -> void:
 	t.eq(s3.zone_id, &"zone1", "a save in the onboarding meadow stays there")
 	t.ok(not s3.is_gate_open(&"larkmoor"), "without Larkmoor's gate")
 	t.ok(s3.enter_zone(&"larkmoor"), "its open gate now leads to Larkmoor")
+
+
+## Texels from foot to the first walkable texel walked straight in along dir (one texel steps), or -1 when none within max_d.
+func _stop_distance(foot: Vector2, dir: Vector2, max_d: float) -> float:
+	var d: float = 0.5
+	while d <= max_d:
+		if WalkMask.walkable(foot + dir * d):
+			return d
+		d += 0.5
+	return -1.0
