@@ -1,0 +1,1 @@
+Pads press four times a second, whether you stand on them or hold the mouse on them. Each press costs and pays an eighth of its old amount, so progression keeps its pace, and a held click presses again.

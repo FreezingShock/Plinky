@@ -132,6 +132,14 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Stale figure:** `content/config/sim_profiles.tres` still has a "hold" profile at 4.0 presses a second. It is a harness assumption, so it was not changed here; it should be set to the active rate (0.5) if the hold profile is kept.
 - Not verified in-engine. PC QA should hold a pad and stand on one in zone 1 and Larkmoor, and check that the stacked popup still builds while held and folds on release.
 
+## 2026-11-24: Fast pad presses scale the whole press
+- **Why:** a standing press came once every 2 s in zone 1 (press rate 0.5). Nathan wanted a held click and a standing walker at one speed, and a faster rate. Chose "Scale the whole press" on the card "How should fast pad presses keep progression pace?" (option A). Changing only the rate would make progression 8 times faster, and changing only the reward would leave the pad cost out of step with it.
+- **Call:** a player press costs and pays `GameConfig.press_scale` (0.125) of its old amount. Presses come 8 times as often, so the stock spent and earned per second match the old tuning.
+- **Where:** `press_scale` is in `content/config/game.tres`. `Sim.press_gain` scales the reward, `Sim.press_cost` scales the cost, and `can_press` and `_press` use the same rule. Momentum (`feed_press_momentum`) and mastery XP scale too.
+- **Auto presses and pulses** (`allow_pulse` false) pay the full cost and full reward. Offline tending does too, and its rate is `offline_tend_fraction` 0.0125 (was 0.1, divided by 8).
+- **Rates:** `press_rate` is 4 in zones 1 to 3 (was 0.5). `sim_profiles.tres` presses per second: idle 1.6, active 4.0, hold 4.0 (was 0.2, 0.5, 4.0). The idle to active ratio stays at 0.4.
+- **Tests:** `t.make_sim()` pins `press_scale` to 1 on a private copy of the config, so mechanics suites test the raw formulas. `t.make_sim(true)` gives the shipped config, used by the greedy timeline and the press-scale tests in `test_pad_press.gd`.
+- **Not verified:** the balance gates from `tools/sim.gd` on the PC, and in-engine pace. The cloud can't run Godot.
 ## 2026-11-24: Sealed caches as the late-game sink
 Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late stock went unspent (gameplay audit 2026-11-24, 5.5). The caches roll Rare-or-better relics with a price that climbs 1.5x per pull and a cap of five a reset. Reason: the cost resets each reset, so a cache is a steady sink, not a one-off, and the cap keeps it from becoming the only spend. Numbers are in `content/sealed/*.tres` and are unverified in the sim.
 ## 2026-11-24: Capstone gifts, the Bloom Crown and Nucleus Crown (minor)

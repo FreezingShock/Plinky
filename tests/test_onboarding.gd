@@ -157,7 +157,7 @@ func _old_save_and_off(t: Object, cfg: OnboardingConfig) -> void:
 
 ## Greedy play at the zone's own press rate. Checks the order and rough timing of the first ten minutes.
 func _timeline(t: Object) -> void:
-	var sim: Sim = t.make_sim()
+	var sim: Sim = t.make_sim(true)
 	var ob := Onboarding.new(sim, Onboarding.load_config())
 	var buttons: Array[ButtonDef] = sim.buttons_in_zone(sim.zone_id)
 	buttons.sort_custom(func(a: ButtonDef, b: ButtonDef) -> bool:

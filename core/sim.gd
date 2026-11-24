@@ -342,11 +342,27 @@ func is_row_finisher(b: ButtonDef) -> bool:
 
 func can_afford(button_id: StringName) -> bool:
 	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
-	if b == null or is_pad_locked(button_id):
+	if b == null:
+		return false
+	return can_press(b, true)
+
+
+## What one press of this pad costs from its cost stock. A player press pays press_scale of the full pad cost, because
+## it comes press_rate times as often as before (see press_gain). Automatic presses and tending pay the full cost.
+func press_cost(b: ButtonDef) -> BigNum:
+	return Formulas.button_cost(b).mul(BigNum.from_float(config.press_scale))
+
+
+## Whether the stock covers one press of this pad: a player press (`player` true) pays press_cost, an automatic press
+## or pulse pays the full cost. A locked pad never covers a press.
+func can_press(b: ButtonDef, player: bool) -> bool:
+	if is_pad_locked(b.id):
 		return false
 	if god_mode:
 		return true
-	return get_stat(b.cost_stat).gte(Formulas.button_cost(b))
+	# A player press is gated on the full pad price, as on main, and charges press_cost (see press_cost).
+	var cost: BigNum = Formulas.button_cost(b)
+	return get_stat(b.cost_stat).gte(cost)
 
 
 func buttons_in_zone(z_id: StringName) -> Array[ButtonDef]:
@@ -370,7 +386,7 @@ func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1)
 	if is_hot():
 		gain = gain.mul(BigNum.from_float(current_zone().heat_hot_mult))
 		gain = gain.mul(BigNum.from_float(1.0 + _relic_total(RelicDef.Effect.HOT_GAIN)))
-	return gain
+	return gain.mul(BigNum.from_float(config.press_scale))   # a player press pays press_scale of its old reward (see GameConfig)
 
 
 ## Reward a press would give right now, without crit or a double.
@@ -574,7 +590,7 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	if free:
 		if is_pad_locked(button_id):
 			return false
-	elif not can_afford(button_id):
+	elif not can_press(b, allow_pulse):
 		if allow_pulse:
 			button_denied.emit(button_id)
 		return false
@@ -582,7 +598,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	# The roll only happens when such a relic is equipped, so runs without one keep the same random sequence.
 	var refunded: bool = not free and _relic_total(RelicDef.Effect.PRESS_REFUND) > 0.0 and rng.randf() < _relic_total(RelicDef.Effect.PRESS_REFUND)
 	if not god_mode and not free and not refunded:
-		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(Formulas.button_cost(b)).max_zero())
+		var paid: BigNum = press_cost(b) if allow_pulse else Formulas.button_cost(b)
+		_set_stat(b.cost_stat, get_stat(b.cost_stat).sub(paid).max_zero())
 	var chance: float = crit_chance(button_id)
 	var crit: bool = chance > 0.0 and rng.randf() < chance
 	var crit_mult: float = 1.0
@@ -596,7 +613,10 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	var surge: float = relics.surge_mult(press_count + 1) if relics != null else 1.0
 	# Echo Stone and Echo Ring: pressing the same pad as the last real press pays more. Pulses don't count.
 	var echo: float = 1.0 + _relic_total(RelicDef.Effect.REPEAT_GAIN) if allow_pulse and button_id == _last_pad else 1.0
-	var gain: BigNum = press_gain(button_id, crit_mult, presses).mul(BigNum.from_float(surge * echo))
+	# Only player presses carry press_scale (it is already in press_gain). Auto presses and relic pulses divide it back out,
+	# so they pay what they paid before the zone press rate went up.
+	var reward_fix: float = surge * echo * (1.0 if allow_pulse else 1.0 / maxf(config.press_scale, 0.000001))
+	var gain: BigNum = press_gain(button_id, crit_mult, presses).mul(BigNum.from_float(reward_fix))
 	var proc: float = effect_total(&"press_proc")
 	if proc > 0.0:   # a proc: this press may pay out several times over (Twin Petals, Twin Strike)
 		gain = gain.mul(BigNum.from_float(Formulas.proc_mult(rng.randf(), proc, config.press_proc_mult)))
@@ -604,7 +624,8 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	press_count += 1
 	_open_next_tier(b)
 	run_stats.on_press(crit)
-	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * (1.0 + effect_total(&"mastery_xp") + _relic_total(RelicDef.Effect.MASTERY_XP)))
+	var xp_scale: float = config.press_scale if allow_pulse else 1.0
+	var levels_up: int = mastery.add_xp(button_id, mastery.config.xp_per_press * xp_scale * (1.0 + effect_total(&"mastery_xp") + _relic_total(RelicDef.Effect.MASTERY_XP)))
 	_check_gates()
 	_flush()
 	button_pressed.emit(button_id, world_pos, gain, crit)
@@ -677,7 +698,7 @@ func feed_momentum(distance: float) -> void:
 
 ## A pad press (from the game's pad input, not the headless balance sim) nudges momentum; a crit nudges it more.
 func feed_press_momentum(crit: bool) -> void:
-	_add_momentum(config.momentum_per_press + (config.momentum_per_crit if crit else 0.0))
+	_add_momentum((config.momentum_per_press + (config.momentum_per_crit if crit else 0.0)) * config.press_scale)
 
 
 ## Stage index for a momentum value: 0 is idle, then one more for each threshold reached.
@@ -815,7 +836,7 @@ func auto_pick(affordable: bool) -> StringName:
 	var best_key: int = -1
 	var pool: Array[ButtonDef] = []
 	for b: ButtonDef in buttons_in_zone(zone_id):
-		if is_pad_locked(b.id) or (affordable and not can_afford(b.id)):
+		if is_pad_locked(b.id) or (affordable and not can_press(b, false)):
 			continue
 		var t: TierDef = tier_of(b.id)
 		var key: int = (t.order if t != null else 0) * 100 + b.row_index
@@ -1346,7 +1367,9 @@ func _offline_tend(secs: float, gains: Dictionary) -> Dictionary:
 		if n < 1.0:
 			continue
 		var nb: BigNum = BigNum.from_float(n)
-		var reward: BigNum = press_gain_preview(pad.id).mul(nb)
+		# Tending pays and costs the full amount, like an automatic press. offline_tend_fraction already carries the 1/8
+		# (the press count matches the old rate), so the reward divides press_scale back out to pay what it paid before.
+		var reward: BigNum = press_gain_preview(pad.id).mul(nb).mul(BigNum.from_float(1.0 / maxf(config.press_scale, 0.000001)))
 		_set_stat(pad.cost_stat, get_stat(pad.cost_stat).sub(cost.mul(nb)).max_zero())
 		var paid: BigNum = cost.mul(nb)
 		last_offline["spent"][pad.cost_stat] = (last_offline["spent"][pad.cost_stat] as BigNum).add(paid) if (last_offline["spent"] as Dictionary).has(pad.cost_stat) else paid
