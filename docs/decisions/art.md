@@ -198,3 +198,6 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - The dithered band read as a thin outline, not a glow, in the night screenshot. The buy glow is now an additive radial halo that spills about twice the plate's width by day and about 3.5 times at night. It is one pre-rendered texture per state (green or red) and night step, drawn with one `draw_texture` call, with 8 alpha steps so it stays pixel-crisp at one texel per world texel.
 - A gentle breath dims the halo by up to 20 percent over 1.6 seconds through `modulate`, so it does not redraw. Reduce Motion and Reduce Flashing hold it steady.
 - Not verified in-engine: the halo brightness against the night shade, and whether the halo covers the walker standing on a plate. PC QA should check Larkmoor and the meadow at noon and midnight.
+
+## 2026-11-24: Larger pad glow
+- PC QA found the halo nearly invisible at noon and small beside the dotted ground ring. Reach is about 1.9x by day and 1.8x at night (plate spread 3.0 by day, 2.6 more at night). Day strength is 0.6 and midnight 0.9, peak alpha 1.0, and the falloff is linear so the outer part still carries light. Not verified in-engine: whether the halo now washes out the ground ring or the neighbouring pads.

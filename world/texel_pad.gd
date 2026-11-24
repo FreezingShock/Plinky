@@ -66,11 +66,11 @@ var _chip: Node2D = null          # the chip's own node, made for a row's first 
 const HALO_Z: int = 6
 ## Buy glow: an additive radial halo on the ground, larger than the plate. Plate units: 1.0 is the plate's edge.
 const GLOW_INNER: float = 1.1     # the halo starts at the plate's edge (its ink sits just inside this)
-const GLOW_DAY: float = 0.55      # strength by day (0..1): visible, but it stays out of the way of the scene
-const GLOW_NIGHT_GAIN: float = 1.0  # extra strength at full night: about twice as bright at midnight
-const GLOW_SPREAD_DAY: float = 1.1  # how far the halo reaches past the plate, in plate units, by day
-const GLOW_SPREAD_NIGHT: float = 1.6  # and the extra reach at full night
-const GLOW_PEAK: float = 0.75     # peak alpha at the plate's edge, before the strength scales it
+const GLOW_DAY: float = 0.6       # strength by day (0..1): clearly there at noon, still under the scene's light
+const GLOW_NIGHT_GAIN: float = 0.5  # extra strength at full night: 0.6 by day, 0.9 at midnight
+const GLOW_SPREAD_DAY: float = 3.0  # how far the halo reaches past the plate, in plate units, by day (reach ~1.9x the old one)
+const GLOW_SPREAD_NIGHT: float = 2.6  # and the extra reach at full night (reach ~1.8x the old one)
+const GLOW_PEAK: float = 1.0      # peak alpha at the plate's edge, before the strength scales it
 const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
 const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
@@ -675,7 +675,7 @@ static func glow_texture(ready: bool, step: int) -> ImageTexture:
 			if d <= GLOW_INNER or d >= reach:
 				continue
 			var f: float = 1.0 - (d - GLOW_INNER) / spread
-			var a: float = snappedf(clampf(f * f * GLOW_PEAK * amount, 0.0, 1.0), 0.125)
+			var a: float = snappedf(clampf(f * GLOW_PEAK * amount, 0.0, 1.0), 0.125)   # linear falloff: the wide outer part still carries light
 			if a > 0.0:
 				img.set_pixel(x + hw, y + hh, Color(col.r, col.g, col.b, a))
 	var tex: ImageTexture = ImageTexture.create_from_image(img)
