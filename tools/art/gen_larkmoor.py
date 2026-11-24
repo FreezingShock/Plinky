@@ -1251,6 +1251,13 @@ for _ in range(3):
             r_ = np.roll(np.roll(wimg, dx, 1), dy, 0); ncnt += (r_ >= 0); nsum += (r_ == 1)
     fill = unk & (ncnt >= 3); wimg[fill] = (nsum[fill] * 2 > ncnt[fill]).astype(np.int8)
 wimg[wimg < 0] = 0
+# Ember Quarry entrance props (entrance/entrance.json, made by gen_ember_entrance.py) are solid. The walker may not stand in a
+# prop's drawn box: a walker there is hidden by the prop, which sorts in front of him. Canvas pixels are the sprite frame.
+_ember_doc = json.load(open(os.path.join(OUT, 'entrance', 'entrance.json')))
+for _es in _ember_doc.get('sprites', []):
+    if _es.get('kind') != 'ember_prop': continue
+    _x0, _y0 = int(_es['x']), int(_es['y'])
+    wimg[max(0, _y0):min(H, _y0 + int(_es['h'])), max(0, _x0):min(W, _x0 + int(_es['w']))] = 0
 # connected component from the spawn
 sp = [a for a in anchors if a['kind'] == 'player_spawn'][0]
 def _near(x, y):
