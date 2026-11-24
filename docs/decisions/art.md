@@ -413,7 +413,7 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 ## 2026-11-24: Ember entrance props are solid on the walk mask
 - The walker could stand inside the Ember Quarry crates, where the prop sorts in front and hides him. The mask now zeroes each solid ember prop's drawn box (entrance/entrance.json, kind ember_prop), since a footprint circle left the walker hidden.
 - Tiny flat decor stays walkable (none in the file today). Tests check every solid prop's centre is blocked and no ruin front stop sits in a prop box.
-- Side effect: ruin 028 has no straight approach from N, E, S or W now. It is reached on a diagonal, and the crates shield it. Left for Nathan to decide whether to move crates_2.
+- Side effect: the crates shielded ruin 028 from N, E, S and W. Moved crates_2 10 texels east (gen_ember_entrance.py and entrance.json, sort key unchanged), so 028 now has a clear south approach 12.5 texels out.
 ## 2026-11-24: Pad signs choose a clear spot
 - **Nathan's note:** a pad's cost sign covered the next pad's bed in a Starbloom row, and it happens on many pads across zones.
 - **How:** `TexelPad.SIGN_SPOTS` lists eight spots relative to the pad (right and left of the plate, lifted in steps). `choose_sign_spot` returns the first one whose plank and post clear every bed and plate on the zone and this pad's press spot. `main.gd` gives every pad the zone's positions once they are placed (`set_sign_neighbours`). The default spot is still the first choice, so a pad with room keeps its look.
