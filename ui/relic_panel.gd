@@ -19,6 +19,11 @@ const TAB_COLUMNS: int = 3
 const PANEL_W: float = COLUMNS * RelicCard.W + (COLUMNS - 1) * GAP
 ## Chips and tabs keep this height or more, so they are easy to hit with a mouse or a pad.
 const CHIP_H: float = 20.0
+## The view-hidden eye button is bigger than a chip, so it is an easy target and reads as a control.
+const SHOW_W: float = 34.0
+const SHOW_H: float = 22.0
+const SHOW_EYE_W: int = 14
+const SHOW_EYE_H: int = 8
 ## The grid scrolls past this height. Shorter content just makes the panel shorter.
 const MAX_GALLERY_HEIGHT: float = 150.0
 ## Room for the scrollbar when the grid scrolls.
@@ -61,8 +66,15 @@ func _init() -> void:
 	_head_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_head_count.add_theme_color_override("font_color", RelicStyle.dim)
 	head.add_child(_head_count)
+	# The view-hidden toggle: an eye, not text, so it reads at a glance. Its tooltip says what the state means.
 	_show_btn = _chip_button()
+	_show_btn.clip_text = false
+	_show_btn.expand_icon = false
+	_show_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_show_btn.custom_minimum_size = Vector2(SHOW_W, SHOW_H)
 	_show_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_show_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	Tip.bind(_show_btn, func() -> Variant: return _show_tip())
 	_show_btn.pressed.connect(func() -> void:
 		_owned_only = not _owned_only
 		_swap_from = &""
@@ -85,6 +97,8 @@ func _init() -> void:
 	_bonus.add_theme_constant_override("v_separation", GAP)
 	_bonus.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bonus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Boost chips pack from the right edge, so the buffs line up against the panel's right side.
+	_bonus.alignment = FlowContainer.ALIGNMENT_END
 	_top.add_child(_bonus)
 	outer.add_child(PanelDivider.new(2))
 	_tabs = GridContainer.new()
@@ -112,6 +126,51 @@ func _init() -> void:
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint.custom_minimum_size.x = PANEL_W
 	outer.add_child(_hint)
+
+
+## The view-hidden toggle. On (filled, open eye) shows every relic. Off (plain, slashed eye) shows only the ones you own.
+func _refresh_show_btn() -> void:
+	var showing_all: bool = not _owned_only
+	_show_btn.icon = _eye_texture(showing_all)
+	var fill: Color = RelicStyle.ink.lerp(RelicStyle.edge, 0.3) if showing_all else RelicStyle.ink
+	_apply_chip(_show_btn, RelicStyle.edge, RelicStyle.text, fill)
+
+
+func _show_tip() -> Dictionary:
+	if _owned_only:
+		var off: Dictionary = TipText.slot_note("Owned Only", "Only the relics you have found are listed.")
+		off["hint"] = "Click to show every relic, found or not."
+		return off
+	var on: Dictionary = TipText.slot_note("Showing All", "Relics you have not found show as dark silhouettes.")
+	on["hint"] = "Click to show only the relics you own."
+	return on
+
+
+## A pixel eye, 14 by 8 and drawn at 2x so it stays crisp. Open when every relic shows. Slashed, in the accent, when
+## only owned relics show. Colours are baked in, so the icon does not depend on the button's hover state.
+func _eye_texture(open: bool) -> Texture2D:
+	var img := Image.create(SHOW_EYE_W, SHOW_EYE_H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.0, 0.0, 0.0, 0.0))
+	var ink_c: Color = RelicStyle.text if open else RelicStyle.dim
+	var cx: float = SHOW_EYE_W * 0.5
+	var cy: float = SHOW_EYE_H * 0.5
+	for y in SHOW_EYE_H:
+		for x in SHOW_EYE_W:
+			var dx: float = x + 0.5 - cx
+			var dy: float = y + 0.5 - cy
+			var nx: float = dx / cx
+			var ny: float = dy / cy
+			var d: float = sqrt(nx * nx + ny * ny)
+			if d >= 0.8 and d <= 1.0:
+				img.set_pixel(x, y, ink_c)
+			elif dx * dx + dy * dy <= 2.5:
+				img.set_pixel(x, y, ink_c)
+	if not open:
+		for i in SHOW_EYE_W:
+			var sy: int = int(round(float(i) * float(SHOW_EYE_H - 1) / float(SHOW_EYE_W - 1)))
+			img.set_pixel(i, sy, RelicStyle.accent)
+	img.resize(SHOW_EYE_W * 2, SHOW_EYE_H * 2, Image.INTERPOLATE_NEAREST)
+	return ImageTexture.create_from_image(img)
 
 
 ## A compact chip button: a bordered label, used for rarity tabs and the Show filter. Tall enough to hit easily.
@@ -206,8 +265,7 @@ func refresh() -> void:
 	_slots_primed = true
 	_fill_bonuses()
 	_refresh_tabs()
-	_show_btn.text = "Show: %s" % ("Owned" if _owned_only else "All")
-	_apply_chip(_show_btn, RelicStyle.edge, RelicStyle.text, RelicStyle.ink)
+	_refresh_show_btn()
 	_fill_grid(refocus)
 	_head_count.text = "%d of %d found" % [inventory.owned.size(), inventory.defs.size()]
 	_hint.text = _hint_text(inventory.owned.is_empty())
