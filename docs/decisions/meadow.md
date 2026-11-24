@@ -203,6 +203,11 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
 
+## 2026-11-24: Larkmoor tree spacing (review slice 1)
+- Trees now keep a real gap between crowns: `TREE_GAP` oak 6 and pine 8 texels in `gen_larkmoor.py` (the old gap was 1.5, so trees stood in walls). The north-east pine groves go from 14 and 8 down to 10 and 6 (the two groves at (1040, 330) and (1120, 330)). Thinner than that dropped the forest-edge count under the test floor (`forest_edge` >= 6, `tests/test_wild.gd`), so the groves stay at 10 and 6.
+- Regen order after the grove change: `gen_larkmoor.py`, then `gen_life_anchors.py` (base run), then `gen_life_anchors.py --add-keys --farm assets/art/zone1b/farm/farm.json` (writes `perches`, `forest_edge` and `farm_items`), then `gen_gardens.py` (its flowers test checks the ground pixels).
+- Read from the zone 1 noon tour: the north-east pine stand reads as a thinner group with gaps. The other clusters are still tight, and the grove by the watchtower is the density to match. Not checked in-engine at zoom 3; the walk test is still to do.
+- Tour: `tools/larkmoor_review.gd` (not committed) pins the sky at noon, hides the HUD, and walks a grid of spots at zoom 1.
 ## 2026-11-24: Larkmoor lanterns by path tier, evenly spaced
 - **Tiers:** `PATH_TIER` in `larkmoor_layout.py` names each path: the main road (`road`), the two forks to the districts (`lane`), the windmill track (`trail`). `gen_larkmoor.py` spaces the lamps by tier: a road about every 110 texels, a lane every 200, a trail two (one at each end of its span). Spacing is even along each path, with the same 70-texel margin at both ends, so no lamp sits on a junction or a gate.
 - **Why:** the old rhythm restarted on every path and dropped a lamp wherever the first side was blocked, so the gaps were uneven. Now a blocked spot slides the lamp along its path (up to a third of a step), and no two lamps are closer than 80 texels.
@@ -223,3 +228,18 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Flower pads change the slab itself from stage 3: a one texel tier-colour stripe on the side faces (stage 3), a second lighter one (stage 4), gold stripes on rows 1 and 3 (stage 5). The stage 5 crown is now an outlined gold band with five points and a white jewel, one texel above the flower. Stripes and crown are skipped on locked pads. | Stages 3 to 5 differed only by flower count and a one texel crown line, so they blurred together at 1x. Reviewed in `tools/pad_sheet.tscn`. |
 | The Thistle garden reaches 100 uv (was 82) with 100 big flowers per plate (was 66). | The row's field was a thin strip beside the road. |
 | `tools/garden_shots.gd` takes `-- phase=0.95` to shoot a row at night. | Night review of the rows. Software Vulkan hits the shader-instance limit after about six night shots; shoot the later rows by themselves. |
+
+## 2026-11-24: Less clumped fields
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` draws distances half evenly over the field and half bunched to the plates (was all bunched), thins by gentle drifts (0.5 to 1.0, was 0.3 to 1.2), and spaces flowers 1.4x their footprint with a random 0.75 to 1.6 jitter. Attempts rose so the total stays about the same (2429 flowers, was 2410). | Nathan asked for fields that are less clumped but liked the density, so spacing varies and the heaps go, not the flower count. |
+| `tools/qa_probe.tscn` walks the real main scene from a chosen start to a pad (`-- x=2127 y=1039 pad=lark_clover_1 rich`); `route_probe` also routes every pad from every other pad and a scatter of open spots. | For the lark_clover_1 farm-side report, which does not reproduce here. |
+## 2026-11-24: Meadow lanterns one size, lit after dark
+| Decision | Why |
+|---|---|
+| Every meadow lantern faces the same way (`rot=0`), and the export crops each one to one window around its foot: 8 texels left, 9 right, 27 above, 3 below (18 by 31). The generator asserts that every lantern voxel lands inside it. The sprites are 18 by 31 instead of 11 to 13 by 26 to 28. | The lanterns got a random quarter-turn from their seed, so the bounding boxes came out in four sizes. The PC QA saw four scale groups. Larkmoor's lamps already use the fixed-window method. |
+| The placement stream is unchanged: the seed is still drawn for every candidate, so no other prop moves. Only the five lantern sprites, `rock_038_n` (its normals read the lantern beside it) and the lantern entries of `placements3d.json` changed in `assets/art/zone1/meadow3d/`. | Keeps the diff to the lanterns. |
+| `_add_lights` gives lantern life lights kind `lantern`, the same kind Larkmoor uses, so their pools scale with the night (`SkyCycle.lamp_light_k`). They were kind `fixed` and burned at full strength by day. | The meadow lanterns were lit at noon. Larkmoor's were not. |
+| `tests/test_lighting.gd` checks that each meadow lantern life light is a night pool and that the lantern sprites share one size. `tools/lantern_shots.tscn -- meadow` shoots the meadow lanterns at night, dusk and noon. | Regression guard, and the shot tool for the PC check. |
+| A fresh bake on main matches the committed placements except `bush_027`'s width. Some committed sprite and ground files already differed from a fresh bake before this change (`oak_018_n`, `crystals_039_n`, `bush_027`'s width, the ground images and the preview). They were left alone. | Keeps this PR to the lanterns. |
+| Not verified on the PC. Cloud shots (xvfb, software Vulkan) only. In the four cloud shots the meadow's night is much brighter than Larkmoor's (mean luminance about 84 against 62), so the lamp glow reads less there. | Lighting is for the sky owner to tune, not this change. |

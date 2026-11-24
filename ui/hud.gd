@@ -737,6 +737,8 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 	var typing: Control = get_viewport().gui_get_focus_owner()
 	if typing is LineEdit or typing is TextEdit:
 		return   # letters like R belong to the text box
+	if _upgrades_panel.visible and not _modal.visible and _step_gifts_tab(event):
+		return
 	if event.is_action_pressed(&"plinky_upgrades") or Keybinds.matches(&"upgrades", event):
 		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
 			toggle_upgrades()
@@ -764,6 +766,29 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 	elif event.is_action_pressed(&"plinky_settings") or Keybinds.matches(&"settings", event):
 		settings_toggled.emit(true)
 		get_viewport().set_input_as_handled()
+
+
+## While Upgrades is open, Left and Right and the pad shoulders step through the gifts tabs, whichever card or tab has
+## focus. Read in _input so a card's own arrow handling cannot take the key first. Wraps round, like the Settings tabs.
+func _step_gifts_tab(event: InputEvent) -> bool:
+	var dir: int = 0
+	if event.is_action_pressed(&"plinky_tab_next") or event.is_action_pressed(&"ui_right"):
+		dir = 1
+	elif event.is_action_pressed(&"plinky_tab_prev") or event.is_action_pressed(&"ui_left"):
+		dir = -1
+	if dir == 0:
+		return false
+	var shown: Array[StringName] = []
+	for cur: StringName in _upg_order:
+		if UpgradeText.tab_shown(sim, cur):
+			shown.append(cur)
+	if shown.size() < 2:
+		return false
+	var nxt: StringName = shown[posmod(shown.find(_upg_tab) + dir, shown.size())]
+	_select_upgrade_tab(nxt)
+	(_upg_tab_btns[nxt] as Control).grab_focus()   # the card under focus may hide with its tab, so focus moves to the new tab
+	get_viewport().set_input_as_handled()
+	return true
 
 
 ## The chip a plain 1 to 5 key press maps to (no modifiers), or null: 1 Upgrades, 2 Relics, 3 Stats, 4 Attributes, 5 Menu.
@@ -894,13 +919,11 @@ func _refresh() -> void:
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
-	var show_rates: bool = _opt(&"strip_rates", true)
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
 		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
-		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
-		(pair[1] as Label).visible = show_rates
+		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""   # shown by _place_rates
 	_fit_columns()
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
@@ -1098,7 +1121,9 @@ func _update_gain_labels() -> void:
 	_gain_tally.prune(now)
 
 
-## Park each gain label just right of the panel, level with its row, and the row's income rate just past it.
+## Park each row's income rate just right of the panel, level with its row, always while income is non-zero.
+## The gain label sits just past the rate, so neither moves when a gain label appears or fades. Its width is
+## the only thing that changes the layout, and only while it is up.
 func _place_rates() -> void:
 	var show_rates: bool = _opt(&"strip_rates", true)
 	var right: float = _stats_panel.position.x + _stats_panel.size.x + 3.0
@@ -1107,22 +1132,24 @@ func _place_rates() -> void:
 		var rate: Label = (_rows[sid] as Array)[1] as Label
 		var box: Control = _row_boxes[sid] as Control
 		var gl: HudGainLabel = _gain_labels.get(sid) as HudGainLabel
-		var gain_w: float = 0.0
-		if gl != null and gl.visible:
-			gain_w = gl.size.x + 3.0
-			var gat: Vector2 = Vector2(right, box.global_position.y - global_position.y + floorf((box.size.y - gl.size.y) * 0.5)).floor()
-			if gl.position != gat:
-				gl.position = gat
+		var row_y: float = box.global_position.y - global_position.y
 		var show: bool = show_rates and box.visible and rate.text != ""
 		rate.visible = show
-		if not show:
-			widest = maxf(widest, gain_w)
-			continue
-		var at: Vector2 = Vector2(right + gain_w, box.global_position.y - global_position.y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
-		if rate.position != at:
-			rate.position = at
-		rate.modulate.a = box.modulate.a
-		widest = maxf(widest, gain_w + rate.size.x + 3.0)
+		var x: float = right
+		var extent: float = 0.0
+		if show:
+			var at: Vector2 = Vector2(right, row_y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
+			if rate.position != at:
+				rate.position = at
+			rate.modulate.a = box.modulate.a
+			x = right + rate.size.x + 3.0
+			extent = x - right
+		if gl != null and gl.visible:
+			var gat: Vector2 = Vector2(x, row_y + floorf((box.size.y - gl.size.y) * 0.5)).floor()
+			if gl.position != gat:
+				gl.position = gat
+			extent += gl.size.x + 3.0
+		widest = maxf(widest, extent)
 	_rates_w = widest
 
 

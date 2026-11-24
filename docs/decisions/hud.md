@@ -458,11 +458,18 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Sunlight bonuses** have their own key, so they fold only with each other and not with a pad's Sunlight number. Say so if that splits a Sunlight number you wanted combined.
 - Not run in-engine from the cloud: PC QA should check a neighbouring pad's gain and a standing press on one pad.
 
+## 2026-11-24: Gain numbers and their pad caption stay apart
+- **Why:** on the first-hour playtest, "+6.89" sat right on "Clover Leaves" and the two read as one block. The caption started 2 px under the number's baseline, and the number's 2 px outline and 2 px wave motion pushed into it.
+- **Change:** the caption starts 6 px under the number's baseline (`CAPTION_DROP` 18 px, with the caption 14 px down). The placement box grows to match, so stacked popups still clear the caption.
+- Verified by rendering two neighbouring-pad presses under Xvfb with software Vulkan: the caption now sits clearly under the number. The suite passes, 6141 checks, 0 failed.
+- Not checked: a caption running into the zone panel. The panel clip still shortens "Clover Leaves" there, which is the existing clear-zone behaviour and not part of this change.
 ## 2026-11-24: Seamless scene handoff
 - **Why:** Play, Quit to title and the loading screen's hand-off went through an ink wipe that filled the screen, then a plain `change_scene`. The game's first frames showed the default grey, and the zone art loaded on the main thread, so the screen went black or grey and cut.
 - **Rule:** `SceneSwap` (`boot/scene_swap.gd`) captures the frame being left and covers the window with it. The next scene is swapped in underneath, draws four warm frames there, then the cover sweeps away to reveal it (`boot/scene_reveal.gdshader`, a dithered edge with a sun-coloured lead line). Under Reduce Motion the cover cross-fades. Nothing is drawn in a flat colour.
 - **Loading:** Play goes to the loading screen in handoff mode. It opens at the title's time of day, loads the slot's zone art on a worker thread (`Loading Larkmoor art... 62%`) and keeps the scene alive until the game has used it. It waits while a swap is still revealing, so no leave is dropped.
 - **Label:** ASCII dots, because Spleen has no ellipsis glyph.
+- **Same backdrop, no sweep (Nathan, 24 Nov):** when the next screen draws the same backdrop, the swap is a plain foreground change with no cover. Title to loading is the case, since the loading screen opens at the title's time of day on the same backdrop. Real backdrop changes keep the sweep (boot to title, loading to game, pause menu to title).
+- **Warm-up is adaptive:** the cover holds until the arriving scene draws at least four frames and two frames in a row cost about the same, capped at 40. A slow PC warms longer; a fast one reveals sooner.
 - Verified headless under Xvfb with lavapipe: boot, title, Play, loading, game, and the Reduce Motion path. No frame is near-black or flat, and the largest frame-to-frame jump is a sweep, not a cut (`tools/transition_frames.tscn`). Not run on the PC: the zone-art label for Larkmoor and Ember Quarry (a cold zone load), the Quit to title path, and the feel of the sweep at full speed.
 ## 2026-11-24: Zone currencies open their gifts and show a full card
 - **Why:** Seeds and Core Shards only said "You have X". Nathan wanted the card to say what the currency is and how it is earned, and a click to take you to the gifts it buys.
@@ -483,3 +490,16 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Decision:** the stat label takes its gains from `EventBus.button_pressed` only (the pad's `reward_stat`). `bonus_gained` is no longer connected to the HUD. Streak and critter payouts keep their gold popup at the walker or critter (`main.gd` `_on_bonus_gained`), which already shows the Sunlight payout.
 - **Not chosen:** showing bonus payouts on the stat labels. A bonus would look like a press on Sunlight, which the player did not make.
 - **Check in-engine:** three `sim.try_press` calls on `sprout_1..3` leave only the `dewdrop` label visible (before the fix, a `sunlight` label appeared too).
+
+## 2026-11-24: Income rate shows only with a recent gain
+- **Why:** PC QA on #358: the "+x/s" income rate beside each row sat on screen while nothing was pressed, and Nathan wants the strip quiet until something is gained.
+- **Decision:** a row's "+x/s" rate shows only while that row's gain label is up (a pad gain in the last 3.4 s). Idle income is no longer shown there. The Strip Gain Rates setting still turns the rate off entirely. The prestige row's multiplier is not a rate and keeps its old rule.
+- **Cause of the flicker:** the stats refresh set the rate's visibility on its own timer, which overrode the per-frame placement. The refresh no longer touches visibility.
+- **Check in-engine:** idle, the Sunlight rate is hidden. A simulated Sunlight gain shows the rate beside the gain label, and both hide after the fade.
+- **Open:** if Nathan wants idle income visible after all, the change is one condition in `_place_rates`.
+
+## 2026-11-24: Income rate stays visible; gain label sits after it (reverses the entry above)
+- **Why:** the coordinator's review of #366: the "+x/s" income rate is long-standing information that Nathan never asked to hide. It only looked like a stray label in QA. Hiding it while idle was the wrong call.
+- **Decision:** the rate shows whenever the row has income, as before. The gain label now sits just past the rate instead of between the panel and the rate. The rate never moves when a gain appears or fades, and the gain label never overlaps it. Only the gain label's own width changes the strip's extent, and only while it is up.
+- **Check in-engine:** Sunlight's rate sat at x=93 idle and while a gain was up, and at x=93 after the fade. The gain label sat at x=133, which is 93 + rate width 37 + 3.
+- **Not done:** no animation on the gain label's position, so nothing glides or jumps.
