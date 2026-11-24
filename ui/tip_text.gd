@@ -126,7 +126,22 @@ static func index_row(d: Dictionary) -> Dictionary:
 	var pending: bool = bool(d.get("pending", false))
 	return {"title": str(d["name"]), "title_color": sc, "color": sc, "icon": str(d.get("icon", "")),
 		"body": str(d.get("desc", d.get("tip", ""))), "lines": lines, "roomy": true,
+		"kicker": _stat_kicker(str(d.get("rarity", ""))),
 		"hint": "" if pending else "Click to open!", "hint_color": click_color()}
+
+
+## The rarity line under a currency's name, the pads' own tag: "UNCOMMON STATISTIC" in the rarity colour. Sunlight is
+## the starter statistic and reads "STARTER STATISTIC" in its stat yellow. Empty (no line) when no pad touches it.
+static func _stat_kicker(rarity_id: String) -> Array:
+	if rarity_id == "":
+		return []
+	if rarity_id == StatIndex.STARTER_RARITY:
+		return [Tip.tag("Starter statistic", StatStyle.color(StatIndex.STARTER_STAT))]
+	var path: String = "res://content/rarities/%s.tres" % rarity_id
+	if not ResourceLoader.exists(path):
+		return []
+	var rd: RarityDef = load(path) as RarityDef
+	return rarity_tag(rd, "statistic", rd.readable_color(RelicStyle.ink)) if rd != null else []
 
 
 ## Tooltip of the Buy button on an attribute's detail page. `cost_text` is the formatted next-level cost.

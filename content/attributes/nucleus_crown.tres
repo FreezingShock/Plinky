@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_crown"
+display_name = "Nucleus Crown"
+effect = &"nucleus_crown"
+per_level = 1.0
+cap = 1
+base_cost = 150.0
+cost_growth = 1.0
+currency = &"shards"
+unlock_resets = 5
+order = 40
+blurb = "Every pad in the quarry pays double."
+icon = &"nucleus_crown"
+unit_text = "pad reward"

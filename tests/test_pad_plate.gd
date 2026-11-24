@@ -21,6 +21,46 @@ func run(t: Object) -> void:
 	pad.level_flash()
 	t.ok(pad._level_step() > 0, "a level-up starts the ring flash")
 	pad.free()
+	# The glow node: every pad has one from construction, visible, above the night shade (z 5) and under the air layer (z 10).
+	var glow_pad := TexelPad.new()
+	t.ok(glow_pad._halo != null, "a pad always has its glow node, in every zone")
+	t.ok(glow_pad._halo != null and glow_pad._halo.get_parent() == glow_pad, "the glow node is a child of its pad")
+	t.ok(glow_pad._halo != null and glow_pad._halo.visible, "the glow node is visible")
+	t.ok(TexelPad.HALO_Z > 5 and TexelPad.HALO_Z < 10, "the glow sits above the night shade (z 5) and under the air layer (z 10)")
+	# Guard: a bare draw_rect inside the glow's draw code paints the pad, not the glow node, and errors every frame in-engine.
+	var src: String = FileAccess.get_file_as_string("res://world/texel_pad.gd")
+	var in_halo: bool = false
+	var bare_draws: int = 0
+	for line: String in src.split("\n"):
+		if line.begins_with("func "):
+			in_halo = line.begins_with("func _draw_halo") or line.begins_with("func _glint")
+		if in_halo and (line.contains("draw_rect(") or line.contains("draw_texture(")) and not line.contains("_halo.draw_"):
+			bare_draws += 1
+	t.eq(bare_draws, 0, "the glow draws only through its own node (_halo.draw_rect / _halo.draw_texture)")
+	t.ok(glow_pad._halo.material is CanvasItemMaterial and (glow_pad._halo.material as CanvasItemMaterial).blend_mode == CanvasItemMaterial.BLEND_MODE_ADD, "the glow is additive, so it lights the ground under it")
+	t.ok(glow_pad._halo.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST, "the glow is filtered nearest, so it stays pixel-crisp")
+	var day_halo: ImageTexture = TexelPad.glow_texture(true, 0)
+	var night_halo: ImageTexture = TexelPad.glow_texture(true, 8)
+	t.ok(night_halo.get_width() > day_halo.get_width(), "the halo reaches further at night")
+	t.ok(night_halo.get_width() > 4 * int(TexelPad.HALF.x), "the halo spills well past the plate (more than twice its width)")
+	t.ok(TexelPad.glow_texture(false, 8) != null, "the red halo builds too")
+	var pulse: float = TexelPad.glow_pulse_alpha()
+	t.ok(pulse <= 1.0 and pulse >= 1.0 - TexelPad.GLOW_PULSE_DEPTH - 0.001, "the breath dims the halo by at most its depth")
+	var night_glow := PadGlow.new()
+	night_glow.night01 = 1.0
+	glow_pad.glow = night_glow
+	t.eq(glow_pad._night(), 1.0, "a pad reads the zone's night level through PadGlow")
+	glow_pad.glow = null
+	night_glow.free()
+	glow_pad.free()
+	# Buy glow: green when buyable, red a little softer, magnified at night, and never past full density.
+	t.ok(TexelPad.glow_amount(true, 0.0) > 0.0, "a buyable pad has a glow by day")
+	t.ok(TexelPad.glow_amount(true, 1.0) > TexelPad.glow_amount(true, 0.0), "the glow is stronger at night")
+	t.ok(TexelPad.glow_amount(false, 0.0) < TexelPad.glow_amount(true, 0.0), "the red glow sits softer than the green")
+	t.ok(TexelPad.glow_amount(true, 1.0) <= 1.0, "the glow never passes full density")
+	t.ok(TexelPad.glow_spread(1.0) > TexelPad.glow_spread(0.0), "the glow band widens at night")
+	t.eq(TexelPad.glow_night_step(0.0), 0, "day is night step 0")
+	t.eq(TexelPad.glow_night_step(1.0), 8, "full night is night step 8")
 	var sim: Sim = t.make_sim()
 	for id: StringName in sim.button_defs:
 		var r: StringName = sim.pad_rarity(id)
