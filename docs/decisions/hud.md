@@ -410,3 +410,6 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Height:** the grid grows with its content up to 190 px, then scrolls. This is the 25+ tile case: the card never leaves the frame, whatever the count.
 - **Tooltips:** tile tips use the beside placement (`"beside": true`) and Collect joins the `tip_avoid` group, so a tip opens beside its tile and never covers the button. Cursor-placed tips ignore that group, which is why the tiles opt in.
 - Not run in-engine from the cloud: the scroll appearing at 25+ tiles and the tip position. PC QA should capture both.
+
+## 2026-11-24: Gain popups fold and stack
+- Same-currency presses within 120 px fold into one number that rolls up to its total (was 40 px, so neighbouring pads never folded). Placement boxes count the stat caption, which is about 2.4 times the number's width, and a popup stacks above another when every fixed lane is taken. Reason: Nathan's Starbloom screenshot had captions overlapping as separate popups.
