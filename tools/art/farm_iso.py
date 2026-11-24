@@ -11,7 +11,7 @@ Props: a round hay bale, a two-wheeled cart and a crate. The scarecrow stays in 
 """
 import math
 
-from gen_cozy import Canvas, INK, SHADE, DEEP, LIGHT, ACCENT, EARTH, PAPER
+from gen_cozy import Canvas, INK, SHADE, DEEP, BASE, LIGHT, ACCENT, EARTH, PAPER
 
 K = 0.6                  # vertical squash of the ground: higher looks more down on the farm
 BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
@@ -102,7 +102,7 @@ def gable_building(cv: Canvas, L: float, W: float, H: float, rise: float, porch:
     iso = Iso(cv, extent)
 
     # Roof: far slope (Y small) lit DEEP with SHADE joints, near slope (Y large) in SHADE with DEEP joints.
-    iso.fill([(0, 0, H), (xr, 0, H), (xr, ym, H + rise), (0, ym, H + rise)], tile_fn(DEEP, SHADE))
+    iso.fill([(0, 0, H), (xr, 0, H), (xr, ym, H + rise), (0, ym, H + rise)], tile_fn(DEEP, BASE))
     iso.fill([(0, ym, H + rise), (xr, ym, H + rise), (xr, y1, H), (0, y1, H)], tile_fn(SHADE, DEEP, 1))
     iso.line((0, ym, H + rise), (xr, ym, H + rise), LIGHT)          # ridge cap catches the light
     iso.line((0, 0, H), (xr, 0, H), LIGHT)                          # far eave
@@ -156,8 +156,9 @@ def gable_building(cv: Canvas, L: float, W: float, H: float, rise: float, porch:
         # Porch: two PAPER columns with SHADE edges, a PAPER beam and a DEEP roof slab over a cellar hatch.
         px = L + 8
         for Yc in (ym - 9, ym + 9):
-            iso.fill([(px, Yc - 0.7, 0), (px, Yc + 0.7, 0), (px, Yc + 0.7, H - 3), (px, Yc - 0.7, H - 3)],
-                     dither(SHADE, PAPER, 0.3))
+            iso.fill([(px, Yc - 0.7, 0), (px, Yc + 0.7, 0), (px, Yc + 0.7, H - 3), (px, Yc - 0.7, H - 3)], solid(PAPER))
+            iso.line((px, Yc + 0.7, 0), (px, Yc + 0.7, H - 3), SHADE)          # shaded edge of the shaft
+            iso.line((px, Yc - 0.7, H - 4), (px, Yc + 0.7, H - 4), SHADE)      # capital course
         iso.fill([(xr, ym - 10, H - 3), (px, ym - 10, H - 3), (px, ym + 10, H - 3), (xr, ym + 10, H - 3),
                   (xr, ym + 10, H - 1), (px, ym + 10, H - 1), (px, ym - 10, H - 1), (xr, ym - 10, H - 1)],
                  solid(DEEP))
@@ -168,6 +169,38 @@ def gable_building(cv: Canvas, L: float, W: float, H: float, rise: float, porch:
         iso.line((hx0, hy0, 0), (hx1, hy0, 0), LIGHT)
         iso.line((hx0, hy0, 0), (hx0, hy1, 0), LIGHT)
         iso.line((hx0 + 2.5, hy0, 0), (hx0 + 2.5, hy1, 0), EARTH)
+
+
+def scarecrow() -> Canvas:
+    """A scarecrow, 18x34, in the elevated view: a pole, an arm bar running across the field, a shirt, trousers, a
+    sack head with its hat crown and brim. The tops show, so it reads from above like the buildings do."""
+    cv = Canvas(18, 34)
+    iso = Iso(cv, [(4.5, 4.5, 0), (6.5, 6.5, 22), (3, 0, 0), (8, 11, 14), (0, 3, 0), (11, 8, 22)])
+    iso.fill([(4.5, 4.5, 0), (5.5, 4.5, 0), (5.5, 4.5, 16), (4.5, 4.5, 16)], solid(EARTH))     # pole, front edge
+    iso.fill([(4.5, 4.5, 0), (4.5, 5.5, 0), (4.5, 5.5, 16), (4.5, 4.5, 16)], solid(EARTH))     # pole, side edge
+    iso.fill([(4.2, 3.0, 13), (4.8, 3.0, 13), (4.8, 11.0, 13), (4.2, 11.0, 13)], solid(EARTH))  # arm bar, top
+    iso.fill([(4.2, 3.0, 11), (4.8, 3.0, 11), (4.8, 11.0, 11), (4.2, 11.0, 11)], solid(SHADE))   # arm bar, underside
+    # Trousers.
+    iso.fill([(4, 4, 0), (7, 4, 0), (7, 7, 0), (4, 7, 0)], solid(SHADE))
+    iso.fill([(4, 4, 0), (7, 4, 0), (7, 4, 7), (4, 4, 7)], solid(SHADE))
+    # Shirt: a box with an ACCENT top and lit side, a SHADE dither on the shaded side.
+    iso.fill([(3.5, 3.5, 7), (7.5, 3.5, 7), (7.5, 7.5, 7), (3.5, 7.5, 7)], solid(ACCENT))
+    iso.fill([(7.5, 3.5, 7), (7.5, 7.5, 7), (7.5, 7.5, 13), (7.5, 3.5, 13)], solid(ACCENT))
+    iso.fill([(3.5, 7.5, 7), (7.5, 7.5, 7), (7.5, 7.5, 13), (3.5, 7.5, 13)], dither(SHADE, ACCENT, 0.4))
+    iso.fill([(3.5, 3.5, 13), (7.5, 3.5, 13), (7.5, 7.5, 13), (3.5, 7.5, 13)], solid(ACCENT))
+    iso.line((3.5, 5.5, 10), (7.5, 5.5, 10), EARTH)                                            # shirt stripe
+    # Sack head: PAPER top and lit side, a SHADE dither on the shaded side, two INK eyes.
+    iso.fill([(4.5, 4.5, 14), (6.5, 4.5, 14), (6.5, 6.5, 14), (4.5, 6.5, 14)], solid(PAPER))
+    iso.fill([(6.5, 4.5, 14), (6.5, 6.5, 14), (6.5, 6.5, 19), (6.5, 4.5, 19)], solid(PAPER))
+    iso.fill([(4.5, 6.5, 14), (6.5, 6.5, 14), (6.5, 6.5, 19), (4.5, 6.5, 19)], dither(SHADE, PAPER, 0.4))
+    iso.dot((5.0, 4.5, 17), INK)
+    iso.dot((6.0, 4.5, 17), INK)
+    # Hat: a brim over the head, then a crown.
+    iso.fill([(3.5, 3.5, 19), (7.5, 3.5, 19), (7.5, 7.5, 19), (3.5, 7.5, 19)], solid(SHADE))
+    iso.fill([(4.5, 4.5, 19), (6.5, 4.5, 19), (6.5, 6.5, 19), (4.5, 6.5, 19)], solid(DEEP))
+    iso.fill([(4.5, 4.5, 19), (6.5, 4.5, 19), (6.5, 4.5, 22), (4.5, 4.5, 22)], solid(SHADE))
+    cv.outline(INK)
+    return cv
 
 
 def _steps(a: float, b: float, s: float):
