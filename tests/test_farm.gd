@@ -28,8 +28,15 @@ func run(t: Object) -> void:
 		var kind: String = str(item.get("kind", ""))
 		kinds[kind] = true
 		var rect := Rect2(float(item.x), float(item.y), float(item.w), float(item.h))
-		rects.append(rect)
-		rect_kinds.append(kind)
+		if kind == "farm_fence":
+			# The ring is one sprite, so overlap is checked piece by piece: each piece's own box, from the manifest.
+			for v2: Variant in item.get("pieces", []) as Array:
+				var piece: Dictionary = v2 as Dictionary
+				rects.append(Rect2(float(piece.x), float(piece.y), float(piece.w), float(piece.h)))
+				rect_kinds.append(FENCE_PREFIX + "_piece")
+		else:
+			rects.append(rect)
+			rect_kinds.append(kind)
 		t.ok(Rect2(Vector2.ZERO, CANVAS).encloses(rect), "%s at %s is inside the Larkmoor canvas" % [kind, rect.position])
 		t.ok(box.encloses(rect), "%s at %s is inside the farm box" % [kind, rect.position])
 		var fa: Array = item.foot as Array
@@ -49,6 +56,8 @@ func run(t: Object) -> void:
 			t.eq(tex.get_width(), int(rect.size.x), "%s sprite width matches its box" % kind)
 			t.eq(tex.get_height(), int(rect.size.y), "%s sprite height matches its box" % kind)
 	t.ok(wheat >= 10, "the farm has at least 10 wheat clumps (%d)" % wheat)
+	t.ok(not FarmProps.casts_shadow("farm_fence"), "the fence ring casts no shadow (it is one sprite over its whole box)")
+	t.ok(kinds.has("farm_fence"), "the fence ring is one batched item")
 	for kind: String in ["farm_barn", "farm_scarecrow", "farm_cart"]:
 		t.ok(kinds.has(kind), "the farm includes %s" % kind)
 	# No two items share a texel: the placer keeps a gap, so a strict overlap is a placer bug. Two exceptions. Fence pieces

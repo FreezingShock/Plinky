@@ -314,6 +314,21 @@ def _angle_gap(a: float, b: float) -> float:
     return min(d, 2 * math.pi - d)
 
 
+def _fence_batch(pieces: list) -> list:
+    """One item for the whole fence ring: a single sprite, so the ring costs one node. Its box is the union of the
+    pieces, and its foot sits on the box's north edge, so the ring sorts behind every wheat clump and prop south of it.
+    Each piece keeps its own rect and chord, so the test can still check the pieces against the wheat and buildings."""
+    if not pieces:
+        return []
+    x0 = min(p['x'] for p in pieces)
+    y0 = min(p['y'] for p in pieces)
+    x1 = max(p['x'] + p['w'] for p in pieces)
+    y1 = max(p['y'] + p['h'] for p in pieces)
+    w, h = x1 - x0, y1 - y0
+    return [{'kind': 'farm_fence', 'file': 'fence/farm_fence.png', 'x': x0, 'y': y0, 'w': w, 'h': h,
+             'foot': [x0 + w / 2.0, float(y0)], 'sort_y': float(y0), 'pieces': pieces}]
+
+
 def _patch_shapes() -> list:
     """Each wheat patch's outline (centre, radii, phases). The wheat's own draws replay from the same seed, and they do
     not depend on where a clump lands, so these are the outlines the wheat is grown inside."""
@@ -341,11 +356,11 @@ def build(map_only: bool = False) -> dict:
         items.append({'kind': kind, 'file': FILES[kind], 'x': x, 'y': y, 'w': w, 'h': h,
                       'foot': [x + w / 2.0, y + h - 2.0], 'sort_y': float(y + h - 2)})
     # The fence ring goes before the wheat: it marks each patch's edge, and the clumps grow inside it.
-    fences = _fence_items(ground, placer, _patch_shapes(), 0)
-    for it in fences:
+    pieces = _fence_items(ground, placer, _patch_shapes(), 0)
+    for it in pieces:
         placer.taken.append((it['x'], it['y'], it['x'] + it['w'], it['y'] + it['h']))
         placer.tags.append('fence')
-    items += fences
+    items += _fence_batch(pieces)
     items += _wheat_items(placer, rng, len(items), [])
     channel = _channel(ground, placer)
     brooks = [{'points': channel, 'width': 2}] if channel else []

@@ -180,15 +180,21 @@ def fence_piece(w: int, h: int, chord) -> Canvas:
 
 
 def fences_from_manifest() -> None:
-    """Writes one PNG per fence piece listed in farm.json (the file names place_farm.py gives them)."""
+    """Writes the whole fence ring as one PNG, from the batch item in farm.json (see place_farm.py). Each piece is drawn
+    in its own box and pasted at its place in the batch, so the ring reads as one fence."""
     import json
     with open(os.path.join(OUT, 'farm.json')) as f:
         items = json.load(f)['items']
+    batch = [it for it in items if it['kind'] == 'farm_fence']
+    if not batch:
+        return
+    it = batch[0]
+    out = Image.new('RGBA', (int(it['w']), int(it['h'])), (0, 0, 0, 0))
+    for p in it['pieces']:
+        piece = fence_piece(int(p['w']), int(p['h']), p['chord']).image()
+        out.alpha_composite(piece, (int(p['x'] - it['x']), int(p['y'] - it['y'])))
     os.makedirs(os.path.join(OUT, 'fence'), exist_ok=True)
-    for it in items:
-        if not it['kind'].startswith('farm_fence'):
-            continue
-        fence_piece(int(it['w']), int(it['h']), it['chord']).image().save(os.path.join(OUT, it['file']))
+    out.save(os.path.join(OUT, it['file']))
 
 
 def main() -> int:

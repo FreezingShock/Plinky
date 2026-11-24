@@ -261,6 +261,6 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 ## 2026-11-24: Larkmoor wheat is re-laid denser inside the farm box, with a fence ring around each patch
 - Five patches now sit on the walkable ground the placer allows inside the farm box (`tools/art/place_farm.py`). The box clips the old patch outlines, and cliffs and the mere cut the east side, so the old patches were partly off the grass.
 - Clumps are smaller (28 to 32 canvas texels wide), on a tighter grid. Clumps may overlap each other a little (`WHEAT_DX`/`WHEAT_DY`), so the patches read thick, not stacked. Everything else keeps the 4 texel gap.
-- The fence ring is 44 pieces, each a straight chord with posts and two rails (`tools/art/gen_farm.py`). It is placed before the wheat, so the clumps grow inside it. Two walk-in gaps per patch.
-- The farm is about 92 sprites, one node each. The bench puts Larkmoor at 1315 nodes against the 1350 ceiling (it was about 70 nodes lower with the old farm). If more Larkmoor props land, batch the fence pieces first (one node per patch).
+- The fence ring is 44 straight chords, each with posts and two rails. It is placed before the wheat, so the clumps grow inside it. Two walk-in gaps per patch. The whole ring is one batched item and one sprite (`tools/art/gen_farm.py` draws it), so it costs one node. Its foot is on its north edge, so it sorts behind the wheat and props south of it, and it casts no shadow.
+- The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
 - Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
