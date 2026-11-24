@@ -108,6 +108,13 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Checked in the cloud:** `tests/run.gd` 6841 checks, 0 failed. Midnight and noon captures of the real `main.tscn`.
 - **Not verified on the PC:** the night look. In the cloud capture a sign inside a pad's glow still reads brighter than the dark ground, as the pad and the ground beside it do. The PC night shot is the check.
 
+## 2026-11-24: Only button _1 of each row shows a cost sign (supersedes the every-pad rule)
+- **Nathan's note (PC QA thread, 2026-11-24 22:15 UTC):** "why is there a sign for each tier, it should just be for button 1".
+- **Fix:** `TexelPad.gets_sign(b)` is true only for `row_index == 0` (the `_1` button of each row). `_ready` calls `build_sign` for those pads alone, so the other pads of a row make no sign node and no text timer. The sign's cost and gain still show in the pad tooltip.
+- **Reverses:** the every-pad entry directly above. Pads 2 to 6 of a row (including Westmere's Starbloom pads 4 to 6) show a bare plate again. Nathan's note replaces the earlier standing rule, so this is the new rule until he says otherwise.
+- **Kept:** the wider `SIGN_SPOTS` list and the once-a-second text refresh. Both still help the first pads, and the refresh now runs only where a sign exists.
+- **Checked:** `tests/test_pad_signs.gd` checks that every row's first pad has a clear sign and that later pads have no sign node. Not run in-engine: the cloud cannot run Godot, so the look is for PC QA.
+
 ## 2026-11-24: Every pad shows its cost sign, not just each row's first
 - **Cause:** the sign node was made only for a row's first pad (`row_index == 0`). Pads 2 to 6 of each row, including the Westmere Starbloom pads 4 to 6 (5K, 25K, 125K), drew a bare plate with no price. Nathan's standing rule is a sign on every pad from its first price.
 - **Fix:** `TexelPad.build_sign` makes the sign node on every pad with a cost, and `_ready` calls it for all of them. Each pad re-reads its sign text once a second (`SIGN_REFRESH_S`), from the same live values as the tooltip, so a change shows within a second and the cost of reading stays low.
