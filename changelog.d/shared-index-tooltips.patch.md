@@ -1,1 +1,0 @@
-Stats and Attributes cards now show the shared, pooled tooltip with a yellow "Click to open!" line. The info strip under the grid is gone, so more cards fit, and the stale Prestige and RP header is removed.
