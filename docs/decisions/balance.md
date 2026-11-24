@@ -131,3 +131,11 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Taste call to confirm with Nathan:** holding is now slow (zone 1: one press every 2 s). If he wants a fast hold back, it needs a separate hold rate, which breaks "same speed" on purpose.
 - **Stale figure:** `content/config/sim_profiles.tres` still has a "hold" profile at 4.0 presses a second. It is a harness assumption, so it was not changed here; it should be set to the active rate (0.5) if the hold profile is kept.
 - Not verified in-engine. PC QA should hold a pad and stand on one in zone 1 and Larkmoor, and check that the stacked popup still builds while held and folds on release.
+
+## 2026-11-24: Capstone gifts, the Bloom Crown and Nucleus Crown (minor)
+- **Why:** the gameplay audit (`plinky/audits/gameplay-loop-audit-2026-11-24.md`, section 5.5) found the largest gift per level was +2%, and Nathan said go on a capstone for each tree, with gifts that change the game.
+- **Chosen:** a sixth gift in each tree. `bloom_crown` (Seeds) and `nucleus_crown` (Core Shards): one level (cap 1), 150 of its currency, unlocked after 5 resets of its zone (the same gate scheme as the rest, so it heads its own tier). One level doubles every press on the zones its reset lists.
+- **How:** data plus one generic hook. `ZoneResetDef.crown_effect` names the capstone. `Sim.zone_pad_mult(zone)` returns 1 + that gift's total for each reset that lists the zone, and `press_gain` multiplies by it. A Bloom Crown therefore doubles the meadow and Larkmoor and nothing in the quarry, and the reverse for the Nucleus Crown.
+- **Why not scale it by level:** one level at x2 is the jump Nathan asked for. A cap of 1 makes it a goal to save for, not a grind.
+- **Price (unverified):** 150 is the audit's proposal. It has not been checked against Bloom payouts (2 to 10 Seeds at the usual levels), so it may land late or early. `tools/sim_bloom.gd` buys the cheapest gifts first, so the crown lands last; PC QA should read the Bloom count at which it is bought.
+- **Not run in the engine:** the new tests in `test_bloom_gifts.gd` and `test_nucleus.gd` run in CI only. The icons were drawn from one outline at each staged size (see hud.md).

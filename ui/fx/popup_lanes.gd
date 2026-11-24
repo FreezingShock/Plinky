@@ -47,3 +47,29 @@ static func pick(origin: Vector2, box: Vector2, drop: float, others: Array[Rect2
 			stack = cand
 			found = true
 	return stack if found else best
+
+
+## Per-frame guarantee: given every visible popup's box in draw order (oldest first), returns how far up each one must
+## move so that no two boxes overlap. An earlier box never moves; a later one slides straight up until it clears the
+## lowest box it touches. Moves only go up, so each box passes any blocker at most once and the loop always ends.
+static func settle(bases: Array[Rect2], gap: float) -> PackedFloat32Array:
+	var out: PackedFloat32Array = PackedFloat32Array()
+	var placed: Array[Rect2] = []
+	for base: Rect2 in bases:
+		var r: Rect2 = base
+		var lift: float = 0.0
+		for _guard in bases.size() + 1:
+			var found: bool = false
+			var low: Rect2 = Rect2()
+			for o: Rect2 in placed:
+				if r.intersects(o) and (not found or o.position.y > low.position.y):
+					low = o
+					found = true
+			if not found:
+				break
+			var shift: float = (low.position.y - gap) - r.end.y
+			r.position.y += shift
+			lift += shift
+		placed.append(r)
+		out.append(lift)
+	return out

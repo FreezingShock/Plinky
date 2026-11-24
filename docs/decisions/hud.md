@@ -414,6 +414,8 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 ## 2026-11-24: Gain popups fold and stack
 - Same-currency presses within 120 px fold into one number that rolls up to its total (was 40 px, so neighbouring pads never folded). Placement boxes count the stat caption, which is about 2.4 times the number's width, and a popup stacks above another when every fixed lane is taken. Reason: Nathan's Starbloom screenshot had captions overlapping as separate popups.
 
+## 2026-11-24: Gain popups settle every frame
+- Visible popups are pushed up each frame so no two boxes overlap (`PopupLanes.settle`, oldest first). Spawn-time placement alone let overlaps form when popups grew, merged or started late. Relic echoes (delayed popups) now merge and get placed too. Reason: Nathan's v0.62.2 screenshot showed two "+13.24K" popups stacked on each other.
 ## 2026-11-24: Title and loading screens follow the day (golden hour)
 - **Time of day comes from the meadow's own sky.** `core/title_mood.gd` samples keyframes by `SkyModel` phase (midnight, dawn, sunrise, morning, noon, afternoon, golden hour, sunset, dusk), and the sun or moon rides `SkyModel.azimuth`. Reason: the title then shows the same arc, golden light and night shade as the game, and the look is tested in pure GDScript.
 - **Palettes are per keyframe, not per zone.** Sky and far land take the eight palette roles, and the meadow ground takes four new ground roles (`g0` to `g3`), so golden hour warms the sky without turning the grass orange. Golden hour and sunset use the README banner's plum-to-orange sunset.
@@ -424,3 +426,10 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Tagline (call made):** "+ Press. Walk. Bloom. +" from the README banner replaces "Press. Tally. Rebirth.", on both screens. Revert if the old line was intended.
 - **Icon:** the 1024 master is drawn by `tools/art/gen_app_icon.py` on a 64 texel grid from the golden keyframe, with the existing walker sprite pasted unchanged. Reason: it matches the title and reads at 16 px.
 - Not run in-engine from the cloud (no Godot here): the shader, the wipe and the chip need a PC look at each time of day and at Reduce Motion.
+
+## 2026-11-24: Capstone gifts get their own unlock moment and icons (minor)
+- **Why:** a capstone is the biggest purchase in a tree, and a plain card buy pop reads the same as a level-1 gift.
+- **Moment:** the first and only level of a crown emits `EventBus.attribute_bought`. `Juice` (`ui/fx/fx_bus.gd`) names it in a banner in its currency's colour, plays the divine relic chime and calls the existing milestone flash and shake. The flash checks Reduce Flashing and the shake checks Reduce Shake, as they already did. The banner is gentle under Reduce Motion.
+- **Gallery:** the card, its tier heading ("Unlocks After 5 Blooms") and its Tip are data-driven, so the crown gets them with no HUD change.
+- **Icons:** `bloom_crown` (a gold crown with a seed gem) and `nucleus_crown` (a teal crystal crown with an ember gem), at 8, 12, 16, 24 and 32 px. They were drawn by one generator from a single outline per size, not hand-placed per size, so they are a deviation from the staged-icon rule. Redraw at PC QA if they read poorly at 640x360.
+- Not run in the engine: check the banner width and the crown icons on the Bloom and Nucleus tabs with a screenshot.
