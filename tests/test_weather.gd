@@ -84,3 +84,23 @@ func run(t: Object) -> void:
 	t.eq(pin_cal.season_index(), 3, "the pinned winter reads as winter in the calendar")
 	t.ok(String(pin_cal.now()["month_name"]).begins_with("Early Winter") or String(pin_cal.now()["month_name"]).begins_with("Late Winter"), "the clock names a winter month")
 	t.near(pin_cal.season_weights()[3], 1.0, 0.001, "and the sky weights are all winter")
+
+	# Time pin: the pinned sun phase drives the calendar clock, so the HUD and the sky agree.
+	var pin_m := SkyModel.new()
+	pin_m.daylight_fraction = 0.6
+	var phases: Array[float] = [0.0, 0.1, 0.25, 0.4, 0.5, 0.66, 0.73, 0.9]
+	var round_trip: bool = true
+	for p in phases:
+		var back: float = pin_m.phase_of_clock(pin_m.clock_of_phase(p))
+		if absf(fposmod(back - p + 0.5, 1.0) - 0.5) > 0.00001:
+			round_trip = false
+	t.ok(round_trip, "a sun phase maps to a clock time and back to the same phase")
+	var time_cal := GameCalendar.new(load("res://content/config/calendar.tres") as CalendarConfig, 300.0)
+	time_cal.daylight_fraction = 0.6
+	time_cal.set_day_fraction(pin_m.clock_of_phase(0.73))
+	var sky_phase: float = pin_m.phase_of_clock(time_cal.day_fraction())
+	t.ok(absf(fposmod(sky_phase - 0.73 + 0.5, 1.0) - 0.5) < 0.00001, "a dusk pin set on the calendar reads as dusk in the sky (%.4f)" % sky_phase)
+	t.ok(not SkyCycle.clock_pin_needed(0.5, 0.5), "no clock change when the calendar already shows the pin")
+	t.ok(SkyCycle.clock_pin_needed(0.5, 0.2), "a calendar far from the pin is moved")
+	t.ok(not SkyCycle.clock_pin_needed(0.999, 0.001), "times either side of midnight count as close")
+	t.ok(not SkyCycle.clock_pin_needed(0.5, 0.5015), "a tiny drift inside a frame does not reset the clock")

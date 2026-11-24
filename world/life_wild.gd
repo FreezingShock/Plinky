@@ -133,8 +133,10 @@ static func fish_share() -> float:
 	return clampf((1.0 - MeadowLife.night * 0.8) * (1.0 - MeadowLife.rain * 0.4) * MeadowLife.season_mix([0.8, 1.0, 0.7, 0.2]), 0.0, 1.0)
 
 
+## Deer are a dusk animal. The dusk term rises steeply with low sun, so one or two deer show through the late
+## dusk tail (low_sun around 0.1) and the full herd comes out at golden hour. Night keeps its own soft term.
 static func deer_share() -> float:
-	return clampf(maxf(MeadowLife.low_sun * 1.5, sin(PI * clampf(MeadowLife.night, 0.0, 1.0)) * 0.9), 0.0, 1.0) * (1.0 - MeadowLife.rain) * MeadowLife.season_mix([0.9, 0.9, 1.0, 0.5])
+	return clampf(maxf(MeadowLife.low_sun * 5.0, sin(PI * clampf(MeadowLife.night, 0.0, 1.0)) * 0.9), 0.0, 1.0) * (1.0 - MeadowLife.rain) * MeadowLife.season_mix([0.9, 0.9, 1.0, 0.5])
 
 
 static func owl_share() -> float:

@@ -22,6 +22,21 @@ func run(t: Object) -> void:
 		water.append(w as Dictionary)
 	t.ok((lark.get("forest_edge", []) as Array).size() >= 6, "Larkmoor has forest-edge grass for the deer")
 	t.ok((lark.get("perches", []) as Array).size() >= 3, "Larkmoor has owl perches in the pines")
+	# Old Oak Crossing: the elder oak has no woods, so its deer graze points are a ring round the trunk (see
+	# tools/art/gen_life_anchors.py OAK_TRUNK). Three of them, 20 to 60 iso texels out, clear of every pad.
+	var oak_trunk: Vector2 = Vector2(1580.0, 886.4)
+	var edge_all: Array = lark.get("forest_edge", []) as Array
+	var oak_ok: int = 0
+	for e: Variant in edge_all.slice(edge_all.size() - 3):
+		var ep: Vector2 = Vector2(float((e as Array)[0]), float((e as Array)[1]))
+		var r: float = MeadowLife.iso_distance(ep, oak_trunk)
+		var pad_clear: bool = true
+		for pad: Variant in lark.get("pad_sites", []) as Array:
+			if MeadowLife.iso_distance(ep, Vector2(float((pad as Array)[0]), float((pad as Array)[1]))) < 24.0:
+				pad_clear = false
+		if r >= 20.0 and r <= 60.0 and pad_clear:
+			oak_ok += 1
+	t.ok(oak_ok == 3, "Old Oak Crossing has three deer graze points round the elder oak, clear of pads")
 	var far: Vector2 = Vector2(-9000.0, -9000.0)
 	var lake: Vector2 = Vector2(float(water[0].x), float(water[0].y))   # the lake's middle: a walker here sees dragonflies and fish
 	var edge_first: Array = (lark.get("forest_edge", []) as Array)[0] as Array
@@ -52,6 +67,9 @@ func run(t: Object) -> void:
 	t.eq(LifeWild.owl_share(), 0.0, "summer noon: no owls")
 	MeadowLife.low_sun = 1.0
 	t.ok(LifeWild.deer_share() > 0.8, "golden hour in summer: the deer comes out (%.2f)" % LifeWild.deer_share())
+	MeadowLife.low_sun = 0.1
+	t.ok(LifeWild.deer_share() > 0.34 and LifeWild.deer_share() < 0.9,
+		"late dusk tail (low sun 0.1): one or two deer show (%.2f)" % LifeWild.deer_share())
 	MeadowLife.low_sun = 0.0
 	MeadowLife.night = 1.0
 	t.eq(LifeWild.dragonfly_share(), 0.0, "night: no dragonflies")
@@ -216,6 +234,24 @@ func run(t: Object) -> void:
 		if MeadowLife.iso_distance(beds[int((f as Dictionary).bed)] as Vector2, arrival) <= LifeButterflies.START_REACH:
 			near_fly += 1
 	t.ok(near_fly >= 2, "two butterflies start over the flowers near the arrival point (%d)" % near_fly)
+	# Rabbits: the two by the arrival point are out in daylight, stay clear of the walker, and graze (they move) when left alone.
+	MeadowLife.night = 0.0
+	MeadowLife.low_sun = 0.0
+	MeadowLife.reduce_motion = false   # the reduce-motion section above is still on: rabbits only graze with motion
+	var start_rab: Array = arrive.get("_rabbits") as Array
+	var clear_ok: bool = true
+	for i: int in 2:
+		clear_ok = clear_ok and MeadowLife.iso_distance((start_rab[i] as Dictionary).home as Vector2, arrival) >= LifeCritters.START_CLEAR
+	t.ok(clear_ok, "the start rabbits sit clear of the walker's spawn spot")
+	for i: int in 300:
+		arrive.update(1.0 / 30.0, arrival + Vector2(4000.0, 4000.0))
+	t.ok(float((start_rab[0] as Dictionary).fade) > 0.5 and float((start_rab[1] as Dictionary).fade) > 0.5, "the two start rabbits are out by day")
+	var grazed: bool = false
+	for i: int in 900:
+		arrive.update(1.0 / 30.0, arrival + Vector2(4000.0, 4000.0))
+		if float((start_rab[0] as Dictionary).hop_dur) > 0.0:
+			grazed = true
+	t.ok(grazed, "a rabbit grazes (hops) when the walker is away")
 
 	# Tidy up the globals the suite changed.
 	MeadowLife.season = keep_season

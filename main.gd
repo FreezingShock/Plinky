@@ -573,12 +573,14 @@ func _zone_banner() -> Dictionary:
 	if calendar != null and calendar.has_method("now"):
 		cal = calendar.call("now") as Dictionary
 	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
-	var phase: float = sky.clock_phase() if sky != null else 0.5
+	# sky.clock_phase() is the sun phase; the banner's fallback needs the clock fraction, so convert it with the sky's daylight.
+	var clock: float = sky.model.clock_of_phase(sky.clock_phase()) if sky != null else 0.5
+	var daylight: float = sky.model.daylight_fraction if sky != null else 0.6
 	if sky == null or not sky.seasonal:  # themed zones have no seasons: keep the time, drop the date
 		for k: String in ["season", "season_name", "month_name", "day"]:
 			cal.erase(k)
 	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(zone_id))
-	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, phase, "", cols[clampi(z.theme_role, 0, 7)])
+	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, clock, "", cols[clampi(z.theme_role, 0, 7)], daylight)
 	spec["fill"] = cols[0]
 	spec["duration"] = ZONE_BANNER_HOLD
 	spec["key"] = "zone:" + String(zone_id)

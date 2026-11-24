@@ -361,6 +361,22 @@ func _light_time(t: float) -> float:
 
 
 ## Model time of midday for this model, the moment an underground zone's light holds at.
+## A time pin (debug_phase, tools and screenshots) moves the calendar too, so the HUD clock reads the pinned time as the
+## sky does. The sky takes the pin directly in _model_time; this keeps the calendar in step with it. Pure rule: clock_pin_needed.
+func _pin_clock() -> void:
+	if debug_phase < 0.0 or _cal == null or model == null:
+		return
+	var want: float = model.clock_of_phase(debug_phase)
+	if clock_pin_needed(want, _cal.day_fraction()):
+		_cal.set_day_fraction(want)
+
+
+## True when the calendar's day fraction is off the pinned clock `want` by more than a little (0.005 of a day, about
+## 1.5 s at the default day length). Both wrap at 1, so 0.999 and 0.001 are close. Pure, so the rule is tested.
+static func clock_pin_needed(want: float, now: float) -> bool:
+	return absf(fposmod(now - want + 0.5, 1.0) - 0.5) > 0.005
+
+
 ## True when a season pin is set and the calendar is in another season, so the calendar must jump to the pin.
 ## `current` is the calendar's season, or -1 with no calendar yet (then nothing can jump). Pure, so the rule is tested.
 static func pin_jump_needed(pin: int, current: int) -> bool:
@@ -372,6 +388,7 @@ static func underground_time(m: SkyModel) -> float:
 
 
 func _update(t: float) -> void:
+	_pin_clock()
 	var mt: float = _light_time(t)
 	_update_season()
 	night01 = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)

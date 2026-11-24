@@ -1,14 +1,19 @@
 class_name AreaBanner
 extends RefCounted
 ## Builds the arrival banner for an outdoor area: its name, then the season and date, then the time of day.
-## Pure: the caller passes the calendar dictionary (Calendar.now(), may be empty) and the sky phase as a fallback.
+## Pure: the caller passes the calendar dictionary (Calendar.now(), may be empty) and the clock fraction as a fallback
+## (0 midnight, 0.5 noon: the same scale as the calendar, not the sun phase).
 
 const SEASONS: Array[String] = ["Spring", "Summer", "Autumn", "Winter"]
 
 
-## Time of day word for a sky phase (0 midnight, 0.25 sunrise, 0.5 noon, 0.75 sunset).
-static func period_of(phase: float) -> String:
-	var p: float = fposmod(phase, 1.0)
+## Time of day word for a clock fraction (0 midnight, 0.5 noon). The word bands are set on the sun's phase
+## (0.25 sunrise, 0.75 sunset), so the clock is first turned into a sun phase with the same daylight the sky uses.
+## Without this, 17:28 (clock 0.73, sun 0.69) read as Dusk, because the sun-phase bands were applied to the raw clock.
+static func period_of(clock: float, daylight: float = 0.6) -> String:
+	var model := SkyModel.new()
+	model.daylight_fraction = daylight
+	var p: float = fposmod(model.phase_of_clock(fposmod(clock, 1.0)), 1.0)
 	if p < 0.2 or p >= 0.88:
 		return "Night"
 	if p < 0.3:
@@ -24,9 +29,9 @@ static func period_of(phase: float) -> String:
 	return "Evening"
 
 
-## {hour, minute} for a sky phase.
-static func clock_of(phase: float) -> Dictionary:
-	var minutes: int = int(floorf(fposmod(phase, 1.0) * 1440.0))
+## {hour, minute} for a clock fraction (0 midnight, 0.5 noon).
+static func clock_of(clock: float) -> Dictionary:
+	var minutes: int = int(floorf(fposmod(clock, 1.0) * 1440.0))
 	return {"hour": floori(minutes / 60.0), "minute": minutes % 60}
 
 
@@ -35,8 +40,9 @@ static func clock_text(hour: int, minute: int) -> String:
 
 
 ## `cal` is Calendar.now(), and every key is optional: season_name (or season, a name or index 0 to 3), month_name,
-## day, hour, minute, clock_text, period. Missing time falls back to `phase`; a missing date leaves that line out.
-static func compose(area_name: String, cal: Dictionary, phase: float, icon: String = "", color: Variant = null) -> Dictionary:
+## day, hour, minute, clock_text, period. Missing time falls back to `clock` (a clock fraction, 0 midnight, 0.5 noon);
+## a missing date leaves that line out. `daylight` is the sky's daylight fraction, so the word bands match the sun.
+static func compose(area_name: String, cal: Dictionary, clock: float, icon: String = "", color: Variant = null, daylight: float = 0.6) -> Dictionary:
 	var lines: Array[String] = []
 	var season: String = str(cal.get("season_name", "")) if cal.has("season_name") else _season_name(cal.get("season", ""))
 	var month: String = str(cal.get("month_name", ""))
@@ -55,10 +61,10 @@ static func compose(area_name: String, cal: Dictionary, phase: float, icon: Stri
 		hour = int(cal["hour"])
 		minute = int(cal.get("minute", 0))
 	else:
-		var c: Dictionary = clock_of(phase)
+		var c: Dictionary = clock_of(clock)
 		hour = c["hour"]
 		minute = c["minute"]
-	var period: String = str(cal.get("period", period_of(float(hour * 60 + minute) / 1440.0)))
+	var period: String = str(cal.get("period", period_of(float(hour * 60 + minute) / 1440.0, daylight)))
 	lines.append("%s - %s" % [clock_text(hour, minute), period])
 	return {"title": area_name, "lines": lines, "icon": icon, "color": color, "key": "area:" + area_name}
 
