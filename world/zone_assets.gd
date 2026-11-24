@@ -85,6 +85,14 @@ static func prefetch(paths: PackedStringArray) -> void:
 			_pending[p] = true
 
 
+## The texture at `path`, handed to the caller and not kept: for a texture that is read once for its pixels (a walk
+## mask), so its GPU copy is freed as soon as the caller drops it. Same loading rules as texture().
+static func take(path: String) -> Texture2D:
+	var tex: Texture2D = texture(path)
+	_cache.erase(path)
+	return tex
+
+
 ## The texture at `path`: the cached one, else the prefetched one (waits for its worker if it is still running), else a
 ## plain load. Every result is held until release().
 static func texture(path: String) -> Texture2D:
