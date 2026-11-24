@@ -123,3 +123,29 @@ may respond more to the skipped screen-texture pass and the shader taps than lav
 run `tools/bench.gd` at Low and High on the real machine and update this table.
 Not done and why: rendering the world into a 642x362 target (would cut fill 9x at 1080p) touches every world shader's
 texel maths and the zoom, so it needs its own change and an in-engine look check.
+
+## Zone load, second pass (2026-11-24)
+Measured with `tools/bench_weak.sh` (lavapipe, 1280x720, High, 4 cores) on the swap's `PerfStats` stages. The numbers
+are CPU on the main thread and wall time, and the wall numbers include the software rasteriser, so only the CPU
+rows are comparable to a GPU. Lavapipe shares the 4 cores with the workers, so each run varies by tens of milliseconds.
+
+| Swap stage (main thread) | before | after |
+|---|---|---|
+| Ember Quarry props, built in one frame | 89.7 ms (synchronous `load()` of 366 textures, then the props) | 20 to 28 ms, built over 8 ms slices under the wipe |
+| Ember Quarry `_ready` (add_child) | 13 ms | 17 to 23 ms |
+| Larkmoor `_ready` (add_child), one run | 228 ms | 230 ms in the run without timers; about 25 ms in the run with timers (see note) |
+| Larkmoor: life (`LifeAir.setup` reads the backdrop with `get_image()`) | 96 ms | decoded on a worker, 3 ms on the swap frame |
+| Larkmoor: sky ground maps (`load()` of two 3040x1840 maps) | 163 ms | prefetched, 17 ms |
+| First rendered frame after the swap (lavapipe, includes the render) | 114 to 198 ms | 59 to 150 ms |
+
+What changed: `ZoneAssets` (world/zone_assets.gd) prefetches a zone's textures on the loader, caches each texture once, and
+releases the zone's textures when it is left. `spawn_occluders_sliced` on the Ember Quarry spreads its props over frames.
+The backdrop is decoded from its lossless source PNG on a `WorkerThreadPool` task. The four Ember Quarry shaders are warmed
+at boot. Larkmoor's scene is requested on the loader before its textures.
+
+Note: one run of Larkmoor's `_ready` still measured 230 ms, while a run with stage timers inside `_ready` measured about 25 ms.
+The two runs had the same code apart from the timers, so the gap is probably thread contention on this 4-core software
+renderer. Not settled. Needs a timed swap on the PC (RTX 3060 Ti) before the number is quoted.
+
+Not done: the Ember Quarry still draws 183 props as one node each (one draw call each). Atlasing them is the next step for
+batching. The first rendered frame after a swap is GPU work (texture upload, first draws), which only the PC can measure.

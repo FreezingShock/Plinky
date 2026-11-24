@@ -113,14 +113,14 @@ func _add_sky() -> void:
 	_sky.noon_boost = 1.7   # Larkmoor's ground is brighter and greener than the meadow's, so its noon needs more exposure drop and a warmer cast
 	_sky.shadows = _shadows
 	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
-	_ground.material = _sky.ground_material(load(DIR + "ground_n.png") as Texture2D, load(DIR + "ground_h.png") as Texture2D)
-	pad_material = _sky.pad_material(load(DIR + "ground_h.png") as Texture2D, _ground.position)
+	_ground.material = _sky.ground_material(ZoneAssets.texture(DIR + "ground_n.png"), ZoneAssets.texture(DIR + "ground_h.png"))
+	pad_material = _sky.pad_material(ZoneAssets.texture(DIR + "ground_h.png"), _ground.position)
 	_place_atmosphere()
 	add_child(_sky)
 	_add_flower_glow()
 	var water_glow := WaterNightGlow.new()   # night glow on the lake and river (world/water_night_glow.gd)
 	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
-	water_glow.setup(_sky, load(DIR + "ground_n.png") as Texture2D, _ground.position)
+	water_glow.setup(_sky, ZoneAssets.texture(DIR + "ground_n.png"), _ground.position)
 	_add_lights()
 	var entrance := EmberEntrance.new()   # the neon sign and the ember glow at the mine mouth, above the night shade
 	add_child(entrance)
