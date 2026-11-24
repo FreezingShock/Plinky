@@ -997,6 +997,8 @@ def render_scene(keep):
 tall_ids = np.array([t['id'] for t in TALL])
 rgb_full, id_full = render_scene(np.ones(len(u_), bool))
 AUX_FULL = LAST_AUX
+# the glowing sea (tools/art/water_sea_mask.py): flat deep and shallow sea colours, so the relight leaves them as painted
+RAMP.update({110: [1], 111: [2]})
 depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP, PAL)
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
@@ -1011,7 +1013,7 @@ _fg[FAR_CUT, 3] = 0
 Image.fromarray(_fg).save(os.path.join(HERE, 'ground_fg.png'))
 
 # ground G-buffer, same size as the ground art: normal + material + baked light (relight data) and world height.
-# Terrain materials are codes 100..109, so write_relight_data accepts mat < 110 (the ramp include is sized to match).
+# Terrain materials are codes 100..111, so write_relight_data accepts mat < 112 (the ramp include is sized to match).
 depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(HERE, 'meadow3d-ground-1x_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []
