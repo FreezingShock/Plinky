@@ -241,3 +241,9 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Fix: each lit pad counts the lit pads within `TexelPad.CROWD_RANGE` (48 texels, a little over one row). Its halo and its shader pool are scaled by `crowd_scale(n) = 1 / max(1, n * 0.5)`. A lone pad or a pair keeps full light, and any crowd adds up to about two pads' worth at its busiest point.
 - Why this and not a max blend: the halo and pool are additive on purpose (they light the ground), and changing the blend mode would change every pad. Scaling by crowd keeps one pad looking as it does now.
 - Not verified in-engine: no Godot binary was available in this session, so the 5-pad row at night was not rendered. The 48-texel range and the 0.5 share are guesses to tune on the PC.
+
+## 2026-11-24: Larkmoor wheat is thick, with no plots, and parts around the walker
+- The fields are wheat only. The tilled plots and greens were removed: crops in spring took the sway shader's blossom recolour, and Nathan asked for wheat only.
+- Each row is a thick mass over a dark under-mass, and rows overlap, so no soil or water shows between them. Water streams were dropped at Nathan's request.
+- world/farm/farm_wheat.gdshader pushes the stalks away from the walker. Tips move, the rows' bases stay, and the push falls off with distance. FarmWheat feeds it the walker's position, and the push is zero under Reduce Motion.
+- The parting is subtle at Larkmoor's zoom, so it needs a look on Nathan's PC.
