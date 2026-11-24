@@ -361,6 +361,15 @@ func _build_key(row: HBoxContainer, def: Dictionary) -> void:
 		b.text = "Press a key..." if _capture == action else Keybinds.key_name(action))
 
 
+func _process(_delta: float) -> void:
+	# A waiting rebind owns the keys, so WASD must not walk the walker while it waits.
+	PadInput.key_capture = visible and _capture != &""
+
+
+func _exit_tree() -> void:
+	PadInput.key_capture = false
+
+
 func _input(event: InputEvent) -> void:
 	if visible and _capture != &"" and (event is InputEventJoypadButton or event is InputEventJoypadMotion):
 		# Rebinding waits for a keyboard key. The pad is ignored, except B, which cancels.
