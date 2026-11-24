@@ -118,14 +118,14 @@ func run(t: SceneTree) -> void:
 	var seen: Dictionary = {}
 	var per_rarity: Dictionary = {}
 	var complete: bool = true
-	for d: RelicDef in defs:
-		seen[d.id] = int(seen.get(d.id, 0)) + 1
-		per_rarity[d.rarity.id] = int(per_rarity.get(d.rarity.id, 0)) + 1
-		if d.display_name.is_empty() or d.description.is_empty() or d.icon == null or d.rarity == null:
+	for ed: RelicDef in defs:
+		seen[ed.id] = int(seen.get(ed.id, 0)) + 1
+		per_rarity[ed.rarity.id] = int(per_rarity.get(ed.rarity.id, 0)) + 1
+		if ed.display_name.is_empty() or ed.description.is_empty() or ed.icon == null or ed.rarity == null:
 			complete = false
-		if d.effect == RelicDef.Effect.SURGE and d.period < 2:
+		if ed.effect == RelicDef.Effect.SURGE and ed.period < 2:
 			complete = false
-		if d.effect == RelicDef.Effect.ZONE_GAIN and not [&"zone1", &"zone2", &"larkmoor"].has(d.zone):
+		if ed.effect == RelicDef.Effect.ZONE_GAIN and not [&"zone1", &"zone2", &"larkmoor"].has(ed.zone):
 			complete = false
 	t.ok(complete, "every relic has a name, text, icon, rarity, and a period or zone where it needs one")
 	t.ok(seen.values().all(func(n: int) -> bool: return n == 1), "relic ids are unique")
