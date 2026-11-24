@@ -52,13 +52,17 @@ var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
+	PerfStats.lap_begin()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
 	GardenArt.atlas()   # bakes the flower garden atlas once, at boot, not on the zone swap's frame (world/garden_art.gd)
+	PerfStats.lap("entry: atlas")
 	PadInput.ensure()
 	DisplaySettings.set_pregame_fill(get_window(), false)  # the game letterboxes; the pre-game screens fill
 	DisplaySettings.apply(get_window())
 	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
+	PerfStats.lap("entry: display")
 	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
+	PerfStats.lap("entry: settings")
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
@@ -70,6 +74,7 @@ func _ready() -> void:
 	pv = PixelViewport.new()
 	pv.screen_shake = shake
 	add_child(pv)
+	PerfStats.lap("entry: pixel view")
 	Fx.bind(pv)
 	transitions = Transitions.new()
 	transitions.rect = pv.post
@@ -83,8 +88,10 @@ func _ready() -> void:
 	_scene_path = _zone_scene_path(sim.zone_id)
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
+	PerfStats.lap("entry: meadow")
 	_spawn_occluders()
 	_apply_scene_frame(sim.zone_id)
+	PerfStats.lap("entry: occluders and frame")
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
 	var anchors: Node = meadow.get_node("Anchors")
@@ -103,6 +110,7 @@ func _ready() -> void:
 	arch_gate.visible = false
 	world.add_child(arch_gate)
 	_sync_arch_gate(sim.zone_id)
+	PerfStats.lap("entry: gates")
 
 	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
 	camera = WorldCamera.new()
@@ -111,6 +119,7 @@ func _ready() -> void:
 	camera.shake = shake
 	add_child(camera)
 	ShaderWarm.run(self)  # compile the sky shaders now, not at the first sunset (render/shader_warm.gd)
+	PerfStats.lap("entry: camera and shaders")
 	PerfOverlay.attach(self)  # F3 frame-time overlay (ui/perf_overlay.gd)
 	camera.bounds = _camera_bounds()
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
@@ -130,6 +139,7 @@ func _ready() -> void:
 	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
 	add_child(hud)
 	hud.setup(sim)
+	PerfStats.lap("entry: hud")
 	camera.keep_clear = hud.clock_chip()
 	_sync_camera_landmarks()
 	_wire_relics()
@@ -137,15 +147,18 @@ func _ready() -> void:
 	_wire_display()
 	hud.keep_centered(relic_panel)
 	_wire_menus()
+	PerfStats.lap("entry: menus")
 	hud.move_child(hud.bottom_bar(), -1)
 	hud.move_child(hud.menu_chip(), -1)   # chips stay above every open menu, so they stay clickable
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
+	PerfStats.lap("entry: dev console")
 	window_frame = WindowFrame.new()
 	add_child(window_frame)
 	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 	Banner.attach(hud)
+	PerfStats.lap("entry: banner")
 	BloomRitual.attach(hud, sim, get_node("/root/EventBus"))   # the zone reset animation (Bloom, Nucleus)
 
 	var bus: Node = get_node("/root/EventBus")
@@ -154,6 +167,7 @@ func _ready() -> void:
 	bus.gate_opened.connect(func(_id: StringName) -> void: Juice.milestone())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
+	PerfStats.lap("entry: signals")
 	bus.bonus_gained.connect(_on_bonus_gained)
 	bus.season_changed.connect(_on_season_changed)
 	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
@@ -163,6 +177,7 @@ func _ready() -> void:
 	_prev_zone = _previous_zone(sim.zone_id)
 	camera.snap()
 	Audio.start(sim.zone_id)
+	PerfStats.lap("entry: audio")
 
 
 ## Lit pads close together share the light: each pad counts the lit pads within TexelPad.CROWD_RANGE, itself included.
