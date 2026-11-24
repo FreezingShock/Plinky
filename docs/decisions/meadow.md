@@ -78,3 +78,8 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** PC QA on v0.58.4: the cream chip now shows, but its digits did not read at 1x. The chip was drawn with the 5x8 font at size 16, which doubles every glyph. The text filled the chip in ink and ran past its top and bottom edges.
 - **What:** The chip uses the font's native size 8, so each glyph is one screen texel. The chip is 12 rows (ink border, 10 cream rows) with the 8-row text centred in it, and every origin and width is a whole texel.
 - Not run in-engine from the cloud. Please check the chip at 1x on a PC capture.
+
+## 2026-11-24: Cost chip redrawn, with a test
+- **Why:** PC QA on v0.58.5: after the native-size change no chip showed on any Clover pad, at 1x or in a 4x crop.
+- **What:** The chip's box and text placement are in `TexelPad.lock_chip_box` and `shows_lock_chip`, which `_draw` calls. The text is drawn with the same call shape as the 16 px version that drew, at the font's native size 8. `tests/test_pad_plate.gd` asserts the draw decision, the box size and the glyph coverage.
+- **Not proven:** the headless suite can't see pixels, so the chip is still checked on a PC capture. The cause of the vanish has not been pinned down from code.

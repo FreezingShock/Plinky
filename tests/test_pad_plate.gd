@@ -27,3 +27,17 @@ func run(t: Object) -> void:
 		t.ok(ResourceLoader.exists("res://content/rarities/%s.tres" % r), "%s has a real rarity (%s)" % [id, r])
 	t.eq(sim.pad_rarity(&"sprout_1"), &"common", "the first pad is Common")
 	t.eq(sim.pad_rarity(&"foxglove_2"), &"legendary", "a Foxglove pad is Legendary")
+	# The locked-row cost chip: drawn on a locked first pad, at the font's native size, inside a box that holds its text.
+	var hint: String = "Needs Dewdrops"
+	t.ok(TexelPad.shows_lock_chip(true, hint), "a locked first pad draws its cost chip")
+	t.ok(not TexelPad.shows_lock_chip(false, hint), "an open pad draws no cost chip")
+	t.ok(not TexelPad.shows_lock_chip(true, ""), "no hint, no chip")
+	t.eq(TexelPad.LOCK_SIZE, 8, "the chip text uses the font's native 8 px size")
+	var text_w: float = TexelPad.LOCK_FONT.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TexelPad.LOCK_SIZE).x
+	var box: Rect2 = TexelPad.lock_chip_box(hint)
+	t.ok(text_w > 0.0, "the cost hint has a measurable width at the native size")
+	t.ok(box.size.x >= text_w + 6.0, "the chip box is wider than its text")
+	t.eq(box.size.y, 12.0, "the chip is 12 rows tall")
+	t.ok(box.position.y >= float(TexelPad.THICK), "the chip sits under the plate")
+	for i in hint.length():
+		t.ok(TexelPad.LOCK_FONT.has_char(hint.unicode_at(i)), "the font has a glyph for '%s'" % hint.substr(i, 1))
