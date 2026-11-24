@@ -124,6 +124,11 @@ func menu_chip() -> Control:
 	return _menu_chip
 
 
+## The clock chip, so the world camera can keep gate arches clear of it. Read only: the chip stays where it is.
+func clock_chip() -> Control:
+	return _clock_widget
+
+
 ## Travel: show the zone panel's Travel list (the gallery's Travel tile calls this).
 func open_travel() -> void:
 	_zone_panel.set_travel_open(true)

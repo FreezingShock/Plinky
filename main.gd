@@ -126,6 +126,8 @@ func _ready() -> void:
 	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
 	add_child(hud)
 	hud.setup(sim)
+	camera.keep_clear = hud.clock_chip()
+	_sync_camera_landmarks()
 	_wire_relics()
 	_wire_index()
 	_wire_display()
@@ -398,6 +400,7 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 		walker.stop()
 	if gate_marker != null:
 		gate.position = gate_marker.position
+	_sync_camera_landmarks()
 	_clear_spawn_pending = true
 	camera.snap()
 
@@ -469,6 +472,13 @@ func _apply_scene_frame(zone_id: StringName) -> void:
 	_district_id = ""
 	if camera != null:
 		camera.bounds = _camera_bounds()
+
+
+## The zone gate's arch is a landmark the camera keeps out from under the clock chip (render/world_camera.gd).
+func _sync_camera_landmarks() -> void:
+	if camera == null or gate == null:
+		return
+	camera.landmarks = [Rect2(gate.position + TexelGate.HIT.position, TexelGate.HIT.size)]
 
 
 func _camera_bounds() -> Rect2:
