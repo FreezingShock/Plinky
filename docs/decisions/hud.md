@@ -317,3 +317,36 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Popups drew with the popup face at import defaults (grey AA, light hinting), so the 640x360 base upscaled to soft edges. `CrispFont.theme_font` now applies the crisp settings to `PopupLabel` (`PressPopups`, `PopupNumber`, fx_bus).
 - Taste call: no alpha fades. The last 30% of a popup blinks in 8 Hz steps (`PopupStyle.shows_now`); Reduce Flashing holds it solid, then cuts it. Outline stays 2 px. Pixelify has no single pixel unit, so no "native size" applies.
 - Not verified in-engine: PC QA should check "+418K", "+100QnVg!" and the quarry's "Iron Ore" at 1x and 3x, with Reduce Flashing on and off.
+
+## 2026-11-24 Achievement banner and the Achievements tile
+- **Layout:** the unlock card is now a wide banner centred across the screen, its middle at 38% of the height (a bit above centre), 380 texels wide, so it sits clear of the bottom bar and the centre of the pads. A taste call made in this thread; Nathan can ask for another height.
+- **Menus:** unlocks are held while any menu is open, and a banner up when a menu opens is cut short and shown again later. This replaces the old z-order-only rule, so a menu is never covered.
+- **Look:** the banner unfurls from a sliver in eight whole steps (no smooth scale), Reduce Flashing turns off the dither ink. Per-section particle styles and chimes use existing sound files, so no new audio was added.
+- **Naming:** the hamburger tile and the window title read "Achievements". The internal id `ledger` and the icon file stay, so saves and tests are unaffected.
+- **Not run in-engine:** Godot is not available in the cloud. Unverified: the banner's real size and position at 640x360 and at other window sizes, the particle look, the unfurl timing and the chimes. PC QA should capture an unlock in each section and check it against an open menu.
+- **Every banner waits for menus (PC QA, 2026-11-24):** the season banner and the zone banners (`Banner`, via `Banner.hold`) and the relic toast also wait while a menu is open, and a banner up when a menu opens is held back to the front of the queue and shown after it closes. PC QA saw the season banner cut across the Upgrades cards, and the achievement toast over Stats and Upgrades. Subtitles and tip cards are unchanged (tips already yield to open menus).
+
+## 2026-11-24 Tighter achievement banner (Nathan's feedback on #239)
+- **Why:** Nathan said the merged banner had too much blank space and was too intrusive at small sizes. In his screenshot it ran into the right-hand stat strip.
+- **What:** a tighter frame pad (5x3 texels, not the usual 8x6 from theme.md section 5, a deliberate deviation for this one card); the category icon at its native 16 texels; the card is 36% of the HUD width, clamped to 168 to 240 texels, so it scales with the window; the middle sits at 30% of the height, higher than before; the name and description wrap to two lines at most and then end in an ellipsis, so the card cannot grow taller; the shakes are softer (0.06 and 0.14).
+- Not run in-engine. PC QA should check it at 640x360 and at a small window, beside the stat strip and the zone panel.
+
+## Every zone's gifts get a tab in Upgrades (2026-11-24)
+- **Why:** #228 showed only the zone you stand in, so the quarry's Upgrades gallery was one lone "Nucleus Gifts" header. It read as empty.
+- **Tabs:** every zone reset's gifts have a tab, locked or not. The zone you stand in comes first in the strip, then the others in reset order. Each tier already says what gates it.
+- **Kept as is:** `group_shown` still hides a zone's contents until that zone opens. The HUD currency chips and the Stats index use it, so their behaviour does not change. The gallery uses the new `UpgradeText.tab_shown`.
+- **Tab look:** the active tab is drawn in its accent colour with a solid underline, not a dotted focus box. The tab keeps the ">" marker and sweep on hover or focus. The title and pause menus keep their focus box.
+- Not verified in-engine: the strip at 640x360 with two zones, and the tab order after a zone change. PC QA should check the meadow and the quarry.
+
+## Upgrade tabs follow keyboard focus (2026-11-24)
+- **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
+- **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
+- Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
+
+## WASD walks while a menu is open (2026-11-24)
+- **Why:** opening any menu froze the walker, so a player could not walk while a panel was up. The ask was WASD only, with GUI clicks still blocked.
+- **Rule:** `PadInput.move_vector` reads WASD by physical key while `menu_open` (`menu_walk_vector`, `walk_from_keys`). Arrows, d-pad and the left stick do not walk in a menu, because Godot's ui_* actions use them for menu focus. Pad users still cannot walk in a menu. That is a choice, not a gap.
+- **Still blocked:** Space (jump) while a menu is open, because Space presses buttons. Typing in any LineEdit or TextEdit (Feedback, dev console) stops all walking. A Settings key rebind (`PadInput.key_capture`, set by the display panel) stops walking too, so W can be bound without moving.
+- **Sprint and crouch** still work while walking in a menu. They are modifiers, and no menu uses Shift or C.
+- **Tap-to-move:** a pending walk target is dropped when a menu opens or a field takes keys, so the walker does not keep walking after the menu is up.
+- Not verified in-engine: walking with WASD under the Upgrades, Relics and Settings panels, typing in Feedback with W/A/S/D, and rebinding W in Settings. PC QA should check those four.
