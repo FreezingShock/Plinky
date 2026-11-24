@@ -401,6 +401,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests pass; the fog halo is tested in `tests/test_weather.gd`.
 - **Not verified on the PC:** how far the spread reads at dawn in a real mist.
 
+## 2026-11-24: Ruin walk block and shadow size
+- **What:** the walk block for a ruin is 12.5 texels, so the walker's front stop is outside all of its stone. Rubble sits within 8.5 texels of the foot. Ruins cast from one fixed shadow size at strength 0.6, not from their sprite size.
+- **Why:** PC QA found the walker's legs covered by stone on 9 of 11 ruins, and shadows that ranged from almost none to stronger than trees, because each shadow followed its sprite's size.
+- **Not verified in-engine:** the frames from PC QA batch 124 were not re-checked after this change. Walk reach to all 32 pads and the gate passes in the generator.
 ## Farm wheat density restored to mockup carpet (2026-11-24)
 - In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
 - Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
@@ -410,3 +414,9 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - The walker could stand inside the Ember Quarry crates, where the prop sorts in front and hides him. The mask now zeroes each solid ember prop's drawn box (entrance/entrance.json, kind ember_prop), since a footprint circle left the walker hidden.
 - Tiny flat decor stays walkable (none in the file today). Tests check every solid prop's centre is blocked and no ruin front stop sits in a prop box.
 - Side effect: ruin 028 has no straight approach from N, E, S or W now. It is reached on a diagonal, and the crates shield it. Left for Nathan to decide whether to move crates_2.
+## 2026-11-24: Pad signs choose a clear spot
+- **Nathan's note:** a pad's cost sign covered the next pad's bed in a Starbloom row, and it happens on many pads across zones.
+- **How:** `TexelPad.SIGN_SPOTS` lists eight spots relative to the pad (right and left of the plate, lifted in steps). `choose_sign_spot` returns the first one whose plank and post clear every bed and plate on the zone and this pad's press spot. `main.gd` gives every pad the zone's positions once they are placed (`set_sign_neighbours`). The default spot is still the first choice, so a pad with room keeps its look.
+- **Check:** `tests/test_pad_signs.gd` checks a synthetic neighbour that used to sit under the sign, and every row-first pad in the Larkmoor, meadow and quarry layouts. The suite passes. In-engine, the quarry rows and the hub shot show each sign beside its pad with no overlap.
+- **Note:** the left-hand spots are mirrors of the right-hand ones, so a sign there sits off the right edge of a tight zoom-3 crop. That is not a missing sign.
+- Follow-up (same day): finer wheat. Clumps 20-26 texels wide with 4.2 stalks per texel of width (was 3.2), spacing 7x4, grid 4.3x2.5. 661 clumps, still one driver node; Larkmoor stays at 818 nodes and frame p95 is unchanged in the bench, so no zoom LOD was added.

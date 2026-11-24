@@ -346,9 +346,11 @@ func spawn_occluders(parent: Node2D) -> void:
 ## under the transition wipe uses it, so the first load does not stall the wipe's peak.
 func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_begin(parent)
-	_add_farm(parent)
 	_center = _chunk_of(_start_point())
 	_set_view()
+	# the farm first, over frames (its wheat clumps were prepared on workers while the wipe was starting), so the chunk
+	# streaming can run beside it with the centre already set
+	await FarmProps.spawn_sliced(parent, _sky, _shadows, _sky.rim_material if _sky != null else null, budget_ms)
 	var start_us: int = Time.get_ticks_usec()
 	for key: Vector2i in _load_candidates(_center):
 		if not _loaded.has(key) and _wanted_load(key, _center) and _budget_allows(key):

@@ -98,6 +98,12 @@ const SIGN_W: float = 50.0        # fixed: the plank never resizes as the number
 const SIGN_TEXT_X: float = 14.0   # the cost and reward text start this far in from the plank's left edge
 const SIGN_TEXT_CAP: float = 32.0 # texels the text may use: the plank's width less the text inset and the right margin
 const SIGN_H: float = 25.0
+## Where a sign's box may sit, relative to its pad, tried in order: the right and left of the plate, lifted in steps so
+## the plank clears the bed beside it. The first spot clear of every bed and plate on the zone wins (see choose_sign_spot).
+const SIGN_SPOTS: Array[Vector2] = [Vector2(26.0, -27.0), Vector2(26.0, -2.0), Vector2(26.0, -14.0), Vector2(26.0, -20.0),
+		Vector2(-76.0, -27.0), Vector2(-76.0, -2.0), Vector2(-76.0, -14.0), Vector2(-76.0, -20.0)]
+const PRESS_RECT: Rect2 = Rect2(-10.0, -4.0, 20.0, 12.0)   # where the walker stands to press a pad, pad-local
+var _sign_rel: Vector2 = Vector2(SIGN_X, SIGN_Y)           # the sign's box origin, pad-local: set by set_sign_neighbours
 const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
 var _lock_icon: Texture2D = null  # the cost stat's 8 px icon, or null when the stat has none
@@ -170,6 +176,7 @@ func _ready() -> void:
 			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the night shade is at z 5
 			_chip.visible = false
 			_chip.draw.connect(_draw_cost_sign)
+			_chip.position = _sign_rel - Vector2(SIGN_X, SIGN_Y)
 			add_child(_chip)
 			_refresh_sign(_sim(), b)
 		if tier_row == &"lark_clover":
@@ -593,6 +600,41 @@ static func run_width(text: String, gap: float) -> float:
 ## The sign's frame in pad-local texels. Fixed size, so the plank never resizes or shifts as the numbers change.
 static func sign_box() -> Rect2:
 	return Rect2(SIGN_X, SIGN_Y, SIGN_W, SIGN_H)
+
+
+## The plank and its post with the ground shadow under it, for a box whose origin is `origin` (absolute or pad-local).
+static func sign_footprints(origin: Vector2) -> Array[Rect2]:
+	return [Rect2(origin, Vector2(SIGN_W, SIGN_H)), Rect2(origin + Vector2(11.0, SIGN_H), Vector2(12.0, 10.0))]
+
+
+## Whether a sign whose box origin is `spot` (pad-local, for the pad at `pad_at`) overlaps no bed, no plate and no press spot
+## on the zone. `others` holds every pad's position on the zone, the sign's own pad included.
+static func sign_clear(spot: Vector2, pad_at: Vector2, others: Array[Vector2]) -> bool:
+	var obstacles: Array[Rect2] = [Rect2(PRESS_RECT.position + pad_at, PRESS_RECT.size)]
+	for o: Vector2 in others:
+		obstacles.append(Rect2(BED_ORIGIN + o, Vector2(48.0, 44.0)))
+		obstacles.append(Rect2(o - HALF, HALF * 2.0))
+	for f: Rect2 in sign_footprints(spot + pad_at):
+		for ob: Rect2 in obstacles:
+			if f.intersects(ob):
+				return false
+	return true
+
+
+## The sign's spot for the pad at `pad_at`: the first of SIGN_SPOTS clear of every bed and plate in `others`. When none is
+## clear the first spot is kept, so a sign always draws somewhere.
+static func choose_sign_spot(pad_at: Vector2, others: Array[Vector2]) -> Vector2:
+	for spot: Vector2 in SIGN_SPOTS:
+		if sign_clear(spot, pad_at, others):
+			return spot
+	return SIGN_SPOTS[0]
+
+
+## Moves this pad's cost sign to a spot clear of every pad on its zone. Called once the zone's pads are placed.
+func set_sign_neighbours(others: Array[Vector2]) -> void:
+	_sign_rel = choose_sign_spot(position, others)
+	if _chip != null:
+		_chip.position = _sign_rel - Vector2(SIGN_X, SIGN_Y)
 
 
 ## Fits a cost or reward to the plank's text width. A value that is too wide drops its fraction first ("20.75B" becomes
