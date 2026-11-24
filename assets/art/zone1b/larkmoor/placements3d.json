@@ -310,8 +310,8 @@
   },
   {
    "kind": "district",
-   "name": "Heronmere",
-   "id": "heronmere",
+   "name": "Reedgate",
+   "id": "reedgate",
    "u": 1015.5,
    "v": 1200.5,
    "sx": 1335,
@@ -337,8 +337,8 @@
   },
   {
    "kind": "district",
-   "name": "Cairnfold",
-   "id": "cairnfold",
+   "name": "Heronmere",
+   "id": "heronmere",
    "u": 914.5,
    "v": 1355.5,
    "sx": 1079,
@@ -352,6 +352,15 @@
    "v": 320.0,
    "sx": 1920.0,
    "sy": 658.4
+  },
+  {
+   "kind": "district",
+   "name": "Cairnfold",
+   "id": "cairnfold",
+   "u": 340.0,
+   "v": 700.0,
+   "sx": 1160.0,
+   "sy": 656.8
   },
   {
    "kind": "district",
