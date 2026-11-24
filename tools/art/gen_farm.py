@@ -1,11 +1,8 @@
 """Larkmoor farm district: sprites for the Thistle Rise farm (world/farm/).
 
-Writes assets/art/zone1b/farm/ (PNG sprites, wheat field frame sheets, farm_preview.png). Pixel scale is Larkmoor's
+Writes assets/art/zone1b/farm/ (PNG props and farm_preview.png). The wheat is not drawn here: tools/bake_wheat.gd bakes it. Pixel scale is Larkmoor's
 (the windmill is about 65 texels wide), so these are about twice the meadow's cozy props. Everything is drawn in the
 meadow palette roles from gen_cozy.py, so the post-process palette and dither treat them like the rest of the meadow.
-
-Wheat fields are one sheet each: 8 gust frames, like gen_cozy's wheat, as a thick mass of rows with mixed stalk
-heights, rounded sides, and a per-field seed so no two fields look stamped. The fields are wheat only: no plots.
 
 Run: python3 tools/art/gen_farm.py   (needs Pillow; the layout is in place_farm.py).
 """
@@ -23,10 +20,6 @@ from gen_cozy import Canvas, INK, SHADE, DEEP, BASE, LIGHT, ACCENT, EARTH, PAPER
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 
-WHEAT_FRAMES = 8
-# name, frame width, seed. Wider fields are bigger patches; every field shares the height and the 8-frame wave.
-FIELD_SPECS = [('field_a', 96, 11), ('field_b', 96, 23), ('field_c', 128, 37), ('field_d', 160, 51)]
-FIELD_H = 44                    # the row sheets are taller than the old strip: rows stack back to front
 
 
 def barn() -> Canvas:
@@ -154,52 +147,6 @@ def grounded(c: Canvas, lift: int = 2) -> Canvas:
     return out
 
 
-def field_frame(frame: int, seed: int, fw: int, rows: int = 5, fh: int = 44) -> Canvas:
-    """One gust frame of a wheat field: a thick, full mass of wheat from the far edge to the near edge. Each row is a
-    dark under-mass that the stalks grow out of, so there are no bare soil lines or water between the rows. Rows overlap
-    so the field reads as one volume. Heads sit at varying heights, and the stalks bend with the gust: the near rows bend
-    more than the far ones. The silhouette is rounded at the sides, not ruled."""
-    rng = random.Random(seed)
-    c = Canvas(fw, fh)
-    phase = 2.0 * math.pi * frame / WHEAT_FRAMES
-    cx = fw / 2.0
-    base_ys = [14.0 + i * 6.0 for i in range(rows)]        # rows overlap: the far row's heads show above the near one
-    for i, by in enumerate(base_ys):
-        depth = i / max(1, rows - 1)                       # 0 far, 1 near
-        half = fw * (0.40 + 0.11 * depth)
-        by_i = int(round(by))
-        # the under-mass: a dark, dithered band the stalks grow out of, so the row has thickness
-        for x in range(int(cx - half), int(cx + half) + 1):
-            edge = abs(x - cx) / half
-            if edge > 0.9 and rng.random() < (edge - 0.9) * 6.0:
-                continue
-            for dy in range(0, 4):
-                col = SHADE if (dy == 0 or (x + dy) % 2 == 0) else EARTH
-                c.set(x, by_i - dy, col)
-        bend_amp = 1.0 + 1.8 * depth
-        for x in range(int(cx - half) + 1, int(cx + half) - 1):
-            edge = abs(x - cx) / half
-            if edge > 0.92 and rng.random() < (edge - 0.92) * 5.0:
-                continue
-            taper = 1.0 - 0.35 * edge ** 2                  # a rounded silhouette: shorter stalks towards the sides
-            h = (7.0 + 5.0 * rng.random()) * (0.85 + 0.3 * depth) * taper
-            bend = bend_amp * math.sin(x * 0.35 - phase + i * 0.7)
-            tx, ty = x + bend, by_i - 3 - h
-            c.seg(x, by_i - 3, tx, ty, ACCENT)             # golden straw
-            c.seg(x, by_i - 3, x + bend * 0.5, by_i - 3 - h * 0.5, EARTH)   # darker lower stalk: depth
-            c.set(round(tx), round(ty), EARTH)             # the head
-            if rng.random() < 0.35:                        # a second, lighter head beside it: a fuller canopy
-                c.set(round(tx) + 1, round(ty) + 1, ACCENT)
-    return c
-
-
-def field_sheet(seed: int, fw: int) -> Image.Image:
-    sheet = Image.new('RGBA', (fw * WHEAT_FRAMES, 44), (0, 0, 0, 0))
-    for f in range(WHEAT_FRAMES):
-        sheet.paste(field_frame(f, seed, fw).image(), (f * fw, 0))
-    return sheet
-
-
 PROPS = [
     ('farm_barn', lambda: grounded(barn())),
     ('farm_shed', lambda: grounded(shed())),
@@ -211,14 +158,51 @@ PROPS = [
 ]
 
 
+def fence_piece(w: int, h: int, chord) -> Canvas:
+    """One straight piece of a rustic fence, w x h. `chord` is the piece's line from (x0, y0) to (x1, y1) in this box
+    (see place_farm.py). Two rails run along the chord, with a shaded underside on the lower one, and a post every
+    eight texels with a lit cap. Posts stand on the chord; the rails sit above it."""
+    c = Canvas(w, h)
+    px, py, qx, qy = chord
+    length = math.hypot(qx - px, qy - py)
+    for off in (-6, -3):                              # top rail, then the lower rail
+        c.seg(px, py + off, qx, qy + off, EARTH)
+    c.seg(px, py - 2, qx, qy - 2, SHADE)              # underside of the lower rail
+    n = max(2, int(length / 8) + 1)
+    for i in range(n):
+        t = i / (n - 1)
+        x = px + (qx - px) * t
+        y = py + (qy - py) * t
+        c.seg(x, y, x, y - 7, EARTH)
+        c.set(round(x), round(y - 7), LIGHT)          # lit post cap
+    c.outline(INK)
+    return c
+
+
+def fences_from_manifest() -> None:
+    """Writes the whole fence ring as one PNG, from the batch item in farm.json (see place_farm.py). Each piece is drawn
+    in its own box and pasted at its place in the batch, so the ring reads as one fence."""
+    import json
+    with open(os.path.join(OUT, 'farm.json')) as f:
+        items = json.load(f)['items']
+    batch = [it for it in items if it['kind'] == 'farm_fence']
+    if not batch:
+        return
+    it = batch[0]
+    out = Image.new('RGBA', (int(it['w']), int(it['h'])), (0, 0, 0, 0))
+    for p in it['pieces']:
+        piece = fence_piece(int(p['w']), int(p['h']), p['chord']).image()
+        out.alpha_composite(piece, (int(p['x'] - it['x']), int(p['y'] - it['y'])))
+    os.makedirs(os.path.join(OUT, 'fence'), exist_ok=True)
+    out.save(os.path.join(OUT, it['file']))
+
+
 def main() -> int:
     os.makedirs(OUT, exist_ok=True)
+    fences_from_manifest()
     for name, make in PROPS:
         make().image().save(os.path.join(OUT, name + '.png'))
         print('wrote', name)
-    for name, fw, seed in FIELD_SPECS:
-        field_sheet(seed, fw).save(os.path.join(OUT, name + '_sheet.png'))
-        print('wrote', name + '_sheet', fw * WHEAT_FRAMES, 'x 44')
     # Preview: every sprite on one strip, scaled up, for a quick look.
     strip = []
     for name, make in PROPS:

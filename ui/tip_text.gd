@@ -88,6 +88,28 @@ static func zone_reset(r: ZoneResetDef, currency_name: String, can: bool, gain: 
 		"body": r.button_hint, "hint": need_text, "hint_color": StatStyle.cant()}
 
 
+## A zone currency (Seeds, Core Shards): its HUD row and its badge in the Upgrades header. `have` is the balance, already
+## formatted. `facts` are live reads from the caller: can (the zone's reset is ready), gain (what it pays now), need (the
+## words when it is not ready), bought, total and affordable (gift counts). `clickable` adds the yellow "Click to open!".
+static func currency(sid: StringName, display_name: String, have: String, r: ZoneResetDef, facts: Dictionary, clickable: bool) -> Dictionary:
+	var c: Color = StatStyle.color(sid)
+	var lines: Array = [["You have ", Tip.icon(String(sid)), Tip.seg(have, c)]]
+	if bool(facts.get("can", false)):
+		lines.append(["Next %s " % r.display_name, Tip.seg("+%d" % int(facts.get("gain", 0)), StatStyle.gain()), " ", Tip.seg(display_name, c)])
+	else:
+		lines.append([Tip.seg(str(facts.get("need", "")), StatStyle.cant())])
+	var total: int = int(facts.get("total", 0))
+	if total > 0:
+		lines.append(["Gifts ", Tip.seg("%d of %d bought" % [int(facts.get("bought", 0)), total], c)])
+		var affordable: int = int(facts.get("affordable", 0))
+		if affordable > 0:
+			lines.append(["Affordable ", Tip.seg("%d now" % affordable, StatStyle.gain())])
+	return {"title": display_name, "title_color": c, "color": c, "icon": String(sid),
+		"body": r.currency_body, "lines": lines,
+		"kicker": [Tip.tag("%s currency" % r.display_name, c)],
+		"hint": "Click to open!" if clickable else "", "hint_color": click_color()}
+
+
 static func zone_button(display_name: String) -> Dictionary:
 	return {"title": display_name, "body": "Travel there. Your progress here is kept."}
 
