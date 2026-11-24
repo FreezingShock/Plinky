@@ -1,1 +1,0 @@
-Pads get a small glow ring, green when you can afford them and red when not, instead of the wide halo that washed over the path. Each Larkmoor flower field glows at night in its own flower colour, shaped to the field, with a soft spill onto the path.
