@@ -153,6 +153,76 @@ def flower_spots(im, ox, oy, water, pad_sites):
     return [[x, y] for _, x, y in spots]
 
 
+TREE_KINDS = ("pine", "oak")
+PERCH_MIN_H = 46            # only tall pines hold an owl
+PERCH_COUNT = 6
+PERCH_SPACING = 140.0       # iso texels between owl perches
+EDGE_NEAR = (14.0, 34.0)    # a forest-edge grass tip is this far from the nearest tree
+EDGE_DENSE_R = 70.0         # trees counted within this radius decide whether it is forest
+EDGE_DENSE_MIN = 8
+EDGE_COUNT = 30
+EDGE_SPACING = 60.0
+EDGE_PAD_KEEP = 24.0        # a forest-edge spot keeps this far from every pad
+
+
+def _iso(ax: float, ay: float, bx: float, by: float) -> float:
+    # Same metric as MeadowLife.iso_distance: y counts double.
+    return ((ax - bx) ** 2 + ((ay - by) * 2.0) ** 2) ** 0.5
+
+
+def load_trees(path):
+    """Tree bases (x, y) and heights, plus the tall pines, from the placements file."""
+    d = json.load(open(path))
+    trees, pines = [], []
+    for s in d["sprites"]:
+        if s["kind"] not in TREE_KINDS:
+            continue
+        base = (float(s["foot"][0]), float(s["foot"][1]))
+        trees.append((base[0], base[1], float(s["h"])))
+        if s["kind"] == "pine" and int(s["h"]) >= PERCH_MIN_H:
+            pines.append((s["x"] + s["w"] / 2.0, s["y"] + 8.0))
+    return trees, pines
+
+
+def perch_points(pines):
+    """Owl perches: a few tall pine crowns, spread out, chosen by a fixed seed."""
+    rng = random.Random(11)
+    order = list(pines)
+    rng.shuffle(order)
+    out = []
+    for x, y in order:
+        if all(_iso(x, y, px, py) >= PERCH_SPACING for px, py in out):
+            out.append((x, y))
+        if len(out) >= PERCH_COUNT:
+            break
+    return [[round(x), round(y)] for x, y in out]
+
+
+def forest_edge_points(trees, sway, pads):
+    """Grass tips at the edge of the woods, where a dense stand of trees meets open meadow: a deer grazes here.
+    Tips within EDGE_PAD_KEEP of a pad are left out, so the deer never grazes on one."""
+    cands = []
+    for p in sway:
+        x, y = float(p[0]), float(p[1])
+        if any(_iso(x, y, px, py) < EDGE_PAD_KEEP for px, py in pads):
+            continue
+        near = min(_iso(x, y, tx, ty) for tx, ty, _ in trees)
+        if not (EDGE_NEAR[0] <= near <= EDGE_NEAR[1]):
+            continue
+        dense = sum(1 for tx, ty, _ in trees if _iso(x, y, tx, ty) <= EDGE_DENSE_R)
+        if dense >= EDGE_DENSE_MIN:
+            cands.append((x, y, dense))
+    rng = random.Random(23)
+    rng.shuffle(cands)
+    out = []
+    for x, y, _ in cands:
+        if all(_iso(x, y, px, py) >= EDGE_SPACING for px, py in out):
+            out.append((x, y))
+        if len(out) >= EDGE_COUNT:
+            break
+    return [[round(x), round(y)] for x, y in out]
+
+
 def main() -> None:
     global GRASS_BOUNDS, SWAY_COUNT
     from PIL import Image
@@ -269,6 +339,9 @@ def main() -> None:
             s = float(fm["scale"])
             data["farm"] = [[(cx - bw / 2) * s, (cy - bh / 2) * s, bw * s, bh * s]]
             data["farm_items"] = [[it["x"], it["y"], it["w"], it["h"]] for it in fm["items"]]
+        trees, pines = load_trees(args.placements)
+        data["perches"] = perch_points(pines)
+        data["forest_edge"] = forest_edge_points(trees, data["sway"], data["pad_sites"])
     with open(args.out, "w") as f:
         json.dump(data, f, indent=1)
         f.write("\n")

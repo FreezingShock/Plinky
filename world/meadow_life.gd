@@ -95,3 +95,22 @@ static func in_water(p: Vector2, bodies: Array[Dictionary], grow: float) -> bool
 		if water_k(p, w) < grow:
 			return true
 	return false
+
+
+## Draws a sprite (runs of one palette index, from LifeCritters._make_sprite) into `ci`. `fade` below 1 draws only the
+## texels the dither lets through.
+static func blit(ci: CanvasItem, pal: PackedColorArray, spr: Dictionary, origin: Vector2i, flip: bool, fade: float) -> void:
+	var w: int = int(spr.w)
+	for run: Variant in spr.runs as Array:
+		var rr: PackedInt32Array = run as PackedInt32Array
+		var n: int = rr[2]
+		var x0: int = rr[0] if not flip else w - rr[0] - n
+		var y: int = rr[1]
+		var idx: int = rr[3]
+		if fade >= 1.0:
+			ci.draw_rect(Rect2(origin.x + x0, origin.y + y, n, 1), pal[idx])
+			continue
+		for k: int in n:
+			var x: int = origin.x + x0 + k
+			if dissolved(fade, x, origin.y + y):
+				ci.draw_rect(Rect2(x, origin.y + y, 1, 1), pal[idx])

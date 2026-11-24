@@ -235,3 +235,9 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Why:** rain barely read on screen, and wet ground is the cue that says it is raining.
 - **Verified in the cloud:** Godot 4.7.2 headless under xvfb with lavapipe. Tests 5346 checks, 0 failed. Shaders compile, and the screenshot set (tools/weather_shots.tscn) was checked by eye.
 - **Not verified on the PC:** how puddles and rings look at zoom 1 and 4, the feel of the drop speed, and the night puddles against the moonlit path.
+
+## 2026-11-24: Pad glow crowding (a row of pads does not blow out)
+- Nathan's screenshot: with the rows 42 texels apart, neighbouring halos and light pools added together into one blown-out green blob at night. Halos are additive, and pool strengths sum before the shader clamps them.
+- Fix: each lit pad counts the lit pads within `TexelPad.CROWD_RANGE` (48 texels, a little over one row). Its halo and its shader pool are scaled by `crowd_scale(n) = 1 / max(1, n * 0.5)`. A lone pad or a pair keeps full light, and any crowd adds up to about two pads' worth at its busiest point.
+- Why this and not a max blend: the halo and pool are additive on purpose (they light the ground), and changing the blend mode would change every pad. Scaling by crowd keeps one pad looking as it does now.
+- Not verified in-engine: no Godot binary was available in this session, so the 5-pad row at night was not rendered. The 48-texel range and the 0.5 share are guesses to tune on the PC.
