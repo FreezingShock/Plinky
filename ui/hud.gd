@@ -32,8 +32,7 @@ var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
 var _attr_rows: Dictionary = {}   # attribute id -> UpgradeCard
-const UPGRADE_LIST_WIDTH: float = 318.0   ## two cards across (UpgradeCard.CARD_SIZE) plus a gap and the scrollbar
-const UPGRADE_LIST_HEIGHT: float = 180.0   ## the most the list takes (about three rows); a shorter tab takes only what it needs, and the rest scrolls
+const UPGRADE_LIST_WIDTH: float = 488.0   ## the tier rail (RAIL_WIDTH), a gap, and two cards across (UpgradeCard.CARD_SIZE)
 var _tip_card: TipCard
 var toast_showing: Callable   ## set by main: true while the achievement toast is up (tips wait for it)
 var _gated: Array = []            # [node, feature] pairs; see gate()
@@ -463,28 +462,28 @@ func _build_upgrades() -> void:
 	_upg_tabs = HBoxContainer.new()
 	_upg_tabs.add_theme_constant_override("separation", 12)
 	_upgrades_box.add_child(_upg_tabs)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, 0.0)
-	scroll.follow_focus = true
-	_upgrades_box.add_child(scroll)
-	_upg_scroll = scroll
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 6)
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
-	_upg_list = list
+	# Each tab's page is a header, then a tier rail on the left and the chosen tier's gifts on the right. No scroll.
+	_upg_list = VBoxContainer.new()
+	_upg_list.add_theme_constant_override("separation", 6)
+	_upg_list.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, 0.0)
+	_upgrades_box.add_child(_upg_list)
 	MenuAnim.front_on_show(_upgrades_panel)   # the menu draws above the meters, relic bar and sprint trail
 	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
 
 
 var _upg_list: VBoxContainer
 const BADGE_VALUE_WIDTH: float = 44.0   ## the balance in the Upgrades header: wide enough for "999.9K" so buying never shifts it
-var _upg_scroll: ScrollContainer
+const RAIL_WIDTH: float = 168.0         ## the tier rail: "2  Requires 1 Bloom" fits on one row
 var _upg_tabs: HBoxContainer
 var _upg_order: Array[StringName] = []          # the currency of each tab, in menu order
 var _upg_tab_btns: Dictionary = {}              # currency stat id -> its tab (MenuTextButton)
 var _upg_pages: Dictionary = {}                 # currency stat id -> the page of that group's tiers
+var _upg_rails: Dictionary = {}                 # currency stat id -> the VBox holding its tier rail buttons
+var _upg_hosts: Dictionary = {}                 # currency stat id -> the box the tier grids sit in
+var _tier_grids: Dictionary = {}                # currency stat id -> Array of GridContainer, one per tier in unlock order
+var _tier_attrs: Dictionary = {}                # currency stat id -> Array of tiers, each an Array of AttributeDef
+var _tier_btns: Dictionary = {}                 # currency stat id -> Array of MenuTextButton, the rail rows
+var _tier_sel: Dictionary = {}                  # currency stat id -> the tier shown on that tab
 var _upg_tab: StringName = &""                  # the tab on show
 var _pending_tab: StringName = &""              # the tab a zone currency's row asked for, taken on show
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
@@ -502,6 +501,8 @@ func _on_upgrades_shown() -> void:
 	_pending_tab = &""
 	_order_upgrade_tabs()
 	_sync_upgrade_tabs()
+	for cur: StringName in _tier_grids:   # every tab opens on its frontier tier
+		_select_tier(cur, _frontier_tier(cur))
 
 
 ## The zone's own gift tab when it shows, else the first tab the player can see.
@@ -520,8 +521,19 @@ func _order_upgrade_tabs() -> void:
 	_upg_tabs.move_child(_upg_tab_btns[here.currency] as Control, 0)
 
 
-## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page of tiers;
-## a tier is a heading and a two-across grid of cards, so a tier of gifts reads as one group.
+## The first tier with a gift that is open and not maxed yet, else the first tier.
+func _frontier_tier(cur: StringName) -> int:
+	var tiers: Array = _tier_attrs.get(cur, [])
+	for i: int in tiers.size():
+		for a: AttributeDef in tiers[i]:
+			if sim.attr_unlocked(a.id) and sim.attr_level(a.id) < a.cap:
+				return i
+	return 0
+
+
+## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page: a header,
+## a tier rail (one row per tier, its gate in the tier's colour) and one two-across grid of cards per tier. Only the
+## chosen tier's grid shows.
 func _fill_upgrades() -> void:
 	if not _attr_rows.is_empty():
 		return
@@ -533,6 +545,22 @@ func _fill_upgrades() -> void:
 		_upg_list.add_child(page)
 		_upg_pages[cur] = page
 		page.add_child(_gift_header(cur))
+		var body := HBoxContainer.new()
+		body.add_theme_constant_override("separation", 12)
+		body.alignment = BoxContainer.ALIGNMENT_CENTER
+		page.add_child(body)
+		var rail := VBoxContainer.new()
+		rail.add_theme_constant_override("separation", 3)
+		rail.custom_minimum_size.x = RAIL_WIDTH
+		body.add_child(rail)
+		_upg_rails[cur] = rail
+		var host := VBoxContainer.new()
+		host.custom_minimum_size.x = UpgradeCard.CARD_SIZE.x * 2.0 + 6.0
+		body.add_child(host)
+		_upg_hosts[cur] = host
+		_tier_grids[cur] = []
+		_tier_attrs[cur] = []
+		_tier_btns[cur] = []
 		var tab := MenuTextButton.new()
 		tab.label = UpgradeText.tab_name(sim, cur)
 		tab.accent_color = StatStyle.color(cur)
@@ -542,33 +570,24 @@ func _fill_upgrades() -> void:
 		tab.focus_entered.connect(_on_tab_focus.bind(cur))   # Left and Right move focus along the strip: the page follows the focus
 		_upg_tabs.add_child(tab)
 		_upg_tab_btns[cur] = tab
-	var grid: GridContainer = null
 	var last_key: String = ""
-	var last_cur: StringName = &""
-	var tier_no: int = 0   # tiers number from 1 within each currency
 	for a: AttributeDef in UpgradeText.ordered(sim):
 		var cur: StringName = a.currency
-		var page: VBoxContainer = _upg_pages.get(cur) as VBoxContainer
-		if page == null:
+		if not _upg_hosts.has(cur):
 			continue
 		var key: String = "%s %s" % [cur, UpgradeText.tier_key(a)]
 		if key != last_key:
 			last_key = key
-			tier_no = tier_no + 1 if cur == last_cur else 1
-			last_cur = cur
-			var tier := Label.new()
-			tier.text = "Tier %d: %s" % [tier_no, UpgradeText.tier_head(sim, a)]
-			tier.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			tier.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			tier.add_theme_color_override("font_color", StatStyle.color(cur))   # each zone's heads wear its currency colour
-			page.add_child(tier)
-			grid = GridContainer.new()
-			grid.columns = 2
-			grid.custom_minimum_size = Vector2(UpgradeCard.CARD_SIZE.x * 2.0 + 6.0, 0.0)   # every tier the same width
-			grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER   # centred in the list, not pushed to the left edge
-			grid.add_theme_constant_override("h_separation", 6)
-			grid.add_theme_constant_override("v_separation", 5)
-			page.add_child(grid)
+			var made := GridContainer.new()
+			made.columns = 2
+			made.add_theme_constant_override("h_separation", 6)
+			made.add_theme_constant_override("v_separation", 6)
+			made.visible = false
+			(_upg_hosts[cur] as Control).add_child(made)
+			(_tier_grids[cur] as Array).append(made)
+			(_tier_attrs[cur] as Array).append([])
+		var grid: GridContainer = (_tier_grids[cur] as Array).back() as GridContainer
+		((_tier_attrs[cur] as Array).back() as Array).append(a)
 		var card := UpgradeCard.new()
 		grid.add_child(card)
 		card.setup(a)
@@ -580,22 +599,58 @@ func _fill_upgrades() -> void:
 		_row_tips[a.id] = spec
 		Tip.bind_all(card, spec)
 		_attr_rows[a.id] = card
+	# The rail: one row per tier, in unlock order. Its colour is the tier's, and its gate reads "Requires N Bloom(s)".
+	for cur: StringName in _upg_order:
+		var rail: VBoxContainer = _upg_rails[cur] as VBoxContainer
+		var tiers: Array = _tier_attrs[cur]
+		for i: int in tiers.size():
+			var head: AttributeDef = (tiers[i] as Array)[0] as AttributeDef
+			var btn := MenuTextButton.new()
+			btn.label = "%d  %s" % [i + 1, UpgradeText.tier_gate(sim, head)]
+			var tc: Color = RelicStyle.tier_color(i, cur)
+			btn.rest_color = tc.lerp(RelicStyle.dim, 0.3)
+			btn.accent_color = tc
+			btn.show_focus_ring = false
+			btn.pad_y = 1.0   # a tight rail: six tiers fit beside the gifts
+			btn.pressed.connect(_select_tier.bind(cur, i))
+			btn.focus_entered.connect(_on_tier_focus.bind(cur, i))
+			rail.add_child(btn)
+			(_tier_btns[cur] as Array).append(btn)
 	_upg_tab = _first_shown_tab()
 	_size_upgrade_list()
 	_apply_upgrade_tab()
 
 
-## The list is one height for every tab: the tallest tab's, up to UPGRADE_LIST_HEIGHT, and longer tabs scroll. A tab
-## switch or a buy never resizes the panel, so nothing under the pointer moves.
-func _size_upgrade_list() -> void:
-	if _upg_scroll == null or _upg_list == null:
+## One tier of a tab on show: its gifts take the grid and its rail row is lit. Tiers swap in place, so nothing moves.
+func _select_tier(cur: StringName, i: int) -> void:
+	var grids: Array = _tier_grids.get(cur, [])
+	if i < 0 or i >= grids.size():
 		return
-	var tallest: float = 0.0
-	for cur: StringName in _upg_pages:
-		for other: StringName in _upg_pages:
-			(_upg_pages[other] as Control).visible = other == cur
-		tallest = maxf(tallest, _upg_list.get_combined_minimum_size().y)
-	_upg_scroll.custom_minimum_size.y = minf(tallest, UPGRADE_LIST_HEIGHT)
+	_tier_sel[cur] = i
+	for j: int in grids.size():
+		(grids[j] as Control).visible = j == i
+	var btns: Array = _tier_btns.get(cur, [])
+	for j: int in btns.size():
+		(btns[j] as MenuTextButton).selected = j == i
+
+
+## Focus landed on a tier row: with the keyboard or pad the rail follows the focus, as the tab strip does.
+func _on_tier_focus(cur: StringName, i: int) -> void:
+	if Tip.focus_muted:
+		return
+	_select_tier(cur, i)
+
+
+## Every tab's gift area is as tall as its tallest tier (two across, so a tier is at most two rows). A tier switch or a
+## buy never resizes the panel.
+func _size_upgrade_list() -> void:
+	var rows: int = 0
+	for cur: StringName in _tier_grids:
+		for g: Variant in _tier_grids[cur]:
+			rows = maxi(rows, ceili(float((g as GridContainer).get_child_count()) / 2.0))
+	var h: float = float(rows) * (UpgradeCard.CARD_SIZE.y + 6.0) - 6.0 if rows > 0 else 0.0
+	for cur2: StringName in _upg_hosts:
+		(_upg_hosts[cur2] as Control).custom_minimum_size.y = h
 
 
 ## The head of a gifts page: the currency's icon and name in its colour, and one line on what earns it. Centred.
