@@ -1,1 +1,0 @@
-Twin Petals and Twin Strike can now proc: a chance for a press to pay out five times its reward. Wide Bloom and Anvil Plates also add to every Bloom's or Nucleus's reward bonus, so they stack with Bloom Echo and Core Echo.
