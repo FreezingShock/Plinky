@@ -1,0 +1,1 @@
+Larkmoor paths have a hierarchy now. The main route is a wide road, the forks to the districts are medium lanes, and the windmill track is a narrow, darker worn trail. Each tier blends softly into the grass.
