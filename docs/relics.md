@@ -27,7 +27,7 @@ Frames: `assets/ui/rarity/` (from art/icons/rarity, 20x20, 16x16 icon at offset 
 2. Forward signals: `relic_gained` to EventBus.relic_gained; `relic_equipped` and `relic_unequipped` are new EventBus signals (added to SPEC interface list).
 3. On rebirth call `relics.set_rebirths(n)`.
 4. On each successful press: `var id := relics.roll_drop(rng, luck_level); if id != &"": relics.add_relic(id)`.
-5. Formulas: `relic_mult` = `relics.multiplier(CASH_MULT)` for cash; MULT_GAIN for button gain; PRESS_RATE added to press rate; CRIT_DAMAGE added to the 5x crit; DOUBLE_CHANCE and PULSE_CHANCE rolled per press.
+5. Formulas: `relic_mult` = `relics.multiplier(CASH_MULT)` for cash; MULT_GAIN for button gain; PRESS_RATE multiplies press rate (1 + total), like MULT_GAIN; CRIT_DAMAGE added to the 5x crit; DOUBLE_CHANCE and PULSE_CHANCE rolled per press.
 6. Save: `relics.to_dict()` / `from_dict()`.
 
 ## Drops, toast and flash (Nathan, 2026-11-22)

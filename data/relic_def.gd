@@ -5,7 +5,7 @@ extends Resource
 enum Effect {
 	CASH_MULT,      ## multiplies cash income
 	MULT_GAIN,      ## multiplies Multiplier gain from presses
-	PRESS_RATE,     ## adds to presses per second
+	PRESS_RATE,     ## multiplies the zone press rate (1 + total), like the other gain effects
 	CRIT_DAMAGE,    ## adds to crit press multiplier
 	DOUBLE_CHANCE,  ## chance a press counts twice
 	PULSE_CHANCE,   ## chance a press also presses adjacent buttons
@@ -73,7 +73,7 @@ static func effect_name(e: Effect) -> String:
 	match e:
 		Effect.CASH_MULT: return "Passive Income"
 		Effect.MULT_GAIN: return "Press Gain"
-		Effect.PRESS_RATE: return "Presses Per Second"
+		Effect.PRESS_RATE: return "Press Rate"
 		Effect.CRIT_DAMAGE: return "Crit Damage"
 		Effect.DOUBLE_CHANCE: return "Double Press Chance"
 		Effect.PULSE_CHANCE: return "Pulse Chance"
@@ -90,8 +90,6 @@ static func effect_name(e: Effect) -> String:
 		Effect.DROP_REWARD: return "Drop Bonus"
 	return "Bonus"
 
-## Percentage text for a total effect, with a sign. Press rate is a flat add, shown without a percent.
+## Percentage text for a total effect, with a sign. Press rate multiplies the base like every other effect, so it is a percent too.
 static func effect_text(e: Effect, v: float) -> String:
-	if e == Effect.PRESS_RATE:
-		return "+%s" % (("%d" % roundi(v)) if absf(v - roundf(v)) < 0.005 else "%.2f" % v)
 	return "+" + _pct(v)
