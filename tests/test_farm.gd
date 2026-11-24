@@ -8,7 +8,9 @@ const CANVAS: Vector2 = Vector2(3040.0, 1840.0)
 const BOX_CENTRE: Vector2 = Vector2(1090.0, 520.0)     # layout texels, doubled for the canvas
 const BOX_SIZE: Vector2 = Vector2(260.0, 220.0)
 const SCALE: float = 2.0
-const NODE_BUDGET: int = 90                            # the farm's own nodes: one sprite per item, plus the driver
+const FENCE_PREFIX: String = "farm_fence"                # the fence ring's pieces (see place_farm.py)
+const WHEAT_PREFIX: String = "farm_wheat"                # the wheat clumps, which overlap a little (see place_farm.py)
+const NODE_BUDGET: int = 120                           # the farm's own nodes: one sprite per item, plus the driver
 
 
 func run(t: Object) -> void:
@@ -18,6 +20,7 @@ func run(t: Object) -> void:
 	t.ok(items.size() >= 12, "the farm places at least 12 items (%d)" % items.size())
 	var kinds: Dictionary = {}
 	var rects: Array[Rect2] = []
+	var rect_kinds: Array[String] = []
 	var box := Rect2((BOX_CENTRE - BOX_SIZE * 0.5) * SCALE, BOX_SIZE * SCALE)
 	var wheat: int = 0
 	for v: Variant in items:
@@ -26,6 +29,7 @@ func run(t: Object) -> void:
 		kinds[kind] = true
 		var rect := Rect2(float(item.x), float(item.y), float(item.w), float(item.h))
 		rects.append(rect)
+		rect_kinds.append(kind)
 		t.ok(Rect2(Vector2.ZERO, CANVAS).encloses(rect), "%s at %s is inside the Larkmoor canvas" % [kind, rect.position])
 		t.ok(box.encloses(rect), "%s at %s is inside the farm box" % [kind, rect.position])
 		var fa: Array = item.foot as Array
@@ -47,13 +51,19 @@ func run(t: Object) -> void:
 	t.ok(wheat >= 10, "the farm has at least 10 wheat clumps (%d)" % wheat)
 	for kind: String in ["farm_barn", "farm_scarecrow", "farm_cart"]:
 		t.ok(kinds.has(kind), "the farm includes %s" % kind)
-	# No two items share a texel: the placer keeps a gap, so a strict overlap is a placer bug.
+	# No two items share a texel: the placer keeps a gap, so a strict overlap is a placer bug. Two exceptions. Fence pieces
+	# meet end to end at their posts, and wheat clumps overlap a little so the patches read thick. Both are by design.
 	var overlaps: int = 0
 	for i in range(rects.size()):
 		for j in range(i + 1, rects.size()):
-			if rects[i].intersects(rects[j]):
-				overlaps += 1
-	t.eq(overlaps, 0, "no two farm items overlap")
+			if not rects[i].intersects(rects[j]):
+				continue
+			if rect_kinds[i].begins_with(FENCE_PREFIX) and rect_kinds[j].begins_with(FENCE_PREFIX):
+				continue
+			if rect_kinds[i].begins_with(WHEAT_PREFIX) and rect_kinds[j].begins_with(WHEAT_PREFIX):
+				continue
+			overlaps += 1
+	t.eq(overlaps, 0, "no two farm items overlap, except fence pieces meeting and wheat clumps overlapping")
 	# The water channel: at least a few ripples long, inside the box.
 	var channels: Array = data.get("brooks", []) as Array
 	t.ok(channels.size() == 1, "the farm has one water channel")

@@ -158,8 +158,42 @@ PROPS = [
 ]
 
 
+def fence_piece(w: int, h: int, chord) -> Canvas:
+    """One straight piece of a rustic fence, w x h. `chord` is the piece's line from (x0, y0) to (x1, y1) in this box
+    (see place_farm.py). Two rails run along the chord, with a shaded underside on the lower one, and a post every
+    eight texels with a lit cap. Posts stand on the chord; the rails sit above it."""
+    c = Canvas(w, h)
+    px, py, qx, qy = chord
+    length = math.hypot(qx - px, qy - py)
+    for off in (-6, -3):                              # top rail, then the lower rail
+        c.seg(px, py + off, qx, qy + off, EARTH)
+    c.seg(px, py - 2, qx, qy - 2, SHADE)              # underside of the lower rail
+    n = max(2, int(length / 8) + 1)
+    for i in range(n):
+        t = i / (n - 1)
+        x = px + (qx - px) * t
+        y = py + (qy - py) * t
+        c.seg(x, y, x, y - 7, EARTH)
+        c.set(round(x), round(y - 7), LIGHT)          # lit post cap
+    c.outline(INK)
+    return c
+
+
+def fences_from_manifest() -> None:
+    """Writes one PNG per fence piece listed in farm.json (the file names place_farm.py gives them)."""
+    import json
+    with open(os.path.join(OUT, 'farm.json')) as f:
+        items = json.load(f)['items']
+    os.makedirs(os.path.join(OUT, 'fence'), exist_ok=True)
+    for it in items:
+        if not it['kind'].startswith('farm_fence'):
+            continue
+        fence_piece(int(it['w']), int(it['h']), it['chord']).image().save(os.path.join(OUT, it['file']))
+
+
 def main() -> int:
     os.makedirs(OUT, exist_ok=True)
+    fences_from_manifest()
     for name, make in PROPS:
         make().image().save(os.path.join(OUT, name + '.png'))
         print('wrote', name)

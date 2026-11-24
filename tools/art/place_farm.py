@@ -37,6 +37,8 @@ BOX = (1090, 520, 260, 220)             # centre x, centre y, width, height (lay
 PATH_CLEAR = 19 * S
 PAD_CLEAR = 30 * S
 WINDMILL_CLEAR = 24 * S
+WHEAT_DX = 18                           # canvas texels: two clumps' centres stay at least this far apart in x ...
+WHEAT_DY = 12                           # ... or in y, so clumps overlap a little, never stack
 MERE_MARGIN = 12                        # layout texels
 GAP = 4                                 # canvas texels between farm items
 
@@ -142,14 +144,21 @@ class Placer:
     def __init__(self, ground: Ground, existing: list):
         self.g = ground
         self.taken = list(existing)      # (x0, y0, x1, y1) canvas rects already used
+        self.tags = [None] * len(self.taken)   # 'wheat' for clumps, None for everything else
 
-    def clear_of_taken(self, x0, y0, x1, y1):
-        for (a, b, c, d) in self.taken:
+    def clear_of_taken(self, x0, y0, x1, y1, tag=None):
+        """Wheat clumps may overlap each other a little (thick wheat), but keep their centres apart. Everything else
+        keeps GAP texels clear of every rect already used."""
+        for (a, b, c, d), t in zip(self.taken, self.tags):
+            if tag == 'wheat' and t == 'wheat':
+                if abs((x0 + x1) - (a + c)) / 2.0 < WHEAT_DX and abs((y0 + y1) - (b + d)) / 2.0 < WHEAT_DY:
+                    return False
+                continue
             if not (x1 + GAP <= a or x0 >= c + GAP or y1 + GAP <= b or y0 >= d + GAP):
                 return False
         return True
 
-    def place(self, w, h, tx, ty, radius=80):
+    def place(self, w, h, tx, ty, radius=80, tag=None):
         """Return the top-left canvas rect for a w x h sprite whose bbox centre is near layout (tx, ty), or None."""
         for dx, dy in _spiral(radius):
             cx = (tx + dx) * S
@@ -161,9 +170,10 @@ class Placer:
                 continue
             if not self.g.ok_rect(x0, y0, x1, y1):
                 continue
-            if not self.clear_of_taken(x0, y0, x1, y1):
+            if not self.clear_of_taken(x0, y0, x1, y1, tag):
                 continue
             self.taken.append((x0, y0, x1, y1))
+            self.tags.append(tag)
             return x0, y0
         return None
 
@@ -196,30 +206,39 @@ def _fence_ok(ground: Ground, placer: Placer, px: float, py: float) -> bool:
 # Wheat: three organic patches. Each has a wobbly outline (harmonics of the angle), and clumps are placed on a loose
 # grid inside it. Every clump goes through the placer, so it never overlaps a path, pad, or another item.
 WHEAT_PATCHES = [
-    # centre x, centre y (layout texels), radius x, radius y, stage mix
-    (1030, 478, 84, 52, 'gold'),
-    (1140, 560, 66, 44, 'gold'),
-    (1010, 606, 62, 22, 'mixed'),
-    (1196, 470, 34, 40, 'mixed'),
+    # centre x, centre y (layout texels), radius x, radius y, stage mix. Each sits on the walkable ground the placer
+    # allows inside the farm box (the map is walkable grass west and south of centre, cliffs and the mere to the east).
+    (1034, 468, 50, 19, 'gold'),
+    (1140, 540, 30, 22, 'gold'),
+    (1030, 600, 44, 16, 'mixed'),
+    (1090, 440, 26, 12, 'mixed'),
+    (1120, 572, 26, 12, 'gold'),
 ]
-CLUMP_SIZES = [(48, 40), (40, 40), (48, 36), (40, 36)]     # canvas texels (w, h); a 52 x 44 grid cell fits one
+CLUMP_SIZES = [(32, 28), (28, 26), (32, 26), (30, 28)]     # canvas texels (w, h): smaller clumps, tighter grid, more stalks
 
 
-def _wheat_items(placer: Placer, rng: random.Random, start: int):
-    """Clump items for every patch. Stage: 1 golden, 2 brown inside a mixed patch, 0 green shoots at a patch's edge."""
+def _limit(theta: float, phases) -> float:
+    """The patch outline: how far from the centre (in radii) the wheat may grow at angle theta."""
+    return 1 + 0.16 * math.sin(3 * theta + phases[0]) + 0.09 * math.sin(5 * theta + phases[1]) \
+        + 0.05 * math.sin(8 * theta + phases[2])
+
+
+def _wheat_items(placer: Placer, rng: random.Random, start: int, shapes: list):
+    """Clump items for every patch. Stage: 1 golden, 2 brown inside a mixed patch, 0 green shoots at a patch's edge.
+    Each patch's outline (centre, radii, phases) is appended to `shapes` for the fence ring."""
     items = []
     n = start
     for (cx, cy, rx, ry, mix) in WHEAT_PATCHES:
         phases = [rng.uniform(0, 2 * math.pi) for _ in range(3)]
+        shapes.append((cx, cy, rx, ry, phases))
         # Grid steps are layout texels (the canvas is 2x), so a clump of 48 to 64 canvas texels is 24 to 32 layout wide.
-        for row in range(-int(ry) // 22 - 1, int(ry) // 22 + 2):
-            for col in range(-int(rx) // 26 - 1, int(rx) // 26 + 2):
-                gx = cx + col * 26 + (13 if row % 2 else 0) + rng.uniform(-2, 2)
-                gy = cy + row * 22 + rng.uniform(-1, 1)
+        for row in range(-int(ry) // 10 - 2, int(ry) // 10 + 3):
+            for col in range(-int(rx) // 12 - 2, int(rx) // 12 + 3):
+                gx = cx + col * 12 + (6 if row % 2 else 0) + rng.uniform(-1, 1)
+                gy = cy + row * 10 + rng.uniform(-1, 1)
                 dx, dy = gx - cx, gy - cy
                 theta = math.atan2(dy, dx)
-                limit = 1 + 0.16 * math.sin(3 * theta + phases[0]) + 0.09 * math.sin(5 * theta + phases[1]) \
-                    + 0.05 * math.sin(8 * theta + phases[2])
+                limit = _limit(theta, phases)
                 r = math.hypot(dx / rx, dy / ry)
                 if r > limit:
                     continue
@@ -228,7 +247,7 @@ def _wheat_items(placer: Placer, rng: random.Random, start: int):
                     stage = 0 if r > 0.8 and rng.random() < 0.6 else (2 if rng.random() < 0.4 else 1)
                 else:
                     stage = 0 if r > 0.85 and rng.random() < 0.4 else 1
-                at = placer.place(w, h, gx, gy, radius=5)
+                at = placer.place(w, h, gx, gy, radius=5, tag='wheat')
                 if at is None:
                     continue
                 x, y = at
@@ -240,7 +259,73 @@ def _wheat_items(placer: Placer, rng: random.Random, start: int):
     return items
 
 
+FENCE_OFFSET = 11                       # layout texels beyond the wheat outline: clear of every clump's reach
+FENCE_CHORD = 24                        # canvas texels per fence piece (one sprite each)
+FENCE_GATE = 11                         # canvas texels of walk-in gap, half on each side of a gate
+FENCE_GATES = 2                         # walk-in gaps per patch
+
+
+def _fence_items(ground: Ground, placer: Placer, shapes: list, start: int):
+    """A rustic fence ring around each wheat patch, outside the clumps, with walk-in gaps.
+
+    The ring is sampled along each patch outline and cut into straight chords of about FENCE_CHORD canvas texels. Each
+    chord is one sprite (posts and two rails, drawn by gen_farm.py from its 'chord' endpoints). A chord is kept only
+    when its box is walkable grass, clear of paths and pads, and clear of the items placed before it (the targets,
+    the wheat and the channel). Chords may touch each other: they are one fence."""
+    items = []
+    n = start
+    for pi, (cx, cy, rx, ry, phases) in enumerate(shapes):
+        rng = random.Random(41 + pi)
+        radius_c = math.sqrt((rx * rx + ry * ry) / 2.0) * S      # canvas texels, for arc lengths
+        count = max(24, int(2 * math.pi * (radius_c + FENCE_OFFSET * S) / FENCE_CHORD))
+        gates = [rng.uniform(0, 2 * math.pi) for _ in range(FENCE_GATES)]
+        half_gate = (FENCE_GATE / 2.0) / (radius_c + FENCE_OFFSET * S)
+        pts = []
+        for k in range(count):
+            th = 2 * math.pi * k / count
+            L = _limit(th, phases)
+            px = (cx + (rx * L + FENCE_OFFSET) * math.cos(th)) * S
+            py = (cy + (ry * L + FENCE_OFFSET) * math.sin(th)) * S
+            pts.append((px, py))
+        for k in range(count):
+            mid = 2 * math.pi * (k + 0.5) / count
+            if any(_angle_gap(mid, g) < half_gate for g in gates):
+                continue
+            (ax, ay), (bx, by) = pts[k], pts[(k + 1) % count]
+            x0 = int(math.floor(min(ax, bx))) - 1
+            y0 = int(math.floor(min(ay, by))) - 8          # room above the line for the posts
+            x1 = int(math.ceil(max(ax, bx))) + 2
+            y1 = int(math.ceil(max(ay, by))) + 2
+            if not _inside_box(x0, y0, x1, y1) or not ground.ok_rect(x0, y0, x1, y1):
+                continue
+            if not placer.clear_of_taken(x0, y0, x1, y1):
+                continue
+            w, h = x1 - x0, y1 - y0
+            kind = 'farm_fence_%d' % n
+            items.append({'kind': kind, 'file': 'fence/%s.png' % kind, 'x': x0, 'y': y0, 'w': w, 'h': h,
+                          'foot': [x0 + w / 2.0, y1 - 2.0], 'sort_y': float(y1 - 2),
+                          'chord': [round(ax - x0, 1), round(ay - y0, 1), round(bx - x0, 1), round(by - y0, 1)]})
+            n += 1
+    return items
+
+
+def _angle_gap(a: float, b: float) -> float:
+    d = abs(a - b) % (2 * math.pi)
+    return min(d, 2 * math.pi - d)
+
+
+def _patch_shapes() -> list:
+    """Each wheat patch's outline (centre, radii, phases). The wheat's own draws replay from the same seed, and they do
+    not depend on where a clump lands, so these are the outlines the wheat is grown inside."""
+    shapes: list = []
+    _wheat_items(Placer(Ground(), []), random.Random(7), 0, shapes)
+    return shapes
+
+
 def build(map_only: bool = False) -> dict:
+    """Places the whole farm from scratch: the targets, the wheat patches, the water channel, then the fence ring around
+    each patch. The wheat sheets in assets/art/zone1b/farm/wheat/ are baked from this output (tools/bake_wheat.gd), so
+    re-run the bake after any change here."""
     ground = Ground()
     existing = _existing_rects(os.path.join(ZONE, 'placements3d.json'))
     placer = Placer(ground, existing)
@@ -255,12 +340,17 @@ def build(map_only: bool = False) -> dict:
         x, y = at
         items.append({'kind': kind, 'file': FILES[kind], 'x': x, 'y': y, 'w': w, 'h': h,
                       'foot': [x + w / 2.0, y + h - 2.0], 'sort_y': float(y + h - 2)})
-    items += _wheat_items(placer, rng, len(items))
+    # The fence ring goes before the wheat: it marks each patch's edge, and the clumps grow inside it.
+    fences = _fence_items(ground, placer, _patch_shapes(), 0)
+    for it in fences:
+        placer.taken.append((it['x'], it['y'], it['x'] + it['w'], it['y'] + it['h']))
+        placer.tags.append('fence')
+    items += fences
+    items += _wheat_items(placer, rng, len(items), [])
     channel = _channel(ground, placer)
     brooks = [{'points': channel, 'width': 2}] if channel else []
     if map_only:
         _print_map(ground, placer, items)
-    # No fence runs: the wheat patches are organic, so a straight fence would cut across them.
     return {'items': items, 'fences': [], 'brooks': brooks, 'box_layout': list(BOX), 'scale': S}
 
 
@@ -313,12 +403,13 @@ def main() -> int:
     map_only = '--map' in sys.argv
     out = build(map_only)
     if map_only:
-        print(json.dumps({'items': len(out['items']), 'fences': len(out['fences'])}))
+        print(json.dumps({'items': len(out['items'])}))
         return 0
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, 'farm.json'), 'w') as f:
         json.dump(out, f, indent=1)
-    print('wrote farm.json:', len(out['items']), 'items,', len(out['fences']), 'fence runs')
+    fence_n = sum(1 for it in out['items'] if it['kind'].startswith('farm_fence'))
+    print('wrote farm.json:', len(out['items']), 'items,', fence_n, 'fence pieces')
     return 0
 
 
