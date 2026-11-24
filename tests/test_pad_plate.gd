@@ -21,6 +21,19 @@ func run(t: Object) -> void:
 	pad.level_flash()
 	t.ok(pad._level_step() > 0, "a level-up starts the ring flash")
 	pad.free()
+	# The glow node: every pad has one from construction, visible, above the night shade (z 5) and under the air layer (z 10).
+	var glow_pad := TexelPad.new()
+	t.ok(glow_pad._halo != null, "a pad always has its glow node, in every zone")
+	t.ok(glow_pad._halo != null and glow_pad._halo.get_parent() == glow_pad, "the glow node is a child of its pad")
+	t.ok(glow_pad._halo != null and glow_pad._halo.visible, "the glow node is visible")
+	t.ok(TexelPad.HALO_Z > 5 and TexelPad.HALO_Z < 10, "the glow sits above the night shade (z 5) and under the air layer (z 10)")
+	var night_glow := PadGlow.new()
+	night_glow.night01 = 1.0
+	glow_pad.glow = night_glow
+	t.eq(glow_pad._night(), 1.0, "a pad reads the zone's night level through PadGlow")
+	glow_pad.glow = null
+	night_glow.free()
+	glow_pad.free()
 	# Buy glow: green when buyable, red a little softer, magnified at night, and never past full density.
 	t.ok(TexelPad.glow_amount(true, 0.0) > 0.0, "a buyable pad has a glow by day")
 	t.ok(TexelPad.glow_amount(true, 1.0) > TexelPad.glow_amount(true, 0.0), "the glow is stronger at night")

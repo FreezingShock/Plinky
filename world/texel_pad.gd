@@ -113,13 +113,18 @@ func _sim() -> Sim:
 	return g.get("sim") as Sim if g != null else null
 
 
+func _init() -> void:
+	# The glow node exists from construction, so every pad (in every zone, and in tests) has one. Its draw runs through
+	# _halo.draw_rect: a draw call on the pad itself would paint on the pad's canvas item, not this one.
+	_halo = Node2D.new()
+	_halo.z_index = HALO_Z   # relative to the pad (z 0): above the night shade (z 5), below the air layer (z 10)
+	_halo.draw.connect(_draw_halo)
+	add_child(_halo)
+
+
 func _ready() -> void:
 	position = position.round()  # anchors are fractional; a plate drawn between texels would not sit on the world's grid
 	emblem_bits = absi(String(button_id).hash()) & 0x7FFF
-	_halo = Node2D.new()
-	_halo.z_index = HALO_Z   # relative to the pad (z 0): above the shade (z 5), below the air layer (z 10)
-	_halo.draw.connect(_draw_halo)
-	add_child(_halo)
 	rarity = load("res://content/rarities/%s.tres" % _sim().pad_rarity(button_id)) as RarityDef
 	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if b != null:
@@ -664,7 +669,7 @@ func _draw_halo() -> void:
 				continue
 			var k: float = (1.0 - (d - GLOW_INNER) / spread) * amount   # thins out toward the band's outer edge
 			if BAYER[((dy + top + o.y) & 3) * 4 + ((dx + o.x) & 3)] < roundi(k * 16.0):
-				draw_rect(Rect2(dx, top + dy, 1, 1), col)
+				_halo.draw_rect(Rect2(dx, top + dy, 1, 1), col)
 	# Rarity glints: a small plus on each corner of the plate, just outside it. Epic and up glow in the rarity colour; Legendary and up get a bright heart.
 	if rarity != null and rarity.rank > 0:
 		var rc: Color = _trim if _trim.a > 0.0 else rarity.tint()
@@ -676,11 +681,11 @@ func _draw_halo() -> void:
 ## One corner glint: a plus in the rarity colour with a bright centre, and diagonal sparks at night.
 func _glint(x: int, y: int, rc: Color, heart: Color, sparks: bool) -> void:
 	for q: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
-		draw_rect(Rect2(x + q.x, y + q.y, 1, 1), rc)
-	draw_rect(Rect2(x, y, 1, 1), heart)
+		_halo.draw_rect(Rect2(x + q.x, y + q.y, 1, 1), rc)
+	_halo.draw_rect(Rect2(x, y, 1, 1), heart)
 	if sparks:
 		for q: Vector2i in [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
-			draw_rect(Rect2(x + q.x, y + q.y, 1, 1), rc.lerp(Color.WHITE, 0.3))
+			_halo.draw_rect(Rect2(x + q.x, y + q.y, 1, 1), rc.lerp(Color.WHITE, 0.3))
 
 
 func _outline(scale: float, y: int, col: Color) -> void:
