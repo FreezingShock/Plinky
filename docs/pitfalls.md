@@ -8,6 +8,7 @@ Read this before your first change. Each line is a mistake that has already cost
 - **Commit a `.uid` for every new `.gd` and `.gdshader`.** Without it `uid-guard` fails and Nathan's editor reports "class not declared" on pull.
 - **Never commit `__pycache__/` or `*.pyc`.** They are ignored, but merges have pulled them in before. If one shows up in a diff, `git rm --cached` it.
 - **Node ceiling is 1350** (the `play` job passes it to `tools/check_frame_budget.py`). Larkmoor sits near it (see [perf.md](perf.md)). Build long lists lazily, one row per visible item.
+- **A `top_level` HUD label drops to z 0.** It leaves the parent's z chain, so the world's light grade (z 11) and rain tint and cover it at night. Keep HUD tags as Hud children, or set `z_as_relative = false` with `z_index = 100`.
 - **Shared tooltips are `Tip` and `TipHost`.** Never hand-roll a tooltip.
 - **Toasts, banners and tips wait on `FxConfig.bloom_running`** while the ritual plays. A new popup that ignores it will fight the ritual.
 - **All stat values are `BigNum`**, formatted only through `core/number_format.gd`. A float in a stat path is a bug even when it looks harmless.
