@@ -1,15 +1,15 @@
 class_name RelicCard
 extends PanelContainer
-## One relic in the gallery: a 40 px square, six across. The icon is centred. The rarity letter sits top left in the
-## tier colour, so the tier reads without colour alone. An E marks an equipped relic, and a stack count shows bottom
-## right once you own more than one. An unfound relic is a dark silhouette. Focus gets an accent edge and a focus ring,
+## One relic in the gallery: a 40 px square, six across. The icon is centred and fills most of the card. The tier is
+## the frame colour and the open tab (the grid shows one tier at a time), so there is no letter. An E marks an
+## equipped relic, and a stack count shows bottom right once you own more than one. An unfound relic is a dark silhouette. Focus gets an accent edge and a focus ring,
 ## which stays still under Reduce Flashing. The whole card is the click target, and Tip.bind goes on it, so focus
 ## shows the same tooltip as hover.
 
 signal pressed(card: RelicCard)
 
 const W: float = 40.0
-const ICON: int = 16
+const ICON: int = 20
 
 var relic: RelicDef
 var stacks: int = 0
@@ -58,9 +58,6 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	if p_silhouette:
 		icon.modulate = Color(0.2, 0.2, 0.26, 1.0)
 	center.add_child(icon)
-	# Rarity letter, top left, in the tier colour. It stays on silhouettes too, so the tier shows before you own one.
-	var rc: Color = def.rarity.readable_color(RelicStyle.ink) if not p_silhouette else RelicStyle.dim
-	_mark(root, def.rarity.display_name.substr(0, 1), rc, MarkCorner.TOP_LEFT)
 	if not p_silhouette:
 		if p_picked:
 			_mark(root, "S", RelicStyle.accent, MarkCorner.BOTTOM_LEFT)
