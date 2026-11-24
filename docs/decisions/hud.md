@@ -618,3 +618,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** the log built one `Label` per heading and note, about 1150 nodes. The menu probe measured 91 to 146 ms per open, and the nodes stayed after close. One text block cuts the node count by about 1150 and the open cost to a few milliseconds.
 - **Checked:** `tests/run.gd` passes. A new check covers the escaping and the colour tags.
 - **Not run in-engine:** how the log scrolls and wraps on a PC at zoom 1 and 3.
+
+## 2026-11-24: Gallery, Stats and Attributes icons load through IconCache
+- **Decision:** the Gallery tile icons, the index card icons (`IndexCard.icon_for`, big then small), the Stats and Attributes header and tab icons, and the index sheet textures all go through `IconCache.texture`. Each PNG loads once and is kept for the life of the game. `IconCache` is the same file as on `claude/ledger-lazy` (PR #497), so the two merge cleanly in either order.
+- **Why:** these menus loaded their PNGs again on every open, and a freed node drops its texture, so each open read the same files from disk. The gain is small: the headless probe with this change shows Gallery at 7–15 ms open, against 8–16 ms before, so the bulk of the cost is elsewhere (the card and tile nodes).
+- **Checked:** `tests/run.gd` passes (11737 checks, 0 failed) after `--import`.
+- **Not run in-engine:** the icons on a PC at zoom 1 and 3. PC QA should check that every Gallery tile and Stats card shows its icon.
