@@ -72,7 +72,7 @@ Each file uses the field names from SPEC section 5. Values are plain numbers. Bi
 - `r2.tres`: id = &"r2", zone = &"zone1", row = &"rebirth", row_index = 1, cost_stat = &"mult", base_cost = 30000, cost_growth = 10.0, reward_stat = &"reb", reward = 8
 
 `content/zones/`
-- `zone1.tres`: id = &"zone1", gate_stat = &"reb", gate_threshold = 9, base_cash_per_second = 0.25, press_rate = 0.5, tick_rate = 10
+- `zone1.tres`: id = &"zone1", gate_stat = &"reb", gate_threshold = 9, base_cash_per_second = 0.25, press_rate = 4.0, tick_rate = 10
 
 `cost_growth` is recorded for the design. The explicit `base_cost` on each button is what the game reads, so changing growth alone does nothing until the formula is wired to it.
 
