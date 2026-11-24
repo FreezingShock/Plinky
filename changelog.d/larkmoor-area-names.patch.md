@@ -1,0 +1,1 @@
+Larkmoor's districts have new names: Gatehouse Green is Thistledown Green, Old Oak Crossing is Heather Hollow, Thistle Rise is Foxglove Rise, and Emberwatch is Starbloom Terrace. Reedgate, Heronmere, Westmere, Lanternwood and Cairnfold keep their names.

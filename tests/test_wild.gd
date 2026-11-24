@@ -22,7 +22,7 @@ func run(t: Object) -> void:
 		water.append(w as Dictionary)
 	t.ok((lark.get("forest_edge", []) as Array).size() >= 6, "Larkmoor has forest-edge grass for the deer")
 	t.ok((lark.get("perches", []) as Array).size() >= 3, "Larkmoor has owl perches in the pines")
-	# Old Oak Crossing: the elder oak has no woods, so its deer graze points are a ring round the trunk (see
+	# Heather Hollow: the elder oak has no woods, so its deer graze points are a ring round the trunk (see
 	# tools/art/gen_life_anchors.py OAK_TRUNK). Three of them, 20 to 60 iso texels out, clear of every pad.
 	var oak_trunk: Vector2 = Vector2(1580.0, 886.4)
 	var edge_all: Array = lark.get("forest_edge", []) as Array
@@ -36,7 +36,7 @@ func run(t: Object) -> void:
 				pad_clear = false
 		if r >= 20.0 and r <= 60.0 and pad_clear:
 			oak_ok += 1
-	t.ok(oak_ok == 3, "Old Oak Crossing has three deer graze points round the elder oak, clear of pads")
+	t.ok(oak_ok == 3, "Heather Hollow has three deer graze points round the elder oak, clear of pads")
 	var far: Vector2 = Vector2(-9000.0, -9000.0)
 	var lake: Vector2 = Vector2(float(water[0].x), float(water[0].y))   # the lake's middle: a walker here sees dragonflies and fish
 	var edge_first: Array = (lark.get("forest_edge", []) as Array)[0] as Array

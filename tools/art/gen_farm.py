@@ -1,4 +1,4 @@
-"""Larkmoor farm district: sprites for the Thistle Rise farm (world/farm/).
+"""Larkmoor farm district: sprites for the Foxglove Rise farm (world/farm/).
 
 Writes assets/art/zone1b/farm/ (PNG props and farm_preview.png). The wheat is not drawn here: tools/bake_wheat.gd bakes it. Pixel scale is Larkmoor's
 (the windmill is about 65 texels wide), so these are about twice the meadow's cozy props. Everything is drawn in the

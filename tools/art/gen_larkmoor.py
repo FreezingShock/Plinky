@@ -728,7 +728,7 @@ def cluster(kind, cu_, cv_, spread, n, **kw):
             put(kind, u, v, prng.uniform(.85, 1.2) * (1.45 if kind == 'flower' else 1.0), count=False, sid=1)
 for _ in range(150 if not FAST else 8): cluster('tuft', prng.uniform(60, 760), prng.uniform(60, 760), 7, prng.randint(3, 7))
 for _ in range(100 if not FAST else 6): cluster('flower', prng.uniform(60, 760), prng.uniform(60, 760), 6, prng.randint(5, 10))
-for _ in range(50 if not FAST else 0): cluster('flower', *SC((1030 + prng.uniform(-110, 110), 560 + prng.uniform(-50, 50))), 8, prng.randint(8, 14))   # Thistle Rise fields
+for _ in range(50 if not FAST else 0): cluster('flower', *SC((1030 + prng.uniform(-110, 110), 560 + prng.uniform(-50, 50))), 8, prng.randint(8, 14))   # Foxglove Rise fields
 for (sx, sy, st) in PADS_S:
     u, v = s2uv(sx, sy); cluster('tuft', u + 14, v - 6, 6, 4); cluster('flower', u - 12, v + 8, 5, 5)
 log('cover placed', len(placed))

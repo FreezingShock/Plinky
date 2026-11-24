@@ -335,7 +335,7 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_rebuild_bushes()
 
 
-## The Thistle Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
+## The Foxglove Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
 func _add_farm(parent: Node2D) -> void:
 	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
 

@@ -259,6 +259,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Field distances use the ground's own path, water and dirt colours (the Larkmoor palette, which the meadow shares), so no flowers sit on the path. | Nothing new to tune by hand. |
 | Checks: `tests/run.gd` 6429 checks, 0 failed. Screenshots in the cloud (xvfb, lavapipe): `tools/clearing_shots.tscn`. | The fields are in, but the meadow already has many baked flower beds and a gate banner covers part of the view. PC QA should judge the read at 1x and 2x, and night. |
 
+## 2026-11-24: Larkmoor district names follow their rows
+| Decision | Why |
+|---|---|
+| Renamed four districts: Gatehouse Green to Thistledown Green (Thistle row), Old Oak Crossing to Heather Hollow (Heather row, the oak stays as its landmark), Thistle Rise to Foxglove Rise (Foxglove row), Emberwatch to Starbloom Terrace (Starbloom north row). Reedgate, Heronmere, Westmere, Lanternwood and Cairnfold keep their names. | Nathan asked for each area to be named after its row. "Thistle Rise" sat on the Foxglove row, and the Thistle row was in Gatehouse Green. The gate and landmark wording (Emberwatch gate, ember_watchtower) is unchanged. |
+| Changed in `content/areas/*.tres` (display_name), `assets/art/zone1b/larkmoor/placements3d.json` (district names), `tools/art/larkmoor_layout.py`, and code and tool comments. The farm keeps its own name and now sits in Foxglove Rise. | Keeps the layout, the art data and the in-game names in step, so a regenerate does not bring the old names back. |
+| Checks: `tests/run.gd` 7783 checks, 0 failed, on current main (v0.94.0) plus these renames. Not run in-engine: the banner and district text on a PC. | Name changes only, so the tests cover the lookups. |
+
 ## 2026-11-24: Foxglove and Starbloom fields thicker
 | Decision | Why |
 |---|---|
