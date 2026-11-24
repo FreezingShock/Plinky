@@ -1,0 +1,1 @@
+HUD stat strip is snugger: each row is just the icon and the coloured value, packed tight (value column sized to the widest value shown, only growing so ticking never resizes it, smaller padding). The gain rate now sits outside the panel beside its row, in the panel outline colour with an ink stroke so it reads over the world.

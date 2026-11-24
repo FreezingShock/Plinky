@@ -16,8 +16,7 @@ var _bottom: HBoxContainer
 
 const REFRESH: float = 0.1
 const STAT_RATE_SIZE: int = 8    ## the small "+x/s" or "xN" gain text left of each value
-const STAT_VALUE_WIDTH: int = 52   ## value column: fits "999.99Sx" in Spleen 6x12, so a ticking number never resizes the strip
-const STAT_RATE_WIDTH: int = 68    ## gain column, right-aligned: fits "+44.48TDo/s" at size 8
+const COL_PAD: float = 2.0   ## slack added to a measured column so a one-pixel change never resizes the strip
 
 var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
@@ -190,6 +189,7 @@ func stats_bottom() -> float:
 func _build_stats() -> void:
 	var v: VBoxContainer = _panel(Vector2(4, 4))
 	_stats_panel = v.get_parent() as PanelContainer
+	_stats_panel.add_theme_stylebox_override("panel", AsciiBox.make(AsciiBox.Kind.PANEL, 5.0, 4.0))   # snug: the strip is dense
 	_stats_panel.add_to_group(TipHost.AVOID_GROUP)
 	_stats_box = v
 	var row_ids: Array[StringName] = hud_stat_ids(sim)
@@ -200,7 +200,7 @@ func _build_stats() -> void:
 		# Compact strip: icon, then (small dim gain, value) pushed to the right edge. No names: the instant tooltip has them,
 		# and the value takes the stat's colour. The panel is only as wide as its widest visible row.
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 8)   # 8: the long gain text ("+44.48TDo/s") must never touch the value
+		h.add_theme_constant_override("separation", 6)
 		v.add_child(h)
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
@@ -210,21 +210,21 @@ func _build_stats() -> void:
 		h.add_child(icon)
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		gap.custom_minimum_size.x = 6
+		gap.custom_minimum_size.x = 4
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(gap)
 		var rate := Label.new()
 		rate.theme_type_variation = &"TitleLabel"
 		rate.add_theme_font_size_override("font_size", STAT_RATE_SIZE)
-		rate.add_theme_color_override("font_color", RelicStyle.dim)
-		rate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		rate.custom_minimum_size.x = STAT_RATE_WIDTH   # fixed columns: the strip never resizes while numbers tick
-		rate.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		rate.clip_text = true
-		h.add_child(rate)
+		# The gain lives outside the panel, beside its row (see _place_rates): panel outline colour, ink stroke so it reads over the world.
+		rate.add_theme_color_override("font_color", RelicStyle.edge)
+		rate.add_theme_color_override("font_outline_color", RelicStyle.ink)
+		rate.add_theme_constant_override("outline_size", 3)
+		rate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rate.visible = false
+		add_child(rate)
 		var val := RollValue.new()
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		val.custom_minimum_size.x = STAT_VALUE_WIDTH
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		val.add_theme_color_override("font_color", StatStyle.color(sid))
 		h.add_child(val)
@@ -565,7 +565,7 @@ func _process(delta: float) -> void:
 func _place_clock(zone_left: float) -> void:
 	var stats_right: float = 0.0
 	if _stats_panel != null:
-		stats_right = _stats_panel.position.x + maxf(_stats_panel.size.x, _stats_panel.get_combined_minimum_size().x)
+		stats_right = _stats_panel.position.x + maxf(_stats_panel.size.x, _stats_panel.get_combined_minimum_size().x) + _rates_w
 	var mid: float = floorf(frame.x * 0.5)
 	var half: float = minf(mid - (stats_right + 6.0), zone_left - 6.0 - mid)
 	var cw: ClockWidget = _clock_widget
@@ -591,6 +591,8 @@ func _place() -> void:
 	if size != frame:
 		size = frame
 	_place_edit()
+	if _stats_panel != null:
+		_place_rates()
 	if _stats_panel != null:   # the strip hugs its rows: it shrinks when rows are hidden, not only grows
 		var want: Vector2 = _stats_panel.get_combined_minimum_size()
 		if _stats_panel.size != want:
@@ -666,6 +668,7 @@ func _refresh() -> void:
 		var inc: BigNum = sim.income_per_second(sid)
 		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
 		(pair[1] as Label).visible = show_rates
+	_fit_columns()
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
 	for rid: StringName in _reset_chips:
@@ -739,6 +742,8 @@ static func _away_text(seconds: float) -> String:
 # ---------------------------------------------------------------- stat strip customization
 
 var _cached_rows: Array[StringName] = []   # the rows the layout shows in this zone, refreshed by _sync_layout
+var _val_w: float = 0.0                     # widest value text shown so far in this layout (only grows)
+var _rates_w: float = 0.0                   # width of the widest gain text outside the panel right now
 var _slides: Dictionary = {}                # row box -> Tween (a row sliding to its new place)
 
 
@@ -795,6 +800,7 @@ func _sync_layout() -> void:
 	if sig == _layout_sig:
 		return
 	_layout_sig = sig
+	_val_w = 0.0   # a new layout re-measures its columns
 	var old_y: Dictionary = {}
 	if _gates_ready and not _calm():
 		for sid0: StringName in _row_boxes:
@@ -822,6 +828,39 @@ func _sync_layout() -> void:
 	_reset_btn.disabled = is_default
 	if _edit_mode:
 		_rebuild_suggestions(sugg, _cached_rows.size() >= cap)
+
+
+## Size the value column to the widest value shown. It only grows within a layout, so a number ticking through
+## decimals never resizes the strip.
+func _fit_columns() -> void:
+	for sid: StringName in _rows:
+		var val: RollValue = (_rows[sid] as Array)[0] as RollValue
+		if (_row_boxes[sid] as Control).visible:
+			var vf: Font = val.get_theme_font(&"font")
+			if vf != null:
+				_val_w = maxf(_val_w, ceilf(vf.get_string_size(val.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, val.get_theme_font_size(&"font_size")).x))
+	for sid2: StringName in _rows:
+		((_rows[sid2] as Array)[0] as RollValue).custom_minimum_size.x = _val_w + COL_PAD
+
+
+## Park each gain label just right of the panel, level with its row (and fading with it).
+func _place_rates() -> void:
+	var show_rates: bool = _opt(&"strip_rates", true)
+	var right: float = _stats_panel.position.x + _stats_panel.size.x + 3.0
+	var widest: float = 0.0
+	for sid: StringName in _rows:
+		var rate: Label = (_rows[sid] as Array)[1] as Label
+		var box: Control = _row_boxes[sid] as Control
+		var show: bool = show_rates and box.visible and rate.text != ""
+		rate.visible = show
+		if not show:
+			continue
+		var at: Vector2 = Vector2(right, box.global_position.y - global_position.y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
+		if rate.position != at:
+			rate.position = at
+		rate.modulate.a = box.modulate.a
+		widest = maxf(widest, rate.size.x + 3.0)
+	_rates_w = widest
 
 
 ## Rows glide to their new places after a reorder or a hide, instead of jumping.
