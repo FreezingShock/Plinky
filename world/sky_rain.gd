@@ -79,8 +79,10 @@ func _draw() -> void:
 		var py: int = int(floorf(y))
 		if k < 0.92:
 			var streak: int = 3 if near else 2
+			# near streaks are 2 texels wide so they read at zoom 1; far ones stay 1 texel (same draw count either way)
+			var width: int = 2 if near else 1
 			for j in streak:
-				draw_rect(Rect2(px - int(floorf(float(j) * slant + 0.5)), py - j, 1, 1), palette[IDX_NEAR if near else IDX_FAR])
+				draw_rect(Rect2(px - int(floorf(float(j) * slant + 0.5)), py - j, width, 1), palette[IDX_NEAR if near else IDX_FAR])
 		elif k < 0.97:
 			draw_rect(Rect2(px - 1, py, 3, 1), palette[IDX_NEAR if near else IDX_FAR])
 		else:

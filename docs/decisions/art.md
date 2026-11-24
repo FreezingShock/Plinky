@@ -243,6 +243,22 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Why:** lamps should be on at dusk and off by day, and the glow should read at night without a flat blob.
 - **Not touched:** `day_night.gdshader` (the pool shape and its colour math). The lamp pool is still the same falloff and warm cast; only its strength changes.
 - **Not verified in-engine on the PC:** whether the lit window reads as warm enough next to the green pad pools at night.
+## 2026-11-24: Fallen blossom in spring (recommendation 9, first of three)
+- **Look:** pale petals (the first petal colour from the season's list, else a paper pink) gather in soft drifts on the outdoor ground in spring. `ground_light.gdshader`, `fallen_blossom`: a two-octave patch mask on the iso grid, and a per-texel hash inside each drift, so the petals are sparse and never a carpet.
+- **Wiring:** `SkyCycle` sets `blossom` = spring weight x outdoor x (1 - snow), so it fades into summer and is gone under snow. Quarry and water are excluded.
+- **Why:** the handoff's recommendation 9. Spring needs something on the ground, not only in the air.
+- **Not verified on the PC:** the density. The cloud shot reads as scattered pale speckle in the meadow. Tune the 0.25 and the patch threshold after the PC look.
+
+## 2026-11-24: Weather safe defaults (lighter puddles, wetter-dark nights, Low drops rings and mist)
+- **Puddle water** (`sky_cycle.gd`, `puddle_col`): the day base lifts from (0.3, 0.5, 0.5) to (0.46, 0.64, 0.64). Coverage is unchanged. Night stays dark water.
+- **Night wet** (`ground_light.gdshader`, new uniform `wet_night` = night x wet): wet soil and path darken further at night, from (0.88, 0.92, 0.95) to (0.66, 0.72, 0.8) at full wet. This darkens all wet ground, grass included, not only the path; there is no path mask to pick out the path alone.
+- **Low quality** (`GraphicsQuality.rain_rings_and_mist`, false on Low): the splash rings and the dawn ground mist are skipped. Puddles, drops and wetting stay. Medium and High are unchanged.
+- **Why:** these three were the safe defaults from the weather handoff (recommendations 2, 7 and 8). Nathan has not yet picked the rest.
+- **Rain streaks** (`sky_rain.gd`, recommendation 3): near streaks are 2 texels wide, far ones stay 1. Same draw count.
+- **Winter drift edges** (`ground_light.gdshader`, `snow_drifts`, recommendation 5): a cool blue shadow on the lip of each drift, where it steps down into flat snow. The drift threshold is unchanged.
+- **Left for the PC look:** the splash ring density (recommendation 4, 14% of cells) and the dawn mist strength (recommendation 6). No in-engine view of either exists yet, so their numbers are unchanged.
+- **Not verified in-engine:** the new puddle lift, the night darkening, the Low fallback, the 2-texel streaks and the drift shadow. The cloud render does not show rain streaks (see the handoff results note), so the look is an eye check on the PC.
+
 ## 2026-11-24: Pad glow crowding (a row of pads does not blow out)
 - Nathan's screenshot: with the rows 42 texels apart, neighbouring halos and light pools added together into one blown-out green blob at night. Halos are additive, and pool strengths sum before the shader clamps them.
 - Fix: each lit pad counts the lit pads within `TexelPad.CROWD_RANGE` (48 texels, a little over one row). Its halo and its shader pool are scaled by `crowd_scale(n) = 1 / max(1, n * 0.5)`. A lone pad or a pair keeps full light, and any crowd adds up to about two pads' worth at its busiest point.
@@ -272,7 +288,29 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
 - Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
 
+
+## 2026-11-24: Bushes and rocks are re-shaped for the looking-down camera
+- Rocks: a tilted plane shaves each crown flat, so the top reads as one lit face with a bevelled rim. Facets drop from 3 to 5 down to 1 to 3 low side cuts, and the bumpy noise is halved on big rocks. Facets no longer split a stone into pieces.
+- Bushes: the lobes are squashed (height 0.8 of width), smaller crowns ride the top, and a flat skirt sits on the ground so the foot is wider than the crown. Each bush keeps its dark pockets from #361.
+- Larkmoor bushes now get the dark pockets too (the M_DARKF material and ramp, same code as the meadow generator). #361 only changed `gen_meadow3d.py`.
+- `world/larkmoor_life.json`: 9 sway tips no longer sat on palette 4 after the ground changed, so they are removed (1680 to 1671). Nothing else in that file changed.
+- The meadow ground and walkable mask are not re-baked here. Only the meadow bush and rock sprites and `placements3d.json` change.
+- Checked in engine with the cloud's software Vulkan render at game size, in `/mnt/project-files/plinky/bush-rock-looking-down/`. The change is subtle at 1x. Not checked on the PC.
 ## 2026-11-24: Stalk grass style F added beside E (not default)
 - Audit: the live ground props (stumps, mushrooms, reeds, tufts) are SDF 3D renders from the elevated iso camera, so they already match the mockup D view. The flat read is the grass texture only.
 - Added style `f` (`style_stalks` in `tools/art/grass_tex.py`): style E's vertical stalks, denser inside each clump, with the crown lit and the base shaded from the upper left. E's bare lawn between clumps is kept. Compared A, E and F as ground-only crops in `/mnt/project-files/plinky/ground-grass/grass_styles_a_e_f_ground.png`. F reads most like the stalk field of mockup D.
 - Default stays `a` and no baked asset changes. The switch to a grass style belongs to the art-style thread. Recommended pick: F, for Nathan to confirm on PC at noon, since dawn grading hides texture.
+
+## 2026-11-24: Meadow grass blades are a shader layer, not nodes (interactive blades, slice 1)
+- `world/grass_blades.gd` + `world/grass_blades.gdshader`: one quad over the meadow ground. Blades are generated per texel from a hash (one base per 3x3 cell, patch density from value noise), so there are no nodes per blade and nothing extra loads.
+- Blades draw only on grass texels (the ground is palette-exact), so paths, dirt, water and pad plates stay clear. The wind wave and the walker bend use the same rules as `LifeGround.bend`. The node owns its material and sets the wind and pusher uniforms; gameplay still emits nothing new.
+- Replaces the meadow's 120 baked sway tips with this layer. Larkmoor keeps `LifeGround` until the chunk streaming lands (1680 tips there, drawn on the CPU every step).
+- Checked in the cloud render only (xvfb, lavapipe): no shader errors, tests pass. Not verified on the PC: the wind and walker bend, and the look at noon.
+- Follow-up on the same PR: each rock and bush gets a thin, soft-edged dark contact slab under its foot, wider than the stone, so the base reads as shade on the ground. Rock tops are flatter (tilt .03 to .14). After main moved under the PR, the Larkmoor ground was regenerated, then `gen_gardens.py` (flower placement reads the ground) and the sway tips were refreshed; 6 sway tips were removed. Suite: 6428 checks, 0 failed.
+
+## 2026-11-24: Larkmoor grass blades draw per loaded chunk, in one node
+- `GrassBlades` gets a chunked mode. It draws one shader rect per loaded prop chunk (`chunk_loaded` / `chunk_unloaded` from `LarkmoorScene`), in a single node, so the grass follows the streaming and adds no node count. The rects are in zone texels, the same space as the blades.
+- Pushers are a list of up to 6 points: the walker and the rabbits, chickens and frogs that are showing (`LifeCritters.ground_pushers`, read-only). Ducks are not included yet.
+- `LifeGround` is no longer placed in Larkmoor or the meadow. The class stays for its tests.
+- Pad plates are skipped by colour (they are not grass colours), not by the pad clearance, because Larkmoor has 31 pads and the shader holds 8.
+- Checked in the cloud only (xvfb, lavapipe): no shader errors, `tests/run.gd` passes (6539 checks), `tools/larkmoor_shots.tscn` runs. Not verified on the PC.

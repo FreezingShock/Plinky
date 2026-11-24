@@ -48,3 +48,10 @@ func run(t: Object) -> void:
 
 	for l in AmbientMix.LAYERS:
 		t.ok(FileAccess.file_exists("res://assets/audio/amb/%s.ogg" % l) or ResourceLoader.exists("res://assets/audio/amb/%s.ogg" % l), "layer file exists: %s" % l)
+
+	# Rain bed: follows the rain, silent under snow and in the quarry.
+	t.ok(AmbientMix.rain_gain(0.0, 0.0, AmbientMix.AREA_MEADOW) == 0.0, "no rain, no rain bed")
+	t.ok(AmbientMix.rain_gain(1.0, 0.0, AmbientMix.AREA_MEADOW) > 0.99, "full rain plays the rain bed at full gain")
+	t.ok(AmbientMix.rain_gain(0.6, 1.0, AmbientMix.AREA_MEADOW) == 0.0, "winter rain is snow, so no rain bed")
+	t.ok(AmbientMix.rain_gain(0.6, 0.0, AmbientMix.AREA_QUARRY) == 0.0, "the quarry has no weather sound")
+	t.ok(AmbientMix.rain_gain(2.0, 0.0, AmbientMix.AREA_LARKMOOR) <= 1.0, "rain gain stays within 0..1")

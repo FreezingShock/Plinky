@@ -203,6 +203,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
 
+## 2026-11-24: Larkmoor river, jumpable water, bridges and the south-west rim
+- **Water:** one river now runs from Heronmere's north-east shore, through the bridge at (762, 456), into the mere. It is about 14 texels wide with a 3 texel depth. The lake-rim carve no longer leaves a dry gap, so the river and lakes join. The walk mask marks water in green and walkable ground in red and blue, so `WalkMask.is_water()` is one channel read.
+- **Walker:** `texel_walker.gd` lets an airborne step cross water (`_try_step(step, airborne)`). On landing in water, `WalkMask.landing()` returns the nearest walkable texel within 60, and the walker splashes. Reason: a jumpable stream instead of a wall, with no drowning state.
+- **Bridges:** the main bridge is a planked deck with rails, posts and stone abutments (`BRIDGE_HX/HY/DZ` = 17.5, 10.5, 4.0). The footbridge is smaller (13, 3.8, 2.6). Both are tall kinds with `BLOCK_R` 0 and their foot is drawn 40 texels higher, so the walker draws over the deck. Deck texels stay walkable.
+- **Rim:** the south and west edges get a raised ridge (`env_ang` floor of 0.8 from the map edge angle). This is a first pass, not full mountain ranges. Higher ridges with ridged noise are the next pass.
+- **Life data:** `--add-keys` keeps the existing `sway` list and writes only the other keys. After a backdrop change, run the full `gen_life_anchors.py` (no `--add-keys`) first, then the same command again with `--add-keys --farm ...`. Skipping the first run left 430 sway tips off palette 4 (fixed on this PR).
+- **Not run in engine:** the cloud has no PC Godot. The headless suite passes (6149 checks). Walking the bridge and jumping the river still needs a PC walk check from each bank.
 ## 2026-11-24: Larkmoor tree spacing (review slice 1)
 - Trees now keep a real gap between crowns: `TREE_GAP` oak 6 and pine 8 texels in `gen_larkmoor.py` (the old gap was 1.5, so trees stood in walls). The north-east pine groves go from 14 and 8 down to 10 and 6 (the two groves at (1040, 330) and (1120, 330)). Thinner than that dropped the forest-edge count under the test floor (`forest_edge` >= 6, `tests/test_wild.gd`), so the groves stay at 10 and 6.
 - Regen order after the grove change: `gen_larkmoor.py`, then `gen_life_anchors.py` (base run), then `gen_life_anchors.py --add-keys --farm assets/art/zone1b/farm/farm.json` (writes `perches`, `forest_edge` and `farm_items`), then `gen_gardens.py` (its flowers test checks the ground pixels).
@@ -238,6 +245,25 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - **Tests:** `tests/run.gd` 6418 checks, 0 failed (Godot 4.7 headless, lavapipe).
 - **Not yet:** the verge flower ring still follows the centre line (slice 3 replaces it), so it sits closer to the road edge than before. The bridge and water are the water thread's; the road is now 24 texels wide, so the bridge needs to span at least that.
 
+## 2026-11-24: Starting Clearing flower fields
+| Decision | Why |
+|---|---|
+| `tools/art/gen_clearing_gardens.py` writes `world/clearing_gardens.json` (format 2, 163 flowers) for the Sprout row (dewdrop) and the Clover row (clover). `world/meadow3d_scene.gd` draws it with one `GardenLayer` node, the same as Larkmoor. The meadow's ground and placements are read as they are, so no art regen was needed. | The Starting Clearing pads were the only ones without a field. The 3-pad rows keep their count (the tutorial). |
+| Field distances use the ground's own path, water and dirt colours (the Larkmoor palette, which the meadow shares), so no flowers sit on the path. | Nothing new to tune by hand. |
+| Checks: `tests/run.gd` 6429 checks, 0 failed. Screenshots in the cloud (xvfb, lavapipe): `tools/clearing_shots.tscn`. | The fields are in, but the meadow already has many baked flower beds and a gate banner covers part of the view. PC QA should judge the read at 1x and 2x, and night. |
+
+## 2026-11-24: Foxglove and Starbloom fields thicker
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` raises `n` and `small` for the Foxglove row (66/30 to 96/46) and both Starbloom rows (64/28 to 100/46 and 66/28 to 74/33 for Westmere). Result: Foxglove 315 flowers, Starbloom north 291, Westmere 301 (was 267, 252, 292 on the same generator). Clover and Thistle are unchanged. | Nathan's pick from the handoff: the thin rows were about 1.6x thinner than Clover and Thistle. Target was about 300 per row, and Nathan likes the current density, so only the thin rows grow. |
+| Still one `world/larkmoor_gardens.json` format 2 and one garden layer node, so the node count does not change. | Larkmoor sits near the 1350 ceiling. |
+| Not run in-engine: night shots of these rows, and the look on a real GPU. | The cloud renderer stops after about six night shots. |
+
+## 2026-11-24: Less clumped fields
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` draws distances half evenly over the field and half bunched to the plates (was all bunched), thins by gentle drifts (0.5 to 1.0, was 0.3 to 1.2), and spaces flowers 1.4x their footprint with a random 0.75 to 1.6 jitter. Attempts rose so the total stays about the same (2429 flowers, was 2410). | Nathan asked for fields that are less clumped but liked the density, so spacing varies and the heaps go, not the flower count. |
+| `tools/qa_probe.tscn` walks the real main scene from a chosen start to a pad (`-- x=2127 y=1039 pad=lark_clover_1 rich`); `route_probe` also routes every pad from every other pad and a scatter of open spots. | For the lark_clover_1 farm-side report, which does not reproduce here. |
 ## 2026-11-24: Meadow lanterns one size, lit after dark
 | Decision | Why |
 |---|---|

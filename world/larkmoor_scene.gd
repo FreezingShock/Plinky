@@ -14,11 +14,17 @@ const DISTRICT_RADIUS: float = 220.0   # texels (2x the old 110 with the frame);
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
 
+## A prop chunk spawned or was freed. key is the chunk index: the chunk covers Rect2(Vector2(key) * CHUNK, CHUNK x CHUNK) in
+## zone texels. Every chunk in the loaded set emits, including empty ones, so per-chunk nodes (grass quads) follow it exactly.
+signal chunk_loaded(key: Vector2i)
+signal chunk_unloaded(key: Vector2i)
+
 ## main.gd reads these to frame the zone (camera and walker bounds, walk mask, footstep and ambience lookups).
 var world_rect: Rect2 = Rect2(260.0, 40.0, 2520.0, 1620.0)   # 2x the old frame; overwritten from larkmoor_life.json world
 var mask_offset: Vector2i = Vector2i.ZERO
 var placements_path: String = DIR + "placements3d.json"
 var ground_path: String = DIR + "ground.png"
+var _blades: GrassBlades
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd), as in the meadow.
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
@@ -161,27 +167,44 @@ func _add_gardens() -> void:
 	add_child(layer)
 	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
 	layer.pusher_group = &"walker"
+	_gardens = layer
 
 
 func _add_life(ground: Sprite2D) -> void:
 	var life: Dictionary = MeadowLife.load_data(LIFE_PATH)
 	if life.is_empty():
 		return
-	var lg := LifeGround.new()
-	lg.name = "LifeGround"
-	add_child(lg)
-	lg.setup(ground, life.get("sway", []) as Array)
+	# Interactive blades (world/grass_blades.gd): one node, one shader rect per loaded prop chunk, so the grass follows
+	# the streaming and costs no node per blade. The chunk signals below are the streaming's own (_load_chunk, _unload_chunk).
+	_blades = GrassBlades.new()
+	_blades.name = "GrassBlades"
+	add_child(_blades)
+	_blades.use_chunks()
+	_blades.setup(ground, [], Palettes.colors(Palettes.MEADOW))  # pad plates are not grass colours, so the blades skip them
+	chunk_loaded.connect(_on_chunk_blades_loaded)
+	chunk_unloaded.connect(_on_chunk_blades_unloaded)
 	var air := LifeAir.new()
 	air.name = "LifeAir"
 	air.z_index = 10
 	add_child(air)
 	air.setup(life, ground)
+	_blades.critter_source = air.ground_pushers
 	react = LifeReact.new()  # bushes rustle, birds scatter, shore ripples, grass bends (world/life_react.gd)
 	react.name = "LifeReact"
 	react.z_index = 10
 	add_child(react)
 	react.setup(life, life.get("sway", []) as Array, 14)  # a bigger meadow, more birds
-	lg.pusher_group = &"walker"
+
+
+## The grass chunk for a loaded prop chunk (same rect the streaming uses, in zone texels).
+func _on_chunk_blades_loaded(key: Vector2i) -> void:
+	if _blades != null:
+		_blades.add_chunk(key, Rect2(Vector2(key) * CHUNK, Vector2(CHUNK, CHUNK)))
+
+
+func _on_chunk_blades_unloaded(key: Vector2i) -> void:
+	if _blades != null:
+		_blades.remove_chunk(key)
 
 
 ## Props load by chunk. The map is cut into CHUNK-texel squares. The chunks within LOAD_RING of the walker's chunk are
@@ -194,15 +217,33 @@ func _add_life(ground: Sprite2D) -> void:
 const CHUNK: float = 160.0
 const LOAD_RING: int = 2
 const KEEP_RING: int = 2
+## The camera view also loads props. Chunks on screen, plus VIEW_MARGIN_LOAD chunks past its edge, are wanted; a chunk stays
+## loaded while it is within VIEW_MARGIN_KEEP of the screen (wider than the load margin, so an edge does not churn as the
+## camera pans back and forth). Both are clamped to the map, so no chunk is made past the canvas.
+const VIEW_MARGIN_LOAD: int = 1
+const VIEW_MARGIN_KEEP: int = 2
+## The walker's ring always loads. Chunks outside it (the view) load only while the whole scene is under this many nodes,
+## so the view can never push a zone past the 1350 ceiling (docs/perf.md). Larkmoor's tour stops already sit near it.
+const VIEW_NODE_BUDGET: int = 1300
 
+var _view: Rect2i = Rect2i()          # chunks on screen now, no margin (empty when the scene is outside the tree)
+var _view_load: Rect2i = Rect2i()     # _view grown by VIEW_MARGIN_LOAD
+var _view_keep: Rect2i = Rect2i()     # _view grown by VIEW_MARGIN_KEEP
 var _occ_parent: Node2D = null
 var _prop_index: Dictionary = {}     # Vector2i chunk -> Array of prop dictionaries (placements3d.json sprites)
 var _loaded: Dictionary = {}         # Vector2i chunk -> Array of the Sprite2D props spawned for it
 var _center: Vector2i = Vector2i(-99999, -99999)
 var _lanterns_lit: bool = false       # lantern pools are added once per scene, not once per spawn
+var _spawn_queue: Array[Vector2i] = []   # chunks the walker needs but that are not spawned yet, nearest first
+var _queued: Dictionary = {}             # Vector2i chunk -> true, for the queue above
+var _warm_queue: Array[Vector2i] = []    # every prop chunk, nearest the start first: their textures are made ready in the background
+var _warmed: Dictionary = {}             # "sway|file" or "rim|file" -> true once its texture is ready
+const SPAWN_BUDGET_MS: float = 2.0       # chunk spawns per frame: at least one, then more while this much of the frame is left
+const WARM_BUDGET_MS: float = 1.0        # texture warm-up per frame, only while no chunk is waiting to spawn
 const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
 var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
+var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
 const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
 
 
@@ -223,12 +264,23 @@ func _begin(parent: Node2D) -> void:
 		if light_lanterns and String(s.kind) == "lantern":
 			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
 					_sky.light_config().pool_shrine_radius * LANTERN_RADIUS_K, LANTERN_STRENGTH, &"lantern")
+	var start: Vector2i = _chunk_of(_start_point())
+	_warm_queue.assign(_prop_index.keys())
+	_warm_queue.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return _chunk_dist(a, start) < _chunk_dist(b, start))
+	_spawn_queue.clear()
+	_queued.clear()
+	_warmed.clear()
+
+
+## Chebyshev distance between two chunks: the ring a chunk sits in around another.
+static func _chunk_dist(a: Vector2i, b: Vector2i) -> int:
+	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
 func spawn_occluders(parent: Node2D) -> void:
 	_begin(parent)
 	_add_farm(parent)
-	_refresh_center(_start_point())
+	_refresh_center(_start_point(), true)
 
 
 ## Same chunks as spawn_occluders, but yields to the next frame whenever `budget_ms` of a frame is used up. A zone swap
@@ -237,9 +289,10 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_begin(parent)
 	_add_farm(parent)
 	_center = _chunk_of(_start_point())
+	_set_view()
 	var start_us: int = Time.get_ticks_usec()
-	for key: Vector2i in _needed_keys(_center):
-		if not _loaded.has(key):
+	for key: Vector2i in _load_candidates(_center):
+		if not _loaded.has(key) and _wanted_load(key, _center) and _budget_allows(key):
 			_load_chunk(key)
 			if float(Time.get_ticks_usec() - start_us) / 1000.0 >= budget_ms:
 				await get_tree().process_frame
@@ -259,11 +312,26 @@ func _process(_delta: float) -> void:
 	var w: Node2D = get_tree().get_first_node_in_group(&"walker") as Node2D
 	if w != null:
 		_refresh_center(w.position)
+	_drain_spawns()
+	_drain_warm()
 	# lamp heads glow only after dark: fade them with the night, and forget the glows of unloaded lanterns
 	var night: float = _sky.night01 if _sky != null else 0.0
-	_glows = _glows.filter(func(g: Variant) -> bool: return is_instance_valid(g))
-	for g in _glows:
-		(g as Sprite2D).modulate.a = night
+	for i in range(_glows.size() - 1, -1, -1):
+		var g: Variant = _glows[i]
+		if is_instance_valid(g):
+			(g as Sprite2D).modulate.a = night
+		else:
+			_glows.remove_at(i)
+	# the flowers follow the season, and shut their heads once it is dark
+	if _gardens != null:
+		var cal: Node = get_node_or_null(^"/root/Calendar")   # an autoload: named by path, since --script tests have no autoloads
+		var hour: int = 12
+		if cal != null:
+			var snap: Dictionary = cal.call(&"now") as Dictionary
+			_gardens.season = int(snap.get("season", GardenArt.SEASON_SUMMER))
+			hour = int(snap.get("hour", 12))
+		_gardens.closed = night > 0.6
+		_gardens.dew = not _gardens.closed and hour >= 5 and hour < 9   # the first morning hours: drops on the open heads
 
 
 func _exit_tree() -> void:
@@ -272,6 +340,10 @@ func _exit_tree() -> void:
 			if is_instance_valid(sp):
 				(sp as Sprite2D).queue_free()
 	_loaded.clear()
+	_spawn_queue.clear()
+	_queued.clear()
+	_warm_queue.clear()
+	_warmed.clear()
 	_glows.clear()
 	_tex_cache.clear()
 	_mat_cache.clear()
@@ -311,47 +383,199 @@ func _needed_keys(c: Vector2i) -> Array[Vector2i]:
 	return out
 
 
-func _refresh_center(p: Vector2) -> void:
+## The chunks the camera can see, read once from the view rect (no per-chunk calls). The rects are clamped to the map.
+func _set_view() -> void:
+	var r: Rect2 = GraphicsQuality.visible_local_rect(self)
+	var map: Rect2i = _map_chunks()
+	_view = chunk_range(r, 0).intersection(map)
+	_view_load = chunk_range(r, VIEW_MARGIN_LOAD).intersection(map)
+	_view_keep = chunk_range(r, VIEW_MARGIN_KEEP).intersection(map)
+
+
+## Chunks covering a view rect (zone texels), grown by `margin` chunks on each side. Empty for an empty rect.
+static func chunk_range(r: Rect2, margin: int) -> Rect2i:
+	if r.size == Vector2.ZERO:
+		return Rect2i()
+	var lo: Vector2i = Vector2i(floori(r.position.x / CHUNK), floori(r.position.y / CHUNK))
+	var hi: Vector2i = Vector2i(floori(r.end.x / CHUNK), floori(r.end.y / CHUNK))
+	var m: Vector2i = Vector2i(margin, margin)
+	return Rect2i(lo - m, hi - lo + Vector2i.ONE + m * 2)
+
+
+## The chunk rect of the whole canvas. Empty before the ground is set, which turns the view streaming off, not the walker's.
+func _map_chunks() -> Rect2i:
+	if _ground == null or _ground.texture == null:
+		return Rect2i()
+	var sz: Vector2 = _ground.texture.get_size()
+	return Rect2i(Vector2i.ZERO, Vector2i(ceili(sz.x / CHUNK), ceili(sz.y / CHUNK)))
+
+
+## A chunk is wanted by the walker's ring, or by the view plus its load margin.
+func _wanted_load(key: Vector2i, c: Vector2i) -> bool:
+	return _chunk_dist(key, c) <= LOAD_RING or _view_load.has_point(key)
+
+
+## The walker's ring always loads. Any other chunk loads only while the scene plus its props stay under VIEW_NODE_BUDGET.
+func _budget_allows(key: Vector2i) -> bool:
+	if _chunk_dist(key, _center) <= LOAD_RING:
+		return true
+	var props: int = (_prop_index[key] as Array).size() if _prop_index.has(key) else 0
+	return int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) + props + 1 <= VIEW_NODE_BUDGET
+
+
+## A loaded chunk stays while the walker's keep ring or the view's keep margin still covers it.
+func _wanted_keep(key: Vector2i, c: Vector2i) -> bool:
+	return _chunk_dist(key, c) <= KEEP_RING or _view_keep.has_point(key)
+
+
+## Every chunk that might be wanted: the walker's ring, then the chunks of the view. _wanted_load says which ones stay.
+func _load_candidates(c: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = _needed_keys(c)
+	for y: int in range(_view_load.position.y, _view_load.end.y):
+		for x: int in range(_view_load.position.x, _view_load.end.x):
+			out.append(Vector2i(x, y))
+	return out
+
+
+## Queue order: the walker's ring first, then the chunks on screen, then the view margin. Nearest the walker within each.
+func _queue_rank(key: Vector2i, c: Vector2i) -> int:
+	var tier: int = 0
+	if _chunk_dist(key, c) > LOAD_RING:
+		tier = 1 if _view.has_point(key) else 2
+	return tier * 1000 + _chunk_dist(key, c)
+
+
+## The walker or the camera moved into another chunk: unload what is no longer wanted, and queue what is (spawned by
+## _drain_spawns, a few chunks a frame, so a crossing is never one long frame). `immediate` spawns them now, for the first load of a zone.
+func _refresh_center(p: Vector2, immediate: bool = false) -> void:
 	var c: Vector2i = _chunk_of(p)
-	if c == _center:
+	var old_view: Rect2i = _view
+	var old_load: Rect2i = _view_load
+	var old_keep: Rect2i = _view_keep
+	_set_view()
+	if not immediate and c == _center and _view == old_view and _view_load == old_load and _view_keep == old_keep:
 		return
 	_center = c
-	for key: Vector2i in _needed_keys(c):
-		if not _loaded.has(key):
+	for key: Vector2i in _load_candidates(c):
+		if _loaded.has(key) or not _wanted_load(key, c):
+			continue
+		if immediate and _budget_allows(key):
 			_load_chunk(key)
+		elif not _queued.has(key):
+			_queued[key] = true
+			_spawn_queue.append(key)
+	var unloaded: bool = false
 	for key: Vector2i in _loaded.keys():
-		if maxi(absi(key.x - c.x), absi(key.y - c.y)) > KEEP_RING:
+		if not _wanted_keep(key, c):
 			_unload_chunk(key)
-	_rebuild_bushes()
+			unloaded = true
+	# a queued chunk no longer wanted is dropped, so the queue only holds what is still needed
+	var kept: Array[Vector2i] = []
+	for key: Vector2i in _spawn_queue:
+		if _wanted_load(key, c):
+			kept.append(key)
+		else:
+			_queued.erase(key)
+	_spawn_queue = kept
+	_spawn_queue.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return _queue_rank(a, c) < _queue_rank(b, c))
+	# the bush list holds the sprites of loaded chunks, and a freed sprite must not stay in it (LifeReact reads them every frame)
+	if immediate or unloaded:
+		_rebuild_bushes()
+
+
+## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. At least one, so the queue always moves.
+func _drain_spawns() -> void:
+	if _spawn_queue.is_empty():
+		return
+	var start_us: int = Time.get_ticks_usec()
+	var spawned: bool = false
+	while not _spawn_queue.is_empty():
+		var key: Vector2i = _spawn_queue[0]
+		if not _budget_allows(key):
+			break   # the queue is ring first, so every chunk behind this one is a view chunk over the budget too
+		_spawn_queue.pop_front()
+		_queued.erase(key)
+		if _loaded.has(key):
+			continue
+		_load_chunk(key)
+		spawned = true
+		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= SPAWN_BUDGET_MS:
+			break
+	if spawned:
+		_rebuild_bushes()
+
+
+## Makes the textures of the props in the next chunks ready (the sway padding, the normal maps): the first use of a file
+## decodes and pads it, and that used to land on the frame a chunk spawned. Runs only while no chunk waits to spawn.
+func _drain_warm() -> void:
+	if _sky == null or not _spawn_queue.is_empty() or _warm_queue.is_empty():
+		return
+	var start_us: int = Time.get_ticks_usec()
+	while not _warm_queue.is_empty():
+		var key: Vector2i = _warm_queue.pop_front()
+		for s: Dictionary in _prop_index[key]:
+			_warm_prop(s)
+		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= WARM_BUDGET_MS:
+			break
+
+
+## Touches the same textures _spawn_one and _prop_mat would use for this prop, so they are cached when it spawns.
+func _warm_prop(s: Dictionary) -> void:
+	var sways: bool = String(s.kind) in SWAY_KINDS
+	var file: String = String(s.file)
+	var key: String = ("sway|" if sways else "rim|") + file
+	if not _warmed.has(key):
+		_warmed[key] = true
+		if sways:
+			_padded(file)
+		else:
+			load(DIR + file)
+	if s.has("nrm"):
+		var nrm: String = String(s.nrm)
+		var nkey: String = ("sway|" if sways else "rim|") + nrm
+		if not _warmed.has(nkey):
+			_warmed[nkey] = true
+			if sways:
+				_padded(nrm)
+			else:
+				load(DIR + nrm)
 
 
 func _load_chunk(key: Vector2i) -> void:
+	PerfStats.lap_begin()
 	var list: Array = []
 	if _prop_index.has(key):
 		for s: Dictionary in _prop_index[key]:
 			list.append(_spawn_one(_occ_parent, s))
 	_loaded[key] = list
+	PerfStats.lap("chunk load")
+	chunk_loaded.emit(key)
 
 
 func _unload_chunk(key: Vector2i) -> void:
+	PerfStats.lap_begin()
 	for sp in _loaded[key]:
 		if is_instance_valid(sp):
 			if _shadows != null:
 				_shadows.remove_caster(sp as Sprite2D)
 			(sp as Sprite2D).queue_free()
 	_loaded.erase(key)
+	PerfStats.lap("chunk unload")
+	chunk_unloaded.emit(key)
 
 
 ## Bushes rustle when the walker passes (LifeReact); the list follows the chunks that are loaded.
 func _rebuild_bushes() -> void:
 	if react == null:
 		return
+	PerfStats.lap_begin()
 	var bushes: Array = []
 	for key: Vector2i in _loaded.keys():
 		for sp in _loaded[key]:
 			if is_instance_valid(sp) and (sp as Sprite2D).has_meta(&"bush"):
 				bushes.append(sp)
 	react.set_bushes(bushes)
+	PerfStats.lap("bushes")
 
 
 ## A small dithered bloom for a lamp head: a warm disc with a Bayer-stepped falloff (the meadow's glow style), made once.
