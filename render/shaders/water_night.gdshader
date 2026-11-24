@@ -21,6 +21,7 @@ uniform float shimmer = 0.0;                    // moon glints on the water
 uniform float beams = 0.0;                      // moon shafts that land on the water
 uniform float halo = 0.0;                       // glow off the shore and above the water
 uniform float body = 0.0;                       // lit rim inside the shore
+uniform float road = 0.20;                      // brightness of the moon road on the water
 uniform vec2 moon_px = vec2(1000.0, 500.0);     // moon point in world texels, just north of Heronmere; the shafts fan out from it
 uniform vec3 moon_col : source_color = vec3(0.965, 0.937, 0.851);
 uniform vec3 glow_col : source_color = vec3(0.718, 0.851, 0.471);
@@ -100,7 +101,7 @@ void fragment() {
 	if (shimmer > 0.0 && w > 0.5) {
 		// the moon's own light lies on the water along its path: a soft band that is brighter at the centre
 		// dithered, so the road is pixel art: a texel lights where the path beats the Bayer matrix
-		col += moon_col * step(bayer4(t), path * 0.85) * shimmer * 0.20 * w;
+		col += moon_col * step(bayer4(t), path * 0.85) * shimmer * road * w;
 		float foam = float(code_at(wpos) == 108);
 		float density = 0.05 * path * path * shimmer * (1.0 + foam);   // glints gather on the moon road only
 		vec2 cell = floor(wpos / vec2(3.0, 1.0));

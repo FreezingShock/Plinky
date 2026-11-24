@@ -5,7 +5,7 @@ extends Node
 ##
 ## Run: godot --path . tools/water_night_shots.tscn -- <tag>
 ##   before            the current night, no glow
-##   A, B, C           the three mockup variants (render/shaders/water_night.gdshader), see VARIANTS
+##   A, B, C, D, E    the mockup variants (E = A glowier, one moon light source, no shafts) (render/shaders/water_night.gdshader), see VARIANTS
 ##   B_low             variant B at GraphicsQuality LOW (the fallback)
 ## Headless servers: xvfb-run with the software Vulkan driver.
 
@@ -16,6 +16,8 @@ const GLOW_SHADER: Shader = preload("res://render/shaders/water_night.gdshader")
 const VARIANTS: Dictionary = {
 	"A": {"shimmer": 1.0, "beams": 0.0, "halo": 0.35, "body": 0.3, "glow": Color(0.965, 0.937, 0.851)},
 	"B": {"shimmer": 0.8, "beams": 1.0, "halo": 0.5, "body": 0.6, "glow": Color(0.965, 0.937, 0.851)},
+	"E": {"shimmer": 1.0, "beams": 0.0, "halo": 0.9, "body": 0.8, "road": 0.34, "glow": Color(0.965, 0.937, 0.851)},
+	"D": {"shimmer": 1.0, "beams": 0.6, "halo": 0.8, "body": 0.8, "glow": Color(0.718, 0.851, 0.471)},
 	"C": {"shimmer": 0.2, "beams": 0.6, "halo": 1.0, "body": 1.0, "glow": Color(0.718, 0.851, 0.471)},
 }
 
@@ -49,6 +51,7 @@ func _add_glow(sky: Node2D, variant: Dictionary) -> void:
 	_glow.set_shader_parameter("beams", float(variant.beams))
 	_glow.set_shader_parameter("halo", float(variant.halo))
 	_glow.set_shader_parameter("body", float(variant.body))
+	_glow.set_shader_parameter("road", float(variant.get("road", 0.20)))
 	_glow.set_shader_parameter("glow_col", variant.glow)
 	_glow.set_shader_parameter("sway", 2.0)
 	_glow.set_shader_parameter("twinkle", 1.0)
