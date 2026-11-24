@@ -165,16 +165,44 @@ def fence_piece(w: int, h: int, chord) -> Canvas:
     c = Canvas(w, h)
     px, py, qx, qy = chord
     length = math.hypot(qx - px, qy - py)
-    for off in (-6, -3):                              # top rail, then the lower rail
-        c.seg(px, py + off, qx, qy + off, EARTH)
-    c.seg(px, py - 2, qx, qy - 2, SHADE)              # underside of the lower rail
+    # Seeded from the chord, so the same piece breaks the same way on every regeneration.
+    rng = random.Random('%.1f,%.1f,%.1f,%.1f' % (px, py, qx, qy))
+    steps = max(2, int(length * 2))
+
+    def at(t: float, off: float = 0.0):
+        return px + (qx - px) * t, py + (qy - py) * t + off
+
+    # Rails: each rail has up to two gaps where a plank is gone. The rail end beside a gap sags one texel, and the
+    # lower rail keeps its shaded underside wherever it is still there.
+    for off, under in ((-6, None), (-3, SHADE)):
+        gaps = []
+        if length > 20:
+            for _ in range(rng.choice((0, 1, 1, 2))):
+                g = rng.uniform(0.12, 0.88)
+                gaps.append((g, g + rng.uniform(3.0, 7.0) / length))
+        for i in range(steps + 1):
+            t = i / steps
+            if any(a <= t <= b for a, b in gaps):
+                continue
+            x, y = at(t, off)
+            c.set(round(x), round(y), EARTH)
+            if under is not None:
+                c.set(round(x), round(y + 3), under)
+        for a, _b in gaps:
+            x, y = at(a, off)
+            c.set(round(x), round(y) + 1, EARTH)      # sagging end beside the gap
+
+    # Posts: most stand full height with a lit cap. Some snap short, some lean a texel, and some are missing.
     n = max(2, int(length / 8) + 1)
     for i in range(n):
-        t = i / (n - 1)
-        x = px + (qx - px) * t
-        y = py + (qy - py) * t
-        c.seg(x, y, x, y - 7, EARTH)
-        c.set(round(x), round(y - 7), LIGHT)          # lit post cap
+        if 0 < i < n - 1 and rng.random() < 0.15:
+            continue
+        x, y = at(i / (n - 1))
+        top = rng.choice((4, 5)) if rng.random() < 0.2 else 7
+        lean = 1 if rng.random() < 0.12 else 0
+        c.seg(x, y, x + lean, y - top, EARTH)
+        if top == 7:
+            c.set(round(x + lean), round(y - top), LIGHT)   # lit post cap
     c.outline(INK)
     return c
 

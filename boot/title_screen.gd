@@ -368,7 +368,8 @@ func _begin(n: int, fresh: bool) -> void:
 		save.call("save_game")  # a new slot gets its file now, so it shows up in Saves straight away
 	# Play goes through the loading screen. It opens at this time of day and loads the slot's zone art with real progress.
 	BootScreen.handoff = _handoff_for()
-	SceneSwap.go(get_tree(), load(BOOT_SCENE) as PackedScene)
+	# The loading screen draws the same title backdrop at the same time of day, so the hand-off is a foreground swap only.
+	SceneSwap.go(get_tree(), load(BOOT_SCENE) as PackedScene, true)
 
 
 ## What the loading screen needs for the slot just opened: the zone scene it will show, its name, the time of day the

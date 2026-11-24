@@ -23,6 +23,9 @@ const LIFT: Vector2 = Vector2(0.0, -18.0)   ## screen pixels from the pad to the
 const MAX_WIDTH: float = 150.0             ## widest a popup's text may be, in pixels
 const TICK_RATE: float = 16.0             ## per second: a merged number rolls up to its new total in about 0.2 s
 const SETTLE_GAP: float = 2.0             ## pixels kept between two visible popups after the per-frame settle
+## Pixels from the number's baseline down to the stat caption's bottom edge. The caption starts 6 px under the number's
+## baseline, which clears the number's 2 px outline and its 2 px wave, so the two never touch.
+const CAPTION_DROP: float = 18.0
 const LIFE: float = 0.95
 const HOLD_LINGER: float = 0.5
 const FLOAT_AFTER_HOLD: float = 0.8
@@ -422,7 +425,7 @@ func _box(p: Pop) -> Vector2:
 
 
 func _drop(p: Pop) -> float:
-	return 13.0 if p.stat != "" else 0.0
+	return CAPTION_DROP if p.stat != "" else 0.0
 
 
 ## Width in pixels of a stat caption, drawn at 12 px by _draw_caption.
@@ -771,7 +774,7 @@ func _draw_caption(p: Pop, cx: float, y: float, fs: int, tcol: float, oc: Color)
 	for k in count_txt.length():
 		w_cnt += font.get_char_size(count_txt.unicode_at(k), 12).x
 	var sx: float = roundf(cx - (w_name + w_cnt) * 0.5)
-	var sy: float = roundf(y + 9.0 + float(fs) * 0.14)
+	var sy: float = roundf(y + CAPTION_DROP - 4.0)
 	if p.stat != "":
 		var sc: Color = PopupStyle.caption_color(p.stat_col)
 		draw_string_outline(font, Vector2(sx, sy), p.stat, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, 2, oc)

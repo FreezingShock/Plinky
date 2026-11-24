@@ -15,6 +15,7 @@ var _state: String = "boot"
 var _state_t: float = 0.0
 var _log: FileAccess
 var _last_scene_name: String = ""
+var _times: FileAccess
 
 
 func _ready() -> void:
@@ -30,6 +31,8 @@ func _ready() -> void:
 	_out = env_out if env_out != "" else "/tmp/transition_frames"
 	DirAccess.make_dir_recursive_absolute(_out)
 	_log = FileAccess.open(_out + "/events.txt", FileAccess.WRITE)
+	_times = FileAccess.open(_out + "/times.csv", FileAccess.WRITE)
+	_times.store_line("frame,delta_ms,scene")
 	if OS.get_environment("TRANSITION_REDUCE") == "1":
 		FxConfig.reduce_flashing = true
 		MeadowLife.reduce_motion = true
@@ -50,31 +53,29 @@ func _event(name: String) -> void:
 func _process(delta: float) -> void:
 	_elapsed += delta
 	_state_t += delta
+	if _times != null:
+		_times.store_line("%d,%.2f,%s" % [_frames, delta * 1000.0, _last_scene_name])
 	var scene: Node = get_tree().current_scene
-	var name: String = scene.scene_file_path if scene != null else ""
-	if name != _last_scene_name and name != "":
-		_event("scene %s" % name)
-		_last_scene_name = name
-	match _state:
-		"boot":
-			if scene is TitleScreen:
-				_state = "title"
-				_state_t = 0.0
-		"title":
-			if _state_t >= TITLE_SETTLE_SECONDS:
-				_event("press play")
-				(scene as TitleScreen)._on_play()
-				_state = "swapping"
-				_state_t = 0.0
-		"swapping":
-			if scene != null and scene.scene_file_path == "res://main.tscn":
-				_state = "game"
-				_state_t = 0.0
-		"game":
-			if _state_t >= GAME_HOLD_SECONDS:
-				_event("done")
-				_log.close()
-				get_tree().quit(0)
+	var scene_name: String = scene.scene_file_path if scene != null else ""
+	if scene_name != _last_scene_name and scene_name != "":
+		_event("scene %s" % scene_name)
+		_last_scene_name = scene_name
+	if _state == "boot" and scene is TitleScreen:
+		_state = "title"
+		_state_t = 0.0
+	elif _state == "title" and _state_t >= TITLE_SETTLE_SECONDS:
+		_event("press play")
+		(scene as TitleScreen)._on_play()
+		_state = "swapping"
+		_state_t = 0.0
+	elif _state == "swapping" and scene_name == "res://main.tscn":
+		_state = "game"
+		_state_t = 0.0
+	elif _state == "game" and _state_t >= GAME_HOLD_SECONDS:
+		_event("done")
+		_log.close()
+		_times.close()
+		get_tree().quit(0)
 	if _frames >= MAX_FRAMES:
 		_event("frame cap reached")
 		get_tree().quit(2)

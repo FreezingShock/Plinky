@@ -262,6 +262,9 @@ def make_bush(rng):
         for pc, pr in pockets:
             cut = -sdf_sphere(x, y, z, pc, pr)
             m = np.where(cut > d, M_DARKF, m); d = np.maximum(d, cut)
+        # contact: a thin, soft-edged dark slab under the bush, a little wider than its skirt, so the foot reads as shade on the ground
+        dc = sdf_ell(x, y, z, (0, 0, 0), (7.4, 6.6, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
+        sel = dc < d; m = np.where(sel, M_DARKF, m); d = np.minimum(d, dc)
         for b in berries:
             db = sdf_sphere(x, y, z, b, 1.0) ; sel = db < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, db)
         return d, m
@@ -272,7 +275,7 @@ def make_rock(rng, big=True):
     # face with a bevelled rim where it meets the sides. One or two low side facets keep the stone faceted. Own rng, so
     # the placement sequence of every other prop is unchanged.
     frng = random.Random(seed * 7919 + 17)
-    ta, tb = frng.uniform(.05, .22), frng.uniform(0, 6.283)           # how far the top leans, and which way
+    ta, tb = frng.uniform(.03, .14), frng.uniform(0, 6.283)           # how far the top leans, and which way
     top_n = (math.sin(ta) * math.cos(tb), math.sin(ta) * math.sin(tb), math.cos(ta))
     top_off = rz * frng.uniform(.62, .74)                              # cut height above the centre: a broad face, not a point
     facets = []
@@ -286,7 +289,10 @@ def make_rock(rng, big=True):
         d = np.maximum(d, top_n[0] * x + top_n[1] * y + top_n[2] * zc - top_off)
         for (nx_, ny_, nz_, off) in facets:
             d = np.maximum(d, nx_ * x + ny_ * y + nz_ * zc - off)
-        return d, np.full(x.shape, M_ROCK, np.int16)
+        # contact: a thin, soft-edged dark slab at the foot, a little wider than the stone, so the base reads as shade on the ground
+        dc = sdf_ell(x, y, z, (0, 0, 0), (rx + 1.4, ry + 1.2, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
+        m = np.where(dc < d, M_DARKF, M_ROCK).astype(np.int16)
+        return np.minimum(d, dc), m
     return f, (rx + 3, ry + 3), rz * 1.6 + 2, max(rx, ry) + 1
 def make_crystals(rng):
     items = []
@@ -590,8 +596,11 @@ for lm in LAY.LANDMARKS:
 # bridge where the main road crosses the stream
 bu, bv = s2uv(*LAY.BRIDGE); put('bridge', bu, bv, 1.0, rot=.785, z_extra=3.0, count=False)
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
+# trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
+TREE_GAP = dict(oak=6.0, pine=8.0)
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
+    if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it

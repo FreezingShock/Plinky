@@ -9,8 +9,11 @@ extends CanvasLayer
 const SHADER: Shader = preload("res://boot/scene_reveal.gdshader")
 const REVEAL_SECONDS: float = 0.8
 const FADE_SECONDS: float = 0.35
-## Frames the arriving scene draws under the cover before the reveal starts.
+## Frames the arriving scene draws under the cover before the reveal starts. At least WARM_FRAMES, then until two frames in
+## a row cost about the same (its first-use work is done), capped at WARM_MAX_FRAMES. A slow machine warms longer.
 const WARM_FRAMES: int = 4
+const WARM_MAX_FRAMES: int = 40
+const SETTLE_RATIO: float = 0.2
 const HOST_NAME: String = "SceneSwap"
 ## Palette index of the sun-coloured lead line (the tagline colour on the loading screen).
 const ACCENT_INDEX: int = 5
@@ -41,9 +44,10 @@ static func host(tree: SceneTree) -> SceneSwap:
 	return _host
 
 
-## Swap to `next` behind the cover, then reveal it. Returns at once; the swap runs on the host.
-static func go(tree: SceneTree, next: PackedScene) -> void:
-	host(tree).run(next)
+## Swap to `next` behind the cover, then reveal it. Returns at once; the swap runs on the host. With `same_backdrop`, the
+## two screens draw the same backdrop, so only the foreground changes: a plain swap with no cover and no sweep.
+static func go(tree: SceneTree, next: PackedScene, same_backdrop: bool = false) -> void:
+	host(tree).run(next, same_backdrop)
 
 
 func _ready() -> void:
@@ -64,11 +68,16 @@ func _ready() -> void:
 
 
 ## Captures the current frame, swaps to `next` under it, then reveals. A failed capture just swaps.
-func run(next: PackedScene) -> void:
+func run(next: PackedScene, same_backdrop: bool = false) -> void:
 	if _busy or next == null:
 		return
 	_busy = true
 	var tree: SceneTree = get_tree()
+	if same_backdrop:
+		tree.change_scene_to_packed(next)
+		await tree.scene_changed
+		_busy = false
+		return
 	var reduce: bool = TitleBackground.still()
 	await RenderingServer.frame_post_draw
 	var img: Image = tree.root.get_texture().get_image()
@@ -79,14 +88,27 @@ func run(next: PackedScene) -> void:
 		_rect.visible = true
 	tree.change_scene_to_packed(next)
 	await tree.scene_changed
-	for i: int in WARM_FRAMES:
-		await tree.process_frame
-	await RenderingServer.frame_post_draw
+	await _warm(tree)
 	await _reveal(reduce)
 	_rect.visible = false
 	_mat.set_shader_parameter("snapshot", null)
 	held.clear()
 	_busy = false
+
+
+## Lets the arriving scene draw under the cover until it settles (see WARM_FRAMES).
+func _warm(tree: SceneTree) -> void:
+	var prev: int = Time.get_ticks_usec()
+	var last_dt: float = -1.0
+	for i: int in WARM_MAX_FRAMES:
+		await tree.process_frame
+		var now: int = Time.get_ticks_usec()
+		var dt: float = float(now - prev)
+		prev = now
+		if i + 1 >= WARM_FRAMES and last_dt > 0.0 and absf(dt - last_dt) <= last_dt * SETTLE_RATIO:
+			break
+		last_dt = dt
+	await RenderingServer.frame_post_draw
 
 
 func _reveal(reduce: bool) -> void:

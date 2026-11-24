@@ -271,6 +271,9 @@ def make_bush(rng):
         for pc, pr in pockets:
             cut = -sdf_sphere(x, y, z, pc, pr)
             m = np.where(cut > d, M_DARKF, m); d = np.maximum(d, cut)
+        # contact: a thin, soft-edged dark slab under the bush, a little wider than its skirt, so the foot reads as shade on the ground
+        dc = sdf_ell(x, y, z, (0, 0, 0), (7.4, 6.6, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
+        sel = dc < d; m = np.where(sel, M_DARKF, m); d = np.minimum(d, dc)
         for b in berries:
             db = sdf_sphere(x, y, z, b, 1.0) ; sel = db < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, db)
         return d, m
@@ -281,7 +284,7 @@ def make_rock(rng, big=True):
     # face with a bevelled rim where it meets the sides. One or two low side facets keep the stone faceted. Own rng, so
     # the placement sequence of every other prop is unchanged.
     frng = random.Random(seed * 7919 + 17)
-    ta, tb = frng.uniform(.05, .22), frng.uniform(0, 6.283)           # how far the top leans, and which way
+    ta, tb = frng.uniform(.03, .14), frng.uniform(0, 6.283)           # how far the top leans, and which way
     top_n = (math.sin(ta) * math.cos(tb), math.sin(ta) * math.sin(tb), math.cos(ta))
     top_off = rz * frng.uniform(.62, .74)                              # cut height above the centre: a broad face, not a point
     facets = []
@@ -295,7 +298,10 @@ def make_rock(rng, big=True):
         d = np.maximum(d, top_n[0] * x + top_n[1] * y + top_n[2] * zc - top_off)
         for (nx_, ny_, nz_, off) in facets:
             d = np.maximum(d, nx_ * x + ny_ * y + nz_ * zc - off)
-        return d, np.full(x.shape, M_ROCK, np.int16)
+        # contact: a thin, soft-edged dark slab at the foot, a little wider than the stone, so the base reads as shade on the ground
+        dc = sdf_ell(x, y, z, (0, 0, 0), (rx + 1.4, ry + 1.2, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
+        m = np.where(dc < d, M_DARKF, M_ROCK).astype(np.int16)
+        return np.minimum(d, dc), m
     return f, (rx + 3, ry + 3), rz * 1.6 + 2, max(rx, ry) + 1
 def make_crystals(rng):
     items = []
@@ -676,7 +682,7 @@ for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
                     seed = prng.randint(0, 1 << 30)
                     f_l, half_l, top_l, _r, _rt = _draw('lantern', seed)
                     if ok_spot(u, v, solid_radius(f_l, half_l, top_l), slope_max=.8, path=False, gap=1.0, hmax=14.0):
-                        put('lantern', u, v, 1.0, count=True, seed=seed); lantern_n += 1; found = True; break
+                        put('lantern', u, v, 1.0, rot=0.0, count=True, seed=seed); lantern_n += 1; found = True; break
                 if found: break
             if found: break
 for si in range(FENCE_FROM, len(PATH) - 1):
@@ -1009,10 +1015,20 @@ Image.fromarray(_fg).save(os.path.join(HERE, 'ground_fg.png'))
 depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(HERE, 'meadow3d-ground-1x_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []
+# ordinary lanterns all face one way (rot 0), so they share one size: every lamp is cropped to the same window around its foot.
+# Measured on all five lamps: left of the foot 5.6 to 6.3 texels, right 6.7 to 7.4, top 25.2 to 25.8, base 0.8 to 2.5 below it.
+LANTERN_WIN = (8, 27, 18, 31)   # left of the foot, above the foot, width, height
 for t in TALL:
     ys_, xs_ = np.nonzero(id_full == t['id'])
     if len(xs_) < 12: continue
-    x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
+    if t['kind'] == 'lantern':
+        fbx, fby = OXS0 + (t['u'] - t['v']) + BLX, OYS0 + (t['u'] + t['v']) / 2 - t['z'] + BLY   # foot in render-buffer pixels
+        x0, y0 = int(math.floor(fbx)) - LANTERN_WIN[0], int(math.floor(fby)) - LANTERN_WIN[1]
+        x1, y1 = x0 + LANTERN_WIN[2] - 1, y0 + LANTERN_WIN[3] - 1
+        assert 0 <= x0 and x1 < W and 0 <= y0 and y1 < H, 'lantern %d window leaves the render' % t['id']
+        assert (id_full[y0:y1 + 1, x0:x1 + 1] == t['id']).sum() == len(xs_), 'lantern %d leaves its window' % t['id']
+    else:
+        x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
     spr = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
     m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
     spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
