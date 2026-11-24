@@ -10,5 +10,5 @@ display_name = "Cairnfold"
 order = 4
 icon = "cairn"
 theme_role = 7
-blurb = "Rocky foothills and a ring of standing stones. Three Clover pads along the north path, paid in Clover Leaves."
-pad_buttons = PackedStringArray("lark_clover_1", "lark_clover_2", "lark_clover_3")
+blurb = "Rocky foothills, a ring of standing stones and glowing crystals. Nothing to press here."
+pad_buttons = PackedStringArray()

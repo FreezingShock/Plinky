@@ -10,5 +10,5 @@ display_name = "Heronmere"
 order = 1
 icon = "lake"
 theme_role = 7
-blurb = "A reed-fringed lake with a little jetty. Three Sprout pads on the lake path, paid in Dewdrops."
-pad_buttons = PackedStringArray("lark_sprout_1", "lark_sprout_2", "lark_sprout_3")
+blurb = "A reed-fringed lake with a little jetty. Three Sprout pads on the lake path, paid in Dewdrops, and three Clover pads beside them, paid in Clover Leaves. Clover opens once the last Sprout pad is pressed."
+pad_buttons = PackedStringArray("lark_sprout_1", "lark_sprout_2", "lark_sprout_3", "lark_clover_1", "lark_clover_2", "lark_clover_3")

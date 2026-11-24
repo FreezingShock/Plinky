@@ -778,3 +778,11 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
+
+
+## Larkmoor Clover row by the Heronmere lake (2026-11-24)
+- **Why:** Nathan's feedback on the Clover pads from #223. The row stood in Cairnfold's north, far from spawn, and it looked locked, so he asked why it stayed shut until a Dewdrop pad was pressed.
+- **Layout:** the Clover row now stands on the lake shore below the Sprout row, pad 1 nearest the road, at (504,652), (460,630), (416,608). It keeps its fifth slot in `DISTRICTS`, so the pad order still matches `pad_buttons`. The Cairnfold area now lists no pads, and Heronmere lists Sprout then Clover. Cairnfold's own district centre is unchanged.
+- **Unlock kept:** Clover opens when the last Sprout pad is pressed, as before. The cost is Dewdrops. The tooltip says so, and the first pad of a locked row now draws "Needs <cost>" under its plate.
+- **Budget:** the regenerated layout has 100 props against 96 before. All 18 pads are reachable from spawn on the walk mask. The CI play job checks the node ceiling.
+- Not run in-engine from the cloud.
