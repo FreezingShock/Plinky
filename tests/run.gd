@@ -110,8 +110,14 @@ func near(actual: float, expected: float, rel: float, msg: String) -> void:
 
 
 ## A fresh Sim with real content loaded.
-func make_sim() -> Sim:
+## A fresh sim. By default a player press pays its full reward and cost (press_scale 1), so suites test the raw
+## formulas. The copy is private: the shared game.tres keeps the shipped press_scale. Pass `shipped` true for the
+## real pace (the greedy timeline and the press-scale tests).
+func make_sim(shipped: bool = false) -> Sim:
 	var sim := Sim.new()
 	ok(ContentLoader.load_into(sim), "content loads and validates")
+	if not shipped:
+		sim.config = sim.config.duplicate() as GameConfig
+		sim.config.press_scale = 1.0
 	sim.new_game()
 	return sim

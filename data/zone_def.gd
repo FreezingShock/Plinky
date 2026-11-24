@@ -1,6 +1,9 @@
 class_name ZoneDef
 extends Resource
 
+## The base press rate every zone starts from (presses a second). Content overrides it per zone.
+const BASE_PRESS_RATE: float = 4.0
+
 @export var id: StringName
 @export var display_name: String
 @export_multiline var description: String = ""
@@ -29,8 +32,8 @@ extends Resource
 ## Prestige (and so attribute buys) keeping pace with attribute costs, which grow every level.
 @export var prestige_per_rebirth_bonus: float = 0.0
 @export var entry_grants: Dictionary = {}
-## Base presses per second while standing on a pad.
-@export var press_rate: float = 0.5
+## Base presses per second while standing on a pad or holding it. Every press-rate modifier multiplies from this.
+@export var press_rate: float = BASE_PRESS_RATE
 ## Palette name for the render thread (art-bible.md).
 @export var palette_id: StringName = &""
 ## Button ids in the order of the zone scene's pad anchors (Pad0, Pad1, ...).

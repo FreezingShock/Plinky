@@ -41,6 +41,7 @@ var _row_pool: Array = []
 var _label_pool: Array = []
 var _icon_pool: Array = []
 var _title: Label
+var _kicker: VBoxContainer   ## one rich line straight under the title (a currency's rarity tag)
 var _body: Label
 var _lines: VBoxContainer
 var _hint: Label
@@ -74,6 +75,10 @@ func _init() -> void:
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_head.add_child(_icon)
 	_title = _label(_head, true)
+	_kicker = VBoxContainer.new()
+	_kicker.add_theme_constant_override("separation", 1)
+	_kicker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_kicker)
 	_body = _label(v, false)
 	_lines = VBoxContainer.new()
 	_lines.add_theme_constant_override("separation", 1)
@@ -129,7 +134,12 @@ func _release(pool: Array, n: Node) -> void:
 
 ## Park every row of the last spec (and their segments) so the next spec can reuse them.
 func _release_lines() -> void:
-	for row: Node in _lines.get_children():
+	_release_rows(_lines)
+	_release_rows(_kicker)
+
+
+func _release_rows(box: VBoxContainer) -> void:
+	for row: Node in box.get_children():
 		for seg: Node in row.get_children():
 			_release(_icon_pool if seg is TextureRect else _label_pool, seg)
 		_release(_row_pool, row)
@@ -329,6 +339,10 @@ func _fill(spec: Variant) -> bool:
 	var roomy: bool = bool(d.get("roomy", false))
 	_root.add_theme_constant_override("separation", ROOMY_GAP if roomy else 2)
 	_lines.add_theme_constant_override("separation", 3 if roomy else 1)
+	var kicker: Array = d.get("kicker", []) as Array
+	if not kicker.is_empty():
+		_kicker.add_child(_rich_line(kicker))
+	_kicker.visible = _kicker.get_child_count() > 0
 	for line: Variant in (d["lines"] as Array):
 		_lines.add_child(_rich_line(line as Array))
 	_lines.visible = _lines.get_child_count() > 0

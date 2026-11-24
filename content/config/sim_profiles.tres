@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1")
 profile_names = PackedStringArray("idle", "active", "hold")
-presses_per_second = PackedFloat32Array(0.2, 0.5, 4.0)
+presses_per_second = PackedFloat32Array(1.6, 4.0, 4.0)
 seeds = 8

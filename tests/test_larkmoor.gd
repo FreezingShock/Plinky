@@ -13,7 +13,7 @@ func run(t: Object) -> void:
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
-	t.eq(z.pad_buttons.size(), 18, "eighteen pads: six rows of three")
+	t.eq(z.pad_buttons.size(), 21, "twenty-one pads: six rows of three, and the Starbloom row runs three more on the west bank")
 	var rows: Dictionary = {&"lark_sprout": &"sunlight", &"lark_clover": &"dewdrop", &"thistle": &"sunlight", &"heather": &"thistle", &"foxglove": &"heather", &"starbloom": &"foxglove"}
 	for row: StringName in rows:
 		var last: float = 0.0
@@ -85,12 +85,14 @@ func run(t: Object) -> void:
 		for an: Dictionary in placements.anchors as Array:
 			if String(an.kind) == "pad":
 				shadow_pads += 1
-		t.eq(shadows._items.size(), sprites.size() + shadow_pads, "Larkmoor registers a cast shadow for every prop, landmark and pad")
+		t.eq(shadows._items.size(), scene.call("loaded_prop_count") + shadow_pads, "Larkmoor registers a cast shadow for every loaded prop, landmark and pad")
+		t.eq(scene.call("prop_total"), sprites.size(), "every prop in the placements is indexed to a chunk")
+		t.ok(int(scene.call("loaded_prop_count")) < sprites.size(), "only the chunks near the start are loaded (%d of %d)" % [scene.call("loaded_prop_count"), sprites.size()])
 		t.eq(shadows._pads.size(), shadow_pads, "Larkmoor tells its shadows where every pad is")
 		t.ok(shadows._overlay != null and shadows._overlay.get_child_count() > 0, "prop shadows get a clipped copy above the pads")
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
-	t.ok(lanterns > 0 and sky._lights.size() >= lanterns + 1, "lanterns and the walker get light pools (%d lights)" % sky._lights.size())
+	t.ok(lanterns > 0 and sky._lights.size() >= lanterns, "every lantern gets a light pool, none dropped at the cap (%d lights, %d lanterns)" % [sky._lights.size(), lanterns])
 	props.free()
 	holder.free()
 	WalkMask.use("")

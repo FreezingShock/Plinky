@@ -192,3 +192,9 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Rarity: the white Legendary corner studs are now glints in the rarity colour on the plate's corners (Epic and up), with a bright heart at Legendary and sparks at night. The dashed rarity ring on the top face stays.
 - The glow does not pulse, so Reduce Flashing needs no branch. Locked pads draw no glow.
 - Not verified in-engine (cloud has no Godot): the dither density by day and at midnight, the band width against the 2x1 plate, and whether the z 6 halo sits over the walker's feet when it stands on a plate. PC QA should check with `tools/play_shots.tscn` at noon and midnight.
+- Fix (2026-11-24, same day): the first version drew the glow with bare `draw_rect` calls, which paint the pad's own canvas item, so the halo was never visible. Its draw calls now go through `_halo`, as the cost chip's already do, and the node is made in `_init`, so every pad has it from construction. Tests check the node exists, is visible, sits at z 6, and reads the night level.
+
+## 2026-11-24: Pad glow as an additive halo
+- The dithered band read as a thin outline, not a glow, in the night screenshot. The buy glow is now an additive radial halo that spills about twice the plate's width by day and about 3.5 times at night. It is one pre-rendered texture per state (green or red) and night step, drawn with one `draw_texture` call, with 8 alpha steps so it stays pixel-crisp at one texel per world texel.
+- A gentle breath dims the halo by up to 20 percent over 1.6 seconds through `modulate`, so it does not redraw. Reduce Motion and Reduce Flashing hold it steady.
+- Not verified in-engine: the halo brightness against the night shade, and whether the halo covers the walker standing on a plate. PC QA should check Larkmoor and the meadow at noon and midnight.

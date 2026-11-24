@@ -238,20 +238,78 @@ func run_quarry_shaders(t: Object) -> void:
 		t.ok(mat.shader == sh, "%s makes a ShaderMaterial" % path.get_file())
 		for header: String in ["void fragment()", "void vertex()"]:
 			t.ok(not _body_has_return(sh.code, header), "%s: no return in %s" % [path.get_file(), header])
+	_check_every_shader_source(t)
+
+
+## Source-level guard over every .gdshader and .gdshaderinc in the project. Headless runs cannot compile shaders, so this
+## reads the text. It fails on (a) a function called before its definition, which the PC compiler rejects with
+## "No matching function found for: ..." (see quarry_prop.gdshader, where lit_colour sat below fragment()), and (b) a
+## `return` in fragment() or vertex(). Whether the PC logs a shader error is only visible in-engine.
+func _check_every_shader_source(t: Object) -> void:
+	var paths: Array[String] = []
+	_collect_shader_paths("res://", paths)
+	t.ok(paths.size() >= QUARRY_SHADERS.size(), "the shader scan finds the project's shaders (%d)" % paths.size())
+	for path: String in paths:
+		var clean: String = _strip_comments(FileAccess.get_file_as_string(path))
+		var late: String = _called_before_defined(clean)
+		t.ok(late == "", "%s: no function is called before it is defined%s" % [path.get_file(), "" if late == "" else " (" + late + ")"])
+		for header: String in ["void fragment()", "void vertex()"]:
+			t.ok(not _body_has_return(clean, header), "%s: no return in %s" % [path.get_file(), header])
+
+
+static func _collect_shader_paths(dir_path: String, out: Array[String]) -> void:
+	var dir: DirAccess = DirAccess.open(dir_path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry: String = dir.get_next()
+	while entry != "":
+		if not entry.begins_with("."):
+			var full: String = dir_path.path_join(entry)
+			if dir.current_is_dir():
+				_collect_shader_paths(full, out)
+			elif entry.ends_with(".gdshader") or entry.ends_with(".gdshaderinc"):
+				out.append(full)
+		entry = dir.get_next()
+	dir.list_dir_end()
+
+
+## Returns the name of the first function that is called before its definition, or "" when there is none.
+static func _called_before_defined(clean: String) -> String:
+	var defs := RegEx.new()
+	defs.compile("(?m)^\\s*(?:void|float|int|uint|bool|vec[234]|ivec[234]|uvec[234]|bvec[234]|mat[234])\\s+(\\w+)\\s*\\(")
+	for m: RegExMatch in defs.search_all(clean):
+		var name: String = m.get_string(1)
+		var call := RegEx.new()
+		call.compile("\\b" + name + "\\s*\\(")
+		var first: RegExMatch = call.search(clean)
+		if first != null and first.get_start() != m.get_start(1):
+			return name
+	return ""
+
+
+## Removes /* block */ and // line comments so the text checks ignore comment words.
+static func _strip_comments(src: String) -> String:
+	var block := RegEx.new()
+	block.compile("(?s)/\\*.*?\\*/")
+	var line := RegEx.new()
+	line.compile("//[^\\n]*")
+	return line.sub(block.sub(src, "", true), "", true)
 
 
 ## True when the function that starts with `header` has a `return` inside its own braces.
 static func _body_has_return(src: String, header: String) -> bool:
-	var at: int = src.find(header)
+	var clean: String = _strip_comments(src)
+	var at: int = clean.find(header)
 	if at < 0:
 		return false
-	var open: int = src.find("{", at)
+	var open: int = clean.find("{", at)
 	if open < 0:
 		return false
 	var depth: int = 0
 	var i: int = open
-	while i < src.length():
-		var ch: String = src[i]
+	while i < clean.length():
+		var ch: String = clean[i]
 		if ch == "{":
 			depth += 1
 		elif ch == "}":
@@ -259,4 +317,4 @@ static func _body_has_return(src: String, header: String) -> bool:
 			if depth == 0:
 				break
 		i += 1
-	return src.substr(open, i - open).contains("return")
+	return clean.substr(open, i - open).contains("return")

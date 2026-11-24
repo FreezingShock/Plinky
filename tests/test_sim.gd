@@ -74,7 +74,7 @@ func run(t: Object) -> void:
 	t.ok(sim.buy_attribute(&"press_rate"), "buy press rate level 1")
 	t.near(sim.prestige_mult().to_float(), pm_before, 1e-12, "spending prestige keeps the multiplier")
 	t.near(sim.prestige_available().to_float(), 9.0 - 3.0, 1e-9, "available prestige drops by cost")
-	t.near(sim.press_interval(), 1.0 / (0.5 * 1.1), 1e-9, "press rate +10 percent")
+	t.near(sim.press_interval(), 1.0 / (sim.current_zone().press_rate * 1.1), 1e-9, "press rate +10 percent")
 	sim.new_game()
 	t.ok(not sim.buy_attribute(&"press_rate"), "cannot buy with no prestige")
 

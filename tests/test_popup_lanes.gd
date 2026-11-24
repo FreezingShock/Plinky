@@ -86,9 +86,9 @@ func run(t: Object) -> void:
 	var pc := PressPopups.new()
 	pc._ready()
 	for i in spots.size():
-		pc.press(StringName("pad_%d" % i), spots[i], 13240.0 + float(i), 0, false, false, false, 0.0, "Heather Sprigs", Color.WHITE)
+		pc.press(StringName("pad_%d" % i), spots[i], 13240.0 + float(i), 0, false, false, false, 0.0, "Stat %d" % i, Color.WHITE)
 	for i in 3:
-		pc.press(StringName("echo_%d" % i), Vector2(175.0, 150.0), 13240.0, 0, false, false, true, 0.3 + 0.1 * float(i), "Heather Sprigs", Color.WHITE)
+		pc.press(StringName("echo_%d" % i), Vector2(175.0, 150.0), 13240.0, 0, false, false, true, 0.3 + 0.1 * float(i), "Echo Stat", Color.WHITE)
 	for p in pc._pops:
 		if p.live:
 			p.age = maxf(p.age, 0.0)   # every delayed echo has started by now
@@ -106,3 +106,108 @@ func run(t: Object) -> void:
 	t.eq(clashes, 0, "no two visible popups overlap after a crowd of presses and late echoes")
 	PressPopups.instance = null
 	pc.free()
+
+	# --- one label per currency: near gains keep one number going, it holds its spot, floats only once gains stop
+	var lab := PressPopups.new()
+	lab._ready()
+	lab.press(&"pad_a", Vector2(100.0, 100.0), 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	var lbl: PressPopups.Pop = null
+	for p in lab._pops:
+		if p.live:
+			lbl = p
+	t.ok(lbl != null and lbl.hold, "a new gain starts as a holding label")
+	var spot: Vector2 = lab._pos_of(lbl)
+	var near_pads: Array[Vector2] = [Vector2(160.0, 120.0), Vector2(120.0, 180.0), Vector2(180.0, 160.0)]
+	for k in near_pads.size():
+		lab.press(StringName("pad_near_%d" % k), near_pads[k], 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	t.eq(lab.live_count(), 1, "same-currency gains from pads near the label keep one label")
+	t.near(lbl.total, 1080.0 * 4.0, 1e-3, "the one label carries every gain")
+	t.near(lab._pos_of(lbl).x, spot.x, 1e-6, "a label that is still gaining does not move sideways")
+	t.near(lab._pos_of(lbl).y, spot.y, 1e-6, "a label that is still gaining does not rise")
+
+	lab._float_if_quiet(lbl)
+	t.ok(lbl.hold, "a label does not float while its last gain is fresh")
+	lbl.since_bump = PressPopups.QUIET_AFTER
+	lab._float_if_quiet(lbl)
+	t.ok(not lbl.hold, "a label starts to float once gains have been quiet for QUIET_AFTER")
+	t.ok(lbl.life > lbl.t0 and lbl.life < 9999.0, "a floating label has a finite life that starts now")
+
+	var before_refold: Vector2 = lab._pos_of(lbl)
+	lab.press(&"pad_late", Vector2(140.0, 130.0), 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	t.ok(lbl.hold, "a gain landing on a floating label holds it again")
+	t.near(lab._pos_of(lbl).y, before_refold.y, 1e-3, "and the label stays where it was when the gain landed")
+	t.eq(lab.live_count(), 1, "the late gain still lands on the same label")
+
+	var shown_before: float = lbl.shown
+	lab._roll(lbl, 0.01, false)
+	t.ok(lbl.shown > shown_before and lbl.shown < lbl.total, "a new gain rolls the number up instead of jumping (shown %s)" % lbl.shown)
+	lab._roll(lbl, 0.0, true)
+	t.eq(lbl.shown, lbl.total, "under Reduce Motion the number snaps to its total")
+	PressPopups.instance = null
+	lab.free()
+
+	# --- a steady 2 s cadence (standing presses) keeps one label holding still, never a column
+	var cad := PressPopups.new()
+	cad._ready()
+	for k in 4:
+		cad.clock_override = 2.0 * float(k)
+		cad.press(&"pad_stand", Vector2(100.0, 100.0), 7.28, 0, false, false, false, 0.0, "Starbloom Petals", Color.WHITE)
+	t.eq(cad.live_count(), 1, "a standing press every 2 s folds into one label")
+	var cl: PressPopups.Pop = null
+	for p in cad._pops:
+		if p.live:
+			cl = p
+	t.ok(cl != null and absf(cl.total - 4.0 * 7.28) < 1e-6, "the 2 s label carries all four presses")
+	t.ok(cl != null and cl.hold, "the 2 s label keeps holding while presses keep coming")
+	t.near(cad._quiet_for("Starbloom Petals"), 3.0, 1e-6, "the quiet window follows the 2 s cadence (1.5 x 2 s)")
+	cad._float_if_quiet(cl)
+	t.ok(cl.hold, "a 2 s label does not float before its quiet window has passed")
+	cl.since_bump += 3.0
+	cad._float_if_quiet(cl)
+	t.ok(not cl.hold, "a 2 s label floats once three seconds have passed with no gain")
+	PressPopups.instance = null
+	cad.free()
+
+	# --- a floating label takes a same-currency gain 300 px away and holds again
+	var fc := PressPopups.new()
+	fc._ready()
+	fc.clock_override = 0.0
+	fc.press(&"pad_a", Vector2(100.0, 100.0), 10.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	var fl: PressPopups.Pop = null
+	for p in fc._pops:
+		if p.live:
+			fl = p
+	fl.since_bump = 10.0
+	fc._float_if_quiet(fl)
+	t.ok(not fl.hold, "a quiet label floats before the next gain")
+	fc.press(&"pad_b", Vector2(400.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(fc.live_count(), 1, "a gain 300 px away lands on the floating label")
+	t.ok(fl.hold, "the floating label holds again when it takes the gain")
+	t.near(fl.total, 15.0, 1e-6, "the floating label carries both gains")
+	PressPopups.instance = null
+	fc.free()
+
+	# --- a same-currency gain 420 px away is too far to fold, so it starts its own label
+	var sep := PressPopups.new()
+	sep._ready()
+	sep.clock_override = 0.0
+	sep.press(&"pad_a", Vector2(100.0, 100.0), 10.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	sep.press(&"pad_b", Vector2(520.0, 100.0), 5.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(sep.live_count(), 2, "a same-currency gain 420 px away starts its own label")
+	PressPopups.instance = null
+	sep.free()
+
+	# --- a normal press beside a running hold folds into that hold: one number, both amounts
+	var rn := PressPopups.new()
+	rn._ready()
+	rn.clock_override = 0.0
+	rn.press(&"pad_a", Vector2(100.0, 100.0), 3.0, 0, false, true, false, 0.0, "Clover", Color.WHITE)
+	rn.press(&"pad_b", Vector2(130.0, 100.0), 2.0, 0, false, false, false, 0.0, "Clover", Color.WHITE)
+	t.eq(rn.live_count(), 1, "a normal press 30 px from a running hold folds into it")
+	var rl: PressPopups.Pop = null
+	for p in rn._pops:
+		if p.live:
+			rl = p
+	t.ok(rl != null and absf(rl.total - 5.0) < 1e-6, "the running hold carries both presses (total 5)")
+	PressPopups.instance = null
+	rn.free()
