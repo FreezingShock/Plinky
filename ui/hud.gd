@@ -73,6 +73,7 @@ const CTL_W: float = 28.0   ## width of the grip and hide mark that open at the 
 
 func setup(p_sim: Sim) -> void:
 	sim = p_sim
+	_warm_upgrade_icons.call_deferred()
 	add_to_group(GROUP)
 	PopupNumber.under_menu = point_under_menu
 	PopupNumber.keep_clear = clear_rects
@@ -688,6 +689,23 @@ func _wire_upgrade_focus() -> void:
 		c.focus_previous = c.get_path_to(ring[posmod(i - 1, n)])
 
 
+## Loads every icon the Upgrades panel can show, a few per frame after setup, so the first open does not read them from disk.
+func _warm_upgrade_icons() -> void:
+	if sim == null:
+		return
+	var names: Array[String] = []
+	for cur: StringName in UpgradeText.tab_currencies(sim):
+		names.append(String(cur))
+	for a: AttributeDef in UpgradeText.ordered(sim):
+		names.append(StatIndex.attr_icon(a))
+	var done: int = 0
+	for nm: String in names:
+		UpgradeCard.icon(nm)
+		done += 1
+		if done % 8 == 0 and is_inside_tree():
+			await get_tree().process_frame
+
+
 ## Starts building the queued cards, once per open. The shown tab goes first, so its gifts are there at once.
 func _start_cards() -> void:
 	if _cards_started or _card_queue.is_empty():
@@ -781,7 +799,7 @@ func _gift_header(cur: StringName) -> Control:
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(top)
 	var ic := TextureRect.new()
-	ic.texture = load("res://assets/icons/%s.png" % String(cur)) as Texture2D
+	ic.texture = UpgradeCard.icon(String(cur))
 	ic.custom_minimum_size = Vector2(16, 16)
 	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -855,7 +873,7 @@ func _currency_badge(parent: Control, sid: StringName) -> HBoxContainer:
 	b.add_theme_constant_override("separation", 3)
 	parent.add_child(b)
 	var ic := TextureRect.new()
-	ic.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
+	ic.texture = UpgradeCard.icon(String(sid))
 	ic.custom_minimum_size = Vector2(16, 16)
 	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
