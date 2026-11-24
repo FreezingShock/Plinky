@@ -105,6 +105,9 @@ func _add_sky() -> void:
 	pad_material = _sky.pad_material(load(DIR + "ground_h.png") as Texture2D, _ground.position)
 	_place_atmosphere()
 	add_child(_sky)
+	var water_glow := WaterNightGlow.new()   # night glow on the lake and river (world/water_night_glow.gd)
+	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
+	water_glow.setup(_sky)
 	_add_lights()
 
 
