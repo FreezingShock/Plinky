@@ -1,1 +1,0 @@
-Bloom and Nucleus gifts hit harder: Head Start, Soil, Wide Bloom, Seed Pods, Study and Bloom Bramble on the meadow, and Plates, Veins, Furnace, Edge, Study and Twin Strike at the forge, each with a bigger value per level.
