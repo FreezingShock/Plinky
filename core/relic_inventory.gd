@@ -84,7 +84,8 @@ func total_effect(effect: RelicDef.Effect) -> float:
 func _total_for(list: Array[StringName], effect: RelicDef.Effect) -> float:
 	var total: float = 0.0
 	var miss: float = 1.0
-	var chance_like: bool = effect == RelicDef.Effect.DOUBLE_CHANCE or effect == RelicDef.Effect.PULSE_CHANCE
+	var chance_like: bool = effect in [RelicDef.Effect.DOUBLE_CHANCE, RelicDef.Effect.PULSE_CHANCE,
+			RelicDef.Effect.CRIT_CHANCE, RelicDef.Effect.PRESS_REFUND]
 	for id in list:
 		var d: RelicDef = defs[id]
 		if d.effect != effect:
@@ -130,10 +131,44 @@ func preview_change(id: StringName, replacing: StringName = &"") -> Array[Dictio
 func multiplier(effect: RelicDef.Effect) -> float:
 	return 1.0 + total_effect(effect)
 
+## Press reward multiplier from ZONE_GAIN relics that name this zone. 1.0 when none do.
+func zone_mult(zone_id: StringName) -> float:
+	var m: float = 1.0
+	for id in equipped:
+		var d: RelicDef = defs[id]
+		if d.effect == RelicDef.Effect.ZONE_GAIN and d.zone == zone_id:
+			m += d.value_for(stacks_of(id))
+	return m
+
+## Reward multiplier for press number `index` (1-based, counted over the whole run). Every equipped SURGE relic
+## whose period divides the index adds its value.
+func surge_mult(index: int) -> float:
+	var m: float = 1.0
+	for id in equipped:
+		var d: RelicDef = defs[id]
+		if d.effect == RelicDef.Effect.SURGE and d.period > 0 and index % d.period == 0:
+			m += d.value_for(stacks_of(id))
+	return m
+
+## Average of surge_mult over a long run: each surge adds its value once per period presses.
+func surge_average() -> float:
+	var m: float = 1.0
+	for id in equipped:
+		var d: RelicDef = defs[id]
+		if d.effect == RelicDef.Effect.SURGE and d.period > 0:
+			m += d.value_for(stacks_of(id)) / float(d.period)
+	return m
+
+## Seconds of play that must pass before the next pity drop. PITY_SPEED relics shorten it, never below a tenth.
+func pity_due(first_drop: bool) -> float:
+	if first_drop:
+		return config.first_drop_seconds
+	return config.pity_seconds * maxf(0.1, 1.0 - total_effect(RelicDef.Effect.PITY_SPEED))
+
 ## Rolls a drop. Returns the relic id, or &"" for no drop. `luck_level` comes from the Luck attribute.
 ## Rarity is picked by weight first (so Divine stays rare no matter how many relics exist), then a relic within it.
 func roll_drop(rng: RandomNumberGenerator, luck_level: int, force: bool = false) -> StringName:
-	if not force and rng.randf() >= config.drop_chance(luck_level):
+	if not force and rng.randf() >= config.drop_chance(luck_level) * multiplier(RelicDef.Effect.DROP_CHANCE):
 		return &""
 	var by_rarity: Dictionary = {}  ## RarityDef -> Array[RelicDef]
 	for d: RelicDef in defs.values():

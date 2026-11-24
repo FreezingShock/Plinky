@@ -17,12 +17,27 @@ var t: float = 0.0   ## wipe progress 0 (hidden) to 1 (shown); a reversed animat
 var _tween: Tween
 
 
+## Keeps a menu above the HUD's own pieces (meters, the relic bar, toasts, the sprint trail, and the HUD chips). Shown menus
+## move to the end of their parent so they draw last, so no HUD piece draws over an open menu.
+static func bring_front(p: Control) -> void:
+	var par: Node = p.get_parent()
+	if par != null and p.visible:
+		par.move_child(p, par.get_child_count() - 1)
+
+
+## Call once for any menu panel that is not attached with MenuAnim, so it gets the same front-of-HUD order.
+static func front_on_show(p: Control) -> void:
+	if not p.visibility_changed.is_connected(bring_front.bind(p)):
+		p.visibility_changed.connect(bring_front.bind(p))
+
+
 static func attach(p: Control) -> MenuAnim:
 	var a := MenuAnim.new()
 	a.panel = p
 	a.reveal = DitherReveal.new()
 	a.reveal.z_index = 1
 	p.add_child(a)
+	front_on_show(p)
 	p.visibility_changed.connect(a._on_visibility)
 	a.reveal.tree_entered.connect(a._sync_reveal)
 	p.tree_exiting.connect(a._cleanup)

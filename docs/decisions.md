@@ -785,6 +785,14 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
 
+## Relic abilities expansion (2026-11-24)
+- **Why:** Nathan asked for many more relics, each with a unique ability rather than a stat bump. Six relics were not enough variety.
+- **What:** 27 relics across Common to Mythic (4 to 6 each), using 11 new effect kinds appended to `RelicDef.Effect` so existing `.tres` values keep their meaning. Divine and Special are unchanged (weight 0, granted by rebirths and achievements).
+- **Chosen:** each relic gets a distinct trigger (zone, period, heat, repeat, drop, refund, offline rate, pity timer) so a relic reads as its own ability. Some effect kinds appear at two or three rarities with different numbers and triggers; that is a deliberate tier ladder.
+- **Random sequence:** a new roll (free presses) only runs when a Free Presses relic is equipped, so runs without one keep the same random sequence.
+- **Offline cap:** away income is capped at 0.75 of the awake rate (`offline_rate_cap`). Without the cap, three max lanterns reached 1.12, which broke the rule that idle takes about 2x as long as active (#221). Set by the coordinator on 2026-11-24. `tools/sim.gd` has not been run on the new relics yet; that is the PC QA step.
+- **Not verified in-engine:** the new scripts were written and read but not run in Godot here. CI's unit and sim jobs run the new relic tests and the sim paths.
+
 
 ## Larkmoor Clover row by the Heronmere lake (2026-11-24)
 - **Why:** Nathan's feedback on the Clover pads from #223. The row stood in Cairnfold's north, far from spawn, and it looked locked, so he asked why it stayed shut until a Dewdrop pad was pressed.
@@ -853,3 +861,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Props and lights:** props went from 100 to 90 and glow lights from 5 to 3, because the generator cleared props around the moved pads.
 - **Sway tips:** regenerated with the 2026-11-23 command. All 420 sit on the palette colour.
 - Not run in-engine from the cloud.
+## Upgrades menu fit and menu layer (2026-11-24)
+- **Cards:** stacked to three lines (name and level; now to next; pips and cost). The Buy button is gone: the whole card buys, and Enter or Space buys while the card has focus. Two across at 150 px, so the panel is about a third narrower.
+- **Outline and dim:** affordable is a bright green frame; unaffordable is a red frame with the contents dimmed to 55%, so the two read apart. Maxed is gold, locked is dim.
+- **Uniform tiers:** each tier's grid has a fixed width, so tier 2 matches tier 1.
+- **Height:** the list takes what its tab needs, up to 180 px, then scrolls.
+- **Menu layer:** a shown menu moves to the end of its parent (`MenuAnim.bring_front`), so the relic bar, momentum meter, sprint trail and HUD chips all draw under it. No HUD piece draws over an open menu. Every menu is covered: animated ones through `MenuAnim.attach`, the rest through `MenuAnim.front_on_show`.
+- **Tab highlight:** one function (`Hud._apply_upgrade_tab`) sets the page and the highlight together, and runs on every select and refresh. Opening the menu picks the current zone's tab.
+- Not verified in-engine: the new size at 640x360, the z order against each HUD piece, the dim levels. PC QA should check both zones and a click, a hold and a Enter buy.
+
