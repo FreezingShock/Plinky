@@ -1,2 +1,0 @@
-- The reset animation now holds achievement toasts, tip cards and zone banners until it ends, so nothing sits on the crystal.
-- The Upgrades menu shows only the current zone's reset gifts: Bloom gifts in the meadow, Nucleus gifts in the quarry.
