@@ -43,15 +43,14 @@ float density(vec2 b) {
 	return clamp((n - 0.44) * 2.6, 0.0, max_density);
 }
 
-// One blade base per 3x3 cell, at a hashed spot in the cell, and only where the patch density allows it. This gives
-// blade tufts with spaces between them, not a salt-and-pepper grid.
-bool is_anchor(vec2 b) {
-	vec2 c = floor(b / 3.0);
-	vec2 a = c * 3.0 + vec2(floor(hash2(c + 0.5) * 3.0), floor(hash2(c + 7.3) * 3.0));
-	if (a != b) {
-		return false;
-	}
-	return hash2(c + 11.0) < density(b);
+// One blade base per 3x3 cell, at a hashed spot in the cell: the cell's root.
+vec2 root_of(vec2 c) {
+	return c * 3.0 + vec2(floor(hash2(c + 0.5) * 3.0), floor(hash2(c + 7.3) * 3.0));
+}
+
+// Does the cell grow a blade at all? Patch density decides, so blades gather into tufts with bare lawn between.
+bool cell_has_blade(vec2 c, vec2 root) {
+	return hash2(c + 11.0) < density(root);
 }
 
 // Lean of the blade rooted at texel b, in texels: -2..2. The wind wave runs across the field, as in LifeGround.
@@ -113,23 +112,30 @@ void fragment() {
 	vec2 p = floor(wp);
 	vec4 col = vec4(0.0);
 	bool found = false;
-	// The texel is a blade base (k = 0) or a tip of a blade rooted 1 or 2 texels below it.
+	// Only the cells that can hold a root within 2 texels to either side and 2 texels below the pixel are checked.
 	if (is_grass(p)) {
-		for (int k = 0; k < 3; k++) {
-			float by = p.y + float(k);
-			for (int dx = -2; dx <= 2; dx++) {
+		float cx0 = floor((p.x - 2.0) / 3.0);
+		float cx1 = floor((p.x + 2.0) / 3.0);
+		float cy0 = floor(p.y / 3.0);
+		float cy1 = floor((p.y + 2.0) / 3.0);
+		for (float cy = cy0; cy <= cy1; cy += 1.0) {
+			for (float cx = cx0; cx <= cx1; cx += 1.0) {
 				if (found) {
 					break;
 				}
-				float bx = p.x - float(dx);
-				vec2 b = vec2(bx, by);
-				if (!is_anchor(b) || near_pad(b)) {
+				vec2 c = vec2(cx, cy);
+				vec2 b = root_of(c);
+				float k = b.y - p.y;
+				if (k < 0.0 || k > 2.0 || abs(b.x - p.x) > 2.0) {
 					continue;
 				}
-				float l = lean(b);
-				float off = round(l * float(k) / 2.0);
-				if (bx + off == p.x) {
-					col = k == 0 ? base_col : tip_col;
+				if (!cell_has_blade(c, b) || near_pad(b)) {
+					continue;
+				}
+				// The root sits k texels below the pixel, so the pixel is on that blade's column at height k.
+				float off = round(lean(b) * k / 2.0);
+				if (b.x + off == p.x) {
+					col = k == 0.0 ? base_col : tip_col;
 					found = true;
 				}
 			}
