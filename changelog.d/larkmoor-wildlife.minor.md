@@ -1,1 +1,0 @@
-Larkmoor has more wildlife. Dragonflies dart over the water and fish leap in the mere by day. A deer grazes the forest edge at dawn and dusk and runs into the trees when you come close. Owls sit in the pines at night and fly off when you pass. Nothing new is drawn as a node, and Reduce Motion keeps them still.
