@@ -248,8 +248,9 @@ def ascii_map(ground: dict, blocked: list, entries: list, brooks: list) -> str:
         for x in range(FRAME_W):
             if blocked[y][x] and grid[y][x] == '.':
                 grid[y][x] = 'x'
-    marks = {'cozy_bench': 'B', 'blanket': 'P', 'swing_frame': 'S', 'cottage': 'H', 'fence': 'F', 'signpost': 'T',
-             'campfire_ring': 'O', 'well': 'W', 'fountain_basin': 'U', 'wheat': 'w', 'wheel': 'R', 'stone': 'o'}
+    marks = {'cozy_bench': 'B', 'cozy_blanket': 'P', 'cozy_swing_frame': 'S', 'cozy_cottage': 'H',
+             'cozy_fence': 'F', 'cozy_signpost': 'T', 'cozy_campfire_ring': 'O', 'cozy_well': 'W',
+             'cozy_fountain_basin': 'U', 'cozy_wheat': 'w', 'cozy_wheel': 'R', 'cozy_stone': 'o'}
     for e in entries:
         ch = marks.get(e['kind'], '?')
         for y in range(e['y'], e['y'] + e['h']):
