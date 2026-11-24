@@ -198,3 +198,18 @@ func run_quarry(t: Object) -> void:
 	var list: Array[Dictionary] = QuarryLight.emitters(data, cfg, cols)
 	t.ok(list.size() > 0 and list.size() <= QuarryLight.MAX_EMIT, "quarry emitters fit the shader array")
 	t.ok(list.size() > 0 and int(list[0].kind) >= QuarryLight.KIND_BRAZIER, "braziers and lamps are packed first")
+	var near_list: Array[Dictionary] = []
+	for i in range(10):
+		near_list.append({"pos": Vector2(float(i) * 5.0, 0.0), "radius": 20.0, "strength": 1.0, "kind": 0, "col": Color.WHITE})
+	var near: Array[int] = QuarryLight.nearest(near_list, Vector2(0.0, 0.0), Vector2(10.0, 10.0), QuarryLight.PROP_LIGHTS)
+	t.ok(near.size() > 0 and near.size() <= QuarryLight.PROP_LIGHTS, "a prop takes at most PROP_LIGHTS sources")
+	var best: int = 0
+	for k in range(near_list.size()):
+		if near_list[k].pos.distance_to(Vector2(5.0, 5.0)) < near_list[best].pos.distance_to(Vector2(5.0, 5.0)):
+			best = k
+	t.eq(near[0], best, "the nearest source comes first")
+	var sorted: bool = true
+	for k in range(1, near.size()):
+		if near_list[near[k]].pos.distance_to(Vector2(5.0, 5.0)) < near_list[near[k - 1]].pos.distance_to(Vector2(5.0, 5.0)):
+			sorted = false
+	t.ok(sorted, "sources are listed nearest first")
