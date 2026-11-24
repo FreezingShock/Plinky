@@ -1,0 +1,1 @@
+Larkmoor's tall towers are now overgrown stone ruins: a broken arch at the gatehouse and by the Emberwatch gate, and a broken curtain wall in the lighthouse grove. Eight more ruins sit in small groups across the flat meadow.
