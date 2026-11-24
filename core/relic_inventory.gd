@@ -173,13 +173,18 @@ func acquire_text(id: StringName) -> String:
 	var d: RelicDef = defs[id]
 	if d.rarity.weight <= 0.0:
 		return "Granted by rebirths or achievements."
+	# Total weight counts each rarity once, not once per relic.
 	var total: float = 0.0
+	var seen: Dictionary = {}
 	var count: int = 0
 	for o: RelicDef in defs.values():
-		if o.rarity.weight > 0.0:
+		if o.rarity.weight <= 0.0:
+			continue
+		if not seen.has(o.rarity.id):
+			seen[o.rarity.id] = true
 			total += o.rarity.weight
-			if o.rarity.id == d.rarity.id:
-				count += 1
+		if o.rarity.id == d.rarity.id:
+			count += 1
 	var per: float = d.rarity.weight / float(maxi(count, 1))
 	return "Drops from presses, about 1 in %d drops." % roundi(total / per)
 
