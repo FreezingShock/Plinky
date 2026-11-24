@@ -94,14 +94,15 @@ class Field:
         return min(xs), min(ys), max(xs), max(ys)
 
 
-def soil_image(field: Field, x0: int, y0: int, mask, s: int):
+def soil_image(field: Field, x0: int, y0: int, mask, s: int, reach=None, band=None):
     """The tilled soil under a field as an RGBA image, for the canvas rect starting at (x0, y0) (canvas texels). `mask`
     is a boolean array (rows, cols) of the texels where soil may be drawn: walkable grass, clear of paths and props. The
-    soil reaches 7 mockup pixels past the wheat (a headland) and its edge dissolves through a 4-texel Bayer band."""
+    soil reaches 7 mockup pixels past the wheat (a headland), or `reach` layout texels when given (the farm runs it up to a few
+    texels short of the fence), and its edge dissolves through a Bayer band."""
     h, w = mask.shape
     c = Canvas(w, h)
-    margin = 7.0 * field.k
-    band = 3.0 * field.k
+    margin = 7.0 * field.k if reach is None else reach      # layout texels past the field's edge that still hold soil
+    band = 3.0 * field.k if band is None else band           # layout texels of Bayer dissolve beyond that
     cxc, cyc = field.cx * s, field.cy * s
     for yy in range(h):
         for xx in range(w):

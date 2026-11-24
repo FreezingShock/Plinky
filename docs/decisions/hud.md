@@ -522,3 +522,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 
 ## 2026-11-24: Bloom and Nucleus ritual, themed moments and a gift card
 - Picked by Nathan from three mockups: themed moments per reset (Bloom petals and a light shaft, Nucleus streaks, core and shards) plus a bigger Gift Ready card. Reduce flashing and Still meadow keep the calm fade; world and hover tips are held while the ritual runs.
+## 2026-11-24: Sprint tag centred over the Momentum panel
+- **Why:** PC QA batch 99 on v0.89.29 saw the tag on the panel's left edge, about 27 px off centre (a 138 px tag on a 192 px panel).
+- **Decision:** the tag centres on the panel's width, floored to a whole pixel, and is re-placed every frame it shows, since its width changes with the state.
+- **Colour:** the tag's font colour is `RelicStyle.text` (palette index 7, paper, cream in every zone). An in-engine capture at Zone 1 shows cream. QA's "green" report matches the pre-#428 tag, so the editor probably still runs the old code. Re-check after a pull and F5.
+- **Check in-engine:** hold Shift, then tap Ctrl. The tag's centre sits over the panel's centre, and the tag is cream.
+- **Not run on the PC:** the capture was a headless Godot 4.7.2 run under xvfb in the cloud, not Nathan's machine.

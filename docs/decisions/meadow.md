@@ -321,3 +321,17 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Not changed: the forest edge has only 8 points in the zone and none near Old Oak Crossing, so deer cannot appear there. Dragonflies need a season with a share (none in winter by design), and the walker in reach of the lake. | Separate data and design questions, reported to the coordinator. |
 
 - **2026-11-24, Old Oak Crossing deer:** the hub has no woods, only the lone elder oak, so the forest-edge rule finds no spot there. `tools/art/gen_life_anchors.py` `oak_ring_points()` adds three grass tips 20 to 60 texels from the trunk (`OAK_TRUNK`), clear of every pad, to `forest_edge`. Added to `world/larkmoor_life.json` by hand-run of the same function, leaving the other keys as they were. Not run in engine.
+
+## 2026-11-24: Ember Quarry cave entrance (Larkmoor, north gate)
+- **Brief (Nathan, via coordinator):** make the way into Ember Quarry a landmark: a mountain cave cut into the cliff, a mineshaft, lanterns, several distinct organic decor props, dirt around it, and a glowing neon EMBER QUARRY sign with a down arrow either side. Nathan picked mockup B (timber headframe).
+- **Perspective:** Larkmoor is a 2:1 elevated orthographic view with the cliff facing the camera (like the gateway and tower sprites). The cave has no vanishing point: widths stay constant and depth only moves things up the screen. Boxes are front-facing with a top strip, not 45 degree cubes. Every post stands on a stone footing.
+- **Pipeline:** `tools/art/gen_ember_entrance.py export` writes `assets/art/zone1b/larkmoor/entrance/` (sprites, `entrance.json`). `larkmoor_scene.gd` merges its sprites into the placements, so a regenerated `placements3d.json` does not drop them. `mock <dir> B` renders day and night mockups on the real cliff.
+- **Nodes:** 12 prop sprites and 2 lanterns (76 texels apart: ordinary lamps keep 75) (chunk streamed) plus one `EmberEntrance` node (`world/ember_entrance.gd`) for the sign and glow. Under the 1350 ceiling.
+- **Walk-in:** the lane x 1510 to 1534 stays clear of decor (checked by `tests/test_ember_entrance.gd`). Cave, rails and dirt are flat sprites sorted behind the walker. The gate anchor and its trigger are unchanged.
+- **Accessibility:** Reduce Flashing stops the neon flicker and Reduce Motion freezes the glints; the sign then stays steadily lit.
+- **Not run in the cloud:** Godot and the headless tests. PC QA should screenshot day, dusk and night and walk through the gate.
+
+## 2026-11-24: Ember Quarry entrance polish (after Nathan's "refine" ask)
+- **Art:** inside the mine mouth only the nearest frame keeps a lintel and sill; deeper frames are bare posts on footings, so the tunnel reads as depth, not rungs. The far glow is larger and brighter, sleepers are lighter, and the rock around the arch uses fewer pale highlights so it sits closer to the cliff.
+- **Immersion:** `EmberEntrance` draws 12 embers rising out of the mine (a pure function of the clock, 8 steps per second, 1 texel each), a cave fire that breathes in steps, and lifts the neon and cave glow with `MeadowLife.rain` (a heavy rain counts as 0.7 of night). Reduce Motion removes the sparks and freezes the glints; Reduce Flashing stops the breathing and the neon flicker.
+- **Checked:** `tools/art/gen_ember_entrance.py mock <dir> B` renders day, dusk, night and rain tiles on the real cliff (`times_B.png`). The in-engine look is still for PC QA.
