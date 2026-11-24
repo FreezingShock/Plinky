@@ -119,6 +119,16 @@ func run(t: Object) -> void:
 	var tip_noon: Vector2 = (sh._items[0].sprite as Sprite2D).transform * Vector2(0.0, -1.0)
 	t.ok(tip_noon.distance_to(Vector2(100.0, 100.0)) < tip_left.distance_to(Vector2(100.0, 100.0)) * 0.6,
 			"noon shadow is shorter than dawn")
+	# Per-object shadows: a tree throws the strong shadow, a bush a faint one; softness reaches the shader.
+	var tree := Sprite2D.new()
+	var bush := Sprite2D.new()
+	sh.add_caster(tree, "oak", Vector2(40.0, 50.0))
+	sh.add_caster(bush, "bush", Vector2(40.0, 50.0))
+	t.ok(float(sh._items[2].strength) < float(sh._items[1].strength) * 0.5, "a bush casts a much fainter shadow than a tree")
+	sh.set_sun(-1.0, 1.0, 1.0, {"foot": 1.0, "tip": 0.4, "soft": 0.8})
+	t.near(float(sh.mat.get_shader_parameter("softness")), 0.8, 1e-6, "shadow softness reaches the cast-shadow shader")
+	tree.free()
+	bush.free()
 	sh.free()
 	src.free()
 

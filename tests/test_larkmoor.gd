@@ -69,6 +69,9 @@ func run(t: Object) -> void:
 	t.ok(anchors.get_node_or_null("Gate") != null and anchors.get_node_or_null("Arch") != null and anchors.get_node_or_null("Walker") != null, "Gate, Arch and Walker anchors exist")
 	var d: Dictionary = scene.call("district_at", (anchors.get_node("District_heronmere") as Marker2D).position)
 	t.eq(String(d.get("name", "")), "Heronmere", "district lookup names Heronmere at its centre")
+	for pair: Array in [["reedgate", "Reedgate"], ["cairnfold", "Cairnfold"]]:
+		var dd: Dictionary = scene.call("district_at", (anchors.get_node("District_" + String(pair[0])) as Marker2D).position)
+		t.eq(String(dd.get("name", "")), String(pair[1]), "district lookup names %s at its centre" % pair[1])
 	t.ok((scene.call("district_at", Vector2(20.0, 20.0)) as Dictionary).is_empty(), "no district over open water")
 	# lighting: every prop casts a shadow and lanterns light the ground (same wiring as the meadow)
 	var props := Node2D.new()
@@ -99,6 +102,19 @@ func run(t: Object) -> void:
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
 	t.ok(lanterns > 0 and sky._lights.size() >= lanterns, "every lantern gets a light pool, none dropped at the cap (%d lights, %d lanterns)" % [sky._lights.size(), lanterns])
+	# lamps: off by day and fully lit at night, with a smooth step between (dusk and dawn)
+	t.ok(is_equal_approx(SkyCycle.lamp_light_k(0.0), 0.0) and is_equal_approx(SkyCycle.lamp_light_k(1.0), 1.0), "lamps are off in full day and fully lit at night")
+	t.ok(SkyCycle.lamp_light_k(0.3) > 0.0 and SkyCycle.lamp_light_k(0.3) < 1.0, "lamps fade in through dusk")
+	# the lamps are spread evenly: no two ordinary lamps stand closer than the generator's spacing floor
+	var feet: Array = []
+	for sp: Dictionary in sprites:
+		if String(sp.kind) == "lantern" and float(sp.w) < 20.0:
+			feet.append(Vector2(float(sp.foot[0]), float(sp.foot[1])))
+	var closest: float = INF
+	for i in feet.size():
+		for j in range(i + 1, feet.size()):
+			closest = minf(closest, (feet[i] as Vector2).distance_to(feet[j] as Vector2))
+	t.ok(feet.size() >= 20 and closest >= 75.0, "ordinary lamps are spread evenly, none closer than 75 texels (%d lamps, closest %.0f)" % [feet.size(), closest])
 	props.free()
 	holder.free()
 	WalkMask.use("")

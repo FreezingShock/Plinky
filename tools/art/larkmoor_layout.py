@@ -24,6 +24,9 @@ PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094,
 # West trail: off the east side of the west road, north of the lake and along its north shore, to the Westmere pads on the west bank.
 PATH_WM = [(600, 540), (590, 470), (540, 452), (470, 440), (400, 444), (336, 486)]
 PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_WM]
+# Path hierarchy, parallel to PATHS: a road (the main route), a lane (the forks to the districts) or a trail (the side
+# track). gen_larkmoor.py spaces the lanterns by tier: roads closest, lanes sparser, trails only a pair at the ends.
+PATH_TIER = ['road', 'lane', 'lane', 'trail']
 # Land lobes: the island's radius grows by amp * R around angle a (uv angle; -135 deg is screen up, 0 is screen down-right).
 # They give the new north and bottom-right land its shape. Width w is in radians.
 LOBES = [(-135.0, 0.20, 0.55), (0.0, 0.16, 0.50)]
@@ -74,23 +77,25 @@ def curve_row(ctrl, n, gap=PAD_GAP):
 
 
 # Districts: name, centre, pads (screen coords), landmark. Pads are six rows, listed in the order of their tiers. The
-# common and uncommon rows (Sprout at Heronmere, Clover on the south lake shore) open first, then Thistle, Heather,
+# common and uncommon rows (Sprout at Reedgate, Clover on the Heronmere south shore) open first, then Thistle, Heather,
 # Foxglove and Starbloom. Pad 1 of each row is the end nearest the road, so its row_index 0 plate is the one the walker meets first.
-# The Clover row is the fifth entry, so pad_buttons order still lines up, but it stands by the Heronmere lake path, not in
-# Cairnfold's own centre (the area list in content/areas says Heronmere for it). Both rows sit on walkable ground. Lanternwood has none.
+# A district with a row takes its centre from the row (_lay_rows). Lanternwood and Cairnfold (the stones) have no pads, so
+# their entries sit in the list without moving the pad order.
 DISTRICTS = [
     dict(id='green', name='Gatehouse Green', c=(760, 640), pads=curve_row([(816, 656), (856, 662), (896, 654), (936, 640)], 5),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=curve_row([(716, 664), (676, 660), (636, 656), (598, 650)], 5),
-         note='West lake with reed shores and a little jetty. The Sprout row runs across the open grass between the main path and the lake, well in from the arrival gate; the Clover row lines the south shore.'),
+    dict(id='reedgate', name='Reedgate', c=(670, 624), pads=curve_row([(716, 664), (676, 660), (636, 656), (598, 650)], 5),
+         note='Where the west road leaves the main road for the lake, with the first reeds beside it. The Sprout row lines the road.'),
     dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
-    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(990, 608), (1030, 612), (1066, 604), (1100, 586)], 5),
+    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(986, 640), (1026, 648), (1064, 646), (1100, 632)], 5),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
-    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
-         note='Rocky foothills, glowing crystals, a ring of standing stones. Its Clover row sits on the Heronmere south shore, pad 1 nearest the road.'),
+    dict(id='heronmere', name='Heronmere', c=(540, 637), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
+         note='West lake with reed shores and a little jetty. The Clover row lines the road along the south shore, pad 1 nearest the arrival gate.'),
     dict(id='lanternwood', name='Lanternwood', c=(960, 330), pads=[],
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
+    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[],
+         note='Rocky foothills, glowing crystals, a ring of standing stones. No pads.'),
     dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=curve_row([(806, 350), (830, 338), (858, 334)], 3),
          note='Last plaza before the quarry. The Starbloom row, and the far gate set in the cliff.'),
     dict(id='westmere', name='Westmere', c=(332, 512), pads=curve_row([(296, 494), (326, 508), (352, 514)], 3),
@@ -118,6 +123,10 @@ GROVES = [
     ('oak', (1150, 620), 45, 3), ('bush', (1110, 720), 40, 4),                  # new bottom-right land
     ('rock', (470, 250), 40, 2), ('pine', (440, 230), 40, 3),                   # new north-west land
 ]
+
+
+# The windmill farm (the cozy thread places its props there): the flower gardens keep out of this box. Authored units.
+FARM_BOX = (960, 410, 1220, 630)
 
 
 def _seg_dist(px, py, ax, ay, bx, by):
@@ -149,7 +158,7 @@ PAD_NUDGE = {
     (534, 600): (540, 594), (622, 644): (622, 648), (796, 512): (806, 512), (1030, 580): (1032, 584),
     (1074, 558): (1074, 574), (546, 648): (544, 652), (502, 626): (500, 632), (792, 344): (800, 366),
 }
-PAD_CLEAR = 24.8   # 8 texels more than the old 20.6 (authored), for the widened paths (map thread)
+PAD_CLEAR = 24.0   # texels (uv) from a path centre line to a plate centre: path half-width up to ~13 plus the plate's reach; rows sit at ROW_OFFSET (28)
 
 
 def _to_uv(sx, sy):
@@ -168,6 +177,20 @@ def path_gap(p):
     return best
 
 
+def rows_off():
+    """Pads that are not tight against a path (more than ROW_OFFSET + 6 from its centre line) or that overlap another plate.
+    gen_larkmoor.py refuses to build while this list is not empty: every row hugs a path, parallel and easy to press."""
+    bad = []
+    allp = [p for d in DISTRICTS for p in d['pads']]
+    for i, p in enumerate(allp):
+        if path_gap(p) > ROW_OFFSET + 6:
+            bad.append(('far from every path', p))
+        for q in allp[i + 1:]:
+            if abs(p[0] - q[0]) < 32 and abs(p[1] - q[1]) < 17:
+                bad.append(('plates overlap', p, q))
+    return bad
+
+
 def pads_on_path():
     """Pads whose plate would touch a path. gen_larkmoor.py refuses to build while this list is not empty."""
     return [p for d in DISTRICTS for p in d['pads'] if path_gap(p) < PAD_CLEAR]
@@ -183,7 +206,7 @@ for _d in DISTRICTS:
 # keep their texel size, so grove counts scale by S squared to keep the same density. The scene loads props by chunk around
 # the walker (world/larkmoor_scene.gd), which keeps the live node count under the 1350 ceiling.
 def _apply_scale():
-    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, PAD_CLEAR, GROVES
+    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, GROVES
     def sc(p): return (p[0] * S, p[1] * S)
     W, H = round(W * S), round(H * S)
     OX, OY = OX * S, OY * S
@@ -200,6 +223,94 @@ def _apply_scale():
         d['c'] = sc(d['c']); d['pads'] = [sc(q) for q in d['pads']]
     for lm in LANDMARKS: lm['at'] = sc(lm['at'])
     GROVES[:] = [(kind, sc(c), rad * S, round(n * S * S)) for kind, c, rad, n in GROVES]   # full density; world/larkmoor_scene.gd loads them by chunk
-    PAD_CLEAR = PAD_CLEAR * S
 
 _apply_scale()
+
+
+# ---- pad rows parallel to a path ----
+# A row is n plates laid along a path, ROW_GAP apart (uv texels), on one side of it, ROW_OFFSET from the centre line: close
+# enough to press as you walk by (the plate's edge a few texels off the path rim), never on it. The row follows the path's
+# own bends, so it always runs parallel. ROWS (below) is filled in by tools/art/plan_rows.py, which searches every path for the
+# stretch with the most open grass and keeps rows apart.
+ROW_OFFSET = 28.0
+ROW_GAP = 32.0
+# row -> (candidate path indexes, forced side or 0, pad count, (x, y, radius) in authored units the row must stay near). Paths: 0 main road, 1 west road, 2 east loop, 3 Westmere trail.
+ROW_PLAN = {
+    'sprout': ([1], 0, 5, (680, 650, 70)), 'clover': ([1], 0, 5, (540, 625, 100)), 'foxglove': ([2], 0, 5, (940, 590, 110)),
+    'thistle': ([0, 1, 2], 0, 5, (760, 640, 120)), 'heather': ([2, 0], 0, 5, (800, 500, 130)),
+    'starbloom_n': ([0], 0, 3, (770, 330, 110)), 'starbloom_w': ([3], 0, 3, (332, 512, 120)),
+}
+
+
+def _from_uv(u, v):
+    return (OX + u - v, OY + (u + v) / 2.0)
+
+
+def path_length_uv(i):
+    uv = [_to_uv(*q) for q in PATHS[i]]
+    return sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(uv, uv[1:]))
+
+
+def _at(uv, s):
+    """(u, v, tx, ty) at arc length s along a uv polyline."""
+    acc = 0.0
+    for a, b in zip(uv, uv[1:]):
+        seg = math.hypot(b[0] - a[0], b[1] - a[1])
+        if seg > 0 and acc + seg >= s:
+            t = (s - acc) / seg
+            return a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, (b[0] - a[0]) / seg, (b[1] - a[1]) / seg
+        acc += seg
+    a, b = uv[-2], uv[-1]
+    seg = math.hypot(b[0] - a[0], b[1] - a[1]) or 1.0
+    return b[0], b[1], (b[0] - a[0]) / seg, (b[1] - a[1]) / seg
+
+
+def row_pads(pidx, s0, side, n, off=None, gap=None):
+    """n plate centres (screen coords) along path `pidx` from arc length s0, on `side` (+1 left of travel, -1 right) in uv.
+    The plates are ROW_GAP apart along the OFFSET curve, so they stay evenly spaced round a bend."""
+    off = ROW_OFFSET if off is None else off
+    gap = ROW_GAP if gap is None else gap
+    uv = [_to_uv(*q) for q in PATHS[pidx]]
+    total = path_length_uv(pidx)
+    dense = []
+    s = s0
+    while s <= total:
+        u, v, tx, ty = _at(uv, s)
+        dense.append((u + (-ty) * side * off, v + tx * side * off))
+        s += 1.0
+    out = [dense[0]]
+    for q in dense[1:]:
+        if math.hypot(q[0] - out[-1][0], q[1] - out[-1][1]) >= gap:   # straight-line gap, so a tight bend can't fold plates together
+            out.append(q)
+            if len(out) == n:
+                break
+    if len(out) < n:
+        return []
+    return [_from_uv(u, v) for u, v in out]
+
+
+# row name -> (path index, start arc length, side, count), from tools/art/plan_rows.py
+ROWS = {
+    'sprout': (1, 54.0, 1, 5), 'clover': (1, 264.0, -1, 5), 'foxglove': (2, 174.0, 1, 5), 'thistle': (0, 402.0, 1, 5),
+    'heather': (2, 852.0, -1, 5), 'starbloom_n': (0, 930.0, 1, 3), 'starbloom_w': (3, 569.0, 1, 3),
+}
+_ROW_OF = {'green': 'thistle', 'reedgate': 'sprout', 'oak': 'heather', 'thistle': 'foxglove', 'heronmere': 'clover',
+           'emberwatch': 'starbloom_n', 'westmere': 'starbloom_w'}
+_ROW_FROM = {'starbloom_w': 'wm'}   # pad 1 is the end nearest the road (the spawn), except the Westmere pads, nearest the trail's start
+
+
+def _lay_rows():
+    for d in DISTRICTS:
+        key = _ROW_OF.get(d['id'])
+        if key is None:
+            continue
+        pidx, s0, side, n = ROWS[key]
+        pads = row_pads(pidx, s0, side, n)
+        origin = PATHS[3][0] if _ROW_FROM.get(key) == 'wm' else SPAWN
+        if math.hypot(pads[-1][0] - origin[0], pads[-1][1] - origin[1]) < math.hypot(pads[0][0] - origin[0], pads[0][1] - origin[1]):
+            pads.reverse()
+        d['pads'] = [(round(x), round(y)) for x, y in pads]
+        d['c'] = (round(sum(p[0] for p in pads) / n), round(sum(p[1] for p in pads) / n))
+
+
+_lay_rows()

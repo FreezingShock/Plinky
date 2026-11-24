@@ -6,6 +6,7 @@
 script = ExtResource("1")
 id = &"nucleus"
 display_name = "Nucleus"
+plural_name = "Nuclei"
 zones = PackedStringArray("zone2")
 order = 3
 currency = &"shards"
@@ -33,3 +34,5 @@ teach_text = "The forge can strike a Nucleus now. It resets your Embers and forg
 fx_stats = PackedStringArray("embers", "cinder", "ironore", "slag", "ingot", "alloy", "emberheart")
 fx_marks = ".:+#"
 fx_rise = true
+currency_body = "Earned each time the forge strikes a Nucleus. Spend it on Nucleus gifts, which make every pad pay more, for good."
+gift_blurb = "Earned each time the forge strikes a Nucleus."
