@@ -22,44 +22,83 @@ OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 
 
 
+def rim_top(c: Canvas, col: int) -> None:
+    """Lights the top edge of a sprite: every texel with nothing above it takes `col`. Props are lit from above, so
+    the rim reads as the lit edge of the form (style guide, Light 4 and Props 2)."""
+    filled = set(c.px)
+    for (x, y) in list(c.px):
+        if c.px[(x, y)] != INK and (x, y - 1) not in filled:
+            c.px[(x, y)] = col
+
+
+BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+
+
+def dither_side(c: Canvas, x0: int, x1: int, y0: int, y1: int, dark: int, light: int) -> None:
+    """The shade side of a wall: an ordered 4x4 Bayer ramp from `light` at x0 to `dark` at x1. The density rises
+    towards the edge, so the shade falls off into the plank face instead of stopping as a block (style guide, Light 3)."""
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            density = 0.55 * (x - x0 + 1) / (x1 - x0 + 1)
+            c.set(x, y, dark if BAYER4[y % 4][x % 4] / 16.0 < density else light)
+
+
 def barn() -> Canvas:
-    """A gabled barn, 72x56: red-brown walls, plank lines, a loft window, a double door."""
+    """A gabled barn, 72x56: rust planks lit on the left and dithered into shade on the right, a shingled gable with
+    a lit top edge, a loft window and a double door with a straw threshold."""
     c = Canvas(72, 56)
     c.rect(6, 24, 65, 52, EARTH)                      # walls
     for x in range(8, 65, 5):                         # plank lines
         c.seg(x, 25, x, 52, SHADE)
+    dither_side(c, 48, 65, 25, 52, SHADE, EARTH)      # the shade side of the walls
     for y in range(4, 25):                            # gable roof: a filled triangle
         half = (y - 4) * (33.0 / 20.0)
-        c.rect(round(36 - half), y, round(36 + half), y, DEEP)
+        for x in range(round(36 - half), round(36 + half) + 1):
+            c.set(x, y, BASE if x < 40 else DEEP)     # lit left slope, shaded right slope
+        if y % 4 == 0:                                # shingle courses
+            c.rect(round(36 - half), y, round(36 + half), y, SHADE)
+    rim_top(c, LIGHT)                                 # the lit top edge of the roof
     c.rect(4, 24, 67, 25, DEEP)                       # eave line
+    c.rect(6, 26, 65, 26, SHADE)                      # shadow under the eave
     c.rect(27, 33, 45, 52, INK)                       # door
     c.seg(36, 33, 36, 52, SHADE)                      # door split
     c.rect(31, 14, 41, 20, PAPER)                     # loft window
     c.seg(36, 14, 36, 20, INK)
     c.seg(31, 17, 41, 17, INK)
-    c.rect(29, 52, 43, 53, LIGHT)                     # threshold of straw
+    c.rect(29, 52, 43, 53, ACCENT)                    # threshold of straw
     c.outline(INK)
     return c
 
 
 def shed() -> Canvas:
-    """A lean-to tool shed, 40x34."""
+    """A lean-to tool shed, 40x34: a shingled roof lit on top, planks dithered into shade, and a striped awning over
+    the doorway."""
     c = Canvas(40, 34)
     c.rect(4, 12, 35, 31, EARTH)
     for x in range(6, 35, 5):
         c.seg(x, 13, x, 31, SHADE)
+    dither_side(c, 27, 35, 13, 31, SHADE, EARTH)
     for y in range(4, 13):                            # sloping roof
         span = 1 + (y - 4) * 1.6
         c.rect(max(0, round(20 - span)), y, min(39, round(20 + span)), y, BASE)
-    c.rect(2, 11, 37, 12, BASE)
+        if y % 3 == 0:
+            c.rect(max(0, round(20 - span)), y, min(39, round(20 + span)), y, SHADE)
+    rim_top(c, LIGHT)
+    c.rect(2, 11, 37, 12, DEEP)                       # eave
     c.rect(14, 18, 25, 31, INK)                       # doorway
+    for x in range(12, 28):                           # awning: alternating stripes, then a scalloped edge
+        c.set(x, 15, ACCENT if x % 2 == 0 else PAPER)
+        c.set(x, 16, ACCENT if x % 2 == 0 else PAPER)
+    for x in range(12, 28, 2):
+        c.set(x, 17, ACCENT)
     c.rect(8, 16, 11, 19, PAPER)                      # small window
     c.outline(INK)
     return c
 
 
 def hay_bale(variant: int) -> Canvas:
-    """A round bale on its side, 16x12. variant 1 has a second bale behind it at the top, so stacks read as stacks."""
+    """A round bale on its side, 16x12, with a pale lit top edge. variant 1 has a second bale behind it at the top, so
+    stacks read as stacks."""
     c = Canvas(16, 12)
     c.ellipse(8, 6, 7.4, 5.2, ACCENT)
     for y in range(2, 11):                            # straw ridges across the bale
@@ -70,6 +109,7 @@ def hay_bale(variant: int) -> Canvas:
     if variant == 1:
         c.ellipse(9, 1.5, 4.5, 2.6, ACCENT)
         c.seg(6, 0, 12, 0, LIGHT)
+    rim_top(c, PAPER)
     c.outline(INK)
     return c
 
@@ -112,14 +152,17 @@ def cart() -> Canvas:
 
 
 def crates() -> Canvas:
-    """Two crates, one stacked on the other, 12x12."""
+    """Two crates, one stacked on the other, 12x12: plank lines, a shaded lower edge and a pale lit top edge."""
     c = Canvas(12, 12)
     c.rect(0, 5, 6, 11, EARTH)
     c.seg(0, 8, 6, 8, SHADE)
     c.rect(6, 6, 11, 11, EARTH)
     c.seg(6, 9, 11, 9, SHADE)
+    c.seg(9, 6, 9, 11, SHADE)                         # a cross brace on the right crate
     c.rect(2, 0, 7, 4, EARTH)                         # top crate
     c.seg(2, 2, 7, 2, SHADE)
+    c.rect(2, 4, 7, 4, SHADE)                         # shadow where the top crate sits on the bottom one
+    rim_top(c, ACCENT)
     c.outline(INK)
     return c
 

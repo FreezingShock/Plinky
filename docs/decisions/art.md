@@ -264,3 +264,10 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - The fence ring is 44 straight chords, each with posts and two rails. It is placed before the wheat, so the clumps grow inside it. Two walk-in gaps per patch. The whole ring is one batched item and one sprite (`tools/art/gen_farm.py` draws it), so it costs one node. Its foot is on its north edge, so it sorts behind the wheat and props south of it, and it casts no shadow.
 - The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
 - Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
+
+## 2026-11-24: Farm houses and props follow the art-reference style guide
+- The barn, shed, hay bales and crates get a rim light on their top edge (`rim_top` in `tools/art/gen_farm.py`), so each prop has a lit edge the way the style guide asks (Props 2, Light 4).
+- The shade side of each wall is an ordered 4x4 Bayer ramp, not a flat block (`dither_side`), so the shade falls off into the planks (Light 3).
+- The barn's gable has a lit left slope and a shaded right slope, with shingle courses. The shed's roof has the same courses, and it has a striped awning over its door.
+- Sprite sizes and names are unchanged, so the farm layout and the baked wheat do not move.
+- Not checked on the PC. The cloud render shows the props, but not at night.
