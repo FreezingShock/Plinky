@@ -280,3 +280,9 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - **Groves:** three north-east candidates (pine at 1190,380; oak at 1010,240; bush at 1150,470). The forest-edge count goes 6 to 7. The density bar is the lighthouse grove at 640,590 (oak, 4 per group, radius 60).
 - **Regen:** `gen_larkmoor.py`, then `gen_life_anchors.py --bounds 380,220,2680,1450 --sway-count 1680`, then `--add-keys --farm assets/art/zone1b/farm/farm.json`, then `gen_gardens.py`. Lamps 23, flowers 240 (life), gardens 2238.
 - Not run in-engine yet: the zoom 1 and zoom 3 captures, and the walk test.
+## 2026-11-24: Larkmoor lighthouse-grove trail (Nathan's yes)
+- **Why:** Nathan's decision card on the path-tier PR: "Add a narrow new trail through the lighthouse grove?" Answer: yes. The grove was the density bar for the other clusters, and it had no route through it.
+- **Route:** `PATH_GROVE` in `tools/art/larkmoor_layout.py`, tier `trail` (half-width 4). It leaves the west road at its bend (680, 516), runs through the grove centre (640, 590), and ends at the lighthouse foot (604, 590), so it is never a dead end.
+- **Why it ends at the lighthouse and not on the road:** a first try rejoined the west road at (630, 628). That broke the clearance of the two Reedgate pads that sit against the road's south side (`pads_on_path` failed), so the route stops at the landmark instead.
+- **Regen:** same chain as the path-tier entry above. The trail gets one lamp at its midpoint (trail spacing 400 with the end margin).
+- Not run in-engine from the cloud yet: a grove capture and the walk test are still to do on the PC.

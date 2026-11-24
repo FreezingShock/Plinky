@@ -23,10 +23,14 @@ PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094,
 # Only the main road runs north: to the Ember gate, top middle. The side trails stop short of the mountainside.
 # West trail: off the east side of the west road, north of the lake and along its north shore, to the Westmere pads on the west bank.
 PATH_WM = [(600, 540), (590, 470), (540, 452), (470, 440), (400, 444), (336, 486)]
-PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_WM]
+# A narrow trail through the lighthouse grove (Nathan's yes, 2026-11-24): it leaves the west road at its bend (680, 516),
+# runs through the grove's centre (640, 590) and ends at the lighthouse foot (596, 590), a landmark, so it is never a dead
+# end. It stays off the Reedgate pads, which sit against the road's south side (a route south to the road broke their clearance).
+PATH_GROVE = [(680, 516), (664, 548), (650, 582), (620, 590), (604, 590)]
+PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_WM, PATH_GROVE]
 # Path hierarchy, parallel to PATHS: a road (the main route), a lane (the forks to the districts) or a trail (the side
 # track). gen_larkmoor.py spaces the lanterns by tier: roads closest, lanes sparser, trails only a pair at the ends.
-PATH_TIER = ['road', 'lane', 'lane', 'trail']
+PATH_TIER = ['road', 'lane', 'lane', 'trail', 'trail']
 # Land lobes: the island's radius grows by amp * R around angle a (uv angle; -135 deg is screen up, 0 is screen down-right).
 # They give the new north and bottom-right land its shape. Width w is in radians.
 LOBES = [(-135.0, 0.20, 0.55), (0.0, 0.16, 0.50)]
