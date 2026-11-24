@@ -10,5 +10,5 @@ display_name = "Gatehouse Green"
 order = 0
 icon = "grass"
 theme_role = 4
-blurb = "The grass just past the arch. Three Thistle pads in a line, paid in Sunlight."
-pad_buttons = PackedStringArray("thistle_1", "thistle_2", "thistle_3")
+blurb = "The grass just past the arch. Five Thistle pads in a curve, paid in Sunlight."
+pad_buttons = PackedStringArray("thistle_1", "thistle_2", "thistle_3", "thistle_4", "thistle_5")
