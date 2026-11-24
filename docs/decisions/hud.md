@@ -395,3 +395,6 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 ## 2026-11-24: Pad captions lift their stat colour toward white
 - Reasoning: PC QA found the quarry's "Iron Ore" caption (dark green) hard to read on dark rock. The lift keeps each stat's hue; on the mid quarry rock (8a3a2e) Iron Ore goes from 2.96:1 to 4.9:1, and a test holds every stat caption at 4:1 or better.
 - Not verified in-engine: PC QA should check "Iron Ore" in the quarry at 1x and 3x.
+
+## 2026-11-24: Dev console is a floating window with tab completion
+A draggable, resizable window (not a full-width strip) so the game stays visible behind it, with the input focused on open. Commands are one table in core/dev_commands.gd, so help, Tab and the tests read the same list; the window only adds the node-level commands and layout. Errors use the accent colour with a "!" because the palette has no red role.
