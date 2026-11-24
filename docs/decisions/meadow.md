@@ -68,3 +68,8 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Props and lights:** props went from 100 to 90 and glow lights from 5 to 3, because the generator cleared props around the moved pads.
 - **Sway tips:** regenerated with the 2026-11-23 command. All 420 sit on the palette colour.
 - Not run in-engine from the cloud.
+
+## 2026-11-24: Clover chip and gold rim
+- **Why:** PC QA on v0.58.2: the "Needs Dewdrops" chip did not show at 1x, and the Clover rim read green at 3x. The Clover row is uncommon, so its rarity ring was the uncommon green, and its gems were the Clover reward green. Both drew over the one-texel gold rim.
+- **What:** Clover pads take the gold `#f2c14e` on the rim, the lit rim, the dashed rarity ring and the corner gems. The chip is a cream box with an ink border and ink text, drawn under the plate. The buy-state green inside the plate is unchanged.
+- Not run in-engine from the cloud. Please check the chip and the rim at 1x and 3x on a PC capture.

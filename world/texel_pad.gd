@@ -109,6 +109,7 @@ func _ready() -> void:
 			_lock_hint = "Needs %s" % cost_def.display_name
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
+			stat_color = CLOVER_TRIM   # gems and pip take the Clover gold, not the Clover reward green
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
 
@@ -327,7 +328,7 @@ func _draw() -> void:
 		face_r = face
 	_rows(0, top, hx, hy, face, face_r)
 	if st != PadState.FAR:
-		_lit_rim(top, hx, hy, palette[5])
+		_lit_rim(top, hx, hy, _trim if _trim.a > 0.0 else palette[5])
 	elif hovered:
 		_lit_rim(top, hx, hy, palette[3])
 	# Rim: brighter as the walker approaches or the mouse hovers.
@@ -367,7 +368,7 @@ func _draw() -> void:
 				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), StatStyle.gain().darkened(0.2))
 	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Legendary adds corner studs.
 	if rarity != null and rarity.rank > 0:
-		_dashed_diamond(0.86, top, rarity.tint())  # dashed, so Uncommon green never reads as the buy-state green
+		_dashed_diamond(0.86, top, _trim if _trim.a > 0.0 else rarity.tint())  # dashed, so Uncommon green never reads as the buy-state green
 		if rarity.rank >= 4:
 			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
 				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
@@ -394,8 +395,10 @@ func _draw() -> void:
 	# A locked row's first pad names what it needs, under the plate, in a dark-outlined cream so it reads on grass.
 	if locked and _lock_hint != "" and LOCK_FONT != null:
 		var tw: float = LOCK_FONT.get_string_size(_lock_hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16).x
-		draw_rect(Rect2(-tw * 0.5 - 3.0, float(THICK + 4), tw + 6.0, 10.0), ink)   # a dark backing, so the text reads on any grass
-		draw_string(LOCK_FONT, Vector2(-40.0, float(THICK + 11)), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, palette[6])
+		var box: Rect2 = Rect2(-tw * 0.5 - 3.0, float(THICK + 3), tw + 6.0, 11.0)
+		draw_rect(box, ink)   # a cream chip with an ink border, so it reads on grass at 1x
+		draw_rect(box.grow(-1.0), Color("f6efd9"))
+		draw_string(LOCK_FONT, Vector2(-40.0, float(THICK + 11)), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, ink)
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
