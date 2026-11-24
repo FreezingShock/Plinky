@@ -39,8 +39,8 @@ const FADE_RATE: float = 0.6                # per second: how fast a creature di
 ## paper wings and a gold head, the fish is gold with a paper eye, the deer is earth brown with a paper belly, the owl is brown
 ## with paper eyes. Dragonfly 9 x 3 with wings up and down, fish 8 x 3, deer 10 x 8 facing right, owl 5 x 5. The deer is
 ## earth brown (f) with a paper belly, so it reads against the grass.
-const DRAGON_UP: Array = ["ww.k.k.ww", ".wwkkkww.", "...kyk..."]
-const DRAGON_DOWN: Array = ["...kyk...", ".wwkkkww.", "ww.k.k.ww"]
+const DRAGON_UP: Array = ["ww..k.k..ww", ".wwkkkkkww.", "...kyyyk..."]
+const DRAGON_DOWN: Array = ["...kyyyk...", ".wwkkkkkww.", "ww..k.k..ww"]
 const FISH_ART: Array = ["...kk...", "kyyyywyk", "...kk..."]
 const DEER_ART: Array = [".....k.k..", "....kffk..", "...ffffff.", "wffffffff.", "wffwwwwff.", ".dffffffd.", "..d.d.d.d.", "..k.k.k.k."]
 const OWL_OPEN: Array = ["k...k", "kbbbk", "bwkwb", "bbbbb", ".bbb."]
@@ -375,7 +375,7 @@ func _draw_dragon(d: Dictionary, tb: float) -> void:
 		return
 	var up: bool = posmod(int(tb * 8.0) + int(d.seed), 2) == 0
 	var spr: Dictionary = _sprites["dragon_up" if up else "dragon_down"] as Dictionary
-	var origin: Vector2i = Vector2i(roundi(at.x) - 4, roundi(at.y) - 1)
+	var origin: Vector2i = Vector2i(roundi(at.x) - 5, roundi(at.y) - 2)
 	MeadowLife.blit(_ci, palette, spr, origin, (d.to as Vector2).x < at.x, float(d.fade))
 
 
