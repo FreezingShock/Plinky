@@ -563,3 +563,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. `_wire_focus` runs when the body is built, and skips a menu that is shown off-tree (tests).
 - **Checked:** the open menu matches main pixel for pixel in the tiles and header. The footer labels (Close Menu, Quit To Title, Quit Game) sit 1 px to the right of main's, and that holds after 2.5 s, so it is not the open animation. Not traced yet; likely how MenuTextButton measures its label on its first `_ready`. `tests/run.gd` passes. Two tests now show the menu before reading its tiles.
 - **Not run in-engine:** the focus feel on a real PC.
+
+## 2026-11-24: Menu text buttons measure with crisp font settings from the start (footer alignment)
+- **Decision:** `MenuTextButton` applies `CrispFont` in `_init`, not only in `_ready`. The menus set `label` before the button enters the tree, and the setter measures the text right away, so the first measurement used the default font settings.
+- **Why:** the Gallery footer (Close Menu, Quit To Title, Quit Game) sat 1 px right in the lazy build (PR #464) and not in the eager build. A/B probe, footer button widths: before 120 / 128 / 114 eager and 120 / 127 / 113 lazy; after 119 / 127 / 113 in both. Positions are now 136 / 259 / 390 in both builds.
+- **Checked:** the footer crop is pixel-identical between the eager and lazy builds with this change. The footer text is 1 px narrower on `Close Menu` and `Quit To Title` than the old eager build showed, which is the crisp measurement.
+- **Not run in-engine:** the footer on a real PC.

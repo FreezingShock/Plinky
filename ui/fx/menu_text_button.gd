@@ -47,6 +47,12 @@ var selected: bool = false:
 var show_focus_ring: bool = true
 
 
+# Crisp settings go on before any label is measured: a label set before the button enters the tree (the menus do this)
+# is measured in _fit() now, and an un-crisp first measurement left the footer 1 px off.
+func _init() -> void:
+	CrispFont.apply(FONT)
+
+
 func _ready() -> void:
 	CrispFont.apply(FONT)
 	super._ready()
