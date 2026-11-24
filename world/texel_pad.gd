@@ -578,9 +578,12 @@ func _draw_flowers(top: int, ink: Color) -> void:
 		stage = stage_of(sbd.row_index)
 	if not locked and _bloom_t <= 0.0 and stage >= 2:
 		for side in [-1, 1]:
-			if stage == 2:   # pad 2: two small sprouts beside the flower
+			if stage == 2:   # pad 2: a sprout and a smaller bud beside the flower, and a leaf tuft at its foot
 				for bc: Vector3i in BUD:
-					cells.append(Vector3i(bc.x * 1 + side * 9, base + bc.y, bc.z))
+					cells.append(Vector3i(bc.x + side * 9, base + bc.y, bc.z))
+					cells.append(Vector3i(bc.x + side * 15, base + bc.y + 2, bc.z))
+				for lc: Vector2i in [Vector2i(5, 0), Vector2i(6, -1), Vector2i(7, -2), Vector2i(4, 1)]:
+					cells.append(Vector3i(side * lc.x, base + lc.y, 3))
 			else:            # pad 3 and up: two half-height flowers of the same tier, so the row reads as a bed
 				_half_flower(cells, rows, n, side * 10, base - 6)
 			if stage >= 4:   # pad 4: the bed widens (a bud at each outer edge) and two taller blooms stand up behind
