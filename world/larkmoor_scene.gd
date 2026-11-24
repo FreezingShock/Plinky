@@ -105,10 +105,23 @@ func _add_sky() -> void:
 	pad_material = _sky.pad_material(load(DIR + "ground_h.png") as Texture2D, _ground.position)
 	_place_atmosphere()
 	add_child(_sky)
+	_add_flower_glow()
 	var water_glow := WaterNightGlow.new()   # night glow on the lake and river (world/water_night_glow.gd)
 	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
 	water_glow.setup(_sky, load(DIR + "ground_n.png") as Texture2D, _ground.position)
 	_add_lights()
+
+
+## The night light on the flower fields (world/flower_glow.gd). Sits just above the night shade (z 5 of the sky), so it
+## stays lit in the dark, and it is built once from the same flowers as the gardens.
+func _add_flower_glow() -> void:
+	if not FlowerGlow.enabled or _garden_flowers.is_empty():
+		return
+	_flower_glow = FlowerGlow.new()
+	_flower_glow.name = "FlowerGlow"
+	_flower_glow.z_index = 5
+	add_child(_flower_glow)
+	_flower_glow.setup(_garden_flowers)
 
 
 ## Haze over the mountain strip along the top of the backdrop (all the way across: there is no island in front of
@@ -168,7 +181,8 @@ func _add_gardens() -> void:
 	var layer := GardenLayer.new()
 	layer.name = "Gardens"
 	add_child(layer)
-	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
+	_garden_flowers = (parsed as Dictionary).get("flowers", []) as Array
+	layer.setup(_garden_flowers)
 	layer.pusher_group = &"walker"
 	_gardens = layer
 
@@ -247,6 +261,8 @@ const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
 var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
 var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
+var _garden_flowers: Array = []          # the flower list the gardens were drawn from (world/larkmoor_gardens.json)
+var _flower_glow: FlowerGlow             # the night light on each field's flowers (world/flower_glow.gd)
 const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
 
 
@@ -334,6 +350,8 @@ func _process(_delta: float) -> void:
 			_gardens.season = int(snap.get("season", GardenArt.SEASON_SUMMER))
 			hour = int(snap.get("hour", 12))
 		_gardens.closed = night > 0.6
+		if _flower_glow != null:
+			_flower_glow.set_night(night)
 		_gardens.dew = not _gardens.closed and hour >= 5 and hour < 9   # the first morning hours: drops on the open heads
 
 
