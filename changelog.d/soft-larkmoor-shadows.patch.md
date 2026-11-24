@@ -1,0 +1,1 @@
+Shadows are softer: cast shadows and the ground shadows feather at the edge, with a new Shadow Softness setting in the sky config. Trees throw large, dark shadows, bushes and flower beds faint small ones. Larkmoor's autumn noon no longer stacks an orange cast on top of the orange ground.

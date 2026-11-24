@@ -9,17 +9,31 @@ extends Node2D
 ## moves, and the walker's. Rain and the horizon crossing fade them out.
 
 const SHADER: Shader = preload("res://render/shaders/cast_shadow.gdshader")
-## Width and height of a shadow as a share of the sprite's own size, by prop kind (placements3d.json "kind").
+## Per prop kind (placements3d.json "kind"): the shadow's width and height as a share of the sprite, how dark it is
+## (`strength`, 1 is a full tree), how far it stretches (`length`, times the sun's length) and how much softer than the
+## global SkyConfig.shadow_softness it is (`soft`). Trees throw the big, dark pools; bushes, flower beds and cozy props a
+## faint small one, so the eye reads the trees as the tall things they are.
 const KIND: Dictionary = {
-	"oak": Vector2(0.80, 0.80), "pine": Vector2(0.45, 0.95), "bush": Vector2(0.85, 0.45),
-	"rock": Vector2(0.80, 0.55), "crystals": Vector2(0.50, 0.85),
-	"menhir": Vector2(0.55, 0.9), "lantern": Vector2(0.4, 0.8), "sign": Vector2(0.5, 0.7), "tower": Vector2(0.7, 0.95),
-	"windmill": Vector2(0.6, 0.95), "lighthouse": Vector2(0.5, 1.0), "obelisk": Vector2(0.45, 1.0),
-	"gateway": Vector2(0.9, 0.8), "spire": Vector2(0.45, 0.95), "lintel": Vector2(0.9, 0.7), "gate_pillar": Vector2(0.5, 0.9),
+	"oak": {"size": Vector2(1.0, 0.9), "strength": 1.0, "length": 1.25, "soft": 0.1},
+	"pine": {"size": Vector2(0.55, 1.0), "strength": 1.0, "length": 1.45, "soft": 0.1},
+	"bush": {"size": Vector2(0.6, 0.35), "strength": 0.35, "length": 0.6, "soft": 0.35},
+	"rock": {"size": Vector2(0.75, 0.5), "strength": 0.6, "length": 0.7, "soft": 0.2},
+	"crystals": {"size": Vector2(0.5, 0.7), "strength": 0.7, "length": 0.9, "soft": 0.15},
+	"menhir": {"size": Vector2(0.6, 0.9), "strength": 0.85, "length": 1.1, "soft": 0.1},
+	"lantern": {"size": Vector2(0.35, 0.7), "strength": 0.5, "length": 0.8, "soft": 0.2},
+	"sign": {"size": Vector2(0.5, 0.7), "strength": 0.6, "length": 0.8, "soft": 0.15},
+	"tower": {"size": Vector2(0.7, 0.95), "strength": 0.9, "length": 1.1, "soft": 0.05},
+	"windmill": {"size": Vector2(0.6, 0.95), "strength": 0.9, "length": 1.15, "soft": 0.05},
+	"lighthouse": {"size": Vector2(0.5, 1.0), "strength": 0.9, "length": 1.1, "soft": 0.05},
+	"obelisk": {"size": Vector2(0.45, 1.0), "strength": 0.85, "length": 1.0, "soft": 0.1},
+	"gateway": {"size": Vector2(0.9, 0.8), "strength": 0.8, "length": 0.8, "soft": 0.1},
+	"spire": {"size": Vector2(0.45, 0.95), "strength": 0.85, "length": 1.1, "soft": 0.1},
+	"lintel": {"size": Vector2(0.9, 0.7), "strength": 0.7, "length": 0.7, "soft": 0.2},
+	"gate_pillar": {"size": Vector2(0.5, 0.9), "strength": 0.8, "length": 0.9, "soft": 0.1},
 }
+const DEFAULT_KIND: Dictionary = {"size": Vector2(0.6, 0.45), "strength": 0.4, "length": 0.6, "soft": 0.35}
 const SHADE: Color = Color(0.28, 0.38, 0.56)
 const SHADE_DEEP: Color = Color(0.12, 0.18, 0.36)   # at low sun the ground is dark, so the shadow goes deeper to stay readable
-const DEFAULT_KIND: Vector2 = Vector2(0.7, 0.6)
 const WALKER_SIZE: Vector2 = Vector2(11.0, 17.0)   # width of the walker's shadow and the height it stretches from
 const QUANT: float = 24.0                          # sun values are rounded to 1/QUANT so the shadows move in steps
 
@@ -50,6 +64,7 @@ func _init() -> void:
 func _ready() -> void:
 	_blob = _quad("WalkerShadow")
 	_blob.visible = false
+	_blob.set_instance_shader_parameter(&"item_soft", 0.25)   # the walker's shadow is a little softer than a tree's
 
 
 func _quad(nm: String) -> Sprite2D:
@@ -68,11 +83,21 @@ func _quad(nm: String) -> Sprite2D:
 
 ## Register a prop sprite (as built by MeadowScene.spawn_occluders) with its kind and its foot position.
 func add_caster(src: Sprite2D, kind: String, size: Vector2) -> void:
-	var k: Vector2 = KIND.get(kind, DEFAULT_KIND) as Vector2
+	var k: Dictionary = KIND.get(kind, DEFAULT_KIND) as Dictionary
+	var share: Vector2 = k.size as Vector2
 	var sp: Sprite2D = _quad("Sh_" + String(src.name))
-	_items.append({"sprite": sp, "foot": src.position, "w": size.x * k.x, "h": size.y * k.y, "ov": null, "src": src})
-	_maybe_overlay(_items[_items.size() - 1])
-	_lay(_items[_items.size() - 1])
+	var it: Dictionary = {"sprite": sp, "foot": src.position, "w": size.x * share.x, "h": size.y * share.y, "ov": null,
+			"src": src, "strength": float(k.strength), "soft": float(k.soft), "len": float(k.length)}
+	_items.append(it)
+	_tune(sp, it)
+	_maybe_overlay(it)
+	_lay(it)
+
+
+## Per-caster strength and softness go to the shader as instance uniforms, so every caster keeps one shared material.
+func _tune(sp: Sprite2D, it: Dictionary) -> void:
+	sp.set_instance_shader_parameter(&"item_strength", float(it.get("strength", 1.0)))
+	sp.set_instance_shader_parameter(&"item_soft", float(it.get("soft", 0.0)))
 
 
 ## Drop the shadow of a prop that has been unloaded (Larkmoor loads props by chunk). Frees its quad and its pad copy.
@@ -89,8 +114,10 @@ func remove_caster(src: Sprite2D) -> void:
 ## A shadow for something that is not a prop sprite (a pad slab): foot position, width, and the height it stretches from.
 func add_blob(foot: Vector2, w: float, h: float) -> void:
 	var sp: Sprite2D = _quad("Sh_blob%d" % _items.size())
-	_items.append({"sprite": sp, "foot": foot, "w": w, "h": h, "ov": null})
-	_lay(_items[_items.size() - 1])
+	var it: Dictionary = {"sprite": sp, "foot": foot, "w": w, "h": h, "ov": null, "strength": 1.0, "soft": 0.1, "len": 1.0}
+	_items.append(it)
+	_tune(sp, it)
+	_lay(it)
 
 
 ## A pad plate sits at `pos`. Shadows of nearby props get a clipped copy above the plates, so they cross the pad.
@@ -133,6 +160,7 @@ func _maybe_overlay(it: Dictionary) -> void:
 	remove_child(sp)
 	_overlay.add_child(sp)
 	sp.material = _ov_mat
+	_tune(sp, it)
 	it["ov"] = sp
 
 
@@ -144,7 +172,8 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 	mat.set_shader_parameter("density_foot", float(p.foot))
 	mat.set_shader_parameter("density_tip", float(p.tip))
 	mat.set_shader_parameter("shade", SHADE.lerp(SHADE_DEEP, clampf(float(p.get("low", 0.0)), 0.0, 1.0)))
-	for k: StringName in [&"strength", &"density_foot", &"density_tip", &"shade"]:
+	mat.set_shader_parameter("softness", clampf(float(p.get("soft", 0.5)), 0.0, 1.0))
+	for k: StringName in [&"strength", &"density_foot", &"density_tip", &"shade", &"softness"]:
 		_ov_mat.set_shader_parameter(k, mat.get_shader_parameter(k))
 	if _overlay != null:
 		_overlay.visible = visible
@@ -161,14 +190,15 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 
 ## Lay one shadow: an oval from just behind the foot out along the shadow direction, in ground space.
 func _lay(it: Dictionary) -> void:
-	_place(it.sprite as Sprite2D, it.foot as Vector2, float(it.w), float(it.h))
+	var len_k: float = float(it.get("len", 1.0))
+	_place(it.sprite as Sprite2D, it.foot as Vector2, float(it.w), float(it.h), len_k)
 	if it.ov != null:
-		_place(it.ov as Sprite2D, it.foot as Vector2, float(it.w), float(it.h))
+		_place(it.ov as Sprite2D, it.foot as Vector2, float(it.w), float(it.h), len_k)
 
 
-func _place(sp: Sprite2D, foot: Vector2, w: float, h: float) -> void:
+func _place(sp: Sprite2D, foot: Vector2, w: float, h: float, len_k: float = 1.0) -> void:
 	var wid: float = w * 1.25
-	var span: float = maxf(h * _len, 2.0) + wid * 0.7
+	var span: float = maxf(h * _len * len_k, 2.0) + wid * 0.7
 	var dir_s := Vector2(_dir.x, _dir.y * 0.5)               # ground to screen: y squashed 2:1
 	var perp_s := Vector2(-_dir.y, _dir.x * 0.5)
 	var origin: Vector2 = foot - dir_s * (wid * 0.35)
