@@ -51,3 +51,11 @@ func run(t: Object) -> void:
 	# No rain configured: nothing gets wet.
 	m.rain_max = 0.0
 	t.ok(m.wetness(500.0) == 0.0, "no rain at all means dry ground")
+
+	# Low quality drops the splash rings and dawn mist; Medium and High keep them.
+	var before: int = GraphicsQuality.level
+	GraphicsQuality.set_level(GraphicsQuality.Level.LOW, false)
+	t.ok(not GraphicsQuality.rain_rings_and_mist(), "Low quality drops rain rings and dawn mist")
+	GraphicsQuality.set_level(GraphicsQuality.Level.HIGH, false)
+	t.ok(GraphicsQuality.rain_rings_and_mist(), "High quality keeps rain rings and dawn mist")
+	GraphicsQuality.set_level(before, false)
