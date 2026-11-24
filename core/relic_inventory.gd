@@ -165,6 +165,14 @@ func pity_due(first_drop: bool) -> float:
 		return config.first_drop_seconds
 	return config.pity_seconds * maxf(0.1, 1.0 - total_effect(RelicDef.Effect.PITY_SPEED))
 
+## Highest rarity rank among equipped relics, or -1 for none. The walker aura colours its pool with it.
+func top_equipped_rank() -> int:
+	var best: int = -1
+	for id in equipped:
+		if defs.has(id):
+			best = maxi(best, (defs[id] as RelicDef).rarity.rank)
+	return best
+
 ## Rolls a drop. Returns the relic id, or &"" for no drop. `luck_level` comes from the Luck attribute.
 ## Rarity is picked by weight first (so Divine stays rare no matter how many relics exist), then a relic within it.
 func roll_drop(rng: RandomNumberGenerator, luck_level: int, force: bool = false) -> StringName:
