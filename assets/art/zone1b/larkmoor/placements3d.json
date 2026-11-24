@@ -439,15 +439,29 @@
    "file": "sprites/windmill_014.png",
    "nrm": "sprites/windmill_014_n.png",
    "kind": "windmill",
-   "x": 2148,
-   "y": 987,
-   "w": 65,
-   "h": 56,
+   "x": 2168,
+   "y": 997,
+   "w": 26,
+   "h": 46,
    "foot": [
     2180.0,
     1037.0
    ],
    "sort_y": 1037.0
+  },
+  {
+   "file": "sprites/windmill_sails_900001.png",
+   "nrm": "sprites/windmill_sails_900001_n.png",
+   "kind": "windmill_sails",
+   "x": 2166,
+   "y": 997,
+   "w": 29,
+   "h": 27,
+   "foot": [
+    2180.0,
+    1009.4
+   ],
+   "sort_y": 1009.4
   },
   {
    "file": "sprites/menhir_015.png",
