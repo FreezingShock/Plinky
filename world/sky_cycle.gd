@@ -213,12 +213,11 @@ func _pond_array() -> Array:
 func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
 	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
-	_lights.append({"pos": pos, "radius": radius, "strength": strength, "kind": kind, "tint": Color(0.0, 0.0, 0.0, 0.0)})
+	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": Color(0.0, 0.0, 0.0, 0.0)})
 
 
-## Tints the pad pool at `pos` with `col` (a buy colour). Alpha 0 keeps the warm default. Pads are added with kind &"pad",
-## and the pool nearest `pos` within 1.5 texels is the one that changes.
-func set_pool_tint_at(pos: Vector2, col: Color) -> void:
+## The pad pool nearest `pos` within 1.5 texels, or an empty dictionary. Pads are added with kind &"pad".
+func _pad_pool_at(pos: Vector2) -> Dictionary:
 	var best: Dictionary = {}
 	var best_d: float = 1.5
 	for L: Dictionary in _lights:
@@ -228,8 +227,21 @@ func set_pool_tint_at(pos: Vector2, col: Color) -> void:
 		if d < best_d:
 			best_d = d
 			best = L
+	return best
+
+
+## Tints the pad pool at `pos` with `col` (a buy colour). Alpha 0 keeps the warm default.
+func set_pool_tint_at(pos: Vector2, col: Color) -> void:
+	var best: Dictionary = _pad_pool_at(pos)
 	if not best.is_empty():
 		best.tint = col
+
+
+## Scales the pad pool at `pos` to `share` of its own strength (1 = full). Used so a crowd of pads does not stack into one blow-out.
+func set_pool_strength_at(pos: Vector2, share: float) -> void:
+	var best: Dictionary = _pad_pool_at(pos)
+	if not best.is_empty():
+		best.strength = float(best.base) * share
 
 
 ## Light pools sent to the shader on the last frame (tests read this).
