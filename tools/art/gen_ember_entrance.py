@@ -454,7 +454,7 @@ def dirt_apron(g, X0, Y0):
             g.putpixel((x, y), c)
 
 
-LAMPS = ((1494, 526), (1548, 526), (1494, 572), (1548, 572))   # lantern feet: 26 texels off the path centre, nothing on the lane
+LAMPS = ((1484, 528), (1560, 528))   # lantern feet, 76 apart (ordinary lamps keep 75 texels apart), nothing on the walk lane
 CAVE_AT = (1456, 431)        # cave sprite top-left; its ground contact is y 522
 SIGN_Y = 414
 
@@ -462,10 +462,10 @@ SIGN_Y = 414
 def decor_list():
     """(canvas, foot x, foot y, kind). Everything sits at least 20 texels off the path lane (x 1503..1540)."""
     return [
-        (crate_stack(), 1466, 547, "crates"), (barrels(), 1440, 556, "barrels"), (timber_pile(), 1426, 532, "timber"),
-        (ore_pile(3), 1578, 548, "ore"), (cart_tipped(), 1592, 568, "cart"), (pick_rack(), 1568, 530, "rack"),
-        (boulder(4, 34, 22), 1446, 570, "boulder"), (boulder(9, 26, 18), 1624, 558, "boulder"),
-        (ore_pile(7, 22), 1472, 576, "ore"), (crate_stack(), 1604, 540, "crates"),
+        (crate_stack(), 1450, 547, "crates"), (barrels(), 1424, 562, "barrels"), (timber_pile(), 1408, 534, "timber"),
+        (ore_pile(3), 1580, 556, "ore"), (cart_tipped(), 1598, 574, "cart"), (pick_rack(), 1586, 526, "rack"),
+        (boulder(4, 34, 22), 1438, 580, "boulder"), (boulder(9, 26, 18), 1644, 566, "boulder"),
+        (ore_pile(7, 22), 1470, 580, "ore"), (crate_stack(), 1620, 544, "crates"),
     ]
 
 
