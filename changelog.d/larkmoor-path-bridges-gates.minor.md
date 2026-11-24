@@ -1,1 +1,0 @@
-Larkmoor is bolder: its paths have defined edges and flower verges, every path now leads somewhere, the arrival arch is a timber and flower gate, the Ember gate is stone with ember bloom, the stones of the standing ring are a tidy circle, and the bridge over the stream and the lake jetty are wider and easy to step onto.
