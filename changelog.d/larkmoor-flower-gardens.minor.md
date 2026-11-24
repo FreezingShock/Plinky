@@ -1,1 +1,0 @@
-Larkmoor's pad rows now run right beside the paths, parallel and easy to press, each in its own flower field of that statistic's flower (clover patches, tall foxgloves, heather tufts and more) that sways and leans away from you, and tapping a pad now walks around trees and water to reach it.
