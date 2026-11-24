@@ -73,6 +73,18 @@ func run(t: Object) -> void:
 	lit_pad.locked = true
 	t.ok(lit_pad.light_tint().a == 0.0, "a locked pad keeps the warm pool colour")
 	lit_pad.free()
+	# Crowding: a lone pad keeps all its light, and any crowd of lit pads adds up to about two pads' worth, never one per pad.
+	t.eq(TexelPad.crowd_scale(1), 1.0, "a lone pad keeps its full halo and pool")
+	t.eq(TexelPad.crowd_scale(2), 1.0, "a pair of pads keeps its full light")
+	for n in range(1, 11):
+		t.ok(float(n) * TexelPad.crowd_scale(n) <= 2.0 + 0.001, "%d pads together add up to at most about two pads' light" % n)
+	t.ok(TexelPad.crowd_scale(5) < TexelPad.crowd_scale(2), "a pad in a busy row is dimmer than one in a pair")
+	var crowd_pad := TexelPad.new()
+	crowd_pad.crowd = 5
+	t.ok(crowd_pad.light_strength() < 1.0, "a pad in a busy row lights less than a lone pad")
+	crowd_pad.locked = true
+	t.eq(crowd_pad.light_strength(), 1.0, "a locked pad keeps its warm pool at full strength")
+	crowd_pad.free()
 	var sim: Sim = t.make_sim()
 	for id: StringName in sim.button_defs:
 		var r: StringName = sim.pad_rarity(id)

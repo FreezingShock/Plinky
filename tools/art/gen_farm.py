@@ -4,9 +4,8 @@ Writes assets/art/zone1b/farm/ (PNG sprites, wheat field frame sheets, farm_prev
 (the windmill is about 65 texels wide), so these are about twice the meadow's cozy props. Everything is drawn in the
 meadow palette roles from gen_cozy.py, so the post-process palette and dither treat them like the rest of the meadow.
 
-Wheat fields are one sheet each: 8 gust frames, like gen_cozy's wheat, but with mixed stalk heights, tapered edges,
-and a per-field seed so no two fields look stamped. Tilled plots are static: furrows, and rows that have sprouted
-against bare soil, so the growth looks uneven.
+Wheat fields are one sheet each: 8 gust frames, like gen_cozy's wheat, as a thick mass of rows with mixed stalk
+heights, rounded sides, and a per-field seed so no two fields look stamped. The fields are wheat only: no plots.
 
 Run: python3 tools/art/gen_farm.py   (needs Pillow; the layout is in place_farm.py).
 """
@@ -25,9 +24,9 @@ ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 
 WHEAT_FRAMES = 8
-FIELD_W, FIELD_H = 96, 28       # the default gust frame of a wheat field
 # name, frame width, seed. Wider fields are bigger patches; every field shares the height and the 8-frame wave.
 FIELD_SPECS = [('field_a', 96, 11), ('field_b', 96, 23), ('field_c', 128, 37), ('field_d', 160, 51)]
+FIELD_H = 44                    # the row sheets are taller than the old strip: rows stack back to front
 
 
 def barn() -> Canvas:
@@ -132,102 +131,83 @@ def crates() -> Canvas:
     return c
 
 
-def wheat_field_frame(frame: int, seed: int, fw: int = FIELD_W) -> Canvas:
-    """One gust frame of a wheat field, fw x FIELD_H. Stalk heights vary across the field and taper at the
-    edges, so the outline is ragged, not a rectangle. The wave runs across the field as the frame advances."""
+def grounded(c: Canvas, lift: int = 2) -> Canvas:
+    """Lifts an object by `lift` texels and draws a flat contact shadow on the bottom rows, so it sits on the ground.
+    The shadow is a dark ellipse hugging the footprint, not a drop shadow with a dither."""
+    if not c.px:
+        return c
+    xs = [x for (x, _) in c.px]
+    ys = [y for (_, y) in c.px]
+    x0, x1, y1 = min(xs), max(xs), max(ys)
+    out = Canvas(c.w, c.h)
+    for (x, y), col in c.px.items():
+        ny = y - lift
+        if 0 <= ny < c.h:
+            out.px[(x, ny)] = col
+    cx = (x0 + x1) / 2.0
+    rx = max(3.0, (x1 - x0) / 2.0 * 0.95)
+    for y in range(c.h - lift, c.h):
+        for x in range(c.w):
+            if ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - (c.h - 1)) / (lift * 0.9 + 0.5)) ** 2 <= 1.0:
+                if (x, y) not in out.px:
+                    out.px[(x, y)] = SHADE
+    return out
+
+
+def field_frame(frame: int, seed: int, fw: int, rows: int = 5, fh: int = 44) -> Canvas:
+    """One gust frame of a wheat field: a thick, full mass of wheat from the far edge to the near edge. Each row is a
+    dark under-mass that the stalks grow out of, so there are no bare soil lines or water between the rows. Rows overlap
+    so the field reads as one volume. Heads sit at varying heights, and the stalks bend with the gust: the near rows bend
+    more than the far ones. The silhouette is rounded at the sides, not ruled."""
     rng = random.Random(seed)
-    c = Canvas(fw, FIELD_H)
+    c = Canvas(fw, fh)
     phase = 2.0 * math.pi * frame / WHEAT_FRAMES
-    base_y = FIELD_H - 3
-    # Grass under the stalks, with a ragged top edge so the field blends into the meadow.
-    for x in range(fw):
-        top = base_y - 1 + (1 if rng.random() < 0.3 else 0)
-        c.rect(x, top, x, FIELD_H - 1, DEEP)          # tilled soil under the stalks: a darker patch that reads as a field
-    x = 1
-    while x < fw - 1:
-        taper = min(1.0, x / 10.0, (fw - 1 - x) / 10.0)
-        if taper < 0.35 and rng.random() < 0.6:       # thin out the very edge
-            x += 2
-            continue
-        swell = 0.5 + 0.5 * math.sin(x * 0.11 + seed * 0.7)
-        h = (9 + 13 * swell + rng.randint(-3, 3)) * (0.55 + 0.45 * taper)
-        bend = 2.4 * math.sin(x * 0.42 - phase)
-        top_x = x + bend
-        top_y = base_y - h
-        c.seg(x, base_y, top_x, top_y, ACCENT)   # golden straw stalks
-        hx, hy = round(top_x), round(top_y)
-        c.set(hx, hy, EARTH)                          # the head, orange-gold
-        if h > 12:
-            c.set(hx, hy + 1, EARTH)
-            c.set(hx - 1, hy + 1, EARTH)
-        x += rng.choice([1, 2, 2])
+    cx = fw / 2.0
+    base_ys = [14.0 + i * 6.0 for i in range(rows)]        # rows overlap: the far row's heads show above the near one
+    for i, by in enumerate(base_ys):
+        depth = i / max(1, rows - 1)                       # 0 far, 1 near
+        half = fw * (0.40 + 0.11 * depth)
+        by_i = int(round(by))
+        # the under-mass: a dark, dithered band the stalks grow out of, so the row has thickness
+        for x in range(int(cx - half), int(cx + half) + 1):
+            edge = abs(x - cx) / half
+            if edge > 0.9 and rng.random() < (edge - 0.9) * 6.0:
+                continue
+            for dy in range(0, 4):
+                col = SHADE if (dy == 0 or (x + dy) % 2 == 0) else EARTH
+                c.set(x, by_i - dy, col)
+        bend_amp = 1.0 + 1.8 * depth
+        for x in range(int(cx - half) + 1, int(cx + half) - 1):
+            edge = abs(x - cx) / half
+            if edge > 0.92 and rng.random() < (edge - 0.92) * 5.0:
+                continue
+            taper = 1.0 - 0.35 * edge ** 2                  # a rounded silhouette: shorter stalks towards the sides
+            h = (7.0 + 5.0 * rng.random()) * (0.85 + 0.3 * depth) * taper
+            bend = bend_amp * math.sin(x * 0.35 - phase + i * 0.7)
+            tx, ty = x + bend, by_i - 3 - h
+            c.seg(x, by_i - 3, tx, ty, ACCENT)             # golden straw
+            c.seg(x, by_i - 3, x + bend * 0.5, by_i - 3 - h * 0.5, EARTH)   # darker lower stalk: depth
+            c.set(round(tx), round(ty), EARTH)             # the head
+            if rng.random() < 0.35:                        # a second, lighter head beside it: a fuller canopy
+                c.set(round(tx) + 1, round(ty) + 1, ACCENT)
     return c
 
 
-def wheat_sheet(seed: int, fw: int = FIELD_W) -> Image.Image:
-    sheet = Image.new('RGBA', (fw * WHEAT_FRAMES, FIELD_H), (0, 0, 0, 0))
+def field_sheet(seed: int, fw: int) -> Image.Image:
+    sheet = Image.new('RGBA', (fw * WHEAT_FRAMES, 44), (0, 0, 0, 0))
     for f in range(WHEAT_FRAMES):
-        sheet.paste(wheat_field_frame(f, seed, fw).image(), (f * fw, 0))
+        sheet.paste(field_frame(f, seed, fw).image(), (f * fw, 0))
     return sheet
 
 
-def tilled_plot(seed: int, w: int = 64, h: int = 22) -> Canvas:
-    """A tilled plot, irregular outline. Furrows run across it; some rows have sprouted and some are still bare."""
-    rng = random.Random(seed)
-    c = Canvas(w, h)
-    cx, cy, rx, ry = w / 2.0, h / 2.0, w / 2.0 - 1, h / 2.0 - 1
-    wobble = [rng.uniform(-0.6, 0.6) for _ in range(24)]
-    for y in range(h):
-        for x in range(w):
-            ang = math.atan2((y + 0.5 - cy), (x + 0.5 - cx))
-            k = int((ang + math.pi) / (2 * math.pi) * 24) % 24
-            lim = 1.0 + wobble[k] * 0.12
-            if ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= lim * lim:
-                c.set(x, y, EARTH)
-    # Furrows: one continuous line per row, clipped to the soil. A row either sprouts (small shoots above it) or stays
-    # bare, so the plot shows uneven growth, not a stamped pattern.
-    for y in range(3, h - 2, 4):
-        row_sprouted = rng.random() < 0.6
-        for x in range(w):
-            if c.px.get((x, y)) == EARTH:
-                c.set(x, y, SHADE)
-        if row_sprouted:
-            for sx in range(3, w - 3, 3):
-                if rng.random() < 0.8 and c.px.get((sx, y - 1)) == EARTH:
-                    c.set(sx, y - 1, LIGHT)
-                    if rng.random() < 0.6 and c.px.get((sx, y - 2)) == EARTH:
-                        c.set(sx, y - 2, BASE)
-    return c
-
-
-def greens_plot(seed: int, w: int = 64, h: int = 22) -> Canvas:
-    """A plot of leafy greens: rows of tufts at uneven heights over the tilled soil, so it reads as a crop, not a bare field."""
-    rng = random.Random(seed)
-    c = tilled_plot(seed, w, h)
-    for y in range(4, h - 2, 4):
-        for x in range(4, w - 4, 4):
-            if rng.random() < 0.15:
-                continue                              # a gap in the row, so growth looks uneven
-            top = y - rng.randint(3, 5)
-            c.set(x, y - 1, BASE)
-            c.set(x, y, BASE)
-            c.set(x - 1, top + 1, LIGHT)
-            c.set(x, top, LIGHT)
-            c.set(x + 1, top + 1, LIGHT)
-    return c
-
-
 PROPS = [
-    ('farm_barn', barn),
-    ('farm_shed', shed),
-    ('farm_hay_0', lambda: hay_bale(0)),
-    ('farm_hay_1', lambda: hay_bale(1)),
-    ('farm_scarecrow', scarecrow),
-    ('farm_cart', cart),
-    ('farm_crates', crates),
-    ('farm_plot_a', lambda: tilled_plot(41)),
-    ('farm_plot_b', lambda: tilled_plot(77)),
-    ('farm_greens', lambda: greens_plot(59)),
+    ('farm_barn', lambda: grounded(barn())),
+    ('farm_shed', lambda: grounded(shed())),
+    ('farm_hay_0', lambda: grounded(hay_bale(0))),
+    ('farm_hay_1', lambda: grounded(hay_bale(1))),
+    ('farm_scarecrow', lambda: grounded(scarecrow())),
+    ('farm_cart', lambda: grounded(cart())),
+    ('farm_crates', lambda: grounded(crates())),
 ]
 
 
@@ -237,8 +217,8 @@ def main() -> int:
         make().image().save(os.path.join(OUT, name + '.png'))
         print('wrote', name)
     for name, fw, seed in FIELD_SPECS:
-        wheat_sheet(seed, fw).save(os.path.join(OUT, name + '_sheet.png'))
-        print('wrote', name + '_sheet', fw * WHEAT_FRAMES, 'px wide')
+        field_sheet(seed, fw).save(os.path.join(OUT, name + '_sheet.png'))
+        print('wrote', name + '_sheet', fw * WHEAT_FRAMES, 'x 44')
     # Preview: every sprite on one strip, scaled up, for a quick look.
     strip = []
     for name, make in PROPS:

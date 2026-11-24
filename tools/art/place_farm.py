@@ -44,16 +44,14 @@ GAP = 4                                 # canvas texels between farm items
 SIZES = {
     'farm_barn': (72, 56), 'farm_shed': (40, 34), 'farm_hay_0': (16, 12), 'farm_hay_1': (16, 12),
     'farm_scarecrow': (18, 34), 'farm_cart': (28, 20), 'farm_crates': (12, 12),
-    'farm_plot_a': (64, 22), 'farm_plot_b': (64, 22),
-    'farm_field_a': (96, 28), 'farm_field_b': (96, 28), 'farm_field_c': (128, 28), 'farm_field_d': (160, 28),
-    'farm_greens': (64, 22),
+    'farm_field_a': (96, 44), 'farm_field_b': (96, 44), 'farm_field_c': (128, 44), 'farm_field_d': (160, 44),
 }
 FILES = {
     'farm_barn': 'farm_barn.png', 'farm_shed': 'farm_shed.png', 'farm_hay_0': 'farm_hay_0.png',
     'farm_hay_1': 'farm_hay_1.png', 'farm_scarecrow': 'farm_scarecrow.png', 'farm_cart': 'farm_cart.png',
-    'farm_crates': 'farm_crates.png', 'farm_plot_a': 'farm_plot_a.png', 'farm_plot_b': 'farm_plot_b.png',
+    'farm_crates': 'farm_crates.png',
     'farm_field_a': 'field_a_sheet.png', 'farm_field_b': 'field_b_sheet.png',
-    'farm_field_c': 'field_c_sheet.png', 'farm_field_d': 'field_d_sheet.png', 'farm_greens': 'farm_greens.png',
+    'farm_field_c': 'field_c_sheet.png', 'farm_field_d': 'field_d_sheet.png',
 }
 
 # Where each item wants to go (layout texels). Each is searched outward from its target, nearest first, inside the box.
@@ -62,8 +60,6 @@ TARGETS = [
     ('farm_field_d', 1040, 486), ('farm_field_a', 976, 445), ('farm_field_c', 1116, 596),
     ('farm_field_b', 1118, 556), ('farm_field_c', 1000, 580), ('farm_field_a', 1196, 470),
     ('farm_field_d', 1080, 640), ('farm_field_b', 1010, 430),
-    ('farm_greens', 1082, 576), ('farm_plot_a', 984, 506), ('farm_plot_b', 1148, 528),
-    ('farm_greens', 1004, 618), ('farm_plot_a', 1200, 608), ('farm_greens', 1030, 470),
     ('farm_barn', 1066, 424), ('farm_shed', 1028, 432), ('farm_scarecrow', 1136, 528),
     ('farm_hay_0', 1064, 593), ('farm_hay_1', 1146, 547), ('farm_hay_0', 1158, 593),
     ('farm_cart', 1119, 527), ('farm_crates', 1167, 543), ('farm_crates', 1029, 615),

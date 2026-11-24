@@ -41,7 +41,7 @@ func run(t: Object) -> void:
 		else:
 			t.eq(tex.get_width(), int(rect.size.x), "%s sprite width matches its box" % kind)
 			t.eq(tex.get_height(), int(rect.size.y), "%s sprite height matches its box" % kind)
-	for kind: String in ["farm_field_a", "farm_field_b", "farm_barn", "farm_scarecrow", "farm_plot_a"]:
+	for kind: String in ["farm_field_a", "farm_field_b", "farm_barn", "farm_scarecrow", "farm_cart"]:
 		t.ok(kinds.has(kind), "the farm includes %s" % kind)
 	# No two items share a texel: the placer keeps a gap, so a strict overlap is a placer bug.
 	var overlaps: int = 0

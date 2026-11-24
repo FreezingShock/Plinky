@@ -96,6 +96,19 @@ func _init() -> void:
 	else:
 		printerr("bench: could not enter Larkmoor (zone_id=%s, unlocked=%s, gates_open=%s). No Larkmoor rows." % [
 			sim.zone_id, sim.is_zone_unlocked(&"larkmoor"), sim.gates_open])
+	# The Ember Quarry last: its props, shadows and lava are a node each, so its node count is held to the same ceiling
+	# (tools/check_frame_budget.py reads nodes_max for every row). Larkmoor leads into it.
+	sim.gates_open[&"larkmoor"] = true
+	if sim.zone_id == &"zone2" or sim.enter_zone(&"zone2"):
+		await _frames(180, "after entering the quarry")
+		_uncap()
+		for level: int in levels:
+			GraphicsQuality.set_level(level, false)
+			await _frames(30)
+			await _zone_runs(level, main, "quarry")
+	else:
+		printerr("bench: could not enter the Ember Quarry (zone_id=%s, unlocked=%s). No quarry rows, so no quarry node check." % [
+			sim.zone_id, sim.is_zone_unlocked(&"zone2")])
 	SkyCycle.debug_phase = -1.0
 	SkyCycle.debug_rain = -1.0
 	_report()
