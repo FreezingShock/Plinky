@@ -424,7 +424,7 @@ func _pad_tip(id: StringName) -> Array:
 	var b: ButtonDef = sim.button_defs.get(id) as ButtonDef
 	if b == null:
 		return []
-	var cost: BigNum = sim.press_cost(b)
+	var cost: BigNum = Formulas.button_cost(b)
 	var cost_name: String = (sim.stat_defs[b.cost_stat] as StatDef).display_name
 	var gain_name: String = (sim.stat_defs[b.reward_stat] as StatDef).display_name
 	var state: String = "Ready. Stand on it or hold click." if sim.can_afford(id) else "Need %s more." % cost.sub(sim.get_stat(b.cost_stat)).format()
@@ -521,7 +521,7 @@ func refresh() -> void:
 		var b: ButtonDef = sim.button_defs[bid]
 		var ready: bool = sim.can_afford(bid)
 		var l: Label = _pad_rows[bid]
-		l.text = "%s %s %d  %s" % ["*" if ready else "-", String(b.row).capitalize(), b.row_index + 1, sim.press_cost(b).format()]
+		l.text = "%s %s %d  %s" % ["*" if ready else "-", String(b.row).capitalize(), b.row_index + 1, Formulas.button_cost(b).format()]
 		l.add_theme_color_override("font_color", RelicStyle.accent if ready else RelicStyle.dim)
 	if not _pads_expanded and _pad_rows.size() > PADS_FOLD:
 		_layout_pads()

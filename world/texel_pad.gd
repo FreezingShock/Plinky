@@ -133,7 +133,7 @@ func _ready() -> void:
 		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
 		if b.row_index == 0:
 			# A button's cost depends only on its definition, so the chip text is fixed for the pad's life.
-			_lock_cost = _sim().press_cost(b).format()
+			_lock_cost = Formulas.button_cost(b).format()
 			_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
 			_chip = Node2D.new()
 			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the air layer is at z 10
@@ -260,7 +260,7 @@ func _refresh_progress(sim: Sim) -> void:
 	if affordable:
 		progress = 1.0
 		return
-	var cost: BigNum = sim.press_cost(b)
+	var cost: BigNum = Formulas.button_cost(b)
 	progress = 1.0 if cost.is_zero() else clampf(sim.get_stat(b.cost_stat).div(cost).to_float(), 0.0, 1.0)
 
 

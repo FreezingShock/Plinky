@@ -64,13 +64,15 @@ func run(t: Object) -> void:
 	sim2.config.press_scale = original_scale
 	t.near(scaled, full * 0.125, full * 1e-6 + 1e-9, "a press pays press_scale of its reward")
 
-	# A player press costs press_scale of the pad cost, and an automatic press pays the full cost. Both checks and the
-	# charge use the same rule, so a stock of exactly the player cost buys a player press but not an automatic one.
+	# A player press needs the full pad price in stock, then charges press_scale of it. An automatic press needs and
+	# pays the full price. The gate keeps the purchase order and the ready state the same as before.
 	var sim3: Sim = t.make_sim(true)
 	var full_cost: float = Formulas.button_cost(sim3.button_defs[&"sprout_1"] as ButtonDef).to_float()
-	sim3.stats[&"sunlight"] = BigNum.from_float(full_cost * sim3.config.press_scale + 1e-6)
-	t.ok(sim3.try_press(&"sprout_1"), "a player press goes through on press_scale of the pad cost")
-	t.near(sim3.get_stat(&"sunlight").to_float(), 1e-6, 1e-7, "the player press took press_scale of the pad cost")
+	sim3.stats[&"sunlight"] = BigNum.from_float(full_cost - 1e-6)
+	t.ok(not sim3.try_press(&"sprout_1"), "a player press needs the full pad price in stock")
+	sim3.stats[&"sunlight"] = BigNum.from_float(full_cost)
+	t.ok(sim3.try_press(&"sprout_1"), "a player press goes through on the full pad price")
+	t.near(sim3.get_stat(&"sunlight").to_float(), full_cost * (1.0 - sim3.config.press_scale), 1e-6, "the player press charged press_scale of the pad price")
 	sim3.stats[&"sunlight"] = BigNum.from_float(full_cost * sim3.config.press_scale + 1e-6)
 	t.ok(not sim3._press(&"sprout_1", Vector3.ZERO, false), "an automatic press needs the full pad cost")
 

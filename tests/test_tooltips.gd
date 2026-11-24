@@ -35,7 +35,7 @@ func run(t: Object) -> void:
 	var rid: StringName = sim.call(&"pad_rarity", bid) if sim.has_method(&"pad_rarity") else &"common"
 	t.eq((ps["lines"] as Array).size() == 3, rid != &"" and rid != &"common", "the rarity line shows exactly when the pad is above common")
 	var cost_seg: Dictionary = (ps["lines"] as Array)[(ps["lines"] as Array).size() - 2][2] as Dictionary
-	var can: bool = sim.get_stat((sim.button_defs[bid] as ButtonDef).cost_stat).gte(sim.press_cost(sim.button_defs[bid] as ButtonDef))
+	var can: bool = sim.get_stat((sim.button_defs[bid] as ButtonDef).cost_stat).gte(Formulas.button_cost(sim.button_defs[bid] as ButtonDef))
 	t.eq(cost_seg["c"], StatStyle.buy(can), "the cost number is green when affordable and red when not")
 	var gain_seg: Dictionary = (ps["lines"] as Array)[(ps["lines"] as Array).size() - 1][2] as Dictionary
 	t.eq(gain_seg["c"], StatStyle.BUY_GREEN, "the gain number is green")
