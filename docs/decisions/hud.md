@@ -456,3 +456,12 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Kept:** repeat gains from one pad still add up on one number, and the adaptive quiet window still applies. Crowded pads still shift labels sideways or stack them above the button (`PopupLanes`).
 - **Sunlight bonuses** have their own key, so they fold only with each other and not with a pad's Sunlight number. Say so if that splits a Sunlight number you wanted combined.
 - Not run in-engine from the cloud: PC QA should check a neighbouring pad's gain and a standing press on one pad.
+
+## 2026-11-24: HUD gain label beside each statistic
+- **Why:** Nathan wants the stat strip to show what a stat just earned, without a per-gain number in the world. The new label is a small "+123" right of the stats panel, level with its row, with the income rate ("+x/s") moved just past it.
+- **Source:** `EventBus.button_pressed` (every pad press, auto and relic pulses included) and `EventBus.bonus_gained` (streak and critter payouts). Idle income is not a gain here, so the label stays hidden while a stat only ticks up passively.
+- **Behaviour:** a run starts at the stat's first gain and sums every gain until HOLD (3 s) after the last one, then fades and drifts up over OUT (0.4 s). A gain during the run keeps adding to the same number; a gain after the run starts again from zero. It hides when its row is hidden.
+- **Colour:** the streak tier of the latest pad press (`Juice.last_tier`), using the same `PopupStyle` colours as the world numbers. Tier 0 uses the stat's own colour. A bonus payout uses whatever tier the last press had.
+- **Performance:** one pooled `HudGainLabel` per row, and the sums live in `HudGainTally`. No node is made per gain. Sparkles are a fixed pool of six per label.
+- **Reduce Motion:** the label keeps its fade and drops the rise, the jump and the sparkles.
+- Not run in-engine from the cloud: check the label's position beside a long value, the "+x/s" moving past it, and the sparkles on a crit.
