@@ -1,41 +1,46 @@
 class_name LifeWild
 extends RefCounted
-## Wildlife for Larkmoor beyond the ground critters: dragonflies over the water, fish that leap in the mere, a deer that
-## grazes the forest edge at dawn and dusk, and owls in the pine crowns at night. LifeCritters owns one and draws it from
-## LifeAir's _draw, so it adds no nodes. The seasons and the light decide who is out (the *_share helpers, read once a
-## frame). A walker close by sends a dragonfly darting over the water, a deer into the trees, and an owl off its perch.
-## Under reduce motion nothing travels or jumps: dragonflies hover where they are, and fish, deer and owls stay put.
-## Palette indices, drawn with MeadowLife.blit.
+## Wildlife for Larkmoor beyond the ground critters: dragonflies over the water, fish that leap in the mere, deer that graze
+## the forest edge at dawn and dusk, and owls in the pine crowns at night. LifeCritters owns one and draws it from LifeAir's
+## _draw, so it adds no nodes. The light, the season and the rain decide how many of each are out (the *_share helpers,
+## read once a frame): the first ceil(share * count) of them are out, so the crowd follows the light instead of a roll.
+## Where they go is chosen near the walker when they can be, so the player sees them where they walk. A walker close by
+## sends a dragonfly darting, a deer into the trees, and an owl to another perch. Under reduce motion nothing travels or
+## jumps: dragonflies hover where they are, and fish, deer and owls stay put. Palette indices, drawn with MeadowLife.blit.
 
-const DRAGON_MAX: int = 3
+const DRAGON_MAX: int = 6
 const DRAGON_SPEED: float = 14.0            # texels per second over the water
 const DRAGON_HOVER: Vector2 = Vector2(1.0, 3.0)   # seconds over a spot before the next dart
 const DRAGON_SHY: float = 30.0              # walker distance that sends a dragonfly off
 const DRAGON_FLEE: float = 1.5              # seconds a scared dragonfly keeps darting
 const WATER_INNER: float = 0.8              # wildlife keeps inside this normalised radius of the water
-const FISH_EVERY: Vector2 = Vector2(5.0, 16.0)   # seconds between one body's leaps
+const NEAR_WALKER: float = 160.0            # a spot this close (iso texels) to the walker is a good place to go
+const FISH_EVERY: Vector2 = Vector2(2.5, 6.0)     # seconds between one body's leaps
 const FISH_TIME: float = 0.7                # seconds in the air
-const FISH_HEIGHT: float = 9.0              # texels a leap rises at its peak
+const FISH_HEIGHT: float = 10.0             # texels a leap rises at its peak
 const RING_LIFE: float = 0.9
-const DEER_SHY: float = 36.0                # walker distance that sends the deer into the trees
+const DEER_MAX: int = 3
+const DEER_SHY: float = 36.0                # walker distance that sends a deer into the trees
 const DEER_FLEE_TIME: float = 5.0
 const DEER_SPEED: float = 5.0               # texels per second when grazing along the edge
 const DEER_RUN: float = 14.0
-const DEER_WAIT: Vector2 = Vector2(6.0, 12.0)    # seconds a deer grazes between moves
-const DEER_PAD_KEEP: float = 16.0           # the deer does not walk over a pad
-const OWL_MAX: int = 2
+const DEER_WAIT: Vector2 = Vector2(5.0, 10.0)     # seconds a deer grazes between moves
+const DEER_PAD_KEEP: float = 16.0           # a deer does not walk over a pad
+const OWL_MAX: int = 3
 const OWL_SHY: float = 28.0                 # walker distance that sends an owl off its perch
 const OWL_FLY_TIME: float = 6.0
 const OWL_BLINK_EVERY: Vector2 = Vector2(3.5, 7.0)
 const OWL_BLINK_TIME: float = 0.15
 const FADE_RATE: float = 0.6                # per second: how fast a creature dissolves in or out
 
-## Sprites, text rows as in LifeCritters. Dragonfly 7 x 3 with wings up and down, fish 6 x 3, deer 10 x 8 facing right,
-## owl 5 x 5 with open and shut eyes.
-const DRAGON_UP: Array = ["w.k.k.w", ".wkkkw.", "..kkk.."]
-const DRAGON_DOWN: Array = ["..kkk..", ".wkkkw.", "w.k.k.w"]
-const FISH_ART: Array = ["..k...", "kbbbbk", "..k..."]
-const DEER_ART: Array = [".....k.k..", "....kbbk..", "...bbbbb..", "wbbbbbbbb.", "wbbllllbb.", ".dbbbbbbd.", "..d.d.d.d.", "..k.k.k.k."]
+## Sprites, text rows as in LifeCritters. Colours are chosen to read on the dark water and the grass: the dragonfly has
+## paper wings and a gold head, the fish is gold with a paper eye, the deer is earth brown with a paper belly, the owl is brown
+## with paper eyes. Dragonfly 9 x 3 with wings up and down, fish 8 x 3, deer 10 x 8 facing right, owl 5 x 5. The deer is
+## earth brown (f) with a paper belly, so it reads against the grass.
+const DRAGON_UP: Array = ["ww.k.k.ww", ".wwkkkww.", "...kyk..."]
+const DRAGON_DOWN: Array = ["...kyk...", ".wwkkkww.", "ww.k.k.ww"]
+const FISH_ART: Array = ["...kk...", "kyyyywyk", "...kk..."]
+const DEER_ART: Array = [".....k.k..", "....kffk..", "...ffffff.", "wffffffff.", "wffwwwwff.", ".dffffffd.", "..d.d.d.d.", "..k.k.k.k."]
 const OWL_OPEN: Array = ["k...k", "kbbbk", "bwkwb", "bbbbb", ".bbb."]
 const OWL_SHUT: Array = ["k...k", "kbbbk", "bkkkb", "bbbbb", ".bbb."]
 
@@ -45,11 +50,11 @@ var _water: Array[Dictionary] = []          # the water ellipses (LifeCritters' 
 var _pads: Array[Vector2] = []
 var _edge: Array[Vector2] = []              # forest-edge grass tips, where the deer grazes
 var _perches: Array[Vector2] = []           # owl perches in the pine crowns
-var _dragons: Array[Dictionary] = []        # {pos, to, hover, flee, fade, seed}
+var _dragons: Array[Dictionary] = []        # {pos, to, hover, flee, fade, seed, rank}
 var _fish: Array[Dictionary] = []           # {body, timer, jump, pos, t, flip}
 var _rings: Array[Dictionary] = []          # {pos, age}: where a fish came down
-var _deer: Dictionary = {}                  # {pos, to, wait, flee, fade, seed, dir}
-var _owls: Array[Dictionary] = []           # {perch, next, fade, fly, seed, blink, shut}
+var _deers: Array[Dictionary] = []          # {pos, to, wait, flee, fade, seed, dir, rank}
+var _owls: Array[Dictionary] = []           # {perch, next, fade, fly, seed, blink, shut, rank}
 var _ci: CanvasItem
 var _view: Rect2 = Rect2()
 var _t: float = 0.0
@@ -67,20 +72,21 @@ func setup(life: Dictionary, water: Array[Dictionary]) -> void:
 	if not _water.is_empty():
 		for i: int in DRAGON_MAX:
 			var start: Vector2 = _water_point(i % _water.size(), i * 37 + 5)
-			_dragons.append({"pos": start, "to": start, "hover": 0.0, "flee": 0.0, "fade": 0.0, "seed": i})
+			_dragons.append({"pos": start, "to": start, "hover": 0.0, "flee": 0.0, "fade": 0.0, "seed": i, "rank": i})
 	_fish.clear()
 	for b: int in _water.size():
 		_fish.append({"body": b, "timer": _range(FISH_EVERY, b * 11 + 3), "jump": false,
 			"pos": Vector2.ZERO, "t": 0.0, "flip": false})
-	_deer = {"pos": Vector2.ZERO, "to": Vector2.ZERO, "wait": 0.0, "flee": 0.0, "fade": 0.0, "seed": 3, "dir": 1.0}
-	if not _edge.is_empty():
-		_deer.pos = _edge[0]
-		_deer.to = _edge[0]
+	_deers.clear()
+	for i: int in DEER_MAX:
+		var spot: Vector2 = _edge[(i * 4) % _edge.size()] if not _edge.is_empty() else Vector2.ZERO
+		_deers.append({"pos": spot, "to": spot, "wait": 0.0, "flee": 0.0, "fade": 0.0,
+			"seed": 3 + i * 7, "dir": 1.0, "rank": i})
 	_owls.clear()
 	for i: int in mini(OWL_MAX, _perches.size()):
-		var perch: int = (i * 3) % _perches.size()
+		var perch: int = (i * 2) % _perches.size()
 		_owls.append({"perch": perch, "next": perch, "fade": 0.0, "fly": 0.0, "seed": i * 5 + 2,
-			"blink": _range(OWL_BLINK_EVERY, i * 9 + 1), "shut": 0.0})
+			"blink": _range(OWL_BLINK_EVERY, i * 9 + 1), "shut": 0.0, "rank": i})
 	_rings.clear()
 
 
@@ -89,8 +95,8 @@ func update(delta: float, wp: Vector2) -> void:
 	_t += delta
 	var calm: bool = MeadowLife.reduce_motion
 	_update_dragons(delta, wp, calm)
-	_update_fish(delta, calm)
-	_update_deer(delta, wp, calm)
+	_update_fish(delta, wp, calm)
+	_update_deers(delta, wp, calm)
 	_update_owls(delta, wp, calm)
 	var alive: Array[Dictionary] = []
 	for r: Dictionary in _rings:
@@ -110,13 +116,13 @@ func draw(ci: CanvasItem, tb: float) -> void:
 		_draw_fish(f)
 	for d: Dictionary in _dragons:
 		_draw_dragon(d, tb)
-	_draw_deer()
+	for e: Dictionary in _deers:
+		_draw_deer(e)
 	for o: Dictionary in _owls:
 		_draw_owl(o)
 
 
-## Shares: how many of each kind are out. Each creature is out when its hash is under the share, so the crowd grows and
-## thins smoothly with the light and the season.
+## Shares: how many of each kind are out, as a fraction. The first ceil(share * count) are out (see _rank_out).
 static func dragonfly_share() -> float:
 	return clampf((1.0 - MeadowLife.night) * (1.0 - MeadowLife.rain) * MeadowLife.season_mix([0.6, 1.0, 0.3, 0.0]), 0.0, 1.0)
 
@@ -133,14 +139,15 @@ static func owl_share() -> float:
 	return clampf(MeadowLife.night * (1.0 - MeadowLife.rain * 0.5) * (0.8 + 0.2 * MeadowLife.season_mix([0.7, 0.8, 0.8, 1.0])), 0.0, 1.0)
 
 
-func _out(seed_n: int, share: float) -> bool:
-	return MeadowLife.hash01(seed_n) < share
+## True when creature `rank` of `count` is out at this share: the lowest ranks come out first, so the count follows the share.
+static func _rank_out(rank: int, count: int, share: float) -> bool:
+	return (float(rank) + 0.5) / float(count) < share
 
 
 func _update_dragons(delta: float, wp: Vector2, calm: bool) -> void:
 	var share: float = dragonfly_share()
 	for d: Dictionary in _dragons:
-		d.fade = move_toward(float(d.fade), 1.0 if _out(int(d.seed) * 13 + 7, share) else 0.0, FADE_RATE * delta)
+		d.fade = move_toward(float(d.fade), 1.0 if _rank_out(int(d.rank), DRAGON_MAX, share) else 0.0, FADE_RATE * delta)
 		if float(d.fade) <= 0.0 or calm:
 			continue
 		var pos: Vector2 = d.pos as Vector2
@@ -160,23 +167,26 @@ func _update_dragons(delta: float, wp: Vector2, calm: bool) -> void:
 				_dart(d, wp, false)
 
 
-## Picks a dragonfly's next spot over the water. Away means a spot the walker is well clear of.
+## Picks a dragonfly's next spot over the water. Away means a spot the walker is well clear of; otherwise a spot near the walker.
 func _dart(d: Dictionary, wp: Vector2, away: bool) -> void:
 	var n: int = _water.size()
 	if n == 0:
 		return
 	var seed_n: int = int(d.seed) * 29 + int(_t * 4.0)
 	var to: Vector2 = d.pos as Vector2
-	for tries: int in 8:
-		var cand: Vector2 = _water_point((seed_n + tries) % n, seed_n * 7 + tries * 3)
-		if not away or MeadowLife.iso_distance(cand, wp) > DRAGON_SHY * 2.0:
-			to = cand
-			break
+	if away:
+		for tries: int in 8:
+			var cand: Vector2 = _water_point((seed_n + tries) % n, seed_n * 7 + tries * 3)
+			if MeadowLife.iso_distance(cand, wp) > DRAGON_SHY * 2.0:
+				to = cand
+				break
+	else:
+		to = _near_water_point(wp, seed_n)
 	d.to = to
 	d.hover = _range(DRAGON_HOVER, seed_n + 5)
 
 
-func _update_fish(delta: float, calm: bool) -> void:
+func _update_fish(delta: float, wp: Vector2, calm: bool) -> void:
 	var share: float = fish_share()
 	for f: Dictionary in _fish:
 		if bool(f.jump):
@@ -192,48 +202,49 @@ func _update_fish(delta: float, calm: bool) -> void:
 			continue
 		f.timer = _range(FISH_EVERY, int(f.body) * 11 + int(_t * 2.0) + 3)
 		if MeadowLife.hash01(int(f.body) * 17 + int(_t * 5.0)) < share:
-			f.pos = _water_point(int(f.body), int(_t * 9.0) * 5 + int(f.body) * 13)
+			f.pos = _near_water_point(wp, int(f.body) * 13 + int(_t * 9.0))
 			f.flip = MeadowLife.hash01(int(_t * 6.0) + int(f.body)) < 0.5
 			f.t = 0.0
 			f.jump = true
 
 
-func _update_deer(delta: float, wp: Vector2, calm: bool) -> void:
+func _update_deers(delta: float, wp: Vector2, calm: bool) -> void:
 	if _edge.is_empty():
 		return
-	var d: Dictionary = _deer
-	d.fade = move_toward(float(d.fade), 1.0 if _out(int(d.seed) * 17 + 9, deer_share()) else 0.0, FADE_RATE * delta)
-	if float(d.fade) <= 0.0 or calm:
-		return
-	var pos: Vector2 = d.pos as Vector2
-	d.flee = maxf(float(d.flee) - delta, 0.0)
-	if float(d.flee) <= 0.0 and MeadowLife.iso_distance(pos, wp) < DEER_SHY:
-		# Into the trees: the edge spot farthest from the walker.
-		var far: Vector2 = pos
-		var far_d: float = -1.0
-		for e: Vector2 in _edge:
-			var ed: float = MeadowLife.iso_distance(e, wp)
-			if ed > far_d:
-				far_d = ed
-				far = e
-		d.to = far
-		d.flee = DEER_FLEE_TIME
-	var to: Vector2 = d.to as Vector2
-	if pos.distance_to(to) > 0.5:
-		var step: Vector2 = to - pos
-		var speed: float = DEER_RUN if float(d.flee) > 0.0 else DEER_SPEED
-		var nxt: Vector2 = pos + step.normalized() * minf(speed * delta, step.length())
-		if _blocked(nxt):
-			d.to = pos
+	var share: float = deer_share()
+	for d: Dictionary in _deers:
+		d.fade = move_toward(float(d.fade), 1.0 if _rank_out(int(d.rank), DEER_MAX, share) else 0.0, FADE_RATE * delta)
+		if float(d.fade) <= 0.0 or calm:
+			continue
+		var pos: Vector2 = d.pos as Vector2
+		d.flee = maxf(float(d.flee) - delta, 0.0)
+		if float(d.flee) <= 0.0 and MeadowLife.iso_distance(pos, wp) < DEER_SHY:
+			# Into the trees: the edge spot farthest from the walker.
+			var far: Vector2 = pos
+			var far_d: float = -1.0
+			for e: Vector2 in _edge:
+				var ed: float = MeadowLife.iso_distance(e, wp)
+				if ed > far_d:
+					far_d = ed
+					far = e
+			d.to = far
+			d.flee = DEER_FLEE_TIME
+		var to: Vector2 = d.to as Vector2
+		if pos.distance_to(to) > 0.5:
+			var step: Vector2 = to - pos
+			var speed: float = DEER_RUN if float(d.flee) > 0.0 else DEER_SPEED
+			var nxt: Vector2 = pos + step.normalized() * minf(speed * delta, step.length())
+			if _blocked(nxt):
+				d.to = pos
+			else:
+				d.pos = nxt
+				if absf(step.x) > 0.1:
+					d.dir = signf(step.x)
 		else:
-			d.pos = nxt
-			if absf(step.x) > 0.1:
-				d.dir = signf(step.x)
-	else:
-		d.wait = float(d.wait) - delta
-		if float(d.wait) <= 0.0:
-			d.wait = _range(DEER_WAIT, int(_t * 3.0) + 41)
-			d.to = _edge[int(MeadowLife.hash01(int(_t * 2.0) + 77) * float(_edge.size())) % _edge.size()]
+			d.wait = float(d.wait) - delta
+			if float(d.wait) <= 0.0:
+				d.wait = _range(DEER_WAIT, int(d.seed) * 5 + int(_t * 3.0) + 41)
+				d.to = _edge_near(wp, int(d.seed) * 23 + int(_t * 3.0))
 
 
 func _update_owls(delta: float, wp: Vector2, calm: bool) -> void:
@@ -250,7 +261,7 @@ func _update_owls(delta: float, wp: Vector2, calm: bool) -> void:
 			o.next = _far_perch(wp, int(o.perch))
 			o.fly = OWL_FLY_TIME
 			continue
-		var want: bool = _out(int(o.seed) * 23 + 11, share)
+		var want: bool = _rank_out(int(o.rank), OWL_MAX, share)
 		o.fade = move_toward(float(o.fade), 1.0 if want else 0.0, FADE_RATE * delta)
 		o.blink = float(o.blink) - delta
 		if float(o.blink) <= 0.0:
@@ -268,8 +279,29 @@ func _far_perch(wp: Vector2, current: int) -> int:
 	return current
 
 
+## A forest-edge spot, preferring one near the walker so a deer shows where the player is walking.
+func _edge_near(wp: Vector2, seed_n: int) -> Vector2:
+	var near: Array[Vector2] = []
+	for e: Vector2 in _edge:
+		if MeadowLife.iso_distance(e, wp) < NEAR_WALKER:
+			near.append(e)
+	var pool: Array[Vector2] = near if not near.is_empty() else _edge
+	return pool[int(MeadowLife.hash01(seed_n) * float(pool.size())) % pool.size()]
+
+
 func _blocked(p: Vector2) -> bool:
 	return MeadowLife.near_any(p, _pads, DEER_PAD_KEEP) or MeadowLife.in_water(p, _water, 1.1)
+
+
+## A point in some water body, preferring one near the walker.
+func _near_water_point(wp: Vector2, seed_n: int) -> Vector2:
+	var n: int = _water.size()
+	var first: Vector2 = _water_point(seed_n % n, seed_n * 7)
+	for tries: int in 12:
+		var cand: Vector2 = _water_point((seed_n + tries) % n, seed_n * 13 + tries * 5)
+		if MeadowLife.iso_distance(cand, wp) < NEAR_WALKER:
+			return cand
+	return first
 
 
 ## A point inside water body b, chosen by hash and kept inside WATER_INNER of its edge.
@@ -296,7 +328,7 @@ func _draw_dragon(d: Dictionary, tb: float) -> void:
 		return
 	var up: bool = posmod(int(tb * 8.0) + int(d.seed), 2) == 0
 	var spr: Dictionary = _sprites["dragon_up" if up else "dragon_down"] as Dictionary
-	var origin: Vector2i = Vector2i(roundi(at.x) - 3, roundi(at.y) - 1)
+	var origin: Vector2i = Vector2i(roundi(at.x) - 4, roundi(at.y) - 1)
 	MeadowLife.blit(_ci, palette, spr, origin, (d.to as Vector2).x < at.x, float(d.fade))
 
 
@@ -308,18 +340,18 @@ func _draw_fish(f: Dictionary) -> void:
 		return
 	var k: float = clampf(float(f.t) / FISH_TIME, 0.0, 1.0)
 	var lift: float = sin(PI * k) * FISH_HEIGHT
-	var origin: Vector2i = Vector2i(roundi(at.x) - 3, roundi(at.y - lift) - 2)
+	var origin: Vector2i = Vector2i(roundi(at.x) - 4, roundi(at.y - lift) - 2)
 	MeadowLife.blit(_ci, palette, _sprites["fish"] as Dictionary, origin, bool(f.flip), 1.0)
 
 
-func _draw_deer() -> void:
-	if float(_deer.fade) <= 0.0 or _edge.is_empty():
+func _draw_deer(e: Dictionary) -> void:
+	if float(e.fade) <= 0.0:
 		return
-	var at: Vector2 = _deer.pos as Vector2
+	var at: Vector2 = e.pos as Vector2
 	if not _seen(at):
 		return
 	var origin: Vector2i = Vector2i(roundi(at.x) - 5, roundi(at.y) - 7)
-	MeadowLife.blit(_ci, palette, _sprites["deer"] as Dictionary, origin, float(_deer.dir) < 0.0, float(_deer.fade))
+	MeadowLife.blit(_ci, palette, _sprites["deer"] as Dictionary, origin, float(e.dir) < 0.0, float(e.fade))
 
 
 func _draw_owl(o: Dictionary) -> void:

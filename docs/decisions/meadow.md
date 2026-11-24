@@ -195,3 +195,11 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - The sails get their own id, far above the instance counter, and are voxelized directly, not through `put()`, so the placement random stream and every later prop stay where they were.
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
+
+## 2026-11-24: Larkmoor wildlife presence (PC QA on v0.83.3)
+- **QA:** dragonflies at most one by day, no fish or deer seen, nothing at dusk.
+- **Counts follow the light by rank:** the first ceil(share * count) of each kind are out (`LifeWild._rank_out`). Before, one hash decided whether the single deer and each dragonfly was out, so a bad seed hid the whole kind.
+- **More of each:** six dragonflies (was three), three deer (was one), three owls (was two), fish leap every 2.5 to 6 s (was 5 to 16).
+- **Near the walker:** dragonflies, fish and deer pick their next spot near the walker when one exists (`NEAR_WALKER` = 160 iso texels), so they show where the player walks. Scared creatures still go away from the walker.
+- **Readable sprites:** dragonfly with paper wings and a gold head (9 x 3), gold fish with a paper eye (8 x 3), earth-brown deer with a paper belly (10 x 8).
+- **Not run in engine:** the dusk deer on PC. The deer is visible in the cloud render at 1x, but its colour on PC is unchecked.

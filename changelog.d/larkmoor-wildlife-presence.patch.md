@@ -1,0 +1,1 @@
+Larkmoor's wildlife is easier to see. There are six dragonflies, three deer and three owls, and fish leap more often. Each one picks its spots near where you walk, and the deer is brown so it stands out from the grass.

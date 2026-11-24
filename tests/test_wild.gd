@@ -96,7 +96,7 @@ func run(t: Object) -> void:
 	deer_wild.setup(lark, water)
 	for i: int in 90:
 		deer_wild.update(1.0 / 30.0, far)
-	var deer: Dictionary = deer_wild.get("_deer") as Dictionary
+	var deer: Dictionary = (deer_wild.get("_deers") as Array)[0] as Dictionary
 	t.ok(float(deer.fade) > 0.5, "at dusk the deer comes out to the forest edge")
 	var deer_at: Vector2 = deer.pos as Vector2
 	deer_wild.update(1.0 / 30.0, deer_at + Vector2(6.0, 0.0))
@@ -106,7 +106,7 @@ func run(t: Object) -> void:
 	noon_deer.setup(lark, water)
 	for i: int in 90:
 		noon_deer.update(1.0 / 30.0, far)
-	t.eq(float((noon_deer.get("_deer") as Dictionary).fade), 0.0, "midday: no deer")
+	t.eq(float(((noon_deer.get("_deers") as Array)[0] as Dictionary).fade), 0.0, "midday: no deer")
 
 	# Owls: out at night on a pine perch, and sent off a perch the walker comes near.
 	MeadowLife.low_sun = 0.0
@@ -130,6 +130,17 @@ func run(t: Object) -> void:
 		day_owl.update(1.0 / 30.0, far)
 	t.eq(float(((day_owl.get("_owls") as Array)[0] as Dictionary).fade), 0.0, "by day the owls are not out")
 
+	# Counts follow the share (the lowest ranks come out first), and the spots they pick are near the walker when they can be.
+	t.ok(LifeWild._rank_out(0, 6, 0.5) and not LifeWild._rank_out(5, 6, 0.5), "half the share: the first half of the count is out")
+	t.ok(not LifeWild._rank_out(0, 3, 0.0), "no share, nothing out")
+	var edge0: Array = (lark.get("forest_edge", []) as Array)[0] as Array
+	var e_here: Vector2 = Vector2(float(edge0[0]), float(edge0[1]))
+	var picked: Vector2 = deer_wild._edge_near(e_here, 5)
+	t.ok(MeadowLife.iso_distance(picked, e_here) < LifeWild.NEAR_WALKER, "a deer picks a forest-edge spot near the walker")
+	var water_mid: Vector2 = Vector2(float(water[0].x), float(water[0].y))
+	var wpick: Vector2 = deer_wild._near_water_point(water_mid, 9)
+	t.ok(MeadowLife.iso_distance(wpick, water_mid) < LifeWild.NEAR_WALKER, "a dragonfly or fish picks water near the walker")
+
 	# Reduce motion: the dragonflies hover, and the fish and the deer stay put.
 	MeadowLife.reduce_motion = true
 	MeadowLife.night = 0.0
@@ -141,7 +152,7 @@ func run(t: Object) -> void:
 		calm.update(1.0 / 30.0, far)
 	var calm_d: Dictionary = (calm.get("_dragons") as Array)[0] as Dictionary
 	var calm_at: Vector2 = calm_d.pos as Vector2
-	var calm_deer: Dictionary = calm.get("_deer") as Dictionary
+	var calm_deer: Dictionary = (calm.get("_deers") as Array)[0] as Dictionary
 	var deer_start: Vector2 = calm_deer.pos as Vector2
 	var jumped: bool = false
 	for i: int in 300:
