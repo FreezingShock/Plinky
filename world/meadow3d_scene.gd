@@ -116,7 +116,9 @@ func _add_lights() -> void:
 	var life: Dictionary = MeadowLife.load_data()
 	for L: Variant in life.get("lights", []) as Array:
 		var d: Dictionary = L as Dictionary
-		_sky.add_light(Vector2(float(d.x), float(d.y)), cfg.pool_shrine_radius, 1.0)
+		# a lantern pool is kind lantern, so it stays off by day and comes up with the night, as on Larkmoor
+		var kind: StringName = &"lantern" if String(d.get("kind", "")) == "lantern" else &"fixed"
+		_sky.add_light(Vector2(float(d.x), float(d.y)), cfg.pool_shrine_radius, 1.0, kind)
 	for a: Dictionary in _data.anchors:
 		match String(a.kind):
 			"gate":
