@@ -90,6 +90,10 @@ class Ground:
         wrgb = np.array(Image.open(os.path.join(ZONE, 'walkable.png')).convert('RGB')).astype(int)
         self.walk = (wrgb[..., 0] == 255) & (wrgb[..., 1] == 0) & (wrgb[..., 2] == 255)
         self.water = (wrgb[..., 0] == 0) & (wrgb[..., 1] == 255) & (wrgb[..., 2] == 0)
+        # The sand path as drawn: ACCENT (242, 230, 160) and its near-sand texels in ground.png. LAY.PATHS is a different
+        # frame from the drawn ground, so fences are checked against the picture, not against the path points.
+        gr, gg, gb = g_rgb = np.array(Image.open(os.path.join(ZONE, 'ground.png')).convert('RGB')).astype(int)[..., :3].transpose(2, 0, 1)
+        self.sand = (gr >= 225) & (gg >= 210) & (gb <= 180) & (gr - gb >= 50)
         g = np.array(Image.open(os.path.join(ZONE, 'ground.png')).convert('RGB')).astype(int)
         r, gg, b = g[..., 0], g[..., 1], g[..., 2]
         self.grass = (gg - r >= 15) & (gg >= b + 8) & (r < 200)
@@ -104,11 +108,16 @@ class Ground:
         self.mere = (m['c'][0] * S, m['c'][1] * S, (m['rx'] + MERE_MARGIN) * S, (m['ry'] + MERE_MARGIN) * S)
 
     def fence_ok(self, x0, y0, x1, y1):
-        """A fence is a blocker, not something the walker stands on: it only has to stay inside the canvas and off the
-        water. Buildings and wheat are checked by the placer's taken rects, not here."""
+        """A fence is a blocker: it stays inside the canvas, off the water and off the sand paths. A chord that would sit
+        on a path is dropped, so the ring leaves a gap where a path meets it and the path stays open. Buildings and wheat
+        are checked by the placer's taken rects, not here."""
         if x0 < 0 or y0 < 0 or x1 > self.W or y1 > self.H:
             return False
-        return not self.water[y0:y1, x0:x1].any()
+        if self.water[y0:y1, x0:x1].any():
+            return False
+        if self.sand[y0:y1, x0:x1].any():             # the drawn sand path, from ground.png: a chord never sits on it
+            return False
+        return True
 
     def ok_rect(self, x0, y0, x1, y1):
         """True when the canvas rect [x0, x1) x [y0, y1) is walkable grass and clear of every constraint."""
