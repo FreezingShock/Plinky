@@ -65,7 +65,7 @@ var _sug_note: Label
 var _count_label: Label
 var _layout_sig: String = ""
 const SUG_COLUMNS: int = 6
-const CTL_W: float = 20.0   ## width of the grip and hide mark that open at the left of every row in edit mode
+const CTL_W: float = 28.0   ## width of the grip and hide mark that open at the left of every row in edit mode (the mark has room around it)
 
 
 func setup(p_sim: Sim) -> void:
@@ -231,7 +231,10 @@ func _build_stats() -> void:
 		_rows[sid] = [val, rate]
 		Tip.bind_all(h, func() -> Variant:
 			var inc: BigNum = sim.income_per_second(sid)
-			return TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format()))
+			var spec: Dictionary = TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format())
+			if _edit_mode:
+				spec["hint"] = "Drag to reorder."
+			return spec)
 		_row_boxes[sid] = h
 		_row_node[h] = true
 		h.gui_input.connect(_on_row_input.bind(sid))
@@ -935,7 +938,7 @@ func _build_row_controls(h: HBoxContainer, sid: StringName) -> void:
 	h.move_child(ctl, 0)
 	var grip: StripButton = StripButton.grip()
 	var mark: StripButton = StripButton.hide_mark()
-	mark.position = Vector2(10.0, 0.0)
+	mark.position = Vector2(12.0, 0.0)
 	grip.grabbed.connect(_start_drag.bind(sid))
 	grip.nudged.connect(_nudge.bind(sid))
 	mark.pressed.connect(_hide_row.bind(sid))
@@ -985,7 +988,7 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	_sug_grid.add_theme_constant_override("v_separation", 2)
 	_foot_edit.add_child(_sug_grid)
 	_sug_note = Label.new()
-	_sug_note.text = "Every stat is on the strip."
+	_sug_note.text = "All stats added."
 	_sug_note.add_theme_color_override("font_color", RelicStyle.dim)
 	_foot_edit.add_child(_sug_note)
 	var bar := HBoxContainer.new()
@@ -1021,6 +1024,11 @@ func set_edit_mode(on: bool) -> void:
 	_known_chips.clear()
 	_foot_normal.visible = not on and GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)
 	_ease_edit(on)
+	for sidc: StringName in _row_boxes:   # the whole row shows the drag hand in edit mode
+		for c: Node in (_row_boxes[sidc] as Control).get_children():
+			if c is Control and c != _row_ctl.get(sidc):
+				(c as Control).mouse_default_cursor_shape = Control.CURSOR_DRAG if on else Control.CURSOR_ARROW
+		(_row_boxes[sidc] as Control).mouse_default_cursor_shape = Control.CURSOR_DRAG if on else Control.CURSOR_ARROW
 	Tip.hide_all()
 	if not on:
 		var sv: Node = get_node_or_null("/root/Save")
@@ -1051,7 +1059,7 @@ func _set_edit_t(t: float) -> void:
 	_foot_edit.modulate.a = _edit_t
 	_foot_edit.visible = _edit_t > 0.0
 	if _edit_t <= 0.0:
-		_foot_clip.custom_minimum_size.y = 0.0
+		_foot_clip.custom_minimum_size = Vector2.ZERO
 
 
 ## Every frame: size the edit footer to its content (the clip grows with the ease) and fade the marks of rows you are not on.
@@ -1061,7 +1069,7 @@ func _place_edit() -> void:
 	var need: Vector2 = _foot_edit.get_combined_minimum_size()
 	_foot_edit.position = Vector2.ZERO
 	_foot_edit.size = Vector2(maxf(_foot_clip.size.x, need.x), need.y)
-	_foot_clip.custom_minimum_size.y = roundf(need.y * _edit_t)
+	_foot_clip.custom_minimum_size = Vector2(roundf(need.x * _edit_t), roundf(need.y * _edit_t))   # the footer sets the panel's width: Reset and Done are never clipped
 	var mp: Vector2 = get_global_mouse_position()
 	for sid: StringName in _row_ctl:
 		var b: Control = _row_boxes.get(sid) as Control
@@ -1113,10 +1121,19 @@ func _nudge(dir: int, sid: StringName) -> void:
 ## Right-click a row to hide it (Settings > Gameplay > Right-click hides a row turns that off).
 func _on_row_input(event: InputEvent, sid: StringName) -> void:
 	var mb: InputEventMouseButton = event as InputEventMouseButton
-	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_RIGHT or not _opt(&"strip_rclick", true):
+	if mb == null or not mb.pressed:
 		return
-	(_row_boxes[sid] as Control).accept_event()
-	_hide_row(sid)
+	if mb.button_index == MOUSE_BUTTON_LEFT:
+		# In edit mode the whole row is a drag handle (icon, value, the gaps), except the hide mark and the space around it.
+		if _edit_mode and _edit_t >= 0.5 and _drag_sid == &"":
+			var mark: Control = (_row_ctl[sid] as Control).get_meta(&"hide") as Control
+			if not mark.get_global_rect().grow(3.0).has_point(get_global_mouse_position()):
+				(_row_boxes[sid] as Control).accept_event()
+				_start_drag(sid)
+		return
+	if mb.button_index == MOUSE_BUTTON_RIGHT and _opt(&"strip_rclick", true):
+		(_row_boxes[sid] as Control).accept_event()
+		_hide_row(sid)
 
 
 # ---- drag to reorder
