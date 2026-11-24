@@ -284,10 +284,6 @@ var _lamp_node: Node2D = null         # one node draws every loaded lamp head's 
 var _lamp_pts: Array[Vector2] = []    # the glow centre of each loaded lamp head, rebuilt when a chunk loads or unloads
 var _lamps_dirty: bool = true
 var _lamp_scale: float = 1.0          # the rain bloom (SkyModel.lamp_bloom): the glow size, the same for every lamp
-var _part_active: bool = false        # the chunk at the head of the spawn queue is spawning its props over several frames
-var _part_key: Vector2i = Vector2i.ZERO
-var _part_index: int = 0
-var _part_list: Array = []
 var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
 var _garden_flowers: Array = []          # the flower list the gardens were drawn from (world/larkmoor_gardens.json)
 var _flower_glow: FlowerGlow             # the night light on each field's flowers (world/flower_glow.gd)
@@ -406,7 +402,6 @@ func _exit_tree() -> void:
 	_queued.clear()
 	_warm_queue.clear()
 	_warmed.clear()
-	_abort_part()
 	_lamp_pts.clear()
 	if _lamp_node != null:
 		_lamp_node.queue_free()
@@ -544,8 +539,6 @@ func _refresh_center(p: Vector2, immediate: bool = false) -> void:
 		if not _wanted_keep(key, c):
 			_unload_chunk(key)
 			unloaded = true
-	if _part_active and not _wanted_load(_part_key, c):
-		_abort_part()
 	# a queued chunk no longer wanted is dropped, so the queue only holds what is still needed
 	var kept: Array[Vector2i] = []
 	for key: Vector2i in _spawn_queue:
@@ -586,58 +579,26 @@ func _shed_over_ceiling() -> void:
 	_rebuild_bushes()
 
 
-## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. A chunk spawns its props one at a time, and the frame
-## stops between two props once the budget is spent: one heavy chunk used to take a whole frame (QA: 8 to 18 ms in one
-## chunk load, with the stall at the edge of the walk). At least one prop a frame, so the queue always moves.
+## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. At least one, so the queue always moves.
 func _drain_spawns() -> void:
-	if _spawn_queue.is_empty() and not _part_active:
+	if _spawn_queue.is_empty():
 		return
 	var start_us: int = Time.get_ticks_usec()
-	var finished: bool = false
-	while true:
-		if not _part_active:
-			if _spawn_queue.is_empty():
-				break
-			var key: Vector2i = _spawn_queue[0]
-			if not _budget_allows(key):
-				break   # the queue is ring first, so every chunk behind this one is a view chunk over the budget too
-			_spawn_queue.pop_front()
-			_queued.erase(key)
-			if _loaded.has(key):
-				continue
-			_part_active = true
-			_part_key = key
-			_part_index = 0
-			_part_list = []
-		var props: Array = _prop_index.get(_part_key, []) as Array
-		PerfStats.lap_begin()
-		while _part_index < props.size():
-			_part_list.append(_spawn_one(_occ_parent, props[_part_index] as Dictionary))
-			_part_index += 1
-			if float(Time.get_ticks_usec() - start_us) / 1000.0 >= SPAWN_BUDGET_MS:
-				break
-		PerfStats.lap("chunk load")
-		if _part_index < props.size():
-			break   # out of budget mid-chunk: the rest of it spawns next frame
-		_part_active = false
-		_finish_chunk(_part_key, _part_list)
-		_part_list = []
-		finished = true
+	var spawned: bool = false
+	while not _spawn_queue.is_empty():
+		var key: Vector2i = _spawn_queue[0]
+		if not _budget_allows(key):
+			break   # the queue is ring first, so every chunk behind this one is a view chunk over the budget too
+		_spawn_queue.pop_front()
+		_queued.erase(key)
+		if _loaded.has(key):
+			continue
+		_load_chunk(key)
+		spawned = true
 		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= SPAWN_BUDGET_MS:
 			break
-	if finished:
+	if spawned:
 		_rebuild_bushes()
-
-
-## Drops a chunk that is still spawning when the walker no longer wants it: its props so far are freed.
-func _abort_part() -> void:
-	for sp in _part_list:
-		if is_instance_valid(sp):
-			if _shadows != null:
-				_shadows.remove_caster(sp as Sprite2D)
-			(sp as Sprite2D).queue_free()
-	_part_list = []
-	_part_active = false
 
 
 ## Makes the textures of the props in the next chunks ready (the sway padding, the normal maps): the first use of a file
@@ -682,14 +643,9 @@ func _load_chunk(key: Vector2i) -> void:
 	if _prop_index.has(key):
 		for s: Dictionary in _prop_index[key]:
 			list.append(_spawn_one(_occ_parent, s))
-	PerfStats.lap("chunk load")
-	_finish_chunk(key, list)
-
-
-## A chunk is loaded: its props are in `list`. Lamps are rebuilt and the chunk listeners are told.
-func _finish_chunk(key: Vector2i, list: Array) -> void:
 	_loaded[key] = list
 	_lamps_dirty = true
+	PerfStats.lap("chunk load")
 	chunk_loaded.emit(key)
 
 
