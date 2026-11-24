@@ -405,3 +405,4 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
 - Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
 - FarmWheat caches each clump's global centre once instead of recomputing it per frame.
+- Follow-up (same day): finer wheat. Clumps 20-26 texels wide with 4.2 stalks per texel of width (was 3.2), spacing 7x4, grid 4.3x2.5. 661 clumps, still one driver node; Larkmoor stays at 818 nodes and frame p95 is unchanged in the bench, so no zoom LOD was added.
