@@ -13,11 +13,12 @@ func run(t: Object) -> void:
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
-	t.eq(z.pad_buttons.size(), 21, "twenty-one pads: six rows of three, and the Starbloom row runs three more on the west bank")
+	t.eq(z.pad_buttons.size(), 31, "thirty-one pads: five rows of five, and the Starbloom row of six (its last three on the west bank)")
 	var rows: Dictionary = {&"lark_sprout": &"sunlight", &"lark_clover": &"dewdrop", &"thistle": &"sunlight", &"heather": &"thistle", &"foxglove": &"heather", &"starbloom": &"foxglove"}
 	for row: StringName in rows:
 		var last: float = 0.0
-		for i in 3:
+		var per_row: int = 6 if row == &"starbloom" else 5
+		for i in per_row:
 			var id: StringName = StringName("%s_%d" % [row, i + 1])
 			var b: ButtonDef = sim.button_defs.get(id) as ButtonDef
 			t.ok(b != null and b.zone == &"larkmoor" and b.row == row and b.row_index == i, "%s is pad %d of the Larkmoor %s row" % [id, i + 1, row])
@@ -85,7 +86,12 @@ func run(t: Object) -> void:
 		for an: Dictionary in placements.anchors as Array:
 			if String(an.kind) == "pad":
 				shadow_pads += 1
-		t.eq(shadows._items.size(), scene.call("loaded_prop_count") + shadow_pads, "Larkmoor registers a cast shadow for every loaded prop, landmark and pad")
+		# The farm (world/farm/) is always loaded and its non-field items cast shadows too.
+		var farm_casters: int = 0
+		for fi: Variant in (FarmProps.load_manifest().get("items", []) as Array):
+			if not String((fi as Dictionary).kind).begins_with(FarmProps.FIELD_PREFIX):
+				farm_casters += 1
+		t.eq(shadows._items.size(), scene.call("loaded_prop_count") + shadow_pads + farm_casters, "Larkmoor registers a cast shadow for every loaded prop, landmark, pad and farm building")
 		t.eq(scene.call("prop_total"), sprites.size(), "every prop in the placements is indexed to a chunk")
 		t.ok(int(scene.call("loaded_prop_count")) < sprites.size(), "only the chunks near the start are loaded (%d of %d)" % [scene.call("loaded_prop_count"), sprites.size()])
 		t.eq(shadows._pads.size(), shadow_pads, "Larkmoor tells its shadows where every pad is")

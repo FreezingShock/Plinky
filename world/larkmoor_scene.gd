@@ -173,8 +173,11 @@ func _add_life(ground: Sprite2D) -> void:
 ## spawned, and a chunk is unloaded once it is more than KEEP_RING away. Each prop is a sprite plus a shadow quad, so
 ## loading the whole 2x map at once would break the 1350-node ceiling (docs/perf.md). Each prop is still its own sprite
 ## at its foot, so the walker sorts behind or in front of it.
-const CHUNK: float = 320.0
-const LOAD_RING: int = 1
+## Counted on placements3d.json, the worst walker spot loads 162 props at 160-texel chunks with rings 2 and 2 (about
+## 1060 nodes with the lamp glows), against 299 props at the old 320 and 1 and 2 (about 1340). The walker is always at least
+## 320 texels from the edge of the loaded area, the same guarantee the old settings gave.
+const CHUNK: float = 160.0
+const LOAD_RING: int = 2
 const KEEP_RING: int = 2
 
 var _occ_parent: Node2D = null
@@ -209,6 +212,7 @@ func _begin(parent: Node2D) -> void:
 
 func spawn_occluders(parent: Node2D) -> void:
 	_begin(parent)
+	_add_farm(parent)
 	_refresh_center(_start_point())
 
 
@@ -216,6 +220,7 @@ func spawn_occluders(parent: Node2D) -> void:
 ## under the transition wipe uses it, so the first load does not stall the wipe's peak.
 func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_begin(parent)
+	_add_farm(parent)
 	_center = _chunk_of(_start_point())
 	var start_us: int = Time.get_ticks_usec()
 	for key: Vector2i in _needed_keys(_center):
@@ -225,6 +230,11 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 				await get_tree().process_frame
 				start_us = Time.get_ticks_usec()
 	_rebuild_bushes()
+
+
+## The Thistle Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
+func _add_farm(parent: Node2D) -> void:
+	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
 
 
 ## Keep the loaded chunks in step with the walker. Runs every frame, but only does work when the walker changes chunk.
@@ -248,6 +258,8 @@ func _exit_tree() -> void:
 				(sp as Sprite2D).queue_free()
 	_loaded.clear()
 	_glows.clear()
+	_tex_cache.clear()
+	_mat_cache.clear()
 
 
 ## Props spawned now, and every prop in the placements (tests and the bench read these).
@@ -346,24 +358,45 @@ static func _glow_texture() -> Texture2D:
 	return _glow_tex
 
 
+## Textures and materials are made once per file and shared by every prop that uses it. Before, each spawn made a new
+## padded copy and a new ShaderMaterial, and SkyCycle kept every one of them for its per-frame relight, so the list only grew.
+var _tex_cache: Dictionary = {}      # file -> sway-padded Texture2D
+var _mat_cache: Dictionary = {}      # "sway|file" or "rim|file" -> ShaderMaterial
+
+func _padded(file: String) -> Texture2D:
+	if not _tex_cache.has(file):
+		_tex_cache[file] = SkyCycle.padded(load(DIR + file) as Texture2D)
+	return _tex_cache[file] as Texture2D
+
+func _prop_mat(sways: bool, nrm_file: String) -> ShaderMaterial:
+	var key: String = ("sway|" if sways else "rim|") + nrm_file
+	if _mat_cache.has(key):
+		return _mat_cache[key] as ShaderMaterial
+	var nrm: Texture2D = _padded(nrm_file) if sways else load(DIR + nrm_file) as Texture2D
+	var m: ShaderMaterial = _sky.prop_material(sways, nrm)
+	if m != null:   # null only before the sky is ready: try again on the next spawn rather than keep it
+		_mat_cache[key] = m
+	return m
+
 func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 	var sp := Sprite2D.new()
 	sp.name = "Occ_" + String(s.file).get_file().get_basename()
-	sp.texture = load(DIR + String(s.file)) as Texture2D
 	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sp.centered = false
 	sp.position = Vector2(s.foot[0], s.foot[1])
 	sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
 	if _sky != null and String(s.kind) in SWAY_KINDS:
-		sp.texture = SkyCycle.padded(sp.texture)
+		sp.texture = _padded(String(s.file))
 		sp.offset.x -= float(SkyCycle.SWAY_PAD)
 		sp.material = _sky.sway_material
 		if s.has("nrm"):
-			sp.material = _sky.prop_material(true, SkyCycle.padded(load(DIR + String(s.nrm)) as Texture2D))
-	elif _sky != null:
-		sp.material = _sky.rim_material
-		if s.has("nrm"):
-			sp.material = _sky.prop_material(false, load(DIR + String(s.nrm)) as Texture2D)
+			sp.material = _prop_mat(true, String(s.nrm))
+	else:
+		sp.texture = load(DIR + String(s.file)) as Texture2D
+		if _sky != null:
+			sp.material = _sky.rim_material
+			if s.has("nrm"):
+				sp.material = _prop_mat(false, String(s.nrm))
 	parent.add_child(sp)
 	if _shadows != null:
 		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))

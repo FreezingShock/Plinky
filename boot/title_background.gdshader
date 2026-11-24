@@ -193,21 +193,19 @@ void fragment() {
 	vec2 pa = px - layer_shift(0.18);
 	float ha = far_ridge(pa.x);
 	if (pa.y > ha) {
-		float slope = far_ridge(pa.x + 3.0) - far_ridge(pa.x - 3.0);
 		float depth = pa.y - ha;
-		// Sun-lit faces only near the crest, thinning into shadow lower down, so faces read as slopes, not columns.
-		// The lit weight is continuous in slope and dithered per texel. A hard `slope > 0.5` test lit or shaded a
-		// whole column at once, which drew a straight vertical edge down the central peak.
-		float face = smoothstep(0.1, 0.9, slope);
+		// Sun-lit faces come from the gully pattern and thin out into shadow lower down. The lit weight does not read
+		// the ridge slope: a test on slope lit or shaded whole columns at once, which drew a straight vertical edge
+		// down the central peak. Facets now follow the diagonal gullies, which have no column seam.
 		float dz = bayer4(pa) + 0.03;
 		float gully = sin(pa.x * 0.62 - pa.y * 0.95);
-		bool lit = depth < 46.0 && (gully > -0.3 || depth < 4.0) && dz < face * (1.0 - depth / 62.0);
+		bool lit = depth < 46.0 && (gully > -0.3 || depth < 4.0) && dz < 0.6 * (1.0 - depth / 62.0);
 		idx = lit ? 2 : 1;
 		if (pa.y < ha + 1.5) { idx = 4; }
 		// Snow: dithered cap on the high peaks.
 		float snow = ha < 138.0 ? (138.0 - ha) / 14.0 : 0.0;
 		if (pa.y < ha + 2.0 + snow * 7.0 && bayer4(pa) + 0.03 < 0.35 + snow * 0.65 && pa.y > ha + 1.0) {
-			idx = (dz < face) ? 7 : 4;
+			idx = (dz < 0.6) ? 7 : 4;
 		}
 		// Mist gathers at the foot and drifts.
 		float mist = clamp((pa.y - 150.0) / 46.0, 0.0, 1.0);
