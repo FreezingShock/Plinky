@@ -883,3 +883,9 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Meter:** a centred menu whose column reaches the momentum meter's column stops 6 px above the meter, so the meter's corner is never covered. Menus that do not reach the meter's column stay centred on the frame. Chosen over hiding the meter while a menu is open, because the meter's state stays visible during a menu.
 - **Attributes:** the Stats and Attributes page lists only Prestige and Rebirth Perk attributes. Zone gifts (Bloom, Nucleus) appear only in the Upgrades gallery, which already groups them. Chosen over filtering by zone, because a gift has one home and two places showing it would drift.
 - Not verified in-engine: the panel's new height above the meter at 640x360, and the Attributes page with a Nucleus save. PC QA should check both.
+
+## 2026-11-24 Tighter achievement banner (Nathan's feedback on #239)
+- **Why:** Nathan said the merged banner had too much blank space and was too intrusive at small sizes. In his screenshot it ran into the right-hand stat strip.
+- **What:** a tighter frame pad (5x3 texels, not the usual 8x6 from theme.md section 5, a deliberate deviation for this one card); the category icon at its native 16 texels; the card is 36% of the HUD width, clamped to 168 to 240 texels, so it scales with the window; the middle sits at 30% of the height, higher than before; the name and description wrap to two lines at most and then end in an ellipsis, so the card cannot grow taller; the shakes are softer (0.06 and 0.14).
+- Not run in-engine. PC QA should check it at 640x360 and at a small window, beside the stat strip and the zone panel.
+
