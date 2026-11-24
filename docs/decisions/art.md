@@ -215,6 +215,7 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 
 ## 2026-11-24: Pad glow lights the plate and a bloom above it
 - Nathan's feedback: the plate stayed dark, so the halo now lights from the pad's centre out and reaches the plate itself, in 16 steps so the falloff has no visible rings. A smaller squared-falloff bloom hangs over the plate. Props, grass and the walker are under the halo's layer, so it reaches them too.
+- Not done: colouring the lighting shader's pad light pools by affordability. That shader is shared with the meadow rework thread, so it waits for coordination. Not verified in-engine.
 - Pad light pools are coloured by affordability in the next entry (2026-11-24: Pad pool colour). Not verified in-engine.
 
 ## 2026-11-24: Pad pool colour (green or red light pools from pads)

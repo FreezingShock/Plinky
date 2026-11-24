@@ -66,15 +66,18 @@ var _chip: Node2D = null          # the chip's own node, made for a row's first 
 const HALO_Z: int = 6
 ## Buy glow: an additive radial halo on the ground, larger than the plate. Plate units: 1.0 is the plate's edge.
 const GLOW_INNER: float = 1.1     # the halo starts at the plate's edge (its ink sits just inside this)
-const GLOW_DAY: float = 0.55      # strength by day (0..1): visible, but it stays out of the way of the scene
-const GLOW_NIGHT_GAIN: float = 1.0  # extra strength at full night: about twice as bright at midnight
-const GLOW_SPREAD_DAY: float = 1.1  # how far the halo reaches past the plate, in plate units, by day
-const GLOW_SPREAD_NIGHT: float = 1.6  # and the extra reach at full night
-const GLOW_PEAK: float = 0.75     # peak alpha at the plate's edge, before the strength scales it
+const GLOW_DAY: float = 0.6       # strength by day (0..1): clearly there at noon, still under the scene's light
+const GLOW_NIGHT_GAIN: float = 0.5  # extra strength at full night: 0.6 by day, 0.9 at midnight
+const GLOW_SPREAD_DAY: float = 3.0  # how far the halo reaches past the plate, in plate units, by day (reach ~1.9x the old one)
+const GLOW_SPREAD_NIGHT: float = 2.6  # and the extra reach at full night (reach ~1.8x the old one)
+const GLOW_PEAK: float = 1.0      # peak alpha at the plate's edge, before the strength scales it
 const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
 const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
 static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
+const HAZE_REACH: float = 1.4       # the volumetric bloom above the plate, in plate units
+const HAZE_LIFT: int = 9            # its centre sits this many texels above the plate's top face
+static var _haze_tex: Dictionary = {}   # "ready_step" -> ImageTexture for the bloom
 var _halo: Node2D = null
 var _halo_sig: int = -1
 const LOCK_TOP: int = -6          # the chip's top edge, in pad-local texels: centred on the top face (origin)
@@ -652,7 +655,7 @@ static func glow_night_step(night: float) -> int:
 	return roundi(clampf(night, 0.0, 1.0) * 8.0)
 
 
-## The halo for a state and night step: a soft radial falloff, stepped into 8 alpha levels, one texel per world texel. Built
+## The halo for a state and night step: a soft radial falloff from the pad's centre, stepped into 16 alpha levels, one texel per world texel. Built
 ## once and cached, so the glow costs one texture draw per pad. The colour is the buy-state hex, so the halo reads green or red.
 static func glow_texture(ready: bool, step: int) -> ImageTexture:
 	var key: String = "%d_%d" % [int(ready), step]
@@ -672,14 +675,43 @@ static func glow_texture(ready: bool, step: int) -> ImageTexture:
 			var u: float = float(x) / HALF.x
 			var v: float = float(y) / HALF.y
 			var d: float = sqrt(u * u + v * v)   # plate units: 1.0 is the plate's edge
-			if d <= GLOW_INNER or d >= reach:
+			if d >= reach:
 				continue
-			var f: float = 1.0 - (d - GLOW_INNER) / spread
-			var a: float = snappedf(clampf(f * f * GLOW_PEAK * amount, 0.0, 1.0), 0.125)
+			# Lit from the pad's centre out, so the plate itself takes the light, not only the ground around it. Linear falloff
+			# in 16 steps: the outer part still carries light, and the steps are too fine to read as rings.
+			var f: float = 1.0 - d / reach
+			var a: float = snappedf(clampf(f * GLOW_PEAK * amount, 0.0, 1.0), 1.0 / 16.0)
 			if a > 0.0:
 				img.set_pixel(x + hw, y + hh, Color(col.r, col.g, col.b, a))
 	var tex: ImageTexture = ImageTexture.create_from_image(img)
 	_glow_tex[key] = tex
+	return tex
+
+
+## The volumetric bloom for a state and night step: a small round light with a squared falloff, cached like the halo.
+static func glow_haze_texture(ready: bool, step: int) -> ImageTexture:
+	var key: String = "%d_%d" % [int(ready), step]
+	if _haze_tex.has(key):
+		return _haze_tex[key] as ImageTexture
+	var amount: float = glow_amount(ready, float(step) / 8.0)
+	var hw: int = ceili(HALF.x * HAZE_REACH)
+	var hh: int = ceili(HALF.y * HAZE_REACH)
+	var img: Image = Image.create(2 * hw + 1, 2 * hh + 1, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.0, 0.0, 0.0, 0.0))
+	var col: Color = StatStyle.gain() if ready else StatStyle.cant()
+	for y in range(-hh, hh + 1):
+		for x in range(-hw, hw + 1):
+			var u: float = float(x) / HALF.x
+			var v: float = float(y) / HALF.y
+			var d: float = sqrt(u * u + v * v)
+			if d >= HAZE_REACH:
+				continue
+			var f: float = 1.0 - d / HAZE_REACH
+			var a: float = snappedf(clampf(f * f * 0.6 * amount, 0.0, 1.0), 1.0 / 16.0)
+			if a > 0.0:
+				img.set_pixel(x + hw, y + hh, Color(col.r, col.g, col.b, a))
+	var tex: ImageTexture = ImageTexture.create_from_image(img)
+	_haze_tex[key] = tex
 	return tex
 
 
@@ -721,9 +753,14 @@ func _draw_halo() -> void:
 	var night: float = _night()
 	var ready: bool = pad_state() == PadState.READY
 	# One texture draw: the halo is built once per state and night step (glow_texture), centred on the plate's top face.
-	var tex: ImageTexture = glow_texture(ready, glow_night_step(night))
+	var step: int = glow_night_step(night)
+	var tex: ImageTexture = glow_texture(ready, step)
 	var half: Vector2i = Vector2i(tex.get_width() >> 1, tex.get_height() >> 1)
 	_halo.draw_texture(tex, Vector2(-half.x, top - half.y))
+	# The volumetric bloom: a smaller, airier light hanging over the plate.
+	var haze: ImageTexture = glow_haze_texture(ready, step)
+	var hhalf: Vector2i = Vector2i(haze.get_width() >> 1, haze.get_height() >> 1)
+	_halo.draw_texture(haze, Vector2(-hhalf.x, top - HAZE_LIFT - hhalf.y))
 	# Rarity glints: a small plus on each corner of the plate, just outside it. Epic and up glow in the rarity colour; Legendary and up get a bright heart.
 	if rarity != null and rarity.rank > 0:
 		var rc: Color = _trim if _trim.a > 0.0 else rarity.tint()
