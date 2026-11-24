@@ -85,6 +85,8 @@ const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = non
 const CROWD_RANGE: float = 48.0   # texels: a little over one row apart, so a row's neighbours count and a lone pad does not
 const CROWD_SHARE: float = 0.5    # each lit pad in the crowd (itself included) takes this share of the light
 var crowd: int = 1                # lit pads within CROWD_RANGE, self included; main.gd sets it each frame
+## The rarity resources and cost and reward icons a zone's pads read in _ready, held from warm_zone() until the next zone's.
+static var _warm: Array[Resource] = []
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
 static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
 const HAZE_REACH: float = 0.6       # the volumetric bloom above the plate, in plate units
@@ -751,6 +753,24 @@ func _draw_bed_art(top: int, stage: int) -> void:
 	draw_texture(bed_texture("shade_s%d.png" % stage), at)
 	draw_texture(bed_texture("leaf_s%d.png" % stage), at)
 	draw_texture(bed_texture("%s_bloom_s%d.png" % [flower_row, stage]), at, stat_color)
+
+
+## Loads and holds the rarity resources and the cost and reward icons of a zone's pads, so building the pads does not pay
+## their cold loads (boot 1 on the PC: build pads 72 ms, boots 2 and 3: 8 to 9 ms). Called before the zone's pads are built.
+static func warm_zone(sim: Sim, zone: ZoneDef) -> void:
+	var held: Array[Resource] = []
+	for id: String in zone.pad_buttons:
+		var b: ButtonDef = sim.button_defs.get(StringName(id)) as ButtonDef
+		if b == null:
+			continue
+		var rarity: RarityDef = load("res://content/rarities/%s.tres" % String(sim.pad_rarity(StringName(id)))) as RarityDef
+		if rarity != null:
+			held.append(rarity)
+		for stat: StringName in [b.cost_stat, b.reward_stat]:
+			var icon: Texture2D = IconSet.get_icon(String(stat), LOCK_ICON)
+			if icon != null:
+				held.append(icon)
+	_warm = held
 
 
 ## The baked bed texture for one file in BED_DIR, loaded once.
