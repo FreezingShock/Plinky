@@ -373,3 +373,13 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests 7787 checks, 0 failed. Night and dusk, clear and rain, in `tools/weather_mock_shots.tscn`. Frame times in `tools/weather_perf.tscn` are within noise of the old build on software Vulkan, so the cost is not measured on a GPU.
 - **Not verified on the PC:** how strong the mirror reads on a real GPU, and the night look at full quality.
 - **Not in this change yet:** drips off trees and roofs, the sound layers, and the fog and snow pass. These need their own mockups.
+
+## 2026-11-24: Pad signs clear of the beds, mounds fuller
+- **Nathan's note (PC QA, batch 103):** the plank sign sat over the pad's centre bed, and the mound was not clearly separable at zoom 1.
+- **How:** `SIGN_X` moves from 17 to 26 texels, which clears the bed's right edge (x 24) and the plate's right corner. The plank keeps its height and width, so the text and the post still fit. `tools/art/gen_pad_beds.py` raises the head radii about 15% (`HEAD_R` 1 to 5: 4.2, 3.4, 3.1, 2.8, 2.6). It regenerates `assets/art/zone1/pads/`.
+- **Check:** the headless suite passes (7941 checks). An in-engine contact sheet (`tools/pad_sheet.tscn -- rich`, xvfb with lavapipe) shows the sign beside the bed and the stage 1 and 2 mounds as separate domes at 1x.
+- **Not checked:** the night and dusk tones, and the walker's footprint against the moved sign. PC QA should look at those.
+## 2026-11-24: Farm wheat clumps are canvas items under one node (Larkmoor was over the node cap)
+- **Decision:** `FarmWheat` creates each clump as a `RenderingServer` canvas item parented to the y-sorted prop parent, at the clump's foot, instead of a `Sprite2D` per clump. One node owns all 176. The items y-sort against the walker, trees and props exactly as the sprites did, because the renderer sorts a parent's child items by their transform origin. Plain props, trees, the fence and soil stay `Sprite2D` (they take the rim material or shadows).
+- **Why:** #434 laid 176 clumps, which put Larkmoor at 1357 against the 1350 ceiling. The bench now shows about 1000 nodes at peak. A single draw node would have lost the per-clump sort with the walker.
+- **Same look:** same sheet frames, same live redraw near the walker, same nearest filter. Day shots at five spots match before and after except for the gust and sun clock. Tests 7941 checks, 0 failed. Not run on the PC.
