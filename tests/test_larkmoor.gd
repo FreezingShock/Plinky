@@ -96,6 +96,9 @@ func run(t: Object) -> void:
 	scene.call("spawn_occluders", props)
 	var placements: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "placements3d.json")) as Dictionary
 	var sprites: Array = placements.sprites as Array
+	# the Ember Quarry cave entrance props live in their own file and the scene merges them into the placements
+	var entrance: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DIR + "entrance/entrance.json")) as Dictionary
+	sprites = sprites + (entrance.get("sprites", []) as Array)
 	var lanterns: int = 0
 	for sp: Dictionary in sprites:
 		if String(sp.kind) == "lantern":
