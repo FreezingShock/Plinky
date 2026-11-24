@@ -535,3 +535,10 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Colour:** the tag's font colour is `RelicStyle.text` (palette index 7, paper, cream in every zone). An in-engine capture at Zone 1 shows cream. QA's "green" report matches the pre-#428 tag, so the editor probably still runs the old code. Re-check after a pull and F5.
 - **Check in-engine:** hold Shift, then tap Ctrl. The tag's centre sits over the panel's centre, and the tag is cream.
 - **Not run on the PC:** the capture was a headless Godot 4.7.2 run under xvfb in the cloud, not Nathan's machine.
+
+## 2026-11-24: Upgrades panel builds its contents on open, frees them on close (node budget)
+- **Decision:** the Upgrades shell (the animated panel the menu router holds) is the only part built at boot. Its header, tabs, tier rails and gift cards are built each time it opens and freed when it closes. The tier each tab showed is kept across a close.
+- **Why:** the gifts were about 470 nodes that stayed in the tree after a close (1249 with Upgrades closed after one open, against 780 at boot). Measured headless in the meadow: boot 799 to 780, closed 1249 to 780, reopen back to 1249.
+- **Checked:** the open panel looks the same as before in a capture. `tools/gifts_shot.tscn` runs both zones through open, close and reopen with no script errors, and the tab, keyboard and row-click paths still work. `tests/run.gd` passes.
+- **Cost:** each open builds about 470 nodes again, once per open rather than once per session.
+- **Not run in-engine:** the open hitch on a real PC, and the focus feel with pad.
