@@ -1,0 +1,1 @@
+Screens that share a backdrop now swap with no transition, so Play goes straight into the loading screen. The sweep is kept for real backdrop changes, and it holds until the next screen has drawn its first frames.
