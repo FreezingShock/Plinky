@@ -41,14 +41,22 @@ var is_locked: Callable = Callable()
 var _tiles: Dictionary = {}   # kind -> GalleryTile
 var _clock: float = 0.0
 var _resume: MenuTextButton
+var _body: VBoxContainer          ## the built contents, or null while the menu is shut
 
 
 func _init() -> void:
 	visible = false
 	add_theme_stylebox_override("panel", AsciiBox.panel())
+	# Only the frame exists while the menu is shut. The tiles and footer are built on open and freed on hide.
+	visibility_changed.connect(_on_visibility)
+
+
+## Builds the tiles, the header and the footer. Called by _ensure when the menu opens, never at boot.
+func _build() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	add_child(v)
+	_body = v
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
 	v.add_child(head)
@@ -107,6 +115,7 @@ func _init() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", RelicStyle.dim)
 	v.add_child(hint)
+	_wire_focus()
 
 
 ## Pure: the tile each arrow key goes to from tile `i` of `n` in a grid `cols` wide. Moves wrap around the edges, and a
@@ -125,7 +134,9 @@ static func neighbors(n: int, cols: int, i: int) -> Dictionary:
 
 
 ## Arrows, d-pad and Tab walk the grid (locked tiles included, so you can see what is coming).
-func _ready() -> void:
+func _wire_focus() -> void:
+	if not is_inside_tree():   # the paths need the tiles in a tree; a menu that is shown off-tree (tests) skips it
+		return
 	var order: Array[GalleryTile] = []
 	for e: Array in ENTRIES:
 		order.append(_tiles[e[0]] as GalleryTile)
@@ -151,6 +162,33 @@ func _action(text: String, accent: Color, on_press: Callable) -> MenuTextButton:
 
 func resume_button() -> MenuTextButton:
 	return _resume
+
+
+## Shown: build the contents if they are not there. Hidden (the close wipe is done): free them.
+func _on_visibility() -> void:
+	if visible:
+		_ensure()
+	else:
+		_teardown()
+
+
+func _ensure() -> void:
+	if _body != null:
+		return
+	_build()
+	reset_size()   # the HUD centres the menu by its size, so it must match the contents it now has
+
+
+## Frees the tiles and footer. Tooltips hide first; the frame, the wipe and the close X stay.
+func _teardown() -> void:
+	Tip.hide_all()
+	if _body != null:
+		remove_child(_body)
+		_body.queue_free()
+	_body = null
+	_tiles.clear()
+	_resume = null
+	_clock = 0.0
 
 
 static func version_text() -> String:

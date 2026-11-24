@@ -536,10 +536,30 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Check in-engine:** hold Shift, then tap Ctrl. The tag's centre sits over the panel's centre, and the tag is cream.
 - **Not run on the PC:** the capture was a headless Godot 4.7.2 run under xvfb in the cloud, not Nathan's machine.
 
+## 2026-11-24: Upgrades panel builds its contents on open, frees them on close (node budget)
+- **Decision:** the Upgrades shell (the animated panel the menu router holds) is the only part built at boot. Its header, tabs, tier rails and gift cards are built each time it opens and freed when it closes. The tier each tab showed is kept across a close.
+- **Why:** the gifts were about 470 nodes that stayed in the tree after a close (1249 with Upgrades closed after one open, against 780 at boot). Measured headless in the meadow: boot 799 to 780, closed 1249 to 780, reopen back to 1249.
+- **Checked:** the open panel looks the same as before in a capture. `tools/gifts_shot.tscn` runs both zones through open, close and reopen with no script errors, and the tab, keyboard and row-click paths still work. `tests/run.gd` passes.
+- **Cost:** each open builds about 470 nodes again, once per open rather than once per session.
+- **Not run in-engine:** the open hitch on a real PC, and the focus feel with pad.
 ## 2026-11-24: Relic gallery builds on open, frees on close (node budget)
 - **Decision:** `RelicPanel` builds its body when it shows and frees that body when it closes. Filter and open tier are kept across a close. `bind()` only keeps the inventory and rebuilds the tab chips if the panel is open.
 - **Why:** the gallery's 79 nodes sat in the boot tree, which counts against the 1350 ceiling on every zone. Measured headless in the meadow: 799 nodes at boot before, 720 after; open and reopen return to 799, close returns to 720.
 - **Kept:** the menu router's animator and the close X are children of the panel, so teardown frees only `_outer`, the body.
 - **Checked:** in a headless capture the open panel looks the same as before (the world behind it differs by time of day). `tests/run.gd` passes (7941 checks, 0 failed).
 - **Next:** Upgrades (about 392 nodes after close) and Stats/Attributes plus Gallery, same pattern, in their own PRs.
+- **Not run in-engine:** the focus feel on a real PC.
+
+## 2026-11-24: Stats and Attributes builds on open, frees on close (node budget)
+- **Decision:** `IndexPanel` keeps only its frame (the wipe, the panel shell and the close X) while shut. The header, tabs, card grid and detail page are built when the window opens and freed when the close wipe ends. The tab is kept across a close, as before.
+- **Why:** the window's body sat in the boot tree. Headless probe in the meadow: 716 nodes at boot before, 677 after. With Stats open it is 787 both before and after. After closing, 825 before (the body stayed, with a detail page open) and 680 after; the 3 left over are the shared tooltip layer, which the first hover creates.
+- **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. Tooltips hide and page tweens stop before the body is freed.
+- **Checked:** the open Stats and Attributes windows and detail page match main pixel for pixel, except the Stats tab's dotted focus ring, which the fresh build does not show on the first open after boot. Focus lands on the same control in both builds (the Stats tab button). `tests/run.gd` passes, and the new checks cover free on close and rebuild on open.
+- **Not run in-engine:** the focus feel on a real PC.
+- **Next:** the Gallery menu, same pattern.
+## 2026-11-24: Gallery menu builds on open, frees on close (node budget)
+- **Decision:** `GalleryMenu` keeps only its frame (the wipe, the panel shell and the close X) while shut. The header, the nine tiles, the footer actions and the arrow-key wiring are built when it opens and freed when it closes.
+- **Why:** the tiles and footer sat in the boot tree. Headless probe in the meadow: 677 nodes at boot before, 651 after. Open is 677 both ways. After closing, 680 before and 654 after; the 3 left over are the shared tooltip layer, which first use creates.
+- **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. `_wire_focus` runs when the body is built, and skips a menu that is shown off-tree (tests).
+- **Checked:** the open menu matches main pixel for pixel in the tiles and header. The footer labels (Close Menu, Quit To Title, Quit Game) sit 1 px to the right of main's, and that holds after 2.5 s, so it is not the open animation. Not traced yet; likely how MenuTextButton measures its label on its first `_ready`. `tests/run.gd` passes. Two tests now show the menu before reading its tiles.
 - **Not run in-engine:** the focus feel on a real PC.

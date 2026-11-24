@@ -30,6 +30,15 @@ func run(t: Object) -> void:
 	panel.open_detail(&"luck")
 	panel._on_buy()
 	t.ok(bought == [&"luck"], "the buy button buys the attribute on show")
+	# A closed window holds no body: it is built on open, and freed once the close wipe has finished.
+	panel.close_panel()
+	t.ok(not panel.visible and panel._body == null and panel._cards.is_empty(), "a closed window frees its body and cards")
+	panel.open_tab(IndexPanel.Tab.STATS)
+	t.ok(panel.is_open() and panel._body != null and not panel._cards.is_empty(), "opening builds the body and its cards again")
+	panel.close_panel()
+	t.ok(panel._body == null, "closing again frees the body")
+	panel.open_tab(IndexPanel.Tab.ATTRIBUTES)
+	t.ok(panel.is_open() and panel.tab == IndexPanel.Tab.ATTRIBUTES, "the next open shows the tab it was asked for")
 	FxConfig.reduce_flashing = false
 	panel.toggle_tab(IndexPanel.Tab.STATS)
 	panel.toggle_tab(IndexPanel.Tab.ATTRIBUTES)
