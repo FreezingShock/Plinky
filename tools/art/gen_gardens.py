@@ -39,9 +39,9 @@ GARDENS = [
     dict(stat='clover',    row='clover',      seed=2.0, reach=84, n=30, small=80, scales=(6, 4, 0), strays=40),
     dict(stat='thistle',   row='thistle',     seed=3.0, reach=100, n=100, small=46, scales=(2, 4, 2), strays=48),
     dict(stat='heather',   row='heather',     seed=4.0, reach=88, n=74, small=34, scales=(3, 4, 1), strays=42),
-    dict(stat='foxglove',  row='foxglove',    seed=5.0, reach=84, n=66, small=30, scales=(1, 3, 4), strays=38),
-    dict(stat='starbloom', row='starbloom_n', seed=6.0, reach=80, n=64, small=28, scales=(2, 4, 2), strays=32),
-    dict(stat='starbloom', row='starbloom_w', seed=7.0, reach=80, n=64, small=28, scales=(2, 4, 2), strays=32),
+    dict(stat='foxglove',  row='foxglove',    seed=5.0, reach=84, n=96, small=46, scales=(1, 3, 4), strays=38),
+    dict(stat='starbloom', row='starbloom_n', seed=6.0, reach=80, n=100, small=46, scales=(2, 4, 2), strays=32),
+    dict(stat='starbloom', row='starbloom_w', seed=7.0, reach=80, n=74, small=33, scales=(2, 4, 2), strays=32),
 ]
 
 
