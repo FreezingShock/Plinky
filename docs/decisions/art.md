@@ -314,3 +314,10 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - `LifeGround` is no longer placed in Larkmoor or the meadow. The class stays for its tests.
 - Pad plates are skipped by colour (they are not grass colours), not by the pad clearance, because Larkmoor has 31 pads and the shader holds 8.
 - Checked in the cloud only (xvfb, lavapipe): no shader errors, `tests/run.gd` passes (6539 checks), `tools/larkmoor_shots.tscn` runs. Not verified on the PC.
+
+## 2026-11-24: Lightning in heavy rain (recommendation 9, third of three)
+- **Look:** a brief cool-white lift on the whole frame in heavy rain (rain at 70% of max and up), made in the light grade pass (`light_grade.gdshader`, uniform `flash`). A strike flickers twice over about half a second.
+- **Schedule:** `SkyModel.lightning_flash(t, rain01)`, pure. Each 40 s window has a strike half the time, at a hashed moment, so the same time always gives the same flash and the test can check it.
+- **Flashing:** zero under Reduce motion or Reduce flashing (`steady` in `SkyCycle._update_light`). Reduce flashing defaults off, so lightning plays by default, as the handoff asked.
+- **Low quality:** the light grade pass is skipped on Low (`GraphicsQuality.screen_grade`), so Low shows no lightning. Thunder sound is not included.
+- **Not verified in-engine:** how strong the lift reads on the PC, and how often a strike falls in a real downpour.
