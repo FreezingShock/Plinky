@@ -235,3 +235,10 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Why:** rain barely read on screen, and wet ground is the cue that says it is raining.
 - **Verified in the cloud:** Godot 4.7.2 headless under xvfb with lavapipe. Tests 5346 checks, 0 failed. Shaders compile, and the screenshot set (tools/weather_shots.tscn) was checked by eye.
 - **Not verified on the PC:** how puddles and rings look at zoom 1 and 4, the feel of the drop speed, and the night puddles against the moonlit path.
+
+## 2026-11-24: Windmill sails turn (Larkmoor)
+- **Decision:** the sails sprite (`windmill_sails`, split out by PR #335) turns on its hub from eight pre-rendered frames. `tools/art/gen_windmill_sails.py` rotates the sails about the hub in 11.25 degree steps, sampling nearest-neighbour so the pixel art stays crisp. Four arms repeat every 90 degrees, so the sheet loops with no seam. `world/windmill_sails.gd` steps the frames on the life clock.
+- **Pace:** the wind (`MeadowLife.wind`) sets the base speed, about 11 seconds for a full turn in a calm breeze, and a slow two-wave gust term makes it swell and ease. Under Reduce Motion the sails hold frame 0.
+- **Why pre-rendered:** a live rotation of a pixel sprite blurs and shimmers. Frames keep the outline crisp.
+- **Not in this slice:** the sails use the rim light but not the normal map. The old normal map does not rotate with the frames, so it is dropped for the sails.
+- **Verified in-engine (Xvfb):** two captures a few seconds apart show the sails at different angles about the hub. **Not verified:** the gust feel over time, and dusk lighting on the sails.

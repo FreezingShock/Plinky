@@ -184,6 +184,7 @@ var _occ_parent: Node2D = null
 var _prop_index: Dictionary = {}     # Vector2i chunk -> Array of prop dictionaries (placements3d.json sprites)
 var _loaded: Dictionary = {}         # Vector2i chunk -> Array of the Sprite2D props spawned for it
 var _center: Vector2i = Vector2i(-99999, -99999)
+var _sail_manifest: Dictionary = {}   # the windmill sails' turning sheet (world/windmill_sails.gd), loaded once
 var _lanterns_lit: bool = false       # lantern pools are added once per scene, not once per spawn
 const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
@@ -235,6 +236,30 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 ## The Thistle Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
 func _add_farm(parent: Node2D) -> void:
 	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
+
+
+## The windmill sails (kind windmill_sails) turn on their hub: their sprite shows the pre-rendered frames and a
+## WindmillSails node steps them. Without the sheet in the build, the sails fall back to the plain sprite.
+func _spawn_sails(parent: Node2D, s: Dictionary) -> Sprite2D:
+	if _sail_manifest.is_empty():
+		_sail_manifest = WindmillSails.load_manifest()
+	if _sail_manifest.is_empty():
+		return null
+	var sp := Sprite2D.new()
+	sp.name = "Occ_windmill_sails"
+	sp.texture = load(WindmillSails.DIR + String(_sail_manifest.file)) as Texture2D
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sp.centered = false
+	sp.position = Vector2(s.foot[0], s.foot[1])
+	var off: Array = _sail_manifest.offset as Array
+	sp.offset = Vector2(float(off[0]), float(off[1]))
+	if _sky != null:
+		sp.material = _sky.rim_material
+	parent.add_child(sp)
+	WindmillSails.attach(sp, _sail_manifest)
+	if _shadows != null:
+		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
+	return sp
 
 
 ## Keep the loaded chunks in step with the walker. Runs every frame, but only does work when the walker changes chunk.
@@ -379,6 +404,10 @@ func _prop_mat(sways: bool, nrm_file: String) -> ShaderMaterial:
 	return m
 
 func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
+	if String(s.kind) == WindmillSails.KIND:
+		var sails: Sprite2D = _spawn_sails(parent, s)
+		if sails != null:
+			return sails
 	var sp := Sprite2D.new()
 	sp.name = "Occ_" + String(s.file).get_file().get_basename()
 	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
