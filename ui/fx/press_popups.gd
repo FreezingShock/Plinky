@@ -15,10 +15,13 @@ const SOFT_CAP: int = 16            ## above this many live popups, relic pulses
 const MAX_PARTS: int = 220
 const MAX_LINKS: int = 8
 const MAX_RINGS: int = 8
-const QUIET_AFTER: float = 0.5            ## seconds with no new gain before a label starts to rise and fade
+const QUIET_AFTER: float = 0.5            ## shortest quiet window: a label starts to rise this long after its last gain
+const QUIET_MULT: float = 1.5             ## a label holds this many press intervals of its currency after the last gain
+const QUIET_MAX: float = 4.0              ## longest a label holds still with no gain
+const GAP_CAP: float = QUIET_MAX / QUIET_MULT   ## a gap longer than this says nothing about cadence, so it is capped
 const LIFT: Vector2 = Vector2(0.0, -18.0)   ## screen pixels from the pad to the number's baseline
 const MAX_WIDTH: float = 150.0             ## widest a popup's text may be, in pixels
-const MERGE_NEAR: float = 200.0           ## pixels: a same-stat gain this close to a live label folds into it (about two pads)
+const MERGE_NEAR: float = 360.0           ## pixels: a gain of the same currency this close to a live label folds into it (a pad row or cluster)
 const TICK_RATE: float = 16.0             ## per second: a merged number rolls up to its new total in about 0.2 s
 const SETTLE_GAP: float = 2.0             ## pixels kept between two visible popups after the per-frame settle
 const LIFE: float = 0.95
@@ -107,6 +110,10 @@ var _p_next: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _clock: float = 0.0
 var _seq: int = 0
+## Tests set this to drive gain timing by hand. In play it stays -1 and the real clock is used.
+var clock_override: float = -1.0
+var _gain_last: Dictionary = {}           ## stat -> clock time of its last gain
+var _gain_ema: Dictionary = {}            ## stat -> smoothed seconds between its gains
 
 
 func _ready() -> void:
@@ -152,19 +159,12 @@ func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, h
 		return
 	if pulse and _live_count() >= SOFT_CAP:
 		return
-	if held:
-		var run: Pop = _runs.get(key) as Pop
-		if run != null and run.live and run.running:
-			run.total += amount
-			run.count += 1
-			run.crit = run.crit or crit
-			_restyle(run, tier)
-			return
-	else:
-		var m: Pop = _find_mergeable(key, at, stat)
-		if m != null:
-			_fold_in(m, amount, crit, tier)
-			return
+	# Every source of a gain (presses, standing presses, crits, echoes, auto and bonus) lands on one label per currency.
+	_note_gain(stat)
+	var m: Pop = _find_mergeable(key, at, stat)
+	if m != null:
+		_fold_in(m, amount, crit, tier)
+		return
 	var p: Pop = _alloc()
 	_init_pop(p, key, at, amount, tier, crit, pulse, delay)
 	p.stat = stat
@@ -451,12 +451,37 @@ func _screen_of(at: Vector2) -> Vector2:
 	return ((world.get_global_transform_with_canvas() * at) + LIFT).round()
 
 
-## A live number of the same stat on this pad, or on a pad close by, that a new press should fold into.
+## The clock gains are timed on. Tests set clock_override; in play it is the real clock.
+func _now() -> float:
+	if clock_override >= 0.0:
+		return clock_override
+	return Time.get_ticks_msec() / 1000.0
+
+
+## Learns how often gains of one currency arrive (smoothed), so its labels know how long to stay put.
+func _note_gain(stat: String) -> void:
+	if stat == "":
+		return
+	var now: float = _now()
+	if _gain_last.has(stat):
+		var gap: float = clampf(now - float(_gain_last[stat]), 0.0, GAP_CAP)
+		var ema: float = gap if not _gain_ema.has(stat) else float(_gain_ema[stat]) * 0.7 + gap * 0.3
+		_gain_ema[stat] = ema
+	_gain_last[stat] = now
+
+
+## How long a label of this currency holds still after its last gain: 1.5 press intervals, kept between QUIET_AFTER and QUIET_MAX.
+func _quiet_for(stat: String) -> float:
+	var gap: float = float(_gain_ema.get(stat, 0.0))
+	return clampf(QUIET_MULT * gap, QUIET_AFTER, QUIET_MAX)
+
+
+## A live label of this currency near the gain (within MERGE_NEAR, running or not) that the gain folds into.
 func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
 	var best: Pop = null
 	var best_d: float = MERGE_NEAR + 1.0
 	for p in _pops:
-		if not p.live or p.running or p.banner or p.total <= 0.0 or p.stat != stat:
+		if not p.live or p.banner or p.total <= 0.0 or p.stat != stat:
 			continue
 		# Any live label of this stat near the press takes it, whether it is still holding or already floating.
 		var d: float = 0.0 if p.key == key else _screen(p).distance_to(_screen_of(at))
@@ -469,7 +494,7 @@ func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
 ## A same-stat gain lands on a live label: the number adds up, its digits tick and it pops. A label that was already
 ## floating is caught where it is and holds again, so the number keeps climbing in one place while gains arrive.
 func _fold_in(p: Pop, amount: float, crit: bool, tier: int) -> void:
-	if not p.hold:
+	if not p.running and not p.hold:
 		var off: Vector2 = p.base + PopupStyle.motion_offset(_motion_now(p), _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
 		p.base = Vector2(clampf(off.x, -24.0, 24.0), clampf(off.y, -p.rise * 2.0, p.rise))
 		p.hold = true
@@ -490,7 +515,7 @@ func _offset_now(p: Pop) -> Vector2:
 
 ## A label that has gone quiet for QUIET_AFTER starts to rise and fade from where it stands, over LIFE.
 func _float_if_quiet(p: Pop) -> void:
-	if not p.hold or p.running or p.since_bump < QUIET_AFTER:
+	if not p.hold or p.running or p.since_bump < _quiet_for(p.stat):
 		return
 	p.hold = false
 	# Take the first frame's motion out of the base, so the number does not jump when the float starts.
