@@ -159,7 +159,6 @@ func _add_gardens() -> void:
 	var layer := GardenLayer.new()
 	layer.name = "Gardens"
 	add_child(layer)
-	GardenArt.atlas()   # build the season and night atlas now, while the scene loads, not on the first garden draw (about half a second)
 	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
 	layer.pusher_group = &"walker"
 	_gardens = layer
