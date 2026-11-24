@@ -32,6 +32,9 @@ uniform float star_amt = 0.0;
 uniform float rays = 0.0;
 // Golden light 0..1: widens the halo and the sun's dithered glow.
 uniform float glow = 0.0;
+// Hover and hold highlight 0..1.5 for the sun or moon: the disc swells, the halo spreads and a dashed orbit ring turns
+// around it. Set by title_background.gd from the pointer, so the body reads as something you can grab.
+uniform float focus = 0.0;
 
 const float LAKE_TOP = 214.0;
 
@@ -148,8 +151,8 @@ void fragment() {
 	// Sun by day, moon by night: disc, rim, a dithered halo that widens in golden light, and a slow pulse.
 	vec2 bp = px - layer_shift(0.08);
 	float bd = length(bp - body_xy);
-	float sr = 20.0 + sin(t * 0.7) * 1.0;
-	float halo = 8.0 + glow * 10.0;
+	float sr = 20.0 + sin(t * 0.7) * 1.0 + focus * 2.0;
+	float halo = 8.0 + glow * 10.0 + focus * 5.0;
 	if (bd < sr) {
 		idx = (bd > sr - 2.5) ? 4 : 5;
 	} else if (bd < sr + halo && th < 1.0 - (bd - sr) / halo) {
@@ -274,6 +277,20 @@ void fragment() {
 		// Foreground gets darker toward the bottom edge.
 		float low = (px.y - 292.0) / 68.0;
 		if (low > 0.0 && th < low * 1.25) { idx = (px.y > 338.0) ? 8 : 9; }
+	}
+
+	// A hovered or held sun or moon is drawn over the scenery as well, so it can always be seen and grabbed, even low
+	// behind the mountains at golden hour. It dithers in as focus eases up, and a dashed orbit ring turns around it.
+	vec2 op = px - layer_shift(0.08);
+	float od = length(op - body_xy);
+	float osr = 20.0 + focus * 2.0;
+	if (focus > 0.05 && th < min(focus * 2.0, 1.0)) {
+		if (od < osr) {
+			idx = (od > osr - 2.5) ? 4 : 5;
+		} else if (abs(od - (osr + 6.0)) < 0.8) {
+			float oang = atan(op.y - body_xy.y, op.x - body_xy.x);
+			if (sin(oang * 7.0 + t * 1.2) > -0.3) { idx = 5; }
+		}
 	}
 
 	// ---- Soft dithered scrim behind the menu column, so the world never fights the text. ------------------------

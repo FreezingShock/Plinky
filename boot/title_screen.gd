@@ -411,6 +411,8 @@ func _process(delta: float) -> void:
 	var frame: int = int(_walk_t * WALKER_FPS) % WALKER_FRAME_COUNT
 	_walker_tex.region = Rect2(frame * WALKER_CELL, 0, WALKER_CELL, WALKER_CELL)
 	_refresh_theme()
+	# The sun or moon can be grabbed only while no panel covers the sky.
+	_bg.set_drag_enabled(not overlay_open())
 	# The scenery takes the time of day's tint and life: fireflies by night, birds by day.
 	var mood: Dictionary = _bg.mood()
 	var tint: Color = mood.get("tint", Color.WHITE)
