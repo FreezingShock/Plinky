@@ -2,7 +2,8 @@ class_name LifeReact
 extends Node2D
 ## Meadow life that answers the walker (MeadowScene child, z 10 like LifeAir). Four reactions:
 ##   bushes   rustle (a 1 texel shuffle of the bush sprite) while the walker is near, and settle after;
-##   birds    perch on the grass and scatter up and away when the walker comes close, then glide back;
+##   birds    perch on the grass and scatter up and away when the walker comes close, then glide back. They roost
+##            (out of sight) at night, in rain and in winter, most of them by day (bird_share);
 ##   ripples  rings spread on a pond or the lake when the walker walks along its shore;
 ##   grass    bends away from the walker (LifeGround.pusher, handled there).
 ## Stepped at 12 fps, palette indices only, no alpha. Reduce motion (MeadowLife.reduce_motion) keeps bushes,
@@ -15,6 +16,7 @@ const BIRD_COUNT: int = 6
 const BIRD_SCARE: float = 44.0        # walker distance that startles a perched bird
 const BIRD_RETURN_AFTER: float = 9.0  # seconds a scattered bird stays away
 const BIRD_FLIGHT: float = 1.6        # seconds spent leaving or returning
+const BIRD_FLOCK: float = 22.0        # perched birds this close to one that takes off go up with it
 const SHORE_REACH: float = 26.0       # walker distance from the water edge that makes ripples
 const SHORE_LINGER: float = 2.5       # seconds ripples keep coming after the walker stops at the shore
 const RIPPLE_EVERY: float = 0.4
@@ -50,7 +52,7 @@ func setup(life: Dictionary, perches: Array, bird_count: int = BIRD_COUNT) -> vo
 		var p: Array = pool[pick] as Array
 		pool.remove_at(pick)
 		_birds.append({"home": Vector2(float(p[0]), float(p[1])), "scared": -1.0,
-			"dir": -1.0 if MeadowLife.hash01(i + 40) < 0.5 else 1.0, "seed": i})
+			"dir": -1.0 if MeadowLife.hash01(i + 40) < 0.5 else 1.0, "seed": i, "out": true})
 
 
 func _ready() -> void:
@@ -67,8 +69,16 @@ func _on_pressed(_id: StringName, _pos: Vector3, _gain: BigNum, crit: bool) -> v
 
 func scare_all() -> void:
 	for bird: Dictionary in _birds:
-		if float(bird.scared) < 0.0:
+		if float(bird.scared) < 0.0 and bool(bird.out):
 			bird.scared = 0.0
+
+
+## How many birds are out on the perches: most by day, a few at night, fewer in rain and in winter. Birds with a
+## higher seed roost first, so the count changes by whole birds and never by a shuffle.
+static func bird_share() -> float:
+	var by_season: float = MeadowLife.season_mix([1.0, 1.0, 0.8, 0.5])
+	var by_light: float = clampf(1.0 - MeadowLife.night * 0.9, 0.0, 1.0)
+	return by_season * by_light * (1.0 - MeadowLife.rain * 0.85)
 
 
 func set_bushes(sprites: Array) -> void:
@@ -126,13 +136,22 @@ func _process(delta: float) -> void:
 			b.near = BUSH_SETTLE
 		else:
 			b.near = maxf(float(b.near) - delta, 0.0)
+	var share: float = bird_share()
 	for bird: Dictionary in _birds:
+		bird.out = MeadowLife.hash01(int(bird.seed) * 17 + 9) < share
 		var since: float = float(bird.scared)
 		if since >= 0.0:
 			since += delta
 			bird.scared = -1.0 if since >= BIRD_RETURN_AFTER + BIRD_FLIGHT else since
-		elif not calm and wp.distance_to(bird.home as Vector2) <= BIRD_SCARE:
+		elif not calm and bool(bird.out) and wp.distance_to(bird.home as Vector2) <= BIRD_SCARE:
 			bird.scared = 0.0
+	# A flock goes up together: birds perched near one that just took off (scared exactly 0 this frame) go with it.
+	for bird: Dictionary in _birds:
+		if float(bird.scared) != 0.0:
+			continue
+		for other: Dictionary in _birds:
+			if float(other.scared) < 0.0 and bool(other.out) and (other.home as Vector2).distance_to(bird.home as Vector2) <= BIRD_FLOCK:
+				other.scared = 0.0
 	if not calm:
 		for w: Dictionary in _water:
 			var p: Vector2 = shore_point(w, wp, SHORE_REACH)
@@ -171,8 +190,8 @@ func _draw() -> void:
 func _draw_bird(bird: Dictionary) -> void:
 	var home: Vector2 = bird.home as Vector2
 	var away: float = away_amount(float(bird.scared))
-	if away >= 1.0:
-		return
+	if away >= 1.0 or (away <= 0.0 and not bool(bird.out)):
+		return   # gone, or roosting out of sight
 	var sx: float = float(bird.dir)
 	var at: Vector2 = home + Vector2(sx * 90.0 * away, -60.0 * away)
 	var x: int = roundi(at.x)

@@ -3,7 +3,9 @@ extends Node2D
 ## Air and light layer of the zone 1 world life. MeadowScene adds it as its child at z_index 10, so it
 ## draws over the walker, pads and gate. Every element is a pure function of time, redrawn in 12 fps
 ## steps (8 on Low, see GraphicsQuality; lower levels also draw fewer fireflies and pollen) with no alpha: fireflies with a Bayer-dithered halo, lantern and shrine glow, drifting pollen and
-## leaves, two butterflies, sparkles on the water cove, and a shimmer that runs round each ready pad.
+## leaves, sparkles on the water cove, and a shimmer that runs round each ready pad. Butterflies moved to
+## world/life_butterflies.gd (they rest on flowers), and the ground and water critters to world/life_critters.gd.
+## Both are owned here and drawn from this node's _draw, so they add no nodes.
 ## Colours are palette indices (art-bible section 3), so a zone palette swap re-tints the whole layer.
 ## Every position comes from world/meadow_life.json (anchor data), so the layer follows the art.
 ## Z order: world layers sit above the HUD's z order, so main.gd raises the HUD z_index above them.
@@ -13,7 +15,6 @@ const FIREFLIES: int = 12
 const POLLEN: int = 20            # of which every 4th is a leaf; the day count scales it (see _pollen_count)
 const POLLEN_DAY: int = 14
 const FIREFLIES_DAY: int = 2      # a few stragglers at noon; the rest come out as the light goes
-const BUTTERFLIES: int = 6        # the most that are ever out (summer noon); the season, light and rain thin them
 const WATER_SPARKLES: int = 6
 const PAD_PERIOD: float = 2.4
 const PAD_HALF: Vector2 = Vector2(14.0, 7.0)  # must match TexelPad.HALF (kept local so this script compiles without autoloads)
@@ -27,10 +28,6 @@ const IDX_ACCENT: int = 5
 const IDX_EARTH: int = 6
 const IDX_PAPER: int = 7
 
-## Butterfly frames, 7 x 4 texels, centred on column 3. a = accent wing, e = earth wing, k = ink body.
-const BUTTERFLY_OPEN: Array = ["aa.k.aa", "aaakaaa", "ee.k.ee", ".e.k.e."]
-const BUTTERFLY_CLOSED: Array = ["..k.k..", "...k...", "..aka..", "..eke.."]
-
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _drift: Rect2 = Rect2()
 var _lights: Array = []
@@ -42,6 +39,8 @@ var _t: float = 0.0
 var _pt: float = 0.0               # pollen clock: runs faster in a breeze, so a gust carries it without a jump
 var _step: int = -1
 var _view: Rect2 = Rect2()             # on-screen part of this layer this redraw; empty = draw everything
+var _critters: LifeCritters = LifeCritters.new()   # rabbits, ducks, frogs and butterflies: drawn here, so no nodes
+var _walker: Node2D
 
 
 func setup(data: Dictionary, backdrop_sprite: Sprite2D) -> void:
@@ -57,11 +56,15 @@ func setup(data: Dictionary, backdrop_sprite: Sprite2D) -> void:
 	for p: Variant in data.get("pads", []) as Array:
 		var a: Array = p as Array
 		_pads.append(Vector2(float(a[0]), float(a[1])))
+	_critters.setup(data)
 	queue_redraw()
 
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _walker == null or not is_instance_valid(_walker):
+		_walker = get_tree().get_first_node_in_group(&"walker") as Node2D
+	_critters.update(delta, _walker.position if _walker != null else Vector2(-99999.0, -99999.0))
 	if not MeadowLife.reduce_motion:
 		_pt += delta * (0.55 + 0.9 * MeadowLife.wind)
 	var s: int = int(_t / GraphicsQuality.life_step())
@@ -77,9 +80,9 @@ func _draw() -> void:
 	_draw_lights(tb)
 	_draw_water(tb)
 	_draw_pads(tm)
+	_critters.draw(self, tb)   # rabbits, ducks, frogs and butterflies, over the pads and under the fireflies
 	if not MeadowLife.reduce_motion:
 		_draw_pollen(tm, tb)
-		_draw_butterflies(tm, tb)
 	_draw_fireflies(tm, tb)
 
 
@@ -235,39 +238,3 @@ func _draw_pollen(tm: float, tb: float) -> void:
 			# Pollen twinkles in place (not motion), so it stays visible under reduce-motion.
 			if int(tb * 3.0 + s) % 3 != 0:
 				_dot(p, IDX_PAPER if glint and i % 2 == 0 else IDX_ACCENT)
-
-
-## Butterflies are out by day in spring and summer, a few in autumn, none in winter, at night or in the rain.
-## Each has its own wing colours.
-func _butterfly_count() -> int:
-	return GraphicsQuality.life_scaled(roundi(float(BUTTERFLIES) * MeadowLife.butterfly_share()))
-
-
-## Wing colour pairs (big wing, small wing) as palette indices: accent over earth, paper over accent, light over earth.
-const WINGS: Array = [[IDX_ACCENT, IDX_EARTH], [IDX_PAPER, IDX_ACCENT], [IDX_LIGHT, IDX_EARTH]]
-
-
-## Butterflies wander on Lissajous loops and flap open and shut at 6 fps.
-func _draw_butterflies(tm: float, tb: float) -> void:
-	for i: int in _butterfly_count():
-		var s: float = float(i)
-		var c: Vector2 = Vector2(
-			lerpf(_drift.position.x + 40.0, _drift.end.x - 40.0, MeadowLife.hash01(i * 2 + 40)),
-			lerpf(_drift.position.y + 20.0, _drift.end.y - 40.0, MeadowLife.hash01(i * 2 + 41)))
-		var vx: float = cos(tm * 0.31 + s * 2.1)
-		var p: Vector2 = c + Vector2(sin(tm * 0.31 + s * 2.1) * 46.0, cos(tm * 0.23 + s) * 16.0 + sin(tm * 0.7 + s) * 3.0)
-		var origin: Vector2i = Vector2i(roundi(p.x), roundi(p.y))
-		var open: bool = int(tb * 6.0 + s) % 2 == 0
-		var rows: Array = BUTTERFLY_OPEN if open else BUTTERFLY_CLOSED
-		var flip: bool = vx < 0.0
-		var top: int = rows.size() / 2
-		for ry: int in rows.size():
-			var row: String = rows[ry]
-			for rx: int in row.length():
-				var ch: String = row[rx]
-				if ch == ".":
-					continue
-				var col: int = rx - 3 if not flip else 3 - rx
-				var wing: Array = WINGS[i % WINGS.size()] as Array
-				var idx: int = IDX_INK if ch == "k" else (int(wing[0]) if ch == "a" else int(wing[1]))
-				_dot(origin + Vector2i(col, ry - top), idx)
