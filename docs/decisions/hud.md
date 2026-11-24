@@ -367,3 +367,7 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Exit:** the coin, number, rays and ring stay centred. The coin steps down 4 to 3 to 2 to 1 pixels in place and is gone at the end of the exit, the number fades, the rays fold in and one pixel ring closes on the centre. Only a few motes (about ten a second, pixel-sized) drift from the centre into the HUD row, which still rolls up when they land. Calm (Reduce flashing, Still meadow, Calm camera) keeps the coin at full size and only fades it.
 - **Timeline:** `BloomTimeline.fly_progress` is replaced by `exit_progress` and `exit_alpha`. The plan keys (`fly_end` and so on) keep their names so the existing timing tests still apply.
 - Not run in-engine from the cloud: the tab and card layout at 640x360, the card text width at 150 px for the delta line, and the exit motion. `tools/bloom_shot.tscn` now samples the exit densely (`bloom_full_*` frames) for a PC capture.
+
+## 2026-11-24: Pad captions lift their stat colour toward white
+- Reasoning: PC QA found the quarry's "Iron Ore" caption (dark green) hard to read on dark rock. The lift keeps each stat's hue; on the mid quarry rock (8a3a2e) Iron Ore goes from 2.96:1 to 4.9:1, and a test holds every stat caption at 4:1 or better.
+- Not verified in-engine: PC QA should check "Iron Ore" in the quarry at 1x and 3x.
