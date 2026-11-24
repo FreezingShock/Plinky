@@ -92,7 +92,7 @@ func run(t: Object) -> void:
 		t.ok(shadows._overlay != null and shadows._overlay.get_child_count() > 0, "prop shadows get a clipped copy above the pads")
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
-	t.ok(lanterns > 0 and sky._lights.size() >= mini(lanterns, SkyCycle.MAX_LIGHTS), "lanterns get light pools up to the cap (%d lights, %d lanterns)" % [sky._lights.size(), lanterns])
+	t.ok(lanterns > 0 and sky._lights.size() >= lanterns, "every lantern gets a light pool, none dropped at the cap (%d lights, %d lanterns)" % [sky._lights.size(), lanterns])
 	props.free()
 	holder.free()
 	WalkMask.use("")
