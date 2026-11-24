@@ -56,6 +56,8 @@ var flower_row: StringName = &""
 var locked: bool = false
 ## Cost hint drawn under a locked row's first pad, so a closed row reads as "needs this stat" before it is pressed.
 const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
+const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
+const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_hint: String = ""
 ## Clover pads get a gold rim (not the grass green Sprout and Clover share), so the two rows read apart on the lake shore.
 const CLOVER_TRIM: Color = Color("f2c14e")
@@ -392,13 +394,17 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
-	# A locked row's first pad names what it needs, under the plate, in a dark-outlined cream so it reads on grass.
+	# A locked row's first pad names what it needs, under the plate: native 8 px glyphs on a cream chip with an ink border.
+	# Whole texels throughout (integer width, integer origin), so the text stays crisp at 1x.
 	if locked and _lock_hint != "" and LOCK_FONT != null:
-		var tw: float = LOCK_FONT.get_string_size(_lock_hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16).x
-		var box: Rect2 = Rect2(-tw * 0.5 - 3.0, float(THICK + 3), tw + 6.0, 11.0)
-		draw_rect(box, ink)   # a cream chip with an ink border, so it reads on grass at 1x
-		draw_rect(box.grow(-1.0), Color("f6efd9"))
-		draw_string(LOCK_FONT, Vector2(-40.0, float(THICK + 11)), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, ink)
+		var tw: int = ceili(LOCK_FONT.get_string_size(_lock_hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x)
+		var bx: int = -(tw / 2) - 3
+		var by: int = THICK + 3
+		# Chip is 12 rows: ink border top and bottom, 10 cream rows. Glyphs have 8 rows, so one cream row shows above and below.
+		draw_rect(Rect2(bx, by, tw + 6, 12), ink)
+		draw_rect(Rect2(bx + 1, by + 1, tw + 4, 10), CHIP_CREAM)
+		# Baseline is 7 rows below the glyph top (font base=7), so baseline by+9 puts the glyphs on rows by+2 .. by+9.
+		draw_string(LOCK_FONT, Vector2(-(tw / 2), by + 9), _lock_hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
