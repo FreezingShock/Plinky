@@ -894,13 +894,11 @@ func _refresh() -> void:
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
-	var show_rates: bool = _opt(&"strip_rates", true)
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
 		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
-		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
-		(pair[1] as Label).visible = show_rates
+		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""   # shown by _place_rates
 	_fit_columns()
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
@@ -1099,6 +1097,7 @@ func _update_gain_labels() -> void:
 
 
 ## Park each gain label just right of the panel, level with its row, and the row's income rate just past it.
+## The rate shows only while the row's gain label is up (a pad gain in the last few seconds), never while idle.
 func _place_rates() -> void:
 	var show_rates: bool = _opt(&"strip_rates", true)
 	var right: float = _stats_panel.position.x + _stats_panel.size.x + 3.0
@@ -1113,7 +1112,9 @@ func _place_rates() -> void:
 			var gat: Vector2 = Vector2(right, box.global_position.y - global_position.y + floorf((box.size.y - gl.size.y) * 0.5)).floor()
 			if gl.position != gat:
 				gl.position = gat
-		var show: bool = show_rates and box.visible and rate.text != ""
+		# The prestige row's label is its multiplier, not a rate, so it keeps showing while idle.
+		var recent: bool = rate == _prestige_label or (gl != null and gl.visible)
+		var show: bool = show_rates and box.visible and rate.text != "" and recent
 		rate.visible = show
 		if not show:
 			widest = maxf(widest, gain_w)
