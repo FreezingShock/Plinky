@@ -50,7 +50,7 @@ func _ready() -> void:
 		if args.has("--full"):
 			inv.set_rebirths(5)
 			inv.equip(&"r_pulse")
-			panel._on_pressed(inv.defs[&"r_crit"], false)
+			panel._select(&"r_crit")
 			await get_tree().process_frame
 		if hover >= 0:
 			var cards: Array = panel._grid.get_children()
