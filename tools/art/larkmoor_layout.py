@@ -45,8 +45,8 @@ ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right (
 DISTRICTS = [
     dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(868, 646, *ROW_STEP_UP),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(644, 658), (688, 680), (732, 702)],
-         note='West lake with reed shores and a little jetty. The Sprout row runs across the grass below the main path; the Clover row lines the south shore.'),
+    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(634, 568), (678, 590), (722, 612)],
+         note='West lake with reed shores and a little jetty. The Sprout row runs across the grass beside the main path, well in from the arrival gate; the Clover row lines the south shore.'),
     dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=row(840, 534, *ROW_STEP_DOWN),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
     dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=row(1030, 580, *ROW_STEP_UP),
