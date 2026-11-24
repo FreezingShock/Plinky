@@ -644,10 +644,10 @@
    "file": "sprites/bridge_029.png",
    "nrm": "sprites/bridge_029_n.png",
    "kind": "bridge",
-   "x": 1506,
-   "y": 892,
-   "w": 38,
-   "h": 30,
+   "x": 1502,
+   "y": 895,
+   "w": 45,
+   "h": 27,
    "foot": [
     1524.0,
     871.5
@@ -658,10 +658,10 @@
    "file": "sprites/footbridge_030.png",
    "nrm": "sprites/footbridge_030_n.png",
    "kind": "footbridge",
-   "x": 1182,
-   "y": 961,
-   "w": 13,
-   "h": 20,
+   "x": 1180,
+   "y": 960,
+   "w": 17,
+   "h": 22,
    "foot": [
     1188.0,
     933.6

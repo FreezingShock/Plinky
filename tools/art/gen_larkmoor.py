@@ -457,9 +457,9 @@ def make_jetty(rng):
         return d, m
     return f, (17, 5), 4, 2
 M_BOARD, M_BOARDT, M_RAIL = 60, 61, 62         # wooden decks: brown boards, pale board lines, dark rails and posts
-BRIDGE_HX, BRIDGE_HY, BRIDGE_DZ = 17.5, 10.5, 4.0    # main bridge: half-length along the road, half-width across it, deck height
+BRIDGE_HX, BRIDGE_HY, BRIDGE_DZ = 17.5, 14.0, 4.0    # main bridge: half-length along the road, half-width across it (the 24 texel road, half 12, plus clearance), deck height
 def make_bridge(rng):
-    """The main bridge: a planked deck as wide as the main road (21 texels), over the river on two stone abutments on the
+    """The main bridge: a planked deck as wide as the main road (28 texels, the 24 texel road plus clearance), over the river on two stone abutments on the
     banks, with a rail and posts down both sides. Local x runs along the road, across the river."""
     HX, HY, DZ = BRIDGE_HX, BRIDGE_HY, BRIDGE_DZ
     def f(x, y, z):
@@ -483,7 +483,7 @@ def make_bridge(rng):
     return f, (HX + 2, HY + 1), DZ + 6, 4
 def make_footbridge(rng):
     """The footbridge on the west trail: a narrow plank crossing with a low rail, on posts either side of the river."""
-    HX, HY, DZ = 13.0, 3.8, 2.6
+    HX, HY, DZ = 13.0, 5.5, 2.6
     def f(x, y, z):
         d = sdf_box(x, y, z, (0, 0, DZ - .9), (HX, HY, .9), .2); m = np.full(x.shape, M_BOARD, np.int16)
         m = np.where(((np.floor(x / 2.4) % 2) == 0) & (z > DZ - .7), M_BOARDT, m)
@@ -1036,7 +1036,7 @@ def _deck_strip(cu_, cv_, ang, half_len, half_w, flare):
     ends = np.clip((np.abs(dn_) - (half_len - 5)) / 5, 0, 1)
     return (np.abs(dn_) < half_len + 2) & (np.abs(dc_) < half_w + flare * ends)
 wk |= _deck_strip(bu, bv, BRIDGE_ANG, BRIDGE_HX, BRIDGE_HY, 3.0)      # the bridge over the river: the road's width
-wk |= _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 3.8, 2.0)       # the footbridge on the west trail
+wk |= _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 5.5, 2.0)       # the footbridge on the west trail
 if 'JETTY_C' in globals(): wk |= _deck_strip(JETTY_C[0], JETTY_C[1], .785, 15.0, 4.6, 3.0)   # the lake jetty, walkable out onto the water
 keep_t = np.zeros(len(u_), bool); keep_t[:nT] = True
 render_scene(keep_t)
@@ -1075,7 +1075,7 @@ for _a in anchors:
 # Water is what the render draws as water (material T_WATER), except where a bridge deck stands on it. Water is never walkable on
 # the ground; its pixels go in the green channel, so the walker may be in the air over them (a jump) and landing there sends it
 # to the bank (world/walk_mask.gd). Red and blue mark walkable ground.
-deck_pts = _deck_strip(bu, bv, BRIDGE_ANG, BRIDGE_HX, BRIDGE_HY, 3.0) | _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 3.8, 2.0)
+deck_pts = _deck_strip(bu, bv, BRIDGE_ANG, BRIDGE_HX, BRIDGE_HY, 3.0) | _deck_strip(fu_, fv_, FOOT_ANG, 13.0, 5.5, 2.0)
 deck_img = np.zeros((H, W), bool); deck_img[_py[tm], _px[tm]] = deck_pts[_win[tm]]
 wat_img = (LAST_AUX['mat'] == T_WATER) & ~deck_img
 walk_img = comp & ~wat_img
