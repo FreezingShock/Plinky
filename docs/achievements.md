@@ -1,8 +1,8 @@
 # Achievements and the Ledger
 
-40 achievements in eight categories, shown in the **Ledger** (Esc menu, after History). Content is one file per
+40 achievements in eight categories, shown in the **Achievements** window (hamburger tile after History; called Ledger until 2026-11-24). Content is one file per
 achievement in `content/achievements/`; logic is `core/achievements.gd`; the window is `ui/ledger_panel.gd`; the unlock
-card is `ui/achievement_toast.gd`; icons come from `tools/art/gen_ledger.py`.
+banner is `ui/achievement_toast.gd`, with each section's look in `ui/achievement_style.gd` and particles in `ui/fx/achievement_sparks.gd`; icons come from `tools/art/gen_ledger.py`.
 
 ## How it works
 - An achievement unlocks the first time its **counter** reaches its **target**. Counters are named in `Sim.achievement_counters()`:
@@ -39,3 +39,10 @@ so nothing is granted. Proposal, for Nathan to accept or change:
 3. Special relics are **cosmetic-leaning**: a small fixed effect (a few percent, no stacking), in the same slot system, so a full Ledger
    is a collector's goal and not a power spike.
 This needs relic defs, a grant hook in `Sim.check_achievements`, and a balance pass, so it is a follow-up and not in this change.
+
+## Unlock banner (2026-11-24)
+- A wide banner centred across the screen, its middle at 38% of the height. It unfurls from a sliver in eight whole steps, holds for 2.4 s, and closes the same way.
+- **Never over a menu.** While any menu is open, or the Bloom ritual runs, unlocks wait in the queue. A banner already up when a menu opens closes and goes back to the front of the queue.
+- **Per section:** colour and icon from `LedgerPanel`; particle style (gold sparks, drifting petals, rising flame, glints, rings, bubbles, embers, dust) and a quiet chime from `AchievementStyle`.
+- A titled achievement adds more particles, a second quieter chime and a small screen shake (`Juice.shake`, which respects Reduce Shake).
+- Reduce Motion shows it whole, with no unfurl, particles or shake. Reduce Flashing drops the dither ink.

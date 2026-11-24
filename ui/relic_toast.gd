@@ -3,15 +3,21 @@ extends PanelContainer
 ## Rarity-coloured pop-up when a relic drops. Shown only for Epic and above (RelicConfig.flash_min_rank).
 ## Add to the HUD, bind() once. The pad flash is Fx's job: on EventBus.relic_gained it should flash
 ## the pressed pad with RarityDef.color (see docs/relics.md).
+## It never draws over a menu: while Main's `menu_open` says one is open, or the Bloom ritual runs, the drop waits, and a
+## toast already up is held back and shown again once that ends.
 
 ## Above every menu panel (the HUD sits at 100) and below tip cards and modals (150), so an open Ledger never hides a toast.
 const TOAST_Z: int = 130
 const LIFETIME: float = 2.4
 
+var menu_open: Callable = Callable()   ## true while any menu is open (set by Main)
+
 var _icon: TextureRect
 var _name: Label
 var _sub: Label
 var _tween: Tween
+var _shown: Array = []     ## [RelicDef, stacks] of the toast on screen, so a held-back drop can show again
+var _waiting: Array = []   ## [RelicDef, stacks] waiting for the menu or ritual to end (latest drop wins)
 
 func _init() -> void:
 	visible = false
@@ -37,8 +43,31 @@ func bind(inv: RelicInventory) -> void:
 			show_drop(d, stacks))
 
 func show_drop(d: RelicDef, stacks: int) -> void:
-	while FxConfig.bloom_running and is_inside_tree():   # wait out the Bloom sequence
-		await get_tree().create_timer(0.25).timeout
+	if is_inside_tree() and _blocked():   # wait out the Bloom sequence or an open menu
+		_waiting = [d, stacks]
+		return
+	_show(d, stacks)
+
+func _blocked() -> bool:
+	return FxConfig.bloom_running or (menu_open.is_valid() and bool(menu_open.call()))
+
+func _process(_delta: float) -> void:
+	if not visible and _waiting.is_empty():
+		return
+	if _blocked():
+		if visible:   # hold it back: it shows again once the menu or ritual is over
+			visible = false
+			if _tween:
+				_tween.kill()
+			_waiting = _shown
+		return
+	if not _waiting.is_empty():
+		var w: Array = _waiting
+		_waiting = []
+		_show(w[0] as RelicDef, int(w[1]))
+
+func _show(d: RelicDef, stacks: int) -> void:
+	_shown = [d, stacks]
 	var c: Color = d.rarity.readable_color(RelicStyle.ink)
 	add_theme_stylebox_override("panel", AsciiBox.panel(d.rarity.tint()))
 	_icon.texture = d.icon

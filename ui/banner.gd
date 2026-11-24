@@ -34,6 +34,9 @@ var _count: int = 0
 var _active: bool = false
 ## A HUD control the banner lifts clear of when it would cover it (the Momentum meter at 640x360). Set by the HUD.
 var avoid: Control = null
+## True while a menu is open (Main sets it). Banners wait, and one already up is held back until the menu closes.
+var hold: Callable = Callable()
+var _source: Dictionary = {}   ## the normalised spec on screen, kept so a held-back banner can be shown again
 
 
 ## One centred line of text. Draws the visible centred slice at the position it would have in the full string, so
@@ -154,10 +157,14 @@ func is_showing() -> bool:
 func _process(delta: float) -> void:
 	_clock += delta
 	_ensure_view()
+	if _active and _held():
+		_hold_back()
+		return
 	if not _active:
-		if queue.pending.is_empty() or FxConfig.bloom_running:   # held while a reset animation plays
+		if queue.pending.is_empty() or _held() or FxConfig.bloom_running:   # held while a menu is open or a reset animation plays
 			return
-		var resolved: Dictionary = _resolve(queue.next())
+		_source = queue.next()
+		var resolved: Dictionary = _resolve(_source)
 		if resolved.is_empty():
 			queue.current = {}   # stale by the time it could show: dropped, the next one starts next frame
 			return
@@ -170,6 +177,21 @@ func _process(delta: float) -> void:
 	_title.progress = BannerQueue.line_progress(_t, 0, _count, _tl)
 	for i in _lines.size():
 		_lines[i].progress = BannerQueue.line_progress(_t, i + 1, _count, _tl)
+
+
+## True while Main's hold (a menu is open) says banners must wait.
+func _held() -> bool:
+	return hold.is_valid() and bool(hold.call())
+
+
+## Cuts the banner on screen short and puts it back at the front of the queue, to show again once the menu closes. It
+## is not recorded as finished, so it is not dropped as a repeat.
+func _hold_back() -> void:
+	_active = false
+	if is_instance_valid(view):
+		view.visible = false
+	queue.current = {}
+	queue.pending.push_front(_source)
 
 
 func _begin(spec: Dictionary) -> void:
