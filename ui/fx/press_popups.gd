@@ -21,7 +21,6 @@ const QUIET_MAX: float = 4.0              ## longest a label holds still with no
 const GAP_CAP: float = QUIET_MAX / QUIET_MULT   ## a gap longer than this says nothing about cadence, so it is capped
 const LIFT: Vector2 = Vector2(0.0, -18.0)   ## screen pixels from the pad to the number's baseline
 const MAX_WIDTH: float = 150.0             ## widest a popup's text may be, in pixels
-const MERGE_NEAR: float = 360.0           ## pixels: a gain of the same currency this close to a live label folds into it (a pad row or cluster)
 const TICK_RATE: float = 16.0             ## per second: a merged number rolls up to its new total in about 0.2 s
 const SETTLE_GAP: float = 2.0             ## pixels kept between two visible popups after the per-frame settle
 const LIFE: float = 0.95
@@ -161,7 +160,7 @@ func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, h
 		return
 	# Every source of a gain (presses, standing presses, crits, echoes, auto and bonus) lands on one label per currency.
 	_note_gain(stat)
-	var m: Pop = _find_mergeable(key, at, stat)
+	var m: Pop = _find_mergeable(key, stat)
 	if m != null:
 		_fold_in(m, amount, crit, tier)
 		return
@@ -445,12 +444,6 @@ func _place(p: Pop) -> void:
 	p.lane = PopupLanes.pick(origin, _box(p), _drop(p), others, LANES)
 
 
-func _screen_of(at: Vector2) -> Vector2:
-	if world == null or not is_instance_valid(world):
-		return at.round() + LIFT
-	return ((world.get_global_transform_with_canvas() * at) + LIFT).round()
-
-
 ## The clock gains are timed on. Tests set clock_override; in play it is the real clock.
 func _now() -> float:
 	if clock_override >= 0.0:
@@ -476,19 +469,14 @@ func _quiet_for(stat: String) -> float:
 	return clampf(QUIET_MULT * gap, QUIET_AFTER, QUIET_MAX)
 
 
-## A live label of this currency near the gain (within MERGE_NEAR, running or not) that the gain folds into.
-func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
-	var best: Pop = null
-	var best_d: float = MERGE_NEAR + 1.0
+## The live label of this currency on the same pad, if any (running or not). A gain folds into it, so the number stays
+## over the button that gave it. Gains from another pad always start their own number on that pad.
+func _find_mergeable(key: StringName, stat: String) -> Pop:
 	for p in _pops:
-		if not p.live or p.banner or p.total <= 0.0 or p.stat != stat:
+		if not p.live or p.banner or p.total <= 0.0 or p.stat != stat or p.key != key:
 			continue
-		# Any live label of this stat near the press takes it, whether it is still holding or already floating.
-		var d: float = 0.0 if p.key == key else _screen(p).distance_to(_screen_of(at))
-		if d < best_d:
-			best_d = d
-			best = p
-	return best
+		return p
+	return null
 
 
 ## A same-stat gain lands on a live label: the number adds up, its digits tick and it pops. A label that was already
