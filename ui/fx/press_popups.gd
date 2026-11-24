@@ -614,6 +614,10 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 	var view_w: float = get_viewport_rect().size.x
 	x0 = clampf(x0, 4.0, maxf(view_w - p.w - icon_w - 12.0, 4.0))
 	var y: float = sa.y + p.lane.y + off.y
+	# And it stays clear of the zone panel: slide it left of the panel, or skip it this frame if there is no room.
+	x0 = PopupClear.slide_clear(x0, p.w + icon_w, y - float(fs), float(fs) + 6.0, _keep_clear_rects(), 4.0, 4.0)
+	if is_nan(x0):
+		return
 	var fade: float = ceilf(clampf((1.0 - prog) / 0.3, 0.0, 1.0) * 4.0) / 4.0
 	var n: int = p.text.length()
 	var tcol: float = 0.0 if FxConfig.reduce_flashing else p.age
@@ -652,6 +656,16 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 		draw_char(font, Vector2(cx, cy), p.text[i], fs, col)
 	if p.stat != "" or (p.running and p.count >= 3):
 		_draw_caption(p, x0 + icon_w + p.w * 0.5, y, fs, fade, tcol, oc)
+
+
+## The HUD rectangles world popups must not run under (see PopupNumber.keep_clear), as typed rects.
+func _keep_clear_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var kc: Callable = PopupNumber.keep_clear
+	if kc.is_valid():
+		for r: Variant in kc.call():
+			out.append(r as Rect2)
+	return out
 
 
 ## Under the number, centred: the stat's name in the stat's own colour, then " xN" (streak colour) while a hold stacks.

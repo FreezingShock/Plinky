@@ -74,6 +74,7 @@ func setup(p_sim: Sim) -> void:
 	sim = p_sim
 	add_to_group(GROUP)
 	PopupNumber.under_menu = point_under_menu
+	PopupNumber.keep_clear = clear_rects
 	GameState.onboarding.update()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -131,6 +132,14 @@ func bottom_bar() -> Control:
 
 func owns_focus(c: Control) -> bool:
 	return c != null and _bottom != null and _bottom.is_ancestor_of(c)
+
+
+## Rectangles world popups must slide clear of: the zone panel while it is on screen (see PopupNumber.keep_clear).
+func clear_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	if _zone_panel != null and _zone_panel.is_visible_in_tree():
+		out.append(_zone_panel.get_global_rect())
+	return out
 
 
 ## True if the screen point is under an open menu panel (see PopupNumber.under_menu).
