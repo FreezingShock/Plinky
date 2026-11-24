@@ -540,6 +540,6 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Decision:** `RelicPanel` builds its body when it shows and frees that body when it closes. Filter and open tier are kept across a close. `bind()` only keeps the inventory and rebuilds the tab chips if the panel is open.
 - **Why:** the gallery's 79 nodes sat in the boot tree, which counts against the 1350 ceiling on every zone. Measured headless in the meadow: 799 nodes at boot before, 720 after; open and reopen return to 799, close returns to 720.
 - **Kept:** the menu router's animator and the close X are children of the panel, so teardown frees only `_outer`, the body.
-- **Checked:** the open panel is pixel-identical to the old one in a headless capture (only the world behind it differs). `tests/run.gd` passes (7941 checks, 0 failed).
+- **Checked:** in a headless capture the open panel looks the same as before (the world behind it differs by time of day). `tests/run.gd` passes (7941 checks, 0 failed).
 - **Next:** Upgrades (about 392 nodes after close) and Stats/Attributes plus Gallery, same pattern, in their own PRs.
 - **Not run in-engine:** the focus feel on a real PC.
