@@ -85,9 +85,16 @@ jobs:
         if: failure()
         run: python3 tools/ci_summary.py /tmp/tests.log /tmp/boot.log
 
+  # One job per play profile, so the three run in parallel (about 2 min each, not one 5 to 6 min run). Indexes match
+  # content/config/sim_profiles.tres (idle, active, hold). If a profile is added there, add its index here.
   sim:
     needs: changes
     if: needs.changes.outputs.sim == 'true' || github.event_name != 'pull_request'
+    name: Balance sim (profile ${{ matrix.profile }})
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [0, 1, 2]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -99,7 +106,7 @@ jobs:
       - name: Balance sim (tools/sim.gd)
         run: |
           set -o pipefail
-          ~/godot/godot --headless --path . --script tools/sim.gd 2>&1 | tee /tmp/sim.log
+          ~/godot/godot --headless --path . --script tools/sim.gd -- 0 ${{ matrix.profile }} 2>&1 | tee /tmp/sim.log
           ! grep -E "SCRIPT ERROR|Parse Error|NOT reached" /tmp/sim.log
 
       - name: Why it failed
