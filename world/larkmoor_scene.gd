@@ -200,6 +200,12 @@ var _prop_index: Dictionary = {}     # Vector2i chunk -> Array of prop dictionar
 var _loaded: Dictionary = {}         # Vector2i chunk -> Array of the Sprite2D props spawned for it
 var _center: Vector2i = Vector2i(-99999, -99999)
 var _lanterns_lit: bool = false       # lantern pools are added once per scene, not once per spawn
+var _spawn_queue: Array[Vector2i] = []   # chunks the walker needs but that are not spawned yet, nearest first
+var _queued: Dictionary = {}             # Vector2i chunk -> true, for the queue above
+var _warm_queue: Array[Vector2i] = []    # every prop chunk, nearest the start first: their textures are made ready in the background
+var _warmed: Dictionary = {}             # "sway|file" or "rim|file" -> true once its texture is ready
+const SPAWN_BUDGET_MS: float = 2.0       # chunk spawns per frame: at least one, then more while this much of the frame is left
+const WARM_BUDGET_MS: float = 1.0        # texture warm-up per frame, only while no chunk is waiting to spawn
 const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
 var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
@@ -223,12 +229,23 @@ func _begin(parent: Node2D) -> void:
 		if light_lanterns and String(s.kind) == "lantern":
 			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
 					_sky.light_config().pool_shrine_radius * LANTERN_RADIUS_K, LANTERN_STRENGTH, &"lantern")
+	var start: Vector2i = _chunk_of(_start_point())
+	_warm_queue.assign(_prop_index.keys())
+	_warm_queue.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return _chunk_dist(a, start) < _chunk_dist(b, start))
+	_spawn_queue.clear()
+	_queued.clear()
+	_warmed.clear()
+
+
+## Chebyshev distance between two chunks: the ring a chunk sits in around another.
+static func _chunk_dist(a: Vector2i, b: Vector2i) -> int:
+	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
 func spawn_occluders(parent: Node2D) -> void:
 	_begin(parent)
 	_add_farm(parent)
-	_refresh_center(_start_point())
+	_refresh_center(_start_point(), true)
 
 
 ## Same chunks as spawn_occluders, but yields to the next frame whenever `budget_ms` of a frame is used up. A zone swap
@@ -259,11 +276,16 @@ func _process(_delta: float) -> void:
 	var w: Node2D = get_tree().get_first_node_in_group(&"walker") as Node2D
 	if w != null:
 		_refresh_center(w.position)
+	_drain_spawns()
+	_drain_warm()
 	# lamp heads glow only after dark: fade them with the night, and forget the glows of unloaded lanterns
 	var night: float = _sky.night01 if _sky != null else 0.0
-	_glows = _glows.filter(func(g: Variant) -> bool: return is_instance_valid(g))
-	for g in _glows:
-		(g as Sprite2D).modulate.a = night
+	for i in range(_glows.size() - 1, -1, -1):
+		var g: Variant = _glows[i]
+		if is_instance_valid(g):
+			(g as Sprite2D).modulate.a = night
+		else:
+			_glows.remove_at(i)
 
 
 func _exit_tree() -> void:
@@ -272,6 +294,10 @@ func _exit_tree() -> void:
 			if is_instance_valid(sp):
 				(sp as Sprite2D).queue_free()
 	_loaded.clear()
+	_spawn_queue.clear()
+	_queued.clear()
+	_warm_queue.clear()
+	_warmed.clear()
 	_glows.clear()
 	_tex_cache.clear()
 	_mat_cache.clear()
@@ -311,47 +337,125 @@ func _needed_keys(c: Vector2i) -> Array[Vector2i]:
 	return out
 
 
-func _refresh_center(p: Vector2) -> void:
+## The walker moved into another chunk: unload what is now far, and queue what it now needs (spawned by _drain_spawns, a few
+## chunks a frame, so a crossing is never one long frame). `immediate` spawns them now, for the first load of a zone.
+func _refresh_center(p: Vector2, immediate: bool = false) -> void:
 	var c: Vector2i = _chunk_of(p)
 	if c == _center:
 		return
 	_center = c
 	for key: Vector2i in _needed_keys(c):
-		if not _loaded.has(key):
+		if _loaded.has(key):
+			continue
+		if immediate:
 			_load_chunk(key)
+		elif not _queued.has(key):
+			_queued[key] = true
+			_spawn_queue.append(key)
 	for key: Vector2i in _loaded.keys():
 		if maxi(absi(key.x - c.x), absi(key.y - c.y)) > KEEP_RING:
 			_unload_chunk(key)
-	_rebuild_bushes()
+	# a queued chunk the walker has moved away from is dropped, so the queue only holds what is still needed
+	var kept: Array[Vector2i] = []
+	for key: Vector2i in _spawn_queue:
+		if _chunk_dist(key, c) <= LOAD_RING:
+			kept.append(key)
+		else:
+			_queued.erase(key)
+	_spawn_queue = kept
+	_spawn_queue.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return _chunk_dist(a, c) < _chunk_dist(b, c))
+	if immediate:
+		_rebuild_bushes()
+
+
+## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. At least one, so the queue always moves.
+func _drain_spawns() -> void:
+	if _spawn_queue.is_empty():
+		return
+	var start_us: int = Time.get_ticks_usec()
+	var spawned: bool = false
+	while not _spawn_queue.is_empty():
+		var key: Vector2i = _spawn_queue.pop_front()
+		_queued.erase(key)
+		if _loaded.has(key):
+			continue
+		_load_chunk(key)
+		spawned = true
+		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= SPAWN_BUDGET_MS:
+			break
+	if spawned:
+		_rebuild_bushes()
+
+
+## Makes the textures of the props in the next chunks ready (the sway padding, the normal maps): the first use of a file
+## decodes and pads it, and that used to land on the frame a chunk spawned. Runs only while no chunk waits to spawn.
+func _drain_warm() -> void:
+	if _sky == null or not _spawn_queue.is_empty() or _warm_queue.is_empty():
+		return
+	var start_us: int = Time.get_ticks_usec()
+	while not _warm_queue.is_empty():
+		var key: Vector2i = _warm_queue.pop_front()
+		for s: Dictionary in _prop_index[key]:
+			_warm_prop(s)
+		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= WARM_BUDGET_MS:
+			break
+
+
+## Touches the same textures _spawn_one and _prop_mat would use for this prop, so they are cached when it spawns.
+func _warm_prop(s: Dictionary) -> void:
+	var sways: bool = String(s.kind) in SWAY_KINDS
+	var file: String = String(s.file)
+	var key: String = ("sway|" if sways else "rim|") + file
+	if not _warmed.has(key):
+		_warmed[key] = true
+		if sways:
+			_padded(file)
+		else:
+			load(DIR + file)
+	if s.has("nrm"):
+		var nrm: String = String(s.nrm)
+		var nkey: String = ("sway|" if sways else "rim|") + nrm
+		if not _warmed.has(nkey):
+			_warmed[nkey] = true
+			if sways:
+				_padded(nrm)
+			else:
+				load(DIR + nrm)
 
 
 func _load_chunk(key: Vector2i) -> void:
+	PerfStats.lap_begin()
 	var list: Array = []
 	if _prop_index.has(key):
 		for s: Dictionary in _prop_index[key]:
 			list.append(_spawn_one(_occ_parent, s))
 	_loaded[key] = list
+	PerfStats.lap("chunk load")
 
 
 func _unload_chunk(key: Vector2i) -> void:
+	PerfStats.lap_begin()
 	for sp in _loaded[key]:
 		if is_instance_valid(sp):
 			if _shadows != null:
 				_shadows.remove_caster(sp as Sprite2D)
 			(sp as Sprite2D).queue_free()
 	_loaded.erase(key)
+	PerfStats.lap("chunk unload")
 
 
 ## Bushes rustle when the walker passes (LifeReact); the list follows the chunks that are loaded.
 func _rebuild_bushes() -> void:
 	if react == null:
 		return
+	PerfStats.lap_begin()
 	var bushes: Array = []
 	for key: Vector2i in _loaded.keys():
 		for sp in _loaded[key]:
 			if is_instance_valid(sp) and (sp as Sprite2D).has_meta(&"bush"):
 				bushes.append(sp)
 	react.set_bushes(bushes)
+	PerfStats.lap("bushes")
 
 
 ## A small dithered bloom for a lamp head: a warm disc with a Bayer-stepped falloff (the meadow's glow style), made once.
