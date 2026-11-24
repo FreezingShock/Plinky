@@ -1,1 +1,1 @@
-Meadow bake regenerated from the current generator: lanterns, ground, preview and bush metadata now match tools/art/gen_meadow3d.py.
+Meadow ground, preview and a few props regenerated from the art generator. Lantern light pools now sit on their lanterns.
