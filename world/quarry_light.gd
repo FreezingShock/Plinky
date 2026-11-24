@@ -92,6 +92,9 @@ func setup(data: Dictionary, area: Rect2, sky: SkyCycle, cfg: SkyConfig, cols: P
 
 	_glow_mat = ShaderMaterial.new()
 	_glow_mat.shader = GLOW_SHADER
+	_glow_mat.set_shader_parameter("halo_reach", cfg.glow_halo_reach)
+	_glow_mat.set_shader_parameter("halo_gain", cfg.glow_halo_gain)
+	_glow_mat.set_shader_parameter("hot_gain", cfg.glow_hot_gain)
 	var glow := ColorRect.new()
 	glow.name = "Glow"
 	glow.position = area.position
