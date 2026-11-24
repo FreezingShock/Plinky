@@ -79,6 +79,9 @@ void fragment() {
 	if (c.a > 0.5 && !conifer && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
 	}
+	if (conifer && season_snow > 0.0) {
+		c.rgb = season_pine_snow(c.rgb, wpos, texture(nrm_tex, uv).a);
+	}
 	if (rim_amount > 0.0 && c.a > 0.5 && lum(c.rgb) > 0.2) {
 		vec2 px = TEXTURE_PIXEL_SIZE;
 		vec4 nh = texture(TEXTURE, uv + vec2(rim_dir.x, 0.0) * px);
