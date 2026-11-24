@@ -1,7 +1,8 @@
 name: Stuck PR watch
 
-# Finds open, non-draft PRs that have been quiet for 20 minutes and are stuck: no check runs, a merge conflict,
-# a red or cancelled check, a run that has been going for 30+ minutes, or auto-merge waiting on a `test` that never passed.
+# Finds open, non-draft PRs that are stuck: no check run on the head commit (flagged after 10 minutes quiet), or, after
+# 20 minutes quiet, a merge conflict, a red or cancelled check, a run that has been going for 30+ minutes, or auto-merge
+# waiting on a `test` that never passed.
 # It comments once on each such PR (the comment is updated in place, so it does not spam) and writes a summary table.
 # Schedules run from the default branch only, so this file takes effect once it is merged.
 
@@ -32,6 +33,9 @@ jobs:
           script: |
             const MARK = '<!-- stuck-pr-watch -->';
             const QUIET_MS = 20 * 60 * 1000;
+            // A PR whose head has no CI run at all is flagged after 10 minutes of quiet, not 20: CI starts within a
+            // minute of a push, so a head with nothing after 10 minutes never started (PR #301, 2026-11-24).
+            const NO_RUN_MS = 10 * 60 * 1000;
             const RUN_MS = 30 * 60 * 1000;
             const { owner, repo } = context.repo;
             const now = Date.now();
@@ -57,7 +61,8 @@ jobs:
             for (const item of listed) {
               if (item.draft) continue;
               const quietMs = now - Date.parse(item.updated_at);
-              if (quietMs < QUIET_MS) continue;
+              if (quietMs < NO_RUN_MS) continue;
+              const young = quietMs < QUIET_MS;
 
               const pr = (await github.rest.pulls.get({ owner, repo, pull_number: item.number })).data;
               const runs = (await github.rest.checks.listForRef({ owner, repo, ref: pr.head.sha, per_page: 100 })).data.check_runs;
@@ -72,28 +77,32 @@ jobs:
 
               const reasons = [];
               if (latest.size === 0) reasons.push('No check runs on the head commit. CI never started.');
-              if (pr.mergeable_state === 'dirty') reasons.push('Merge conflict with main. Merge main in and push.');
 
-              for (const r of latest.values()) {
-                if (r.status !== 'completed') {
-                  const ageMs = now - Date.parse(r.started_at || r.created_at);
-                  if (ageMs > RUN_MS) reasons.push(`\`${r.name}\` has been running for ${minutes(ageMs)} min: ${r.html_url}`);
-                } else if (['failure', 'timed_out', 'action_required'].includes(r.conclusion)) {
-                  reasons.push(`\`${r.name}\` failed: ${r.html_url}`);
-                } else if (r.conclusion === 'cancelled' && r.name === 'test') {
-                  const rerun = await rerunCancelled(pr.head.sha).catch((err) => {
-                    core.warning(`Could not re-run CI for #${pr.number}: ${err.message}`);
-                    return null;
-                  });
-                  reasons.push(rerun
-                    ? `\`test\` was cancelled with nothing newer on the head, so the watchdog re-ran CI: ${rerun}`
-                    : '`test` was cancelled and could not be re-run automatically. Re-run the workflow or push a fix.');
+              // Between 10 and 20 minutes quiet, only the no-run check above applies. The rest waits for the full quiet period.
+              if (!young) {
+                if (pr.mergeable_state === 'dirty') reasons.push('Merge conflict with main. Merge main in and push.');
+
+                for (const r of latest.values()) {
+                  if (r.status !== 'completed') {
+                    const ageMs = now - Date.parse(r.started_at || r.created_at);
+                    if (ageMs > RUN_MS) reasons.push(`\`${r.name}\` has been running for ${minutes(ageMs)} min: ${r.html_url}`);
+                  } else if (['failure', 'timed_out', 'action_required'].includes(r.conclusion)) {
+                    reasons.push(`\`${r.name}\` failed: ${r.html_url}`);
+                  } else if (r.conclusion === 'cancelled' && r.name === 'test') {
+                    const rerun = await rerunCancelled(pr.head.sha).catch((err) => {
+                      core.warning(`Could not re-run CI for #${pr.number}: ${err.message}`);
+                      return null;
+                    });
+                    reasons.push(rerun
+                      ? `\`test\` was cancelled with nothing newer on the head, so the watchdog re-ran CI: ${rerun}`
+                      : '`test` was cancelled and could not be re-run automatically. Re-run the workflow or push a fix.');
+                  }
                 }
-              }
 
-              const test = latest.get('test');
-              if (pr.auto_merge && !(test && test.conclusion === 'success')) {
-                reasons.push('Auto-merge is on, but `test` has not passed on the head commit.');
+                const test = latest.get('test');
+                if (pr.auto_merge && !(test && test.conclusion === 'success')) {
+                  reasons.push('Auto-merge is on, but `test` has not passed on the head commit.');
+                }
               }
 
               rows.push({ number: pr.number, title: pr.title, quiet: minutes(quietMs), reasons });

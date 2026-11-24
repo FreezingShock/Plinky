@@ -129,6 +129,9 @@ func _init() -> void:
 	_hint.add_theme_color_override("font_color", RelicStyle.dim)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint.custom_minimum_size.x = PANEL_W
+	# Sealed caches (Bloom and Nucleus) sit under the grid and above the hint. Owned by ui/sealed_pull_strip.gd.
+	outer.add_child(PanelDivider.new(2))
+	outer.add_child(SealedPullStrip.new())
 	outer.add_child(_hint)
 
 

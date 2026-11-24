@@ -93,12 +93,9 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 		var echo: float = sim.config.pulse_echo_delay
 		field.link(_to_screen(pulse_from) + POPUP_LIFT * 0.4, _to_screen(pos) + POPUP_LIFT * 0.4, tier, echo * float(pulse_order))
 		delay = echo * float(pulse_order) + 0.16
-	var stat_name: String = ""
-	var stat_col: Color = Color.WHITE
-	var def: ButtonDef = sim.button_defs.get(key) as ButtonDef
-	if def != null and sim.stat_defs.has(def.reward_stat):
-		stat_name = (sim.stat_defs[def.reward_stat] as StatDef).display_name
-		stat_col = StatStyle.color(def.reward_stat)
+	var cap: Array = _pad_caption(key)
+	var stat_name: String = cap[0]
+	var stat_col: Color = cap[1]
 	field.press(key, anchor, amount, tier, big, held, pulse, delay, stat_name, stat_col)
 	if delay > 0.0:
 		await get_tree().create_timer(delay).timeout
@@ -119,10 +116,13 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 
 
 ## A press made by a Bloom gift (Dew Sprites, Wildflower): the number floats up quietly and a few pixels pop, with no
-## streak, no hitstop and no click ladder.
+## streak, no hitstop and no click ladder. It shares the pad's currency label like every other press.
 func auto_press(pad: CanvasItem, pos: Vector2, amount: float) -> void:
 	var key: StringName = (pad as TexelPad).button_id if pad is TexelPad else StringName(str(pad.get_instance_id()))
-	_popup_field().press(key, _to_screen(pos) + POPUP_LIFT, amount, 0, false, false, false, 0.0)
+	var cap: Array = _pad_caption(key)
+	var stat_name: String = cap[0]
+	var stat_col: Color = cap[1]
+	_popup_field().press(key, pos, amount, 0, false, false, false, 0.0, stat_name, stat_col)
 	var cols: Array[Color] = PARTICLE_COLORS
 	if pad is TexelPad:
 		cols = Array([(pad as TexelPad).palette[5], (pad as TexelPad).palette[6]], TYPE_COLOR, "", null)
@@ -174,9 +174,31 @@ func _tier_up(field: PressPopups, anchor: Vector2, tier: int) -> void:
 	Audio.tier_up(tier)
 
 
-## A streak or critter payout floats up in the same popup field as presses (gold, no overlap with them).
+## A streak or critter payout (Sunlight) lands on the same per-currency label as presses, so it never sits beside one.
 func bonus_popup(pos: Vector2, amount: float) -> void:
-	_popup_field().label(&"bonus", pos, "+" + NumberFormat.short(amount), 1)
+	var cap: Array = _stat_caption(&"sunlight")
+	var stat_name: String = cap[0]
+	var stat_col: Color = cap[1]
+	_popup_field().press(&"bonus", pos, amount, 1, false, false, false, 0.0, stat_name, stat_col)
+
+
+## The reward caption of a pad's button: its stat's display name and colour. Empty when the pad has no reward stat.
+func _pad_caption(key: StringName) -> Array:
+	var sim: Sim = GameState.sim as Sim
+	if sim == null:
+		return ["", Color.WHITE]
+	var def: ButtonDef = sim.button_defs.get(key) as ButtonDef
+	if def == null:
+		return ["", Color.WHITE]
+	return _stat_caption(def.reward_stat)
+
+
+## A stat's display name and colour as a [name, colour] pair. Empty when the stat is unknown.
+func _stat_caption(stat_id: StringName) -> Array:
+	var sim: Sim = GameState.sim as Sim
+	if sim == null or not sim.stat_defs.has(stat_id):
+		return ["", Color.WHITE]
+	return [(sim.stat_defs[stat_id] as StatDef).display_name, StatStyle.color(stat_id)]
 
 
 ## Mastery level-up: ring flash on the plate and a big "LV n" popup above it.

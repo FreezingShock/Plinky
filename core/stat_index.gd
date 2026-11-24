@@ -2,8 +2,13 @@ class_name StatIndex
 extends RefCounted
 ## Rows for the Stats and Attributes index, built from a Sim. Pure data: no nodes, so tests can check it headless.
 ## A row is {id, group, name, icon, value, note, tip, desc, pending}. `icon` is a file name under assets/icons.
+## Currency rows also carry `rarity`: a rarity id, STARTER_RARITY, or "" (see rarity_of_stat).
 ## `tip` is the full text for the detail page; `desc` is the one-line description the hover tooltip shows.
 ## Attribute rows also carry level, cap, maxed, now, next, cost, can, locked, lock, currency and currency_name.
+
+## Sunlight's rarity id: it is not a pad rarity, so its tooltip reads STARTER STATISTIC in yellow.
+const STARTER_STAT: StringName = &"sunlight"
+const STARTER_RARITY: String = "starter"
 
 const STAT_TIPS: Dictionary = {
 	&"sunlight": "Trickles in on its own and pays for the first pads. Dewdrops and Thistle Down make it flow faster. Resets on Bloom.",
@@ -45,6 +50,22 @@ const ATTR_TIPS: Dictionary = {
 	&"head_start": "Each run after a Bloom starts with extra Sunlight, so the first pads come sooner.",
 	&"sun_rate": "Sunlight trickles in faster all the time.",
 }
+
+
+## The rarity id a currency wears in its tooltip. Sunlight is the starter statistic (STARTER_RARITY). Any other currency
+## takes the rarity of the pads that pay it, or of the pads that spend it when none pays it (Embers: the Cinder pads).
+## "" when no pad touches it (Seeds, Core Shards, Rebirths, Prestige, Rebirth Points), so its tooltip has no rarity line.
+static func rarity_of_stat(sim: Sim, sid: StringName) -> String:
+	if sid == STARTER_STAT:
+		return STARTER_RARITY
+	for paid: bool in [true, false]:
+		for bid: StringName in sim.button_defs:
+			var b: ButtonDef = sim.button_defs[bid] as ButtonDef
+			if b == null:
+				continue
+			if (b.reward_stat if paid else b.cost_stat) == sid:
+				return String(b.rarity)
+	return ""
 
 
 ## The stats the index lists, in order: the current zone's ladder first, then the rest, then Prestige and Rebirth Points.
@@ -89,7 +110,9 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 			note = "%s income" % NumberFormat.mult(sim.prestige_mult())
 		elif sid == &"rp" and sim.can_rebirth():
 			note = "+%d next rebirth" % sim.rp_gain_preview()
-		rows.append(_row(sid, "Currencies", def.display_name, String(sid), value, note, String(STAT_TIPS.get(sid, ""))))
+		var crow: Dictionary = _row(sid, "Currencies", def.display_name, String(sid), value, note, String(STAT_TIPS.get(sid, "")))
+		crow["rarity"] = rarity_of_stat(sim, sid)
+		rows.append(crow)
 	rows.append(_row(&"crit_chance", "Presses", "Crit chance", "crit", _pct(sim.crit_chance()), "",
 		"Chance that a press is a critical hit. Raised by the Crit chance attribute and relics."))
 	rows.append(_row(&"crit_damage", "Presses", "Crit damage", "crit_dmg", "x%.2f" % sim.crit_damage(), "",
