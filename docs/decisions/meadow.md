@@ -266,6 +266,27 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Changed in `content/areas/*.tres` (display_name), `assets/art/zone1b/larkmoor/placements3d.json` (district names), `tools/art/larkmoor_layout.py`, and code and tool comments. The farm keeps its own name and now sits in Foxglove Rise. | Keeps the layout, the art data and the in-game names in step, so a regenerate does not bring the old names back. |
 | Checks: `tests/run.gd` 7783 checks, 0 failed, on current main (v0.94.0) plus these renames. Not run in-engine: the banner and district text on a PC. | Name changes only, so the tests cover the lookups. |
 
+## 2026-11-24: Foxglove and Starbloom north, a second thickening
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` raises the Foxglove row to n 120 and small 56, and the Starbloom north row to n 136 and small 62. Result on current main: Foxglove 297, Starbloom north 282, Westmere 314 (unchanged). | After #385 merged, main's inputs had moved the counts (Foxglove 273, Starbloom north 261), so the thin rows were below the roughly 300 target. Extra attempts saturate near 280 for Starbloom north, because the spacing rule is the limit. |
+| The garden layer stays one node whatever the flower count, so the node ceiling is not affected. | Larkmoor's node ceiling is about 1350. |
+| Not run in-engine: the look at night and on a real GPU. | The cloud renderer stops after about six night shots. |
+
+## 2026-11-24: Thistle field spacing (option A, grass between)
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` gives the Thistle row a `gap` of 1.12, which widens its spacing by 12%. Thistle goes from 364 to 328 flowers (about 10% fewer). Other rows change only through the shared spacing, by a few flowers (Heather 351 to 356). | Nathan picked option A from the winter Thistle mockups, which includes grass between the stalks. The coordinator capped the drop at about 10%. |
+| The winter mixed heights and seed heads come from the tint sprites in PR #472, and tints are still random. No scale mix change, because a more even size mix raised the Thistle count to about 400. | Keeps the density Nathan likes. |
+| Not run in-engine: the winter field at zoom 1 and 2. | PC QA checks it. |
+
+## 2026-11-24: Foxglove and Starbloom fields thicker
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` raises `n` and `small` for the Foxglove row (66/30 to 96/46) and both Starbloom rows (64/28 to 100/46 and 66/28 to 74/33 for Westmere). Result: Foxglove 315 flowers, Starbloom north 291, Westmere 301 (was 267, 252, 292 on the same generator). Clover and Thistle are unchanged. | Nathan's pick from the handoff: the thin rows were about 1.6x thinner than Clover and Thistle. Target was about 300 per row, and Nathan likes the current density, so only the thin rows grow. |
+| Still one `world/larkmoor_gardens.json` format 2 and one garden layer node, so the node count does not change. | Larkmoor sits near the 1350 ceiling. |
+| Not run in-engine: night shots of these rows, and the look on a real GPU. | The cloud renderer stops after about six night shots. |
+
 ## 2026-11-24: Foxglove and Starbloom fields thicker
 | Decision | Why |
 |---|---|

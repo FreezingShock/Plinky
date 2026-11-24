@@ -214,6 +214,12 @@ func _add_life(ground: Sprite2D) -> void:
 	add_child(_blades)
 	_blades.use_chunks()
 	_blades.setup(ground, [], Palettes.colors(Palettes.MEADOW))  # pad plates are not grass colours, so the blades skip them
+	var lg := LifeGround.new()  # Low quality: the old baked tips, shown only while the blades are off
+	lg.name = "LifeGround"
+	add_child(lg)
+	lg.setup(ground, life.get("sway", []) as Array)
+	lg.pusher_group = &"walker"
+	_blades.fallback = lg
 	chunk_loaded.connect(_on_chunk_blades_loaded)
 	chunk_unloaded.connect(_on_chunk_blades_unloaded)
 	var air := LifeAir.new()

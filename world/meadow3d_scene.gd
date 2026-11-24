@@ -95,6 +95,12 @@ func _add_life(ground: Sprite2D) -> void:
 	blades.name = "GrassBlades"
 	add_child(blades)  # after Ground, so the blades draw over the grass
 	blades.setup(ground, life.get("pads", []) as Array, Palettes.colors(Palettes.MEADOW))
+	var lg := LifeGround.new()  # Low quality: the old baked tips, shown only while the blades are off
+	lg.name = "LifeGround"
+	add_child(lg)
+	lg.setup(ground, life.get("sway", []) as Array)
+	lg.pusher_group = &"walker"
+	blades.fallback = lg
 	var air := LifeAir.new()
 	air.name = "LifeAir"
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
