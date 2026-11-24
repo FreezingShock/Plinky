@@ -255,9 +255,14 @@ const KEEP_RING: int = 2
 ## camera pans back and forth). Both are clamped to the map, so no chunk is made past the canvas.
 const VIEW_MARGIN_LOAD: int = 1
 const VIEW_MARGIN_KEEP: int = 2
-## The walker's ring always loads. Chunks outside it (the view) load only while the whole scene is under this many nodes,
-## so the view can never push a zone past the 1350 ceiling (docs/perf.md). Larkmoor's tour stops already sit near it.
+## Node ceilings (docs/perf.md caps a zone at 1350). The chunks next to the walker always load. The outer walker ring
+## (LOAD_RING) loads only while the scene is under RING_NODE_CEILING, and the view beyond it only under VIEW_NODE_BUDGET.
+## The check counts the nodes live, but nothing else in the tree is checked when it runs: a menu or HUD row built after a
+## load can push the count past its ceiling. So NODE_HARD_CEILING is enforced every frame: while the count is over it,
+## one loaded chunk off the walker's keep ring and off the screen unloads, the farthest first (see _shed_one).
 const VIEW_NODE_BUDGET: int = 1300
+const RING_NODE_CEILING: int = 1330
+const NODE_HARD_CEILING: int = 1340
 
 var _view: Rect2i = Rect2i()          # chunks on screen now, no margin (empty when the scene is outside the tree)
 var _view_load: Rect2i = Rect2i()     # _view grown by VIEW_MARGIN_LOAD
@@ -348,6 +353,7 @@ func _process(_delta: float) -> void:
 	if w != null:
 		_refresh_center(w.position)
 	_drain_spawns()
+	_shed_over_ceiling()
 	_drain_warm()
 	# lamp heads glow only after dark: fade them with the night, and forget the glows of unloaded lanterns
 	var night: float = _sky.night01 if _sky != null else 0.0
@@ -455,12 +461,21 @@ func _wanted_load(key: Vector2i, c: Vector2i) -> bool:
 	return _chunk_dist(key, c) <= LOAD_RING or _view_load.has_point(key)
 
 
-## The walker's ring always loads. Any other chunk loads only while the scene plus its props stay under VIEW_NODE_BUDGET.
+## Whether a chunk may load now: the scene's nodes now, plus the chunk's props and one more, against the ceilings above.
 func _budget_allows(key: Vector2i) -> bool:
-	if _chunk_dist(key, _center) <= LOAD_RING:
-		return true
 	var props: int = (_prop_index[key] as Array).size() if _prop_index.has(key) else 0
-	return int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) + props + 1 <= VIEW_NODE_BUDGET
+	var after: int = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) + props + 1
+	return may_load(_chunk_dist(key, _center), after)
+
+
+## The rule behind _budget_allows: the nearest chunks always load, the outer ring under RING_NODE_CEILING, the view under
+## VIEW_NODE_BUDGET. Pure, so the tests can check the ceilings without a scene.
+static func may_load(dist: int, nodes_after: int) -> bool:
+	if dist <= 1:
+		return true
+	if dist <= LOAD_RING:
+		return nodes_after <= RING_NODE_CEILING
+	return nodes_after <= VIEW_NODE_BUDGET
 
 
 ## A loaded chunk stays while the walker's keep ring or the view's keep margin still covers it.
@@ -521,6 +536,32 @@ func _refresh_center(p: Vector2, immediate: bool = false) -> void:
 	# the bush list holds the sprites of loaded chunks, and a freed sprite must not stay in it (LifeReact reads them every frame)
 	if immediate or unloaded:
 		_rebuild_bushes()
+
+
+## Whether a node count is over NODE_HARD_CEILING, so chunks must be shed. Pure, so the tests can check the ceiling.
+static func may_shed(nodes: int) -> bool:
+	return nodes > NODE_HARD_CEILING
+
+
+## While the node count is over NODE_HARD_CEILING, unloads one chunk a frame: the farthest loaded chunk that is off the
+## screen and beyond the walker's own chunk ring. A chunk on screen is never shed, so this costs no pop-in while the
+## count is under the ceiling, and it only runs when something outside the streaming (a menu, the HUD) has pushed it over.
+func _shed_over_ceiling() -> void:
+	if not may_shed(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))):
+		return
+	var victim: Vector2i = Vector2i.ZERO
+	var found: bool = false
+	var far: int = 1
+	for key: Vector2i in _loaded.keys():
+		var d: int = _chunk_dist(key, _center)
+		if d > far and not _view_keep.has_point(key):
+			far = d
+			victim = key
+			found = true
+	if not found:
+		return
+	_unload_chunk(victim)
+	_rebuild_bushes()
 
 
 ## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. At least one, so the queue always moves.
