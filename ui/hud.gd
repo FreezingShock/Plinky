@@ -502,6 +502,10 @@ func _teardown_upgrades_body() -> void:
 	_tier_btns.clear()
 	_tier_sel.clear()
 	_upg_order.clear()
+	_upg_built = false
+	_cards_started = false
+	_card_queue.clear()
+	_body_gen += 1
 
 
 var _upg_list: VBoxContainer
@@ -522,6 +526,12 @@ var _upg_tab: StringName = &""                  # the tab on show
 var _pending_tab: StringName = &""              # the tab a zone currency's row asked for, taken on show
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
+## The cards are built a few per frame after the pages exist, so the open does not stall (node budget and hitch).
+const CARDS_PER_FRAME: int = 12
+var _upg_built: bool = false          # the pages, rails and empty grids exist for this open
+var _cards_started: bool = false      # the card builder has been started for this open
+var _body_gen: int = 0                # bumped on teardown, so a builder left over from a closed panel stops
+var _card_queue: Dictionary = {}      # currency stat id -> Array of [AttributeDef, GridContainer] still to build
 
 
 ## Opening the panel builds the cards the first time (the node budget), then opens on the current zone's tab.
@@ -540,6 +550,7 @@ func _on_upgrades_shown() -> void:
 	_sync_upgrade_tabs()
 	for cur: StringName in _tier_grids:   # a tab opens on the tier it last showed, else on its frontier tier
 		_select_tier(cur, int(_kept_tier[cur]) if _kept_tier.has(cur) else _frontier_tier(cur))
+	_start_cards()
 
 
 ## The zone's own gift tab when it shows, else the first tab the player can see.
@@ -572,8 +583,9 @@ func _frontier_tier(cur: StringName) -> int:
 ## a tier rail (one row per tier, its gate in the tier's colour) and one two-across grid of cards per tier. Only the
 ## chosen tier's grid shows.
 func _fill_upgrades() -> void:
-	if not _attr_rows.is_empty():
+	if _upg_built:
 		return
+	_upg_built = true
 	_upg_order = UpgradeText.tab_currencies(sim)
 	for cur: StringName in _upg_order:
 		var page := VBoxContainer.new()
@@ -625,17 +637,9 @@ func _fill_upgrades() -> void:
 			(_tier_attrs[cur] as Array).append([])
 		var grid: GridContainer = (_tier_grids[cur] as Array).back() as GridContainer
 		((_tier_attrs[cur] as Array).back() as Array).append(a)
-		var card := UpgradeCard.new()
-		grid.add_child(card)
-		card.setup(a)
-		card.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
-		card.buy_pressed.connect(_buy_upgrade)
-		card.refresh(UpgradeText.state(sim, a))
-		var eff: StringName = a.effect
-		var spec: Callable = func() -> Variant: return UpgradeText.tip(card.state(), eff)
-		_row_tips[a.id] = spec
-		Tip.bind_all(card, spec)
-		_attr_rows[a.id] = card
+		if not _card_queue.has(cur):
+			_card_queue[cur] = []
+		(_card_queue[cur] as Array).append([a, grid])
 	# The rail: one row per tier, in unlock order. Its colour is the tier's, and its gate reads "Requires N Bloom(s)".
 	for cur: StringName in _upg_order:
 		var rail: VBoxContainer = _upg_rails[cur] as VBoxContainer
@@ -658,6 +662,78 @@ func _fill_upgrades() -> void:
 	_apply_upgrade_tab()
 
 
+## Tab walks the tab strip, then the rail and the gifts of the tab on show, and wraps at both ends, forward and back.
+## Godot's own order follows the tree (every tab's page, not the layout) and does not wrap Shift+Tab from the first
+## control, so the ring is wired here. Gifts not built yet are left out; each card built rewires the ring.
+func _wire_upgrade_focus() -> void:
+	if not is_inside_tree() or _upg_tab == &"" or not _tier_btns.has(_upg_tab):
+		return
+	var ring: Array[Control] = []
+	for t: Node in _upg_tabs.get_children():
+		if t is MenuTextButton and (t as Control).visible:
+			ring.append(t as Control)
+	for b: Variant in _tier_btns[_upg_tab]:
+		ring.append(b as Control)
+	var tiers: Array = _tier_attrs.get(_upg_tab, [])
+	var tier: int = int(_tier_sel.get(_upg_tab, 0))
+	if tier < tiers.size():
+		for a: Variant in tiers[tier]:
+			var card: Control = _attr_rows.get((a as AttributeDef).id) as Control
+			if card != null:
+				ring.append(card)
+	var n: int = ring.size()
+	for i in n:
+		var c: Control = ring[i]
+		c.focus_next = c.get_path_to(ring[posmod(i + 1, n)])
+		c.focus_previous = c.get_path_to(ring[posmod(i - 1, n)])
+
+
+## Starts building the queued cards, once per open. The shown tab goes first, so its gifts are there at once.
+func _start_cards() -> void:
+	if _cards_started or _card_queue.is_empty():
+		return
+	_cards_started = true
+	_build_cards(_body_gen)
+
+
+## Builds the queued cards CARDS_PER_FRAME to a frame, while the open wipe plays. Stops if the body is freed meanwhile.
+func _build_cards(gen: int) -> void:
+	var order: Array[StringName] = []
+	if _card_queue.has(_upg_tab):
+		order.append(_upg_tab)
+	for cur: StringName in _upg_order:
+		if cur != _upg_tab and _card_queue.has(cur):
+			order.append(cur)
+	var made: int = 0
+	for cur: StringName in order:
+		for item: Array in (_card_queue[cur] as Array).duplicate():
+			if gen != _body_gen or _upgrades_box == null:
+				return
+			_add_card(item[0] as AttributeDef, item[1] as GridContainer)
+			made += 1
+			if made % CARDS_PER_FRAME == 0:
+				await get_tree().process_frame
+	if gen == _body_gen:
+		_card_queue.clear()
+
+
+## One gift card in its tier's grid, wired to buy and to its tooltip.
+func _add_card(a: AttributeDef, grid: GridContainer) -> void:
+	var cur: StringName = a.currency
+	var card := UpgradeCard.new()
+	grid.add_child(card)
+	card.setup(a)
+	card.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
+	card.buy_pressed.connect(_buy_upgrade)
+	card.refresh(UpgradeText.state(sim, a))
+	var eff: StringName = a.effect
+	var spec: Callable = func() -> Variant: return UpgradeText.tip(card.state(), eff)
+	_row_tips[a.id] = spec
+	Tip.bind_all(card, spec)
+	_attr_rows[a.id] = card
+	_wire_upgrade_focus()
+
+
 ## One tier of a tab on show: its gifts take the grid and its rail row is lit. Tiers swap in place, so nothing moves.
 func _select_tier(cur: StringName, i: int) -> void:
 	var grids: Array = _tier_grids.get(cur, [])
@@ -669,6 +745,7 @@ func _select_tier(cur: StringName, i: int) -> void:
 	var btns: Array = _tier_btns.get(cur, [])
 	for j: int in btns.size():
 		(btns[j] as MenuTextButton).selected = j == i
+	_wire_upgrade_focus()
 
 
 ## Focus landed on a tier row: with the keyboard or pad the rail follows the focus, as the tab strip does.
@@ -682,9 +759,9 @@ func _on_tier_focus(cur: StringName, i: int) -> void:
 ## buy never resizes the panel.
 func _size_upgrade_list() -> void:
 	var rows: int = 0
-	for cur: StringName in _tier_grids:
-		for g: Variant in _tier_grids[cur]:
-			rows = maxi(rows, ceili(float((g as GridContainer).get_child_count()) / 2.0))
+	for cur: StringName in _tier_attrs:   # from the data, so the height is right before any card exists
+		for tier: Variant in _tier_attrs[cur]:
+			rows = maxi(rows, ceili(float((tier as Array).size()) / 2.0))
 	var h: float = float(rows) * (UpgradeCard.CARD_SIZE.y + 6.0) - 6.0 if rows > 0 else 0.0
 	for cur2: StringName in _upg_hosts:
 		(_upg_hosts[cur2] as Control).custom_minimum_size.y = h
@@ -751,6 +828,7 @@ func _apply_upgrade_tab() -> void:
 		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
 		b.selected = on
 		b.queue_redraw()
+	_wire_upgrade_focus()
 
 
 
@@ -806,8 +884,9 @@ func _balance(sid: StringName) -> BigNum:
 ## A row asked to buy. The sim decides; the row plays the animation only if it went through.
 func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
-		var row: UpgradeCard = _attr_rows[aid]
-		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
+		var row: UpgradeCard = _attr_rows.get(aid) as UpgradeCard
+		if row != null:
+			row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
 		# The header balance of that currency pops too, so the spend reads at the counter.
 		var badge: Control = _cur_badges.get((sim.attribute_defs[aid] as AttributeDef).currency) as Control
 		if badge != null and not (MeadowLife.reduce_motion or FxConfig.reduce_flashing):
