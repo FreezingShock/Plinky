@@ -407,8 +407,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	# Idle time on the title is free: the flower atlas bakes here, so the game's first frame finds it ready.
-	GardenArt.prepare_slice(GardenArt.BAKE_SLICE_MS)
 	_walk_t += delta
 	var frame: int = int(_walk_t * WALKER_FPS) % WALKER_FRAME_COUNT
 	_walker_tex.region = Rect2(frame * WALKER_CELL, 0, WALKER_CELL, WALKER_CELL)

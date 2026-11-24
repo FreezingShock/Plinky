@@ -14,10 +14,6 @@ const SHRUB_VARIANTS: int = 2
 const FIELD_FIRST: int = 6
 const FIELD_SCALES: Array[int] = [1, 2, 3]
 const FIELD_TINTS: int = 4
-## Milliseconds of atlas baking a frame while a pre-game screen (boot, title, loading) is up. See prepare_slice().
-const BAKE_SLICE_MS: float = 3.0
-## A bigger slice once the loader is done but the atlas still bakes, so the loading screen holds only briefly.
-const BAKE_CATCHUP_MS: float = 10.0
 const SEASON_SPRING: int = 0
 const SEASON_SUMMER: int = 1
 const SEASON_AUTUMN: int = 2
@@ -157,13 +153,8 @@ static func prepare() -> void:
 						_plan.append({"idx": idx, "stat": stat, "variant": v, "lean": int(c.lean), "season": int(c.season), "closed": int(c.state) == 1, "dew": int(c.state) == 2})
 
 
-## True once the atlas exists, so the game never bakes it on its first frame.
-static func is_ready() -> bool:
-	return _atlas != null
-
-
-## Bakes the atlas for up to `budget_ms` on the main thread, then packs and uploads it. The boot and title screens call this
-## a few milliseconds a frame (more once loading is done), so the game's first frame does not bake it. Returns true once the atlas
+## Bakes the atlas for up to `budget_ms` on the main thread, then packs and uploads it. The boot screen calls this a few
+## milliseconds a frame while its loading bar runs, so the game's first frame does not bake it. Returns true once the atlas
 ## exists. Image work only, so it stays on the main thread: a worker thread here made script loading fail (the preloads
 ## of walker_atlas.png and PixelifySans.ttf came back as parse errors in the boot smoke test).
 static func prepare_slice(budget_ms: float) -> bool:
