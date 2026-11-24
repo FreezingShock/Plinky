@@ -10,17 +10,22 @@ func run(t: Object) -> void:
 	# Tier heads: the plural of a zone's name comes from its def, so the Nucleus heads read "Nuclei", not "Nucleuss".
 	var nuc_two: AttributeDef = _first_gate(sim, &"shards", 2)
 	var bloom_two: AttributeDef = _first_gate(sim, &"seeds", 2)
-	var bloom_one: AttributeDef = _first_gate(sim, &"seeds", 1)
+	var bloom_three: AttributeDef = _first_gate(sim, &"seeds", 3)
 	t.ok(nucleus.plural_name == "Nuclei", "Nucleus has the plural Nuclei")
-	t.ok(nuc_two != null and bloom_two != null and bloom_one != null, "the gift tiers exist to check their heads")
+	t.ok(nuc_two != null and bloom_two != null and bloom_three != null, "the gift tiers exist to check their heads")
 	if nuc_two != null:
 		t.eq(UpgradeText.tier_head(sim, nuc_two), "Unlocks After 2 Nuclei", "a Nucleus tier head uses the plural")
 	if bloom_two != null:
 		t.eq(UpgradeText.tier_head(sim, bloom_two), "Unlocks After 2 Blooms", "a Bloom tier head adds an s")
-	if bloom_one != null:
-		t.eq(UpgradeText.tier_head(sim, bloom_one), "Unlocks After 1 Bloom", "one Bloom stays singular")
+	if bloom_three != null:
+		t.eq(UpgradeText.tier_head(sim, bloom_three), "Unlocks After 3 Blooms", "a Bloom tier head pluralises past one")
 		# The tier rail's gate: what the tier requires, in the same plural rules.
-		t.eq(UpgradeText.tier_gate(sim, bloom_one), "Requires 1 Bloom", "a rail gate reads Requires 1 Bloom")
+		t.eq(UpgradeText.tier_gate(sim, bloom_three), "Requires 3 Blooms", "a rail gate pluralises Blooms past one")
+	# One Bloom stays singular. No tier gates on 1 now, so check the text on a bare gift with that gate.
+	var one: AttributeDef = AttributeDef.new()
+	one.currency = &"seeds"
+	one.unlock_resets = 1
+	t.eq(UpgradeText.tier_gate(sim, one), "Requires 1 Bloom", "a rail gate reads Requires 1 Bloom")
 	if bloom_two != null:
 		t.eq(UpgradeText.tier_gate(sim, bloom_two), "Requires 2 Blooms", "a rail gate pluralises Blooms")
 	if nuc_two != null:

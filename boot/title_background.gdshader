@@ -21,7 +21,7 @@ uniform vec4 g2 : source_color;
 uniform vec4 g3 : source_color;
 uniform float time = 0.0;
 uniform float dissolve = 0.0;
-uniform vec2 canvas_texels = vec2(640.0, 360.0);
+uniform vec2 canvas_texels = vec2(640.0, 360.0);  // the visible canvas in texels (the art is 640x360, centred)
 // Mouse parallax in texels, already smoothed by the script. Each layer shifts by its own whole-texel fraction.
 uniform vec2 parallax = vec2(0.0);
 // Sun or moon centre in texels, from TitleMood.body().
@@ -114,7 +114,11 @@ float near_hill(float x) {
 }
 
 void fragment() {
-	vec2 px = floor(UV * canvas_texels);
+	// The art is 640x360 texels, centred in the canvas. A wider or taller canvas (pre-game screens fill any window)
+	// shows more sky, ground and hills on each side, drawn by the same functions, so the art never has an edge.
+	vec2 sp = floor(UV * canvas_texels);
+	vec2 art_origin = floor((canvas_texels - vec2(640.0, 360.0)) * 0.5);
+	vec2 px = sp - art_origin;
 	float t = time;
 	float th = bayer4(px) + 0.03125;
 	int idx = 1;
@@ -273,11 +277,11 @@ void fragment() {
 	}
 
 	// ---- Soft dithered scrim behind the menu column, so the world never fights the text. ------------------------
-	float sc = clamp((260.0 - px.x) / 140.0, 0.0, 1.0);
+	float sc = clamp((260.0 - sp.x) / 140.0, 0.0, 1.0);
 	if (sc > 0.0 && th < sc * 0.42) { idx = darker(idx); }
 
 	// Dithered ink vignette.
-	float vd = length((px / canvas_texels - 0.5) * vec2(1.0, 0.78));
+	float vd = length((sp / canvas_texels - 0.5) * vec2(1.0, 0.78));
 	if (vd > 0.5 && th < (vd - 0.5) * 2.6) { idx = 0; }
 
 	// Dissolve: ordered pixels flip to ink.

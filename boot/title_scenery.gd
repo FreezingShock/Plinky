@@ -7,6 +7,10 @@ extends Control
 ## sits in (matching title_background.gdshader's layer_shift). Reduce motion keeps it all still.
 
 const W: int = 640
+const H: int = 360
+## How far the backdrop reaches past the 640x360 art on each side, in texels. Pre-game screens fill any window, so a
+## wide view shows this much more art on each side. 480 covers a view up to 1600 texels wide.
+const PAD: int = 480
 const GRADE_SHADER: Shader = preload("res://boot/title_scenery.gdshader")
 const MID_K: float = 0.38
 const NEAR_K: float = 1.0
@@ -17,6 +21,8 @@ const TREES: Array[Dictionary] = [
 
 var parallax: Vector2 = Vector2.ZERO
 
+## Where the 640x360 art sits in this control, in texels: centred, whole texels. Zero when the view is 640x360.
+var _origin: Vector2 = Vector2.ZERO
 var _pal: PackedColorArray
 var _t: float = 0.0
 var _pines: ImageTexture
@@ -63,7 +69,7 @@ func _ready() -> void:
 	for i in 10:
 		_flies.append({"x": rng.randf_range(300.0, 630.0), "y": rng.randf_range(262.0, 336.0), "ph": rng.randf() * TAU, "sp": rng.randf_range(0.4, 0.9)})
 	for i in 3:
-		_birds.append({"x": rng.randf_range(0.0, float(W)), "y": rng.randf_range(92.0, 128.0), "sp": rng.randf_range(7.0, 11.0), "ph": rng.randf() * TAU})
+		_birds.append({"x": rng.randf_range(-float(PAD), float(W + PAD)), "y": rng.randf_range(92.0, 128.0), "sp": rng.randf_range(7.0, 11.0), "ph": rng.randf() * TAU})
 	for i in 5:
 		_leaves.append({"ph": rng.randf(), "sp": rng.randf_range(9.0, 15.0), "dx": rng.randf_range(-14.0, 6.0), "src": rng.randi_range(0, 1)})
 
@@ -71,6 +77,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not (FxConfig.reduce_flashing or MeadowLife.reduce_motion):
 		_t += delta
+	var origin: Vector2 = ((size - Vector2(W, H)) * 0.5).round()
+	if origin != _origin:
+		_origin = origin
 	queue_redraw()
 
 
@@ -99,10 +108,10 @@ static func _bayer(x: int, y: int) -> float:
 
 ## Pines along the mid ridge: ink-dark spruce with a lit right flank. Image row 0 is world y `_pines_y0`.
 func _bake_pines(rng: RandomNumberGenerator) -> ImageTexture:
-	var img := Image.create(W + 64, 64, false, Image.FORMAT_RGBA8)
+	var img := Image.create(W + 2 * PAD + 64, 64, false, Image.FORMAT_RGBA8)
 	var x: int = 0
-	while x < W + 64:
-		var wx: float = float(x - 32)
+	while x < W + 2 * PAD + 64:
+		var wx: float = float(x - 32 - PAD)
 		var base: int = int(mid_ridge(wx)) + 2 - _pines_y0
 		var h: int = rng.randi_range(8, 15)
 		var gap: int = rng.randi_range(5, 8)
@@ -194,9 +203,11 @@ func _bake_trunk(r: int, h: int, _seed_v: int) -> ImageTexture:
 # ---- Drawing ---------------------------------------------------------------------------------------------------------
 
 func _draw() -> void:
+	# Everything below is drawn in art texels (640x360); the transform centres the art in the control.
+	draw_set_transform(_origin, 0.0, Vector2.ONE)
 	var mid: Vector2 = layer_shift(parallax, MID_K)
 	var near: Vector2 = layer_shift(parallax, NEAR_K)
-	draw_texture(_pines, Vector2(-32.0, float(_pines_y0)) + mid)
+	draw_texture(_pines, Vector2(float(-32 - PAD), float(_pines_y0)) + mid)
 	_draw_windmill(Vector2(300.0, mid_ridge(300.0) + 2.0) + mid)
 	_draw_cottage(Vector2(356.0, mid_ridge(356.0) + 2.0) + mid)
 	_draw_birds()
@@ -268,7 +279,7 @@ func _draw_birds() -> void:
 	if _day < 0.15:
 		return
 	for b: Dictionary in _birds:
-		var x: float = fposmod(float(b["x"]) + _t * float(b["sp"]), float(W + 40)) - 20.0
+		var x: float = fposmod(float(b["x"]) + _t * float(b["sp"]) + float(PAD + 20), float(W + 2 * PAD + 40)) - float(PAD + 20)
 		var y: float = floorf(float(b["y"]) + sin(_t * 0.7 + float(b["ph"])) * 3.0)
 		var up: bool = int(_t * 4.0 + float(b["ph"])) % 2 == 0
 		x = floorf(x)
@@ -326,7 +337,7 @@ func _draw_leaves(near: Vector2) -> void:
 ## in whole-texel steps, with a lit tip, and flower clusters (stem, petals, centre) between them.
 func _draw_foreground(shift: Vector2) -> void:
 	var step: int = 6
-	for i in range(-4, int(float(W) / float(step)) + 6):
+	for i in range(-PAD / step - 4, (W + PAD) / step + 6):
 		var h: float = _hash(float(i) * 1.7)
 		var x: float = float(i * step) + h * 4.0 + shift.x
 		var ht: float = 14.0 + _hash(float(i) * 5.3) * 18.0
