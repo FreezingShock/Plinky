@@ -396,6 +396,8 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - Reasoning: PC QA found the quarry's "Iron Ore" caption (dark green) hard to read on dark rock. The lift keeps each stat's hue; on the mid quarry rock (8a3a2e) Iron Ore goes from 2.96:1 to 4.9:1, and a test holds every stat caption at 4:1 or better.
 - Not verified in-engine: PC QA should check "Iron Ore" in the quarry at 1x and 3x.
 
+## 2026-11-24: Dev console is a floating window with tab completion
+A draggable, resizable window (not a full-width strip) so the game stays visible behind it, with the input focused on open. Commands are one table in core/dev_commands.gd, so help, Tab and the tests read the same list; the window only adds the node-level commands and layout. Errors use the accent colour with a "!" because the palette has no red role.
 ## 2026-11-24: Welcome Back as a gallery
 - **Model and view split:** `core/welcome_back.gd` builds the four sections and every number as data (pure, tested in `tests/test_welcome_back.gd`). `ui/welcome_card.gd` and `ui/welcome_tile.gd` only draw it. The HUD's `_on_offline` now opens the card instead of a text ModalCard.
 - **Tiles:** 46 px, seven across, so the card is 334 px wide at 640x360 and a full return of about 25 tiles stays under the frame height. Outline is the tier's rarity for currency and the relic's rarity for finds. Amounts sit at the bottom, green for gains and red for spends, through `StatStyle`.
