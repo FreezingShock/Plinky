@@ -53,11 +53,14 @@ func run(t: Object) -> void:
 	t.eq(BannerQueue.line_progress(0.0, 0, 3, snap), 1.0, "reduced motion shows the banner whole at once")
 	t.eq(BannerQueue.total_time(3, snap), 2.5, "reduced motion has no typing or collapse time")
 
+	# Word bands take a clock fraction (daylight 0.6: sunrise 04:48 = 0.2, sunset 19:12 = 0.8).
 	t.eq(AreaBanner.period_of(0.0), "Night", "midnight is night")
-	t.eq(AreaBanner.period_of(0.25), "Dawn", "sunrise is dawn")
+	t.eq(AreaBanner.period_of(0.2), "Dawn", "sunrise (04:48) is dawn")
 	t.eq(AreaBanner.period_of(0.5), "Midday", "noon is midday")
-	t.eq(AreaBanner.period_of(0.75), "Dusk", "sunset is dusk")
-	t.eq(AreaBanner.clock_of(0.25), {"hour": 6, "minute": 0}, "phase 0.25 is 06:00")
+	t.eq(AreaBanner.period_of(0.8), "Dusk", "sunset (19:12) is dusk")
+	t.eq(AreaBanner.period_of(0.728), "Afternoon", "17:28, the golden pin, is afternoon and not dusk")
+	t.eq(AreaBanner.compose("X", {}, 0.728)["lines"][0], "17:28 - Afternoon", "the fallback clock reads 17:28 as afternoon")
+	t.eq(AreaBanner.clock_of(0.25), {"hour": 6, "minute": 0}, "clock 0.25 is 06:00")
 	t.eq(AreaBanner.clock_text(6, 5), "06:05", "the clock is zero padded")
 	var b: Dictionary = AreaBanner.compose("Larkmoor", {}, 0.5, "lake")
 	t.eq(b["title"], "Larkmoor", "the area name is the title")

@@ -504,3 +504,10 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Decision:** the rate shows whenever the row has income, as before. The gain label now sits just past the rate instead of between the panel and the rate. The rate never moves when a gain appears or fades, and the gain label never overlaps it. Only the gain label's own width changes the strip's extent, and only while it is up.
 - **Check in-engine:** Sunlight's rate sat at x=93 idle and while a gain was up, and at x=93 after the fade. The gain label sat at x=133, which is 93 + rate width 37 + 3.
 - **Not done:** no animation on the gain label's position, so nothing glides or jumps.
+
+## 2026-11-24: Banner time-of-day words use the sun, not the raw clock (17:28 was Dusk)
+- **Cause:** `AreaBanner.period_of` sets its word bands on the sun phase (0.25 sunrise, 0.75 sunset), but the banner passed it the clock fraction. A clock of 0.73 (17:28) fell in the Dusk band (below 0.8). The zone banner's fallback also passed the sun phase where the clock fraction was expected.
+- **Fix:** `period_of` takes a clock fraction and converts it with `SkyModel.phase_of_clock` at the sky's daylight, so the bands stay on the sun. `compose` takes the clock fraction and daylight. `main.gd` converts `sky.clock_phase()` to the clock with `clock_of_phase`, and passes the sky's daylight.
+- **Boundaries:** the sun-phase bands are unchanged. Dusk starts at sun phase 0.7, which is 17:46 at daylight 0.6, about 86 minutes before sunset at 19:12. If QA wants Dusk later, change the 0.7 band in `period_of`; that is a taste call.
+- **Tests:** `tests/test_banner.gd` checks the dawn, noon and sunset clock fractions, 17:28 as Afternoon, and the fallback line "17:28 - Afternoon".
+- **Not run in-engine:** the cloud cannot run Godot.
