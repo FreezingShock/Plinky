@@ -52,12 +52,19 @@ func _init() -> void:
 		await _settle(frames)
 		_snap("back: larkmoor")
 
+	print("FARM_GROUP_DEBUG group=%d jobs=%d" % [FarmProps._group, FarmProps._jobs.size()])
 	_report()
 	quit(0)
 
 
+## Waits `n` frames and at least 2.5 s of wall time. The zone swap runs inside the wipe, which is timed in seconds (cover
+## 0.45 s, hold 0.12 s, clear 0.55 s), so a frame count alone can end before the swap does on a fast GPU: the snapshot then
+## shows the zone being left (batch 141 on the RTX 3060 Ti read 414 zone-asset entries at "back: meadow").
 func _settle(n: int) -> void:
+	var t0: int = Time.get_ticks_msec()
 	for i: int in n:
+		await process_frame
+	while Time.get_ticks_msec() - t0 < 2500:
 		await process_frame
 
 
