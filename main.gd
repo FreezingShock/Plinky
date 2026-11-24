@@ -55,6 +55,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
 	GardenArt.atlas()   # bakes the flower garden atlas once, at boot, not on the zone swap's frame (world/garden_art.gd)
 	PadInput.ensure()
+	DisplaySettings.set_pregame_fill(get_window(), false)  # the game letterboxes; the pre-game screens fill
 	DisplaySettings.apply(get_window())
 	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
 	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
