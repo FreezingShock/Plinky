@@ -1,1 +1,0 @@
-Achievement unlocks open a wide banner above the middle of the screen, in each section's colour with its own particles and chime. It waits while a menu is open, and the hamburger tile is now Achievements.
