@@ -308,16 +308,12 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Checked in the cloud render only (xvfb, lavapipe): no shader errors, tests pass. Not verified on the PC: the wind and walker bend, and the look at noon.
 - Follow-up on the same PR: each rock and bush gets a thin, soft-edged dark contact slab under its foot, wider than the stone, so the base reads as shade on the ground. Rock tops are flatter (tilt .03 to .14). After main moved under the PR, the Larkmoor ground was regenerated, then `gen_gardens.py` (flower placement reads the ground) and the sway tips were refreshed; 6 sway tips were removed. Suite: 6428 checks, 0 failed.
 
-## 2026-11-24: Grass style F is the default for the meadow (Larkmoor held on A)
+## 2026-11-24: Grass style F is the default for the meadow and Larkmoor
 - Nathan picked F on the decision card (A, E and F compared at bake, in engine at dawn, and at pinned noon and golden hour).
 - Empirics: A, E and F have the same colour mix (within about 0.5 points) and speckle density. They differ only in arrangement. F reads as stalks at 3x; at 1x the change is subtle under the dawn and noon grades.
-- Changed: `GRASS` default is `f` in `tools/art/gen_meadow3d.py`. Baked `ground.png`, `ground_n.png` and `ground_fg.png` for the meadow. `ground_h.png`, sprites and placements are unchanged, since grass does not touch them. `world/meadow_life.json` regenerated with `tools/art/gen_life_anchors.py` on the new ground, because 53 sway tips had left palette 4.
-- Larkmoor is held on A. Since #395 the wind runs in the grass blade shader, so the CPU sway tips no longer move grass. Critters still graze at the tips (life_critters.gd), and on F the tip candidates fall from 1674 to 193. Loosening the rule to palette 3 or 4 only reaches 290, so the loosened rule is not a fix. Revisit when Larkmoor critter grazing gets its own spots.
+- Changed: `GRASS` default is `f` in `tools/art/gen_meadow3d.py` and `tools/art/gen_larkmoor.py`. Baked `ground.png`, `ground_n.png` and `ground_fg.png` for both zones. Heights, backdrops and sprites are unchanged, since grass does not touch them.
+- Regenerated for the new ground: `world/meadow_life.json` (53 sway tips had left palette 4) and `world/larkmoor_life.json` (sway, flowers, pads and water from `tools/art/gen_life_anchors.py` with `--bounds 0,0,3040,1840`; farm, perches and forest edge kept), and `world/larkmoor_gardens.json` from `tools/art/gen_gardens.py`.
+- Larkmoor life counts on F: sway tips 1674 (same as before), butterfly flower spots 240 down to 185.
+- Withdrawn: an earlier count of 193 sway tips came from a bounds mistake (the default 640 window), not from F. Use `--bounds 0,0,3040,1840` for Larkmoor life.
 - The Larkmoor A bake reproduces the committed ground exactly (0 texels differ), so the pipeline is trusted for both zones.
-- Open: PR #378 puts a blade shader over the meadow ground. Its thread will judge the combined look in engine and thin the blades if they double up.
-## 2026-11-24: Larkmoor grass blades draw per loaded chunk, in one node
-- `GrassBlades` gets a chunked mode. It draws one shader rect per loaded prop chunk (`chunk_loaded` / `chunk_unloaded` from `LarkmoorScene`), in a single node, so the grass follows the streaming and adds no node count. The rects are in zone texels, the same space as the blades.
-- Pushers are a list of up to 6 points: the walker and the rabbits, chickens and frogs that are showing (`LifeCritters.ground_pushers`, read-only). Ducks are not included yet.
-- `LifeGround` is no longer placed in Larkmoor or the meadow. The class stays for its tests.
-- Pad plates are skipped by colour (they are not grass colours), not by the pad clearance, because Larkmoor has 31 pads and the shader holds 8.
-- Checked in the cloud only (xvfb, lavapipe): no shader errors, `tests/run.gd` passes (6539 checks), `tools/larkmoor_shots.tscn` runs. Not verified on the PC.
+- Open: PR #378 and #395 put the blade shader over the grass. Their threads judge the combined look in engine and thin the blades if they double up.
