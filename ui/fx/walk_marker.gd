@@ -46,6 +46,9 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Same gate as the walker: a click on the GUI, or while a menu is open, starts no walk and no ring.
+		if PadInput.menu_open or GuiGuard.covers(get_tree().root, event.position):
+			return
 		var p: Vector2 = world.get_local_mouse_position()  # world-local texels; the world node is scaled and panned by the camera
 		# Same rule as TexelWalker: clamp to its bounds, then to the nearest walkable texel, so the ring never
 		# sits on a cliff face or in water the walker cannot reach.

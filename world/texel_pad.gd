@@ -155,6 +155,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton) or event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event.pressed:
+		if GuiGuard.covers(get_tree().root, event.position):
+			return   # a click on any GUI (panel, HUD, tooltip) never presses a pad under it
 		if hit((get_parent() as Node2D).get_local_mouse_position()):
 			holding = true
 			_press()

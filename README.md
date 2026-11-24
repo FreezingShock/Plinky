@@ -10,6 +10,10 @@
 
 ---
 
+<p align="center">
+  <img src="docs/readme/headers/pads.jpg" alt="Pads and the Walker: the walker stepping onto a glowing pad in the meadow" width="100%">
+</p>
+
 ## 🌱 Pads and the Walker
 
 Every pad is a press. The walker strolls the meadow, lands on a pad, and each press pays out in that pad's currency. Pads come in rows, and each row drives one stat. Press faster, walk further, and the pads start to sing.
@@ -20,6 +24,10 @@ Every pad is a press. The walker strolls the meadow, lands on a pad, and each pr
 </p>
 
 ---
+
+<p align="center">
+  <img src="docs/readme/headers/currencies.jpg" alt="Five glowing currency crystals on a stone ledge" width="100%">
+</p>
 
 ## 💎 Currencies
 
@@ -36,6 +44,10 @@ Each zone has its own ladder of currencies. Meadow pads pay the flower ladder, a
 </p>
 
 ---
+
+<p align="center">
+  <img src="docs/readme/headers/zones.jpg" alt="Three zones in one panorama: the meadow, a lake valley, and the lava quarry" width="100%">
+</p>
 
 ## 🗺️ Zones
 
@@ -58,6 +70,10 @@ Each zone has its own ladder of currencies. Meadow pads pay the flower ladder, a
 
 ---
 
+<p align="center">
+  <img src="docs/readme/headers/upgrades.jpg" alt="Upgrade tokens on a wooden shelf" width="100%">
+</p>
+
 ## 🛠️ Upgrades Gallery
 
 Upgrades live in a card gallery, one tab per zone and reset. Cards glow green when you can afford them, red when you can't, and gold once they're maxed. Hover for the full breakdown.
@@ -68,6 +84,10 @@ Upgrades live in a card gallery, one tab per zone and reset. Cards glow green wh
 </p>
 
 ---
+
+<p align="center">
+  <img src="docs/readme/headers/relics.jpg" alt="Relic charms in a velvet display case" width="100%">
+</p>
 
 ## 🏺 Relics
 
@@ -85,6 +105,10 @@ Relics drop on successful presses. Every relic has a rarity, and each one change
 
 ---
 
+<p align="center">
+  <img src="docs/readme/headers/achievements.jpg" alt="A purple achievement banner with a gold star and laurel" width="100%">
+</p>
+
 ## 🏆 Achievements
 
 Forty achievements track your first press, your crit streaks, your mastery in each meadow flower, your journey to Larkmoor, and your first trip into the quarry. Open them from the hamburger tile.
@@ -95,6 +119,10 @@ Forty achievements track your first press, your crit streaks, your mastery in ea
 </p>
 
 ---
+
+<p align="center">
+  <img src="docs/readme/headers/bloom.jpg" alt="A golden flower unfolding in the meadow, petals and seeds drifting up" width="100%">
+</p>
 
 ## 🌸 Bloom Ascension
 
@@ -118,6 +146,10 @@ Nucleus is the Ember Quarry reset. It pays Core Shards, keeps your Nucleus attri
 
 ---
 
+<p align="center">
+  <img src="docs/readme/headers/seasons.png" alt="Four seasons side by side: spring, summer, autumn, winter" width="100%">
+</p>
+
 ## 🍂 Seasons
 
 The calendar runs on a clock. A day is three minutes and a night is two. Every two months the season changes, and the meadow's palette and sky turn with it.
@@ -138,6 +170,10 @@ The calendar runs on a clock. A day is three minutes and a night is two. Every t
 </table>
 
 ---
+
+<p align="center">
+  <img src="docs/readme/headers/offline.png" alt="A walker asleep by a campfire while coins rise from a pad at night" width="100%">
+</p>
 
 ## 🌙 Offline Income
 
