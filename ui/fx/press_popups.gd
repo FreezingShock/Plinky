@@ -4,7 +4,7 @@ extends Node2D
 ## A popup is a small struct (Pop) that is rolled once at spawn (motion, easing, direction, size) so no two presses
 ## move alike, then animated purely from its age. Rules that keep the screen readable:
 ##   - Holding a pad keeps ONE running popup per pad that stacks every press into one number (locked decision).
-##   - A press that lands within MERGE_WINDOW of the pad's last popup folds into it and re-pops it.
+##   - A same-stat gain near a live label folds into that label: one number that ticks up and pops, and stays put until gains stop.
 ##   - Otherwise a new popup takes the first free lane around the anchor, so two numbers never sit on each other.
 ##   - At most MAX_POPS live at once, and relic pulses are dropped first when the screen is busy.
 ## Tier looks come from PopupStyle. Everything is whole pixels and hard colour steps. Lives in the screen-space overlay
@@ -15,10 +15,10 @@ const SOFT_CAP: int = 16            ## above this many live popups, relic pulses
 const MAX_PARTS: int = 220
 const MAX_LINKS: int = 8
 const MAX_RINGS: int = 8
-const MERGE_WINDOW: float = 1.2           ## a press this soon after a popup's last one folds into it
+const QUIET_AFTER: float = 0.5            ## seconds with no new gain before a label starts to rise and fade
 const LIFT: Vector2 = Vector2(0.0, -18.0)   ## screen pixels from the pad to the number's baseline
 const MAX_WIDTH: float = 150.0             ## widest a popup's text may be, in pixels
-const MERGE_NEAR: float = 120.0           ## pixels: same-stat presses this close (about a pad and a half) fold into one number
+const MERGE_NEAR: float = 200.0           ## pixels: a same-stat gain this close to a live label folds into it (about two pads)
 const TICK_RATE: float = 16.0             ## per second: a merged number rolls up to its new total in about 0.2 s
 const SETTLE_GAP: float = 2.0             ## pixels kept between two visible popups after the per-frame settle
 const LIFE: float = 0.95
@@ -67,6 +67,7 @@ class Pop:
 	var shown: float = 0.0               ## the total on screen; after a merge it rolls up to `total`
 	var seq: int = 0                     ## spawn order: older popups keep their place when two overlap
 	var push: float = 0.0                ## upward move this frame so the box clears the boxes beneath it (see _settle)
+	var hold: bool = false               ## still gaining: the label holds its spot with no motion until QUIET_AFTER passes
 
 class Link:
 	var live: bool = false
@@ -175,6 +176,9 @@ func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, h
 		p.life = 9999.0
 		_runs[key] = p
 	else:
+		p.hold = true   # a new number holds its spot until gains stop (see _float_if_quiet)
+		p.t0 = 9999.0
+		p.life = 9999.0
 		_place(p)
 	set_process(true)
 
@@ -316,6 +320,7 @@ func _init_pop(p: Pop, key: StringName, at: Vector2, amount: float, tier: int, c
 	_seq += 1
 	p.seq = _seq
 	p.push = 0.0
+	p.hold = false
 	p.key = key
 	p.anchor = at
 	p.lift = LIFT
@@ -380,7 +385,7 @@ func _screen(p: Pop) -> Vector2:
 
 
 func _pos_of(p: Pop) -> Vector2:
-	return _screen(p) + p.lane + p.base + PopupStyle.motion_offset(_motion_now(p), _progress(p), p.rnd, p.dir, p.rise, p.ease_id) + Vector2(0.0, p.push)
+	return _screen(p) + p.lane + _offset_now(p) + Vector2(0.0, p.push)
 
 
 ## The motion the popup is drawn with this frame. Reduce Motion draws every popup as a plain rise.
@@ -436,7 +441,7 @@ func _place(p: Pop) -> void:
 	for q in _pops:
 		if q.live and q != p:
 			others.append(_rect_of(q))
-	var origin: Vector2 = _screen(p) + p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+	var origin: Vector2 = _screen(p) + _offset_now(p)
 	p.lane = PopupLanes.pick(origin, _box(p), _drop(p), others, LANES)
 
 
@@ -453,9 +458,7 @@ func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
 	for p in _pops:
 		if not p.live or p.running or p.banner or p.total <= 0.0 or p.stat != stat:
 			continue
-		# A delayed popup (a relic echo not yet shown) still takes the fold: its since_bump is negative until it starts.
-		if p.since_bump >= MERGE_WINDOW:
-			continue
+		# Any live label of this stat near the press takes it, whether it is still holding or already floating.
 		var d: float = 0.0 if p.key == key else _screen(p).distance_to(_screen_of(at))
 		if d < best_d:
 			best_d = d
@@ -463,18 +466,47 @@ func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
 	return best
 
 
-## Fold a new press into a live popup: the number adds up, it re-pops, and it floats on from about where it is.
-## The carried offset is capped, so a long run of presses keeps one number hovering instead of climbing off screen.
+## A same-stat gain lands on a live label: the number adds up, its digits tick and it pops. A label that was already
+## floating is caught where it is and holds again, so the number keeps climbing in one place while gains arrive.
 func _fold_in(p: Pop, amount: float, crit: bool, tier: int) -> void:
-	var off: Vector2 = p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
-	p.base = Vector2(clampf(off.x, -16.0, 16.0), clampf(off.y, -p.rise * 0.9, 0.0))
-	var started_at: float = maxf(p.age, 0.0)   # a delayed popup has not started, so its float-away begins at 0
-	p.t0 = started_at
-	p.life = started_at + LIFE + 0.08 * float(maxi(tier, p.tier))
+	if not p.hold:
+		var off: Vector2 = p.base + PopupStyle.motion_offset(_motion_now(p), _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+		p.base = Vector2(clampf(off.x, -24.0, 24.0), clampf(off.y, -p.rise * 2.0, p.rise))
+		p.hold = true
+		p.t0 = 9999.0
+		p.life = 9999.0
 	p.total += amount
 	p.count += 1
 	p.crit = p.crit or crit
 	_restyle(p, tier)
+
+
+## Where the label sits relative to its lane this frame. A label that is still gaining holds its base spot with no motion.
+func _offset_now(p: Pop) -> Vector2:
+	if p.hold:
+		return p.base
+	return p.base + PopupStyle.motion_offset(_motion_now(p), _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+
+
+## A label that has gone quiet for QUIET_AFTER starts to rise and fade from where it stands, over LIFE.
+func _float_if_quiet(p: Pop) -> void:
+	if not p.hold or p.running or p.since_bump < QUIET_AFTER:
+		return
+	p.hold = false
+	# Take the first frame's motion out of the base, so the number does not jump when the float starts.
+	p.base -= PopupStyle.motion_offset(_motion_now(p), 0.0, p.rnd, p.dir, p.rise, p.ease_id)
+	p.t0 = p.age
+	p.life = p.age + LIFE + 0.08 * float(p.tier)
+
+
+## A number rolls up to its total. Under Reduce Motion, or when the rest is under 1%, it snaps.
+func _roll(p: Pop, delta: float, calm: bool) -> void:
+	if p.running or p.shown == p.total:
+		return
+	p.shown = p.total if calm else p.shown + (p.total - p.shown) * minf(delta * TICK_RATE, 1.0)
+	if p.total - p.shown < maxf(0.5, p.total * 0.01):
+		p.shown = p.total
+	p.text = _format(p)
 
 
 func _restyle(p: Pop, tier: int) -> void:
@@ -550,12 +582,8 @@ func _process(delta: float) -> void:
 			if _runs.get(p.key) == p:
 				_runs.erase(p.key)
 			continue
-		# A merged number rolls up to its new total (snaps under Reduce Motion, and when the rest is under 1%).
-		if not p.running and p.shown != p.total:
-			p.shown = p.total if calm else p.shown + (p.total - p.shown) * minf(delta * TICK_RATE, 1.0)
-			if p.total - p.shown < maxf(0.5, p.total * 0.01):
-				p.shown = p.total
-			p.text = _format(p)
+		_float_if_quiet(p)
+		_roll(p, delta, calm)
 		# Trailing sparkles: each tier has its own rate and look; calm mode keeps a quarter of them.
 		if p.tier >= 1:
 			p.trail_t -= delta
@@ -653,8 +681,7 @@ func _diamond(c: Vector2, r: int, col: Color) -> void:
 
 func _draw_pop(p: Pop, calm: bool) -> void:
 	var prog: float = _progress(p)
-	var motion: int = PopupStyle.Motion.RISE if calm else p.motion
-	var off: Vector2 = p.base + PopupStyle.motion_offset(motion, prog, p.rnd, p.dir, p.rise, p.ease_id)
+	var off: Vector2 = _offset_now(p)
 	# The first moments of every press and merge are one size bigger: the punch, in whole font sizes.
 	var idx: int = p.size_idx + (1 if (p.since_bump < 0.07 and not calm) else 0)
 	var fs: int = PopupStyle.SIZES[clampi(idx, 0, PopupStyle.SIZES.size() - 1)]
