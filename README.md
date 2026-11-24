@@ -19,7 +19,7 @@
 Every pad is a press. The walker strolls the meadow, lands on a pad, and each press pays out in that pad's currency. Pads come in rows, and each row drives one stat. Press faster, walk further, and the pads start to sing.
 
 <p align="center">
-  <img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: walker pressing a meadow pad" width="640">
+  <img src="docs/readme/screens/pads.png" alt="Screenshot slot: walker pressing a meadow pad" width="640">
   <br><sub><i>Screenshot slot: the walker on a meadow pad with the Momentum meter filling.</i></sub>
 </p>
 
@@ -79,7 +79,7 @@ Each zone has its own ladder of currencies. Meadow pads pay the flower ladder, a
 Upgrades live in a card gallery, one tab per zone and reset. Cards glow green when you can afford them, red when you can't, and gold once they're maxed. Hover for the full breakdown.
 
 <p align="center">
-  <img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: the upgrades gallery with zone tabs and cards" width="640">
+  <img src="docs/readme/screens/upgrades-gallery.png" alt="Screenshot slot: the upgrades gallery with zone tabs and cards" width="640">
   <br><sub><i>Screenshot slot: the upgrades gallery, card grid with tiers.</i></sub>
 </p>
 
@@ -99,7 +99,7 @@ Relics drop on successful presses. Every relic has a rarity, and each one change
 </p>
 
 <p align="center">
-  <img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: the relic panel with equipped slots" width="640">
+  <img src="docs/readme/screens/relics-panel.png" alt="Screenshot slot: the relic panel with equipped slots" width="640">
   <br><sub><i>Screenshot slot: the relic panel with equipped slots.</i></sub>
 </p>
 
@@ -114,7 +114,7 @@ Relics drop on successful presses. Every relic has a rarity, and each one change
 Forty achievements track your first press, your crit streaks, your mastery in each meadow flower, your journey to Larkmoor, and your first trip into the quarry. Open them from the hamburger tile.
 
 <p align="center">
-  <img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: the achievements panel with unlocked and locked rows" width="640">
+  <img src="docs/readme/screens/achievements.png" alt="Screenshot slot: the achievements panel with unlocked and locked rows" width="640">
   <br><sub><i>Screenshot slot: the achievements panel.</i></sub>
 </p>
 
@@ -129,7 +129,7 @@ Forty achievements track your first press, your crit streaks, your mastery in ea
 Bloom is the meadow reset. Spend the meadow's progress to start again, keep your Bloom attributes, and earn Seeds. Each reset adds a themed bloom sequence and a gift.
 
 <p align="center">
-  <img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: the Bloom ascension animation" width="640">
+  <img src="docs/readme/screens/bloom-ascension.png" alt="Screenshot slot: the Bloom ascension animation" width="640">
   <br><sub><i>Screenshot slot: the Bloom ascension moment.</i></sub>
 </p>
 
@@ -140,7 +140,7 @@ Bloom is the meadow reset. Spend the meadow's progress to start again, keep your
 Nucleus is the Ember Quarry reset. It pays Core Shards, keeps your Nucleus attributes, and sends you back up with a forge-lit sequence and a gift.
 
 <p align="center">
-  <img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: the Nucleus ascension animation" width="640">
+  <img src="docs/readme/screens/nucleus-ascension.png" alt="Screenshot slot: the Nucleus ascension animation" width="640">
   <br><sub><i>Screenshot slot: the Nucleus ascension moment.</i></sub>
 </p>
 
@@ -162,10 +162,10 @@ The calendar runs on a clock. A day is three minutes and a night is two. Every t
     <td align="center"><b>Winter</b><br><sub>Snow settles. Everything goes quiet.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: spring" width="100%"></td>
-    <td><img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: summer" width="100%"></td>
-    <td><img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: autumn" width="100%"></td>
-    <td><img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: winter" width="100%"></td>
+    <td><img src="docs/readme/screens/season-spring.png" alt="Screenshot slot: spring" width="100%"></td>
+    <td><img src="docs/readme/screens/season-summer.png" alt="Screenshot slot: summer" width="100%"></td>
+    <td><img src="docs/readme/screens/season-autumn.png" alt="Screenshot slot: autumn" width="100%"></td>
+    <td><img src="docs/readme/screens/season-winter.png" alt="Screenshot slot: winter" width="100%"></td>
   </tr>
 </table>
 
@@ -180,7 +180,7 @@ The calendar runs on a clock. A day is three minutes and a night is two. Every t
 Plinky keeps working while you're away. Offline progress pays half of your normal income, up to a base cap of two hours. The Offline gain attribute stretches that cap by an hour per level. When you come back, the Welcome Back card shows what you earned.
 
 <p align="center">
-  <img src="docs/readme/screens/placeholder.svg" alt="Screenshot slot: the Welcome Back card" width="640">
+  <img src="docs/readme/screens/welcome-back.png" alt="Screenshot slot: the Welcome Back card" width="640">
   <br><sub><i>Screenshot slot: the Welcome Back card after time away.</i></sub>
 </p>
 
