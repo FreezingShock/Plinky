@@ -569,3 +569,20 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** each tile's Tab target wrapped straight to the first tile, so the footer was never reached by keyboard (PC keyboard QA on main d52c8521). The arithmetic is in `GalleryMenu.tab_next` and `tab_prev`, tested in `tests/test_gallery.gd`.
 - **Checked:** `tests/run.gd` passes (7960 checks, 0 failed). In a running scene, the Tab walk visits 12 distinct controls and wraps, and Settings' next control is Close Menu.
 - **Not done:** arrow keys from the footer (up and down into the tiles) are not wired. Not run on the PC.
+## 2026-11-24: Menu text buttons measure with crisp font settings from the start (footer alignment)
+- **Decision:** `MenuTextButton` applies `CrispFont` in `_init`, not only in `_ready`. The menus set `label` before the button enters the tree, and the setter measures the text right away, so the first measurement used the default font settings.
+- **Why:** the Gallery footer (Close Menu, Quit To Title, Quit Game) sat 1 px right in the lazy build (PR #464) and not in the eager build. A/B probe, footer button widths: before 120 / 128 / 114 eager and 120 / 127 / 113 lazy; after 119 / 127 / 113 in both. Positions are now 136 / 259 / 390 in both builds.
+- **Checked:** the footer crop is pixel-identical between the eager and lazy builds with this change. The footer text is 1 px narrower on `Close Menu` and `Quit To Title` than the old eager build showed, which is the crisp measurement.
+- **Not run in-engine:** the footer on a real PC.
+
+## 2026-11-24: Upgrades cards build a few per frame after open (open hitch)
+- **Decision:** on open, the Upgrades header, tabs, tier rails and empty tier grids are built at once, as before. The gift cards are then built `CARDS_PER_FRAME` (12) to a frame, starting with the tab on show, while the open wipe plays. Teardown on close stops a builder left over from the closed panel (a generation counter), clears the queue and frees everything as before.
+- **Why:** building every card in one frame cost a hitch of about 32 to 38 ms per open on the PC. Keeping the lazy build keeps the node ceiling (the cards are still freed on close). A card that is not built yet is not in `_attr_rows`, so `_buy_upgrade` checks for it.
+- **Checked:** `tests/run.gd` passes (7955 checks, 0 failed) on this branch. Headless probes on a fresh boot do not build any upgrade tabs, so they cannot time the open.
+- **Not run in-engine:** the open hitch on a real PC with progress saved. PC QA should measure it before and after.
+
+## 2026-11-24: Upgrades wires its own Tab ring (keyboard focus)
+- **Decision:** the Upgrades panel sets `focus_next` and `focus_previous` on its tabs, the tier rail of the tab on show, and the gifts in the tier on show, as one ring in layout order that wraps at both ends. It is rewired on every tab, tier and card change. The gift card's line-2 text label (`UpgradeCard._delta`) no longer takes focus.
+- **Why:** PC QA on keyboard focus found Tab did not follow the layout (Godot walks the tree, so every tab's page counts), Shift+Tab from the first control stopped instead of wrapping, and the card's text label sat in the focus chain. Same backward stop as Stats and Attributes (see the entry above).
+- **Checked:** `tests/run.gd` passes (7955 checks, 0 failed).
+- **Not run in-engine:** the ring on a PC with a save that has several tabs and tiers. PC QA should walk Tab and Shift+Tab through the Upgrades panel at zoom 1 and 3.
