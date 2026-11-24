@@ -12,7 +12,7 @@ extends Node
 const MIDNIGHT: float = 0.9
 const SPOTS: Array = [["lake", "Water_lake", 2], ["lake_close", "Water_lake", 3], ["pond", "Water_pond", 2], ["shore", "Water_lake", 2]]
 ## The starting meadow (zone 1, world/meadow3d_scene.gd): its lake and pond are small, so zoom in closer.
-const MEADOW_SPOTS: Array = [["lake", "Water_lake", 2], ["lake_close", "Water_lake", 3], ["pond", "Water_pond", 3]]
+const MEADOW_SPOTS: Array = [["lake", "Water_lake", 2], ["lake_close", "Water_lake", 3], ["pond", "Water_pond", 3], ["sea", "Water_lake", 1]]
 const MEADOW_OVERVIEW: Vector2 = Vector2(415, 258)
 const GLOW_SHADER: Shader = preload("res://render/shaders/water_night.gdshader")
 ## Per-variant knobs for the shader. Colours stay in the meadow palette (paper, lime, deep green).
@@ -121,7 +121,7 @@ func _ready() -> void:
 	var anchors: Node = main.meadow.get_node("Anchors")
 	for spot: Array in (MEADOW_SPOTS if is_meadow else SPOTS):
 		var m: Marker2D = anchors.get_node(String(spot[1])) as Marker2D
-		var offset: Vector2 = Vector2(-200, 20) if String(spot[0]) == "shore" else Vector2(0, 40)
+		var offset: Vector2 = Vector2(-200, 20) if String(spot[0]) == "shore" else (Vector2(0, 70) if String(spot[0]) == "sea" else Vector2(0, 40))
 		await _goto(m.position + offset, int(spot[2]))
 		await _wait(30)
 		_save(String(spot[0]))
