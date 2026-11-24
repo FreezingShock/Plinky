@@ -33,6 +33,8 @@ const PAL: Array[Color] = [
 const ROOT_BAND: float = 0.28        # the lowest share of a stalk is its dark root
 const HEAD_START: float = 0.80       # the top share of a stalk is its head
 const SIDE_LIGHT: float = 3.0        # softens the sideways direction for stalks right beside the walker
+const SILHOUETTE_HALF: float = 9.0   # stalks within this many texels of the walker's column, and in front of him, are cut
+const SILHOUETTE_TOP: float = 14.0   # ... so their tips stop this many texels above his feet and his outline stays clear
 
 
 ## A clump of about w x h texels, rooted on a band near its bottom edge. Deterministic for a seed.
@@ -93,7 +95,7 @@ static func generate(seed_value: int, w: int, h: int, stage: int) -> Dictionary:
 ## The colours of one stalk at height `t` (0 at the root, 1 at the tip): root, body, head.
 static func _role(stage: int, tone: int, t: float, head: bool) -> int:
 	if t < ROOT_BAND:
-		return C_SHADE
+		return C_INK
 	if head and t >= HEAD_START:
 		if stage == STAGE_SPROUT:
 			return C_LIGHT
@@ -102,7 +104,7 @@ static func _role(stage: int, tone: int, t: float, head: bool) -> int:
 		STAGE_SPROUT:
 			return C_LIGHT if tone == 2 else C_BASE
 		STAGE_BROWN:
-			return C_EARTH if tone < 2 else C_SHADE
+			return C_EARTH if tone < 2 else C_INK
 		_:
 			return C_EARTH if tone == 0 and t < 0.5 else C_ACCENT
 
@@ -117,13 +119,13 @@ static func rasterize(clump: Dictionary, frame: int, walker: Vector2, push: floa
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0.0, 0.0, 0.0, 0.0))
 	var shadow_px: PackedInt32Array = clump.shadow
-	var shade: Color = PAL[C_SHADE]
+	var shade: Color = PAL[C_INK]
 	for i: int in shadow_px.size():
 		var idx: int = shadow_px[i]
 		img.set_pixel(idx % w, floori(float(idx) / float(w)), shade)
 	var mass_px: PackedInt32Array = clump.mass
-	var root: Color = PAL[C_SHADE]
-	var deep_ink: Color = PAL[C_INK]
+	var root: Color = PAL[C_INK]
+	var deep_ink: Color = PAL[C_EARTH]          # a few dry clods in the root mass
 	for i: int in mass_px.size():
 		var idx: int = mass_px[i]
 		var mx: int = idx % w
@@ -134,6 +136,12 @@ static func rasterize(clump: Dictionary, frame: int, walker: Vector2, push: floa
 		var bx: float = float(s.bx)
 		var by: float = float(s.by)
 		var length: float = float(s.h)
+		if push > 0.0:
+			# Stalks in front of the walker, in his column, are cut so their tips stop below his chest: his outline stays
+			# clear of wheat tops (they would cover him).
+			var ahead: Vector2 = Vector2(bx, by) - walker
+			if ahead.y > 1.0 and absf(ahead.x) < SILHOUETTE_HALF:
+				length = minf(length, maxf(3.0, ahead.y + SILHOUETTE_TOP))
 		var sway: float = float(s.sway) * sin(turn + float(s.phase))
 		var tx: float = bx + float(s.lean) + sway
 		var ty: float = by - length
@@ -164,7 +172,7 @@ static func rasterize(clump: Dictionary, frame: int, walker: Vector2, push: floa
 			if t >= HEAD_START and head:
 				_put(img, ix + 1, iy, C_EARTH if stage == STAGE_GOLD and tone < 2 else col)
 			elif side_shade and t >= ROOT_BAND and t < HEAD_START and stage != STAGE_SPROUT:
-				_put(img, ix + 1, iy, C_EARTH if stage == STAGE_GOLD else C_SHADE)
+				_put(img, ix + 1, iy, C_EARTH if stage == STAGE_GOLD else C_INK)
 	return img
 
 
