@@ -46,6 +46,9 @@ func run(t: Object) -> void:
 	MeadowLife.rain = 0.0
 	t.eq(LifeWild.dragonfly_share(), 1.0, "summer noon: every dragonfly is out")
 	t.eq(LifeWild.deer_share(), 0.0, "summer noon: no deer at the forest edge")
+	MeadowLife.night = 0.5
+	t.ok(LifeWild.deer_share() > 0.5, "dusk in summer: the deer come out at the forest edge (%.2f)" % LifeWild.deer_share())
+	MeadowLife.night = 0.0
 	t.eq(LifeWild.owl_share(), 0.0, "summer noon: no owls")
 	MeadowLife.low_sun = 1.0
 	t.ok(LifeWild.deer_share() > 0.8, "golden hour in summer: the deer comes out (%.2f)" % LifeWild.deer_share())
