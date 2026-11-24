@@ -13,6 +13,8 @@ const DEFAULT_SIZE: Vector2 = Vector2(380.0, 190.0)
 const EDGE_GAP: float = 6.0
 const MAX_SUGGEST: int = 10
 const HISTORY_MAX: int = 100
+const PENDING_MS: int = 8000   ## how long `tp area` waits for a zone that is still loading
+
 
 ## Last place and size this session, relative to the HUD. A reopened console stays where it was put.
 static var _saved: Rect2 = Rect2()
@@ -35,6 +37,8 @@ var _resize_size: Vector2 = Vector2.ZERO
 var _tab_list: PackedStringArray = PackedStringArray()
 var _tab_at: int = -1
 var _tab_text: String = ""
+var _pending_area: StringName = &""   ## an area asked for while its zone is still building its pads
+var _pending_until: int = 0           ## msec deadline for _pending_area
 
 
 ## Build the console under `parent`. ctx may hold: walker (Node2D), gate (Node2D), spawn (Vector2), pads (Dictionary id -> Node2D).
@@ -205,17 +209,45 @@ func _cmd_tp(args: PackedStringArray) -> String:
 	return _move_walker(to, "Walker at %d, %d." % [roundi(to.x), roundi(to.y)])
 
 
-## Walk to the first pad of an area that is on screen. An area in another zone needs that zone first.
+## Walk to the first pad of an area. An area in another zone needs that zone first. The zone the sim just moved to
+## builds its pads after its wipe, so an area in the current zone that has no pad yet waits for them (see _process).
 func _tp_area(id: String) -> String:
 	var area: AreaDef = _sim.area_defs.get(StringName(id.to_lower())) as AreaDef
 	if area == null:
 		return "No area '%s'. Areas: %s" % [id, ", ".join(_names(_sim.area_defs))]
+	if _walk_to_area(area):
+		_pending_area = &""
+		return "Walker at %s." % area.display_name
+	if area.zone == _sim.zone_id:
+		_pending_area = area.id
+		_pending_until = Time.get_ticks_msec() + PENDING_MS
+		return "%s is loading. The walker goes there once its pads are in." % area.display_name
+	return "%s is in zone %s. Get there first: zone %s." % [area.display_name, area.zone, area.zone]
+
+
+## Walks to the first pad of `area` that is built in the zone on screen. False when none is.
+func _walk_to_area(area: AreaDef) -> bool:
 	var pads: Dictionary = _ctx.get("pads", {})
 	for bid: String in area.pad_buttons:
 		var pad: Node2D = pads.get(StringName(bid)) as Node2D
 		if pad != null:
-			return _move_walker(pad.position + Vector2(0.0, 12.0), "Walker at %s." % area.display_name)
-	return "%s is in zone %s. Get there first: zone %s." % [area.display_name, area.zone, area.zone]
+			_move_walker(pad.position + Vector2(0.0, 12.0), "")
+			return true
+	return false
+
+
+## Finishes a `tp area` that was waiting on its zone's pads. Gives up after PENDING_MS and says so.
+func _process(_delta: float) -> void:
+	if _pending_area == &"":
+		return
+	var area: AreaDef = _sim.area_defs.get(_pending_area) as AreaDef
+	if area != null and _walk_to_area(area):
+		_pending_area = &""
+		say("Walker at %s." % area.display_name)
+	elif Time.get_ticks_msec() > _pending_until:
+		var label: String = area.display_name if area != null else String(_pending_area)
+		_pending_area = &""
+		say("%s did not load in time. Try tp area again." % label, &"error")
 
 
 func _tp_words(typed: PackedStringArray) -> PackedStringArray:
