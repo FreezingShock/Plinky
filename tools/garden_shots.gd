@@ -20,7 +20,18 @@ func _wait(n: int) -> void:
 		await get_tree().process_frame
 
 
+## Drops the offline-earnings card (ui/welcome_card.gd, ui/welcome_tile.gd) so the shots show the garden.
+func _clear_overlays(n: Node) -> void:
+	for c in n.get_children():
+		var sp: Script = c.get_script() as Script
+		if sp != null and (sp.resource_path.contains("welcome_card") or sp.resource_path.contains("welcome_tile")):
+			if c is CanvasItem:
+				(c as CanvasItem).visible = false   # hide, not free: the HUD keeps a reference to the card
+		_clear_overlays(c)
+
+
 func _shot(name: String) -> void:
+	_clear_overlays(main)
 	await _wait(3)
 	root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/%s.png" % name))
 	print("shot ", name, "  nodes ", get_tree().get_node_count())

@@ -516,9 +516,14 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var outdoor: float = 1.0 if seasonal else 0.0
 		var snow_w: float = _season.weights[3]
 		var wet01: float = (rain01 if debug_rain >= 0.0 else model.wetness(t)) * outdoor * (1.0 - snow_w)
-		var splash01: float = 0.0 if calm else rain01 * outdoor * (1.0 - snow_w)
-		var puddle_col: Color = Color(0.3, 0.5, 0.5).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water; at night, dark water
+		var rings_mist: bool = GraphicsQuality.rain_rings_and_mist()   # Low drops the rings and the dawn mist; the puddles stay
+		var splash01: float = 0.0 if (calm or not rings_mist) else rain01 * outdoor * (1.0 - snow_w)
+		var puddle_col: Color = Color(0.46, 0.64, 0.64).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water, lighter by day; at night, dark water
 		var glint: float = clampf(maxf(sun_h, 0.0) * 2.0, 0.0, 1.0) * outdoor
+		# fallen blossom: the petal colour from the season's petal list, else the paper tone
+		var blossom_col: Color = Color(0.95, 0.72, 0.8)
+		if particles != null and particles.config != null and particles.config.petal_colors.size() > 0:
+			blossom_col = particles.config.petal_colors[0]
 		MeadowLife.wet = wet01
 		for gm: ShaderMaterial in _ground_mats:
 			gm.set_shader_parameter("sun_px", sun_px)
@@ -533,13 +538,16 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("fog_col", fog_col)
 			gm.set_shader_parameter("fog_amt", _config.ground_fog * _season.fog_mult * (0.5 + 0.5 * model.mist(mt, rain01)))
 			gm.set_shader_parameter("wet", wet01)
+			gm.set_shader_parameter("wet_night", night_k * wet01)
 			# ground mist: the dawn part of the mist curve (the base haze is the far fog's job), gone by midday
-			gm.set_shader_parameter("mist", clampf((model.mist(mt, rain01) - 0.3) / 0.6, 0.0, 1.0) * outdoor)
+			gm.set_shader_parameter("mist", clampf((model.mist(mt, rain01) - 0.3) / 0.6, 0.0, 1.0) * outdoor * (1.0 if rings_mist else 0.0))
 			gm.set_shader_parameter("mist_col", fog_col)
 			gm.set_shader_parameter("mist_drift", 0.0 if calm else 1.0)
 			gm.set_shader_parameter("splash", splash01)
 			gm.set_shader_parameter("puddle_col", puddle_col)
 			gm.set_shader_parameter("glint", glint)
+			gm.set_shader_parameter("blossom", _season.weights[0] * outdoor * (1.0 - snow_w))
+			gm.set_shader_parameter("blossom_col", blossom_col)
 		for pm: ShaderMaterial in _pad_mats:
 			pm.set_shader_parameter("sun_px", sun_px)
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))

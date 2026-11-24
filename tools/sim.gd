@@ -96,15 +96,23 @@ func _median(values: Array) -> float:
 func _init() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var every: float = (float(args[0]) * 60.0) if args.size() > 0 else 0.0
+	# Optional second arg: run only that profile index (CI shards the sim one profile per job).
+	var only: int = int(args[1]) if args.size() > 1 else -1
 	var profiles: SimProfiles = load(PROFILES_PATH) as SimProfiles
 	if profiles == null:
 		push_error("missing " + PROFILES_PATH)
+		quit(1)
+		return
+	if only >= profiles.profile_names.size():
+		push_error("profile index %d is out of range (%d profiles)" % [only, profiles.profile_names.size()])
 		quit(1)
 		return
 	var failed: bool = false
 	var table: Array[String] = []
 	var keys: Array[StringName] = [&"clover_1", &"clover_2", &"clover_3", &"thistle_1", &"thistle_2", &"thistle_3", &"heather_1", &"heather_2", &"heather_3", &"foxglove_1", &"foxglove_2", &"foxglove_3", &"starbloom_1", &"starbloom_2", &"starbloom_3"]
 	for i: int in profiles.profile_names.size():
+		if only >= 0 and i != only:
+			continue
 		var name: String = profiles.profile_names[i]
 		var pps: float = profiles.presses_per_second[i]
 		var gates: Dictionary = {&"zone1": [], &"larkmoor": []}

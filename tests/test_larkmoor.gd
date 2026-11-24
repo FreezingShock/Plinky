@@ -10,6 +10,12 @@ func run(t: Object) -> void:
 	t.ok(z != null, "larkmoor zone exists")
 	if z == null:
 		return
+	# view streaming: the chunks a view rect covers (pure math, so no scene is needed)
+	var scene_script: Script = load("res://world/larkmoor_scene.gd") as Script
+	t.eq(scene_script.call("chunk_range", Rect2(0.0, 0.0, 0.0, 0.0), 1), Rect2i(), "an empty view rect has no chunks")
+	t.eq(scene_script.call("chunk_range", Rect2(170.0, 10.0, 100.0, 100.0), 0), Rect2i(1, 0, 1, 1), "a view inside one chunk covers that chunk")
+	t.eq(scene_script.call("chunk_range", Rect2(170.0, 10.0, 100.0, 100.0), 1), Rect2i(0, -1, 3, 3), "the view margin adds a chunk on every side")
+	t.eq(scene_script.call("chunk_range", Rect2(150.0, 0.0, 200.0, 10.0), 0), Rect2i(0, 0, 3, 1), "a view that straddles two chunk edges covers both")
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")

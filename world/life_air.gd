@@ -60,6 +60,11 @@ func setup(data: Dictionary, backdrop_sprite: Sprite2D) -> void:
 	queue_redraw()
 
 
+## Ground points the grass bends away from (rabbits, chickens, ducks, frogs), in frame texels. See LifeCritters.
+func ground_pushers() -> PackedVector2Array:
+	return _critters.ground_pushers()
+
+
 func _process(delta: float) -> void:
 	_t += delta
 	if _walker == null or not is_instance_valid(_walker):
