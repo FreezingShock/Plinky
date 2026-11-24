@@ -772,6 +772,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Edit mode:** the three boxed buttons per row became a frameless grip (drag the row, or Up and Down while the grip has focus) and a frameless hide mark, dim until the row is hovered. This drops the move up and move down buttons, so there is nothing to disable at either end.
 - **Motion:** rows glide to new places, fade out when hidden and fade in when added, the grips and footer ease open in six steps, and chips pop in. All of it snaps under Reduce Motion or Reduce Flashing.
 - Not run in-engine from the cloud; needs a PC capture.
+## 2026-11-23 Popups slide clear of the zone panel
+- PC QA: long popups such as "+100QnVg!" were cut off where the zone panel starts (the panel sits top right, x 480 to 632, and draws over the popup layer). Popups were only hidden under menus, never moved for the zone panel.
+- Fix: `PopupClear.slide_clear` (ui/fx/popup_clear.gd) moves a popup left of the first blocker it overlaps, repeating if that lands on another. If there is no room left of the blocker, the popup is skipped for that frame instead of drawn half hidden. `HUD.clear_rects()` supplies the zone panel's global rect through `PopupNumber.keep_clear`, set in the same place as `under_menu`.
+- Menus keep the existing behaviour: popups under an open menu are hidden. The clamp is only for the zone panel.
+- I could not find PR #157 in history, so I could not compare against its clamp. This follows the existing viewport clamp in `_draw_pop`.
+- Not run in engine: no Godot in the cloud. Tests in tests/test_popup_clear.gd cover the geometry. PC QA should check a popup on a pad beside the zone panel, with the panel open and with Travel open.
 
 
 ## CI uid guard (2026-11-23)
@@ -786,3 +792,11 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Random sequence:** a new roll (free presses) only runs when a Free Presses relic is equipped, so runs without one keep the same random sequence.
 - **Offline cap:** away income is capped at 0.75 of the awake rate (`offline_rate_cap`). Without the cap, three max lanterns reached 1.12, which broke the rule that idle takes about 2x as long as active (#221). Set by the coordinator on 2026-11-24. `tools/sim.gd` has not been run on the new relics yet; that is the PC QA step.
 - **Not verified in-engine:** the new scripts were written and read but not run in Godot here. CI's unit and sim jobs run the new relic tests and the sim paths.
+
+## 2026-11-23 Upgrades gallery and centred Bloom exit (minor)
+- **Upgrades layout:** one tab per currency group (Prestige, Rebirth Perks, then each zone reset's gifts, named by `ZoneResetDef.menu_title`). Tabs come from the data, so a new reset gets its own tab with no HUD change. Within a tab, gifts are grouped into tiers by their unlock gate, each with a heading ("Tier 1: Open", "Tier 2: Unlocks After 2 Blooms"). Cards sit two across in a scroll list about 3.5 rows tall, so the panel fits above the bottom bar at 640x360.
+- **Card outline:** green when the next level is affordable, red when not (the existing colour-safe tint), gold when maxed, dim while locked. The fill is transparent so the panel shows through. Taste call: gold for maxed is my pick; say if you want maxed to stay green.
+- **Code:** `ui/upgrade_row.gd` is replaced by `ui/upgrade_card.gd` (same buy, hold-to-repeat and tick logic). `UpgradeText` gains `tier_key`, `tier_head` and `tab_name` (pure, tested).
+- **Exit:** the coin, number, rays and ring stay centred. The coin steps down 4 to 3 to 2 to 1 pixels in place and is gone at the end of the exit, the number fades, the rays fold in and one pixel ring closes on the centre. Only a few motes (about ten a second, pixel-sized) drift from the centre into the HUD row, which still rolls up when they land. Calm (Reduce flashing, Still meadow, Calm camera) keeps the coin at full size and only fades it.
+- **Timeline:** `BloomTimeline.fly_progress` is replaced by `exit_progress` and `exit_alpha`. The plan keys (`fly_end` and so on) keep their names so the existing timing tests still apply.
+- Not run in-engine from the cloud: the tab and card layout at 640x360, the card text width at 150 px for the delta line, and the exit motion. `tools/bloom_shot.tscn` now samples the exit densely (`bloom_full_*` frames) for a PC capture.
