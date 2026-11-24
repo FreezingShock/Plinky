@@ -14,6 +14,8 @@ func run(t: SceneTree) -> void:
 	t.ok(load("res://boot/scene_swap.gd") is GDScript, "scene swap script loads")
 	t.ok(SceneSwap.REVEAL_SECONDS > 0.0 and SceneSwap.FADE_SECONDS > 0.0, "reveal and fade have positive durations")
 	t.ok(SceneSwap.WARM_FRAMES >= 1, "arriving scene gets at least one warm frame under the cover")
+	t.ok(SceneSwap.WARM_MAX_FRAMES >= SceneSwap.WARM_FRAMES, "warm-up cap is at least the minimum")
+	t.ok(SceneSwap.SETTLE_RATIO > 0.0 and SceneSwap.SETTLE_RATIO < 1.0, "settle ratio is a fraction")
 	t.ok(ResourceLoader.exists(BootScreen.MEADOW_SCENE), "meadow scene exists for the handoff fallback")
 	t.ok(BootScreen.HANDOFF_BAR_SPEED > BootScreen.BAR_SPEED, "handoff bar catches up faster than the boot bar")
 	t.ok(BootScreen.HANDOFF_MIN_SHOW_SECONDS < BootScreen.MIN_SHOW_SECONDS, "handoff holds the loading screen for less time")
