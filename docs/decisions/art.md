@@ -243,6 +243,12 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Why:** lamps should be on at dusk and off by day, and the glow should read at night without a flat blob.
 - **Not touched:** `day_night.gdshader` (the pool shape and its colour math). The lamp pool is still the same falloff and warm cast; only its strength changes.
 - **Not verified in-engine on the PC:** whether the lit window reads as warm enough next to the green pad pools at night.
+## 2026-11-24: Fallen blossom in spring (recommendation 9, first of three)
+- **Look:** pale petals (the first petal colour from the season's list, else a paper pink) gather in soft drifts on the outdoor ground in spring. `ground_light.gdshader`, `fallen_blossom`: a two-octave patch mask on the iso grid, and a per-texel hash inside each drift, so the petals are sparse and never a carpet.
+- **Wiring:** `SkyCycle` sets `blossom` = spring weight x outdoor x (1 - snow), so it fades into summer and is gone under snow. Quarry and water are excluded.
+- **Why:** the handoff's recommendation 9. Spring needs something on the ground, not only in the air.
+- **Not verified on the PC:** the density. The cloud shot reads as scattered pale speckle in the meadow. Tune the 0.25 and the patch threshold after the PC look.
+
 ## 2026-11-24: Weather safe defaults (lighter puddles, wetter-dark nights, Low drops rings and mist)
 - **Puddle water** (`sky_cycle.gd`, `puddle_col`): the day base lifts from (0.3, 0.5, 0.5) to (0.46, 0.64, 0.64). Coverage is unchanged. Night stays dark water.
 - **Night wet** (`ground_light.gdshader`, new uniform `wet_night` = night x wet): wet soil and path darken further at night, from (0.88, 0.92, 0.95) to (0.66, 0.72, 0.8) at full wet. This darkens all wet ground, grass included, not only the path; there is no path mask to pick out the path alone.
