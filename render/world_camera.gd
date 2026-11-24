@@ -3,10 +3,11 @@ extends Node
 ## Camera for the baked 2D world. Moves and scales the `world` Node2D (the HUD stays put).
 ## Follow: smooth chase of the walker. Zoom: mouse wheel or +/-, integer levels only, so every
 ## texel stays a whole number of screen texels (pixel snap at every zoom). Pan: hold right or
-## middle mouse and drag, or push the mouse to a window edge. The pan drifts back to the walker
-## after a short idle (sooner while the walker moves). Home (rebindable) snaps back at once. A jump lifts the view by
+## middle mouse and drag, or move the mouse into a window edge (only while it moves, never over the HUD). The pan
+## drifts back to the walker after a short idle (sooner while the walker moves). Home (rebindable) snaps back at once.
+## Follow mode keeps the view on the walker, so zoom never flings it; free mode zooms to the cursor. See docs/decisions/core.md. A jump lifts the view by
 ## two thirds of its height, eased; a hard landing thumps it; sprinting leans it further ahead.
-## Polish layers, all off under Calm camera (WorldCamera.calm), all whole-texel at the end:
+## Polish layers, all off under Calm camera (WorldCamera.calm) or Reduce motion, all whole-texel at the end:
 ## look-ahead leans the view a few texels in the walk direction, a punch kicks it on a crit, and a slow
 ## drift sways it after a long stillness. None of them touch pan, so follow, zoom and pan behave as before.
 
@@ -14,6 +15,11 @@ signal zoom_changed(level: int)
 
 ## Set by the Access setting "Calm camera". True turns off look-ahead, punch and drift.
 static var calm: bool = false
+
+
+## True when the polish layers (look-ahead, punch, drift, jump lift) must stay off: Calm camera or Reduce motion.
+static func polish_off() -> bool:
+	return calm or MeadowLife.reduce_motion
 
 const VIEW: Vector2 = Vector2(640.0, 360.0)
 const WORLD: Rect2 = Rect2(0.0, 0.0, 640.0, 360.0)
@@ -28,6 +34,8 @@ const LOOK_AHEAD: float = 14.0          # world texels the view leans toward the
 const LOOK_RATE: float = 2.2            # ease rate of the lean (slow, so it never snaps)
 const PUNCH_TEXELS: float = 2.0         # peak kick of a crit, screen texels
 const PUNCH_DECAY: float = 9.0
+const POINTER_SETTLE: float = 0.25      # seconds the mouse must stay still before edge pan stops
+const SETTLE_TEXELS: float = 0.05       # a free view this close to the walker counts as back in follow mode
 const DRIFT_DELAY: float = 6.0          # seconds of stillness before the drift starts
 const DRIFT_FADE: float = 4.0           # seconds to fade it in
 const DRIFT_AMPLITUDE: Vector2 = Vector2(4.0, 2.5)   # world texels
@@ -59,6 +67,12 @@ var _still: float = 0.0
 var _clock: float = 0.0
 var _last_target: Vector2 = Vector2.ZERO
 var _lift: float = 0.0                   # eased height the view has risen with the walker's jump
+var _free: bool = false                  # true while the view is panned away from the walker (free mode)
+var _pointer_last: Vector2 = Vector2.ZERO
+var _pointer_seen: bool = false
+var _has_override: bool = false
+var _pointer_override: Vector2 = Vector2.ZERO
+var _pointer_still: float = 0.0          # seconds since the mouse last moved; edge pan needs a moving pointer
 
 ## HUD control the view must keep landmarks clear of (the clock chip). Main sets it; null means no constraint.
 var keep_clear: Control
@@ -84,32 +98,97 @@ func _process(delta: float) -> void:
 		return
 	var z: float = float(zoom_level)
 	var lift_goal: float = 0.0
-	if target != null and not calm and "lift" in target:
+	if target != null and not polish_off() and "lift" in target:
 		lift_goal = float(target.get("lift")) * LIFT_FOLLOW
 	_lift = lift_follow_step(_lift, lift_goal, delta)
+	_track_pointer(delta)
 	var manual: bool = _dragging
 	var stick: Vector2 = PadInput.pan_vector()
 	if stick != Vector2.ZERO:
 		pan += stick * EDGE_SPEED / z * delta
 		manual = true
-	if not _dragging and zoom_level > 1:
+	if not _dragging and zoom_level > 1 and _pointer_moving():
 		var edge: Vector2 = _edge_push()
 		if edge != Vector2.ZERO:
 			pan += edge * EDGE_SPEED / z * delta
 			manual = true
 	if manual:
+		_free = true
 		_idle = 0.0
-	else:
+	elif _free:
 		_idle += delta
 		var moving: bool = target != null and "moving" in target and bool(target.get("moving"))
 		if auto_return and _idle > (RETURN_DELAY_MOVING if moving else RETURN_DELAY):
 			pan = pan.lerp(Vector2.ZERO, 1.0 - exp(-RETURN_RATE * delta))
-	var base: Vector2 = _clamp_center(_follow_point() + pan)
-	pan = base - _follow_point()
+			if pan.length() < SETTLE_TEXELS:
+				pan = Vector2.ZERO
+				_free = false
+	# Follow mode has no offset: the centre eases onto the walker. Free mode keeps the offset the player chose.
+	var base: Vector2 = _clamp_center(_follow_point() + pan) if _free else _clamp_center(_follow_point())
+	pan = base - _follow_point() if _free else Vector2.ZERO
 	_update_polish(delta, manual)
 	var goal: Vector2 = _framed(base + _look + _drift())
 	_center = _center.lerp(goal, 1.0 - exp(-follow_rate(_speed_factor()) * delta))
 	_apply()
+
+
+## Samples the mouse each frame. Edge pan only runs while the pointer is moving, so a cursor left resting at a
+## window edge (or over the HUD clock) never drags the view away.
+func _track_pointer(delta: float) -> void:
+	if get_viewport() == null and not _has_override:
+		return
+	var m: Vector2 = _pointer()
+	if not _pointer_seen:
+		_pointer_seen = true   # the first sample is a baseline, not a move
+		_pointer_still = POINTER_SETTLE
+	elif m.distance_squared_to(_pointer_last) > 0.01:
+		_pointer_still = 0.0
+	else:
+		_pointer_still += delta
+	_pointer_last = m
+
+
+func _pointer_moving() -> bool:
+	return _pointer_still < POINTER_SETTLE
+
+
+## The pointer in viewport texels: the real mouse, or the position a test set with set_pointer_for_test.
+func _pointer() -> Vector2:
+	if _has_override:
+		return _pointer_override
+	var vp: Viewport = get_viewport()
+	return vp.get_mouse_position() if vp != null else Vector2.ZERO
+
+
+## Test seam: drives the pointer from a fixed position so pan and HUD checks do not depend on the real mouse.
+func set_pointer_for_test(p: Vector2) -> void:
+	_has_override = true
+	_pointer_override = p
+
+
+## True when the view is in free mode (panned away from the walker). Zoom and recentre read this.
+func is_free() -> bool:
+	return _free
+
+
+## The world rect the view shows right now, in zone texels, rounded outward to whole texels.
+## Streaming reads this to decide which chunks to keep loaded. It is a pure read of the camera's state.
+func view_rect() -> Rect2:
+	return visible_rect(_clamp_center(_center), zoom_level, frame)
+
+
+## The world rect a centre shows at `level` in a `view`-sized frame, rounded outward to whole texels.
+static func visible_rect(center: Vector2, level: int, view: Vector2) -> Rect2:
+	var half: Vector2 = view / (2.0 * float(level))
+	var lo: Vector2 = (center - half).floor()
+	var hi: Vector2 = (center + half).ceil()
+	return Rect2(lo, hi - lo)
+
+
+func _notification(what: int) -> void:
+	# The window lost focus: a release that happens elsewhere never reaches us, so the drag must not stick.
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		_dragging = false
 
 
 ## Look-ahead lean, punch decay and stillness clock. Calm camera zeroes all of it.
@@ -120,7 +199,7 @@ func _update_polish(delta: float, manual: bool) -> void:
 		step = target.position - _last_target
 		_last_target = target.position
 	var moving: bool = target != null and "moving" in target and bool(target.get("moving"))
-	if calm:
+	if polish_off():
 		_look = Vector2.ZERO
 		_punch = Vector2.ZERO
 		_still = 0.0
@@ -155,18 +234,18 @@ static func lift_follow_step(cur: float, goal: float, delta: float) -> float:
 
 ## A landing's downward thump, the same kick as a crit but scaled by how hard the walker came down.
 func land_thump(impact: float) -> void:
-	if calm:
+	if polish_off():
 		return
 	_punch = Vector2(0.0, THUMP_TEXELS * clampf(impact, 0.0, 1.2) / 1.2)
 
 
 func _on_pressed(_id: StringName, _pos: Vector3, _gain: BigNum, crit: bool) -> void:
-	if crit and not calm:
+	if crit and not polish_off():
 		_punch = Vector2(0.0, PUNCH_TEXELS)   # a downward thump, the same weight as the pad sinking
 
 
 func _drift() -> Vector2:
-	if calm:
+	if polish_off():
 		return Vector2.ZERO
 	return drift_offset(_clock, clampf((_still - DRIFT_DELAY) / DRIFT_FADE, 0.0, 1.0))
 
@@ -202,6 +281,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _dragging:
 		var mm: InputEventMouseMotion = event
 		pan -= mm.relative / float(zoom_level)
+		_free = true
+		_idle = 0.0
 	elif event.is_action_pressed(&"plinky_zoom_in") and not PadInput.menu_open:
 		zoom_step(1, frame * 0.5)
 	elif event.is_action_pressed(&"plinky_zoom_out") and not PadInput.menu_open:
@@ -210,16 +291,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		recenter()
 
 
-## Zoom one level in (+1) or out (-1), keeping the world point under `screen_pos` in place.
+## Zoom one level in (+1) or out (-1). In free mode the world point under `screen_pos` stays put (zoom to cursor).
+## In follow mode the view stays on the walker, so a zoom never flings the view toward a far cursor.
 func zoom_step(dir: int, screen_pos: Vector2) -> void:
 	var i: int = clampi(ZOOM_LEVELS.find(zoom_level) + dir, 0, ZOOM_LEVELS.size() - 1)
 	var new_level: int = ZOOM_LEVELS[i]
 	if new_level == zoom_level:
 		return
-	var anchor: Vector2 = _center + (screen_pos - frame * 0.5) / float(zoom_level)
+	var old_level: float = float(zoom_level)
+	var anchor: Vector2 = _center + (screen_pos - frame * 0.5) / old_level
 	zoom_level = new_level
-	_center = _clamp_center(anchor - (screen_pos - frame * 0.5) / float(zoom_level))
-	pan = _center - _follow_point()
+	if _free:
+		_center = _clamp_center(anchor - (screen_pos - frame * 0.5) / float(zoom_level))
+		pan = _center - _follow_point()
+	else:
+		_center = _clamp_center(_center)
+		pan = Vector2.ZERO
 	_idle = 0.0
 	zoom_changed.emit(zoom_level)
 	_apply()
@@ -228,13 +315,16 @@ func zoom_step(dir: int, screen_pos: Vector2) -> void:
 ## Jumps straight to the walker (a zone change, where a chase across the map would show the whole trip).
 func snap() -> void:
 	pan = Vector2.ZERO
+	_free = false
 	if target != null:
 		_center = _framed(target.position + FOCUS_LIFT)
 	_apply()
 
 
+## Leaves free mode: the view glides back onto the walker (Home or C, or the walker's own return after an idle).
 func recenter() -> void:
 	pan = Vector2.ZERO
+	_free = false
 	_idle = RETURN_DELAY
 
 
@@ -305,9 +395,12 @@ static func clear_hud_center(center: Vector2, level: int, view: Vector2, chip: R
 
 
 func _edge_push() -> Vector2:
-	var vp: Viewport = get_viewport()
-	var m: Vector2 = vp.get_mouse_position() - frame_origin
+	var mouse: Vector2 = _pointer()
+	var m: Vector2 = mouse - frame_origin
 	if m.x < 0.0 or m.y < 0.0 or m.x > frame.x or m.y > frame.y:
+		return Vector2.ZERO
+	# Over the HUD, a panel or a tooltip the cursor is not panning the world: the buttons get the pointer.
+	if not _has_override and get_viewport() != null and GuiGuard.covers(get_tree().root, mouse):
 		return Vector2.ZERO
 	var out: Vector2 = Vector2.ZERO
 	if m.x < EDGE_ZONE:
