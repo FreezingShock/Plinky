@@ -10,7 +10,7 @@ const WIDTH: float = 152.0
 const PAD_X: float = 5.0
 const PAD_Y: float = 3.0
 const INNER: float = WIDTH - PAD_X * 2.0
-const DESC_LINES: int = 2   ## the description shows this many lines; the full text is in its tooltip
+const DESC_LINES: int = 3   ## the description shows this many lines; whole sentences only, and the full text is in its tooltip
 const PEEK: float = 3.5   ## seconds the area card stays open after you walk into an area
 const PADS_SHOWN: int = 3      ## pads listed when an area has more than PADS_FOLD of them; the rest fold behind "N more..."
 const PADS_FOLD: int = 4
@@ -35,6 +35,7 @@ var _teaser_rows: Array[ListRow] = []
 var _card: RevealBox
 var _card_title: Label
 var _card_desc: Label
+var _full_desc: String = ""   ## the untrimmed description: the card shows whole sentences of it, the tooltip the lot
 var _card_pads: VBoxContainer
 var _pads_scroll: ScrollContainer
 var _pads_more: Label
@@ -206,6 +207,37 @@ func _desc_px() -> float:
 	return minf(h, line * DESC_LINES)
 
 
+## Sets the card's description to the longest run of whole sentences that fits DESC_LINES; the tooltip keeps the rest.
+## A single sentence too long for the card falls back to the ellipsis trim, so text is never cut mid-word or mid-sentence
+## without the tooltip.
+func _set_desc(full: String) -> void:
+	_full_desc = full
+	_card_desc.text = _fit_sentences(full)
+
+
+func _fit_sentences(full: String) -> String:
+	if _desc_fits(full):
+		return full
+	var parts: PackedStringArray = full.split(". ")
+	var acc: String = ""
+	for i in parts.size():
+		var piece: String = parts[i] if i == parts.size() - 1 else parts[i] + "."
+		var cand: String = piece if acc == "" else acc + " " + piece
+		if not _desc_fits(cand):
+			break
+		acc = cand
+	return acc if acc != "" else full
+
+
+func _desc_fits(text: String) -> bool:
+	var font: Font = _card_desc.get_theme_font("font")
+	if font == null:
+		return true
+	var fs: int = _card_desc.get_theme_font_size("font_size")
+	var h: float = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, INNER, fs).y
+	return h <= _card_desc.get_line_height() * DESC_LINES + 0.5
+
+
 func _fit_desc() -> void:
 	_card_desc.custom_minimum_size.y = ceilf(_desc_px())
 	if travel_open:
@@ -317,7 +349,7 @@ func _build_card(card: VBoxContainer) -> void:
 	_card_desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_card_desc.max_lines_visible = DESC_LINES
 	_card_desc.mouse_filter = Control.MOUSE_FILTER_STOP
-	_bind(_card_desc, func() -> Array: return [_card_title.text, _card_desc.text])
+	_bind(_card_desc, func() -> Array: return [_card_title.text, _full_desc])
 	_card_desc.add_theme_color_override("font_color", RelicStyle.text)
 	card.add_child(_card_desc)
 	_pads_scroll = ScrollContainer.new()
@@ -398,14 +430,14 @@ func _rebuild_card() -> void:
 	if a == null:
 		var z: ZoneDef = sim.current_zone()
 		_card_title.text = z.display_name if z != null else ""
-		_card_desc.text = z.description if z != null else ""
+		_set_desc(z.description if z != null else "")
 		_fit_desc()
 		_layout_pads()
 		return
 	var col: Color = area_colour(a)
 	_card_title.text = a.display_name
 	_card_title.add_theme_color_override("font_color", col)
-	_card_desc.text = a.blurb
+	_set_desc(a.blurb)
 	_fit_desc()
 	_mastery_bar.fill = col
 	for bid in a.pad_buttons:
