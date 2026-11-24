@@ -44,6 +44,9 @@ func _process(delta: float) -> void:
 	if flash_t > 0.0:
 		flash_t = maxf(flash_t - delta / FLASH_TIME, 0.0)
 
+## 0 day .. 1 full night, from the zone's SkyCycle. main.gd sets it each frame; the pads' buy glow reads it to magnify at night.
+var night01 := 0.0
+
 var multiplier := 1.0:
 	set(v):
 		multiplier = maxf(v, 1.0)

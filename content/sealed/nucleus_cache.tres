@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SealedPullDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/sealed_pull_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_cache"
+display_name = "Nucleus Cache"
+reset_id = &"nucleus"
+base_cost = 40.0
+growth = 1.5
+cap_per_reset = 5
+min_rank = 2
+palette = &"quarry"
+blurb = "A sealed core of cooled slag with an ember still in it. It opens with a rare-grade relic inside."

@@ -30,6 +30,7 @@ var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
 var pointer: PadPointer
 var pad_glow: PadGlow
+var _night_sky: SkyCycle   ## the zone's sky, found lazily: pads read its night level through pad_glow
 var shake: ScreenShake
 var camera: WorldCamera
 var transitions: Transitions
@@ -168,6 +169,9 @@ func _process(_delta: float) -> void:
 	var mult: float = (sim.get_stat(boost_id).to_float() if boost_id != &"" else 0.0) + 1.0
 	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
 		pad_glow.multiplier = mult
+	if _night_sky == null or not is_instance_valid(_night_sky):   # a zone change frees the old sky
+		_night_sky = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
+	pad_glow.night01 = _night_sky.night01 if _night_sky != null else 0.0
 	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)

@@ -156,3 +156,7 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Bridge and jetty:** the stream bridge is 13 texels wide and the lake jetty 8 wide. Both walk strips are flared at the ends (`_deck_strip`) so the entry is easy to find. Open lake water stays unwalkable.
 - **Pads:** unchanged. The anchors match main exactly.
 - **Not run in the cloud:** the look in-engine, and the generator's output has not been seen in Godot.
+
+- **2026-11-24, spacing and lanterns:** props are placed by their real footprint (`solid_radius` on the prop SDF, not the old guessed radii), so crowns touch but never stack. Per-kind gaps are in `MIN_GAP`. Pads and the spawn keep a wider keep-out. `check_layout()` fails the run on any prop-on-prop, prop-on-pad, prop-on-path or lantern-on-walk-line overlap. Lanterns sit a few texels past the rim, and the lamp is redrawn as a readable garden lantern. Their light pools come from the existing `life.lights` path.
+
+- **2026-11-24, pads beside the path:** every meadow pad is moved to the nearest open-land spot 24 to 34 texels from the path centre (`beside_path` in `gen_meadow3d.py`). `check_pads()` fails the run if a plate touches the path. Row order is kept. `tests/test_sites.gd` now uses the first Sprout pad at (194, 230). Trees sit at 10, the minimum `test_sites` allows.
