@@ -1,10 +1,12 @@
 shader_type canvas_item;
 
-// Title screen backdrop. Meadow palette indices 0 to 7 (docs/art-bible.md section 3), set from title_background.gd.
-// Everything is drawn on the 640x360 texel grid, and every layer dithers on its own parallax-shifted texels, so the
-// pattern travels with the layer it belongs to and never swims over it. Layers, far to near: dithered dusk sky with
-// stars, sun and a drifting double cloud deck; far mountains with snow caps and mist; a mid ridge; a lake with a sun
-// glitter column and shimmer; the near meadow with grass blades, flowers and a dithered dark foreground.
+// Title and loading backdrop. Palette roles: the sky and far land use c0 to c7 (docs/art-bible.md section 3), the
+// meadow ground uses g0 to g3. title_background.gd lerps all twelve colours through the day (TitleMood), so the look
+// changes with the sun arc. Everything is drawn on the 640x360 texel grid, and every layer dithers on its own
+// parallax-shifted texels, so the pattern travels with the layer it belongs to and never swims over it.
+// Layers, far to near: dithered sky with stars, a sun or moon with a halo and god rays, drifting cloud decks, far
+// mountains with snow caps and mist, a mid ridge, a lake that reflects the body, the near meadow with grass blades
+// and flowers, and a dithered dark foreground.
 uniform vec4 c0 : source_color;
 uniform vec4 c1 : source_color;
 uniform vec4 c2 : source_color;
@@ -13,15 +15,24 @@ uniform vec4 c4 : source_color;
 uniform vec4 c5 : source_color;
 uniform vec4 c6 : source_color;
 uniform vec4 c7 : source_color;
+uniform vec4 g0 : source_color;
+uniform vec4 g1 : source_color;
+uniform vec4 g2 : source_color;
+uniform vec4 g3 : source_color;
 uniform float time = 0.0;
 uniform float dissolve = 0.0;
 uniform vec2 canvas_texels = vec2(640.0, 360.0);
 // Mouse parallax in texels, already smoothed by the script. Each layer shifts by its own whole-texel fraction.
 uniform vec2 parallax = vec2(0.0);
-// 0 = dusk (default), anything else is reserved for time-of-day variants.
-uniform float mood = 0.0;
+// Sun or moon centre in texels, from TitleMood.body().
+uniform vec2 body_xy = vec2(410.0, 66.0);
+// Star visibility 0..1 (none by day, full on a clear night).
+uniform float star_amt = 0.0;
+// God ray strength 0..1, from SkyModel.rays(): on at sunrise and sunset, off at noon.
+uniform float rays = 0.0;
+// Golden light 0..1: widens the halo and the sun's dithered glow.
+uniform float glow = 0.0;
 
-const vec2 SUN = vec2(470.0, 96.0);
 const float LAKE_TOP = 214.0;
 
 float bayer2(vec2 a) {
@@ -57,6 +68,7 @@ float ridged(float x, float seed) {
 	return 1.0 - abs(2.0 * vnoise(vec2(x, seed)) - 1.0);
 }
 
+// Sky and far land are 0..7. Ground is 8..11 (deep, dark, mid, light).
 vec4 pal(int i) {
 	if (i == 0) { return c0; }
 	if (i == 1) { return c1; }
@@ -65,11 +77,16 @@ vec4 pal(int i) {
 	if (i == 4) { return c4; }
 	if (i == 5) { return c5; }
 	if (i == 6) { return c6; }
+	if (i == 8) { return g0; }
+	if (i == 9) { return g1; }
+	if (i == 10) { return g2; }
+	if (i == 11) { return g3; }
 	return c7;
 }
 
 // One step darker on the palette's value ramp (the palette indices are not monotonic above 4).
 int darker(int i) {
+	if (i >= 8) { return i > 8 ? i - 1 : 8; }
 	if (i == 7) { return 4; }
 	if (i == 6) { return 2; }
 	if (i == 5) { return 3; }
@@ -110,31 +127,47 @@ void fragment() {
 	else if (v < 0.63) { idx = 2; }
 	else { idx = 3; }
 
-	// Stars, twinkling on a slow stepped timer. Only in the dark bands.
-	if (idx <= 1) {
+	// Stars, twinkling on a slow stepped timer. Only in the dark bands, and only as much as star_amt asks.
+	if (star_amt > 0.02 && idx <= 1) {
 		vec2 sp = px - layer_shift(0.05);
 		float h = hash21(sp);
-		if (h > 0.9955) {
+		float bright_cut = mix(2.0, 0.9955, star_amt);
+		float dim_cut = mix(2.0, 0.991, star_amt);
+		if (h > bright_cut) {
 			float tw = hash21(sp + floor(t * 1.3 + h * 40.0));
 			if (tw > 0.25) { idx = 7; }
-		} else if (h > 0.991 && hash21(sp + 9.0) > 0.5) {
+		} else if (h > dim_cut && hash21(sp + 9.0) > 0.5) {
 			idx = 4;
 		}
 	}
 
-	// Sun: disc, rim, a dithered halo, and a slow pulse.
-	vec2 sp2 = px - layer_shift(0.08);
-	float sd = length(sp2 - SUN);
+	// Sun by day, moon by night: disc, rim, a dithered halo that widens in golden light, and a slow pulse.
+	vec2 bp = px - layer_shift(0.08);
+	float bd = length(bp - body_xy);
 	float sr = 20.0 + sin(t * 0.7) * 1.0;
-	if (sd < sr) {
-		idx = (sd > sr - 2.5) ? 4 : 5;
-	} else if (sd < sr + 8.0 && th < 1.0 - (sd - sr) / 8.0) {
+	float halo = 8.0 + glow * 10.0;
+	if (bd < sr) {
+		idx = (bd > sr - 2.5) ? 4 : 5;
+	} else if (bd < sr + halo && th < 1.0 - (bd - sr) / halo) {
 		idx = 4;
-	} else if (sd < sr + 30.0 && th < 0.55 * (1.0 - (sd - sr - 8.0) / 22.0) && idx < 4) {
+	} else if (bd < sr + 30.0 + glow * 20.0 && th < 0.55 * (1.0 - (bd - sr - halo) / (22.0 + glow * 20.0)) && idx < 4) {
 		idx = 3;
 	}
 
-	// Two cloud decks drifting at different speeds. Body is the base green, the lit top edge is the light index,
+	// God rays: thin dithered shafts fanning down from the sun, only while the sun is low.
+	if (rays > 0.01 && idx <= 3) {
+		vec2 rd = px - body_xy;
+		if (rd.y > -2.0) {
+			float ang = atan(rd.x, max(rd.y, 0.5));
+			float shaft = sin(ang * 40.0 + 0.8 * sin(t * 0.25));
+			float fall = clamp(1.0 - length(rd) / 420.0, 0.0, 1.0);
+			if (shaft > 0.82 && th < rays * fall * 0.6) {
+				idx = 4;
+			}
+		}
+	}
+
+	// Two cloud decks drifting at different speeds. Body is the base colour, the lit top edge is the light index,
 	// and the underside drops a band, so each cloud reads as a lit slab.
 	for (int layer = 0; layer < 2; layer++) {
 		float fl = float(layer);
@@ -188,7 +221,7 @@ void fragment() {
 		if (bayer4(pb) + 0.03 < 0.5 * (1.0 - fade) && pb.y > hb + 1.5) { idx = 2; }
 	}
 
-	// ---- Lake: reflections of the sky, glitter under the sun, shimmer stepped at 10 fps. -------------------------
+	// ---- Lake: reflections of the sky, glitter under the body, shimmer stepped at 10 fps. ------------------------
 	vec2 pl = px - layer_shift(0.65);
 	float shore = near_hill(px.x - layer_shift(1.0).x);
 	if (pl.y > LAKE_TOP && px.y < shore) {
@@ -197,8 +230,8 @@ void fragment() {
 		if (depth < 0.18 && bayer4(pl) + 0.03 > depth * 4.0) { idx = 3; }
 		float ripple = sin(pl.y * 1.7 + floor(t * 10.0) * 0.9 + pl.x * 0.045) + sin(pl.y * 0.6 - t * 0.6);
 		if (ripple > 1.55 && bayer4(pl) + 0.03 < 0.6) { idx = 4; }
-		// Sun column: ragged, brighter the closer it is to the shore line.
-		float dx = abs(pl.x - SUN.x);
+		// Glitter column under the body: ragged, brighter the closer it is to the shore line.
+		float dx = abs(pl.x - body_xy.x);
 		float wob = sin(pl.y * 0.9 + floor(t * 10.0) * 1.3) * 4.0;
 		float width = 5.0 + depth * 18.0;
 		if (abs(dx + wob) < width && bayer4(pl) + 0.03 < 0.65 - dx / width * 0.35 && ripple > -0.4) {
@@ -207,16 +240,16 @@ void fragment() {
 		if (px.y > shore - 3.0) { idx = 1; }
 	}
 
-	// ---- Near meadow. --------------------------------------------------------------------------------------------
+	// ---- Near meadow. Ground colours are 8..11, so golden light can warm the grass without touching the sky. ----
 	vec2 pn = px - layer_shift(1.0);
 	float hn = near_hill(pn.x);
 	if (px.y >= hn) {
-		idx = 3;
+		idx = 10;
 		float into = px.y - hn;
-		if (into < 1.5) { idx = 4; }
+		if (into < 1.5) { idx = 11; }
 		// Meadow shade: patches of the deep green, wind-bent grass blades, flowers.
 		float patch = fbm(vec2(pn.x * 0.035, pn.y * 0.09));
-		if (patch > 0.58 && bayer4(pn) + 0.03 < 0.45) { idx = 2; }
+		if (patch > 0.58 && bayer4(pn) + 0.03 < 0.45) { idx = 9; }
 		vec2 cell = vec2(floor(pn.x / 6.0), floor(pn.y / 5.0));
 		float hc = hash21(cell);
 		float sway = floor(sin(t * 1.6 + cell.x * 0.7 + cell.y) * 0.5 + 1.0);
@@ -224,7 +257,7 @@ void fragment() {
 		if (into > 4.0) {
 			// Blade: a three texel stalk with a light tip that leans on the wind.
 			float bx = floor(hc * 4.0) + 1.0 + sway * step(2.0, lc.y);
-			if (hc > 0.35 && abs(lc.x - bx) < 0.5 && lc.y > 1.0 && lc.y < 4.0) { idx = (lc.y < 2.0) ? 4 : 2; }
+			if (hc > 0.35 && abs(lc.x - bx) < 0.5 && lc.y > 1.0 && lc.y < 4.0) { idx = (lc.y < 2.0) ? 11 : 9; }
 			// Flowers: a petal dot with a paper or butter or earth colour, bobbing a texel now and then.
 			if (hc > 0.955 && lc.x > 1.0 && lc.x < 3.0 && lc.y > 1.0 && lc.y < 3.0) {
 				float k = hash21(cell + 4.0);
@@ -234,7 +267,7 @@ void fragment() {
 		}
 		// Foreground gets darker toward the bottom edge.
 		float low = (px.y - 292.0) / 68.0;
-		if (low > 0.0 && th < low * 1.25) { idx = (px.y > 338.0) ? 1 : 2; }
+		if (low > 0.0 && th < low * 1.25) { idx = (px.y > 338.0) ? 8 : 9; }
 	}
 
 	// ---- Soft dithered scrim behind the menu column, so the world never fights the text. ------------------------
