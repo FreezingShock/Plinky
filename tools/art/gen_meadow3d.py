@@ -71,7 +71,7 @@ CLOVER_ROW = [(396, 174), (352, 152), (308, 130)]
 PADS_S = [(x, y, 'ready') for (x, y) in SPROUT_ROW + CLOVER_ROW]
 GATE = s2uv(330, 96)
 STREAM = [s2uv(*p) for p in [(470, 104), (486, 130), (466, 160), (486, 192), (468, 216), (448, 240)]]
-LAKE = dict(c=s2uv(412, 262), r=46.0)
+LAKE = dict(c=s2uv(412, 262), r=54.0)   # 54 (was 46): the lake is the meadow's main water
 POND = dict(c=s2uv(196, 204), r=21.0)
 LEVEL = 0.0
 LDIR = np.array([-0.42, 0.46, 0.78]); LDIR /= np.linalg.norm(LDIR)
@@ -118,9 +118,6 @@ GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
 dstr = pl_dist(gu, gv, STREAM)
 sw = 4.6 + 1.0 * np.sin(gu * .13 + gv * .09)
-carve = 1.7 * (1 - smooth(sw - .6, sw + 2.2, dstr))
-carve *= (1 - smooth(0, 6, LAKE['r'] * 1.3 - np.hypot(gu - LAKE['c'][0], gv - LAKE['c'][1])))  # fade into the lake
-H0 = H0 - carve
 D = []
 for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
     n = int(math.hypot(x1 - x0, y1 - y0)); D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
@@ -128,13 +125,33 @@ D = np.array(D); hD = samp(Hpre, D[:, 0], D[:, 1])
 k = 7; hD = np.convolve(np.pad(hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
 hL = np.maximum(np.minimum.accumulate(hD) - .8, LEVEL + .15)
 WH = np.full((N, N), -99.0)
-mask_s = dstr < sw + 1
+mask_s = dstr < sw + 4.4   # covers the bank blend below (sw + 4)
 iu, iv = np.nonzero(mask_s)
 for c0 in range(0, len(iu), 20000):
     uu, vv = iu[c0:c0 + 20000].astype(float), iv[c0:c0 + 20000].astype(float)
     dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); WH[iu[c0:c0 + 20000], iv[c0:c0 + 20000]] = hL[dd.argmin(1)]
 inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25))
 WH[inlake] = LEVEL
+# the stream bed: every channel texel is cut to 0.9 below its downhill water surface, so the river is a continuous
+# wet ribbon all the way from the mountain foot to the lake. The banks blend back to the terrain over ~2 texels.
+# valley floor: the meadow ground next to the stream is eased toward the water's height, so the banks are walkable.
+# Only low ground is eased (H0 under the bank target + 8), never the mountain itself, and the change fades out
+# over 16 texels from the stream.
+rb = dstr < 16.0
+iu_r, iv_r = np.nonzero(rb)
+RBH = np.zeros(len(iu_r))
+for c0 in range(0, len(iu_r), 20000):
+    uu, vv = iu_r[c0:c0 + 20000].astype(float), iv_r[c0:c0 + 20000].astype(float)
+    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); RBH[c0:c0 + 20000] = hL[dd.argmin(1)]
+target_r = np.zeros((N, N)); target_r[iu_r, iv_r] = RBH + 1.2
+w_r = (1 - smooth(sw + 3.0, 16.0, dstr)) * rb * (H0 < target_r + 8.0)
+H0 = H0 * (1 - w_r) + np.minimum(H0, target_r) * w_r
+# The bed is 2.6 below the surface: deep enough that the middle reads as dark water (not foam or a light ribbon). The
+# banks blend over 4 texels so their slope stays under the walkable limit (see the walkable mask below).
+bank = smooth(sw - .3, sw + 4.0, dstr)
+bed = np.minimum(H0, WH - 2.6)
+chan = mask_s & ~inlake & (WH > -50)
+H0 = np.where(chan, H0 * bank + bed * (1 - bank), H0)
 smask = mask_s & (dstr < sw - .3) & (WH > H0 + .02) & ~inlake
 WH[~(smask | inlake)] = -99
 WD = np.where(WH > -50, WH - H0, -1.0)
@@ -451,11 +468,11 @@ def shore_spots(n, lo, hi):
             out.append((u, v))
         if len(out) >= n: break
     return out
-for (u, v) in shore_spots(46 if not FAST else 8, 1.3, 3.2):
+for (u, v) in shore_spots(90 if not FAST else 8, 1.3, 3.2):
     if prng.random() < .8: put('reed', u, v, prng.uniform(.9, 1.2), count=False, sid=1)
 for (u, v) in shore_spots(40 if not FAST else 6, .8, 4.0):
     f_, half, top, rad = make_rock(random.Random(prng.randint(0, 1 << 30)), False); voxelize(f_, half, top, u, v, float(terrain_h(u, v)) - .4, prng.uniform(.5, .9), prng.uniform(0, 6.28), 1)
-for B, nl, rmin in ((LAKE, 42, 2.2), (POND, 9, 2.0)):
+for B, nl, rmin in ((LAKE, 60, 2.2), (POND, 9, 2.0)):
     got = 0
     for _ in range(nl * 30):
         u = B['c'][0] + prng.uniform(-B['r'] * 1.5, B['r'] * 1.5); v = B['c'][1] + prng.uniform(-B['r'] * 1.5, B['r'] * 1.5)
@@ -507,7 +524,9 @@ lt -= .22 * ((dp > pw - 1.4) & (dp < pw + .2) & (mat == T_PATH)) * (n2 > .45)   
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
 pre_slope = np.hypot(samp(GUp, FU, FV), samp(GVp, FU, FV))
-foam = isw & (pre_slope > .5) & (wh > LEVEL + .3)
+# white water only along a stream's banks (not down the middle of it, which is a flat 0.9 deep bed)
+stream_edge = (dstr > sw - .8).astype(np.float64)   # only the outer edge of the channel: the middle stays water
+foam = isw & (pre_slope > .5) & (wh > LEVEL + .3) & (samp(stream_edge, FU, FV) > .5)
 mat = np.where(foam, T_FOAM, mat)
 zt = np.where(isw, wh, h)
 nrm[isw] = np.array([0, 0, 1.0])

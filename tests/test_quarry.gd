@@ -45,6 +45,8 @@ func run(t: Object) -> void:
 	# the gate
 	var sim: Sim = t.make_sim()
 	t.eq(z2.gate_art, &"forge", "zone 2 has the forge gate art")
+	var z1: ZoneDef = load("res://content/zones/zone1.tres") as ZoneDef
+	t.eq(z1.gate_art, &"meadow", "the meadow gate has its own timber and flower arch")
 	var locked: Dictionary = TexelGate.spec_for(sim, &"zone2")
 	t.ok(str(locked.get("hint", "")).begins_with("Need"), "locked gate says what is missing")
 	sim.gates_open[&"zone2"] = true

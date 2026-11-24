@@ -106,3 +106,27 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (534,600), (578,622), (622,644): open grass between the main path and the lake, with the nearest pad 156 texels from the arrival gate, up from 31. The first move, to (634,568) to (722,612), put two pads behind the oak and the gatehouse tower, so the walk mask alone is not enough. Placement now also checks sprite occlusion: no sprite standing in front of a pad may overlap its plate. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
 - **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
 - Not run in-engine from the cloud. Please check the pads on a PC capture.
+## 2026-11-24: Meadow water rework
+- **Brief (Nathan, via coordinator):** the meadow map is nice but needs to be larger and more polished; rework the lake, shoreline and streams and keep the mountains' look (they grow with the map).
+- **Changed:** the lake radius 46 to 54 texels (about 17 percent wider) (still a bowl with the same shore blend); the stream bed is cut 0.9 below its own downhill water surface, so the river is one continuous ribbon instead of a dry channel with gaps; white water only on the stream banks, not down the middle; 90 shore reeds (was 46) and 60 lily pads on the lake (was 42).
+- **Why:** the old stream was dry for about half its length, so it never read as water, and the lake's rim was a flat dark bowl. Foam down the whole mountain stream read as a pale column, not water.
+- **Side effects:** the bigger lake takes two oaks and a crystal cluster that stood on its edge; the walkable area is 10.2% (was 11.1%) and every pad and the gate are still reachable (generator check).
+- **Not run in the cloud:** the in-engine look and the sound sites (`MeadowSites` shore loudness) on the PC. The headless tests were not run here (no Godot in this container).
+## 2026-11-24: Clover stays green inside its gold rim; Dewdrop row moves in
+- **Why:** Nathan asked why the Clover pads were yellow (screenshots from PC QA). The gold for the Clover rim was also set as the stat colour, so the gems and flowers went gold. Nathan also said the Dewdrop pads sat too close to the arrival gate.
+- **Clover:** the gold is now only the rim, lit rim and rarity ring. The gems, pip and flowers keep the Clover reward green.
+- **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (634,568), (678,590), (722,612), beside the main path north of the gatehouse tower. The nearest pad is 111 texels from the arrival gate, up from 31. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
+- **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
+- Not run in-engine from the cloud. Please check the pads on a PC capture.
+
+## 2026-11-24: Meadow river fix (after PC QA of #272)
+- **QA finding:** the upper two thirds of the stream read as a pale green checker with orange banks, so foam, not water. Bank spots 16 texels out were walkable in only about a third of cases.
+- **Cause:** the foam test covered the outer 1.6 texels of a 9-texel channel, so about two thirds of it was white water. The bed was only 0.9 deep, which is a light water ramp.
+- **Changed:** foam only at the outer 0.8 texels; bed 2.6 deep so the middle is dark water; bank blend over 4 texels; low meadow ground beside the stream eased toward the water (never the mountain itself).
+- **Not fixed:** the east bank runs along the mountain foot and is rock. Walkable banks are on the meadow side only (about 11 of 30 samples at 16 texels). Making the mountain side walkable means reshaping the mountain foot, which is part of the bigger-map slice.
+## 2026-11-24: Meadow gate arch (slice 2 of the meadow rework)
+- **Brief (Nathan, via coordinator):** gates and paths between areas must look better and match the area they lead to; the quarry gate reads as ember and stone, so the meadow gate reads as timber and flowers.
+- **Changed:** the meadow gate (zone1) takes `gate_art = &"meadow"` and draws its own arch in `world/texel_gate.gd`: timber posts with cream caps and vines, a flower-garlanded lintel with a keystone bloom, a wooden lattice that shows the green light of Larkmoor once open, and drifting petals while open. It uses the meadow palette, 8 indices like the forge arch.
+- **Why:** the plain pulsing ring read as a placeholder, and the arch gives the gate the hover tooltip the forge gate already has.
+- **Not in this slice:** the path to the gate is still baked sand (gen_meadow3d.py). Path edges (stepping stones, flowers) are the next gate-and-path step.
+- **Not run in the cloud:** the look and the draw code in-engine (no Godot here). The PC QA thread should screenshot the gate closed and open.

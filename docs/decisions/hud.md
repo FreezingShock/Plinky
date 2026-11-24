@@ -395,3 +395,18 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 ## 2026-11-24: Pad captions lift their stat colour toward white
 - Reasoning: PC QA found the quarry's "Iron Ore" caption (dark green) hard to read on dark rock. The lift keeps each stat's hue; on the mid quarry rock (8a3a2e) Iron Ore goes from 2.96:1 to 4.9:1, and a test holds every stat caption at 4:1 or better.
 - Not verified in-engine: PC QA should check "Iron Ore" in the quarry at 1x and 3x.
+
+## 2026-11-24: Welcome Back as a gallery
+- **Model and view split:** `core/welcome_back.gd` builds the four sections and every number as data (pure, tested in `tests/test_welcome_back.gd`). `ui/welcome_card.gd` and `ui/welcome_tile.gd` only draw it. The HUD's `_on_offline` now opens the card instead of a text ModalCard.
+- **Tiles:** 46 px, seven across, so the card is 334 px wide at 640x360 and a full return of about 25 tiles stays under the frame height. Outline is the tier's rarity for currency and the relic's rarity for finds. Amounts sit at the bottom, green for gains and red for spends, through `StatStyle`.
+- **Tooltips:** one shared `Tip` per tile: name in its stat colour, rarity tag, exact amount, rate and mastery detail. Frame takes the rarity colour.
+- **Exact amounts:** `NumberFormat.exact()` adds thousands commas up to 10^15 and falls back to the short form beyond that.
+- **Close:** Collect sparks and closes. Esc and the X close without sparks. There is no separate Close button. The sim already banked the time away, so closing either way loses nothing.
+- **Taste call:** the count-up runs on open (staggered, about 1 s for a full return), and Collect is the only sparks moment. Say if you want the count-up off.
+- Not run in-engine from the cloud: the 640x360 layout, the tooltip placement over the card, the spark timing and the sound. PC QA should capture the card after a long absence and after a short one.
+
+## 2026-11-24: Welcome Back fit fixes (after QA on v0.60.0)
+- **Width:** six tiles of 44 px (was seven of 46), so the card is about 300 px and centred at 640x360 it stops short of the zone card's left edge at x 480.
+- **Height:** the grid grows with its content up to 190 px, then scrolls. This is the 25+ tile case: the card never leaves the frame, whatever the count.
+- **Tooltips:** tile tips use the beside placement (`"beside": true`) and Collect joins the `tip_avoid` group, so a tip opens beside its tile and never covers the button. Cursor-placed tips ignore that group, which is why the tiles opt in.
+- Not run in-engine from the cloud: the scroll appearing at 25+ tiles and the tip position. PC QA should capture both.

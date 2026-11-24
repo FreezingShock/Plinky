@@ -52,6 +52,7 @@ jobs:
             git pull --rebase origin main
           done
           # Rejected by a ruleset (or lost every race): leave the fragments in place. They are folded into the next
-          # release, so nothing is lost; the version just does not advance until the bypass is set up.
-          echo "::warning::Release push to main was refused. Add the RELEASE_TOKEN secret or a ruleset bypass (docs/versioning.md)."
-          exit 0
+          # release, so nothing is lost. The run fails on purpose: a warning on a green run is easy to miss, and the
+          # version stops advancing until RELEASE_TOKEN is renewed (docs/ci.md). Re-run this workflow after renewing.
+          echo "::error::Release push to main was refused. Renew the RELEASE_TOKEN secret (docs/ci.md, expires 2026-12-23) or fix the ruleset bypass, then re-run this workflow."
+          exit 1
