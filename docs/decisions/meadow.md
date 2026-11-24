@@ -195,3 +195,12 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - The sails get their own id, far above the instance counter, and are voxelized directly, not through `put()`, so the placement random stream and every later prop stay where they were.
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
+
+## 2026-11-24: Larkmoor lanterns by path tier, evenly spaced
+- **Tiers:** `PATH_TIER` in `larkmoor_layout.py` names each path: the main road (`road`), the two forks to the districts (`lane`), the windmill track (`trail`). `gen_larkmoor.py` spaces the lamps by tier: a road about every 110 texels, a lane every 200, a trail two (one at each end of its span). Spacing is even along each path, with the same 70-texel margin at both ends, so no lamp sits on a junction or a gate.
+- **Why:** the old rhythm restarted on every path and dropped a lamp wherever the first side was blocked, so the gaps were uneven. Now a blocked spot slides the lamp along its path (up to a third of a step), and no two lamps are closer than 80 texels.
+- **Sides:** the side alternates along a path, so a row reads as a rhythm, not a line on one edge.
+- **Count:** 23 ordinary lamps and the great lantern (24 before). Every lamp still takes the one size (19 by 29 window).
+- **Random stream:** the props after the lanterns draw from the same random stream as before (`LANTERN_STREAM_DRAWS`), so only the lamps and the bushes and ground texels right beside them changed. Regenerating from `origin/main` first reproduced the committed placements, ground and bush sprites byte for byte, so the baseline is exact.
+- **Life data:** the lamp glow centres in `world/larkmoor_life.json` now sit on the lit window, 17 texels above the foot. They were 38 above it, so the glow sat in the sky over each lamp. `gen_life_anchors.py` writes them that way now. Ten sway tips that the new ground had covered were nudged a few texels onto light grass (`tests/test_life.gd` checks every tip). Drift and flowers are unchanged.
+- **Not verified in-engine on the PC:** the placement reads well from the map (checked on the preview), and the night, dusk and noon close-ups were checked on the cloud render. The full-map feel at zoom 1 is for the PC QA pass.

@@ -207,7 +207,7 @@ func _begin(parent: Node2D) -> void:
 		(_prop_index[key] as Array).append(s)
 		if light_lanterns and String(s.kind) == "lantern":
 			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
-					_sky.light_config().pool_shrine_radius * LANTERN_RADIUS_K, LANTERN_STRENGTH)
+					_sky.light_config().pool_shrine_radius * LANTERN_RADIUS_K, LANTERN_STRENGTH, &"lantern")
 
 
 func spawn_occluders(parent: Node2D) -> void:
@@ -344,16 +344,17 @@ static var _glow_tex: Texture2D = null
 
 static func _glow_texture() -> Texture2D:
 	if _glow_tex == null:
-		var n: int = 24
+		# a warm dithered bloom: a bright core that falls off over about 16 texels, six Bayer steps, no smooth edge
+		var n: int = 32
 		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 		var bayer: Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 		for y in n:
 			for x in n:
 				var d: float = Vector2(x + 0.5 - n * 0.5, y + 0.5 - n * 0.5).length() / (n * 0.5)
 				var fall: float = clampf(1.0 - d, 0.0, 1.0)
-				fall *= fall
-				var q: float = floorf(fall * 4.0 + (float(bayer[(y % 4) * 4 + x % 4]) + 0.5) / 16.0) / 4.0
-				img.set_pixel(x, y, Color(1.0, 0.82, 0.45, q * 0.9))
+				fall = fall * sqrt(fall)
+				var q: float = floorf(fall * 6.0 + (float(bayer[(y % 4) * 4 + x % 4]) + 0.5) / 16.0) / 6.0
+				img.set_pixel(x, y, Color(1.0, 0.8, 0.42, q))
 		_glow_tex = ImageTexture.create_from_image(img)
 	return _glow_tex
 

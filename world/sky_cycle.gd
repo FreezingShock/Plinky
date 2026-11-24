@@ -593,6 +593,12 @@ func _find_walker() -> Node2D:
 	return null
 
 
+## How much a lantern's pool is lit: 0 through the day, 1 once it is dark. Dusk and dawn fade it in and out, so a lamp
+## is never a warm patch on a sunny lawn (the shade shader's warm cast does not depend on the night on its own).
+static func lamp_light_k(night: float) -> float:
+	return smoothstep(0.1, 0.5, night)
+
+
 ## Radius wobble of a light pool in texels, -1..1, on a 6 fps beat. Zero when `steady` (Reduce motion or Reduce flashing).
 static func light_flicker(t: float, key: int, steady: bool) -> float:
 	if steady:
@@ -607,6 +613,7 @@ func _push_lights(t: float, steady: bool) -> void:
 		_walker = _find_walker()
 	var focus: Vector2 = _walker.position if _walker != null else area.get_center()
 	var picks: Array[Dictionary] = []
+	var lamp_k: float = lamp_light_k(night01)
 	for L: Dictionary in _lights:
 		var is_walker: bool = L.kind == &"walker"
 		var pos: Vector2 = L.pos
@@ -615,7 +622,10 @@ func _push_lights(t: float, steady: bool) -> void:
 				continue
 			pos = _walker.position
 		var q: Vector2 = pos - focus
-		picks.append({"pos": pos, "radius": float(L.radius), "strength": float(L.strength), "tint": L.tint as Color,
+		var strength: float = float(L.strength) * (lamp_k if L.kind == &"lantern" else 1.0)
+		if strength <= 0.0:
+			continue   # a lamp by day takes no slot in the shader
+		picks.append({"pos": pos, "radius": float(L.radius), "strength": strength, "tint": L.tint as Color,
 				"walker": is_walker, "d": Vector2(q.x, q.y * 2.0).length_squared()})
 	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if a.walker != b.walker:

@@ -235,3 +235,11 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Why:** rain barely read on screen, and wet ground is the cue that says it is raining.
 - **Verified in the cloud:** Godot 4.7.2 headless under xvfb with lavapipe. Tests 5346 checks, 0 failed. Shaders compile, and the screenshot set (tools/weather_shots.tscn) was checked by eye.
 - **Not verified on the PC:** how puddles and rings look at zoom 1 and 4, the feel of the drop speed, and the night puddles against the moonlit path.
+
+## 2026-11-24: Lantern art, lamp glow and lamps by night only
+- **Art:** `make_lantern` is a garden lantern in the same 19 by 29 window: a stone foot (kept within 1.9 texels, so its front corner stays inside the window), a thin timber post, a lit window (the paper colour lifted in the shade) framed by four dark corner posts, a hipped timber cap that overhangs the window, and a dark finial.
+- **Glow sprite:** `LampGlow` (`larkmoor_scene.gd`) is a 32 texel dithered bloom, warm, with six Bayer steps and a bright core. It was 24 texels with four steps and a squared falloff, which read dim.
+- **Pools by night only:** lantern pools are added with kind `&"lantern"`. `SkyCycle._push_lights` scales their strength by `lamp_light_k(night01)` (a smoothstep from 0.1 to 0.5 night), and a lamp at zero takes no shader slot. Before, the shader's warm cast ran at about 0.35 of full strength by day, so each lamp left a warm patch on a sunny lawn.
+- **Why:** lamps should be on at dusk and off by day, and the glow should read at night without a flat blob.
+- **Not touched:** `day_night.gdshader` (the pool shape and its colour math). The lamp pool is still the same falloff and warm cast; only its strength changes.
+- **Not verified in-engine on the PC:** whether the lit window reads as warm enough next to the green pad pools at night.
