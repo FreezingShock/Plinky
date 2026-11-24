@@ -58,3 +58,13 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Pacing (`tools/sim.gd`, median of 8 seeds, active profile):** far gate 51.6 to 51.8 min; idle 114.8 to 117.7 min (idle about 2.3x active). Rejected: meadow-scale Clover costs (3000/12000/48000 Dewdrops) gave 62.8 min, and Sunlight costs of 100/1000/10000 with Dewdrops 1000/3000/9000 gave 79.5 min.
 - **Flag:** the hold profile (4 presses/s, a fast clicker) falls from 30.1 to 16.2 min to the Larkmoor gate. Left as is; a taste call for Nathan whether to raise the new costs.
 - Not run in the engine: the pad art and placement (screenshots need a GPU; the headless sim and tests did run).
+
+## 2026-11-24: Heronmere rows on walkable ground
+- **Why:** Nathan's marked-up screenshot of v0.51.1 (PC QA): the Dewdrop (Sprout) row should sit on the open grass below the main path, and the Clover row on the south lake shore. The Clover pads had most of their footprint off the walk mask, so they sat on the shore edge rather than on walkable ground.
+- **Sprout (dewdrops):** `(644,658)`, `(688,680)`, `(732,702)`, pad 1 nearest the road. Every footprint pixel is walkable and the row clears the path and landmarks by at least 16 texels.
+- **Clover (clover leaves):** `(546,648)`, `(502,626)`, `(458,604)`, pad 1 nearest the road. The walk mask only covers a narrow band along the lake shore, so the row sits on that band, a few texels inward from where the pads sat before.
+- **Cost chip:** the first pad of a locked row draws "Needs <cost>" on a dark backing box. The chip was not visible in PC QA. The code path checks out (button_id is set before `_ready`), so the backing box is the fix to confirm on a capture.
+- **Colour:** Clover pads have a gold rim (`#f2c14e`) in place of the grass green. A buyable Clover pad keeps the buy-state green.
+- **Props and lights:** props went from 100 to 90 and glow lights from 5 to 3, because the generator cleared props around the moved pads.
+- **Sway tips:** regenerated with the 2026-11-23 command. All 420 sit on the palette colour.
+- Not run in-engine from the cloud.

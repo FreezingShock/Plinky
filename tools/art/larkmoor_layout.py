@@ -38,21 +38,21 @@ def row(cx, cy, dx, dy):
 ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right ("/") or falls to the right ("\\")
 
 # Districts: name, centre, pads (screen coords), landmark. Pads are six rows, listed in the order of their tiers. The
-# common and uncommon rows (Sprout at Heronmere, Clover beside it on the lake shore) open first, then Thistle, Heather,
+# common and uncommon rows (Sprout at Heronmere, Clover on the south lake shore) open first, then Thistle, Heather,
 # Foxglove and Starbloom. Pad 1 of each row is the end nearest the road, so its row_index 0 plate is the one the walker meets first.
 # The Clover row is the fifth entry, so pad_buttons order still lines up, but it stands by the Heronmere lake path, not in
-# Cairnfold's own centre (the area list in content/areas says Heronmere for it). Lanternwood has none.
+# Cairnfold's own centre (the area list in content/areas says Heronmere for it). Both rows sit on walkable ground. Lanternwood has none.
 DISTRICTS = [
     dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(868, 646, *ROW_STEP_UP),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(580, 562), (536, 584), (492, 606)],
-         note='West lake with reed shores and a little jetty. The Sprout row runs along the lake path, with the Clover row below it.'),
+    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(644, 658), (688, 680), (732, 702)],
+         note='West lake with reed shores and a little jetty. The Sprout row runs across the grass below the main path; the Clover row lines the south shore.'),
     dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=row(840, 534, *ROW_STEP_DOWN),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
     dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=row(1030, 580, *ROW_STEP_UP),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
-    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[(504, 652), (460, 630), (416, 608)],
-         note='Rocky foothills, glowing crystals, a ring of standing stones. Its Clover row sits by the Heronmere lake path, pad 1 nearest the road.'),
+    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[(546, 648), (502, 626), (458, 604)],
+         note='Rocky foothills, glowing crystals, a ring of standing stones. Its Clover row sits on the Heronmere south shore, pad 1 nearest the road.'),
     dict(id='lanternwood', name='Lanternwood', c=(960, 330), pads=[],
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
     dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=row(836, 322, *ROW_STEP_UP),
