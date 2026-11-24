@@ -118,21 +118,27 @@ static func _canonical(variant: int, lean: int, season: int, closed: bool, dew: 
 ## from it, so a garden is a few canvas batches and no frame is baked while the world is on screen.
 static func atlas() -> Texture2D:
 	if _atlas == null:
-		_build_atlas()
+		prepare_slice(INF)
 	return _atlas
 
 
 ## Where frame `index` (see frame_index) sits inside atlas(), in texels.
 static func atlas_rect(index: int) -> Rect2:
 	if _atlas == null:
-		_build_atlas()
+		prepare_slice(INF)
 	return _atlas_rects[index]
 
 
-static func _build_atlas() -> void:
-	var total: int = STATS.size() * variant_count(&"") * 3 * 4 * STATES
-	var images: Array[Image] = []
-	var indices: Array[int] = []
+static var _plan: Array = []              ## one entry per distinct frame of the atlas, planned by prepare()
+static var _baked: Array[Image] = []      ## the frames baked so far, in plan order (prepare_slice fills it)
+
+
+## Plans the atlas: which frames it holds and where each comes from. Cheap; the baking is prepare_slice's job. Safe to call
+## again; a no-op once the plan exists or the atlas is built.
+static func prepare() -> void:
+	if _atlas != null or not _plan.is_empty():
+		return
+	var seen: Dictionary = {}
 	for stat_index in STATS.size():
 		var stat: StringName = STATS[stat_index]
 		for v in variant_count(stat):
@@ -140,39 +146,63 @@ static func _build_atlas() -> void:
 				for season in 4:
 					for state in STATES:
 						var idx: int = frame_index(stat_index, v, lean, season, state == 1, state == 2)
-						if indices.has(idx):
+						if seen.has(idx):
 							continue
-						indices.append(idx)
+						seen[idx] = true
 						var c: Dictionary = _canonical(v, lean, season, state == 1, state == 2)
-						images.append(_bake(stat, v, int(c.lean), int(c.season), int(c.state) == 1, int(c.state) == 2))
-	# tallest first, so each shelf holds frames of one height and little space is lost under the short ones
+						_plan.append({"idx": idx, "stat": stat, "variant": v, "lean": int(c.lean), "season": int(c.season), "closed": int(c.state) == 1, "dew": int(c.state) == 2})
+
+
+## Bakes the atlas for up to `budget_ms` on the main thread, then packs and uploads it. The boot screen calls this a few
+## milliseconds a frame while its loading bar runs, so the game's first frame does not bake it. Returns true once the atlas
+## exists. Image work only, so it stays on the main thread: a worker thread here made script loading fail (the preloads
+## of walker_atlas.png and PixelifySans.ttf came back as parse errors in the boot smoke test).
+static func prepare_slice(budget_ms: float) -> bool:
+	if _atlas != null:
+		return true
+	prepare()
+	var start: int = Time.get_ticks_usec()
+	while _baked.size() < _plan.size():
+		var e: Dictionary = _plan[_baked.size()] as Dictionary
+		_baked.append(_bake(e.stat as StringName, int(e.variant), int(e.lean), int(e.season), bool(e.closed), bool(e.dew)))
+		if float(Time.get_ticks_usec() - start) / 1000.0 >= budget_ms:
+			return false
+	_pack_atlas()
+	return true
+
+
+## Packs the baked frames into one sheet, tallest first, and uploads it.
+static func _pack_atlas() -> void:
+	var total: int = STATS.size() * variant_count(&"") * 3 * 4 * STATES
 	var order: Array[int] = []
-	for i in images.size():
+	for i in _baked.size():
 		order.append(i)
-	order.sort_custom(func(a: int, b: int) -> bool: return images[a].get_height() > images[b].get_height())
+	order.sort_custom(func(a: int, b: int) -> bool: return _baked[a].get_height() > _baked[b].get_height())
 	var rects: Array[Rect2] = []
 	rects.resize(total)
 	var x: int = ATLAS_GUTTER
 	var y: int = ATLAS_GUTTER
 	var shelf: int = 0
 	for i: int in order:
-		var img: Image = images[i]
+		var img: Image = _baked[i]
 		var w: int = img.get_width()
 		var h: int = img.get_height()
 		if x + w + ATLAS_GUTTER > ATLAS_WIDTH:
 			x = ATLAS_GUTTER
 			y += shelf + ATLAS_GUTTER
 			shelf = 0
-		rects[indices[i]] = Rect2(x, y, w, h)
+		rects[int((_plan[i] as Dictionary).idx)] = Rect2(x, y, w, h)
 		x += w + ATLAS_GUTTER
 		shelf = maxi(shelf, h)
 	var sheet := Image.create(ATLAS_WIDTH, y + shelf + ATLAS_GUTTER, false, Image.FORMAT_RGBA8)
 	sheet.fill(Color(0.0, 0.0, 0.0, 0.0))
-	for i in images.size():
-		sheet.blit_rect(images[i], Rect2i(Vector2i.ZERO, images[i].get_size()), Vector2i(rects[indices[i]].position))
+	for i in _baked.size():
+		sheet.blit_rect(_baked[i], Rect2i(Vector2i.ZERO, _baked[i].get_size()), Vector2i(rects[int((_plan[i] as Dictionary).idx)].position))
 	_atlas = ImageTexture.create_from_image(sheet)
 	_atlas_rects = rects
-	_atlas_count = images.size()
+	_atlas_count = _baked.size()
+	_plan = []
+	_baked = []
 
 
 ## The baked sprite for `stat`/`variant` leaning -1, 0 or +1 in `season` (0 spring to 3 winter), open or `closed`.
