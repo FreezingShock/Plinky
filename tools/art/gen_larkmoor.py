@@ -446,7 +446,7 @@ log('props defined')
 # ---------------- placement (Poisson-style spacing, no stacking, off-grid) ----------------
 prng = random.Random(7)
 WATERNEAR = None
-def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5):
+def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, path_clear=4.5):
     if not (0 < u < N - 1 and 0 < v < N - 1): return False
     if np.hypot(u - CU, v - CV) > Re(math.atan2(v - CV, u - CU)) * .9 - r * .5: return False
     h = float(terrain_h(u, v))
@@ -456,7 +456,7 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5):
         if float(samp(WD, uu, vv)) > -.5: return False
         if shore and float(samp(DW, uu, vv)) < 3.5: return False
     if float(samp(WD, u, v)) > -.5: return False
-    if path and float(samp(dpath, u, v)) < r + 4.5: return False
+    if path and float(samp(dpath, u, v)) < r + path_clear: return False
     if min(np.hypot(u - GATE[0], v - GATE[1]), np.hypot(u - GATE2[0], v - GATE2[1])) < r + 26: return False
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
@@ -472,7 +472,7 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **k
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid)
     if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'tower', 'lighthouse', 'obelisk', 'gateway', 'menhir', 'lantern', 'sign') or (kind == 'rock' and big)):
-        TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0))
+        TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
     if count: placed.append((u, v, rad * scale))
     return z0
 def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
@@ -483,7 +483,7 @@ def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
             a_, rd = prng.uniform(0, 6.283), math.sqrt(prng.random()) * rad
             u, v = cu_ + math.cos(a_) * rd, cv_ + math.sin(a_) * rd
             sc = prng.uniform(*scale_rng)
-            if ok_spot(u, v, r_fp * sc, **{k: w for k, w in kw.items() if k in ('slope_max', 'shore', 'path', 'hmax', 'gap')}):
+            if ok_spot(u, v, r_fp * sc, **{k: w for k, w in kw.items() if k in ('slope_max', 'shore', 'path', 'hmax', 'gap', 'path_clear')}):
                 put(kind, u, v, sc, **{k: w for k, w in kw.items() if k == 'big'}); got += 1; break
     return got
 SC = lambda p: s2uv(*p)
@@ -530,12 +530,13 @@ for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
-for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6)
+# rocks keep well back from the path (path_clear), so no chunky rock border frames it
+for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
 # lanterns: one size, one rhythm. Every path gets a lamp each LANTERN_STEP texels of its length (screen units), set
 # just off the path edge on whichever side has room. Only the facing varies (four quarter turns, in a fixed order).
 # They keep clear of the junctions and gates (the first and last LANTERN_END texels of a path), the pads (in `placed`)
 # and the walker's spawn. Each lamp is one light for the night pools (gen_life_anchors reads the lantern sprites).
-LANTERN_STEP, LANTERN_END, LANTERN_OFF = 150.0, 70.0, 15.0
+LANTERN_STEP, LANTERN_END, LANTERN_OFF = 150.0, 70.0, 19.0   # 19: clear of the wider path (half-width up to about 13)
 def _lantern_spots():
     for pp in LAY.PATHS:
         seg = [(x1 - x0, y1 - y0, math.hypot(x1 - x0, y1 - y0)) for (x0, y0), (x1, y1) in zip(pp, pp[1:])]
@@ -567,7 +568,7 @@ log('trees/rocks placed', len(placed))
 def cluster(kind, cu_, cv_, spread, n, **kw):
     for _ in range(n):
         u, v = cu_ + prng.gauss(0, spread), cv_ + prng.gauss(0, spread)
-        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > (7.5 if kind == 'flower' else 5.5) and float(terrain_h(u, v)) < 10:
+        if ok_spot(u, v, 1.2, slope_max=.7, path=False, gap=-1.0) and float(samp(dpath, u, v)) > (13.5 if kind == 'flower' else 5.5) and float(terrain_h(u, v)) < 10:
             put(kind, u, v, prng.uniform(.85, 1.2) * (1.45 if kind == 'flower' else 1.0), count=False, sid=1)
 for _ in range(150 if not FAST else 8): cluster('tuft', prng.uniform(60, 760), prng.uniform(60, 760), 7, prng.randint(3, 7))
 for _ in range(100 if not FAST else 6): cluster('flower', prng.uniform(60, 760), prng.uniform(60, 760), 6, prng.randint(5, 10))
@@ -611,9 +612,10 @@ for pp in PATHS_UV:
             f = (k + prng.random()) / n
             for side in (1.0, -1.0):
                 if prng.random() > .6: continue
-                off = 6.6 + prng.uniform(1.2, 2.4)
+                off = 13.0 + prng.uniform(0.0, 9.0)   # outside the wider path, and jittered: no rigid line of flowers
                 u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
-                if 7.6 <= float(samp(dpath, u, v)) <= 11.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                if vn2(u / 8.0, v / 8.0, 53) < .42: continue   # patches, not a verge
+                if 13.5 <= float(samp(dpath, u, v)) <= 24.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
                     put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1)
 log('path verges placed')
 
@@ -640,8 +642,10 @@ mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
 beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
-pw = 6.6 + 1.2 * (n1 - .5)                       # bolder path, as on the meadow: wider than the first pass
-mat[(dp < pw) & (rockness < .5)] = T_PATH
+pw = 10.5 + 2.2 * (n1 - .5)                      # about 1.7 times the old half-width (6.6): a wide, walkable trodden lane
+# the path's edge is ragged, not a ruler line: its half-width wobbles with noise, and rock only cuts it where the slope is steep
+pw_edge = pw * (1 + .22 * (vn2(FU / 7, FV / 7, 41) - .5))
+mat[(dp < pw_edge) & (rockness < .85)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
 if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
@@ -649,10 +653,10 @@ else: lt = .13 + .87 * diff + (tone - .5) * .10 * (mat == T_GRASS) + (n2 - .5) *
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .07 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
-lt -= .22 * ((dp > pw - 1.4) & (dp < pw + .2) & (mat == T_PATH)) * (n2 > .45)        # ruts / worn edge
-# defined edges: a dark rim on the grass just outside the path, and light pebbles scattered across the path surface
-lt -= .2 * ((dp >= pw) & (dp < pw + 1.0) & (mat == T_GRASS) & (wd <= .04))
-lt += .13 * ((mat == T_PATH) & (vn2(FU / 1.3, FV / 1.3, 31) > .62))
+# worn path, one material: a soft tone shift that follows the noise, with no dark rim on the grass and no pebble speckle
+# (those read as a hard edging band). The trodden ground and the turf meet through the ragged edge above.
+lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * (mat == T_PATH)
+lt -= .10 * smooth(pw * .5, pw, dp) * (mat == T_PATH) * (n2 > .45)
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -695,7 +699,7 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 5, 5, 7], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
@@ -863,16 +867,24 @@ Image.fromarray(_fg).save(os.path.join(OUT, 'ground_fg.png'))
 depth_pass.write_relight_data(os.path.join(OUT, 'ground_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(OUT, 'ground_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(OUT, 'sprites'), exist_ok=True); sprites = []
+# ordinary lanterns share one window around their foot: x from -9 to +9, y from -26 to +2 (measured on every lamp at every
+# facing). The trimmed box used to vary from 10 to 26 texels tall, so no two lamps matched.
+LANTERN_WIN = (9, 26, 19, 29)   # left of the foot, above the foot, width, height
 for t in TALL:
     ys_, xs_ = np.nonzero(id_full == t['id'])
     if len(xs_) < 12: continue
-    x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
+    fx, fy = OXS0 + (t['u'] - t['v']), OYS0 + (t['u'] + t['v']) / 2 - t['z']
+    if t['kind'] == 'lantern' and t['scale'] == 1.0:   # the great lantern landmark (scale 2.6) keeps its own crop
+        x0, y0 =int(math.floor(fx)) - LANTERN_WIN[0], int(math.floor(fy)) - LANTERN_WIN[1]
+        x1, y1 = x0 + LANTERN_WIN[2] - 1, y0 + LANTERN_WIN[3] - 1
+        assert (id_full[y0:y1 + 1, x0:x1 + 1] == t['id']).sum() == len(xs_), 'lantern %d leaves its window' % t['id']
+    else:
+        x0, x1, y0, y1 = xs_.min(), xs_.max(), ys_.min(), ys_.max()
     spr = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
     m_ = id_full[y0:y1 + 1, x0:x1 + 1] == t['id']
     spr[m_, :3] = rgb_full[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(OUT, fn))
     depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUX_FULL, y0, y1, x0, x1, m_)
-    fx, fy = OXS0 + (t['u'] - t['v']), OYS0 + (t['u'] + t['v']) / 2 - t['z']
     sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(fy), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
