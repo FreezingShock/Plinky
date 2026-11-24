@@ -313,3 +313,7 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - The stale "Prestige and RP" header is removed (both went in #209). Display settings drop their hover-to-hint lines; rows with a hint use the shared tooltip.
 - Yellow is `TipText.CLICK` (#ffd93d). Not run in-engine: `tests/test_tooltips.gd` passed on CI's unit job after one fix (the "now" field). PC QA should hover each card, check spacing at 640x360 and a large UI scale, and buy one attribute.
 
+## 2026-11-24: Popup text is crisp, and popups blink out instead of fading
+- Popups drew with the popup face at import defaults (grey AA, light hinting), so the 640x360 base upscaled to soft edges. `CrispFont.theme_font` now applies the crisp settings to `PopupLabel` (`PressPopups`, `PopupNumber`, fx_bus).
+- Taste call: no alpha fades. The last 30% of a popup blinks in 8 Hz steps (`PopupStyle.shows_now`); Reduce Flashing holds it solid, then cuts it. Outline stays 2 px. Pixelify has no single pixel unit, so no "native size" applies.
+- Not verified in-engine: PC QA should check "+418K", "+100QnVg!" and the quarry's "Iron Ore" at 1x and 3x, with Reduce Flashing on and off.
