@@ -550,6 +550,13 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Next:** Upgrades (about 392 nodes after close) and Stats/Attributes plus Gallery, same pattern, in their own PRs.
 - **Not run in-engine:** the focus feel on a real PC.
 
+## 2026-11-24: Stats and Attributes builds on open, frees on close (node budget)
+- **Decision:** `IndexPanel` keeps only its frame (the wipe, the panel shell and the close X) while shut. The header, tabs, card grid and detail page are built when the window opens and freed when the close wipe ends. The tab is kept across a close, as before.
+- **Why:** the window's body sat in the boot tree. Headless probe in the meadow: 716 nodes at boot before, 677 after. With Stats open it is 787 both before and after. After closing, 825 before (the body stayed, with a detail page open) and 680 after; the 3 left over are the shared tooltip layer, which the first hover creates.
+- **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. Tooltips hide and page tweens stop before the body is freed.
+- **Checked:** the open Stats and Attributes windows and detail page match main pixel for pixel, except the Stats tab's dotted focus ring, which the fresh build does not show on the first open after boot. Focus lands on the same control in both builds (the Stats tab button). `tests/run.gd` passes, and the new checks cover free on close and rebuild on open.
+- **Not run in-engine:** the focus feel on a real PC.
+- **Next:** the Gallery menu, same pattern.
 ## 2026-11-24: Gallery menu builds on open, frees on close (node budget)
 - **Decision:** `GalleryMenu` keeps only its frame (the wipe, the panel shell and the close X) while shut. The header, the nine tiles, the footer actions and the arrow-key wiring are built when it opens and freed when it closes.
 - **Why:** the tiles and footer sat in the boot tree. Headless probe in the meadow: 677 nodes at boot before, 651 after. Open is 677 both ways. After closing, 680 before and 654 after; the 3 left over are the shared tooltip layer, which first use creates.
