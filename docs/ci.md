@@ -3,7 +3,7 @@
 ## Jobs (`.github/workflows/ci.yml`)
 | Job | What it runs |
 |---|---|
-| `changes` | Detects docs-only PRs (only `docs/**`, `changelog.d/**`, `*.md` changed). Always runs, a few seconds. |
+| `changes` | Detects docs-only PRs (only `docs/**`, `changelog.d/**`, `*.md` changed). Also fails if `docs/decisions.md` grows past 20 lines (the log is split by topic). Always runs, a few seconds. |
 | `unit` | Version script tests, `tests/run.gd`, boot smoke test. |
 | `sim` | Balance sim `tools/sim.gd`. |
 | `play` | Play smoke `tools/bench.gd` and the frame budget check. |

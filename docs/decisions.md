@@ -913,3 +913,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Sprint and crouch** still work while walking in a menu. They are modifiers, and no menu uses Shift or C.
 - **Tap-to-move:** a pending walk target is dropped when a menu opens or a field takes keys, so the walker does not keep walking after the menu is up.
 - Not verified in-engine: walking with WASD under the Upgrades, Relics and Settings panels, typing in Feedback with W/A/S/D, and rebinding W in Settings. PC QA should check those four.
+The log is now split by topic. Start at [docs/decisions/README.md](decisions/README.md) and open only the topic file you need.

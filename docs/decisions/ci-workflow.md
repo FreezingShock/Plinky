@@ -36,3 +36,14 @@ PRs add a `changelog.d/<slug>.patch|minor.md` fragment instead of bumping `core/
 - Removed tracked `__pycache__` bytecode and ignored it. Added `.claudeignore` (bulk art, audio, captures, CHANGELOG.md) and `.gitattributes` (binary art and audio, generated JSON).
 - `CLAUDE.md` is now a short map that points at the docs. It no longer tells agents to read SPEC, decisions and theme whole. `docs/theme.md` is not in the repo (it lives in the library), so the reference is dropped.
 - Kept on purpose: `tools/size_shots.gd` (the audit plans to extend it), `tools/screenshot.gd` (SPEC names it), the art generators in `tools/art/`, and `content/parked/`.
+
+## Restored after the #220 split (lost text from the pre-split log)
+
+## 2026-11-23 Node budget 1300 to 1350 (Larkmoor pads, Nathan's call)
+- **Why:** the Larkmoor Dewdrop and Clover rows add 61 nodes (six pads with their anchors and holds, and six props from the regenerated layout). Main's Larkmoor is 1266, so the scene reached 1327 and CI's `play` frame budget failed.
+- **Chosen by Nathan (decision card):** raise the active-zone node ceiling to 1350 rather than trimming props or optimising pads first. Set in `.github/workflows/ci.yml` (frame budget 150/300/250/1350), `docs/ci.md` and `docs/perf.md`.
+
+## CI uid guard (2026-11-23)
+- **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
+- **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
+- **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.

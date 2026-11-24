@@ -75,6 +75,14 @@ static func shows_now(progress: float, age: float, blink: bool) -> bool:
 	return int(age * BLINK_HZ) % 2 == 0
 
 
+## Pad captions sit on dark rock, so a stat colour is lifted toward white before it is drawn. The hue stays; contrast rises.
+const CAPTION_LIFT: float = 0.5
+
+
+static func caption_color(stat_col: Color) -> Color:
+	return stat_col.lightened(CAPTION_LIFT)
+
+
 static func pick_motion(tier: int, roll: float) -> int:
 	var list: Array = MOTIONS[clampi(tier, 0, TIERS - 1)] as Array
 	return int(list[clampi(int(roll * float(list.size())), 0, list.size() - 1)])

@@ -676,7 +676,7 @@ func _draw_caption(p: Pop, cx: float, y: float, fs: int, tcol: float, oc: Color)
 	var sx: float = roundf(cx - (w_name + w_cnt) * 0.5)
 	var sy: float = roundf(y + 9.0 + float(fs) * 0.14)
 	if p.stat != "":
-		var sc: Color = p.stat_col
+		var sc: Color = PopupStyle.caption_color(p.stat_col)
 		draw_string_outline(font, Vector2(sx, sy), p.stat, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, 2, oc)
 		draw_string(font, Vector2(sx, sy), p.stat, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, sc)
 	if count_txt != "":
