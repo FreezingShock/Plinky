@@ -359,3 +359,9 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 
 ## 2026-11-24: Pad beds drawn from above
 Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mockups/` on the project files, over the stalks and the planter. The beds are baked by `tools/art/gen_pad_beds.py` into a leaf layer, a shade layer and a greyscale bloom layer, so the stat colour and the colour-blind tint still apply at runtime. The side sprouts, the gold crown and the twinkle glints are now in the art or gone; a glint pass can come back on the bloom tops.
+## 2026-11-24: Walker is redrawn from above with 8 facings (Nathan picked mockup B)
+- **Look:** mockup B of the three walker mockups. The walker is drawn from the elevated, looking-down view: a lit shoulder top plane, a domed hood with the face set lower in it, and lit toe caps. The silhouette, cloak colours, scarf and satchel stay.
+- **Facings:** N, NE, E, SE, S, SW, W, NW. Five are drawn (E, SE, S, NE, N) and SW, W and NW are mirrors at runtime, so the art is not duplicated. The mirror keeps light from the upper left, as the other flipped sprites do.
+- **Idle keeps the last facing,** so the walker stays turned the way it last moved. It used to snap to front.
+- **Atlas:** 55 cells in 8 columns (512 x 448). `world/walker_pose.gd` holds the cell numbers and the octant mapping, and `tests/test_walker_pose.gd` checks them.
+- **Not verified in-engine on the PC:** the diagonal three-quarter views and the sprint tails at normal zoom. Checked in the cloud with Godot 4.7.2 under xvfb, `tests/run.gd` passes (7890 checks) and `tools/walker_cells_shot.gd` draws every facing and phase through `WalkerBody`.

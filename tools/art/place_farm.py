@@ -67,6 +67,9 @@ TARGETS = [
 ]
 
 
+SMALL_PROPS = ('farm_hay_0', 'farm_hay_1', 'farm_crates', 'farm_scarecrow', 'farm_cart')   # low props: soil runs under them
+
+
 def _rect_dist(px, py, x0, y0, x1, y1):
     """Distance from points (arrays) to the rectangle [x0,x1] x [y0,y1]."""
     dx = np.maximum(np.maximum(x0 - px, 0), px - x1)
@@ -543,7 +546,7 @@ def build(map_only: bool = False) -> dict:
     items = []
     for kind, tx, ty in TARGETS:
         w, h = SIZES[kind]
-        at = placer.place(w, h, tx, ty)
+        at = placer.place(w, h, tx, ty, tag='prop' if kind in SMALL_PROPS else None)
         if at is None:
             print('no room for %s near (%d, %d)' % (kind, tx, ty))
             continue
