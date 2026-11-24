@@ -12,16 +12,6 @@ uniform vec3 sun_dir = vec3(0.0, -1.0, 1.0);   // toward the sun, texel space (y
 uniform float sun_amount = 0.0;
 uniform vec3 sun_col : source_color = vec3(1.0, 0.95, 0.75);
 
-void fragment() {
-	vec4 c = texture(TEXTURE, UV);
-	// Fragment shaders cannot exit early, so the lit path sits in an else.
-	if (c.a < 0.5) {
-		COLOR = c;
-	} else {
-		COLOR = lit_colour(c, UV, TEXTURE_PIXEL_SIZE);
-	}
-}
-
 vec4 lit_colour(vec4 c, vec2 uv, vec2 tex_px) {
 	vec2 px = uv / tex_px;
 	vec4 nm = texture(nrm_tex, uv);
@@ -46,4 +36,14 @@ vec4 lit_colour(vec4 c, vec2 uv, vec2 tex_px) {
 	float lum = dot(c.rgb, vec3(0.3, 0.59, 0.11));
 	acc *= smoothstep(0.08, 0.3, lum);
 	return vec4(c.rgb + acc * (0.35 + 0.65 * c.rgb), c.a);
+}
+
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	// Fragment shaders cannot exit early, so the lit path sits in an else.
+	if (c.a < 0.5) {
+		COLOR = c;
+	} else {
+		COLOR = lit_colour(c, UV, TEXTURE_PIXEL_SIZE);
+	}
 }
