@@ -18,6 +18,9 @@ const SCENE_TEXTURES: Dictionary = {
 		"res://assets/art/zone1b/larkmoor/ground_h.png",
 	],
 }
+## Zone scenes that build the Foxglove Rise farm (world/farm/farm_props.gd): its wheat clumps are generated on workers
+## and its sprites prefetched, so the swap does not generate about 660 clumps or load 660 sheets on the swap frame.
+const FARM_SCENES: Array[String] = ["res://world/larkmoor_scene.tscn"]
 ## The backdrop whose pixels LifeAir reads (water sparkles). Decoded from its lossless source PNG on a worker thread.
 const SCENE_BACKDROPS: Dictionary = {
 	"res://world/larkmoor_scene.tscn": "res://assets/art/zone1b/larkmoor/ground_fg.png",
@@ -34,11 +37,14 @@ static func prefetch_scene(scene_path: String) -> void:
 	if manifest != "":
 		prefetch(paths_for_manifest(manifest))
 	prefetch(PackedStringArray(SCENE_TEXTURES.get(scene_path, []) as Array))
+	# The backdrop decode is queued before the farm's clumps, so the scene's _ready never waits behind them on a worker.
 	var backdrop: String = str(SCENE_BACKDROPS.get(scene_path, ""))
 	if backdrop != "" and not _decodes.has(backdrop):
 		var d := Decode.new()
 		d.task = WorkerThreadPool.add_task(_decode.bind(d, backdrop))
 		_decodes[backdrop] = d
+	if FARM_SCENES.has(scene_path):
+		prefetch(FarmProps.prepare())
 
 
 ## A backdrop image decoded on a worker thread. `task` is its WorkerThreadPool task; `image` is set by the worker.
@@ -86,6 +92,15 @@ static func texture(path: String) -> Texture2D:
 	if tex != null:
 		_cache[path] = tex
 	return tex
+
+
+## True when `path` can be taken without waiting: cached, never requested, or its worker has finished (or failed, in which
+## case texture() falls back to a plain load). Lets a sliced build poll the prefetch instead of blocking on it.
+static func ready(path: String) -> bool:
+	if _cache.has(path) or not _pending.has(path):
+		return true
+	var st: ResourceLoader.ThreadLoadStatus = ResourceLoader.load_threaded_get_status(path)
+	return st != ResourceLoader.THREAD_LOAD_IN_PROGRESS
 
 
 ## Drops the textures of the zone that was left. Prefetches still in flight stay queued for the zone being entered.
