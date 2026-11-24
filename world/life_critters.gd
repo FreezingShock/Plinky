@@ -308,6 +308,16 @@ static func frog_share() -> float:
 	return by_season * wet
 
 
+## Ground points the grass bends away from: rabbits, chickens, ducks and frogs that are showing (fade > 0), in frame texels.
+func ground_pushers() -> PackedVector2Array:
+	var out: PackedVector2Array = PackedVector2Array()
+	for group: Array in [_rabbits, _chickens, _frogs]:
+		for c: Dictionary in group:
+			if float(c.fade) > 0.0:
+				out.append(c.pos as Vector2)
+	return out
+
+
 ## Moves every critter by delta. `wp` is the walker's position in the frame (far away when there is no walker).
 func update(delta: float, wp: Vector2) -> void:
 	_t += delta

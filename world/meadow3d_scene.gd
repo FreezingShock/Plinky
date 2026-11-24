@@ -82,6 +82,7 @@ func _add_life(ground: Sprite2D) -> void:
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
 	add_child(air)
 	air.setup(life, ground)
+	blades.critter_source = air.ground_pushers
 	react = LifeReact.new()
 	react.name = "LifeReact"
 	react.z_index = 10

@@ -24,6 +24,7 @@ var world_rect: Rect2 = Rect2(260.0, 40.0, 2520.0, 1620.0)   # 2x the old frame;
 var mask_offset: Vector2i = Vector2i.ZERO
 var placements_path: String = DIR + "placements3d.json"
 var ground_path: String = DIR + "ground.png"
+var _blades: GrassBlades
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd), as in the meadow.
 const SWAY_KINDS: PackedStringArray = ["oak", "pine", "bush"]
@@ -173,21 +174,37 @@ func _add_life(ground: Sprite2D) -> void:
 	var life: Dictionary = MeadowLife.load_data(LIFE_PATH)
 	if life.is_empty():
 		return
-	var lg := LifeGround.new()
-	lg.name = "LifeGround"
-	add_child(lg)
-	lg.setup(ground, life.get("sway", []) as Array)
+	# Interactive blades (world/grass_blades.gd): one node, one shader rect per loaded prop chunk, so the grass follows
+	# the streaming and costs no node per blade. The chunk signals below are the streaming's own (_load_chunk, _unload_chunk).
+	_blades = GrassBlades.new()
+	_blades.name = "GrassBlades"
+	add_child(_blades)
+	_blades.use_chunks()
+	_blades.setup(ground, [], Palettes.colors(Palettes.MEADOW))  # pad plates are not grass colours, so the blades skip them
+	chunk_loaded.connect(_on_chunk_blades_loaded)
+	chunk_unloaded.connect(_on_chunk_blades_unloaded)
 	var air := LifeAir.new()
 	air.name = "LifeAir"
 	air.z_index = 10
 	add_child(air)
 	air.setup(life, ground)
+	_blades.critter_source = air.ground_pushers
 	react = LifeReact.new()  # bushes rustle, birds scatter, shore ripples, grass bends (world/life_react.gd)
 	react.name = "LifeReact"
 	react.z_index = 10
 	add_child(react)
 	react.setup(life, life.get("sway", []) as Array, 14)  # a bigger meadow, more birds
-	lg.pusher_group = &"walker"
+
+
+## The grass chunk for a loaded prop chunk (same rect the streaming uses, in zone texels).
+func _on_chunk_blades_loaded(key: Vector2i) -> void:
+	if _blades != null:
+		_blades.add_chunk(key, Rect2(Vector2(key) * CHUNK, Vector2(CHUNK, CHUNK)))
+
+
+func _on_chunk_blades_unloaded(key: Vector2i) -> void:
+	if _blades != null:
+		_blades.remove_chunk(key)
 
 
 ## Props load by chunk. The map is cut into CHUNK-texel squares. The chunks within LOAD_RING of the walker's chunk are

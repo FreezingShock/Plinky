@@ -291,3 +291,10 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Replaces the meadow's 120 baked sway tips with this layer. Larkmoor keeps `LifeGround` until the chunk streaming lands (1680 tips there, drawn on the CPU every step).
 - Checked in the cloud render only (xvfb, lavapipe): no shader errors, tests pass. Not verified on the PC: the wind and walker bend, and the look at noon.
 - Follow-up on the same PR: each rock and bush gets a thin, soft-edged dark contact slab under its foot, wider than the stone, so the base reads as shade on the ground. Rock tops are flatter (tilt .03 to .14). After main moved under the PR, the Larkmoor ground was regenerated, then `gen_gardens.py` (flower placement reads the ground) and the sway tips were refreshed; 6 sway tips were removed. Suite: 6428 checks, 0 failed.
+
+## 2026-11-24: Larkmoor grass blades draw per loaded chunk, in one node
+- `GrassBlades` gets a chunked mode. It draws one shader rect per loaded prop chunk (`chunk_loaded` / `chunk_unloaded` from `LarkmoorScene`), in a single node, so the grass follows the streaming and adds no node count. The rects are in zone texels, the same space as the blades.
+- Pushers are a list of up to 6 points: the walker and the rabbits, chickens and frogs that are showing (`LifeCritters.ground_pushers`, read-only). Ducks are not included yet.
+- `LifeGround` is no longer placed in Larkmoor or the meadow. The class stays for its tests.
+- Pad plates are skipped by colour (they are not grass colours), not by the pad clearance, because Larkmoor has 31 pads and the shader holds 8.
+- Checked in the cloud only (xvfb, lavapipe): no shader errors, `tests/run.gd` passes (6539 checks), `tools/larkmoor_shots.tscn` runs. Not verified on the PC.

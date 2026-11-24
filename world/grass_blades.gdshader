@@ -5,7 +5,8 @@ shader_type canvas_item;
 
 uniform float t = 0.0;
 uniform float wind = 0.2;
-uniform vec2 pusher = vec2(-9999.0, -9999.0);
+uniform vec2 pushers[6];
+uniform int pusher_count = 0;
 uniform vec2 pads[8];
 uniform int pad_count = 0;
 uniform vec4 tip_col : source_color = vec4(0.72, 0.86, 0.47, 1.0);
@@ -60,13 +61,24 @@ float lean(vec2 b) {
 	w *= 0.7 + 0.9 * wind;
 	float mag = abs(w) > 0.85 ? 2.0 : (abs(w) > 0.55 ? 1.0 : 0.0);
 	float l = w > 0.0 ? mag : -mag;
-	// A walker or critter bends blades away from it (the same rule as LifeGround.bend).
-	vec2 d = b - pusher;
-	d.y *= 2.0;
-	float dist = length(d);
-	if (dist < 16.0 && abs(d.x) >= 1.0) {
-		float pm = dist < 8.0 ? 2.0 : 1.0;
-		l = d.x > 0.0 ? pm : -pm;
+	// The nearest walker or critter bends blades away from it (the same rule as LifeGround.bend).
+	float best = 1e9;
+	float push = 0.0;
+	for (int i = 0; i < 6; i++) {
+		if (i >= pusher_count) {
+			break;
+		}
+		vec2 d = b - pushers[i];
+		d.y *= 2.0;
+		float dist = length(d);
+		if (dist < 16.0 && abs(d.x) >= 1.0 && dist < best) {
+			best = dist;
+			float pm = dist < 8.0 ? 2.0 : 1.0;
+			push = d.x > 0.0 ? pm : -pm;
+		}
+	}
+	if (best < 1e9) {
+		l = push;
 	}
 	return l;
 }
