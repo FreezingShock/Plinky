@@ -8,6 +8,7 @@ func run(t: Object) -> void:
 	var flowers: Array = [[100, 100, 0, 1], [110, 104, 0, 2], [120, 98, 0, 3], [400, 300, 0, 0], [405, 310, 0, 1], [700, 500, 1, 2]]
 	var glow := FlowerGlow.new()
 	glow.setup(flowers)
+	glow.finish()   # the bakes run on worker threads; finish() waits for them
 	t.eq(glow.field_count(), 6 if FlowerGlow.SPILL_RADIUS > 0.0 else 3, "each field is one core layer, plus one spill layer when the spill is on")
 	glow.set_night(0.0)
 	t.eq(glow.modulate.a, FlowerGlow.DAY_ALPHA, "by day the glow sits at its day strength")
