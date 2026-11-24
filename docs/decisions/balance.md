@@ -153,5 +153,5 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 ## 2026-11-24: Mastery matters (yield 0.008, crit 0.003, XP growth 1.25)
 - Nathan's audit pick: a maxed pad now pays +20% (was +2.5%) and reaches level 25 in about 12,700 XP, about 7 hours on one pad at 0.5 XP/s. Crit chance per level 0.003 (+7.5% at level 25).
 - The audit's idle note was wrong: idle is 0.4 of active press rate (1.6 of 4.0 on #287), so the idle rule did not change. Idle's gate time is still about 2.4× active on main (CI sim, 93b063fe), so the gate-time ratio is set by the gate, not the press rate.
-- Larkmoor gate on main (93b063fe) is 106 min active, not the 51.6 min in the audit (v0.28.1). The gate change is pending a decision, not part of this entry.
+- Larkmoor gate on main (93b063fe) is 106 min active, not the 51.6 min in the audit (v0.28.1). Shipped at about 75 min: Starbloom threshold 2600 to 500, idle press 1.6 to 2.0 (0.5 of active, idle gate about 1.8 to 2× active), Foxglove 3 cost 1000 to 500 Heather (it opened the Starbloom tier). Probes at 1300 and 500 threshold gave 92 and 82 min. The last 15 minutes to the 57 to 61 target wait on the new Larkmoor pads (PR #326), a second pass.
 - Not run in-engine. CI `sim` on this PR is the check.
