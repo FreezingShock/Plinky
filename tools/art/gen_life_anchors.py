@@ -164,7 +164,7 @@ EDGE_NEAR = (14.0, 34.0)    # a forest-edge grass tip is this far from the neare
 EDGE_DENSE_R = 70.0         # trees counted within this radius decide whether it is forest
 EDGE_DENSE_MIN = 8
 EDGE_COUNT = 30
-EDGE_SPACING = 60.0
+EDGE_SPACING = 50.0
 EDGE_PAD_KEEP = 24.0        # a forest-edge spot keeps this far from every pad
 
 

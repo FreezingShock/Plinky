@@ -1,6 +1,6 @@
 extends RefCounted
 ## The Larkmoor farm (world/farm/): the manifest and its sprites agree, every item is inside the Larkmoor canvas and the
-## farm box, no two items overlap, the wheat clumps are generated, baked and drawn from their seeds, the wheat gusts on
+## farm box, no two items overlap (soil is a decal under the wheat), the wheat clumps are generated, baked and drawn from their seeds, the wheat gusts on
 ## the life clock and holds still under Reduce Motion, the walker's push springs back, and the spawn stays inside the
 ## node budget. Pure functions and detached nodes: no autoloads, no scene tree.
 
@@ -10,6 +10,7 @@ const BOX_SIZE: Vector2 = Vector2(260.0, 220.0)
 const SCALE: float = 2.0
 const FENCE_PREFIX: String = "farm_fence"                # the fence ring's pieces (see place_farm.py)
 const WHEAT_PREFIX: String = "farm_wheat"                # the wheat clumps, which overlap a little (see place_farm.py)
+const SOIL_PREFIX: String = "farm_soil"                  # the tilled soil decals: ground, drawn behind everything
 const NODE_BUDGET: int = 120                           # the farm's own nodes: one sprite per item, plus the driver
 
 
@@ -23,6 +24,8 @@ func run(t: Object) -> void:
 	var rect_kinds: Array[String] = []
 	var box := Rect2((BOX_CENTRE - BOX_SIZE * 0.5) * SCALE, BOX_SIZE * SCALE)
 	var wheat: int = 0
+	var soil: int = 0
+	var sprouts: int = 0
 	for v: Variant in items:
 		var item: Dictionary = v as Dictionary
 		var kind: String = str(item.get("kind", ""))
@@ -52,11 +55,19 @@ func run(t: Object) -> void:
 			t.eq(tex.get_width(), w * WheatClump.FRAMES, "%s sheet holds %d frames" % [kind, WheatClump.FRAMES])
 			t.eq(tex.get_height(), h, "%s sheet is one row of frames" % kind)
 			t.ok(int(item.get("stage", -1)) in [0, 1, 2], "%s has a growth stage" % kind)
+			if int(item.get("stage", -1)) == WheatClump.STAGE_SPROUT:
+				sprouts += 1
 		else:
+			if FarmProps.is_soil(kind):
+				soil += 1
 			t.eq(tex.get_width(), int(rect.size.x), "%s sprite width matches its box" % kind)
 			t.eq(tex.get_height(), int(rect.size.y), "%s sprite height matches its box" % kind)
 	t.ok(wheat >= 10, "the farm has at least 10 wheat clumps (%d)" % wheat)
+	t.ok(soil >= 3, "the farm has at least 3 soil decals, one under each field (%d)" % soil)
+	t.eq(sprouts, 0, "the wheat has no green sprouts")
 	t.ok(not FarmProps.casts_shadow("farm_fence"), "the fence ring casts no shadow (it is one sprite over its whole box)")
+	t.ok(not FarmProps.casts_shadow("farm_soil_61"), "soil casts no shadow (it is flat on the ground)")
+	t.ok(not FarmProps.is_soil("farm_barn") and FarmProps.is_soil("farm_soil_61"), "only soil kinds count as soil")
 	t.ok(kinds.has("farm_fence"), "the fence ring is one batched item")
 	for kind: String in ["farm_barn", "farm_scarecrow", "farm_cart"]:
 		t.ok(kinds.has(kind), "the farm includes %s" % kind)
@@ -71,8 +82,10 @@ func run(t: Object) -> void:
 				continue
 			if rect_kinds[i].begins_with(WHEAT_PREFIX) and rect_kinds[j].begins_with(WHEAT_PREFIX):
 				continue
+			if rect_kinds[i].begins_with(SOIL_PREFIX) or rect_kinds[j].begins_with(SOIL_PREFIX):
+				continue            # a soil decal lies under the wheat and is masked round the buildings in the sprite itself
 			overlaps += 1
-	t.eq(overlaps, 0, "no two farm items overlap, except fence pieces meeting and wheat clumps overlapping")
+	t.eq(overlaps, 0, "no two farm items overlap, except fence pieces meeting, wheat clumps overlapping, and soil under all")
 	# The water channel: at least a few ripples long, inside the box.
 	var channels: Array = data.get("brooks", []) as Array
 	t.ok(channels.size() == 1, "the farm has one water channel")
@@ -94,12 +107,24 @@ func run(t: Object) -> void:
 	t.ok(sheet.get_region(Rect2i(3 * 48, 0, 48, 40)).get_data() == plain.get_data(), "a baked frame matches a plain draw")
 	var pushed: Image = WheatClump.rasterize(a, 3, Vector2(24.0, 36.0), 6.0, 26.0)
 	t.ok(pushed.get_data() != plain.get_data(), "the walker's push moves the stalks")
+	# The silhouette cut: wheat in front of the walker is cut below his chest, so fewer tips reach the rows he stands in.
+	var near_walker: Image = WheatClump.rasterize(a, 3, Vector2(24.0, 18.0), 6.0, 26.0)
+	var far_walker: Image = WheatClump.rasterize(a, 3, Vector2(-200.0, 18.0), 6.0, 26.0)
+	var tips_near: int = 0
+	var tips_far: int = 0
+	for y: int in range(0, 8):
+		for x: int in range(15, 34):
+			if near_walker.get_pixel(x, y).a > 0.0:
+				tips_near += 1
+			if far_walker.get_pixel(x, y).a > 0.0:
+				tips_far += 1
+	t.ok(tips_near < tips_far, "wheat in front of the walker is cut so it does not cover him (%d tips beside him, %d away)" % [tips_near, tips_far])
 	var has_root: bool = false
 	var has_body: bool = false
 	for y: int in range(40):
 		for x: int in range(48):
 			var px: Color = plain.get_pixel(x, y)
-			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_SHADE]):
+			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_INK]):
 				has_root = true
 			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_ACCENT]):
 				has_body = true

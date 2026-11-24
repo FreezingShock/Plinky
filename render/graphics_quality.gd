@@ -154,5 +154,14 @@ static func life_scaled(full: int) -> int:
 static func visible_local_rect(node: CanvasItem) -> Rect2:
 	if not node.is_inside_tree():
 		return Rect2()
-	var to_local: Transform2D = (node.get_viewport_transform() * node.get_global_transform()).affine_inverse()
-	return (to_local * node.get_viewport().get_visible_rect()).grow(CULL_MARGIN)
+	# The window in pixels. get_visible_rect() is the base canvas size (640x360), which the viewport transform stretches to
+	# the window, so mapping it through the transform covered only the top-left corner of the screen whenever the window was
+	# bigger than the base size.
+	var screen: Rect2 = Rect2(Vector2.ZERO, Vector2(node.get_viewport().size))
+	return local_rect_of(screen, node.get_viewport_transform(), node.get_global_transform())
+
+
+## `screen` (window pixels) mapped into a node's local space through the viewport and global transforms, grown by CULL_MARGIN.
+static func local_rect_of(screen: Rect2, viewport_transform: Transform2D, global_transform: Transform2D) -> Rect2:
+	var to_local: Transform2D = (viewport_transform * global_transform).affine_inverse()
+	return (to_local * screen).grow(CULL_MARGIN)

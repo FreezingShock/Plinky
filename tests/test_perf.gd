@@ -2,6 +2,17 @@ extends RefCounted
 ## Graphics quality levels and frame-time stats (render/graphics_quality.gd, render/perf_stats.gd).
 
 func run(t: Object) -> void:
+	# The view rect of a stretched window: a 1152x648 window shows the 640x360 base canvas at 1.8x, with the walker at the
+	# screen centre. The view must cover the walker in all four quadrants (the old rect covered only the top-left).
+	var stretched_global: Transform2D = Transform2D(0.0, Vector2(-356.0, -788.0))
+	var stretched_vp: Transform2D = Transform2D(Vector2(1.8, 0.0), Vector2(0.0, 1.8), Vector2.ZERO)
+	var walker_local: Vector2 = Vector2(676.0, 968.0)   # (576, 324) / 1.8 + (356, 788)
+	var view: Rect2 = GraphicsQuality.local_rect_of(Rect2(0.0, 0.0, 1152.0, 648.0), stretched_vp, stretched_global)
+	t.ok(view.has_point(walker_local + Vector2(-300.0, -200.0)), "stretched view covers the top-left of the walker")
+	t.ok(view.has_point(walker_local + Vector2(300.0, -200.0)), "stretched view covers the top-right of the walker")
+	t.ok(view.has_point(walker_local + Vector2(-300.0, 200.0)), "stretched view covers the bottom-left of the walker")
+	t.ok(view.has_point(walker_local + Vector2(300.0, 200.0)), "stretched view covers the bottom-right of the walker")
+	t.eq(GraphicsQuality.local_rect_of(Rect2(0.0, 0.0, 640.0, 360.0), Transform2D(), Transform2D()), Rect2(-24.0, -24.0, 688.0, 408.0), "an unstretched view is the screen grown by the cull margin")
 	t.eq(GraphicsQuality.parse("Low"), GraphicsQuality.Level.LOW, "parse low")
 	t.eq(GraphicsQuality.parse(" med "), GraphicsQuality.Level.MEDIUM, "parse med")
 	t.eq(GraphicsQuality.parse("HIGH"), GraphicsQuality.Level.HIGH, "parse high")
