@@ -3,7 +3,7 @@
 ## Jobs (`.github/workflows/ci.yml`)
 | Job | What it runs |
 |---|---|
-| `changes` | Detects docs-only PRs (only `docs/**`, `changelog.d/**`, `*.md` changed). Always runs, a few seconds. |
+| `changes` | Detects docs-only PRs (only `docs/**`, `changelog.d/**`, `*.md` changed). Also fails if `docs/decisions.md` grows past 20 lines (the log is split by topic). Always runs, a few seconds. |
 | `unit` | Version script tests, `tests/run.gd`, boot smoke test. |
 | `sim` | Balance sim `tools/sim.gd`. |
 | `play` | Play smoke `tools/bench.gd` and the frame budget check. |
@@ -44,3 +44,6 @@ When a PR says "All checks have failed", open the failed job: its **Summary** ta
 
 ## Merge conflicts in the decision log
 `.gitattributes` marks `docs/decisions.md` and `docs/decisions/*.md` as `merge=union`, so `git merge main` on your machine or in a cloud thread keeps both sides' appended entries without a conflict. It only works for local merges, and only for append-only edits; if you edited an existing entry, check the result.
+
+## Stuck PR watch (`.github/workflows/stuck-pr-watch.yml`)
+Runs every 15 minutes from `main`. It looks at open, non-draft PRs quiet for 20 minutes and flags any with no check runs, a merge conflict, a failed or cancelled `test`, a run going for 30+ minutes, or auto-merge on while `test` has not passed. Each flagged PR gets one comment, updated in place, and the run writes a summary table. The owning thread fixes the PR or closes it. The workflow only takes effect once it is on `main`; test it with Actions > Stuck PR watch > Run workflow.

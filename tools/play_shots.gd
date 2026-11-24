@@ -95,15 +95,13 @@ func _ready() -> void:
 			sim.stats[&"embers"] = BigNum.from_float(1e30)
 			p = pad.get_global_transform_with_canvas().origin
 			pad.holding = true  # synthetic mouse input is unreliable offscreen; drive the pad directly
-			pad.hold.begin()
 			pad._press()
 			await _wait(12)
 			print("z", z, " p ", p, " presses ", sim.press_count, " holding ", pad.get("holding"), " can ", sim.can_afford(&"sprout_1"), " cost ", Formulas.button_cost(sim.button_defs[&"sprout_1"]).format())
 			await _shot("p_z%d_press_hold" % z)
 			await _wait(60)
 			await _shot("p_z%d_hold_long" % z)
-			pad.hold.end()
-			pad.holding = false
+			pad.hold_release()
 			await _wait(70)
 		get_tree().quit(0)
 		return

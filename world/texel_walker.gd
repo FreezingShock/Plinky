@@ -84,8 +84,12 @@ func _key_down(action: StringName) -> bool:
 
 func _process(delta: float) -> void:
 	_t += delta
-	var blocked: bool = PadInput.menu_open or _typing()
-	var input: Vector2 = PadInput.move_vector()   # WASD, arrows, d-pad or left stick; analog tilt scales speed
+	# A text field or a key rebind takes every key, and an open menu takes Space and the tap-to-move walk.
+	var typing: bool = _typing() or PadInput.key_capture
+	var blocked: bool = PadInput.menu_open or typing
+	if blocked:
+		_has_target = false   # a tap-to-move walk does not carry on under a menu, as with the click gate
+	var input: Vector2 = Vector2.ZERO if typing else PadInput.move_vector()   # WASD walks in menus too; arrows, d-pad and stick only walk with no menu
 	var dir := Vector2.ZERO
 	if input != Vector2.ZERO:
 		_has_target = false
@@ -100,9 +104,10 @@ func _process(delta: float) -> void:
 		dir = _slide_dir   # a slide commits to its direction
 		_has_target = false
 	motion.cfg = GameState.sim.config
+	# Sprint and crouch are modifiers, so they still work while walking in a menu. Jump is Space, which menus use.
 	motion.tick(delta, dir != Vector2.ZERO,
-		not blocked and _key_down(&"sprint"),
-		not blocked and _key_down(&"crouch"),
+		not typing and _key_down(&"sprint"),
+		not typing and _key_down(&"crouch"),
 		not blocked and (_key_down(&"jump") or Input.is_action_pressed(&"plinky_jump")))
 	speed_factor = motion.speed_factor
 	lift = motion.z
