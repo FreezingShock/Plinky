@@ -14,4 +14,4 @@ effect = 8
 stacking = 0
 per_stack = 0.05
 max_stacks = 4
-description = "Time away pays {value} more of your rate, on top of the 50% base."
+description = "Time away pays {value} more of your rate, on top of the 50% base, 75% at most."

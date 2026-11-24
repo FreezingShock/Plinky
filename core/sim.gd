@@ -1199,6 +1199,11 @@ var last_offline: Dictionary = {}
 
 ## Credits time away, capped by offline_cap_seconds(): passive income, flower tending (reduced-rate presses that also
 ## earn mastery XP), and reduced-rate relic drop rolls. Returns seconds credited.
+## Share of the awake income that time away pays: the base, plus OFFLINE_RATE relics, never above offline_rate_cap.
+func offline_fraction() -> float:
+	return minf(config.offline_income_fraction + _relic_total(RelicDef.Effect.OFFLINE_RATE), config.offline_rate_cap)
+
+
 func apply_offline(seconds: float) -> float:
 	var secs: float = clampf(seconds, 0.0, offline_cap_seconds())
 	last_offline = {}
@@ -1211,8 +1216,7 @@ func apply_offline(seconds: float) -> float:
 	# income, as it would if you were pressing, instead of the whole stretch paying at the rate you left with.
 	var slices: int = maxi(1, config.offline_slices)
 	var slice_secs: float = secs / float(slices)
-	# Night Lantern and other OFFLINE_RATE relics add to the share of income that time away pays.
-	var sb: BigNum = BigNum.from_float(slice_secs * (config.offline_income_fraction + _relic_total(RelicDef.Effect.OFFLINE_RATE)))
+	var sb: BigNum = BigNum.from_float(slice_secs * offline_fraction())
 	for i in slices:
 		for s: StatDef in stat_defs.values():
 			if s.passive:

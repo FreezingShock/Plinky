@@ -72,4 +72,5 @@ Thirty-three relics now: the six originals plus 27 with their own mechanics. Eac
 - Counts: Common 6, Uncommon 6, Rare 6, Epic 5, Legendary 5, Mythic 5 (Divine and Special not counted).
 - Icons: `tools/art/gen_relic_icons.py` draws every relic at 8, 12, 16, 24 and 32 px. Mock sheet: `/mnt/project-files/plinky-relics/relic_icons_sheet.png`.
 - Tooltips use `press_gain_preview`, which leaves out surges and repeats (they depend on the press itself). `press_gain_average` includes the average surge.
-- Balance is not yet tuned against `tools/sim.gd`. The offline caps add up: with Night Lantern, Tide Lantern and Eternal Lantern all at max, time away pays 1.12 of the rate. Check this against the idle to active target before the next balance pass.
+- Away income is capped at `GameConfig.offline_rate_cap` (0.75 of the awake rate, `content/config/game.tres`), so the three lanterns at max stop there. Idle stays well under active, per #221 and Nathan's idle-about-2x-as-long target. `Sim.offline_fraction()` applies the cap.
+- Balance is not yet run through `tools/sim.gd` (Godot cannot run in the cloud). That run is the PC QA step before this is final.
