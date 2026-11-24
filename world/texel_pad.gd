@@ -59,14 +59,14 @@ var tier_row: StringName = &""
 ## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
 var flower_row: StringName = &""
 var locked: bool = false
-## Cost sign on each row's first pad (the one that shows the price, open or locked): a wooden plank on a post, the cost (currency icon and amount)
+## Cost sign on every pad (from its first price, open or locked): a wooden plank on a post, the cost (currency icon and amount)
 ## over the reward (stat icon and gain). The plank is one child node, redrawn only when the cost is held or lost.
 const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
 const LOCK_CHIP_Z: int = 4        # the sign's z relative to its pad: above the plate (z 0), under the night shade (z 5), so it takes the day and night light like the props
-var _chip: Node2D = null          # the chip's own node, made for a row's first pad only
+var _chip: Node2D = null          # the sign's own node, made by build_sign on every pad with a cost
 ## Buy glow and rarity corner glints, on their own child node above the night shade (z 5), so the glow reads brighter as the ground darkens.
 const HALO_Z: int = 6
 ## Buy glow: an additive radial halo on the ground, larger than the plate. Plate units: 1.0 is the plate's edge.
@@ -98,10 +98,18 @@ const SIGN_W: float = 50.0        # fixed: the plank never resizes as the number
 const SIGN_TEXT_X: float = 14.0   # the cost and reward text start this far in from the plank's left edge
 const SIGN_TEXT_CAP: float = 32.0 # texels the text may use: the plank's width less the text inset and the right margin
 const SIGN_H: float = 25.0
-## Where a sign's box may sit, relative to its pad, tried in order: the right and left of the plate, lifted in steps so
-## the plank clears the bed beside it. The first spot clear of every bed and plate on the zone wins (see choose_sign_spot).
-const SIGN_SPOTS: Array[Vector2] = [Vector2(26.0, -27.0), Vector2(26.0, -2.0), Vector2(26.0, -14.0), Vector2(26.0, -20.0),
-		Vector2(-76.0, -27.0), Vector2(-76.0, -2.0), Vector2(-76.0, -14.0), Vector2(-76.0, -20.0)]
+## Where a sign's box may sit, relative to its pad, tried in order: the plate's right side, lifted in steps up the
+## column and then down a little, then the left side, then two spots nudged left for the quarry's stacked pads. The
+## first spot clear of every bed and plate on the zone wins (see choose_sign_spot). Dense rows need the lifted steps:
+## every Larkmoor and quarry pad has a clear spot in this list (tests/test_pad_signs.gd checks every pad).
+const SIGN_SPOTS: Array[Vector2] = [
+		Vector2(26.0, -27.0), Vector2(26.0, -2.0), Vector2(26.0, -14.0), Vector2(26.0, -20.0),
+		Vector2(26.0, -34.0), Vector2(26.0, -40.0), Vector2(26.0, -48.0), Vector2(26.0, -57.0), Vector2(26.0, -61.0),
+		Vector2(26.0, 4.0), Vector2(26.0, 8.0), Vector2(26.0, 10.0),
+		Vector2(24.0, -40.0), Vector2(24.0, -52.0), Vector2(22.0, -52.0),
+		Vector2(-76.0, -27.0), Vector2(-76.0, -2.0), Vector2(-76.0, -14.0), Vector2(-76.0, -20.0),
+		Vector2(-76.0, -34.0), Vector2(-76.0, -40.0), Vector2(-76.0, -48.0), Vector2(-76.0, -57.0), Vector2(-76.0, -61.0),
+		Vector2(-76.0, 4.0), Vector2(-76.0, 8.0)]
 const PRESS_RECT: Rect2 = Rect2(-10.0, -4.0, 20.0, 12.0)   # where the walker stands to press a pad, pad-local
 var _sign_rel: Vector2 = Vector2(SIGN_X, SIGN_Y)           # the sign's box origin, pad-local: set by set_sign_neighbours
 const CHIP_CREAM: Color = Color("f6efd9")
@@ -135,6 +143,8 @@ var _punch_extra: int = 0   # 0 or 1 extra texel of sink for crits and high stre
 var _shake_t: float = 0.0   # 1 -> 0: the pad itself shakes sideways one texel (instead of the camera)
 var _ring_tint: Color = Color(0.0, 0.0, 0.0, 0.0)   # streak tier colour for the ripple; alpha 0 = the plain palette ripple
 var _progress_t: float = 0.0
+var _sign_t: float = 0.0             # counts down to the next cost and reward text read (SIGN_REFRESH_S)
+const SIGN_REFRESH_S: float = 1.0    # the sign's text follows the live values once a second: a cost or gain change shows within that
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
@@ -169,16 +179,7 @@ func _ready() -> void:
 		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
 		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
-		if b.row_index == 0:
-			_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
-			_reward_icon = IconSet.get_icon(String(b.reward_stat), LOCK_ICON)
-			_chip = Node2D.new()
-			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the night shade is at z 5
-			_chip.visible = false
-			_chip.draw.connect(_draw_cost_sign)
-			_chip.position = _sign_rel - Vector2(SIGN_X, SIGN_Y)
-			add_child(_chip)
-			_refresh_sign(_sim(), b)
+		build_sign(_sim(), b)   # every pad carries its cost sign from its first price, open or locked
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
 			# The gold is only the rim, lit rim and rarity ring. Gems, pip and the flowers keep the Clover reward green.
@@ -209,6 +210,12 @@ func _physics_process(delta: float) -> void:
 	if _progress_t <= 0.0:
 		_progress_t = 0.2
 		_refresh_progress(sim)
+	_sign_t -= delta
+	if _sign_t <= 0.0:
+		_sign_t = SIGN_REFRESH_S
+		var sign_def: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
+		if sign_def != null:
+			_refresh_sign(sim, sign_def)
 	_punch_t = maxf(_punch_t - delta / PUNCH_TIME, 0.0)
 	_lvl_t = maxf(_lvl_t - delta / LEVEL_TIME, 0.0)
 	_bloom_t = maxf(_bloom_t - delta / BLOOM_TIME, 0.0)
@@ -297,7 +304,6 @@ func _refresh_progress(sim: Sim) -> void:
 	if b == null:
 		progress = 0.0
 		return
-	_refresh_sign(sim, b)
 	if affordable:
 		progress = 1.0
 		return
@@ -579,7 +585,7 @@ func _sync_lock_chip() -> void:
 		_chip.queue_redraw()
 
 
-## Whether a pad draws its cost sign: every row's first pad carries a cost, open or locked, and only when the font loaded.
+## Whether a pad draws its cost sign: every pad with a cost does, open or locked, and only when the font loaded.
 static func shows_cost_sign(cost: String) -> bool:
 	return cost != "" and LOCK_FONT != null
 
@@ -651,6 +657,20 @@ static func fit_sign_text(text: String) -> String:
 	while text.length() > 1 and LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x > SIGN_TEXT_CAP:
 		text = text.substr(0, text.length() - 1)
 	return text
+
+
+## Gives this pad its cost sign on a child node: the cost and reward icons, the node at the sign's spot, and the first
+## text. Every pad calls this, so a row's later pads show their price as well as its first (test_pad_signs.gd checks it).
+func build_sign(sim: Sim, b: ButtonDef) -> void:
+	_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
+	_reward_icon = IconSet.get_icon(String(b.reward_stat), LOCK_ICON)
+	_chip = Node2D.new()
+	_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the night shade is at z 5
+	_chip.visible = false
+	_chip.draw.connect(_draw_cost_sign)
+	_chip.position = _sign_rel - Vector2(SIGN_X, SIGN_Y)
+	add_child(_chip)
+	_refresh_sign(sim, b)
 
 
 ## Sets the sign's cost and reward to the live values the pad tooltip shows, and redraws only when one changes.

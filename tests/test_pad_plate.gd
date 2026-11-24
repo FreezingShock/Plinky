@@ -96,7 +96,7 @@ func run(t: Object) -> void:
 	t.ok(cost_def != null, "the Clover row's first pad exists")
 	var cost: String = Formulas.button_cost(cost_def).format()
 	var gain: String = "+" + NumberFormat.short(cost_def.reward)
-	t.ok(TexelPad.shows_cost_sign(cost), "a row's first pad draws its cost sign")
+	t.ok(TexelPad.shows_cost_sign(cost), "a pad with a cost draws its cost sign")
 	t.ok(not TexelPad.shows_cost_sign(""), "no cost, no sign")
 	t.eq(TexelPad.LOCK_SIZE, 8, "the sign text uses the font's native 8 px size")
 	t.ok(TexelPad.LOCK_CHIP_Z > 0 and TexelPad.LOCK_CHIP_Z < 5, "the sign draws above the plate and under the night shade at z 5, so it darkens with the night")
