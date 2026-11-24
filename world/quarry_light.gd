@@ -12,6 +12,10 @@ extends Node2D
 const GLOW_SHADER: Shader = preload("res://render/shaders/quarry_glow.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/quarry_haze.gdshader")
 const SHIMMER_SHADER: Shader = preload("res://render/shaders/heat_shimmer.gdshader")
+const PROP_SHADER: Shader = preload("res://render/shaders/quarry_prop.gdshader")
+const PROP_LIGHTS: int = 8              ## nearest sources that light one prop (quarry_prop.gdshader holds 8)
+const PROP_REACH: float = 1.5           ## a prop feels a source out to this many times its falloff radius
+const PROP_LIFT: float = 10.0           ## height of every source above a prop, in texels
 const MAX_EMIT: int = 64
 const KIND_LAVA: int = 0
 const KIND_VENT: int = 1
@@ -36,6 +40,8 @@ var _clock: float = 0.0
 var _packed_frame: int = -1
 var _packed_steady: bool = false
 var _has_heat: bool = false
+var _props: Array[Dictionary] = []     # {mat, origin, near}: a prop's material, its top-left texel, the sources that reach it
+var _sun_key: Array = []               # last sun rim pushed to the props, to skip unchanged frames
 
 
 ## Every light source in the quarry, read from placements3d.json: braziers and lamps (sprites), lava pools and vents
@@ -128,6 +134,39 @@ func setup(data: Dictionary, area: Rect2, sky: SkyCycle, cfg: SkyConfig, cols: P
 	_packed_frame = -1
 
 
+## Material for one prop sprite: its normal map, plus the nearest sources that reach it. `origin` is the sprite's
+## top-left texel in quarry coordinates, `size` its texture size. Call after setup.
+func prop_material(origin: Vector2, size: Vector2, nrm: Texture2D) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = PROP_SHADER
+	mat.set_shader_parameter("nrm_tex", nrm)
+	var p: Dictionary = {"mat": mat, "origin": origin, "near": nearest(_list, origin, size, PROP_LIGHTS)}
+	_props.append(p)
+	_sun_key = []   # the new prop takes the sun rim on the next frame
+	_fill_prop(p, _packed_steady)
+	return mat
+
+
+## Indices of the `max_n` sources nearest a prop, in order. A source counts when it is within its reach of the prop.
+static func nearest(list: Array[Dictionary], origin: Vector2, size: Vector2, max_n: int) -> Array[int]:
+	var centre: Vector2 = origin + size * 0.5
+	var cand: Array = []
+	for i in range(list.size()):
+		var d: Dictionary = list[i]
+		var p: Vector2 = d.pos
+		var reach: float = float(d.radius) * PROP_REACH
+		var dist: float = p.distance_to(centre)
+		if dist < reach + maxf(size.x, size.y) * 0.5:
+			cand.append([dist, i])
+	cand.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	var out: Array[int] = []
+	for c: Array in cand:
+		if out.size() >= max_n:
+			break
+		out.append(int(c[1]))
+	return out
+
+
 func _process(delta: float) -> void:
 	if _glow_mat == null:
 		return
@@ -148,6 +187,26 @@ func _process(delta: float) -> void:
 	_shimmer_mat.set_shader_parameter("clock", moving)
 	_haze.visible = not FxConfig.reduce_screen_fx
 	_shimmer.visible = _has_heat and not (calm or FxConfig.reduce_screen_fx)
+	_push_sun()
+
+
+## The sun's rim, from the SkyCycle rim material, so props catch the day's light as the other sprites do.
+func _push_sun() -> void:
+	if _sky == null or _sky.rim_material == null:
+		return
+	var rd: Variant = _sky.rim_material.get_shader_parameter("rim_dir")
+	var ra: Variant = _sky.rim_material.get_shader_parameter("rim_amount")
+	if not (rd is Vector2) or not (ra is float):
+		return
+	var key: Array = [rd, ra]
+	if key == _sun_key:
+		return
+	_sun_key = key
+	var dir: Vector2 = rd
+	for p: Dictionary in _props:
+		var mat: ShaderMaterial = p.mat
+		mat.set_shader_parameter("sun_dir", Vector3(dir.x, dir.y, 1.0))
+		mat.set_shader_parameter("sun_amount", float(ra))
 
 
 ## Packs every emitter into the three materials. Each strength has its flicker folded in (core/lava_flicker.gd).
@@ -170,6 +229,32 @@ func _pack(steady: bool) -> void:
 		m.set_shader_parameter("emit", pos_str)
 		m.set_shader_parameter("emit_col", col_kind)
 		m.set_shader_parameter("emit_count", n)
+	for p: Dictionary in _props:
+		_fill_prop(p, steady)
+
+
+## Packs one prop's nearest sources: position relative to its top-left texel, and the strength after flicker.
+func _fill_prop(p: Dictionary, steady: bool) -> void:
+	var near: Array[int] = p.near
+	if near.is_empty():
+		return
+	var origin: Vector2 = p.origin
+	var lp := PackedVector4Array()
+	var lc := PackedVector4Array()
+	for i: int in near:
+		var d: Dictionary = _list[i]
+		var q: Vector2 = d.pos
+		var c: Color = d.col
+		var lvl: float = LavaFlicker.level(_clock, i, _depth(int(d.kind)), steady)
+		lp.append(Vector4(q.x - origin.x, q.y - origin.y, PROP_LIFT, float(d.radius) * PROP_REACH))
+		lc.append(Vector4(c.r, c.g, c.b, float(d.strength) * lvl))
+	while lp.size() < PROP_LIGHTS:
+		lp.append(Vector4.ZERO)
+		lc.append(Vector4.ZERO)
+	var mat: ShaderMaterial = p.mat
+	mat.set_shader_parameter("lp", lp)
+	mat.set_shader_parameter("lc", lc)
+	mat.set_shader_parameter("lcount", near.size())
 
 
 func _depth(kind: int) -> float:

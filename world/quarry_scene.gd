@@ -124,7 +124,7 @@ func _add_lights() -> void:
 
 
 ## Spawns each tall prop as its own sprite under `parent`, which must be y-sorted, so the walker sorts behind or in
-## front of it. Props have no normal map yet, so they take the rim material (sun rim only) and cast shadows.
+## front of it. Each prop takes its normal map (gen_quarry_normals.py) and the light of the sources near it, and casts a shadow.
 func spawn_occluders(parent: Node2D) -> void:
 	for s: Dictionary in _data.sprites:
 		var sp := Sprite2D.new()
@@ -135,6 +135,10 @@ func spawn_occluders(parent: Node2D) -> void:
 		sp.position = Vector2(s.foot[0], s.foot[1])
 		sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
 		parent.add_child(sp)
-		if _sky != null:
+		var nrm: Texture2D = load(DIR + String(s.file).get_basename() + "_n.png") as Texture2D
+		if _light != null and nrm != null:
+			sp.material = _light.prop_material(Vector2(float(s.x), float(s.y)), Vector2(float(s.w), float(s.h)), nrm)
+		elif _sky != null:
 			sp.material = _sky.rim_material
+		if _shadows != null:
 			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
