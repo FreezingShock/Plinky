@@ -87,6 +87,25 @@ func run(t: Object) -> void:
 	t.ok(float(s3.press_count) > before, "the Wildflower blooms a pad with nothing in stock")
 	t.ok(s3.get_stat(&"dewdrop").to_float() > 0.0, "and it pays out")
 
+	# Wide Bloom's second effect adds to every Bloom's bonus, on top of its pad reward.
+	var wide: AttributeDef = sim.attribute_defs[&"bloom_wide"]
+	sim.reset_counts[&"bloom"] = 3
+	sim.attr_levels[&"bloom_wide"] = 4
+	t.near(sim.effect_total(&"bloom_bonus"), 4.0 * wide.per_level2, 1e-9, "Wide Bloom's second effect reaches the Bloom bonus")
+	t.near(sim.reset_bonus(), 3.0 * ((sim.reset_defs[&"bloom"] as ZoneResetDef).bonus_per_use + 4.0 * wide.per_level2), 1e-9, "each Bloom carries it")
+	t.near(sim.effect_total(&"pad_yield"), 4.0 * wide.per_level, 1e-9, "and the first effect still pays on presses")
+	sim.attr_levels.clear()
+	sim.reset_counts[&"bloom"] = 0
+
+	# Twin Petals can proc: a press pays out several times over, and the chance grows with each level.
+	var twin: AttributeDef = sim.attribute_defs[&"bloom_twin_petals"]
+	sim.attr_levels[&"bloom_twin_petals"] = 10
+	t.near(sim.effect_total(&"press_proc"), 10.0 * twin.per_level2, 1e-9, "Twin Petals' proc chance")
+	sim.attr_levels.clear()
+	t.near(Formulas.proc_mult(0.0, 0.5, 5.0), 5.0, 1e-9, "a roll under the chance pays the proc multiple")
+	t.near(Formulas.proc_mult(0.9, 0.5, 5.0), 1.0, 1e-9, "a roll over the chance pays the press as normal")
+	t.near(Formulas.proc_mult(0.0, 0.0, 5.0), 1.0, 1e-9, "no chance, no proc")
+
 	# The pure pieces: the HUD countdown clock and the animation timeline.
 	t.near(RollValue.timed_progress(0.0, 1.4), 0.0, 1e-9, "a countdown starts at the old value")
 	t.near(RollValue.timed_progress(1.4, 1.4), 1.0, 1e-9, "and lands exactly at its span")

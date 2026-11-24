@@ -15,6 +15,7 @@ offline_relic_roll_fraction = 0.25
 offline_relic_max_drops = 3
 prestige_exponent = 0.8
 crit_multiplier = 5.0
+press_proc_mult = 5.0
 prestige_source_stat = &"clover"
 income_stat = &"sunlight"
 prestige_stat = &"prestige"
