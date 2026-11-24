@@ -737,6 +737,8 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 	var typing: Control = get_viewport().gui_get_focus_owner()
 	if typing is LineEdit or typing is TextEdit:
 		return   # letters like R belong to the text box
+	if _upgrades_panel.visible and not _modal.visible and _step_gifts_tab(event):
+		return
 	if event.is_action_pressed(&"plinky_upgrades") or Keybinds.matches(&"upgrades", event):
 		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
 			toggle_upgrades()
@@ -764,6 +766,29 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 	elif event.is_action_pressed(&"plinky_settings") or Keybinds.matches(&"settings", event):
 		settings_toggled.emit(true)
 		get_viewport().set_input_as_handled()
+
+
+## While Upgrades is open, Left and Right and the pad shoulders step through the gifts tabs, whichever card or tab has
+## focus. Read in _input so a card's own arrow handling cannot take the key first. Wraps round, like the Settings tabs.
+func _step_gifts_tab(event: InputEvent) -> bool:
+	var dir: int = 0
+	if event.is_action_pressed(&"plinky_tab_next") or event.is_action_pressed(&"ui_right"):
+		dir = 1
+	elif event.is_action_pressed(&"plinky_tab_prev") or event.is_action_pressed(&"ui_left"):
+		dir = -1
+	if dir == 0:
+		return false
+	var shown: Array[StringName] = []
+	for cur: StringName in _upg_order:
+		if UpgradeText.tab_shown(sim, cur):
+			shown.append(cur)
+	if shown.size() < 2:
+		return false
+	var nxt: StringName = shown[posmod(shown.find(_upg_tab) + dir, shown.size())]
+	_select_upgrade_tab(nxt)
+	(_upg_tab_btns[nxt] as Control).grab_focus()   # the card under focus may hide with its tab, so focus moves to the new tab
+	get_viewport().set_input_as_handled()
+	return true
 
 
 ## The chip a plain 1 to 5 key press maps to (no modifiers), or null: 1 Upgrades, 2 Relics, 3 Stats, 4 Attributes, 5 Menu.

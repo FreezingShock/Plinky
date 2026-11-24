@@ -26,6 +26,49 @@ func _run(zone: StringName, tag: String) -> void:
 	main.menus.open(&"upgrades")
 	await _wait(12)
 	await _shot("%s_upgrades_%s" % [tag, String(zone)])
+	# Keyboard and pad: with a card focused, Right and the shoulder button step the tabs.
+	var card: Control = null
+	for c: Variant in main.hud._attr_rows.values():
+		if (c as Control).is_visible_in_tree():
+			card = c as Control
+			break
+	var tab_before: StringName = main.hud._upg_tab
+	if card != null:
+		card.grab_focus()
+		await _wait(2)
+		var key := InputEventKey.new()
+		key.keycode = KEY_RIGHT
+		key.physical_keycode = KEY_RIGHT
+		key.pressed = true
+		main.hud._input(key)
+		await _wait(2)
+		print("keyboard right from a card ", String(tab_before), " -> ", String(main.hud._upg_tab))
+		var pad := InputEventJoypadButton.new()
+		pad.button_index = JOY_BUTTON_LEFT_SHOULDER
+		pad.pressed = true
+		main.hud._input(pad)
+		await _wait(2)
+		print("pad left shoulder ", String(main.hud._upg_tab))
+		main.hud._select_upgrade_tab(tab_before)
+	# Focus on the tab bar itself: Left steps back and wraps round, Right steps forward.
+	var first_tab: Control = main.hud._upg_tab_btns[main.hud._upg_order[0]] as Control
+	first_tab.grab_focus()
+	await _wait(2)
+	var left := InputEventKey.new()
+	left.keycode = KEY_LEFT
+	left.physical_keycode = KEY_LEFT
+	left.pressed = true
+	main.hud._input(left)
+	await _wait(2)
+	print("tab bar left from first tab -> ", String(main.hud._upg_tab), " focus ", main.get_viewport().gui_get_focus_owner())
+	var right := InputEventKey.new()
+	right.keycode = KEY_RIGHT
+	right.physical_keycode = KEY_RIGHT
+	right.pressed = true
+	main.hud._input(right)
+	await _wait(2)
+	print("tab bar right -> ", String(main.hud._upg_tab))
+	main.hud._select_upgrade_tab(tab_before)
 	# Layout check: the panel keeps one size across tabs, and a zone currency's row opens its own tab.
 	var panel: Control = main.hud._upgrades_panel
 	var before: Vector2 = panel.size

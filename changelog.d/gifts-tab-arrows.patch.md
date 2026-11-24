@@ -1,0 +1,1 @@
+- Left and Right, and the pad shoulder buttons, switch the Upgrades gifts tabs whichever card has focus.
