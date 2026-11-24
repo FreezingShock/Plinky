@@ -99,6 +99,7 @@ var _ci: CanvasItem                       # the node being drawn into this redra
 var _view: Rect2 = Rect2()
 var _t: float = 0.0
 var _fly: LifeButterflies = LifeButterflies.new()
+var _wild: LifeWild = LifeWild.new()        # dragonflies, fish, the forest-edge deer and the owls
 
 
 ## `life` is the parsed life data (MeadowLife.load_data); `sway` is its grass tip list, where the critters graze.
@@ -137,6 +138,7 @@ func setup(life: Dictionary) -> void:
 		_farm_items.append(Rect2(float(ia[0]), float(ia[1]), float(ia[2]), float(ia[3])))
 	_spawn_chickens()
 	_fly.setup(life)
+	_wild.setup(life, _water)
 
 
 func _spawn_rabbits() -> void:
@@ -310,6 +312,7 @@ static func frog_share() -> float:
 func update(delta: float, wp: Vector2) -> void:
 	_t += delta
 	_fly.update(delta, wp)
+	_wild.update(delta, wp)
 	var calm: bool = MeadowLife.reduce_motion
 	var budget: int = GraphicsQuality.life_scaled(_rabbits.size())
 	var rshare: float = rabbit_share()
@@ -533,6 +536,7 @@ func draw(ci: CanvasItem, tb: float) -> void:
 	_ci = ci
 	_view = GraphicsQuality.visible_local_rect(ci)
 	_fly.draw(ci, tb)
+	_wild.draw(ci, tb)
 	for r: Dictionary in _ripples:
 		_draw_ripple(r)
 	for c: Dictionary in _chickens:
@@ -609,20 +613,7 @@ func _draw_ripple(r: Dictionary) -> void:
 
 ## Draws a sprite from its runs of one palette index. `fade` below 1 draws only the texels the dither lets through.
 func _blit(spr: Dictionary, origin: Vector2i, flip: bool, fade: float) -> void:
-	var w: int = int(spr.w)
-	for run: Variant in spr.runs as Array:
-		var rr: PackedInt32Array = run as PackedInt32Array
-		var n: int = rr[2]
-		var x0: int = rr[0] if not flip else w - rr[0] - n
-		var y: int = rr[1]
-		var idx: int = rr[3]
-		if fade >= 1.0:
-			_ci.draw_rect(Rect2(origin.x + x0, origin.y + y, n, 1), palette[idx])
-			continue
-		for k: int in n:
-			var x: int = origin.x + x0 + k
-			if MeadowLife.dissolved(fade, x, origin.y + y):
-				_ci.draw_rect(Rect2(x, origin.y + y, 1, 1), palette[idx])
+	MeadowLife.blit(_ci, palette, spr, origin, flip, fade)
 
 
 func _build_sprites() -> void:

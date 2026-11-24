@@ -86,10 +86,10 @@ func run(t: Object) -> void:
 		for an: Dictionary in placements.anchors as Array:
 			if String(an.kind) == "pad":
 				shadow_pads += 1
-		# The farm (world/farm/) is always loaded and its non-field items cast shadows too.
+		# The farm (world/farm/) is always loaded; its buildings and props cast shadows, its fields and plots do not.
 		var farm_casters: int = 0
 		for fi: Variant in (FarmProps.load_manifest().get("items", []) as Array):
-			if not String((fi as Dictionary).kind).begins_with(FarmProps.FIELD_PREFIX):
+			if FarmProps.casts_shadow(String((fi as Dictionary).kind)):
 				farm_casters += 1
 		t.eq(shadows._items.size(), scene.call("loaded_prop_count") + shadow_pads + farm_casters, "Larkmoor registers a cast shadow for every loaded prop, landmark, pad and farm building")
 		t.eq(scene.call("prop_total"), sprites.size(), "every prop in the placements is indexed to a chunk")

@@ -75,6 +75,11 @@ const GLOW_SPREAD_NIGHT: float = 2.6  # and the extra reach at full night (reach
 const GLOW_PEAK: float = 1.0      # peak alpha at the plate's edge, before the strength scales it
 const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
 const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
+## Crowding: lit pads within CROWD_RANGE texels of each other share their light. Each one's halo and pool is scaled by
+## crowd_scale, so a row adds up to about two pads' worth of light at its busiest point instead of one per pad.
+const CROWD_RANGE: float = 48.0   # texels: a little over one row apart, so a row's neighbours count and a lone pad does not
+const CROWD_SHARE: float = 0.5    # each lit pad in the crowd (itself included) takes this share of the light
+var crowd: int = 1                # lit pads within CROWD_RANGE, self included; main.gd sets it each frame
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
 static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
 const HAZE_REACH: float = 1.4       # the volumetric bloom above the plate, in plate units
@@ -201,7 +206,7 @@ func _physics_process(delta: float) -> void:
 	if hsig != _halo_sig:
 		_halo_sig = hsig
 		_halo.queue_redraw()
-	_halo.modulate.a = glow_pulse_alpha()   # the breath is a modulate, not a redraw: it costs nothing per frame
+	_halo.modulate.a = glow_pulse_alpha() * crowd_scale(crowd)   # the breath and the crowd share are modulates, not redraws
 
 
 func _press() -> void:
@@ -667,6 +672,17 @@ func _draw_emblem(top: int, ink: Color) -> void:
 ## Night level 0..1 from the zone's sky (PadGlow.night01, set by main.gd). 0 with no glow node, as in the tests.
 func _night() -> float:
 	return glow.night01 if glow != null else 0.0
+
+
+## How much of its own light a pad keeps in a crowd of `n` lit pads (itself included): 1 for a lone pad or a pair, then
+## 1 / (n * CROWD_SHARE), so n pads together add up to at most about two pads' worth.
+static func crowd_scale(n: int) -> float:
+	return 1.0 / maxf(1.0, float(maxi(n, 1)) * CROWD_SHARE)
+
+
+## The share of light this pad keeps in the lighting shader's pool and on its halo. A locked pad keeps its full warm pool.
+func light_strength() -> float:
+	return 1.0 if locked else crowd_scale(crowd)
 
 
 ## Density of the buy glow at full strength, 0..1: green when buyable, red (a little softer) when not, magnified at night.
