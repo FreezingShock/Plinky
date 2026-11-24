@@ -1,1 +1,1 @@
-Larkmoor farm fences now leave gaps where the sand paths cross them, so the paths stay open.
+Larkmoor farm fences now leave gaps where the sand paths cross them, so the paths stay open. Wheat and props keep clear of the drawn sand path, and the farm barn, shed, hay bales and wheat no longer have their roofs or edges cut off.

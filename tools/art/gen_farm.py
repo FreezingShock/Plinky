@@ -35,15 +35,18 @@ PROPS = [
 ]
 
 
+FENCE_PAD = 1   # texels of transparent margin around each piece, so the outline sits on rail and post ends too
+
+
 def fence_piece(w: int, h: int, chord) -> Canvas:
     """One straight piece of a rustic fence, w x h. `chord` is the piece's line from (x0, y0) to (x1, y1) in this box
     (see place_farm.py). Two rails run along the chord, with a shaded underside on the lower one, and a post every
     eight texels with a lit cap. Posts stand on the chord; the rails sit above it."""
-    c = Canvas(w, h)
-    px, py, qx, qy = chord
-    length = math.hypot(qx - px, qy - py)
     # Seeded from the chord, so the same piece breaks the same way on every regeneration.
-    rng = random.Random('%.1f,%.1f,%.1f,%.1f' % (px, py, qx, qy))
+    rng = random.Random('%.1f,%.1f,%.1f,%.1f' % tuple(chord))
+    c = Canvas(w + 2 * FENCE_PAD, h + 2 * FENCE_PAD)
+    px, py, qx, qy = (chord[0] + FENCE_PAD, chord[1] + FENCE_PAD, chord[2] + FENCE_PAD, chord[3] + FENCE_PAD)
+    length = math.hypot(qx - px, qy - py)
     steps = max(2, int(length * 2))
 
     def at(t: float, off: float = 0.0):
@@ -97,7 +100,7 @@ def fences_from_manifest() -> None:
     out = Image.new('RGBA', (int(it['w']), int(it['h'])), (0, 0, 0, 0))
     for p in it['pieces']:
         piece = fence_piece(int(p['w']), int(p['h']), p['chord']).image()
-        out.alpha_composite(piece, (int(p['x'] - it['x']), int(p['y'] - it['y'])))
+        out.alpha_composite(piece, (int(p['x'] - it['x']) - FENCE_PAD, int(p['y'] - it['y']) - FENCE_PAD))
     os.makedirs(os.path.join(OUT, 'fence'), exist_ok=True)
     out.save(os.path.join(OUT, it['file']))
 
