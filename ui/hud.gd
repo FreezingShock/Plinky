@@ -32,7 +32,7 @@ var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
 var _attr_rows: Dictionary = {}   # attribute id -> UpgradeCard
 const UPGRADE_LIST_WIDTH: float = 556.0   ## two cards across, plus the scrollbar, in the 640 px base
-const UPGRADE_LIST_HEIGHT: float = 196.0  ## about three and a half rows of cards so the panel fits above the bottom bar at 640x360; the rest scroll
+const UPGRADE_LIST_HEIGHT: float = 232.0  ## about four rows of cards so the panel fits above the bottom bar at 640x360; the rest scroll
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -572,6 +572,13 @@ func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
 		var row: UpgradeCard = _attr_rows[aid]
 		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
+		# The header balance of that currency pops too, so the spend reads at the counter.
+		var badge: Control = _cur_badges.get((sim.attribute_defs[aid] as AttributeDef).currency) as Control
+		if badge != null and not (MeadowLife.reduce_motion or FxConfig.reduce_flashing):
+			badge.pivot_offset = badge.size * 0.5
+			badge.scale = Vector2(1.18, 1.18)
+			var bt := create_tween()
+			bt.tween_property(badge, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		# A tooltip already showing (the pointer is on the button) must pick up the new level.
 		for c: Node in [row] + row.get_children():
 			if c is Control:

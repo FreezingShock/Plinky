@@ -798,3 +798,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Exit:** the coin, number, rays and ring stay centred. The coin steps down 4 to 3 to 2 to 1 pixels in place and is gone at the end of the exit, the number fades, the rays fold in and one pixel ring closes on the centre. Only a few motes (about ten a second, pixel-sized) drift from the centre into the HUD row, which still rolls up when they land. Calm (Reduce flashing, Still meadow, Calm camera) keeps the coin at full size and only fades it.
 - **Timeline:** `BloomTimeline.fly_progress` is replaced by `exit_progress` and `exit_alpha`. The plan keys (`fly_end` and so on) keep their names so the existing timing tests still apply.
 - Not run in-engine from the cloud: the tab and card layout at 640x360, the card text width at 150 px for the delta line, and the exit motion. `tools/bloom_shot.tscn` now samples the exit densely (`bloom_full_*` frames) for a PC capture.
+
+## Upgrades card feedback (2026-11-24)
+- **Base:** built on #230's gallery (tabs, tiers, two-across `UpgradeCard`, centred exit). The gallery layout was not redone.
+- **Whole card buys:** a click anywhere on the card buys (press starts the hold, release ends it). The Buy button still takes its own press and keyboard focus, so a click on it never buys twice. The card's press does not touch `_skip_pressed`.
+- **Feedback:** the card pops (1.04 to 1), seven pixel sparks leave its centre (drawn, so no nodes), and the currency's header badge pops (1.18 to 1). All of it is skipped under Reduce Motion or Reduce Flashing, and the sounds stay.
+- **Sizes:** the card is 56 px tall (was 50) and the list is 232 px (was 196), about four rows. Not checked in-engine: whether the taller panel clears the zone panel and the bottom bar at 640x360.
+- **Lock text:** "Unlocks after 1 Nucleus reset" (was "Nucleuss").
+- **Taste call for Nathan:** hover puts a faint wash on a card you can afford. Say if you want the hover left off.
+- Not verified in-engine: the sparks, the pop timing and the taller panel. PC QA should check both zones with motion on and off.
