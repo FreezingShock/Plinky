@@ -205,3 +205,10 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 ## 2026-11-24: Pad glow lights the plate and a bloom above it
 - Nathan's feedback: the plate stayed dark, so the halo now lights from the pad's centre out and reaches the plate itself, in 16 steps so the falloff has no visible rings. A smaller squared-falloff bloom hangs over the plate. Props, grass and the walker are under the halo's layer, so it reaches them too.
 - Not done: colouring the lighting shader's pad light pools by affordability. That shader is shared with the meadow rework thread, so it waits for coordination. Not verified in-engine.
+- Pad light pools are coloured by affordability in the next entry (2026-11-24: Pad pool colour). Not verified in-engine.
+
+## 2026-11-24: Pad pool colour (green or red light pools from pads)
+- Each pad's light pool in the shared shade shader (`day_night.gdshader`) takes the pad's buy colour: green when buyable, red when not. Locked pads keep the warm default. Other lights (lanterns, shrine, gate, walker) keep `pool_tint`.
+- How: `add_light` takes a `kind` (pads pass `&"pad"`), each light has a `tint` (alpha 0 = warm default), and `SkyCycle.set_pool_tint_at` sets it from main.gd each frame. The shader gets a `light_tint[48]` array beside `lights[48]`, and blends pool colours by falloff where they overlap.
+- Why: the glow on the plate says "buy" but the ground around it stayed warm, so the colour did not carry to the ground. The change is additive: one array uniform, and no change to lantern strength or radius, so the meadow lantern work in the same shader is untouched.
+- Not verified in-engine (cloud has no Godot): shader compile, and whether green and red pools read against the warm lanterns at night.

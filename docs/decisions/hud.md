@@ -436,6 +436,8 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Icons:** `bloom_crown` (a gold crown with a seed gem) and `nucleus_crown` (a teal crystal crown with an ember gem), at 8, 12, 16, 24 and 32 px. They were drawn by one generator from a single outline per size, not hand-placed per size, so they are a deviation from the staged-icon rule. Redraw at PC QA if they read poorly at 640x360.
 - Not run in the engine: check the banner width and the crown icons on the Bloom and Nucleus tabs with a screenshot.
 
+## 2026-11-24: Title peak has no whole-column lit switch
+- The far-mountain lit face and snow used `slope > 0.5` per column, so every column flipped at once and drew a straight vertical edge down the central peak (PC QA, v0.68.0, at 640x360 x 337 to 362). They now use `smoothstep(0.1, 0.9, slope)` as a dithered weight, so the boundary is a dithered gradient. Not confirmed in-engine yet: the numpy port changed only 144 texels and did not reproduce the edge, so PC QA should compare the same six keyframes after merge.
 ## 2026-11-24: One label per currency that accumulates
 - Nathan's v0.70.0 screenshot showed same-currency gains from neighbouring pads as a column of separate "+1.080Qd Thistle Down" labels. Now a same-stat gain within 200 px of a live label folds into that label. The label holds its spot with no motion, ticks its number up and pops on each gain. It rises and fades only after 0.5 s (`QUIET_AFTER`) with no new gain. Separate labels appear only for different currencies, or for pads more than 200 px apart. Reduce Motion still snaps the number. The 200 px radius and 0.5 s quiet time are my picks and are tunable constants.
 
