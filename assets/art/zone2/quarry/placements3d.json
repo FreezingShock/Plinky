@@ -82,7 +82,20 @@
    "sort_y": 137.9
   },
   {
-   "file": "sprites/lava_rock_004.png",
+   "file": "sprites/tier_ember_004.png",
+   "kind": "tier_ember",
+   "x": 910,
+   "y": 112,
+   "w": 44,
+   "h": 37,
+   "foot": [
+    931.6,
+    137.8
+   ],
+   "sort_y": 137.8
+  },
+  {
+   "file": "sprites/lava_rock_005.png",
    "kind": "lava_rock",
    "x": 466,
    "y": 122,
@@ -95,7 +108,7 @@
    "sort_y": 137.7
   },
   {
-   "file": "sprites/lava_rock_005.png",
+   "file": "sprites/lava_rock_006.png",
    "kind": "lava_rock",
    "x": 480,
    "y": 125,
@@ -108,7 +121,7 @@
    "sort_y": 147.5
   },
   {
-   "file": "sprites/iron_lamp_006.png",
+   "file": "sprites/iron_lamp_007.png",
    "kind": "iron_lamp",
    "x": 464,
    "y": 111,
@@ -121,7 +134,7 @@
    "sort_y": 149.6
   },
   {
-   "file": "sprites/dead_tree_007.png",
+   "file": "sprites/dead_tree_008.png",
    "kind": "dead_tree",
    "x": 429,
    "y": 95,
@@ -134,7 +147,7 @@
    "sort_y": 154.3
   },
   {
-   "file": "sprites/crystals_008.png",
+   "file": "sprites/crystals_009.png",
    "kind": "crystals",
    "x": 511,
    "y": 129,
@@ -147,7 +160,7 @@
    "sort_y": 161.2
   },
   {
-   "file": "sprites/boulder_009.png",
+   "file": "sprites/boulder_010.png",
    "kind": "boulder",
    "x": 481,
    "y": 168,
@@ -160,7 +173,7 @@
    "sort_y": 187.2
   },
   {
-   "file": "sprites/boulder_010.png",
+   "file": "sprites/boulder_011.png",
    "kind": "boulder",
    "x": 551,
    "y": 170,
@@ -173,7 +186,7 @@
    "sort_y": 187.9
   },
   {
-   "file": "sprites/brazier_011.png",
+   "file": "sprites/brazier_012.png",
    "kind": "brazier",
    "x": 825,
    "y": 141,
@@ -186,7 +199,7 @@
    "sort_y": 182.8
   },
   {
-   "file": "sprites/dead_tree_012.png",
+   "file": "sprites/dead_tree_013.png",
    "kind": "dead_tree",
    "x": 385,
    "y": 122,
@@ -199,7 +212,7 @@
    "sort_y": 180.5
   },
   {
-   "file": "sprites/boulder_013.png",
+   "file": "sprites/boulder_014.png",
    "kind": "boulder",
    "x": 453,
    "y": 179,
@@ -212,7 +225,7 @@
    "sort_y": 200.9
   },
   {
-   "file": "sprites/columns_014.png",
+   "file": "sprites/columns_015.png",
    "kind": "columns",
    "x": 380,
    "y": 94,
@@ -225,7 +238,20 @@
    "sort_y": 166.4
   },
   {
-   "file": "sprites/lava_rock_015.png",
+   "file": "sprites/tier_alloy_016.png",
+   "kind": "tier_alloy",
+   "x": 506,
+   "y": 174,
+   "w": 42,
+   "h": 36,
+   "foot": [
+    527.4,
+    199.0
+   ],
+   "sort_y": 199.0
+  },
+  {
+   "file": "sprites/lava_rock_017.png",
    "kind": "lava_rock",
    "x": 971,
    "y": 185,
@@ -238,7 +264,7 @@
    "sort_y": 206.0
   },
   {
-   "file": "sprites/crystals_016.png",
+   "file": "sprites/crystals_018.png",
    "kind": "crystals",
    "x": 368,
    "y": 141,
@@ -251,7 +277,7 @@
    "sort_y": 181.8
   },
   {
-   "file": "sprites/stalag_017.png",
+   "file": "sprites/stalag_019.png",
    "kind": "stalag",
    "x": 471,
    "y": 178,
@@ -264,7 +290,7 @@
    "sort_y": 212.4
   },
   {
-   "file": "sprites/crystals_018.png",
+   "file": "sprites/crystals_020.png",
    "kind": "crystals",
    "x": 924,
    "y": 185,
@@ -277,7 +303,7 @@
    "sort_y": 213.7
   },
   {
-   "file": "sprites/boulder_019.png",
+   "file": "sprites/boulder_021.png",
    "kind": "boulder",
    "x": 1059,
    "y": 175,
@@ -290,7 +316,7 @@
    "sort_y": 195.9
   },
   {
-   "file": "sprites/boulder_020.png",
+   "file": "sprites/boulder_022.png",
    "kind": "boulder",
    "x": 408,
    "y": 199,
@@ -303,7 +329,20 @@
    "sort_y": 220.7
   },
   {
-   "file": "sprites/boulder_021.png",
+   "file": "sprites/tier_alloy_023.png",
+   "kind": "tier_alloy",
+   "x": 844,
+   "y": 198,
+   "w": 42,
+   "h": 36,
+   "foot": [
+    864.7,
+    222.8
+   ],
+   "sort_y": 222.8
+  },
+  {
+   "file": "sprites/boulder_024.png",
    "kind": "boulder",
    "x": 393,
    "y": 208,
@@ -316,7 +355,7 @@
    "sort_y": 227.8
   },
   {
-   "file": "sprites/dead_tree_022.png",
+   "file": "sprites/dead_tree_025.png",
    "kind": "dead_tree",
    "x": 938,
    "y": 168,
@@ -329,7 +368,7 @@
    "sort_y": 228.4
   },
   {
-   "file": "sprites/lava_rock_023.png",
+   "file": "sprites/lava_rock_026.png",
    "kind": "lava_rock",
    "x": 325,
    "y": 211,
@@ -342,7 +381,7 @@
    "sort_y": 229.9
   },
   {
-   "file": "sprites/lava_rock_024.png",
+   "file": "sprites/lava_rock_027.png",
    "kind": "lava_rock",
    "x": 986,
    "y": 214,
@@ -355,7 +394,7 @@
    "sort_y": 237.3
   },
   {
-   "file": "sprites/brazier_025.png",
+   "file": "sprites/brazier_028.png",
    "kind": "brazier",
    "x": 559,
    "y": 196,
@@ -368,7 +407,7 @@
    "sort_y": 238.0
   },
   {
-   "file": "sprites/brazier_026.png",
+   "file": "sprites/brazier_029.png",
    "kind": "brazier",
    "x": 839,
    "y": 196,
@@ -381,7 +420,7 @@
    "sort_y": 238.3
   },
   {
-   "file": "sprites/boulder_027.png",
+   "file": "sprites/boulder_030.png",
    "kind": "boulder",
    "x": 864,
    "y": 215,
@@ -394,7 +433,7 @@
    "sort_y": 240.5
   },
   {
-   "file": "sprites/lava_rock_028.png",
+   "file": "sprites/lava_rock_031.png",
    "kind": "lava_rock",
    "x": 333,
    "y": 223,
@@ -407,7 +446,7 @@
    "sort_y": 242.0
   },
   {
-   "file": "sprites/dead_tree_029.png",
+   "file": "sprites/dead_tree_032.png",
    "kind": "dead_tree",
    "x": 393,
    "y": 175,
@@ -420,7 +459,7 @@
    "sort_y": 247.6
   },
   {
-   "file": "sprites/stele_030.png",
+   "file": "sprites/stele_033.png",
    "kind": "stele",
    "x": 1042,
    "y": 216,
@@ -433,7 +472,7 @@
    "sort_y": 269.2
   },
   {
-   "file": "sprites/ruin_031.png",
+   "file": "sprites/ruin_034.png",
    "kind": "ruin",
    "x": 905,
    "y": 226,
@@ -446,7 +485,7 @@
    "sort_y": 251.7
   },
   {
-   "file": "sprites/ruin_032.png",
+   "file": "sprites/ruin_035.png",
    "kind": "ruin",
    "x": 311,
    "y": 240,
@@ -459,7 +498,7 @@
    "sort_y": 275.3
   },
   {
-   "file": "sprites/crystals_033.png",
+   "file": "sprites/crystals_036.png",
    "kind": "crystals",
    "x": 965,
    "y": 240,
@@ -472,7 +511,7 @@
    "sort_y": 279.0
   },
   {
-   "file": "sprites/ruin_034.png",
+   "file": "sprites/ruin_037.png",
    "kind": "ruin",
    "x": 824,
    "y": 252,
@@ -485,7 +524,7 @@
    "sort_y": 278.8
   },
   {
-   "file": "sprites/boulder_035.png",
+   "file": "sprites/boulder_038.png",
    "kind": "boulder",
    "x": 430,
    "y": 246,
@@ -498,7 +537,7 @@
    "sort_y": 263.9
   },
   {
-   "file": "sprites/brazier_036.png",
+   "file": "sprites/brazier_039.png",
    "kind": "brazier",
    "x": 558,
    "y": 233,
@@ -511,7 +550,7 @@
    "sort_y": 274.7
   },
   {
-   "file": "sprites/boulder_037.png",
+   "file": "sprites/boulder_040.png",
    "kind": "boulder",
    "x": 930,
    "y": 258,
@@ -524,7 +563,7 @@
    "sort_y": 283.3
   },
   {
-   "file": "sprites/boulder_038.png",
+   "file": "sprites/boulder_041.png",
    "kind": "boulder",
    "x": 376,
    "y": 240,
@@ -537,7 +576,7 @@
    "sort_y": 258.3
   },
   {
-   "file": "sprites/ruin_039.png",
+   "file": "sprites/ruin_042.png",
    "kind": "ruin",
    "x": 1037,
    "y": 251,
@@ -550,7 +589,7 @@
    "sort_y": 285.5
   },
   {
-   "file": "sprites/stalag_040.png",
+   "file": "sprites/stalag_043.png",
    "kind": "stalag",
    "x": 895,
    "y": 255,
@@ -563,7 +602,7 @@
    "sort_y": 287.0
   },
   {
-   "file": "sprites/crystals_041.png",
+   "file": "sprites/crystals_044.png",
    "kind": "crystals",
    "x": 403,
    "y": 237,
@@ -576,7 +615,7 @@
    "sort_y": 260.3
   },
   {
-   "file": "sprites/crystals_042.png",
+   "file": "sprites/crystals_045.png",
    "kind": "crystals",
    "x": 854,
    "y": 257,
@@ -589,7 +628,7 @@
    "sort_y": 294.0
   },
   {
-   "file": "sprites/lava_rock_043.png",
+   "file": "sprites/lava_rock_046.png",
    "kind": "lava_rock",
    "x": 325,
    "y": 280,
@@ -602,7 +641,7 @@
    "sort_y": 300.1
   },
   {
-   "file": "sprites/boulder_044.png",
+   "file": "sprites/boulder_047.png",
    "kind": "boulder",
    "x": 1083,
    "y": 289,
@@ -615,7 +654,7 @@
    "sort_y": 309.0
   },
   {
-   "file": "sprites/stele_045.png",
+   "file": "sprites/stele_048.png",
    "kind": "stele",
    "x": 869,
    "y": 257,
@@ -628,7 +667,7 @@
    "sort_y": 308.1
   },
   {
-   "file": "sprites/boulder_046.png",
+   "file": "sprites/boulder_049.png",
    "kind": "boulder",
    "x": 520,
    "y": 291,
@@ -641,7 +680,7 @@
    "sort_y": 309.7
   },
   {
-   "file": "sprites/crystals_047.png",
+   "file": "sprites/crystals_050.png",
    "kind": "crystals",
    "x": 442,
    "y": 263,
@@ -654,7 +693,7 @@
    "sort_y": 298.9
   },
   {
-   "file": "sprites/stalag_048.png",
+   "file": "sprites/stalag_051.png",
    "kind": "stalag",
    "x": 900,
    "y": 278,
@@ -667,7 +706,20 @@
    "sort_y": 311.8
   },
   {
-   "file": "sprites/columns_049.png",
+   "file": "sprites/tier_ingot_052.png",
+   "kind": "tier_ingot",
+   "x": 822,
+   "y": 289,
+   "w": 44,
+   "h": 35,
+   "foot": [
+    844.4,
+    312.6
+   ],
+   "sort_y": 312.6
+  },
+  {
+   "file": "sprites/columns_053.png",
    "kind": "columns",
    "x": 365,
    "y": 234,
@@ -680,7 +732,7 @@
    "sort_y": 293.0
   },
   {
-   "file": "sprites/boulder_050.png",
+   "file": "sprites/boulder_054.png",
    "kind": "boulder",
    "x": 296,
    "y": 301,
@@ -693,7 +745,7 @@
    "sort_y": 320.9
   },
   {
-   "file": "sprites/ruin_051.png",
+   "file": "sprites/ruin_055.png",
    "kind": "ruin",
    "x": 469,
    "y": 298,
@@ -706,7 +758,20 @@
    "sort_y": 323.9
   },
   {
-   "file": "sprites/stalag_052.png",
+   "file": "sprites/tier_ingot_056.png",
+   "kind": "tier_ingot",
+   "x": 1045,
+   "y": 300,
+   "w": 44,
+   "h": 35,
+   "foot": [
+    1067.5,
+    324.0
+   ],
+   "sort_y": 324.0
+  },
+  {
+   "file": "sprites/stalag_057.png",
    "kind": "stalag",
    "x": 540,
    "y": 300,
@@ -719,7 +784,7 @@
    "sort_y": 326.7
   },
   {
-   "file": "sprites/lava_rock_053.png",
+   "file": "sprites/lava_rock_058.png",
    "kind": "lava_rock",
    "x": 1007,
    "y": 307,
@@ -732,7 +797,7 @@
    "sort_y": 328.3
   },
   {
-   "file": "sprites/boulder_054.png",
+   "file": "sprites/boulder_059.png",
    "kind": "boulder",
    "x": 924,
    "y": 304,
@@ -745,7 +810,7 @@
    "sort_y": 329.5
   },
   {
-   "file": "sprites/brazier_055.png",
+   "file": "sprites/brazier_060.png",
    "kind": "brazier",
    "x": 839,
    "y": 289,
@@ -758,7 +823,7 @@
    "sort_y": 331.0
   },
   {
-   "file": "sprites/boulder_056.png",
+   "file": "sprites/boulder_061.png",
    "kind": "boulder",
    "x": 1083,
    "y": 310,
@@ -771,7 +836,7 @@
    "sort_y": 330.1
   },
   {
-   "file": "sprites/boulder_057.png",
+   "file": "sprites/boulder_062.png",
    "kind": "boulder",
    "x": 516,
    "y": 312,
@@ -784,7 +849,7 @@
    "sort_y": 333.0
   },
   {
-   "file": "sprites/lava_rock_058.png",
+   "file": "sprites/lava_rock_063.png",
    "kind": "lava_rock",
    "x": 898,
    "y": 312,
@@ -797,7 +862,7 @@
    "sort_y": 331.9
   },
   {
-   "file": "sprites/stalag_059.png",
+   "file": "sprites/stalag_064.png",
    "kind": "stalag",
    "x": 469,
    "y": 303,
@@ -810,7 +875,7 @@
    "sort_y": 335.2
   },
   {
-   "file": "sprites/dead_tree_060.png",
+   "file": "sprites/dead_tree_065.png",
    "kind": "dead_tree",
    "x": 441,
    "y": 286,
@@ -823,7 +888,7 @@
    "sort_y": 337.6
   },
   {
-   "file": "sprites/lava_rock_061.png",
+   "file": "sprites/lava_rock_066.png",
    "kind": "lava_rock",
    "x": 968,
    "y": 318,
@@ -836,7 +901,7 @@
    "sort_y": 338.7
   },
   {
-   "file": "sprites/ruin_062.png",
+   "file": "sprites/ruin_067.png",
    "kind": "ruin",
    "x": 1022,
    "y": 317,
@@ -849,7 +914,7 @@
    "sort_y": 360.4
   },
   {
-   "file": "sprites/crystals_063.png",
+   "file": "sprites/crystals_068.png",
    "kind": "crystals",
    "x": 868,
    "y": 306,
@@ -862,7 +927,7 @@
    "sort_y": 344.5
   },
   {
-   "file": "sprites/boulder_064.png",
+   "file": "sprites/boulder_069.png",
    "kind": "boulder",
    "x": 303,
    "y": 327,
@@ -875,7 +940,7 @@
    "sort_y": 345.1
   },
   {
-   "file": "sprites/stalag_065.png",
+   "file": "sprites/stalag_070.png",
    "kind": "stalag",
    "x": 465,
    "y": 313,
@@ -888,7 +953,7 @@
    "sort_y": 345.2
   },
   {
-   "file": "sprites/ruin_066.png",
+   "file": "sprites/ruin_071.png",
    "kind": "ruin",
    "x": 412,
    "y": 318,
@@ -901,7 +966,7 @@
    "sort_y": 361.4
   },
   {
-   "file": "sprites/brazier_067.png",
+   "file": "sprites/brazier_072.png",
    "kind": "brazier",
    "x": 830,
    "y": 323,
@@ -914,7 +979,7 @@
    "sort_y": 365.1
   },
   {
-   "file": "sprites/ruin_068.png",
+   "file": "sprites/ruin_073.png",
    "kind": "ruin",
    "x": 1061,
    "y": 330,
@@ -927,7 +992,7 @@
    "sort_y": 372.7
   },
   {
-   "file": "sprites/stele_069.png",
+   "file": "sprites/stele_074.png",
    "kind": "stele",
    "x": 458,
    "y": 318,
@@ -940,7 +1005,7 @@
    "sort_y": 373.9
   },
   {
-   "file": "sprites/columns_070.png",
+   "file": "sprites/columns_075.png",
    "kind": "columns",
    "x": 933,
    "y": 298,
@@ -953,7 +1018,7 @@
    "sort_y": 359.0
   },
   {
-   "file": "sprites/boulder_071.png",
+   "file": "sprites/boulder_076.png",
    "kind": "boulder",
    "x": 510,
    "y": 356,
@@ -966,7 +1031,7 @@
    "sort_y": 375.1
   },
   {
-   "file": "sprites/lava_rock_072.png",
+   "file": "sprites/lava_rock_077.png",
    "kind": "lava_rock",
    "x": 1017,
    "y": 361,
@@ -979,7 +1044,7 @@
    "sort_y": 379.0
   },
   {
-   "file": "sprites/boulder_073.png",
+   "file": "sprites/boulder_078.png",
    "kind": "boulder",
    "x": 324,
    "y": 327,
@@ -992,7 +1057,7 @@
    "sort_y": 347.4
   },
   {
-   "file": "sprites/stele_074.png",
+   "file": "sprites/stele_079.png",
    "kind": "stele",
    "x": 441,
    "y": 326,
@@ -1005,7 +1070,7 @@
    "sort_y": 379.6
   },
   {
-   "file": "sprites/columns_075.png",
+   "file": "sprites/columns_080.png",
    "kind": "columns",
    "x": 259,
    "y": 284,
@@ -1018,7 +1083,7 @@
    "sort_y": 354.8
   },
   {
-   "file": "sprites/lava_rock_076.png",
+   "file": "sprites/lava_rock_081.png",
    "kind": "lava_rock",
    "x": 1031,
    "y": 369,
@@ -1031,7 +1096,7 @@
    "sort_y": 389.6
   },
   {
-   "file": "sprites/crystals_077.png",
+   "file": "sprites/crystals_082.png",
    "kind": "crystals",
    "x": 566,
    "y": 361,
@@ -1044,7 +1109,7 @@
    "sort_y": 389.2
   },
   {
-   "file": "sprites/dead_tree_078.png",
+   "file": "sprites/dead_tree_083.png",
    "kind": "dead_tree",
    "x": 297,
    "y": 294,
@@ -1057,7 +1122,7 @@
    "sort_y": 357.5
   },
   {
-   "file": "sprites/crystals_079.png",
+   "file": "sprites/crystals_084.png",
    "kind": "crystals",
    "x": 463,
    "y": 356,
@@ -1070,7 +1135,7 @@
    "sort_y": 395.4
   },
   {
-   "file": "sprites/stalag_080.png",
+   "file": "sprites/stalag_085.png",
    "kind": "stalag",
    "x": 541,
    "y": 363,
@@ -1083,7 +1148,20 @@
    "sort_y": 397.3
   },
   {
-   "file": "sprites/crystals_081.png",
+   "file": "sprites/tier_slag_086.png",
+   "kind": "tier_slag",
+   "x": 1077,
+   "y": 375,
+   "w": 38,
+   "h": 34,
+   "foot": [
+    1096.1,
+    399.3
+   ],
+   "sort_y": 399.3
+  },
+  {
+   "file": "sprites/crystals_087.png",
    "kind": "crystals",
    "x": 929,
    "y": 343,
@@ -1096,7 +1174,7 @@
    "sort_y": 378.6
   },
   {
-   "file": "sprites/boulder_082.png",
+   "file": "sprites/boulder_088.png",
    "kind": "boulder",
    "x": 273,
    "y": 350,
@@ -1109,7 +1187,7 @@
    "sort_y": 370.6
   },
   {
-   "file": "sprites/columns_083.png",
+   "file": "sprites/columns_089.png",
    "kind": "columns",
    "x": 287,
    "y": 303,
@@ -1122,7 +1200,20 @@
    "sort_y": 367.7
   },
   {
-   "file": "sprites/boulder_big_084.png",
+   "file": "sprites/tier_slag_090.png",
+   "kind": "tier_slag",
+   "x": 502,
+   "y": 381,
+   "w": 38,
+   "h": 34,
+   "foot": [
+    521.4,
+    405.2
+   ],
+   "sort_y": 405.2
+  },
+  {
+   "file": "sprites/boulder_big_091.png",
    "kind": "boulder_big",
    "x": 962,
    "y": 380,
@@ -1135,7 +1226,7 @@
    "sort_y": 410.7
   },
   {
-   "file": "sprites/boulder_085.png",
+   "file": "sprites/boulder_092.png",
    "kind": "boulder",
    "x": 1052,
    "y": 392,
@@ -1148,7 +1239,7 @@
    "sort_y": 413.9
   },
   {
-   "file": "sprites/dead_tree_086.png",
+   "file": "sprites/dead_tree_093.png",
    "kind": "dead_tree",
    "x": 1077,
    "y": 360,
@@ -1161,7 +1252,7 @@
    "sort_y": 414.8
   },
   {
-   "file": "sprites/boulder_087.png",
+   "file": "sprites/boulder_094.png",
    "kind": "boulder",
    "x": 453,
    "y": 397,
@@ -1174,7 +1265,7 @@
    "sort_y": 415.0
   },
   {
-   "file": "sprites/boulder_088.png",
+   "file": "sprites/boulder_095.png",
    "kind": "boulder",
    "x": 271,
    "y": 401,
@@ -1187,7 +1278,7 @@
    "sort_y": 419.9
   },
   {
-   "file": "sprites/brazier_089.png",
+   "file": "sprites/brazier_096.png",
    "kind": "brazier",
    "x": 559,
    "y": 378,
@@ -1200,7 +1291,7 @@
    "sort_y": 420.0
   },
   {
-   "file": "sprites/brazier_090.png",
+   "file": "sprites/brazier_097.png",
    "kind": "brazier",
    "x": 839,
    "y": 378,
@@ -1213,7 +1304,7 @@
    "sort_y": 420.0
   },
   {
-   "file": "sprites/columns_091.png",
+   "file": "sprites/columns_098.png",
    "kind": "columns",
    "x": 305,
    "y": 348,
@@ -1226,7 +1317,7 @@
    "sort_y": 404.8
   },
   {
-   "file": "sprites/boulder_092.png",
+   "file": "sprites/boulder_099.png",
    "kind": "boulder",
    "x": 1058,
    "y": 400,
@@ -1239,7 +1330,7 @@
    "sort_y": 424.4
   },
   {
-   "file": "sprites/boulder_093.png",
+   "file": "sprites/boulder_100.png",
    "kind": "boulder",
    "x": 429,
    "y": 400,
@@ -1252,7 +1343,7 @@
    "sort_y": 424.3
   },
   {
-   "file": "sprites/lava_rock_094.png",
+   "file": "sprites/lava_rock_101.png",
    "kind": "lava_rock",
    "x": 399,
    "y": 404,
@@ -1265,7 +1356,7 @@
    "sort_y": 424.5
   },
   {
-   "file": "sprites/ore_vein_095.png",
+   "file": "sprites/ore_vein_102.png",
    "kind": "ore_vein",
    "x": 500,
    "y": 410,
@@ -1278,7 +1369,7 @@
    "sort_y": 429.2
   },
   {
-   "file": "sprites/boulder_096.png",
+   "file": "sprites/boulder_103.png",
    "kind": "boulder",
    "x": 1097,
    "y": 409,
@@ -1291,7 +1382,7 @@
    "sort_y": 430.4
   },
   {
-   "file": "sprites/crystals_097.png",
+   "file": "sprites/crystals_104.png",
    "kind": "crystals",
    "x": 274,
    "y": 405,
@@ -1304,7 +1395,7 @@
    "sort_y": 431.9
   },
   {
-   "file": "sprites/boulder_098.png",
+   "file": "sprites/boulder_105.png",
    "kind": "boulder",
    "x": 359,
    "y": 435,
@@ -1317,7 +1408,7 @@
    "sort_y": 452.7
   },
   {
-   "file": "sprites/cart_099.png",
+   "file": "sprites/cart_106.png",
    "kind": "cart",
    "x": 483,
    "y": 437,
@@ -1330,7 +1421,7 @@
    "sort_y": 460.5
   },
   {
-   "file": "sprites/boulder_big_100.png",
+   "file": "sprites/boulder_big_107.png",
    "kind": "boulder_big",
    "x": 527,
    "y": 436,
@@ -1343,7 +1434,7 @@
    "sort_y": 463.3
   },
   {
-   "file": "sprites/dead_tree_101.png",
+   "file": "sprites/dead_tree_108.png",
    "kind": "dead_tree",
    "x": 444,
    "y": 408,
@@ -1356,7 +1447,7 @@
    "sort_y": 464.0
   },
   {
-   "file": "sprites/boulder_big_102.png",
+   "file": "sprites/boulder_big_109.png",
    "kind": "boulder_big",
    "x": 935,
    "y": 432,
@@ -1369,7 +1460,7 @@
    "sort_y": 466.6
   },
   {
-   "file": "sprites/dead_tree_103.png",
+   "file": "sprites/dead_tree_110.png",
    "kind": "dead_tree",
    "x": 421,
    "y": 401,
@@ -1382,7 +1473,7 @@
    "sort_y": 467.7
   },
   {
-   "file": "sprites/boulder_104.png",
+   "file": "sprites/boulder_111.png",
    "kind": "boulder",
    "x": 303,
    "y": 448,
@@ -1395,7 +1486,7 @@
    "sort_y": 469.3
   },
   {
-   "file": "sprites/boulder_105.png",
+   "file": "sprites/boulder_112.png",
    "kind": "boulder",
    "x": 402,
    "y": 418,
@@ -1408,7 +1499,7 @@
    "sort_y": 441.7
   },
   {
-   "file": "sprites/boulder_106.png",
+   "file": "sprites/boulder_113.png",
    "kind": "boulder",
    "x": 911,
    "y": 455,
@@ -1421,7 +1512,7 @@
    "sort_y": 480.1
   },
   {
-   "file": "sprites/lava_rock_107.png",
+   "file": "sprites/lava_rock_114.png",
    "kind": "lava_rock",
    "x": 977,
    "y": 455,
@@ -1434,7 +1525,7 @@
    "sort_y": 476.7
   },
   {
-   "file": "sprites/boulder_108.png",
+   "file": "sprites/boulder_115.png",
    "kind": "boulder",
    "x": 1057,
    "y": 433,
@@ -1447,7 +1538,7 @@
    "sort_y": 451.3
   },
   {
-   "file": "sprites/ore_vein_109.png",
+   "file": "sprites/ore_vein_116.png",
    "kind": "ore_vein",
    "x": 838,
    "y": 462,
@@ -1460,7 +1551,7 @@
    "sort_y": 481.8
   },
   {
-   "file": "sprites/timber_110.png",
+   "file": "sprites/timber_117.png",
    "kind": "timber",
    "x": 272,
    "y": 438,
@@ -1473,7 +1564,7 @@
    "sort_y": 483.8
   },
   {
-   "file": "sprites/lava_rock_111.png",
+   "file": "sprites/lava_rock_118.png",
    "kind": "lava_rock",
    "x": 508,
    "y": 465,
@@ -1486,7 +1577,7 @@
    "sort_y": 485.7
   },
   {
-   "file": "sprites/crystals_112.png",
+   "file": "sprites/crystals_119.png",
    "kind": "crystals",
    "x": 943,
    "y": 452,
@@ -1499,7 +1590,7 @@
    "sort_y": 488.3
   },
   {
-   "file": "sprites/columns_113.png",
+   "file": "sprites/columns_120.png",
    "kind": "columns",
    "x": 347,
    "y": 401,
@@ -1512,7 +1603,20 @@
    "sort_y": 461.2
   },
   {
-   "file": "sprites/boulder_114.png",
+   "file": "sprites/tier_ore_121.png",
+   "kind": "tier_ore",
+   "x": 798,
+   "y": 467,
+   "w": 44,
+   "h": 35,
+   "foot": [
+    819.7,
+    491.5
+   ],
+   "sort_y": 491.5
+  },
+  {
+   "file": "sprites/boulder_122.png",
    "kind": "boulder",
    "x": 894,
    "y": 473,
@@ -1525,7 +1629,7 @@
    "sort_y": 495.4
   },
   {
-   "file": "sprites/columns_115.png",
+   "file": "sprites/columns_123.png",
    "kind": "columns",
    "x": 1034,
    "y": 410,
@@ -1538,7 +1642,7 @@
    "sort_y": 466.7
   },
   {
-   "file": "sprites/ore_vein_116.png",
+   "file": "sprites/ore_vein_124.png",
    "kind": "ore_vein",
    "x": 461,
    "y": 478,
@@ -1551,7 +1655,7 @@
    "sort_y": 497.2
   },
   {
-   "file": "sprites/boulder_117.png",
+   "file": "sprites/boulder_125.png",
    "kind": "boulder",
    "x": 304,
    "y": 474,
@@ -1564,7 +1668,7 @@
    "sort_y": 497.8
   },
   {
-   "file": "sprites/crystals_118.png",
+   "file": "sprites/crystals_126.png",
    "kind": "crystals",
    "x": 949,
    "y": 472,
@@ -1577,7 +1681,7 @@
    "sort_y": 502.7
   },
   {
-   "file": "sprites/crystals_119.png",
+   "file": "sprites/crystals_127.png",
    "kind": "crystals",
    "x": 849,
    "y": 469,
@@ -1590,7 +1694,7 @@
    "sort_y": 503.5
   },
   {
-   "file": "sprites/ore_vein_120.png",
+   "file": "sprites/ore_vein_128.png",
    "kind": "ore_vein",
    "x": 373,
    "y": 490,
@@ -1603,7 +1707,7 @@
    "sort_y": 508.5
   },
   {
-   "file": "sprites/ore_vein_121.png",
+   "file": "sprites/ore_vein_129.png",
    "kind": "ore_vein",
    "x": 422,
    "y": 490,
@@ -1616,7 +1720,20 @@
    "sort_y": 510.8
   },
   {
-   "file": "sprites/brazier_122.png",
+   "file": "sprites/tier_ore_130.png",
+   "kind": "tier_ore",
+   "x": 482,
+   "y": 486,
+   "w": 44,
+   "h": 35,
+   "foot": [
+    503.9,
+    510.4
+   ],
+   "sort_y": 510.4
+  },
+  {
+   "file": "sprites/brazier_131.png",
    "kind": "brazier",
    "x": 559,
    "y": 470,
@@ -1629,7 +1746,7 @@
    "sort_y": 512.0
   },
   {
-   "file": "sprites/brazier_123.png",
+   "file": "sprites/brazier_132.png",
    "kind": "brazier",
    "x": 839,
    "y": 470,
@@ -1642,7 +1759,7 @@
    "sort_y": 511.9
   },
   {
-   "file": "sprites/boulder_124.png",
+   "file": "sprites/boulder_133.png",
    "kind": "boulder",
    "x": 340,
    "y": 492,
@@ -1655,7 +1772,7 @@
    "sort_y": 512.3
   },
   {
-   "file": "sprites/cart_125.png",
+   "file": "sprites/cart_134.png",
    "kind": "cart",
    "x": 452,
    "y": 489,
@@ -1668,7 +1785,7 @@
    "sort_y": 514.4
   },
   {
-   "file": "sprites/ore_vein_126.png",
+   "file": "sprites/ore_vein_135.png",
    "kind": "ore_vein",
    "x": 532,
    "y": 495,
@@ -1681,7 +1798,7 @@
    "sort_y": 514.2
   },
   {
-   "file": "sprites/boulder_127.png",
+   "file": "sprites/boulder_136.png",
    "kind": "boulder",
    "x": 1047,
    "y": 500,
@@ -1694,7 +1811,7 @@
    "sort_y": 517.5
   },
   {
-   "file": "sprites/stalag_128.png",
+   "file": "sprites/stalag_137.png",
    "kind": "stalag",
    "x": 315,
    "y": 484,
@@ -1707,7 +1824,7 @@
    "sort_y": 517.7
   },
   {
-   "file": "sprites/ore_vein_129.png",
+   "file": "sprites/ore_vein_138.png",
    "kind": "ore_vein",
    "x": 381,
    "y": 521,
@@ -1720,7 +1837,7 @@
    "sort_y": 540.1
   },
   {
-   "file": "sprites/boulder_big_130.png",
+   "file": "sprites/boulder_big_139.png",
    "kind": "boulder_big",
    "x": 834,
    "y": 499,
@@ -1733,7 +1850,7 @@
    "sort_y": 525.4
   },
   {
-   "file": "sprites/ore_vein_131.png",
+   "file": "sprites/ore_vein_140.png",
    "kind": "ore_vein",
    "x": 877,
    "y": 523,
@@ -1746,7 +1863,7 @@
    "sort_y": 541.9
   },
   {
-   "file": "sprites/boulder_132.png",
+   "file": "sprites/boulder_141.png",
    "kind": "boulder",
    "x": 348,
    "y": 518,
@@ -1759,7 +1876,7 @@
    "sort_y": 542.8
   },
   {
-   "file": "sprites/cart_133.png",
+   "file": "sprites/cart_142.png",
    "kind": "cart",
    "x": 325,
    "y": 505,
@@ -1772,7 +1889,7 @@
    "sort_y": 530.0
   },
   {
-   "file": "sprites/columns_134.png",
+   "file": "sprites/columns_143.png",
    "kind": "columns",
    "x": 948,
    "y": 457,
@@ -1785,7 +1902,7 @@
    "sort_y": 525.9
   },
   {
-   "file": "sprites/brazier_135.png",
+   "file": "sprites/brazier_144.png",
    "kind": "brazier",
    "x": 815,
    "y": 504,
@@ -1798,7 +1915,7 @@
    "sort_y": 545.8
   },
   {
-   "file": "sprites/ore_vein_136.png",
+   "file": "sprites/ore_vein_145.png",
    "kind": "ore_vein",
    "x": 410,
    "y": 530,
@@ -1811,7 +1928,7 @@
    "sort_y": 548.8
   },
   {
-   "file": "sprites/timber_137.png",
+   "file": "sprites/timber_146.png",
    "kind": "timber",
    "x": 364,
    "y": 511,
@@ -1824,7 +1941,7 @@
    "sort_y": 557.3
   },
   {
-   "file": "sprites/boulder_138.png",
+   "file": "sprites/boulder_147.png",
    "kind": "boulder",
    "x": 875,
    "y": 542,
@@ -1837,7 +1954,7 @@
    "sort_y": 559.9
   },
   {
-   "file": "sprites/stalag_139.png",
+   "file": "sprites/stalag_148.png",
    "kind": "stalag",
    "x": 547,
    "y": 530,
@@ -1850,7 +1967,7 @@
    "sort_y": 561.8
   },
   {
-   "file": "sprites/boulder_140.png",
+   "file": "sprites/boulder_149.png",
    "kind": "boulder",
    "x": 441,
    "y": 554,
@@ -1863,7 +1980,7 @@
    "sort_y": 575.1
   },
   {
-   "file": "sprites/timber_141.png",
+   "file": "sprites/timber_150.png",
    "kind": "timber",
    "x": 406,
    "y": 519,
@@ -1876,7 +1993,7 @@
    "sort_y": 564.7
   },
   {
-   "file": "sprites/crystals_142.png",
+   "file": "sprites/crystals_151.png",
    "kind": "crystals",
    "x": 963,
    "y": 504,
@@ -1889,7 +2006,7 @@
    "sort_y": 548.0
   },
   {
-   "file": "sprites/stalag_143.png",
+   "file": "sprites/stalag_152.png",
    "kind": "stalag",
    "x": 901,
    "y": 542,
@@ -1902,7 +2019,7 @@
    "sort_y": 572.6
   },
   {
-   "file": "sprites/stalag_144.png",
+   "file": "sprites/stalag_153.png",
    "kind": "stalag",
    "x": 851,
    "y": 542,
@@ -1915,7 +2032,7 @@
    "sort_y": 574.6
   },
   {
-   "file": "sprites/stele_145.png",
+   "file": "sprites/stele_154.png",
    "kind": "stele",
    "x": 1048,
    "y": 518,
@@ -1928,7 +2045,7 @@
    "sort_y": 574.9
   },
   {
-   "file": "sprites/crystals_146.png",
+   "file": "sprites/crystals_155.png",
    "kind": "crystals",
    "x": 986,
    "y": 546,
@@ -1941,7 +2058,7 @@
    "sort_y": 578.2
   },
   {
-   "file": "sprites/boulder_147.png",
+   "file": "sprites/boulder_156.png",
    "kind": "boulder",
    "x": 958,
    "y": 558,
@@ -1954,7 +2071,7 @@
    "sort_y": 579.5
   },
   {
-   "file": "sprites/stalag_148.png",
+   "file": "sprites/stalag_157.png",
    "kind": "stalag",
    "x": 570,
    "y": 549,
@@ -1967,7 +2084,7 @@
    "sort_y": 581.7
   },
   {
-   "file": "sprites/lava_rock_149.png",
+   "file": "sprites/lava_rock_158.png",
    "kind": "lava_rock",
    "x": 880,
    "y": 565,
@@ -1980,7 +2097,7 @@
    "sort_y": 581.8
   },
   {
-   "file": "sprites/dead_tree_150.png",
+   "file": "sprites/dead_tree_159.png",
    "kind": "dead_tree",
    "x": 374,
    "y": 491,
@@ -1993,7 +2110,7 @@
    "sort_y": 565.0
   },
   {
-   "file": "sprites/boulder_151.png",
+   "file": "sprites/boulder_160.png",
    "kind": "boulder",
    "x": 310,
    "y": 550,
@@ -2006,7 +2123,7 @@
    "sort_y": 568.0
   },
   {
-   "file": "sprites/lava_rock_152.png",
+   "file": "sprites/lava_rock_161.png",
    "kind": "lava_rock",
    "x": 977,
    "y": 576,
@@ -2019,7 +2136,7 @@
    "sort_y": 599.5
   },
   {
-   "file": "sprites/columns_153.png",
+   "file": "sprites/columns_162.png",
    "kind": "columns",
    "x": 386,
    "y": 507,
@@ -2032,7 +2149,7 @@
    "sort_y": 572.4
   },
   {
-   "file": "sprites/brazier_154.png",
+   "file": "sprites/brazier_163.png",
    "kind": "brazier",
    "x": 559,
    "y": 558,
@@ -2045,7 +2162,7 @@
    "sort_y": 600.1
   },
   {
-   "file": "sprites/brazier_155.png",
+   "file": "sprites/brazier_164.png",
    "kind": "brazier",
    "x": 839,
    "y": 558,
@@ -2058,7 +2175,7 @@
    "sort_y": 599.9
   },
   {
-   "file": "sprites/lava_rock_156.png",
+   "file": "sprites/lava_rock_165.png",
    "kind": "lava_rock",
    "x": 910,
    "y": 585,
@@ -2071,7 +2188,7 @@
    "sort_y": 602.0
   },
   {
-   "file": "sprites/columns_157.png",
+   "file": "sprites/columns_166.png",
    "kind": "columns",
    "x": 327,
    "y": 507,
@@ -2084,7 +2201,7 @@
    "sort_y": 574.7
   },
   {
-   "file": "sprites/stalag_158.png",
+   "file": "sprites/stalag_167.png",
    "kind": "stalag",
    "x": 445,
    "y": 576,
@@ -2097,7 +2214,7 @@
    "sort_y": 609.7
   },
   {
-   "file": "sprites/dead_tree_159.png",
+   "file": "sprites/dead_tree_168.png",
    "kind": "dead_tree",
    "x": 892,
    "y": 544,
@@ -2110,7 +2227,7 @@
    "sort_y": 600.9
   },
   {
-   "file": "sprites/dead_tree_160.png",
+   "file": "sprites/dead_tree_169.png",
    "kind": "dead_tree",
    "x": 953,
    "y": 558,
@@ -2123,7 +2240,7 @@
    "sort_y": 617.3
   },
   {
-   "file": "sprites/boulder_161.png",
+   "file": "sprites/boulder_170.png",
    "kind": "boulder",
    "x": 472,
    "y": 599,
@@ -2136,7 +2253,7 @@
    "sort_y": 619.6
   },
   {
-   "file": "sprites/stalag_162.png",
+   "file": "sprites/stalag_171.png",
    "kind": "stalag",
    "x": 555,
    "y": 587,
@@ -2149,7 +2266,20 @@
    "sort_y": 619.4
   },
   {
-   "file": "sprites/stalag_163.png",
+   "file": "sprites/tier_cinder_172.png",
+   "kind": "tier_cinder",
+   "x": 724,
+   "y": 601,
+   "w": 44,
+   "h": 33,
+   "foot": [
+    746.5,
+    623.0
+   ],
+   "sort_y": 623.0
+  },
+  {
+   "file": "sprites/stalag_173.png",
    "kind": "stalag",
    "x": 492,
    "y": 591,
@@ -2162,7 +2292,7 @@
    "sort_y": 624.8
   },
   {
-   "file": "sprites/columns_164.png",
+   "file": "sprites/columns_174.png",
    "kind": "columns",
    "x": 342,
    "y": 534,
@@ -2175,7 +2305,7 @@
    "sort_y": 603.2
   },
   {
-   "file": "sprites/lava_rock_165.png",
+   "file": "sprites/lava_rock_175.png",
    "kind": "lava_rock",
    "x": 971,
    "y": 608,
@@ -2188,7 +2318,7 @@
    "sort_y": 628.8
   },
   {
-   "file": "sprites/columns_166.png",
+   "file": "sprites/columns_176.png",
    "kind": "columns",
    "x": 370,
    "y": 543,
@@ -2201,7 +2331,7 @@
    "sort_y": 611.0
   },
   {
-   "file": "sprites/dead_tree_167.png",
+   "file": "sprites/dead_tree_177.png",
    "kind": "dead_tree",
    "x": 483,
    "y": 572,
@@ -2214,7 +2344,20 @@
    "sort_y": 633.8
   },
   {
-   "file": "sprites/boulder_168.png",
+   "file": "sprites/tier_cinder_178.png",
+   "kind": "tier_cinder",
+   "x": 580,
+   "y": 612,
+   "w": 44,
+   "h": 33,
+   "foot": [
+    602.4,
+    633.8
+   ],
+   "sort_y": 633.8
+  },
+  {
+   "file": "sprites/boulder_179.png",
    "kind": "boulder",
    "x": 427,
    "y": 618,
@@ -2227,7 +2370,7 @@
    "sort_y": 635.7
   },
   {
-   "file": "sprites/columns_169.png",
+   "file": "sprites/columns_180.png",
    "kind": "columns",
    "x": 843,
    "y": 583,
@@ -2240,7 +2383,7 @@
    "sort_y": 637.1
   },
   {
-   "file": "sprites/boulder_170.png",
+   "file": "sprites/boulder_181.png",
    "kind": "boulder",
    "x": 451,
    "y": 618,
@@ -2253,7 +2396,7 @@
    "sort_y": 640.9
   },
   {
-   "file": "sprites/stalag_171.png",
+   "file": "sprites/stalag_182.png",
    "kind": "stalag",
    "x": 895,
    "y": 607,
@@ -2266,7 +2409,7 @@
    "sort_y": 641.1
   },
   {
-   "file": "sprites/iron_lamp_172.png",
+   "file": "sprites/iron_lamp_183.png",
    "kind": "iron_lamp",
    "x": 438,
    "y": 608,
@@ -2279,7 +2422,7 @@
    "sort_y": 647.2
   },
   {
-   "file": "sprites/boulder_big_173.png",
+   "file": "sprites/boulder_big_184.png",
    "kind": "boulder_big",
    "x": 525,
    "y": 621,
@@ -2292,7 +2435,7 @@
    "sort_y": 650.0
   },
   {
-   "file": "sprites/iron_lamp_174.png",
+   "file": "sprites/iron_lamp_185.png",
    "kind": "iron_lamp",
    "x": 476,
    "y": 613,
@@ -2305,7 +2448,7 @@
    "sort_y": 651.8
   },
   {
-   "file": "sprites/iron_lamp_175.png",
+   "file": "sprites/iron_lamp_186.png",
    "kind": "iron_lamp",
    "x": 597,
    "y": 613,
@@ -2318,7 +2461,7 @@
    "sort_y": 652.0
   },
   {
-   "file": "sprites/post_176.png",
+   "file": "sprites/post_187.png",
    "kind": "post",
    "x": 679,
    "y": 638,
@@ -2331,7 +2474,7 @@
    "sort_y": 658.0
   },
   {
-   "file": "sprites/post_177.png",
+   "file": "sprites/post_188.png",
    "kind": "post",
    "x": 715,
    "y": 638,
@@ -2344,7 +2487,7 @@
    "sort_y": 658.0
   },
   {
-   "file": "sprites/lava_rock_178.png",
+   "file": "sprites/lava_rock_189.png",
    "kind": "lava_rock",
    "x": 811,
    "y": 640,
@@ -2357,7 +2500,7 @@
    "sort_y": 657.2
   },
   {
-   "file": "sprites/lava_rock_179.png",
+   "file": "sprites/lava_rock_190.png",
    "kind": "lava_rock",
    "x": 455,
    "y": 642,
@@ -2370,7 +2513,7 @@
    "sort_y": 659.7
   },
   {
-   "file": "sprites/lava_rock_180.png",
+   "file": "sprites/lava_rock_191.png",
    "kind": "lava_rock",
    "x": 730,
    "y": 642,
@@ -2383,7 +2526,7 @@
    "sort_y": 664.4
   },
   {
-   "file": "sprites/post_181.png",
+   "file": "sprites/post_192.png",
    "kind": "post",
    "x": 679,
    "y": 660,
@@ -2396,7 +2539,7 @@
    "sort_y": 680.0
   },
   {
-   "file": "sprites/post_182.png",
+   "file": "sprites/post_193.png",
    "kind": "post",
    "x": 715,
    "y": 660,
