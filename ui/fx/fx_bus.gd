@@ -42,6 +42,7 @@ var _last_anchor: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	EventBus.game_loaded.connect(streak.reset)
 	EventBus.rebirth_done.connect(func(_p: BigNum) -> void: streak.reset())
+	EventBus.attribute_bought.connect(_on_attribute_bought)
 
 
 func _process(_delta: float) -> void:
@@ -189,6 +190,34 @@ func level_up(pad: TexelPad, pos: Vector2, level: int) -> void:
 func milestone() -> void:
 	if transitions: await transitions.invert_flash()
 	if shake: shake.add(0.8)
+
+
+## A capstone gift was bought (its one level): the biggest moment a gift gets. Only the crown a reset lists gets it.
+func _on_attribute_bought(attr_id: StringName, level: int) -> void:
+	var sim: Sim = GameState.sim as Sim
+	if sim == null or level != 1:
+		return
+	var a: AttributeDef = sim.attribute_defs.get(attr_id) as AttributeDef
+	if a == null or not _is_crown(sim, a):
+		return
+	capstone(a)
+
+
+static func _is_crown(sim: Sim, a: AttributeDef) -> bool:
+	for r: ZoneResetDef in sim.reset_defs.values():
+		if r.crown_effect == a.effect:
+			return true
+	return false
+
+
+## A banner names the crown in its zone's colour, the screen takes the milestone flash and shake, and the divine chime
+## plays. The flash and shake are calm under Reduce Flashing and Reduce Shake (the milestone and ScreenShake check them);
+## the banner is already gentle under Reduce Motion.
+func capstone(a: AttributeDef) -> void:
+	Banner.announce({"key": "crown_%s" % a.id, "title": a.display_name, "lines": [a.blurb],
+		"color": StatStyle.color(a.effect), "duration": 3.2})
+	Audio.relic(&"divine")
+	milestone()
 
 ## A momentum stage was crossed. Rising stages thump a little harder the higher they are; Surge also pings.
 func momentum_tier(tier: int, rising: bool) -> void:

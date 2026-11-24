@@ -426,3 +426,10 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Tagline (call made):** "+ Press. Walk. Bloom. +" from the README banner replaces "Press. Tally. Rebirth.", on both screens. Revert if the old line was intended.
 - **Icon:** the 1024 master is drawn by `tools/art/gen_app_icon.py` on a 64 texel grid from the golden keyframe, with the existing walker sprite pasted unchanged. Reason: it matches the title and reads at 16 px.
 - Not run in-engine from the cloud (no Godot here): the shader, the wipe and the chip need a PC look at each time of day and at Reduce Motion.
+
+## 2026-11-24: Capstone gifts get their own unlock moment and icons (minor)
+- **Why:** a capstone is the biggest purchase in a tree, and a plain card buy pop reads the same as a level-1 gift.
+- **Moment:** the first and only level of a crown emits `EventBus.attribute_bought`. `Juice` (`ui/fx/fx_bus.gd`) names it in a banner in its currency's colour, plays the divine relic chime and calls the existing milestone flash and shake. The flash checks Reduce Flashing and the shake checks Reduce Shake, as they already did. The banner is gentle under Reduce Motion.
+- **Gallery:** the card, its tier heading ("Unlocks After 5 Blooms") and its Tip are data-driven, so the crown gets them with no HUD change.
+- **Icons:** `bloom_crown` (a gold crown with a seed gem) and `nucleus_crown` (a teal crystal crown with an ember gem), at 8, 12, 16, 24 and 32 px. They were drawn by one generator from a single outline per size, not hand-placed per size, so they are a deviation from the staged-icon rule. Redraw at PC QA if they read poorly at 640x360.
+- Not run in the engine: check the banner width and the crown icons on the Bloom and Nucleus tabs with a screenshot.

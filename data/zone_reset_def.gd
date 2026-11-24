@@ -37,6 +37,9 @@ extends Resource
 @export var keep_effect: StringName = &""
 @export var pay_effect: StringName = &""
 @export var bonus_effect: StringName = &""
+## The capstone gift of this reset's tree (an AttributeDef effect id, "" for none). Its total is added to 1.0 to
+## multiply every press on the zones this reset lists, so one level doubles them. No other zone's pads pay more.
+@export var crown_effect: StringName = &""
 ## Menu skin: the heading of its section in Upgrades, and the words on its button, tooltip, confirm card and tutorial tip.
 ## Animation skin (ui/fx/bloom_ritual.gd): the stats whose colours the burst particles use (the zone's ladder), the characters
 ## of the closing ring of marks, and whether the particles rise like sparks (true) or fall like petals (false).

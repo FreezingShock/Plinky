@@ -75,7 +75,7 @@ func _init() -> void:
 					break
 		if sim.can_reset(&"bloom") and sim.reset_gain(&"bloom") >= want:
 			var paid: int = sim.reset_gain(&"bloom")
-			var mult: float = sim.pad_yield_mult()
+			var mult: float = sim.pad_yield_mult() * sim.zone_pad_mult(&"zone1")
 			sim.try_reset(&"bloom")
 			cycle_len.append(t - started)
 			done += 1

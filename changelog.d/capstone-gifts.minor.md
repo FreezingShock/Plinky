@@ -1,0 +1,1 @@
+Bloom and Nucleus each get a capstone gift. After five resets, the Bloom Crown (150 Seeds) doubles every pad in the meadow and Larkmoor, and the Nucleus Crown (150 Core Shards) doubles every pad in the quarry. Buying one shows a banner, plays a chime and flashes the screen.

@@ -2,7 +2,8 @@ extends RefCounted
 ## The Bloom gifts that change how the meadow plays, and the clock of the Bloom animation.
 
 const GIFTS: Array[StringName] = [&"bloom_head_start", &"bloom_soil", &"bloom_wide", &"bloom_dusk", &"bloom_seed_pods", &"bloom_twin_petals",
-	&"bloom_petal_burst", &"bloom_stride", &"bloom_sprites", &"bloom_bramble", &"bloom_roots", &"bloom_echo", &"bloom_study", &"bloom_wildflower"]
+	&"bloom_petal_burst", &"bloom_stride", &"bloom_sprites", &"bloom_bramble", &"bloom_roots", &"bloom_echo", &"bloom_study", &"bloom_wildflower",
+	&"bloom_crown"]
 
 
 func run(t: Object) -> void:
@@ -115,6 +116,27 @@ func run(t: Object) -> void:
 	t.eq(UpgradeText.second_short(wide, 10, 5.0), "+10%/Bloom", "the card's second line for Wide Bloom")
 	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, wide), &"pad_yield")["body"]).contains("Also now"), "the Upgrades tooltip names the second effect")
 
+
+	# The Bloom Crown: after five Blooms, one Seeds level doubles every pad in the meadow and Larkmoor, and no other zone's.
+	var crown: AttributeDef = sim.attribute_defs[&"bloom_crown"]
+	t.ok(crown.currency == &"seeds" and crown.cap == 1 and crown.unlock_resets == 5, "the Bloom Crown is a one-level Seeds gift after five Blooms")
+	t.eq(UpgradeText.tier_head(sim, crown), "Unlocks After 5 Blooms", "the crown heads its own tier")
+	sim.attr_levels.clear()
+	sim.reset_counts[&"bloom"] = 4
+	sim.stats[&"seeds"] = BigNum.from_float(1000.0)
+	t.ok(not sim.buy_attribute(crown.id), "the crown waits for five Blooms")
+	sim.reset_counts[&"bloom"] = 5
+	var meadow_before: float = sim.press_gain_preview(&"sprout_1").to_float()
+	var quarry_before: float = sim.press_gain_preview(&"cinder_1").to_float()
+	t.ok(sim.buy_attribute(crown.id), "the crown is bought with Seeds after five Blooms")
+	t.near(sim.press_gain_preview(&"sprout_1").to_float(), meadow_before * 2.0, 1e-6, "every meadow pad pays double")
+	t.near(sim.press_gain_preview(&"cinder_1").to_float(), quarry_before, 1e-6, "the quarry's pads do not")
+	t.near(sim.zone_pad_mult(&"larkmoor"), 2.0, 1e-9, "Larkmoor counts with the meadow")
+	t.near(sim.zone_pad_mult(&"zone2"), 1.0, 1e-9, "the quarry has no Bloom multiplier")
+	t.ok(not sim.buy_attribute(crown.id), "a crown is one level")
+	t.eq(UpgradeText.state(sim, crown)["now"], "+100%", "the card reads the crown's full effect")
+	sim.attr_levels.clear()
+	sim.reset_counts[&"bloom"] = 0
 
 	# The pure pieces: the HUD countdown clock and the animation timeline.
 	t.near(RollValue.timed_progress(0.0, 1.4), 0.0, 1e-9, "a countdown starts at the old value")
