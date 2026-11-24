@@ -20,11 +20,6 @@ const SHADERS: Array[String] = [
 	"res://render/shaders/quarry_glow.gdshader",   # draw in the zone swap compiled them mid-wipe
 	"res://render/shaders/quarry_haze.gdshader",
 	"res://render/shaders/heat_shimmer.gdshader",
-	"res://render/shaders/pad_shadow.gdshader",    # every pad plate: its first draw in a zone compiled mid-wipe
-	"res://render/shaders/water_night.gdshader",   # the night glow on the lake and pond
-	"res://render/shaders/toon.gdshader",
-	"res://world/grass_blades.gdshader",          # interactive grass blades (Low keeps the baked tips)
-	"res://ui/fx/bloom_veil.gdshader",            # gifts and ritual veil
 ]
 const FRAMES: int = 4
 
