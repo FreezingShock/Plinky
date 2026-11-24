@@ -190,3 +190,8 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - **Seasons and light:** dragonflies out by day in spring and summer (none in winter or rain); fish leap by day, fewer in winter; the deer comes out at golden hour (`low_sun`), fewer in winter; owls come out at night. Each creature is out when its hash is under the share, so the crowd thins smoothly.
 - **Behaviour:** a walker close by sends a dragonfly darting over the water, the deer into the trees along the edge, and an owl to another perch. Reduce Motion keeps the dragonflies hovering in place and the fish, deer and owls still.
 - **Not run in engine:** the look of the dragonflies at 1x (small sprite, hard to spot in a still); the fish leap; the deer and owl at the real scale on PC.
+## 2026-11-24: windmill sails as their own sprite
+- The mill is two sprites. `windmill` (id 14) is the tower only. `windmill_sails` (id 900001) is the four arms, sails and hub, rendered alone so the parts behind the tower are kept. Its foot is the hub, so the scene can turn it around that point. Sprite entries are in `placements3d.json`.
+- The sails get their own id, far above the instance counter, and are voxelized directly, not through `put()`, so the placement random stream and every later prop stay where they were.
+- Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
+- Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
