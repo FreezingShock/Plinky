@@ -30,6 +30,7 @@ uniform float fog_amt = 0.0;                    // 0..1 at the far edge
 // Rain (SkyCycle sets these; see wet_ground). wet darkens the soil and fills dips with water, splash is how much
 // rain is landing now (0 under Reduce motion, so the rings stop but the puddles stay), glint is the sun on the water.
 uniform float wet = 0.0;                        // 0..1, a lagged rain: a shower fills puddles and they drain after it
+uniform float wet_night = 0.0;                  // 0..1, night x wet: the wet soil and path go darker under the moon
 uniform float splash = 0.0;                     // 0..1 rain landing now: how many ground cells ring at once
 uniform vec3 puddle_col : source_color = vec3(0.2, 0.36, 0.36);
 uniform float glint = 0.0;                      // 0..1: sun on the water, sparkle and sky sheen
@@ -61,9 +62,14 @@ float texel_dip(vec2 uv, vec2 px, float h0) {
 vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
 	float dip = texel_dip(uv, px, h0);
 	float depth = smoothstep(0.15, 0.6, dip) * season_snow;
-	if (depth > thr * 0.5 + 0.12) {
+	float edge = thr * 0.5 + 0.12;
+	if (depth > edge) {
 		float l = dot(c, vec3(0.299, 0.587, 0.114));
 		c = clamp(vec3(0.86, 0.92, 1.0) * (0.8 + 0.25 * l), 0.0, 1.0);
+		// a cool shadow on the lip of each drift, where it steps down into the flat snow
+		if (depth < edge + 0.12) {
+			c *= vec3(0.8, 0.87, 0.97);
+		}
 	}
 	return c;
 }
@@ -72,7 +78,7 @@ vec3 wet_ground(vec3 c, vec2 wp, vec2 uv, vec2 px, float thr, float h0) {
 	float open_k = 1.0 - smoothstep(0.1, 0.5, season_snow);
 	float w = wet * open_k;
 	if (w > 0.001) {
-		c = mix(c, c * vec3(0.88, 0.92, 0.95), 0.6 * w);
+		c = mix(c, c * mix(vec3(0.88, 0.92, 0.95), vec3(0.66, 0.72, 0.8), wet_night), 0.6 * w);
 		vec2 iso = vec2(wp.x, wp.y * 2.0);
 		float n = season_vnoise(iso / 9.0 + 31.0) * 0.7 + season_vnoise(iso / 3.0 + 13.0) * 0.3;
 		// a dip holds water (texel_dip)
