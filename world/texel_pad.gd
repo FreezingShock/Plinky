@@ -143,6 +143,8 @@ var _punch_extra: int = 0   # 0 or 1 extra texel of sink for crits and high stre
 var _shake_t: float = 0.0   # 1 -> 0: the pad itself shakes sideways one texel (instead of the camera)
 var _ring_tint: Color = Color(0.0, 0.0, 0.0, 0.0)   # streak tier colour for the ripple; alpha 0 = the plain palette ripple
 var _progress_t: float = 0.0
+var _sign_t: float = 0.0             # counts down to the next cost and reward text read (SIGN_REFRESH_S)
+const SIGN_REFRESH_S: float = 1.0    # the sign's text follows the live values once a second: a cost or gain change shows within that
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
@@ -208,6 +210,12 @@ func _physics_process(delta: float) -> void:
 	if _progress_t <= 0.0:
 		_progress_t = 0.2
 		_refresh_progress(sim)
+	_sign_t -= delta
+	if _sign_t <= 0.0:
+		_sign_t = SIGN_REFRESH_S
+		var sign_def: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
+		if sign_def != null:
+			_refresh_sign(sim, sign_def)
 	_punch_t = maxf(_punch_t - delta / PUNCH_TIME, 0.0)
 	_lvl_t = maxf(_lvl_t - delta / LEVEL_TIME, 0.0)
 	_bloom_t = maxf(_bloom_t - delta / BLOOM_TIME, 0.0)
@@ -296,7 +304,6 @@ func _refresh_progress(sim: Sim) -> void:
 	if b == null:
 		progress = 0.0
 		return
-	_refresh_sign(sim, b)
 	if affordable:
 		progress = 1.0
 		return
