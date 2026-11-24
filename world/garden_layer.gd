@@ -80,6 +80,7 @@ static func lean(x: int, y: int, t: float, wind: float, pusher: Vector2) -> int:
 func _draw() -> void:
 	if _flowers.is_empty():
 		return
+	PerfStats.lap_begin()
 	var moving: bool = not MeadowLife.reduce_motion
 	var t: float = float(maxi(_step, 0)) * GraphicsQuality.sway_step()
 	var pusher: Vector2 = _push.position if (_push != null and moving) else Vector2.INF
@@ -87,14 +88,33 @@ func _draw() -> void:
 	_view = view
 	view = view.grow(20.0)   # a tall flower's head shows above its foot, so cull a little wider than the view
 	var culling: bool = view.has_area()
-	for i in count():
+	# The flowers are sorted by y, so the ones in view are one run of rows: find the run, then check x only.
+	var first: int = _first_row(view.position.y) if culling else 0
+	var last: int = _first_row(view.end.y) if culling else count()
+	var atlas: Texture2D = GardenArt.atlas()
+	for i in range(first, last):
 		var x: int = _flowers[i * 4]
-		var y: int = _flowers[i * 4 + 1]
-		if culling and not view.has_point(Vector2(x, y)):
+		if culling and (x < view.position.x or x >= view.end.x):
 			continue
-		var stat: StringName = GardenArt.STATS[_flowers[i * 4 + 2]]
+		var stat_index: int = _flowers[i * 4 + 2]
 		var variant: int = _flowers[i * 4 + 3]
+		var y: int = _flowers[i * 4 + 1]
 		var l: int = lean(x, y, t, MeadowLife.wind, pusher) if moving else 0
-		var tex: Texture2D = GardenArt.frame(stat, variant, l, season, closed)
-		var sz: Vector2i = Vector2i(tex.get_size())
-		draw_texture(tex, Vector2(x - (sz.x >> 1), y - sz.y + 1 + GardenArt.foot_drop(variant)))
+		var src: Rect2 = GardenArt.atlas_rect(GardenArt.frame_index(stat_index, variant, l, season, closed))
+		var w: int = int(src.size.x)
+		var h: int = int(src.size.y)
+		draw_texture_rect_region(atlas, Rect2(x - (w >> 1), y - h + 1 + GardenArt.foot_drop(variant), w, h), src)
+	PerfStats.lap("garden draw")
+
+
+## Index of the first flower whose y is at or below `y` (the flowers are sorted by y).
+func _first_row(y: float) -> int:
+	var lo: int = 0
+	var hi: int = count()
+	while lo < hi:
+		var mid: int = (lo + hi) >> 1
+		if float(_flowers[mid * 4 + 1]) < y:
+			lo = mid + 1
+		else:
+			hi = mid
+	return lo

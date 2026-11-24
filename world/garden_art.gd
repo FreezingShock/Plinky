@@ -53,6 +53,10 @@ const HEADS: Array = [[4, 0.0, 2, 1], [4, 0.5, 3, 0], [4, 0.2, 2, 2], [4, 0.9, 3
 const SHRUBS: Array = [[5, 3, 11], [6, 4, 29]]
 
 static var _frames: Dictionary = {}   # "stat:variant:lean:season:closed" -> ImageTexture
+static var _atlas: Texture2D = null             # every frame of every stat, season and night state, one texture (see atlas())
+static var _atlas_rects: Array[Rect2] = []      # where each frame sits in _atlas, indexed by frame_index()
+const ATLAS_WIDTH: int = 512
+const ATLAS_GUTTER: int = 1
 
 
 ## How many hand-drawn variants (flowers and shrubs) a statistic has.
@@ -84,6 +88,56 @@ static func field_tint(variant: int) -> int:
 ## Texels the sprite hangs below its foot row: a field flower's ink outline adds one row under its ground shadow.
 static func foot_drop(variant: int) -> int:
 	return 1 if is_field(variant) else 0
+
+
+## Position of one frame in the atlas: stat index (STATS), variant, lean (-1, 0, +1), season, then open (0) or closed (1).
+static func frame_index(stat_index: int, variant: int, lean: int, season: int = SEASON_SUMMER, closed: bool = false) -> int:
+	return (((stat_index * variant_count(&"") + variant) * 3 + lean + 1) * 4 + season) * 2 + (1 if closed else 0)
+
+
+## Every frame of every statistic, season and night state in one texture, built the first time it is asked for. GardenLayer draws
+## from it, so a garden is a few canvas batches and no frame is baked while the world is on screen.
+static func atlas() -> Texture2D:
+	if _atlas == null:
+		_build_atlas()
+	return _atlas
+
+
+## Where frame `index` (see frame_index) sits inside atlas(), in texels.
+static func atlas_rect(index: int) -> Rect2:
+	if _atlas == null:
+		_build_atlas()
+	return _atlas_rects[index]
+
+
+static func _build_atlas() -> void:
+	var images: Array[Image] = []
+	for stat: StringName in STATS:
+		for v in variant_count(stat):
+			for lean: int in [-1, 0, 1]:
+				for season in 4:
+					for closed in [false, true]:
+						images.append(_bake(stat, v, 0 if is_shrub(v) else lean, season, closed))
+	var rects: Array[Rect2] = []
+	var x: int = ATLAS_GUTTER
+	var y: int = ATLAS_GUTTER
+	var shelf: int = 0
+	for img: Image in images:
+		var w: int = img.get_width()
+		var h: int = img.get_height()
+		if x + w + ATLAS_GUTTER > ATLAS_WIDTH:
+			x = ATLAS_GUTTER
+			y += shelf + ATLAS_GUTTER
+			shelf = 0
+		rects.append(Rect2(x, y, w, h))
+		x += w + ATLAS_GUTTER
+		shelf = maxi(shelf, h)
+	var sheet := Image.create(ATLAS_WIDTH, y + shelf + ATLAS_GUTTER, false, Image.FORMAT_RGBA8)
+	sheet.fill(Color(0.0, 0.0, 0.0, 0.0))
+	for i in images.size():
+		sheet.blit_rect(images[i], Rect2i(Vector2i.ZERO, images[i].get_size()), Vector2i(rects[i].position))
+	_atlas = ImageTexture.create_from_image(sheet)
+	_atlas_rects = rects
 
 
 ## The baked sprite for `stat`/`variant` leaning -1, 0 or +1 in `season` (0 spring to 3 winter), open or `closed`.
