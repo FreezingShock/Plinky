@@ -58,6 +58,15 @@ func run(t: Object) -> void:
 	t.ok(n8["up"] == 4 and n8["down"] == 0, "Settings: up goes to the Info row, down wraps to the first Play tile")
 	g.free()
 
+	# Keyboard: Tab walks the 9 tiles, then the 3 footer buttons, then wraps. The chain is wired in the tree when the menu
+	# shows; these checks cover its arithmetic (the footer sits right after the tiles, and the last button wraps to the first).
+	var chain_n: int = GalleryMenu.ENTRIES.size() + 3
+	t.eq(GalleryMenu.tab_next(chain_n, 8), 9, "Tab from Settings goes to the first footer button, Close Menu")
+	t.eq(GalleryMenu.tab_next(chain_n, 10), 11, "Tab moves on through the footer")
+	t.eq(GalleryMenu.tab_next(chain_n, 11), 0, "Tab from Quit Game wraps to the first tile")
+	t.eq(GalleryMenu.tab_prev(chain_n, 0), 11, "Shift+Tab from the first tile goes to Quit Game")
+	t.eq(GalleryMenu.tab_prev(chain_n, 9), 8, "Shift+Tab from Close Menu goes back to Settings")
+
 	t.eq(DisplayPanel.title_case("Mute all"), "Mute All", "settings labels display in Title Case")
 	t.eq(DisplayPanel.title_case("VSync on 60 fps"), "VSync On 60 Fps", "words with capitals or digits are left alone")
 	for tab: String in SettingsRegistry.TAB_ORDER:

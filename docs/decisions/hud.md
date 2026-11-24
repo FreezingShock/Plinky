@@ -563,3 +563,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. `_wire_focus` runs when the body is built, and skips a menu that is shown off-tree (tests).
 - **Checked:** the open menu matches main pixel for pixel in the tiles and header. The footer labels (Close Menu, Quit To Title, Quit Game) sit 1 px to the right of main's, and that holds after 2.5 s, so it is not the open animation. Not traced yet; likely how MenuTextButton measures its label on its first `_ready`. `tests/run.gd` passes. Two tests now show the menu before reading its tiles.
 - **Not run in-engine:** the focus feel on a real PC.
+
+## 2026-11-24: Gallery Tab order reaches the footer
+- **Decision:** Tab walks the nine tiles in layout order, then Close Menu, Quit To Title and Quit Game, then wraps to the first tile. Shift+Tab reverses it. The footer buttons are kept in `GalleryMenu._footer`.
+- **Why:** each tile's Tab target wrapped straight to the first tile, so the footer was never reached by keyboard (PC keyboard QA on main d52c8521). The arithmetic is in `GalleryMenu.tab_next` and `tab_prev`, tested in `tests/test_gallery.gd`.
+- **Checked:** `tests/run.gd` passes (7960 checks, 0 failed). In a running scene, the Tab walk visits 12 distinct controls and wraps, and Settings' next control is Close Menu.
+- **Not done:** arrow keys from the footer (up and down into the tiles) are not wired. Not run on the PC.
