@@ -1,0 +1,1 @@
+The Larkmoor wheat is denser: smaller, thicker clumps that overlap a little, laid out inside the farm box on walkable ground. A rustic fence now follows the outside of each wheat patch, with walk-in gaps.

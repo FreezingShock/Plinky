@@ -158,8 +158,48 @@ PROPS = [
 ]
 
 
+def fence_piece(w: int, h: int, chord) -> Canvas:
+    """One straight piece of a rustic fence, w x h. `chord` is the piece's line from (x0, y0) to (x1, y1) in this box
+    (see place_farm.py). Two rails run along the chord, with a shaded underside on the lower one, and a post every
+    eight texels with a lit cap. Posts stand on the chord; the rails sit above it."""
+    c = Canvas(w, h)
+    px, py, qx, qy = chord
+    length = math.hypot(qx - px, qy - py)
+    for off in (-6, -3):                              # top rail, then the lower rail
+        c.seg(px, py + off, qx, qy + off, EARTH)
+    c.seg(px, py - 2, qx, qy - 2, SHADE)              # underside of the lower rail
+    n = max(2, int(length / 8) + 1)
+    for i in range(n):
+        t = i / (n - 1)
+        x = px + (qx - px) * t
+        y = py + (qy - py) * t
+        c.seg(x, y, x, y - 7, EARTH)
+        c.set(round(x), round(y - 7), LIGHT)          # lit post cap
+    c.outline(INK)
+    return c
+
+
+def fences_from_manifest() -> None:
+    """Writes the whole fence ring as one PNG, from the batch item in farm.json (see place_farm.py). Each piece is drawn
+    in its own box and pasted at its place in the batch, so the ring reads as one fence."""
+    import json
+    with open(os.path.join(OUT, 'farm.json')) as f:
+        items = json.load(f)['items']
+    batch = [it for it in items if it['kind'] == 'farm_fence']
+    if not batch:
+        return
+    it = batch[0]
+    out = Image.new('RGBA', (int(it['w']), int(it['h'])), (0, 0, 0, 0))
+    for p in it['pieces']:
+        piece = fence_piece(int(p['w']), int(p['h']), p['chord']).image()
+        out.alpha_composite(piece, (int(p['x'] - it['x']), int(p['y'] - it['y'])))
+    os.makedirs(os.path.join(OUT, 'fence'), exist_ok=True)
+    out.save(os.path.join(OUT, it['file']))
+
+
 def main() -> int:
     os.makedirs(OUT, exist_ok=True)
+    fences_from_manifest()
     for name, make in PROPS:
         make().image().save(os.path.join(OUT, name + '.png'))
         print('wrote', name)
