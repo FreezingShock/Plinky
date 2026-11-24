@@ -738,7 +738,11 @@ func _place() -> void:
 		if is_instance_valid(cp2) and cp2.visible:
 			var free_h: float = frame.y - (_bottom.size.y if _bottom != null else 0.0) - 8.0
 			var psz: Vector2 = cp2.size.max(cp2.get_combined_minimum_size())
-			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)) + float(cp2.get_meta(&"menu_slide", 0.0)))
+			var px: float = floorf((frame.x - psz.x) * 0.5)
+			# A centred menu whose column reaches the momentum meter stops above the meter, so it never covers the meter's corner.
+			if _momentum != null and _momentum.visible and px < _momentum.position.x + _momentum.size.x and px + psz.x > _momentum.position.x:
+				free_h = minf(free_h, _momentum.position.y - 6.0)
+			var at: Vector2 = Vector2(px, maxf(4.0, floorf((free_h - psz.y) * 0.5)) + float(cp2.get_meta(&"menu_slide", 0.0)))
 			if cp2.position != at:
 				cp2.position = at
 	if _menu_chip != null:
