@@ -157,3 +157,6 @@ func spawn_occluders(parent: Node2D) -> void:
 			bush_sprites.append(sp)
 	if react != null:
 		react.set_bushes(bush_sprites)
+	# Cozy layer (world/cozy/): benches, swings, a cottage, wheat, a brook and firefly swarms, from its own manifest.
+	if _sky != null and _shadows != null:
+		CozyProps.spawn(parent, _sky, _shadows, _sky.rim_material, _data.anchors)
