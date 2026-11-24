@@ -3,7 +3,7 @@
 Everything here is plain data. Screen coords are (sx, sy) at ground level, projection as zone 1:
 screen = (OX + u - v, OY + (u + v) / 2 - h)."""
 import math
-S = 1.5                        # frame scale: the world grows S in each direction (positions and island size); prop sizes stay
+S = 2.0                        # frame scale: the world grows S in each direction (positions and island size); prop sizes stay
 W, H = 1520, 920              # authored frame; _apply_scale() below grows it by S
 PLAY = (130, 20, 1390, 830)    # camera and walker bounds: the island plus a margin of open water (x0, y0, x1, y1)
 OX, OY = 760, 70
@@ -22,7 +22,13 @@ PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 5
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1100, 548), (1060, 520), (990, 500), (900, 490), (770, 486)]
 PATH_NW = [(752, 420), (700, 384), (640, 362), (590, 340), (550, 318)]
 PATH_NE = [(770, 350), (820, 346), (880, 338), (930, 352), (966, 368)]     # ends at the Great Lantern, not in the open
-PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_NW, PATH_NE]
+PATH_SE1 = [(1100, 548), (1150, 596), (1200, 640), (1210, 690)]          # bottom-right trail off the east road, to a lamp
+PATH_SE2 = [(930, 592), (950, 640), (975, 690), (1030, 752)]          # south from the east road, to a trail sign
+PATH_NW2 = [(550, 318), (520, 276), (496, 226)]                           # north-west trail, to the standing menhir
+PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_NW, PATH_NE, PATH_SE1, PATH_SE2, PATH_NW2]
+# Land lobes: the island's radius grows by amp * R around angle a (uv angle; -135 deg is screen up, 0 is screen down-right).
+# They give the new north and bottom-right land its shape. Width w is in radians.
+LOBES = [(-135.0, 0.20, 0.55), (0.0, 0.16, 0.50)]
 
 # Water: a big lake in the west, a mere in the north-east, a stream that cuts the middle (bridge on the main route).
 LAKE = dict(c=(470, 520), rx=118, ry=60)
@@ -71,6 +77,9 @@ LANDMARKS = [
     dict(id='cairn_spire', kind='obelisk', at=(540, 306)),          # the cairn at the centre of the stone ring
     dict(id='great_lantern', kind='great_lantern', at=(978, 376)),
     dict(id='ember_watchtower', kind='tower', at=(800, 250)),       # beside the Emberwatch gate, on its wall
+    dict(id='se_lamp', kind='lantern', at=(1210, 690)),             # the bottom-right trail ends at a lamp
+    dict(id='se_sign', kind='sign', at=(1030, 752)),                # the south-east trail ends at a sign
+    dict(id='nw_menhir', kind='menhir', at=(494, 220)),             # the north-west trail ends at a standing menhir
 ]
 # Tall-prop groves: kind, centre, radius, count
 GROVES = [
@@ -79,6 +88,8 @@ GROVES = [
     ('bush', (700, 560), 70, 6), ('bush', (900, 620), 70, 6), ('bush', (640, 420), 60, 5), ('bush', (880, 420), 60, 5),
     ('rock', (580, 300), 60, 5), ('rock', (480, 300), 50, 3), ('rock', (1200, 400), 60, 4), ('rock', (760, 360), 50, 3),
     ('crystals', (520, 340), 40, 2), ('crystals', (640, 296), 40, 2), ('crystals', (1100, 300), 40, 1),
+    ('oak', (1150, 620), 45, 3), ('bush', (1110, 720), 40, 4),                  # new bottom-right land
+    ('rock', (470, 250), 40, 2), ('pine', (440, 230), 40, 3),                   # new north-west land
 ]
 
 
@@ -142,7 +153,7 @@ for _d in DISTRICTS:
 # ---- the bigger frame ----
 # Every position above is authored in the 1520x920 frame. _apply_scale() grows the whole world by S about the screen
 # origin: that keeps the 2:1 projection exact (OX, OY, W, H, N, CU, CV, R and PLAY scale too). Sprites and voxel props
-# keep their texel size, so the grove counts scale by S squared to keep the same density, and the grove radii by S.
+# keep their texel size. Grove counts do not scale: every tall prop is a scene node, and the node ceiling is 1350.
 def _apply_scale():
     global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, PAD_CLEAR, GROVES
     def sc(p): return (p[0] * S, p[1] * S)
@@ -160,7 +171,7 @@ def _apply_scale():
     for d in DISTRICTS:
         d['c'] = sc(d['c']); d['pads'] = [sc(q) for q in d['pads']]
     for lm in LANDMARKS: lm['at'] = sc(lm['at'])
-    GROVES[:] = [(kind, sc(c), rad * S, round(n * S * S)) for kind, c, rad, n in GROVES]
+    GROVES[:] = [(kind, sc(c), rad * S, n) for kind, c, rad, n in GROVES]   # counts stay: the node ceiling, not the area, sets them
     PAD_CLEAR = PAD_CLEAR * S
 
 _apply_scale()

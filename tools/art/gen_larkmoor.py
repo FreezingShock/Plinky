@@ -531,12 +531,36 @@ for kind, c_, rad, n in LAY.GROVES:
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6)
-# lanterns along the north roads and the arrival lawn
-for pp in (LAY.PATH_NE, LAY.PATH_MAIN[:4]):
-    for (x0, y0), (x1, y1) in zip(pp, pp[1:]):
-        if prng.random() < .8:
-            mx, my = (x0 + x1) / 2 + 16, (y0 + y1) / 2 + 6; u, v = s2uv(mx, my)
-            if ok_spot(u, v, 3, path=False, gap=0, slope_max=.7): put('lantern', u, v, 1.0)
+# lanterns: one size, one rhythm. Every path gets a lamp each LANTERN_STEP texels of its length (screen units), set
+# just off the path edge on whichever side has room. Only the facing varies (four quarter turns, in a fixed order).
+# They keep clear of the junctions and gates (the first and last LANTERN_END texels of a path), the pads (in `placed`)
+# and the walker's spawn. Each lamp is one light for the night pools (gen_life_anchors reads the lantern sprites).
+LANTERN_STEP, LANTERN_END, LANTERN_OFF = 150.0, 70.0, 15.0
+def _lantern_spots():
+    for pp in LAY.PATHS:
+        seg = [(x1 - x0, y1 - y0, math.hypot(x1 - x0, y1 - y0)) for (x0, y0), (x1, y1) in zip(pp, pp[1:])]
+        total = sum(L_ for _, _, L_ in seg)
+        t = LANTERN_END
+        while t < total - LANTERN_END:
+            acc = 0.0
+            for (x0, y0), (x1, y1), (dx, dy, L_) in zip(pp, pp[1:], seg):
+                if acc + L_ >= t:
+                    f_ = (t - acc) / L_; px, py = x0 + dx * f_, y0 + dy * f_
+                    nx, ny = -dy / L_, dx / L_
+                    yield px, py, nx, ny
+                    break
+                acc += L_
+            t += LANTERN_STEP
+lantern_count = 0
+for k_, (px, py, nx, ny) in enumerate(_lantern_spots()):
+    for sgn in (1.0, -1.0):
+        mx, my = px + nx * LANTERN_OFF * sgn, py + ny * LANTERN_OFF * sgn
+        u, v = s2uv(mx, my)
+        if ok_spot(u, v, 3, path=True, gap=0, slope_max=.7):
+            put('lantern', u, v, 1.0, rot=(k_ % 4) * math.pi / 2)
+            lantern_count += 1
+            break
+log('lanterns placed', lantern_count)
 log('trees/rocks placed', len(placed))
 
 # ground cover: tufts and flower drifts in clusters, flowers lean toward the path edges
