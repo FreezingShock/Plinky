@@ -49,6 +49,8 @@ static var _forge_tex: Dictionary = {}   # "name_f" -> Texture2D
 ## Pad 2's side sprouts (x, y from the plate base, kind): a small bloom on a stem.
 const BUD: Array[Vector3i] = [Vector3i(0, -4, 0), Vector3i(-1, -3, 0), Vector3i(1, -3, 0), Vector3i(0, -3, 2), Vector3i(0, -2, 3), Vector3i(0, -1, 3), Vector3i(-1, -1, 3), Vector3i(1, -2, 3)]
 const LEAF: Color = Color("3d9a45")
+## Art stages per tier: pad 1 is a single flower, pad 5 a crowned bed.
+const MAX_STAGE: int = 5
 const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
 var tier_row: StringName = &""
 ## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
@@ -547,6 +549,22 @@ func _draw_forge(top: int, _ink: Color) -> void:
 		draw_rect(Rect2(i * 2 - (pips - 1), top + 4, 1, 1), _ink if locked else stat_color)
 
 
+## Pad 1..MAX_STAGE of a row: its art stage (the Starbloom row runs on to a sixth pad, which wears the last stage too).
+static func stage_of(row_index: int) -> int:
+	return clampi(row_index + 1, 1, MAX_STAGE)
+
+
+## A half-height copy of the tier flower (the bloom's top four rows over the stem's last three) at x offset `ox`, `by` texels
+## above the plate; appended to `cells` (x, y, kind) like the main flower.
+static func _half_flower(cells: Array[Vector3i], rows: Array, n: int, ox: int, by: int) -> void:
+	for k in 7:
+		var ml: String = rows[k] if k < 4 else rows[n - 7 + k]
+		for rx in range(4, 9):
+			var mc: String = ml[rx]
+			if mc != ".":
+				cells.append(Vector3i(rx - 6 + ox, by + k, "#dcgW".find(mc)))
+
+
 ## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier
 ## opens it rises row by row and throws a ring of petals. One pip per pad position (1..3) sits at the front corner.
 func _draw_flowers(top: int, ink: Color) -> void:
@@ -557,22 +575,27 @@ func _draw_flowers(top: int, ink: Color) -> void:
 	if _bloom_t > 0.0:
 		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
 	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
-	var stage: int = 3
+	var stage: int = MAX_STAGE
 	var sbd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if sbd != null:
-		stage = clampi(sbd.row_index + 1, 1, 3)
+		stage = stage_of(sbd.row_index)
 	if not locked and _bloom_t <= 0.0 and stage >= 2:
 		for side in [-1, 1]:
-			if stage == 2:   # pad 2: two small sprouts beside the flower
+			if stage == 2:   # pad 2: a sprout and a smaller bud beside the flower, and a leaf tuft at its foot
 				for bc: Vector3i in BUD:
-					cells.append(Vector3i(bc.x * 1 + side * 9, base + bc.y, bc.z))
-			else:            # pad 3: two half-height flowers of the same tier, so the row reads as a bed
-				for k in 7:
-					var ml: String = rows[k] if k < 4 else rows[n - 7 + k]   # the bloom's top four rows over the stem's last three
-					for rx in range(4, 9):
-						var mc: String = ml[rx]
-						if mc != ".":
-							cells.append(Vector3i(rx - 6 + side * 10, base - 6 + k, "#dcgW".find(mc)))
+					cells.append(Vector3i(bc.x + side * 9, base + bc.y, bc.z))
+					cells.append(Vector3i(bc.x + side * 15, base + bc.y + 2, bc.z))
+				for lc: Vector2i in [Vector2i(5, 0), Vector2i(6, -1), Vector2i(7, -2), Vector2i(4, 1)]:
+					cells.append(Vector3i(side * lc.x, base + lc.y, 3))
+			else:            # pad 3 and up: two half-height flowers of the same tier, so the row reads as a bed
+				_half_flower(cells, rows, n, side * 10, base - 6)
+			if stage >= 4:   # pad 4: the bed widens (a bud at each outer edge) and two taller blooms stand up behind
+				if stage == 4:
+					for bc: Vector3i in BUD:
+						cells.append(Vector3i(bc.x + side * 17, base + bc.y + 1, bc.z))
+				else:        # pad 5: those outer buds are full half flowers
+					_half_flower(cells, rows, n, side * 17, base - 5)
+				_half_flower(cells, rows, n, side * 4, base - 12)
 	for k in shown:
 		var line: String = rows[n - 1 - k]
 		for rx in 13:
@@ -598,12 +621,19 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			var ang: float = float(i) / 10.0 * TAU
 			var q: Vector2 = Vector2(cos(ang) * 14.0, sin(ang) * 7.0) * r
 			draw_rect(Rect2(roundf(q.x), roundf(top - 4 + q.y), 1, 1), Color.WHITE if i % 2 == 0 else stat_color)
-	if stage == 3 and not locked and _bloom_t <= 0.0 and not MeadowLife.reduce_motion:   # twinkling petal glints over the bed
+	if stage >= 3 and not locked and _bloom_t <= 0.0 and not MeadowLife.reduce_motion:   # twinkling petal glints over the bed
 		var tw: int = (Time.get_ticks_msec() / 400) % 3
-		for gi in 3:
-			var gp: Vector2i = [Vector2i(-9, -13), Vector2i(8, -14), Vector2i(0, -20)][gi]
+		var spots: Array[Vector2i] = [Vector2i(-9, -13), Vector2i(8, -14), Vector2i(0, -20)]
+		if stage >= 4:
+			spots.append_array([Vector2i(-16, -10), Vector2i(15, -11), Vector2i(-4, -25)])
+		if stage >= 5:
+			spots.append_array([Vector2i(-22, -7), Vector2i(21, -8), Vector2i(5, -28), Vector2i(0, -14)])
+		for gi in spots.size():
 			if (gi + tw) % 3 == 0:
-				draw_rect(Rect2(gp.x, base + gp.y + 3, 1, 1), Color.WHITE)
+				draw_rect(Rect2(spots[gi].x, base + spots[gi].y + 3, 1, 1), Color.WHITE)
+	if stage >= 5 and not locked and _bloom_t <= 0.0:   # the grand pad wears a gold crown over the flower
+		for cx in range(-3, 4):
+			draw_rect(Rect2(cx, base - n - 2 - (1 if absi(cx) < 2 else 0), 1, 1), palette[5])
 	var pips: int = 1
 	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if bd != null:

@@ -13,11 +13,12 @@ func run(t: Object) -> void:
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
-	t.eq(z.pad_buttons.size(), 21, "twenty-one pads: six rows of three, and the Starbloom row runs three more on the west bank")
+	t.eq(z.pad_buttons.size(), 31, "thirty-one pads: five rows of five, and the Starbloom row of six (its last three on the west bank)")
 	var rows: Dictionary = {&"lark_sprout": &"sunlight", &"lark_clover": &"dewdrop", &"thistle": &"sunlight", &"heather": &"thistle", &"foxglove": &"heather", &"starbloom": &"foxglove"}
 	for row: StringName in rows:
 		var last: float = 0.0
-		for i in 3:
+		var per_row: int = 6 if row == &"starbloom" else 5
+		for i in per_row:
 			var id: StringName = StringName("%s_%d" % [row, i + 1])
 			var b: ButtonDef = sim.button_defs.get(id) as ButtonDef
 			t.ok(b != null and b.zone == &"larkmoor" and b.row == row and b.row_index == i, "%s is pad %d of the Larkmoor %s row" % [id, i + 1, row])
