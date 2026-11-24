@@ -659,6 +659,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 	_crossing = true
 	walker.stop()
 	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
+	WalkMask.prefetch(_zone_mask_path(zone_id))   # the walk mask too, so the first walk there does not load it
 	await transitions.cross_zone(func() -> void:
 		await _enter_zone_visuals(zone_id, true)
 		if _clear_spawn_pending:

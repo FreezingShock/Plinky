@@ -172,3 +172,7 @@ batching. The first rendered frame after a swap is GPU work (texture upload, fir
 - **Still open:** the quarry swap's gap is still 110 to 160 ms in the probe, so the theme was one cause, not the only one. Not attributed yet. The next suspects are Control layout and HUD work queued by the zone change, which the probe cannot show.
 - **Seen once:** `world/sky_cycle.gd:503` (`padded`) got a null image from `get_image()` in one bench run of 3 with this change, and none in the baseline run. Not investigated. It is not in this change.
 - **Not run on a real GPU:** every number is headless. PC QA should time a zone entry on the RTX 3060 Ti.
+
+## Walk mask on the return paths (2026-11-24)
+- `WalkMask.image()` loaded the zone's walkable map on the main thread on its first use after a zone change. That was a synchronous `load()` of about 34 ms, and it fell on the first walk in the new zone, so the return to the meadow and the return from the Quarry showed it.
+- Fix: `WalkMask.prefetch(path)` queues the map on `ZoneAssets` when the zone is entered, and `image()` takes it from there. Probe: the 34 ms load is gone from the return frames. Headless frame times are noisy, so the total gain on the PC is not measured yet.
