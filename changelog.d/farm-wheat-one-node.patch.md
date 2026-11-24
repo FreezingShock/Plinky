@@ -1,0 +1,1 @@
+The farm's wheat clumps are now canvas items owned by one driver node instead of one sprite node each, which takes about 170 nodes off Larkmoor and brings it back under the node cap. The look is unchanged: the walker, trees and props still sort against every clump by Y, and the wheat still gusts and parts.
