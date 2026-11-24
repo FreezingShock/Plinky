@@ -124,7 +124,7 @@ func _ready() -> void:
 			add_child(_chip)
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
-			stat_color = CLOVER_TRIM   # gems and pip take the Clover gold, not the Clover reward green
+			# The gold is only the rim, lit rim and rarity ring. Gems, pip and the flowers keep the Clover reward green.
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
 
