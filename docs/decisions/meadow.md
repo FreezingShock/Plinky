@@ -235,6 +235,15 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Flower pads change the slab itself from stage 3: a one texel tier-colour stripe on the side faces (stage 3), a second lighter one (stage 4), gold stripes on rows 1 and 3 (stage 5). The stage 5 crown is now an outlined gold band with five points and a white jewel, one texel above the flower. Stripes and crown are skipped on locked pads. | Stages 3 to 5 differed only by flower count and a one texel crown line, so they blurred together at 1x. Reviewed in `tools/pad_sheet.tscn`. |
 | The Thistle garden reaches 100 uv (was 82) with 100 big flowers per plate (was 66). | The row's field was a thin strip beside the road. |
 | `tools/garden_shots.gd` takes `-- phase=0.95` to shoot a row at night. | Night review of the rows. Software Vulkan hits the shader-instance limit after about six night shots; shoot the later rows by themselves. |
+## 2026-11-24: Larkmoor path hierarchy (review slice 2)
+- **Tiers, in widths:** `HALF` in `gen_larkmoor.py` gives each tier its own half-width: road 12, lane 7.5, trail 4 texels (before: one 10.5 for every path). The tiers are the existing `PATH_TIER` in `larkmoor_layout.py` (main route road; west and east forks lanes; windmill track trail).
+- **Materials:** roads and lanes keep the trodden path material (`T_PATH`). Trails get their own worn ground, `T_TRAIL` (109), a darker ramp, so a narrow track reads as used but not paved. Grass texture never lands on either.
+- **Edges:** each tier's edge keeps the ragged noise and the rock cut. Shade falls off at each tier's own edge.
+- **Decor clearance:** `ok_spot` now measures from the nearest path EDGE (`dedge`), not the centre line, so trees and bushes keep clear of a wide road without the trail's narrow edge pushing them out. Expect fewer props right beside the main road.
+- **Lamps:** the lamp check drops the path-edge test (`path=False`): the 19-texel offset already clears a lane or trail, and the edge test had removed every road lamp (15 lamps against 23; now 23, none closer than 80).
+- **Forest edge:** `EDGE_SPACING` 60 to 50 in `gen_life_anchors.py`. The tighter tree clearance cost one deer-edge tip (5 against the test floor of 6); the spacing change brings it back to 6.
+- **Tests:** `tests/run.gd` 6418 checks, 0 failed (Godot 4.7 headless, lavapipe).
+- **Not yet:** the verge flower ring still follows the centre line (slice 3 replaces it), so it sits closer to the road edge than before. The bridge and water are the water thread's; the road is now 24 texels wide, so the bridge needs to span at least that.
 
 ## 2026-11-24: Starting Clearing flower fields
 | Decision | Why |
@@ -264,3 +273,10 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | `tests/test_lighting.gd` checks that each meadow lantern life light is a night pool and that the lantern sprites share one size. `tools/lantern_shots.tscn -- meadow` shoots the meadow lanterns at night, dusk and noon. | Regression guard, and the shot tool for the PC check. |
 | A fresh bake on main matches the committed placements except `bush_027`'s width. Some committed sprite and ground files already differed from a fresh bake before this change (`oak_018_n`, `crystals_039_n`, `bush_027`'s width, the ground images and the preview). They were left alone. | Keeps this PR to the lanterns. |
 | Not verified on the PC. Cloud shots (xvfb, software Vulkan) only. In the four cloud shots the meadow's night is much brighter than Larkmoor's (mean luminance about 84 against 62), so the lamp glow reads less there. | Lighting is for the sky owner to tune, not this change. |
+## 2026-11-24: Larkmoor path drifts, darker trail, north-east groves (review slice 3)
+- **Why:** review items 3 to 5 of the Larkmoor environment handoff. The verge flowers ringed every path edge, the trail tint sat too close to the lane, and the forest-edge tip count sat exactly on its test floor (6).
+- **Drifts:** the verge ring is now patches. Candidates sit 9 to 30 texels from the path edge (`dedge`, so a road, a lane and a trail all keep the same clearance), and a slow noise field (`vn2(u/9, v/9)`, above .5) decides where the drifts are. Nothing hugs an edge, and bare grass shows between drifts.
+- **Trail:** the trail ramp is `[6, 6, 6, 1]`: earth brown in the light, with the dark tone kept for the brightest spots. The old ramp `[6, 5, 5, 1]` read as the lane's cream. Road stays 24 texels wide (half-width 12), so the water thread's bridge must span 24 texels.
+- **Groves:** three north-east candidates (pine at 1190,380; oak at 1010,240; bush at 1150,470). The forest-edge count goes 6 to 7. The density bar is the lighthouse grove at 640,590 (oak, 4 per group, radius 60).
+- **Regen:** `gen_larkmoor.py`, then `gen_life_anchors.py --bounds 380,220,2680,1450 --sway-count 1680`, then `--add-keys --farm assets/art/zone1b/farm/farm.json`, then `gen_gardens.py`. Lamps 23, flowers 240 (life), gardens 2238.
+- Not run in-engine yet: the zoom 1 and zoom 3 captures, and the walk test.

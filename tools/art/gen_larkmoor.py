@@ -87,6 +87,11 @@ rr = np.hypot(gu - CU, gv - CV); th = np.arctan2(gv - CV, gu - CU)
 def Re(t): return R * (1 + .07 * np.sin(3 * t + 1.0) + .05 * np.sin(5 * t + 2.3) + .03 * np.sin(9 * t + .5))
 RE = Re(th)
 dpath = np.minimum.reduce([pl_dist(gu, gv, pp) for pp in PATHS_UV])
+# path hierarchy: each tier has its own half-width (texels) and its own material. dtier[t] is the distance to the nearest
+# path of that tier; dedge is the distance to the nearest path EDGE (negative on a path), used for decor clearance.
+HALF = dict(road=12.0, lane=7.5, trail=4.0)
+dtier = {t: np.minimum.reduce([pl_dist(gu, gv, pp) for pp, tr in zip(PATHS_UV, LAY.PATH_TIER) if tr == t]) for t in HALF}
+dedge = np.minimum.reduce([dtier[t] - HALF[t] for t in HALF])
 dgate = np.minimum(np.hypot(gu - GATE[0], gv - GATE[1]), np.hypot(gu - GATE2[0], gv - GATE2[1]))
 log('terrain fields')
 thb = math.atan2(-1, -1)
@@ -553,7 +558,7 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, pa
         if float(samp(WD, uu, vv)) > -.5: return False
         if shore and float(samp(DW, uu, vv)) < 3.5: return False
     if float(samp(WD, u, v)) > -.5: return False
-    if path and float(samp(dpath, u, v)) < r + path_clear: return False
+    if path and float(samp(dedge, u, v)) < r + path_clear: return False
     if min(np.hypot(u - GATE[0], v - GATE[1]), np.hypot(u - GATE2[0], v - GATE2[1])) < r + 26: return False
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
@@ -701,7 +706,7 @@ for pi, t0, side0 in _lantern_slots():
             mx, my = px + nx * LANTERN_OFF * sgn, py + ny * LANTERN_OFF * sgn
             if any(math.hypot(mx - qx, my - qy) < LANTERN_MIN for qx, qy in lamp_xy): continue
             u, v = s2uv(mx, my)
-            if ok_spot(u, v, 3, path=True, gap=0, slope_max=.7):
+            if ok_spot(u, v, 3, path=False, gap=0, slope_max=.7):   # the offset keeps a lamp clear of its own path's edge (dedge)
                 put('lantern', u, v, 1.0, rot=(lantern_count % 4) * math.pi / 2, seed=lantern_count)
                 lamp_xy.append((mx, my)); lantern_count += 1; done = True
                 break
@@ -752,23 +757,27 @@ for B, nl, rmin in ((LAKE, 130, 2.2), (POND, 40, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
-# flower verges: a dense low row just outside the rim, both sides of every path. Placed last, after the lilies, so nothing earlier moves.
+# flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
+# texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
+# drifts are (about half the ground), so the flowers gather in patches with bare grass between them. Placed last, after
+# the lilies, so nothing earlier moves.
+VERGE_BAND = (9.0, 30.0)
 for pp in PATHS_UV:
     for (ax, ay), (bx, by) in zip(pp, pp[1:]):
         seg = math.hypot(bx - ax, by - ay)
         if seg < 1: continue
         tx, ty = (bx - ax) / seg, (by - ay) / seg; nx_, ny_ = -ty, tx
-        n = max(1, int(seg / 2.6))
+        n = max(1, int(seg / 1.6))
         for k in range(n):
             f = (k + prng.random()) / n
             for side in (1.0, -1.0):
-                if prng.random() > .6: continue
-                off = 13.0 + prng.uniform(0.0, 9.0)   # outside the wider path, and jittered: no rigid line of flowers
+                if prng.random() > .5: continue
+                off = prng.uniform(VERGE_BAND[0], VERGE_BAND[1] + 12.0)   # centre-line offset: the widest path's half-width (12) is added to the band; dedge filters the rest
                 u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
-                if vn2(u / 8.0, v / 8.0, 53) < .42: continue   # patches, not a verge
-                if 13.5 <= float(samp(dpath, u, v)) <= 24.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                if vn2(u / 9.0, v / 9.0, 53) < .5: continue   # drifts, not a ring
+                if VERGE_BAND[0] <= float(samp(dedge, u, v)) <= VERGE_BAND[1] and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
                     put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1)
-log('path verges placed')
+log('path drifts placed')
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
@@ -785,7 +794,7 @@ wd = samp(WD, FU, FV); wh = samp(WH, FU, FV)
 dp = samp(dpath, FU, FV)
 tone = fbm2(FU / 14, FV / 14, 2, 11); n1 = vn2(FU / 5, FV / 5, 3); n2 = vn2(FU / 2.2, FV / 2.2, 8)
 # materials: 0 grass 1 rock 2 sand 3 wet 4 path 5 frost
-T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM = 100, 101, 102, 103, 104, 105, 106, 107, 108
+T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM, T_TRAIL = 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
 mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
 mat[rockness > .5] = T_ROCK
@@ -793,10 +802,15 @@ mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
 beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
-pw = 10.5 + 2.2 * (n1 - .5)                      # about 1.7 times the old half-width (6.6): a wide, walkable trodden lane
-# the path's edge is ragged, not a ruler line: its half-width wobbles with noise, and rock only cuts it where the slope is steep
-pw_edge = pw * (1 + .22 * (vn2(FU / 7, FV / 7, 41) - .5))
-mat[(dp < pw_edge) & (rockness < .85)] = T_PATH
+# path hierarchy: a road (wide), a lane (medium) and a trail (narrow). Roads and lanes are trodden (T_PATH); a trail is
+# worn, darker ground (T_TRAIL). Each tier's edge is ragged, not a ruler line: its half-width wobbles with noise, and rock
+# only cuts it where the slope is steep. Shade falls off at each tier's own edge (dn is in units of the old half-width).
+edge_noise = 1 + .22 * (vn2(FU / 7, FV / 7, 41) - .5)
+dtr = {t: samp(dtier[t], FU, FV) for t in HALF}
+on_path = {t: (dtr[t] < HALF[t] * edge_noise) & (rockness < .85) for t in HALF}
+mat[on_path['road'] | on_path['lane']] = T_PATH
+mat[on_path['trail'] & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
+dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
 if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
@@ -806,8 +820,9 @@ lt -= .07 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
 # worn path, one material: a soft tone shift that follows the noise, with no dark rim on the grass and no pebble speckle
 # (those read as a hard edging band). The trodden ground and the turf meet through the ragged edge above.
-lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * (mat == T_PATH)
-lt -= .10 * smooth(pw * .5, pw, dp) * (mat == T_PATH) * (n2 > .45)
+on_trod = np.isin(mat, [T_PATH, T_TRAIL])
+lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
+lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -850,7 +865,7 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: [0, 0, 1, 1]}

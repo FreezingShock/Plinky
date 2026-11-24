@@ -11,7 +11,9 @@ Rules, all in layout texels unless noted:
 - No overlap with the meadow's existing sprites, or with another farm item (4 canvas texels of air between items).
 
 Output: farm.json with sprites in the placements3d format (file, kind, x, y, w, h, foot, sort_y), the wheat clumps'
-seed and stage, and the irrigation channel. Wheat clumps are baked into sheets by tools/bake_wheat.gd. The farm is always loaded: it is about two dozen nodes, so it fits under the 1350 ceiling.
+seed and stage, the irrigation channel, and the field list. The fields are irregular shapes (farm_fields.py) on tilled soil:
+one soil decal per field is written to soil/ (farm_soil_N.png, drawn behind everything). Wheat clumps are baked into sheets
+by tools/bake_wheat.gd. The farm is always loaded: it is about two dozen nodes, so it fits under the 1350 ceiling.
 
 Run: python3 tools/art/place_farm.py [--map]   (--map prints an ASCII view of the box).
 """
@@ -27,6 +29,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import larkmoor_layout as LAY  # noqa: E402
+import farm_fields as FF  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 ZONE = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'larkmoor')
@@ -42,7 +45,7 @@ WHEAT_DY = 12                           # ... or in y, so clumps overlap a littl
 MERE_MARGIN = 12                        # layout texels
 GAP = 4                                 # canvas texels between farm items
 
-# Sprite sizes (canvas texels), from gen_farm.py. Wheat clumps are placed by WHEAT_PATCHES below.
+# Sprite sizes (canvas texels), from gen_farm.py. Wheat clumps are placed by FIELDS below.
 SIZES = {
     'farm_barn': (72, 56), 'farm_shed': (40, 34), 'farm_hay_0': (16, 12), 'farm_hay_1': (16, 12),
     'farm_scarecrow': (18, 34), 'farm_cart': (28, 20), 'farm_crates': (12, 12),
@@ -203,50 +206,44 @@ def _fence_ok(ground: Ground, placer: Placer, px: float, py: float) -> bool:
     return True
 
 
-# Wheat: three organic patches. Each has a wobbly outline (harmonics of the angle), and clumps are placed on a loose
-# grid inside it. Every clump goes through the placer, so it never overlaps a path, pad, or another item.
-WHEAT_PATCHES = [
-    # centre x, centre y (layout texels), radius x, radius y, stage mix. Each sits on the walkable ground the placer
-    # allows inside the farm box (the map is walkable grass west and south of centre, cliffs and the mere to the east).
-    (1034, 468, 50, 19, 'gold'),
-    (1140, 540, 30, 22, 'gold'),
-    (1030, 600, 44, 16, 'mixed'),
-    (1090, 440, 26, 12, 'mixed'),
-    (1120, 572, 26, 12, 'gold'),
+# Wheat fields: irregular shapes on tilled soil (farm_fields.py). Each field is one of two real-field shapes, scaled,
+# mirrored and warped differently, so they read as different fields scattered round the farm. Every clump goes through
+# the placer, so it never overlaps a path, a pad, or another item.
+FIELDS = [
+    # kind, centre x, centre y (layout texels), scale, mirrored, warp seed. Each centre sits on the walkable ground the
+    # placer allows inside the farm box (the map is walkable grass west and south of centre, cliffs and the mere east).
+    FF.Field('notched', 1005, 530, 1.55, False, 1),
+    FF.Field('blob', 1000, 470, 1.35, True, 2),
+    FF.Field('blob', 1065, 580, 1.05, False, 3),
+    FF.Field('notched', 1075, 470, 0.80, True, 4),
 ]
 CLUMP_SIZES = [(32, 28), (28, 26), (32, 26), (30, 28)]     # canvas texels (w, h): smaller clumps, tighter grid, more stalks
+EDGE_SIZES = [(24, 22), (26, 24)]       # smaller clumps along a field's edge, so the irregular outline reads
+EDGE_BAND = 5.0                         # layout texels: clumps whose foot is this close to the edge use EDGE_SIZES
+EDGE_INSET = 2.0                        # layout texels: a clump's foot stays this far inside the field's edge
+GRID_X = 10.0                           # layout texels between clump centres across a row
+GRID_Y = 8.0                            # layout texels between rows (the placer keeps clumps 9 x 6 apart at least)
 
 
-def _limit(theta: float, phases) -> float:
-    """The patch outline: how far from the centre (in radii) the wheat may grow at angle theta."""
-    return 1 + 0.16 * math.sin(3 * theta + phases[0]) + 0.09 * math.sin(5 * theta + phases[1]) \
-        + 0.05 * math.sin(8 * theta + phases[2])
-
-
-def _wheat_items(placer: Placer, rng: random.Random, start: int, shapes: list):
-    """Clump items for every patch. Stage: 1 golden, 2 brown inside a mixed patch, 0 green shoots at a patch's edge.
-    Each patch's outline (centre, radii, phases) is appended to `shapes` for the fence ring."""
+def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
+    """Clump items for every field. Stage 1 is golden and stage 2 is late, brown and dry: a slow noise across the field
+    decides where. There are no green sprouts (Nathan: no green in the wheat)."""
     items = []
     n = start
-    for (cx, cy, rx, ry, mix) in WHEAT_PATCHES:
-        phases = [rng.uniform(0, 2 * math.pi) for _ in range(3)]
-        shapes.append((cx, cy, rx, ry, phases))
-        # Grid steps are layout texels (the canvas is 2x), so a clump of 48 to 64 canvas texels is 24 to 32 layout wide.
-        for row in range(-int(ry) // 10 - 2, int(ry) // 10 + 3):
-            for col in range(-int(rx) // 12 - 2, int(rx) // 12 + 3):
-                gx = cx + col * 12 + (6 if row % 2 else 0) + rng.uniform(-1, 1)
-                gy = cy + row * 10 + rng.uniform(-1, 1)
-                dx, dy = gx - cx, gy - cy
-                theta = math.atan2(dy, dx)
-                limit = _limit(theta, phases)
-                r = math.hypot(dx / rx, dy / ry)
-                if r > limit:
+    for f in fields:
+        # Grid steps are layout texels (the canvas is 2x), so a clump of 28 to 32 canvas texels is 14 to 16 layout wide.
+        rows = int(f.reach // GRID_Y) + 2
+        cols = int(f.reach // GRID_X) + 2
+        for row in range(-rows, rows + 1):
+            for col in range(-cols, cols + 1):
+                gx = f.cx + col * GRID_X + (GRID_X / 2 if row % 2 else 0) + rng.uniform(-1.2, 1.2)
+                gy = f.cy + row * GRID_Y + rng.uniform(-1.2, 1.2)
+                edge = f.sdf(gx, gy + 3.0)
+                if edge > -EDGE_INSET:
                     continue
-                w, h = CLUMP_SIZES[rng.randrange(len(CLUMP_SIZES))]
-                if mix == 'mixed':
-                    stage = 0 if r > 0.8 and rng.random() < 0.6 else (2 if rng.random() < 0.4 else 1)
-                else:
-                    stage = 0 if r > 0.85 and rng.random() < 0.4 else 1
+                sizes = EDGE_SIZES if edge > -EDGE_BAND else CLUMP_SIZES
+                w, h = sizes[rng.randrange(len(sizes))]
+                stage = 2 if f.tone(gx, gy) > 0.38 and rng.random() < 0.7 else 1
                 at = placer.place(w, h, gx, gy, radius=5, tag='wheat')
                 if at is None:
                     continue
@@ -259,39 +256,46 @@ def _wheat_items(placer: Placer, rng: random.Random, start: int, shapes: list):
     return items
 
 
-FENCE_OFFSET = 11                       # layout texels beyond the wheat outline: clear of every clump's reach
+FENCE_OFFSET = 12                       # layout texels beyond the field's edge: a paddock, clear of every clump's reach
 FENCE_CHORD = 24                        # canvas texels per fence piece (one sprite each)
 FENCE_GATE = 11                         # canvas texels of walk-in gap, half on each side of a gate
-FENCE_GATES = 2                         # walk-in gaps per patch
+FENCE_GATES = 2                         # walk-in gaps per field
+SOIL_PAD = 2                            # canvas texels of air kept between the soil and any building or prop
 
 
-def _fence_items(ground: Ground, placer: Placer, shapes: list, start: int):
-    """A rustic fence ring around each wheat patch, outside the clumps, with walk-in gaps.
+def _fence_items(ground: Ground, placer: Placer, fields: list, start: int):
+    """A rustic fence ring around each field, outside the clumps, with walk-in gaps.
 
-    The ring is sampled along each patch outline and cut into straight chords of about FENCE_CHORD canvas texels. Each
-    chord is one sprite (posts and two rails, drawn by gen_farm.py from its 'chord' endpoints). A chord is kept only
-    when its box is walkable grass, clear of paths and pads, and clear of the items placed before it (the targets,
-    the wheat and the channel). Chords may touch each other: they are one fence."""
+    The ring runs FENCE_OFFSET texels outside the field's edge, resampled into straight chords of about FENCE_CHORD
+    canvas texels. Each chord is one sprite (posts and two rails, drawn by gen_farm.py from its 'chord' endpoints). A chord
+    is kept only when its box is walkable grass, clear of paths and pads, and clear of the items placed before it (the
+    targets). Chords may touch each other: they are one fence."""
     items = []
     n = start
-    for pi, (cx, cy, rx, ry, phases) in enumerate(shapes):
-        rng = random.Random(41 + pi)
-        radius_c = math.sqrt((rx * rx + ry * ry) / 2.0) * S      # canvas texels, for arc lengths
-        count = max(24, int(2 * math.pi * (radius_c + FENCE_OFFSET * S) / FENCE_CHORD))
-        gates = [rng.uniform(0, 2 * math.pi) for _ in range(FENCE_GATES)]
-        half_gate = (FENCE_GATE / 2.0) / (radius_c + FENCE_OFFSET * S)
+    for fi, f in enumerate(fields):
+        rng = random.Random(41 + fi)
+        ring = [(x * S, y * S) for (x, y) in f.contour(FENCE_OFFSET)]
+        ring.append(ring[0])
+        seg = [math.hypot(ring[i + 1][0] - ring[i][0], ring[i + 1][1] - ring[i][1]) for i in range(len(ring) - 1)]
+        total = sum(seg)
+        count = max(24, int(round(total / FENCE_CHORD)))
         pts = []
         for k in range(count):
-            th = 2 * math.pi * k / count
-            L = _limit(th, phases)
-            px = (cx + (rx * L + FENCE_OFFSET) * math.cos(th)) * S
-            py = (cy + (ry * L + FENCE_OFFSET) * math.sin(th)) * S
-            pts.append((px, py))
+            target = total * k / count
+            i, acc = 0, 0.0
+            while i < len(seg) - 1 and acc + seg[i] < target:
+                acc += seg[i]
+                i += 1
+            t = (target - acc) / seg[i] if seg[i] > 0 else 0.0
+            pts.append((ring[i][0] + (ring[i + 1][0] - ring[i][0]) * t, ring[i][1] + (ring[i + 1][1] - ring[i][1]) * t))
+        gates = [rng.uniform(0, 2 * math.pi) for _ in range(FENCE_GATES)]
+        mean_r = total / (2 * math.pi)
+        half_gate = (FENCE_GATE / 2.0) / mean_r
         for k in range(count):
-            mid = 2 * math.pi * (k + 0.5) / count
+            (ax, ay), (bx, by) = pts[k], pts[(k + 1) % count]
+            mid = math.atan2((ay + by) / 2.0 - f.cy * S, (ax + bx) / 2.0 - f.cx * S)
             if any(_angle_gap(mid, g) < half_gate for g in gates):
                 continue
-            (ax, ay), (bx, by) = pts[k], pts[(k + 1) % count]
             x0 = int(math.floor(min(ax, bx))) - 1
             y0 = int(math.floor(min(ay, by))) - 8          # room above the line for the posts
             x1 = int(math.ceil(max(ax, bx))) + 2
@@ -329,17 +333,47 @@ def _fence_batch(pieces: list) -> list:
              'foot': [x0 + w / 2.0, float(y0)], 'sort_y': float(y0), 'pieces': pieces}]
 
 
-def _patch_shapes() -> list:
-    """Each wheat patch's outline (centre, radii, phases). The wheat's own draws replay from the same seed, and they do
-    not depend on where a clump lands, so these are the outlines the wheat is grown inside."""
-    shapes: list = []
-    _wheat_items(Placer(Ground(), []), random.Random(7), 0, shapes)
-    return shapes
+def _soil_items(ground: Ground, placer: Placer, fields: list, start: int):
+    """One soil decal per field: tilled dirt (farm_fields.soil_image) under the wheat, a few texels wider than it. It is
+    drawn only on walkable grass, and never over a building or prop (the targets and the meadow's own sprites, plus
+    SOIL_PAD texels of air). The sprite's foot is on its north edge, so it sorts behind everything south of it: the
+    wheat, the walker and the props all draw over it. Returns (items, {file: image})."""
+    items = []
+    images = {}
+    bx, by, bw, bh = BOX
+    box = (int((bx - bw / 2) * S), int((by - bh / 2) * S), int((bx + bw / 2) * S), int((by + bh / 2) * S))
+    blockers = [r for r, t in zip(placer.taken, placer.tags) if t is None]
+    n = start
+    for f in fields:
+        lx0, ly0, lx1, ly1 = f.bounds(10.0 * f.k + 1.0)
+        x0, y0 = max(int(math.floor(lx0 * S)), box[0]), max(int(math.floor(ly0 * S)), box[1])
+        x1, y1 = min(int(math.ceil(lx1 * S)), box[2]), min(int(math.ceil(ly1 * S)), box[3])
+        if x1 - x0 < 4 or y1 - y0 < 4:
+            continue
+        mask = ground.walk[y0:y1, x0:x1] & ground.grass[y0:y1, x0:x1]
+        for (a, b, c, d) in blockers:
+            ax0, ay0 = max(a - SOIL_PAD - x0, 0), max(b - SOIL_PAD - y0, 0)
+            ax1, ay1 = min(c + SOIL_PAD - x0, x1 - x0), min(d + SOIL_PAD - y0, y1 - y0)
+            if ax0 < ax1 and ay0 < ay1:
+                mask[ay0:ay1, ax0:ax1] = False
+        img = FF.soil_image(f, x0, y0, mask, S)
+        bb = img.getbbox()
+        if bb is None:
+            continue
+        img = img.crop(bb)
+        x0, y0 = x0 + bb[0], y0 + bb[1]
+        w, h = img.size
+        kind = 'farm_soil_%d' % n
+        images['soil/%s.png' % kind] = img
+        items.append({'kind': kind, 'file': 'soil/%s.png' % kind, 'x': x0, 'y': y0, 'w': w, 'h': h,
+                      'foot': [x0 + w / 2.0, float(y0)], 'sort_y': float(y0)})
+        n += 1
+    return items, images
 
 
 def build(map_only: bool = False) -> dict:
-    """Places the whole farm from scratch: the targets, the wheat patches, the water channel, then the fence ring around
-    each patch. The wheat sheets in assets/art/zone1b/farm/wheat/ are baked from this output (tools/bake_wheat.gd), so
+    """Places the whole farm from scratch: the targets, the fence ring around each field, the wheat, the soil under each
+    field, and the water channel. The wheat sheets in assets/art/zone1b/farm/wheat/ are baked from this output (tools/bake_wheat.gd), so
     re-run the bake after any change here."""
     ground = Ground()
     existing = _existing_rects(os.path.join(ZONE, 'placements3d.json'))
@@ -355,18 +389,23 @@ def build(map_only: bool = False) -> dict:
         x, y = at
         items.append({'kind': kind, 'file': FILES[kind], 'x': x, 'y': y, 'w': w, 'h': h,
                       'foot': [x + w / 2.0, y + h - 2.0], 'sort_y': float(y + h - 2)})
-    # The fence ring goes before the wheat: it marks each patch's edge, and the clumps grow inside it.
-    pieces = _fence_items(ground, placer, _patch_shapes(), 0)
+    # The fence ring goes before the wheat: it marks each field's paddock, and the clumps grow inside it.
+    pieces = _fence_items(ground, placer, FIELDS, 0)
     for it in pieces:
         placer.taken.append((it['x'], it['y'], it['x'] + it['w'], it['y'] + it['h']))
         placer.tags.append('fence')
     items += _fence_batch(pieces)
-    items += _wheat_items(placer, rng, len(items), [])
+    items += _wheat_items(placer, rng, len(items), FIELDS)
+    soil, soil_images = _soil_items(ground, placer, FIELDS, len(items))
+    items += soil
     channel = _channel(ground, placer)
     brooks = [{'points': channel, 'width': 2}] if channel else []
     if map_only:
         _print_map(ground, placer, items)
-    return {'items': items, 'fences': [], 'brooks': brooks, 'box_layout': list(BOX), 'scale': S}
+    return {'items': items, 'fences': [], 'brooks': brooks, 'box_layout': list(BOX), 'scale': S,
+            'fields': [{'kind': f.kind, 'at': [f.cx, f.cy], 'scale': f.scale, 'mirror': f.mirror, 'seed': f.seed}
+                       for f in FIELDS],
+            'soil_images': soil_images}
 
 
 def _channel(ground: Ground, placer: Placer):
@@ -421,10 +460,19 @@ def main() -> int:
         print(json.dumps({'items': len(out['items'])}))
         return 0
     os.makedirs(OUT, exist_ok=True)
+    soil_dir = os.path.join(OUT, 'soil')
+    os.makedirs(soil_dir, exist_ok=True)
+    for old in os.listdir(soil_dir):
+        if old.endswith('.png'):
+            os.remove(os.path.join(soil_dir, old))
+    for path, img in out.pop('soil_images').items():
+        img.save(os.path.join(OUT, path))
     with open(os.path.join(OUT, 'farm.json'), 'w') as f:
         json.dump(out, f, indent=1)
     fence_n = sum(1 for it in out['items'] if it['kind'].startswith('farm_fence'))
-    print('wrote farm.json:', len(out['items']), 'items,', fence_n, 'fence pieces')
+    soil_n = sum(1 for it in out['items'] if it['kind'].startswith('farm_soil'))
+    wheat_n = sum(1 for it in out['items'] if it['kind'].startswith('farm_wheat'))
+    print('wrote farm.json:', len(out['items']), 'items,', fence_n, 'fence pieces,', soil_n, 'soil decals,', wheat_n, 'wheat clumps')
     return 0
 
 

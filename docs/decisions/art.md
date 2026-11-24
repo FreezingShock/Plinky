@@ -288,6 +288,14 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
 - Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
 
+## 2026-11-24: Larkmoor wheat grows in irregular fields on tilled soil
+- Nathan picked two real-field shapes from mockups (g1 and g3) and asked for them to be placed irregularly round the farm. Shapes follow the irregular fields of varying size in satellite imagery of Germany (NASA imagery, via Geography Realm's "Agricultural Patterns Visible from Space"). `tools/art/farm_fields.py` builds them: a "notched" field (two lobes and a bite out of one edge) and a "blob" (a body, a bulge and a bump), as rounded rectangles in ground space, noise-warped, scaled and mirrored. Four fields (two of each) are placed by `FIELDS` in `tools/art/place_farm.py` where the walkable grass has room, found by a search over the farm box. The buildings and props (TARGETS) are untouched and belong to the barn thread.
+- Each field has a soil decal (`assets/art/zone1b/farm/soil/`, kind `farm_soil_N`): dark soil in furrows (EARTH dithered with INK), a headland a few texels wider than the wheat, and an edge that dissolves into grass through a 4x4 Bayer band. It is drawn only on walkable grass and never over a building or prop. Its foot is on its north edge, so it sorts behind everything south of it. It takes no rim light and casts no shadow (`FarmProps.is_soil`).
+- The wheat is wheat only, golden and late (brown), with no green sprouts (Nathan: not that tone of green anywhere). Roots, the root mass and the contact shadow are INK, not green, so the clumps sit on the soil. Colours are the eight palette roles only.
+- The fence ring follows each field's outline at 12 layout texels, 34 pieces with two walk-in gaps per field, placed before the wheat. It keeps the broken look from #367.
+- The silhouette cut: a stalk in front of the walker, within 9 texels of his column, stops 14 texels above his feet, so wheat tops do not cover him. It only runs for clumps near him, so it follows Reduce Motion (no push, no cut).
+- Numbers: 4 fields, 51 clumps (45 golden, 6 brown), 4 soil decals, 34 fence pieces in one node. Tests 6537 checks, 0 failed. Bench (low quality, cloud, software GL): Larkmoor 1211 to 1215 nodes at peak against the 1350 ceiling.
+- Checked in cloud captures only (xvfb, software GL), not on the PC. The field variation (short and thin patches) is subtle because tall wheat in front hides anything behind it from this camera.
 
 ## 2026-11-24: Bushes and rocks are re-shaped for the looking-down camera
 - Rocks: a tilted plane shaves each crown flat, so the top reads as one lit face with a bevelled rim. Facets drop from 3 to 5 down to 1 to 3 low side cuts, and the bumpy noise is halved on big rocks. Facets no longer split a stone into pieces.
@@ -317,3 +325,16 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Withdrawn: an earlier count of 193 sway tips came from a bounds mistake (the default 640 window), not from F. Use `--bounds 0,0,3040,1840` for Larkmoor life.
 - The Larkmoor A bake reproduces the committed ground exactly (0 texels differ), so the pipeline is trusted for both zones.
 - Open: PR #378 and #395 put the blade shader over the grass. Their threads judge the combined look in engine and thin the blades if they double up.
+## 2026-11-24: Larkmoor grass blades draw per loaded chunk, in one node
+- `GrassBlades` gets a chunked mode. It draws one shader rect per loaded prop chunk (`chunk_loaded` / `chunk_unloaded` from `LarkmoorScene`), in a single node, so the grass follows the streaming and adds no node count. The rects are in zone texels, the same space as the blades.
+- Pushers are a list of up to 6 points: the walker and the rabbits, chickens and frogs that are showing (`LifeCritters.ground_pushers`, read-only). Ducks are not included yet.
+- `LifeGround` is no longer placed in Larkmoor or the meadow. The class stays for its tests.
+- Pad plates are skipped by colour (they are not grass colours), not by the pad clearance, because Larkmoor has 31 pads and the shader holds 8.
+- Checked in the cloud only (xvfb, lavapipe): no shader errors, `tests/run.gd` passes (6539 checks), `tools/larkmoor_shots.tscn` runs. Not verified on the PC.
+
+## 2026-11-24: Lightning in heavy rain (recommendation 9, third of three)
+- **Look:** a brief cool-white lift on the whole frame in heavy rain (rain at 70% of max and up), made in the light grade pass (`light_grade.gdshader`, uniform `flash`). A strike flickers twice over about half a second.
+- **Schedule:** `SkyModel.lightning_flash(t, rain01)`, pure. Each 40 s window has a strike half the time, at a hashed moment, so the same time always gives the same flash and the test can check it.
+- **Flashing:** zero under Reduce motion or Reduce flashing (`steady` in `SkyCycle._update_light`). Reduce flashing defaults off, so lightning plays by default, as the handoff asked.
+- **Low quality:** the light grade pass is skipped on Low (`GraphicsQuality.screen_grade`), so Low shows no lightning. Thunder sound is not included.
+- **Not verified in-engine:** how strong the lift reads on the PC, and how often a strike falls in a real downpour.

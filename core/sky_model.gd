@@ -180,3 +180,22 @@ func mist(t: float, rain01: float = 0.0) -> float:
 ## The ramps in sky.tres are Gradient resources sampled at this value.
 func ramp(t: float) -> float:
 	return phase(t)
+
+
+## Lightning flash, 0..1, at game time t. Only in heavy rain (rain01 from 0.7 up, full at 1). Each 40 s window has a
+## strike half the time, at a hashed moment in the window, and each strike flickers twice over about half a second.
+## Pure: the same time always gives the same flash, so it can be tested.
+static func lightning_flash(t: float, rain01: float) -> float:
+	var heavy: float = clampf((rain01 - 0.7) / 0.3, 0.0, 1.0)
+	if heavy <= 0.0:
+		return 0.0
+	var w: float = floorf(t / 40.0)
+	var h: float = fposmod(sin(w * 12.9898 + 78.233) * 43758.5453, 1.0)
+	if h < 0.5:
+		return 0.0
+	var d: float = t - (w * 40.0 + fposmod(h * 7.31, 1.0) * 36.0)
+	if d < 0.0 or d > 0.6:
+		return 0.0
+	var main: float = exp(-d * 14.0)
+	var again: float = 0.55 * exp(-maxf(d - 0.18, 0.0) * 14.0) if d >= 0.18 else 0.0
+	return clampf(maxf(main, again), 0.0, 1.0) * heavy
