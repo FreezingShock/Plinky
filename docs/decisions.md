@@ -772,6 +772,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Edit mode:** the three boxed buttons per row became a frameless grip (drag the row, or Up and Down while the grip has focus) and a frameless hide mark, dim until the row is hovered. This drops the move up and move down buttons, so there is nothing to disable at either end.
 - **Motion:** rows glide to new places, fade out when hidden and fade in when added, the grips and footer ease open in six steps, and chips pop in. All of it snaps under Reduce Motion or Reduce Flashing.
 - Not run in-engine from the cloud; needs a PC capture.
+## 2026-11-23 Popups slide clear of the zone panel
+- PC QA: long popups such as "+100QnVg!" were cut off where the zone panel starts (the panel sits top right, x 480 to 632, and draws over the popup layer). Popups were only hidden under menus, never moved for the zone panel.
+- Fix: `PopupClear.slide_clear` (ui/fx/popup_clear.gd) moves a popup left of the first blocker it overlaps, repeating if that lands on another. If there is no room left of the blocker, the popup is skipped for that frame instead of drawn half hidden. `HUD.clear_rects()` supplies the zone panel's global rect through `PopupNumber.keep_clear`, set in the same place as `under_menu`.
+- Menus keep the existing behaviour: popups under an open menu are hidden. The clamp is only for the zone panel.
+- I could not find PR #157 in history, so I could not compare against its clamp. This follows the existing viewport clamp in `_draw_pop`.
+- Not run in engine: no Godot in the cloud. Tests in tests/test_popup_clear.gd cover the geometry. PC QA should check a popup on a pad beside the zone panel, with the panel open and with Travel open.
 
 
 ## CI uid guard (2026-11-23)
@@ -779,12 +785,19 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
 
-## Upgrades gallery (2026-11-24)
-- **Layout:** the Upgrades panel body is `ui/upgrade_gallery.gd`, not rows in the HUD. Tabs come from `UpgradeText.currencies()`, so a new zone reset gets its own tab with no code change. Each tab is a list of tiers (`UpgradeText.tier_of`: the resets or Rebirths a gift waits for), each tier a 3-column grid of cards. The tab for the current zone opens first, every time the panel opens.
-- **Card:** `ui/gift_card.gd` is a Button, so the whole card is the buy target. Outline: green when affordable, red with a dim fill when not (both through `StatStyle.buy`, so the colour-safe option applies), gold when maxed, dim while locked. `AsciiBox.Kind.CARD` draws the notched frame with no fill, so the card background stays transparent.
-- **Lazy build:** a tab's pages and cards are built the first time it is shown. The default tab is about 13 cards, so the node cost is about half of building all 27 at once.
-- **Purchase feedback:** the card pops, throws seven pixel sparks from its centre (drawn, not nodes), the header badge pops, and the cost flies off as before. Reduce motion and reduce flashing skip the motion and keep the sounds.
-- **Lock text:** "Unlocks after 1 Nucleus reset" (the old text said "Nucleuss").
-- **Bloom and Nucleus exit:** the icon and number rise straight up from the centre and shrink away with a fade, and one ring closes on the spot. They no longer fly into the HUD corner. The Seeds or Shards row still rolls up on release.
-- **Taste call for Nathan:** tabs are the only way between groups (no Q/E shortcuts). Recommended pick: leave it, since the Upgrades key already opens the panel.
-- **Not verified in-engine:** the layout at 640x360, the sparks, the exit timing. PC QA should check the panel in both zones, Reduce Motion on and off, and a Bloom and a Nucleus run.
+## 2026-11-23 Upgrades gallery and centred Bloom exit (minor)
+- **Upgrades layout:** one tab per currency group (Prestige, Rebirth Perks, then each zone reset's gifts, named by `ZoneResetDef.menu_title`). Tabs come from the data, so a new reset gets its own tab with no HUD change. Within a tab, gifts are grouped into tiers by their unlock gate, each with a heading ("Tier 1: Open", "Tier 2: Unlocks After 2 Blooms"). Cards sit two across in a scroll list about 3.5 rows tall, so the panel fits above the bottom bar at 640x360.
+- **Card outline:** green when the next level is affordable, red when not (the existing colour-safe tint), gold when maxed, dim while locked. The fill is transparent so the panel shows through. Taste call: gold for maxed is my pick; say if you want maxed to stay green.
+- **Code:** `ui/upgrade_row.gd` is replaced by `ui/upgrade_card.gd` (same buy, hold-to-repeat and tick logic). `UpgradeText` gains `tier_key`, `tier_head` and `tab_name` (pure, tested).
+- **Exit:** the coin, number, rays and ring stay centred. The coin steps down 4 to 3 to 2 to 1 pixels in place and is gone at the end of the exit, the number fades, the rays fold in and one pixel ring closes on the centre. Only a few motes (about ten a second, pixel-sized) drift from the centre into the HUD row, which still rolls up when they land. Calm (Reduce flashing, Still meadow, Calm camera) keeps the coin at full size and only fades it.
+- **Timeline:** `BloomTimeline.fly_progress` is replaced by `exit_progress` and `exit_alpha`. The plan keys (`fly_end` and so on) keep their names so the existing timing tests still apply.
+- Not run in-engine from the cloud: the tab and card layout at 640x360, the card text width at 150 px for the delta line, and the exit motion. `tools/bloom_shot.tscn` now samples the exit densely (`bloom_full_*` frames) for a PC capture.
+
+## Upgrades card feedback (2026-11-24)
+- **Base:** built on #230's gallery (tabs, tiers, two-across `UpgradeCard`, centred exit). The gallery layout was not redone.
+- **Whole card buys:** a click anywhere on the card buys (press starts the hold, release ends it). The Buy button still takes its own press and keyboard focus, so a click on it never buys twice. The card's press does not touch `_skip_pressed`.
+- **Feedback:** the card pops (1.04 to 1), seven pixel sparks leave its centre (drawn, so no nodes), and the currency's header badge pops (1.18 to 1). All of it is skipped under Reduce Motion or Reduce Flashing, and the sounds stay.
+- **Sizes:** the card is 56 px tall (was 50) and the list is 232 px (was 196), about four rows. Not checked in-engine: whether the taller panel clears the zone panel and the bottom bar at 640x360.
+- **Lock text:** "Unlocks after 1 Nucleus reset" (was "Nucleuss").
+- **Taste call for Nathan:** hover puts a faint wash on a card you can afford. Say if you want the hover left off.
+- Not verified in-engine: the sparks, the pop timing and the taller panel. PC QA should check both zones with motion on and off.

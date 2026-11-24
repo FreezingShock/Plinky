@@ -6,7 +6,8 @@ extends Node
 ## Writes <out_dir>/bloom_<mode>_NN_tMMMM.png and <out_dir>/bloom_<mode>_sheet.png. out_dir defaults to res://captures/bloom.
 ## Point APPDATA/user:// at a scratch folder so the real save is never touched.
 
-const MOMENTS: Array[float] = [0.0, 0.5, 1.0, 1.3, 1.52, 1.62, 1.75, 1.95, 2.3, 3.0, 3.9, 4.2, 4.5, 5.0]
+## The exit (after hold_end = 3.95 s, fly_end = 4.5 s in the full show) is sampled densely: the coin's steps, the ring and motes.
+const MOMENTS: Array[float] = [0.0, 0.5, 1.0, 1.3, 1.52, 1.62, 1.75, 1.95, 2.3, 3.0, 3.9, 4.05, 4.2, 4.35, 4.5, 4.7]
 
 
 func _wait(n: int) -> void:

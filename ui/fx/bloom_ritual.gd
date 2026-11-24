@@ -5,19 +5,19 @@ extends Control
 ## The sim has already reset by the time this runs; the HUD rows are told to count down from the old values over the
 ## same span (RollValue.countdown), so they all land together. Then a centred sequence plays (ui/fx/bloom_timeline.gd
 ## has the clock): a light-dither veil and a closing ring of ASCII marks, a flash, a big pop of the currency icon, pixel
-## rings, sparkles and petals, the earned amount counting up, then the icon and number drift straight up out of the middle
-## and shrink away while a last ring closes on the spot. The HUD row rolls to its new total as they go.
+## rings, sparkles and petals, the earned amount counting up, then a centred exit into the HUD row, which rolls to its new total.
 ##
 ## Only pixels: 4x4 Bayer dither, whole-texel rects, nearest-filtered icon at integer scales, the theme's fonts.
-## No camera shake. Reduce flashing, Still meadow and Calm camera swap it for a short fade (no flash, rings or particles);
-## Reduce screen effects also drops the veil. Any click or key after a moment skips ahead. Nothing here blocks input.
+## No camera shake. The exit stays centred: the coin steps down into a point, the rays and a ring fold in, and a few motes
+## drift up into the HUD row. Reduce flashing, Still meadow and Calm camera swap it for a short fade (no flash, rings or
+## particles, no shrink); Reduce screen effects also drops the veil. Any click or key after a moment skips ahead.
+## Nothing here blocks input.
 
 const VEIL: Shader = preload("res://ui/fx/bloom_veil.gdshader")
 const FLOWERS: Array[StringName] = [&"dewdrop", &"clover", &"thistle", &"heather", &"foxglove", &"starbloom"]
 const MARKS: String = ".o*O"
 const SKIP_AFTER: float = 0.45
 const NUMBER_SIZE: int = 32
-const RISE_PX: float = 40.0   ## how far the icon and number drift up while they go away, always on the centre line
 const HEAD_SIZE: int = 24
 
 var sim: Sim
@@ -32,7 +32,7 @@ var _icon: Texture2D
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _veil_rect: ColorRect
 var _mat: ShaderMaterial
-var _text: Control      ## the labels' common origin, moved on the fly-out
+var _text: Control      ## the labels' common origin; it sits still (the exit is centred) and fades
 var _head: Label
 var _number: Label
 var _caption: Label
@@ -44,7 +44,7 @@ var _parts: Array[Dictionary] = []
 var _rings: Array[Dictionary] = []
 var _sparks: Array[Dictionary] = []
 var _mote_acc: float = 0.0
-var _exit_pulsed: bool = false
+var _exit_acc: float = 0.0
 var _seeds_row: RollValue
 var _font: Font
 
@@ -127,10 +127,10 @@ func start(reset_id: StringName, gained: int) -> void:
 	_rings.clear()
 	_sparks.clear()
 	_burst_done = false
-	_exit_pulsed = false
 	_released = false
 	_ticks = 0
 	_mote_acc = 0.0
+	_exit_acc = 0.0
 	_font = get_theme_default_font()
 	_count_down_rows()
 	var d: StatDef = sim.stat_defs.get(_reset.currency) as StatDef
@@ -188,6 +188,13 @@ func _center() -> Vector2:
 	return Vector2(roundf(size.x * 0.5), roundf(size.y * 0.36))
 
 
+## The HUD row the motes drift into, in this control's space.
+func _target() -> Vector2:
+	if _seeds_row != null and is_instance_valid(_seeds_row):
+		return (_seeds_row.global_position + _seeds_row.size * 0.5 - global_position).round()
+	return Vector2(40.0, 20.0)
+
+
 func _process(delta: float) -> void:
 	if _t < 0.0:
 		return
@@ -197,9 +204,6 @@ func _process(delta: float) -> void:
 		_burst()
 	_set_light(p)
 	_step_text(p)
-	if not _exit_pulsed and _t >= float(p["hold_end"]):
-		_exit_pulsed = true
-		_exit_ring()
 	_step_fx(delta, p)
 	if not _released and _t >= float(p["fly_end"]):
 		_released = true
@@ -232,23 +236,10 @@ func _step_text(p: Dictionary) -> void:
 		_ticks = steps
 		Audio.bloom_tick(steps)
 	var fade_in: float = clampf((_t - burst) / 0.25, 0.0, 1.0)
-	var fly: float = BloomTimeline.fly_progress(_t, p)
-	var alpha: float = fade_in * (1.0 - clampf((fly - 0.35) / 0.65, 0.0, 1.0))
+	var alpha: float = fade_in * BloomTimeline.exit_alpha(_t, p)
 	_text.modulate = Color(1.0, 1.0, 1.0, alpha)
 	_hint.modulate.a = clampf((_t - float(p["up_end"])) / 0.3, 0.0, 1.0)
-	_text.position = (_center() + Vector2(0.0, 68.0 - RISE_PX * fly)).round()
-
-
-## Where the icon sits: the centre, rising straight up as it goes away.
-func _icon_pos(fly: float) -> Vector2:
-	return (_center() - Vector2(0.0, RISE_PX * fly)).round()
-
-
-## One ring that closes on the spot as the icon leaves, so the exit reads as the reset going away, not sliding off.
-func _exit_ring() -> void:
-	if _calm:
-		return
-	_rings.append({"age": 0.0, "life": 0.6, "r0": 22.0, "r1": 60.0, "col": _color, "w": 1})
+	_text.position = (_center() + Vector2(0.0, 68.0)).round()
 
 
 func _burst() -> void:
@@ -276,8 +267,12 @@ func _burst() -> void:
 
 
 func _step_fx(delta: float, p: Dictionary) -> void:
+	var home: Vector2 = _target()
 	for q: Dictionary in _parts:
 		q["age"] = float(q["age"]) + delta
+		if bool(q.get("home", false)):   # an exit mote: drifts from the centre into the HUD row
+			q["pos"] = (q["pos"] as Vector2).lerp(home, minf(1.0, 2.5 * delta))
+			continue
 		var v: Vector2 = q["vel"] as Vector2
 		v *= maxf(0.0, 1.0 - float(q["drag"]) * delta)
 		v.y += float(q["grav"]) * delta
@@ -290,6 +285,14 @@ func _step_fx(delta: float, p: Dictionary) -> void:
 	_parts = Array(_parts.filter(func(q: Dictionary) -> bool: return float(q["age"]) < float(q["life"])), TYPE_DICTIONARY, "", null)
 	_rings = Array(_rings.filter(func(r: Dictionary) -> bool: return float(r["age"]) < float(r["life"])), TYPE_DICTIONARY, "", null)
 	_sparks = Array(_sparks.filter(func(s: Dictionary) -> bool: return float(s["age"]) < float(s["life"])), TYPE_DICTIONARY, "", null)
+	# The exit: a few motes lift off the coin and drift into the HUD row. The coin itself never leaves the centre.
+	if not _calm and _t >= float(p["hold_end"]) and _t < float(p["fly_end"]):
+		_exit_acc += delta * float(GraphicsQuality.particle_count(10))
+		while _exit_acc >= 1.0:
+			_exit_acc -= 1.0
+			_parts.append({"pos": _center() + Vector2(_rng.randf_range(-30.0, 30.0), _rng.randf_range(-14.0, 14.0)), "vel": Vector2.ZERO,
+				"life": _rng.randf_range(0.9, 1.3), "age": 0.0, "size": 2 if _rng.randf() < 0.3 else 1,
+				"col": _color if _rng.randf() < 0.5 else Color("fff1c8"), "grav": 0.0, "drag": 0.0, "home": true})
 	# Seeds drift up off the resting icon.
 	if not _calm and _t >= float(p["up_start"]) and _t < float(p["hold_end"]):
 		_mote_acc += delta * float(GraphicsQuality.particle_count(14))
@@ -318,17 +321,20 @@ func _draw() -> void:
 			var at: Vector2 = c + Vector2(cos(a), sin(a) * 0.8) * radius
 			draw_string(_font, (at + Vector2(-3.0, 4.0)).round(), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, _color.lerp(Color.WHITE, u))
 	var icon_scale: int = BloomTimeline.icon_scale(_t, p)
-	var fly: float = BloomTimeline.fly_progress(_t, p)
-	# Slow rays behind the resting icon.
-	if not _calm and _t >= burst and fly < 0.2:
+	var exit: float = BloomTimeline.exit_progress(_t, p)
+	# Slow rays behind the resting icon. In the exit they fold in toward the centre as the coin shrinks.
+	if not _calm and _t >= burst and exit < 1.0:
 		var spin: float = _t * 0.6
 		for k in 12:
 			var a3: float = spin + TAU * float(k) / 12.0
 			var dir: Vector2 = Vector2(cos(a3), sin(a3) * 0.85)
 			for j in 6:
-				var rr: float = 74.0 + float(j) * 7.0
+				var rr: float = (74.0 + float(j) * 7.0) * (1.0 - exit * 0.7)
 				if (j + k + int(_t * 8.0)) % 2 == 0:
 					draw_rect(Rect2((c + dir * rr).round(), Vector2.ONE), Color(_color.r, _color.g, _color.b, 1.0) if j < 4 else Color("fff1c8"))
+	# The exit's ring: one pixel ring that closes in on the centre as the coin goes.
+	if not _calm and exit > 0.0 and exit < 1.0:
+		_draw_pixel_ring(c, lerpf(72.0, 4.0, exit), _color)
 	for r: Dictionary in _rings:
 		_draw_ring(c, r)
 	for q: Dictionary in _parts:
@@ -344,10 +350,20 @@ func _draw() -> void:
 		var px: float = float(_icon.get_width() * icon_scale)
 		var tint: Color = Color.WHITE
 		if _calm:
-			tint.a = clampf((_t - burst) / 0.4, 0.0, 1.0) * (1.0 - clampf((fly - 0.35) / 0.65, 0.0, 1.0))
-		var bob: float = 0.0 if _calm or fly > 0.0 or _t < burst + 0.3 else roundf(sin(_t * 3.0))
-		var centre: Vector2 = _icon_pos(fly) + Vector2(0.0, bob)
+			tint.a = clampf((_t - burst) / 0.4, 0.0, 1.0) * BloomTimeline.exit_alpha(_t, p)
+		var bob: float = 0.0 if _calm or exit > 0.0 or _t < burst + 0.3 else roundf(sin(_t * 3.0))
+		var centre: Vector2 = c + Vector2(0.0, bob)
 		draw_texture_rect(_icon, Rect2((centre - Vector2(px, px) * 0.5).round(), Vector2(px, px)), false, tint)
+
+
+## A ring of single pixels, dashed as it goes, drawn at `radius` around `c`.
+func _draw_pixel_ring(c: Vector2, radius: float, col: Color) -> void:
+	var n: int = maxi(16, int(radius * 1.1))
+	for i in n:
+		if (i + int(_t * 30.0)) % 2 == 1:
+			continue
+		var a: float = TAU * float(i) / float(n)
+		draw_rect(Rect2((c + Vector2(cos(a), sin(a) * 0.85) * radius).round(), Vector2.ONE), col)
 
 
 func _draw_ring(c: Vector2, r: Dictionary) -> void:
