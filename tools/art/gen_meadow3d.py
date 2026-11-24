@@ -492,6 +492,41 @@ def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
                 put(kind, u, v, sc, seed=seed, **{k: w for k, w in kw.items() if k == 'big'}); got += 1; break
     return got
 SC = lambda p: s2uv(*p)
+# Pads sit beside the path, never on it: each plate moves to the nearest open-land spot 26 to 30 texels from the path
+# centre (plate radius 14, rim 6.6, grass between). Rows keep their order, so the climb still reads from the spawn.
+PAD_OFF_LO, PAD_OFF_HI = 24.0, 34.0
+SPAWN_S, SHRINE_S, GATE_S = (164, 264), (572, 196), (330, 96)
+def beside_path(sx, sy, done):
+    best = None
+    for dy in range(-64, 65, 2):
+        for dx in range(-64, 65, 2):
+            x, y = sx + dx, sy + dy
+            u, v = s2uv(x, y)
+            if not (30 < u < N - 30 and 30 < v < N - 30): continue
+            if np.hypot(u - CU, v - CV) > Re(math.atan2(v - CV, u - CU)) * .95: continue
+            dp = float(samp(dpath, u, v))
+            if not (PAD_OFF_LO <= dp <= PAD_OFF_HI): continue
+            if float(samp(WD, u, v)) > -.5: continue                                    # land (WD is -1 on land, positive in water)
+            if any(float(samp(WD, u + ox, v + oy)) > -.5 for ox, oy in ((7, 0), (-7, 0), (0, 7), (0, -7))): continue
+            if float(terrain_h(u, v)) > 12.0 or float(slope_at(u, v)) > .6: continue
+            if math.hypot(x - GATE_S[0], y - GATE_S[1]) < 40 or math.hypot(x - SPAWN_S[0], y - SPAWN_S[1]) < 26: continue
+            if math.hypot(x - SHRINE_S[0], y - SHRINE_S[1]) < 34: continue
+            if any(math.hypot(x - ox_, y - oy_) < 36 for ox_, oy_ in done): continue
+            cost = math.hypot(dx, dy)
+            if best is None or cost < best[0]: best = (cost, x, y)
+    if best is None: raise SystemExit('no open-land spot beside the path for pad (%d,%d)' % (sx, sy))
+    return best[1], best[2]
+_done = []
+def _move_row(row):
+    out = []
+    for (x, y) in row:
+        p = beside_path(x, y, _done)
+        _done.append(p); out.append(p)
+    return out
+SPROUT_ROW = _move_row(SPROUT_ROW)
+CLOVER_ROW = _move_row(CLOVER_ROW)
+PADS_S = [(x, y, 'ready') for (x, y) in SPROUT_ROW + CLOVER_ROW]
+log('pads moved beside the path: sprout %s, clover %s' % (SPROUT_ROW, CLOVER_ROW))
 # anchors the game draws itself (player spawn, pads, gate, shrine): positions only, nothing baked
 for (sx, sy, st) in PADS_S: anchors.append(dict(kind='pad', state=st, **dict(zip(('u', 'v'), s2uv(sx, sy))), sx=sx, sy=sy))
 anchors.append(dict(kind='gate', u=GATE[0], v=GATE[1], sx=330, sy=96))
@@ -670,6 +705,19 @@ def check_layout():
     log('layout check: %d props, %d problems' % (len(PLACED_KIND), len(bad)))
     assert not bad, bad[:8]
 check_layout()
+
+# pads sit beside the path, never on it: a plate is about 14 texels from its centre, plus the path's half-width
+PAD_PLATE_R = 14.0
+def check_pads():
+    bad = []
+    for a_ in anchors:
+        if a_['kind'] != 'pad': continue
+        dp = float(samp(dpath, a_['u'], a_['v']))
+        log('  pad (%d,%d) is %.1f from the path centre' % (a_['sx'], a_['sy'], dp))
+        if dp < PAD_PLATE_R + PW_MEAN + 1.0: bad.append((a_['sx'], a_['sy'], round(dp, 1)))
+    log('pad check: %d pads, %d on or against the path' % (sum(1 for a_ in anchors if a_['kind'] == 'pad'), len(bad)))
+    assert not bad, bad
+check_pads()
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
