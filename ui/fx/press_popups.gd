@@ -18,7 +18,9 @@ const MAX_RINGS: int = 8
 const MERGE_WINDOW: float = 1.2           ## a press this soon after a popup's last one folds into it
 const LIFT: Vector2 = Vector2(0.0, -18.0)   ## screen pixels from the pad to the number's baseline
 const MAX_WIDTH: float = 150.0             ## widest a popup's text may be, in pixels
-const MERGE_NEAR: float = 40.0            ## pixels: popups of the same stat this close are one stack
+const MERGE_NEAR: float = 120.0           ## pixels: same-stat presses this close (about a pad and a half) fold into one number
+const TICK_RATE: float = 16.0             ## per second: a merged number rolls up to its new total in about 0.2 s
+const SETTLE_GAP: float = 2.0             ## pixels kept between two visible popups after the per-frame settle
 const LIFE: float = 0.95
 const HOLD_LINGER: float = 0.5
 const FLOAT_AFTER_HOLD: float = 0.8
@@ -61,6 +63,10 @@ class Pop:
 	var lay_size: int = 0
 	var xs: PackedFloat32Array = PackedFloat32Array()
 	var w: float = 0.0
+	var cap_w: float = 0.0               ## width of the stat caption (drawn at 12 px), so placement clears it
+	var shown: float = 0.0               ## the total on screen; after a merge it rolls up to `total`
+	var seq: int = 0                     ## spawn order: older popups keep their place when two overlap
+	var push: float = 0.0                ## upward move this frame so the box clears the boxes beneath it (see _settle)
 
 class Link:
 	var live: bool = false
@@ -99,6 +105,7 @@ var _p_kind: PackedInt32Array = PackedInt32Array()
 var _p_next: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _clock: float = 0.0
+var _seq: int = 0
 
 
 func _ready() -> void:
@@ -161,6 +168,7 @@ func press(key: StringName, at: Vector2, amount: float, tier: int, crit: bool, h
 	_init_pop(p, key, at, amount, tier, crit, pulse, delay)
 	p.stat = stat
 	p.stat_col = stat_col
+	p.cap_w = _caption_w(stat)
 	if held:
 		p.running = true
 		p.t0 = 9999.0
@@ -295,7 +303,7 @@ func _alloc() -> Pop:
 
 
 func _format(p: Pop) -> String:
-	return "+" + NumberFormat.short(p.total) + ("!" if p.crit else "")
+	return "+" + NumberFormat.short(p.shown) + ("!" if p.crit else "")
 
 
 func _hold_digits(total: float) -> int:
@@ -305,12 +313,16 @@ func _hold_digits(total: float) -> int:
 func _init_pop(p: Pop, key: StringName, at: Vector2, amount: float, tier: int, crit: bool, pulse: bool, delay: float) -> void:
 	p.live = true
 	p.started = false
+	_seq += 1
+	p.seq = _seq
+	p.push = 0.0
 	p.key = key
 	p.anchor = at
 	p.lift = LIFT
 	p.lane = Vector2.ZERO
 	p.base = Vector2.ZERO
 	p.total = amount
+	p.shown = amount
 	p.count = 1
 	p.tier = tier
 	p.crit = crit
@@ -318,6 +330,10 @@ func _init_pop(p: Pop, key: StringName, at: Vector2, amount: float, tier: int, c
 	p.banner = false
 	p.running = false
 	p.hidden = false
+	# A pooled Pop keeps the fields of its last use. Clear the stat, or a label would inherit an old caption.
+	p.stat = ""
+	p.stat_col = Color.WHITE
+	p.cap_w = 0.0
 	p.check_t = 0.0
 	p.trail_t = 0.0
 	p.age = -delay
@@ -364,34 +380,64 @@ func _screen(p: Pop) -> Vector2:
 
 
 func _pos_of(p: Pop) -> Vector2:
-	return _screen(p) + p.lane + p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+	return _screen(p) + p.lane + p.base + PopupStyle.motion_offset(_motion_now(p), _progress(p), p.rnd, p.dir, p.rise, p.ease_id) + Vector2(0.0, p.push)
 
 
+## The motion the popup is drawn with this frame. Reduce Motion draws every popup as a plain rise.
+func _motion_now(p: Pop) -> int:
+	return PopupStyle.Motion.RISE if _calm() else p.motion
+
+
+## Per frame: every visible popup gets the smallest upward push that clears the boxes beneath it, so two popups never
+## sit on each other, however they were spawned, merged or grown. Oldest first, so an older popup never moves for a newer one.
+func _settle() -> void:
+	var order: Array[Pop] = []
+	for p in _pops:
+		if p.live and p.age >= 0.0 and not p.hidden:
+			p.push = 0.0
+			order.append(p)
+	order.sort_custom(func(a: Pop, b: Pop) -> bool: return a.seq < b.seq)
+	var bases: Array[Rect2] = []
+	for p in order:
+		bases.append(_rect_of(p))
+	var lifts: PackedFloat32Array = PopupLanes.settle(bases, SETTLE_GAP)
+	for i in order.size():
+		order[i].push = lifts[i]
+
+
+## The caption sits under the number, so the box has to be as wide as the wider of the two. Measuring the number alone
+## let a 190 px caption run into its neighbours.
 func _rect_of(p: Pop) -> Rect2:
 	_layout(p, _size_px(p))
-	var wide: float = p.w + (10.0 if p.pulse else 0.0) + 4.0
-	var high: float = float(_size_px(p)) + 4.0 + (13.0 if p.stat != "" else 0.0)
-	var c: Vector2 = _pos_of(p)
-	return Rect2(c.x - wide * 0.5, c.y - high + (13.0 if p.stat != "" else 0.0), wide, high)
+	return PopupLanes.rect(_pos_of(p), _box(p), _drop(p))
 
 
-## First lane whose rectangle clears every other live popup; if all are taken, the least crowded one.
+func _box(p: Pop) -> Vector2:
+	var wide: float = maxf(p.w, p.cap_w) + (10.0 if p.pulse else 0.0) + 4.0
+	return Vector2(wide, float(_size_px(p)) + 4.0 + _drop(p))
+
+
+func _drop(p: Pop) -> float:
+	return 13.0 if p.stat != "" else 0.0
+
+
+## Width in pixels of a stat caption, drawn at 12 px by _draw_caption.
+func _caption_w(stat: String) -> float:
+	var w: float = 0.0
+	for k in stat.length():
+		w += font.get_char_size(stat.unicode_at(k), 12).x
+	return w
+
+
+## Lane for a new popup: a fixed lane that clears every live popup, else a slot stacked above one (see PopupLanes).
 func _place(p: Pop) -> void:
-	var best: Vector2 = Vector2.ZERO
-	var best_hits: int = 1000
-	for ln: Vector2 in LANES:
-		p.lane = ln
-		var r: Rect2 = _rect_of(p)
-		var hits: int = 0
-		for q in _pops:
-			if q.live and q != p and q.age > -0.2 and r.intersects(_rect_of(q)):
-				hits += 1
-		if hits < best_hits:
-			best_hits = hits
-			best = ln
-		if hits == 0:
-			break
-	p.lane = best
+	_layout(p, _size_px(p))
+	var others: Array[Rect2] = []
+	for q in _pops:
+		if q.live and q != p:
+			others.append(_rect_of(q))
+	var origin: Vector2 = _screen(p) + p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
+	p.lane = PopupLanes.pick(origin, _box(p), _drop(p), others, LANES)
 
 
 func _screen_of(at: Vector2) -> Vector2:
@@ -407,7 +453,8 @@ func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
 	for p in _pops:
 		if not p.live or p.running or p.banner or p.total <= 0.0 or p.stat != stat:
 			continue
-		if p.since_bump < 0.0 or p.since_bump >= MERGE_WINDOW:
+		# A delayed popup (a relic echo not yet shown) still takes the fold: its since_bump is negative until it starts.
+		if p.since_bump >= MERGE_WINDOW:
 			continue
 		var d: float = 0.0 if p.key == key else _screen(p).distance_to(_screen_of(at))
 		if d < best_d:
@@ -421,8 +468,9 @@ func _find_mergeable(key: StringName, at: Vector2, stat: String) -> Pop:
 func _fold_in(p: Pop, amount: float, crit: bool, tier: int) -> void:
 	var off: Vector2 = p.base + PopupStyle.motion_offset(p.motion, _progress(p), p.rnd, p.dir, p.rise, p.ease_id)
 	p.base = Vector2(clampf(off.x, -16.0, 16.0), clampf(off.y, -p.rise * 0.9, 0.0))
-	p.t0 = p.age
-	p.life = p.age + LIFE + 0.08 * float(maxi(tier, p.tier))
+	var started_at: float = maxf(p.age, 0.0)   # a delayed popup has not started, so its float-away begins at 0
+	p.t0 = started_at
+	p.life = started_at + LIFE + 0.08 * float(maxi(tier, p.tier))
 	p.total += amount
 	p.count += 1
 	p.crit = p.crit or crit
@@ -435,6 +483,8 @@ func _restyle(p: Pop, tier: int) -> void:
 		p.motion = PopupStyle.pick_motion(tier, _rng.randf())
 	p.size_idx = PopupStyle.size_index(p.tier, p.crit, p.pulse, _hold_digits(p.total) if p.running else 0)
 	p.rise = PopupStyle.rise_for(p.tier, p.size_idx)
+	if p.running:
+		p.shown = p.total   # a hold climbs at once; only merged numbers roll up
 	p.text = _format(p)
 	p.since_bump = 0.0
 	if p.age >= 0.0:
@@ -500,6 +550,12 @@ func _process(delta: float) -> void:
 			if _runs.get(p.key) == p:
 				_runs.erase(p.key)
 			continue
+		# A merged number rolls up to its new total (snaps under Reduce Motion, and when the rest is under 1%).
+		if not p.running and p.shown != p.total:
+			p.shown = p.total if calm else p.shown + (p.total - p.shown) * minf(delta * TICK_RATE, 1.0)
+			if p.total - p.shown < maxf(0.5, p.total * 0.01):
+				p.shown = p.total
+			p.text = _format(p)
 		# Trailing sparkles: each tier has its own rate and look; calm mode keeps a quarter of them.
 		if p.tier >= 1:
 			p.trail_t -= delta
@@ -510,6 +566,7 @@ func _process(delta: float) -> void:
 		if p.check_t <= 0.0:
 			p.check_t = 0.2
 			p.hidden = covered.is_valid() and bool(covered.call(_pos_of(p)))
+	_settle()
 	for l in _links:
 		if l.live:
 			any = true
@@ -613,7 +670,7 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 	# And it stays on screen: slide it back inside the view rather than letting it run off an edge.
 	var view_w: float = get_viewport_rect().size.x
 	x0 = clampf(x0, 4.0, maxf(view_w - p.w - icon_w - 12.0, 4.0))
-	var y: float = sa.y + p.lane.y + off.y
+	var y: float = sa.y + p.lane.y + off.y + p.push
 	# And it stays clear of the zone panel: slide it left of the panel, or skip it this frame if there is no room.
 	x0 = PopupClear.slide_clear(x0, p.w + icon_w, y - float(fs), float(fs) + 6.0, _keep_clear_rects(), 4.0, 4.0)
 	if is_nan(x0):

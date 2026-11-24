@@ -45,6 +45,8 @@ func run(t: Object) -> void:
 	# the gate
 	var sim: Sim = t.make_sim()
 	t.eq(z2.gate_art, &"forge", "zone 2 has the forge gate art")
+	var z1: ZoneDef = load("res://content/zones/zone1.tres") as ZoneDef
+	t.eq(z1.gate_art, &"meadow", "the meadow gate has its own timber and flower arch")
 	var locked: Dictionary = TexelGate.spec_for(sim, &"zone2")
 	t.ok(str(locked.get("hint", "")).begins_with("Need"), "locked gate says what is missing")
 	sim.gates_open[&"zone2"] = true
@@ -57,6 +59,12 @@ func run(t: Object) -> void:
 	gate.art = &""
 	t.ok(not gate.hit(Vector2(332.0, 20.0)), "gates without art are not hoverable")
 	gate.free()
+	var mg := TexelGate.new()
+	mg.art = &"meadow"
+	mg.position = Vector2(330.0, 96.0)
+	t.ok(mg.hit(Vector2(330.0, 36.0)) and mg.hit(Vector2(330.0, 90.0)) and not mg.hit(Vector2(330.0, 130.0)), "the meadow arch is hoverable from its keystone to its feet, not the ground below")
+	t.ok(str(TexelGate.spec_for(sim, &"zone1").get("title", "")) != "", "the meadow gate has a tooltip spec")
+	mg.free()
 
 	# zone swaps free the old scene's props by reference (a name match lost them: meadow trees in the quarry)
 	var parent := Node2D.new()

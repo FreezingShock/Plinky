@@ -15,7 +15,7 @@ const COLORS: Dictionary = {
 }
 const PAPER: Color = Color("f6efd9")
 ## Attribute effect id -> the stat id whose colour it uses.
-const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap", &"mastery_xp": &"mastery", &"pad_yield": &"sunlight", &"head_start": &"seeds", &"sun_rate": &"seeds", &"auto_press": &"seeds", &"wild_bloom": &"seeds", &"double_chance": &"seeds", &"seed_pay": &"seeds", &"bloom_bonus": &"seeds", &"keep_flowers": &"seeds", &"ember_start": &"shards", &"ember_rate": &"shards", &"shard_pay": &"shards", &"nucleus_bonus": &"shards", &"keep_rows": &"shards", &"petal_burst": &"seeds"}
+const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap", &"mastery_xp": &"mastery", &"pad_yield": &"sunlight", &"head_start": &"seeds", &"sun_rate": &"seeds", &"auto_press": &"seeds", &"wild_bloom": &"seeds", &"double_chance": &"seeds", &"seed_pay": &"seeds", &"bloom_bonus": &"seeds", &"keep_flowers": &"seeds", &"ember_start": &"shards", &"ember_rate": &"shards", &"shard_pay": &"shards", &"nucleus_bonus": &"shards", &"keep_rows": &"shards", &"petal_burst": &"seeds", &"bloom_crown": &"seeds", &"nucleus_crown": &"shards"}
 
 
 static func color(id: StringName) -> Color:

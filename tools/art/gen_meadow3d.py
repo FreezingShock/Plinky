@@ -71,7 +71,7 @@ CLOVER_ROW = [(396, 174), (352, 152), (308, 130)]
 PADS_S = [(x, y, 'ready') for (x, y) in SPROUT_ROW + CLOVER_ROW]
 GATE = s2uv(330, 96)
 STREAM = [s2uv(*p) for p in [(470, 104), (486, 130), (466, 160), (486, 192), (468, 216), (448, 240)]]
-LAKE = dict(c=s2uv(412, 262), r=46.0)
+LAKE = dict(c=s2uv(412, 262), r=54.0)   # 54 (was 46): the lake is the meadow's main water
 POND = dict(c=s2uv(196, 204), r=21.0)
 LEVEL = 0.0
 LDIR = np.array([-0.42, 0.46, 0.78]); LDIR /= np.linalg.norm(LDIR)
@@ -118,9 +118,6 @@ GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
 dstr = pl_dist(gu, gv, STREAM)
 sw = 4.6 + 1.0 * np.sin(gu * .13 + gv * .09)
-carve = 1.7 * (1 - smooth(sw - .6, sw + 2.2, dstr))
-carve *= (1 - smooth(0, 6, LAKE['r'] * 1.3 - np.hypot(gu - LAKE['c'][0], gv - LAKE['c'][1])))  # fade into the lake
-H0 = H0 - carve
 D = []
 for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
     n = int(math.hypot(x1 - x0, y1 - y0)); D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
@@ -128,13 +125,33 @@ D = np.array(D); hD = samp(Hpre, D[:, 0], D[:, 1])
 k = 7; hD = np.convolve(np.pad(hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
 hL = np.maximum(np.minimum.accumulate(hD) - .8, LEVEL + .15)
 WH = np.full((N, N), -99.0)
-mask_s = dstr < sw + 1
+mask_s = dstr < sw + 4.4   # covers the bank blend below (sw + 4)
 iu, iv = np.nonzero(mask_s)
 for c0 in range(0, len(iu), 20000):
     uu, vv = iu[c0:c0 + 20000].astype(float), iv[c0:c0 + 20000].astype(float)
     dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); WH[iu[c0:c0 + 20000], iv[c0:c0 + 20000]] = hL[dd.argmin(1)]
 inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25))
 WH[inlake] = LEVEL
+# the stream bed: every channel texel is cut to 0.9 below its downhill water surface, so the river is a continuous
+# wet ribbon all the way from the mountain foot to the lake. The banks blend back to the terrain over ~2 texels.
+# valley floor: the meadow ground next to the stream is eased toward the water's height, so the banks are walkable.
+# Only low ground is eased (H0 under the bank target + 8), never the mountain itself, and the change fades out
+# over 16 texels from the stream.
+rb = dstr < 16.0
+iu_r, iv_r = np.nonzero(rb)
+RBH = np.zeros(len(iu_r))
+for c0 in range(0, len(iu_r), 20000):
+    uu, vv = iu_r[c0:c0 + 20000].astype(float), iv_r[c0:c0 + 20000].astype(float)
+    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); RBH[c0:c0 + 20000] = hL[dd.argmin(1)]
+target_r = np.zeros((N, N)); target_r[iu_r, iv_r] = RBH + 1.2
+w_r = (1 - smooth(sw + 3.0, 16.0, dstr)) * rb * (H0 < target_r + 8.0)
+H0 = H0 * (1 - w_r) + np.minimum(H0, target_r) * w_r
+# The bed is 2.6 below the surface: deep enough that the middle reads as dark water (not foam or a light ribbon). The
+# banks blend over 4 texels so their slope stays under the walkable limit (see the walkable mask below).
+bank = smooth(sw - .3, sw + 4.0, dstr)
+bed = np.minimum(H0, WH - 2.6)
+chan = mask_s & ~inlake & (WH > -50)
+H0 = np.where(chan, H0 * bank + bed * (1 - bank), H0)
 smask = mask_s & (dstr < sw - .3) & (WH > H0 + .02) & ~inlake
 WH[~(smask | inlake)] = -99
 WD = np.where(WH > -50, WH - H0, -1.0)
@@ -354,6 +371,35 @@ def make_lantern(rng):
         dc = sdf_box(x, y, z, (0, 0, 20.8), (3.6, 3.6, .8), .3); sel = dc < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dc)
         return d, m
     return f, (7, 7), 23, 2.5
+def make_fence_seg(L):
+    """Low timber rail fence, L texels long along local x: two rails and a post every 3.5 texels."""
+    hl = L / 2.0
+    def f(x, y, z):
+        inside = np.abs(x) <= hl
+        px = ((x + hl + 1.75) % 3.5) - 1.75                       # post in the middle of each bay
+        dpst = np.where(inside, sdf_box(px, y, z, (0, 0, 3.5), (.45, .45, 3.5)), 9.0)
+        dr1 = np.where(inside, sdf_box(x, y, z, (0, 0, 2.4), (hl, .32, .42)), 9.0)
+        dr2 = np.where(inside, sdf_box(x, y, z, (0, 0, 5.2), (hl, .32, .42)), 9.0)
+        m = np.full(x.shape, M_WOOD, np.int16)
+        d = np.minimum(dpst, np.minimum(dr1, dr2))
+        return d, m
+    return f
+def make_dock(L, W=4.0):
+    """Boardwalk over the shallows: a plank deck on pilings, with a rail on each side. Local x runs out along the walk."""
+    hl, hw = L / 2.0, W / 2.0
+    def f(x, y, z):
+        inside = np.abs(x) <= hl
+        deck = sdf_box(x, y, z, (0, 0, 1.4), (hl, hw, .45))
+        seam = (np.floor((x + hl) / 1.2) % 2) > .5                  # plank seams: alternate wood and dark gap
+        pil = np.full(x.shape, 9.0)
+        for px_ in np.arange(-hl + 1.0, hl, 3.0):
+            for py_ in (-hw + .8, hw - .8):
+                pil = np.minimum(pil, sdf_box(x, y, z, (px_, py_, -3.5), (.5, .5, 4.5)))
+        rails = np.minimum(sdf_box(x, y, z, (0, -hw + .25, 3.9), (hl, .25, .3)), sdf_box(x, y, z, (0, hw - .25, 3.9), (hl, .25, .3)))
+        d = np.minimum(np.where(inside, deck, 9.0), np.minimum(pil, rails))
+        m = np.where(seam & (np.abs(y) < hw - .3), M_BARK, M_WOOD).astype(np.int16)
+        return d, m
+    return f
 log('props defined')
 
 # ---------------- placement (Poisson-style spacing, no stacking, off-grid) ----------------
@@ -384,7 +430,7 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **k
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid)
-    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals') or (kind == 'rock' and big)):
+    if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'lantern') or (kind == 'rock' and big)):
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0))
     if count: placed.append((u, v, rad * scale))
     return z0
@@ -451,11 +497,11 @@ def shore_spots(n, lo, hi):
             out.append((u, v))
         if len(out) >= n: break
     return out
-for (u, v) in shore_spots(46 if not FAST else 8, 1.3, 3.2):
+for (u, v) in shore_spots(90 if not FAST else 8, 1.3, 3.2):
     if prng.random() < .8: put('reed', u, v, prng.uniform(.9, 1.2), count=False, sid=1)
 for (u, v) in shore_spots(40 if not FAST else 6, .8, 4.0):
     f_, half, top, rad = make_rock(random.Random(prng.randint(0, 1 << 30)), False); voxelize(f_, half, top, u, v, float(terrain_h(u, v)) - .4, prng.uniform(.5, .9), prng.uniform(0, 6.28), 1)
-for B, nl, rmin in ((LAKE, 42, 2.2), (POND, 9, 2.0)):
+for B, nl, rmin in ((LAKE, 60, 2.2), (POND, 9, 2.0)):
     got = 0
     for _ in range(nl * 30):
         u = B['c'][0] + prng.uniform(-B['r'] * 1.5, B['r'] * 1.5); v = B['c'][1] + prng.uniform(-B['r'] * 1.5, B['r'] * 1.5)
@@ -466,6 +512,84 @@ for B, nl, rmin in ((LAKE, 42, 2.2), (POND, 9, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
+# stepping stones along the path: a small flat stone every ~11 texels, alternating either side of the centre line.
+# Placed last so nothing earlier in the layout moves. Only on open ground near the path (never in water).
+for (ax, ay), (bx, by) in zip(PATH, PATH[1:]):
+    seg = math.hypot(bx - ax, by - ay); n = max(1, int(seg / 11.0))
+    nx_, ny_ = -(by - ay) / seg, (bx - ax) / seg
+    for k in range(n):
+        f = (k + .5) / n
+        u, v = ax + (bx - ax) * f, ay + (by - ay) * f
+        side = 1.0 if k % 2 == 0 else -1.0
+        su, sv = u + nx_ * side * 2.2, v + ny_ * side * 2.2
+        if float(samp(WD, su, sv)) < -.5 and float(samp(dpath, su, sv)) < 9.0:
+            put('rock', su, sv, prng.uniform(.55, .7), big=False, count=False, sid=1)
+log('stepping stones placed')
+
+# ---- bolder path pass (placed last, so nothing earlier in the layout moves) ----
+# lanterns: a post every ~40 texels, alternating sides, just outside the rim. Sprites, so they y-sort and light up.
+# gate approach (last four path segments): low timber rail fences along both sides instead of verges.
+# flower verges: a dense low row just outside the rim, both sides, on the rest of the path.
+# boardwalk: from the path toward the lake, the shortest run to open water becomes a plank deck on pilings.
+def seg_frame(ax, ay, bx, by):
+    seg = math.hypot(bx - ax, by - ay); tx, ty = (bx - ax) / seg, (by - ay) / seg
+    return seg, tx, ty, -ty, tx                                      # length, tangent, normal
+PW_MEAN = 6.6
+FENCE_FROM = len(PATH) - 5                                          # segments from here on are the gate approach
+lantern_n = verge_n = fence_n = 0
+for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
+    if si >= FENCE_FROM: continue
+    seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
+    n = max(1, int(round(seg / 40.0)))
+    for k in range(n):
+        f0 = (k + .5) / n; side = 1.0 if (si + k) % 2 == 0 else -1.0
+        found = False
+        for off_ in (PW_MEAN + 1.8, PW_MEAN + 2.8, PW_MEAN + 3.8):   # try just inside, middle and just outside the rim
+            for slide in (0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10):    # first valid spot along the path, nearest the slot first
+                f = f0 + slide / seg
+                if not (0 < f < 1): continue
+                u, v = ax + (bx - ax) * f + nx_ * side * off_, ay + (by - ay) * f + ny_ * side * off_
+                if 7.0 < float(samp(dpath, u, v)) < 13.0 and ok_spot(u, v, 2.5, slope_max=.8, path=False, gap=-.5, hmax=14.0):
+                    put('lantern', u, v, 1.0, count=True); lantern_n += 1; found = True; break
+            if found: break
+for si in range(FENCE_FROM, len(PATH) - 1):
+    (ax, ay), (bx, by) = PATH[si], PATH[si + 1]
+    seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
+    for side in (1.0, -1.0):
+        cu, cv = (ax + bx) / 2 + nx_ * side * (PW_MEAN + 1.9), (ay + by) / 2 + ny_ * side * (PW_MEAN + 1.9)
+        voxelize(make_fence_seg(seg - 2.0), (seg / 2 + 2.5, seg / 2 + 2.5), 7.6, cu, cv, float(terrain_h(cu, cv)), 1.0, math.atan2(ty, tx), 1, bottom=-1.0)
+        fence_n += 1
+for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
+    if si >= FENCE_FROM: continue
+    seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
+    for k in range(max(1, int(seg / 2.6))):
+        f = (k + prng.random()) / max(1, int(seg / 2.6))
+        for side in (1.0, -1.0):
+            if prng.random() > .62: continue
+            off = PW_MEAN + prng.uniform(1.2, 2.4)
+            u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
+            if 7.6 <= float(samp(dpath, u, v)) <= 11.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1); verge_n += 1
+# boardwalk: march from each path point (quarter steps) toward the lake centre; the shortest run to open water wins
+best = None
+for (ax, ay), (bx, by) in zip(PATH, PATH[1:]):
+    for f in (0, .25, .5, .75):
+        pu, pv = ax + (bx - ax) * f, ay + (by - ay) * f
+        dx, dy = LAKE['c'][0] - pu, LAKE['c'][1] - pv; dl = math.hypot(dx, dy); dx, dy = dx / dl, dy / dl
+        for step in range(1, 181):
+            t = step * .5; uu, vv = pu + dx * t, pv + dy * t
+            if float(samp(WD, uu, vv)) > .04:
+                if best is None or t < best[0]: best = (t, pu, pv, dx, dy)
+                break
+DOCK_MAX = 70.0
+if best is not None and best[0] <= DOCK_MAX:
+    t, pu, pv, dx, dy = best; L = t + 6.0                            # six texels out past the shore
+    cu, cv = pu + dx * L / 2, pv + dy * L / 2
+    voxelize(make_dock(L), (L / 2 + 2.5, L / 2 + 2.5), 6.0, cu, cv, max(float(terrain_h(pu, pv)), LEVEL), 1.0, math.atan2(dy, dx), 1, bottom=-9.0)
+    log('boardwalk to lake: %.1f texels from the path' % t)
+else:
+    log('boardwalk: no shore within %.0f texels of the path' % DOCK_MAX)
+log('path pass: lanterns %d, flower verges %d, fence runs %d' % (lantern_n, verge_n, fence_n))
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
@@ -493,7 +617,7 @@ mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
 beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
-pw = 5.4 + 1.6 * (n1 - .5)
+pw = 6.6 + 1.2 * (n1 - .5)                       # bolder path: wider than the first pass (5.4) so it reads at 640x360
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
@@ -503,11 +627,16 @@ strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .04 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
 lt -= .22 * ((dp > pw - 1.4) & (dp < pw + .2) & (mat == T_PATH)) * (n2 > .45)        # ruts / worn edge
+# defined edges: a dark rim on the grass just outside the path, and light pebbles scattered across the path surface
+lt -= .2 * ((dp >= pw) & (dp < pw + 1.0) & (mat == T_GRASS) & (wd <= .04))
+lt += .13 * ((mat == T_PATH) & (vn2(FU / 1.3, FV / 1.3, 31) > .62))
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
 pre_slope = np.hypot(samp(GUp, FU, FV), samp(GVp, FU, FV))
-foam = isw & (pre_slope > .5) & (wh > LEVEL + .3)
+# white water only along a stream's banks (not down the middle of it, which is a flat 0.9 deep bed)
+stream_edge = (dstr > sw - 1.8).astype(np.float64)  # the outer 1.8 texels of the channel (was .8, too thin to read): the middle stays water
+foam = isw & (pre_slope > .35) & (wh > LEVEL + .3) & (samp(stream_edge, FU, FV) > .5)
 mat = np.where(foam, T_FOAM, mat)
 zt = np.where(isw, wh, h)
 nrm[isw] = np.array([0, 0, 1.0])

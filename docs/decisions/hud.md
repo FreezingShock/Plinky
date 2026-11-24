@@ -398,3 +398,40 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 
 ## 2026-11-24: Dev console is a floating window with tab completion
 A draggable, resizable window (not a full-width strip) so the game stays visible behind it, with the input focused on open. Commands are one table in core/dev_commands.gd, so help, Tab and the tests read the same list; the window only adds the node-level commands and layout. Errors use the accent colour with a "!" because the palette has no red role.
+## 2026-11-24: Welcome Back as a gallery
+- **Model and view split:** `core/welcome_back.gd` builds the four sections and every number as data (pure, tested in `tests/test_welcome_back.gd`). `ui/welcome_card.gd` and `ui/welcome_tile.gd` only draw it. The HUD's `_on_offline` now opens the card instead of a text ModalCard.
+- **Tiles:** 46 px, seven across, so the card is 334 px wide at 640x360 and a full return of about 25 tiles stays under the frame height. Outline is the tier's rarity for currency and the relic's rarity for finds. Amounts sit at the bottom, green for gains and red for spends, through `StatStyle`.
+- **Tooltips:** one shared `Tip` per tile: name in its stat colour, rarity tag, exact amount, rate and mastery detail. Frame takes the rarity colour.
+- **Exact amounts:** `NumberFormat.exact()` adds thousands commas up to 10^15 and falls back to the short form beyond that.
+- **Close:** Collect sparks and closes. Esc and the X close without sparks. There is no separate Close button. The sim already banked the time away, so closing either way loses nothing.
+- **Taste call:** the count-up runs on open (staggered, about 1 s for a full return), and Collect is the only sparks moment. Say if you want the count-up off.
+- Not run in-engine from the cloud: the 640x360 layout, the tooltip placement over the card, the spark timing and the sound. PC QA should capture the card after a long absence and after a short one.
+
+## 2026-11-24: Welcome Back fit fixes (after QA on v0.60.0)
+- **Width:** six tiles of 44 px (was seven of 46), so the card is about 300 px and centred at 640x360 it stops short of the zone card's left edge at x 480.
+- **Height:** the grid grows with its content up to 190 px, then scrolls. This is the 25+ tile case: the card never leaves the frame, whatever the count.
+- **Tooltips:** tile tips use the beside placement (`"beside": true`) and Collect joins the `tip_avoid` group, so a tip opens beside its tile and never covers the button. Cursor-placed tips ignore that group, which is why the tiles opt in.
+- Not run in-engine from the cloud: the scroll appearing at 25+ tiles and the tip position. PC QA should capture both.
+
+## 2026-11-24: Gain popups fold and stack
+- Same-currency presses within 120 px fold into one number that rolls up to its total (was 40 px, so neighbouring pads never folded). Placement boxes count the stat caption, which is about 2.4 times the number's width, and a popup stacks above another when every fixed lane is taken. Reason: Nathan's Starbloom screenshot had captions overlapping as separate popups.
+
+## 2026-11-24: Gain popups settle every frame
+- Visible popups are pushed up each frame so no two boxes overlap (`PopupLanes.settle`, oldest first). Spawn-time placement alone let overlaps form when popups grew, merged or started late. Relic echoes (delayed popups) now merge and get placed too. Reason: Nathan's v0.62.2 screenshot showed two "+13.24K" popups stacked on each other.
+## 2026-11-24: Title and loading screens follow the day (golden hour)
+- **Time of day comes from the meadow's own sky.** `core/title_mood.gd` samples keyframes by `SkyModel` phase (midnight, dawn, sunrise, morning, noon, afternoon, golden hour, sunset, dusk), and the sun or moon rides `SkyModel.azimuth`. Reason: the title then shows the same arc, golden light and night shade as the game, and the look is tested in pure GDScript.
+- **Palettes are per keyframe, not per zone.** Sky and far land take the eight palette roles, and the meadow ground takes four new ground roles (`g0` to `g3`), so golden hour warms the sky without turning the grass orange. Golden hour and sunset use the README banner's plum-to-orange sunset.
+- **Scenery is graded, not repainted.** The scenery is baked once in meadow indices; the mood's tint multiplies it and a Bayer dither adds the night shade (`boot/title_scenery.gdshader`), the same way `day_night.gdshader` shades the meadow. Fireflies come out at night, birds fly by day.
+- **Smooth transitions, one clock.** The title and loading screens share one `TitleBackground` clock. The chip in the bottom left names the time and runs the sky forward to the next stop over 1.6 s. Reason: nothing snaps.
+- **Reduce Motion (call made):** the clock holds on golden hour, the parallax stays still, the chip jumps instantly, and the screen change cross-fades instead of sweeping. Reason: the sweep is motion, and the fade keeps the same ink colour.
+- **Scene change is a themed wipe** (`boot/title_wipe.gdshader`): a slanted, dithered sweep in the mood's ink with a sun-coloured lead line, used for Continue, New Game, Saves slots and the loading screen's hand-off. Reason: replaces the plain ink dissolve.
+- **Tagline (call made):** "+ Press. Walk. Bloom. +" from the README banner replaces "Press. Tally. Rebirth.", on both screens. Revert if the old line was intended.
+- **Icon:** the 1024 master is drawn by `tools/art/gen_app_icon.py` on a 64 texel grid from the golden keyframe, with the existing walker sprite pasted unchanged. Reason: it matches the title and reads at 16 px.
+- Not run in-engine from the cloud (no Godot here): the shader, the wipe and the chip need a PC look at each time of day and at Reduce Motion.
+
+## 2026-11-24: Capstone gifts get their own unlock moment and icons (minor)
+- **Why:** a capstone is the biggest purchase in a tree, and a plain card buy pop reads the same as a level-1 gift.
+- **Moment:** the first and only level of a crown emits `EventBus.attribute_bought`. `Juice` (`ui/fx/fx_bus.gd`) names it in a banner in its currency's colour, plays the divine relic chime and calls the existing milestone flash and shake. The flash checks Reduce Flashing and the shake checks Reduce Shake, as they already did. The banner is gentle under Reduce Motion.
+- **Gallery:** the card, its tier heading ("Unlocks After 5 Blooms") and its Tip are data-driven, so the crown gets them with no HUD change.
+- **Icons:** `bloom_crown` (a gold crown with a seed gem) and `nucleus_crown` (a teal crystal crown with an ember gem), at 8, 12, 16, 24 and 32 px. They were drawn by one generator from a single outline per size, not hand-placed per size, so they are a deviation from the staged-icon rule. Redraw at PC QA if they read poorly at 640x360.
+- Not run in the engine: check the banner width and the crown icons on the Bloom and Nucleus tabs with a screenshot.

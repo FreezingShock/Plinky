@@ -37,6 +37,8 @@ const LIFT_RATE: float = 6.0            # ease rate of that rise
 const SPRINT_LOOK: float = 0.9          # extra look-ahead per +1.0 of the walker's speed factor
 const THUMP_TEXELS: float = 2.5         # a hard landing's downward kick, screen texels
 const FOCUS_LIFT: Vector2 = Vector2(0.0, -6.0)   # aim at the walker's body, not its feet
+const HUD_CLEAR: float = 6.0          # screen texels a landmark keeps below the HUD chip it must not hide under
+const WALKER_EDGE: float = 36.0       # screen texels the walker keeps off the bottom edge when the view gives way to the HUD
 
 var world: Node2D
 var target: Node2D
@@ -57,6 +59,11 @@ var _still: float = 0.0
 var _clock: float = 0.0
 var _last_target: Vector2 = Vector2.ZERO
 var _lift: float = 0.0                   # eased height the view has risen with the walker's jump
+
+## HUD control the view must keep landmarks clear of (the clock chip). Main sets it; null means no constraint.
+var keep_clear: Control
+## World rects the view must not hide under `keep_clear` (the zone gates' arches). Main sets them per zone.
+var landmarks: Array[Rect2] = []
 
 
 func _ready() -> void:
@@ -100,7 +107,7 @@ func _process(delta: float) -> void:
 	var base: Vector2 = _clamp_center(_follow_point() + pan)
 	pan = base - _follow_point()
 	_update_polish(delta, manual)
-	var goal: Vector2 = _clamp_center(base + _look + _drift())
+	var goal: Vector2 = _framed(base + _look + _drift())
 	_center = _center.lerp(goal, 1.0 - exp(-follow_rate(_speed_factor()) * delta))
 	_apply()
 
@@ -222,7 +229,7 @@ func zoom_step(dir: int, screen_pos: Vector2) -> void:
 func snap() -> void:
 	pan = Vector2.ZERO
 	if target != null:
-		_center = _clamp_center(target.position + FOCUS_LIFT)
+		_center = _framed(target.position + FOCUS_LIFT)
 	_apply()
 
 
@@ -256,6 +263,45 @@ static func world_position(center: Vector2, level: int, view: Vector2) -> Vector
 
 func _clamp_center(c: Vector2) -> Vector2:
 	return clamp_center(c, zoom_level, frame, bounds)
+
+
+## A goal centre inside the bounds, aimed so no landmark hides under the HUD chip.
+func _framed(c: Vector2) -> Vector2:
+	var inside: Vector2 = _clamp_center(c)
+	if keep_clear == null or landmarks.is_empty():
+		return inside
+	var walker_y: float = target.position.y if target != null else inside.y
+	return _clamp_center(clear_hud_center(inside, zoom_level, frame, _chip_rect(), landmarks, walker_y))
+
+
+## The HUD chip in frame texels (the same space as the centre and the landmarks), or an empty rect when it is not shown.
+func _chip_rect() -> Rect2:
+	if keep_clear == null or not keep_clear.is_visible_in_tree():
+		return Rect2()
+	var g: Rect2 = keep_clear.get_global_rect()
+	return Rect2(g.position - frame_origin, g.size)
+
+
+## Aim the view up just enough that no landmark sits under `chip` (frame texels). It only ever moves the view up,
+## and never so far that the walker leaves the bottom of the view. Pure: depends on its arguments alone.
+static func clear_hud_center(center: Vector2, level: int, view: Vector2, chip: Rect2, marks: Array[Rect2], walker_y: float) -> Vector2:
+	if chip.size == Vector2.ZERO or marks.is_empty():
+		return center
+	var z: float = float(level)
+	var c: Vector2 = center
+	var shifted: bool = false
+	for lm: Rect2 in marks:
+		# where the landmark lands on screen for the centre as shifted so far: frame centre + (world - centre) * zoom
+		var s: Rect2 = Rect2(view * 0.5 + (lm.position - c) * z, lm.size * z)
+		var over_x: bool = s.position.x < chip.end.x and s.end.x > chip.position.x
+		var over_y: bool = s.position.y < chip.end.y and s.end.y > chip.position.y
+		if over_x and over_y:
+			c.y -= (chip.end.y + HUD_CLEAR - s.position.y) / z
+			shifted = true
+	if shifted:
+		# the lowest centre that keeps the walker inside the bottom edge; the walker outranks the arch
+		c.y = maxf(c.y, walker_y - (view.y * 0.5 - WALKER_EDGE) / z)
+	return c
 
 
 func _edge_push() -> Vector2:

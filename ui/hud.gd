@@ -26,7 +26,8 @@ var _reset_chips: Dictionary = {}   # zone reset id -> its bottom-bar chip (gene
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
-var _modal: ModalCard            # rebirth confirm and the offline summary, centred
+var _modal: ModalCard            # rebirth confirm, centred
+var _welcome: WelcomeCard        # the offline Welcome Back gallery, centred
 var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
@@ -92,6 +93,9 @@ func setup(p_sim: Sim) -> void:
 	Banner.avoid = _momentum   # a banner lifts clear of the meter rather than cover it
 	_modal = ModalCard.new()
 	add_child(_modal)
+	_welcome = WelcomeCard.new()
+	add_child(_welcome)
+	CloseX.attach(_welcome, _welcome.dismiss)   # the X sits beside the card, like the other menus
 	_save_note = SaveIndicator.new()
 	add_child(_save_note)
 	var bus: Node = get_node("/root/EventBus")
@@ -118,6 +122,11 @@ func toggle_upgrades() -> void:
 ## The hamburger chip, so Main can keep it above open menus.
 func menu_chip() -> Control:
 	return _menu_chip
+
+
+## The clock chip, so the world camera can keep gate arches clear of it. Read only: the chip stays where it is.
+func clock_chip() -> Control:
+	return _clock_widget
 
 
 ## Travel: show the zone panel's Travel list (the gallery's Travel tile calls this).
@@ -737,6 +746,8 @@ func _place() -> void:
 		mp0.y = minf(mp0.y, roundf(frame.y * 0.3))
 		if _modal.position != mp0:
 			_modal.position = mp0
+	if _welcome != null and _welcome.visible:
+		_welcome.place(frame)
 	if _save_note != null and _menu_chip != null:
 		var sp: Vector2 = Vector2(_menu_chip.position.x - _save_note.size.x - 6.0, frame.y - _save_note.size.y - 6.0).floor()
 		if _save_note.position != sp:
@@ -817,50 +828,14 @@ func _refresh() -> void:
 			(_attr_rows[aid] as UpgradeCard).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
 
 
+## The offline report opens the Welcome Back gallery. WelcomeBack.build() does the sorting and the numbers.
 func _on_offline(seconds: float, gains: Dictionary) -> void:
 	if seconds < 60.0 or gains.is_empty():
 		return
-	var lines: Array = [[_away_text(seconds), StatStyle.PAPER]]
-	for sid: StringName in gains:
-		var g: BigNum = gains[sid]
-		if g.is_zero():
-			continue
-		lines.append(["+%s %s" % [g.format(), (sim.stat_defs[sid] as StatDef).display_name], StatStyle.color(sid)])
-	var tend: Dictionary = sim.last_offline.get("tend", {})
-	var spent: Dictionary = sim.last_offline.get("spent", {})
-	for sp: StringName in spent:   # the gains above are income; tending paid these out of it
-		lines.append(["-%s %s spent tending" % [(spent[sp] as BigNum).format(), (sim.stat_defs[sp] as StatDef).display_name], StatStyle.color(sp)])
-	for tid: StringName in tend:
-		var r: Dictionary = tend[tid]
-		var tier: TierDef = sim.tier_defs.get(tid) as TierDef
-		var what: String = "%s pad tended x%d" % [tier.display_name if tier != null else str(tid), int(r["presses"])]
-		if int(r["levels"]) > 0:
-			what += ", mastery +%d (Lv %d)" % [int(r["levels"]), int(r["level"])]
-		lines.append([what, StatStyle.color(&"mastery")])
-	var counts: Dictionary = {}   # relic id -> times found, in first-found order
-	for rid: StringName in sim.last_offline.get("relics", []):
-		counts[rid] = int(counts.get(rid, 0)) + 1
-	for rid2: StringName in counts:
-		var rd: RelicDef = sim.relics.defs.get(rid2) as RelicDef
-		if rd != null:
-			var n: int = int(counts[rid2])
-			lines.append(["Found %s%s" % [rd.display_name, " x%d" % n if n > 1 else ""], rd.rarity.color])
-	if seconds >= sim.offline_cap_seconds() - 1.0:
-		lines.append(["That is the most you can bank offline.", RelicStyle.dim])
-	if lines.size() < 2:
+	var data: Dictionary = WelcomeBack.build(sim, seconds, gains)
+	if int(data["tiles"]) == 0:
 		return
-	_modal.open("Welcome Back", lines, "Collect")
-
-
-## "You were away 2 h 5 min." Whole minutes, hours once there are any.
-static func _away_text(seconds: float) -> String:
-	var mins: int = int(seconds / 60.0)
-	if mins < 60:
-		return "You were away %d min." % mins
-	var hrs: int = floori(mins / 60.0)
-	if hrs < 48:
-		return "You were away %d h %d min." % [hrs, mins % 60]
-	return "You were away %d days %d h." % [floori(hrs / 24.0), hrs % 24]
+	_welcome.open(data)
 
 
 # ---------------------------------------------------------------- stat strip customization
@@ -1425,7 +1400,7 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or Banner.is_showing() or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card or a banner
+	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card or a banner
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

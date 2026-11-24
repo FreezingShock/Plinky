@@ -99,3 +99,60 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** PC QA on v0.58.8: faint bluish speckles showed behind the last two digits. The chip was drawn in the pad's own `_draw`, and the air layer (`LifeAir`, z 10, fireflies, glow, sparkles and the pad shimmer) draws over every pad.
 - **What:** The chip is a child node of its first pad, at `LOCK_CHIP_Z` 11, so it draws above the air layer. It stays opaque and is shown or hidden as the row's lock changes. `tests/test_pad_plate.gd` asserts the z order.
 - Not run in-engine. Please check the chip on a PC capture for the speckles.
+
+## 2026-11-24: Clover stays green inside its gold rim; Dewdrop row moves in
+- **Why:** Nathan asked why the Clover pads were yellow (screenshots from PC QA). The gold for the Clover rim was also set as the stat colour, so the gems and flowers went gold. Nathan also said the Dewdrop pads sat too close to the arrival gate.
+- **Clover:** the gold is now only the rim, lit rim and rarity ring. The gems, pip and flowers keep the Clover reward green.
+- **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (534,600), (578,622), (622,644): open grass between the main path and the lake, with the nearest pad 156 texels from the arrival gate, up from 31. The first move, to (634,568) to (722,612), put two pads behind the oak and the gatehouse tower, so the walk mask alone is not enough. Placement now also checks sprite occlusion: no sprite standing in front of a pad may overlap its plate. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
+- **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
+- Not run in-engine from the cloud. Please check the pads on a PC capture.
+## 2026-11-24: Meadow water rework
+- **Brief (Nathan, via coordinator):** the meadow map is nice but needs to be larger and more polished; rework the lake, shoreline and streams and keep the mountains' look (they grow with the map).
+- **Changed:** the lake radius 46 to 54 texels (about 17 percent wider) (still a bowl with the same shore blend); the stream bed is cut 0.9 below its own downhill water surface, so the river is one continuous ribbon instead of a dry channel with gaps; white water only on the stream banks, not down the middle; 90 shore reeds (was 46) and 60 lily pads on the lake (was 42).
+- **Why:** the old stream was dry for about half its length, so it never read as water, and the lake's rim was a flat dark bowl. Foam down the whole mountain stream read as a pale column, not water.
+- **Side effects:** the bigger lake takes two oaks and a crystal cluster that stood on its edge; the walkable area is 10.2% (was 11.1%) and every pad and the gate are still reachable (generator check).
+- **Not run in the cloud:** the in-engine look and the sound sites (`MeadowSites` shore loudness) on the PC. The headless tests were not run here (no Godot in this container).
+## 2026-11-24: Clover stays green inside its gold rim; Dewdrop row moves in
+- **Why:** Nathan asked why the Clover pads were yellow (screenshots from PC QA). The gold for the Clover rim was also set as the stat colour, so the gems and flowers went gold. Nathan also said the Dewdrop pads sat too close to the arrival gate.
+- **Clover:** the gold is now only the rim, lit rim and rarity ring. The gems, pip and flowers keep the Clover reward green.
+- **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (634,568), (678,590), (722,612), beside the main path north of the gatehouse tower. The nearest pad is 111 texels from the arrival gate, up from 31. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
+- **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
+- Not run in-engine from the cloud. Please check the pads on a PC capture.
+
+## 2026-11-24: Meadow path stones (slice 3 of the meadow rework)
+- **Brief (Nathan, via coordinator):** paths between areas should look better and fit the area they lead to.
+- **Changed:** a small flat stone every ~11 texels along the meadow path, alternating either side of the centre line, placed last in `gen_meadow3d.py` so nothing earlier in the layout moves. Only on open ground near the path; never in water.
+- **Why:** the path was a plain sand strip. Stones are the cheapest step that makes it read as made.
+- **Not in this slice:** the path's edges are still plain grass, and the lake boardwalk and the Larkmoor path are untouched.
+- **Not run in the cloud:** the look in-engine; PC QA should screenshot the path at 640x360.
+## 2026-11-24: Meadow river fix (after PC QA of #272)
+- **QA finding:** the upper two thirds of the stream read as a pale green checker with orange banks, so foam, not water. Bank spots 16 texels out were walkable in only about a third of cases.
+- **Cause:** the foam test covered the outer 1.6 texels of a 9-texel channel, so about two thirds of it was white water. The bed was only 0.9 deep, which is a light water ramp.
+- **Changed:** foam only at the outer 0.8 texels; bed 2.6 deep so the middle is dark water; bank blend over 4 texels; low meadow ground beside the stream eased toward the water (never the mountain itself).
+- **Not fixed:** the east bank runs along the mountain foot and is rock. Walkable banks are on the meadow side only (about 11 of 30 samples at 16 texels). Making the mountain side walkable means reshaping the mountain foot, which is part of the bigger-map slice.
+## 2026-11-24: Meadow gate arch (slice 2 of the meadow rework)
+- **Brief (Nathan, via coordinator):** gates and paths between areas must look better and match the area they lead to; the quarry gate reads as ember and stone, so the meadow gate reads as timber and flowers.
+- **Changed:** the meadow gate (zone1) takes `gate_art = &"meadow"` and draws its own arch in `world/texel_gate.gd`: timber posts with cream caps and vines, a flower-garlanded lintel with a keystone bloom, a wooden lattice that shows the green light of Larkmoor once open, and drifting petals while open. It uses the meadow palette, 8 indices like the forge arch.
+- **Why:** the plain pulsing ring read as a placeholder, and the arch gives the gate the hover tooltip the forge gate already has.
+- **Not in this slice:** the path to the gate is still baked sand (gen_meadow3d.py). Path edges (stepping stones, flowers) are the next gate-and-path step.
+- **Not run in the cloud:** the look and the draw code in-engine (no Godot here). The PC QA thread should screenshot the gate closed and open.
+## 2026-11-24: Meadow path pass (slice 4 of the meadow rework, after PC QA of v0.61.3)
+- **QA finding:** the stepping stones read as spots at 640x360, the vine and petals on the gate were not visible, the foam was barely visible, and the gate tooltip did not show in captures.
+- **Changed in `tools/art/gen_meadow3d.py`:** the path is wider (6.6 plus or minus 0.6 texels, was 5.4) with a dark rim on the grass just outside it and light pebbles on the surface. Flower verges run along both edges on the first part of the path. Five lantern posts are sprites (lantern is now an exported sprite kind), so they y-sort and add light entries in `world/meadow_life.json`. The last four path segments, the gate approach, get low timber rail fences on both sides instead of verges. A plank boardwalk on pilings runs from the path to the lake, 43 texels at its shortest crossing. The stepping stones stay. The foam band on the stream is the outer 1.8 texels of the channel (was 0.8).
+- **Changed in `world/texel_gate.gd`:** the meadow gate's vines are a continuous leaf ribbon in two phases with a bloom at each tip, drawn over the lattice. Open petals are 2x2 and there are nine of them. `HIT` covers the whole arch including the keystone, so the tooltip can reach the top of it.
+- **Test:** `tests/test_quarry.gd` checks that the meadow arch is hoverable from its keystone to its feet, and that the meadow gate has a tooltip spec.
+- **Not done:** the walkable mask stays terrain-only, so the boardwalk, fences and lanterns do not block the walker. Fewer lanterns than slots: the placement checks reject spots near trees, so the path has five, not one per 40 texels.
+- **Not run in the cloud:** Godot, the headless tests, and the look in-engine. The PC QA thread should screenshot the path, the verges, the boardwalk, the gate closed and open, and hover the gate to confirm the tooltip.
+
+## 2026-11-24: Thistle row clear of the oak
+- **Why:** the two Thistle pads in Gatehouse Green, at (868,646) and (912,624), sat behind an oak on main. The walk mask does not catch a sprite standing in front of a pad.
+- **What:** the Thistle row moved to centre (864,642), so its pads sit at (820,664), (864,642) and (908,620). Every Larkmoor pad now passes the sprite occlusion check on the regenerated placements, and every footprint is walkable.
+- Not run in-engine. Please check the Thistle row on a PC capture.
+## 2026-11-24: Larkmoor paths, gates, bridge and connectivity (Larkmoor slice 1)
+- **Brief (Nathan, via coordinator):** no path may lead nowhere, structures need a purpose, bridges should be wider and easy to step onto.
+- **Connectivity:** `tools/art/larkmoor_layout.py` `dead_ends()` checks that every path end reaches a gate, pad, landmark or another path within 30 texels. `gen_larkmoor.py` refuses to build while it fails. The north-east path ended in the open grass; it now ends at the Great Lantern.
+- **Structures:** the seven standing stones are one height with no tilt, so the ring reads as built, and the cairn sits at its centre. The gatehouse tower stands beside the arrival gate. The Emberwatch tower stands beside the Ember gate, on its wall.
+- **Gates:** `make_gateway(style)`. The arrival arch is timber with a flower garland on the lintel. The Ember gate is stone with ember bloom in the lintel. Both stay baked props, not the TexelGate art, because the way-back arch in zone 2 depends on the art key.
+- **Bridge and jetty:** the stream bridge is 13 texels wide and the lake jetty 8 wide. Both walk strips are flared at the ends (`_deck_strip`) so the entry is easy to find. Open lake water stays unwalkable.
+- **Pads:** unchanged. The anchors match main exactly.
+- **Not run in the cloud:** the look in-engine, and the generator's output has not been seen in Godot.

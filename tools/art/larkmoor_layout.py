@@ -2,6 +2,7 @@
 1520x920 world frame. Shared by gen_larkmoor.py (renders the scene) and larkmoor_map.py (layout mockup).
 Everything here is plain data. Screen coords are (sx, sy) at ground level, projection as zone 1:
 screen = (OX + u - v, OY + (u + v) / 2 - h)."""
+import math
 W, H = 1520, 920
 PLAY = (130, 20, 1390, 830)    # camera and walker bounds: the island plus a margin of open water (x0, y0, x1, y1)
 OX, OY = 760, 70
@@ -19,7 +20,7 @@ PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 5
 PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1100, 548), (1060, 520), (990, 500), (900, 490), (770, 486)]
 PATH_NW = [(752, 420), (700, 384), (640, 362), (590, 340), (550, 318)]
-PATH_NE = [(770, 350), (820, 346), (880, 336), (940, 326), (1000, 316), (1040, 300)]
+PATH_NE = [(770, 350), (820, 346), (880, 338), (930, 352), (966, 368)]     # ends at the Great Lantern, not in the open
 PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_NW, PATH_NE]
 
 # Water: a big lake in the west, a mere in the north-east, a stream that cuts the middle (bridge on the main route).
@@ -43,10 +44,10 @@ ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right (
 # The Clover row is the fifth entry, so pad_buttons order still lines up, but it stands by the Heronmere lake path, not in
 # Cairnfold's own centre (the area list in content/areas says Heronmere for it). Both rows sit on walkable ground. Lanternwood has none.
 DISTRICTS = [
-    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(868, 646, *ROW_STEP_UP),
+    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(864, 642, *ROW_STEP_UP),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(644, 658), (688, 680), (732, 702)],
-         note='West lake with reed shores and a little jetty. The Sprout row runs across the grass below the main path; the Clover row lines the south shore.'),
+    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(534, 600), (578, 622), (622, 644)],
+         note='West lake with reed shores and a little jetty. The Sprout row runs across the open grass between the main path and the lake, well in from the arrival gate; the Clover row lines the south shore.'),
     dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=row(840, 534, *ROW_STEP_DOWN),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
     dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=row(1030, 580, *ROW_STEP_UP),
@@ -61,14 +62,14 @@ DISTRICTS = [
 LANDMARKS = [
     dict(id='elder_oak', kind='elder_oak', at=(790, 444)),
     dict(id='windmill', kind='windmill', at=(1090, 520)),
-    dict(id='standing_stones', kind='stones', at=(540, 306)),
+    dict(id='standing_stones', kind='stones', at=(540, 306)),       # a ring of seven stones, grouped around its cairn
     dict(id='jetty', kind='jetty', at=(476, 566)),
     dict(id='signpost', kind='sign', at=(790, 628)),
-    dict(id='gatehouse_tower', kind='tower', at=(684, 616)),
+    dict(id='gatehouse_tower', kind='tower', at=(728, 698)),        # flanks the arrival gate, as a gatehouse
     dict(id='lighthouse', kind='lighthouse', at=(596, 590)),
-    dict(id='cairn_spire', kind='obelisk', at=(566, 352)),
+    dict(id='cairn_spire', kind='obelisk', at=(540, 306)),          # the cairn at the centre of the stone ring
     dict(id='great_lantern', kind='great_lantern', at=(978, 376)),
-    dict(id='ember_watchtower', kind='tower', at=(812, 300)),
+    dict(id='ember_watchtower', kind='tower', at=(800, 250)),       # beside the Emberwatch gate, on its wall
 ]
 # Tall-prop groves: kind, centre, radius, count
 GROVES = [
@@ -78,3 +79,24 @@ GROVES = [
     ('rock', (580, 300), 60, 5), ('rock', (480, 300), 50, 3), ('rock', (1200, 400), 60, 4), ('rock', (760, 360), 50, 3),
     ('crystals', (520, 340), 40, 2), ('crystals', (640, 296), 40, 2), ('crystals', (1100, 300), 40, 1),
 ]
+
+
+def _seg_dist(px, py, ax, ay, bx, by):
+    vx, vy = bx - ax, by - ay; L2 = vx * vx + vy * vy or 1e-9
+    t = max(0.0, min(1.0, ((px - ax) * vx + (py - ay) * vy) / L2))
+    return math.hypot(px - (ax + vx * t), py - (ay + vy * t))
+
+
+def dead_ends(tol=30.0):
+    """Every path must reach something: a gate, a pad, a landmark, or another path. Returns the (path index, end)
+    pairs that reach nothing. gen_larkmoor.py refuses to build while this list is not empty."""
+    anchors = [EMBER_GATE, HOLLOW_GATE] + [p for d in DISTRICTS for p in d['pads']] + [lm['at'] for lm in LANDMARKS]
+    bad = []
+    for i, pp in enumerate(PATHS):
+        for end in (pp[0], pp[-1]):
+            reached = any(math.hypot(end[0] - a[0], end[1] - a[1]) <= tol for a in anchors)
+            for j, qq in enumerate(PATHS):
+                if reached or j == i: continue
+                reached = any(_seg_dist(end[0], end[1], qq[k][0], qq[k][1], qq[k + 1][0], qq[k + 1][1]) <= tol for k in range(len(qq) - 1))
+            if not reached: bad.append((i, end))
+    return bad

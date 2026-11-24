@@ -30,6 +30,7 @@ var pads: Dictionary = {}  # button id -> TexelPad
 var critter: TexelCritter
 var pointer: PadPointer
 var pad_glow: PadGlow
+var _night_sky: SkyCycle   ## the zone's sky, found lazily: pads read its night level through pad_glow
 var shake: ScreenShake
 var camera: WorldCamera
 var transitions: Transitions
@@ -126,6 +127,8 @@ func _ready() -> void:
 	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
 	add_child(hud)
 	hud.setup(sim)
+	camera.keep_clear = hud.clock_chip()
+	_sync_camera_landmarks()
 	_wire_relics()
 	_wire_index()
 	_wire_display()
@@ -166,6 +169,9 @@ func _process(_delta: float) -> void:
 	var mult: float = (sim.get_stat(boost_id).to_float() if boost_id != &"" else 0.0) + 1.0
 	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
 		pad_glow.multiplier = mult
+	if _night_sky == null or not is_instance_valid(_night_sky):   # a zone change frees the old sky
+		_night_sky = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
+	pad_glow.night01 = _night_sky.night01 if _night_sky != null else 0.0
 	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)
@@ -183,7 +189,9 @@ func _process(_delta: float) -> void:
 func _update_tooltip() -> void:
 	var over: Control = get_viewport().gui_get_hovered_control()
 	var m: Vector2 = world.get_local_mouse_position()
-	var blocked: bool = over != null and over.mouse_filter != Control.MOUSE_FILTER_IGNORE
+	# only a control that takes the click blocks the world tooltip: a PASS control (the clock chip) is hovered too, but lets the
+	# pointer through, so a gate under it still shows its tooltip
+	var blocked: bool = over != null and over.mouse_filter == Control.MOUSE_FILTER_STOP
 	var shown: bool = false
 	for pad: TexelPad in pads.values():
 		pad.hovered = not blocked and not shown and pad.hit(m)
@@ -396,6 +404,7 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 		walker.stop()
 	if gate_marker != null:
 		gate.position = gate_marker.position
+	_sync_camera_landmarks()
 	_clear_spawn_pending = true
 	camera.snap()
 
@@ -467,6 +476,13 @@ func _apply_scene_frame(zone_id: StringName) -> void:
 	_district_id = ""
 	if camera != null:
 		camera.bounds = _camera_bounds()
+
+
+## The zone gate's arch is a landmark the camera keeps out from under the clock chip (render/world_camera.gd).
+func _sync_camera_landmarks() -> void:
+	if camera == null or gate == null:
+		return
+	camera.landmarks = [Rect2(gate.position + TexelGate.HIT.position, TexelGate.HIT.size)]
 
 
 func _camera_bounds() -> Rect2:
@@ -542,7 +558,7 @@ func _zone_banner() -> Dictionary:
 		cal = calendar.call("now") as Dictionary
 	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
 	var phase: float = sky.clock_phase() if sky != null else 0.5
-	if sky == null:  # themed zones have no seasons: keep the time, drop the date
+	if sky == null or not sky.seasonal:  # themed zones have no seasons: keep the time, drop the date
 		for k: String in ["season", "season_name", "month_name", "day"]:
 			cal.erase(k)
 	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(zone_id))

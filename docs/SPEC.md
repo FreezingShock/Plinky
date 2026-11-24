@@ -53,77 +53,44 @@ The build agent records every new decision in `docs/decisions/README.md` with a 
 
 ## 3. Game design
 
-The loop is: earn the bottom stat passively, spend it on buttons that grant the next stat up, and let every higher stat multiply the ones below it.
+Refreshed 24 Nov 2026 at v0.63.2. The earlier Cash, Multiplier and Prestige design is gone. Numbers live in `content/` (`.tres`), not in this doc. Behaviour: [features.md](features.md). Balance: [balance.md](balance.md). Decision trail: [decisions/balance.md](decisions/balance.md).
 
 ### Core loop
 
-1. Cash arrives every tick.
-2. The player stands on a button. If they can afford it, the cost is spent and the reward is granted.
-3. Standing still repeats the press at the player's press rate.
-4. Higher stats multiply the income of lower stats, so each new tier restarts the climb faster.
-5. A gate opens when a stat passes its threshold, leading to the next zone.
-6. A rebirth resets the zone's stats for a permanent multiplier.
+1. Pads sit on each zone's ground. A pad costs one stat and pays the stat above it.
+2. The walker stands on a pad, or holds the mouse on it, and the pad presses at its zone's press rate (`press_rate` in the zone file).
+3. Each player press pays a share of the pad's reward. Higher stats boost the income of the stats below.
+4. A zone gate opens when its gate stat passes its threshold, which leads to the next zone. Open gates stay open.
+5. Each zone with a reset can reset (Bloom in the meadow, Nucleus in the quarry). A reset clears that zone's stats, pays its currency (Seeds or Core Shards), and makes every pad in the zone pay more for good.
+6. Gifts (attributes) are bought with the currency of the reset that owns them, in Upgrades. Gifts are permanent.
 
-### Stat chain for zone 1
+### Stat chains
 
-| Tier | Stat | Earned by | Effect |
-| --- | --- | --- | --- |
-| 0 | Cash | Passive, every tick | Spent on Multiplier buttons |
-| 1 | Multiplier | Buttons costing Cash | Multiplies Cash income |
-| 2 | Rebirths | Buttons costing Multiplier | Multiplies Multiplier gain |
-| 3 | Prestige | The rebirth action | Permanent multiplier on tiers 0 to 2 |
-
-Later zones add their own tiers on top. The system supports any number of tiers, since each `StatDef` names the stat it boosts.
-
-### Formulas
-
-```
-cash_per_second = base_cash × (1 + multiplier) × prestige_mult × relic_mult
-button_gain     = button.reward × boost_from_tier_above × relic_mult × crit_mult
-button_cost(n)  = button.base_cost × button.cost_growth ^ n      (n = button index in its row)
-prestige_mult   = 1 + prestige ^ 0.8
-```
-
-All values live in resource files. Section 8 describes the balance simulator that tunes them.
-
-### Buttons
-
-- Buttons sit in rows. Each row trades one stat for the next tier up.
-- Each button to the right costs about 10 times more and gives about 8 times more, so the best button is always the furthest one the player can afford.
-- A button shows its cost and reward on a floating label, and dims when unaffordable.
-- The first slice has 5 buttons: 3 Multiplier buttons and 2 Rebirth buttons.
-
-### Zones
-
-- A zone is a small diorama, about 40 by 40 world units, with its own palette, button rows, and one gate.
-- Zone 1 is the tutorial meadow. Zone 2 exists as an empty space in the first slice, only to prove the gate and palette shift.
-- Each later zone adds one new stat tier and one new mechanic.
-
-### Attributes
-
-Attributes are permanent upgrades bought with Prestige.
-
-| Attribute | Effect per level | Cap |
+| Zone | Stats, lowest to highest | Gate |
 | --- | --- | --- |
-| Walk speed | +5% movement | 20 |
-| Press rate | +10% presses per second | 20 |
-| Crit chance | +1% chance of a 5× press | 25 |
-| Luck | +5% relic drop chance | 20 |
-| Offline gain | +1 hour of offline cap | 8 |
+| Meadow (`zone1`) | Sunlight, Sprout (Dewdrops), Clover | Clover at 9 opens Larkmoor |
+| Larkmoor | Thistle, Heather, Foxglove, Starbloom, with Sprout and Clover rows by the lake | Starbloom at 2,600 opens the quarry |
+| Quarry (`zone2`) | Embers, Cinder, Ore, Slag, Ingot, Alloy, Emberheart | Emberheart at 600 |
 
-### Relics and buffs
+Each zone's `boost_stat` sets which stat its pads feed. Each `StatDef` names the stat it boosts, so a new zone adds tiers without new systems.
 
-- **Relics** are stacking items, in the spirit of Risk of Rain 2. Each press has a small chance to drop one.
-- There are three rarities: common, rare, and mythic. Stacks add linearly unless the relic says otherwise.
-- The first set has 6 relics: +Cash income, +Multiplier gain, +press rate, +crit damage, chance of a double press, and a pulse that presses adjacent buttons.
-- **Timed buffs** come from shrines in the world. They last 30 to 120 seconds and show a countdown bar on the HUD.
+### Pads, presses and mastery
 
-### Numbers and time
+- Pads list in each zone file as `pad_buttons`. Each zone has its own palette and its own press rate.
+- **Mastery** levels each pad from its own presses, to level 25. Each level adds reward yield, crit chance and crit damage on that pad. Mastery is kept through resets. Numbers: `content/config/mastery.tres`.
+- **Momentum** is a 0 to 1 charge. Walking charges it most, and presses and crits add to it. Its top stage gives up to +40% income.
+- **Relics** drop from presses and stack. Some carry abilities. See [relics.md](relics.md).
+- **Auto presses** come from the Dew Sprite and Wildflower gifts.
 
-- All stat values use the project's own big number class, never raw floats.
-- Display format: full digits to 999, then K, M, B, T, then scientific notation such as 1.23e15.
-- The simulation runs on a fixed tick of 10 per second, separate from frame rate.
-- Offline progress is granted on load, capped at 2 hours before the Offline gain attribute.
+### Idle, offline and events
+
+- Balance target: the idle profile (a player who does not walk or hold) takes about twice as long to open a gate as the active profile. It presses at 0.4 of the active rate in `content/config/sim_profiles.tres`.
+- Offline progress pays 0.5 of income. The base cap is 2 hours, and the Offline gain gift adds to it.
+- Seasonal events multiply income by day or season (`content/config/seasonal_events.tres`).
+
+### Balance check
+
+`tools/sim.gd` plays the meadow and Larkmoor under each profile in `sim_profiles.tres`, over seeded runs. It prints the median minutes to each gate. CI runs it in the `sim` job, which fails on a script error or a gate that is never reached. Pacing targets are in [balance.md](balance.md).
 
 ## 4. Art direction and rendering pipeline
 

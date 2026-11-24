@@ -62,6 +62,15 @@ const LOCK_GAP: int = 2           # texels between the icon and the cost digits
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
 const LOCK_CHIP_Z: int = 11       # the chip's z relative to its pad: one above the air layer (z 10), so nothing draws over it
 var _chip: Node2D = null          # the chip's own node, made for a row's first pad only
+## Buy glow and rarity corner glints, on their own child node above the night shade (z 5), so the glow reads brighter as the ground darkens.
+const HALO_Z: int = 6
+const GLOW_INNER: float = 1.12    # the glow starts just outside the plate's ink edge (diamond norm 1.0 is the plate edge)
+const GLOW_DAY: float = 0.42      # density of the dithered glow by day (0..1)
+const GLOW_NIGHT_GAIN: float = 1.1  # extra density at full night: a green or red glow about twice as strong at midnight
+const GLOW_SPREAD_DAY: float = 0.2  # width of the glow band in diamond norm, by day
+const GLOW_SPREAD_NIGHT: float = 0.2  # and the extra width at full night
+var _halo: Node2D = null
+var _halo_sig: int = -1
 const LOCK_TOP: int = -6          # the chip's top edge, in pad-local texels: centred on the top face (origin)
 const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
@@ -107,6 +116,10 @@ func _sim() -> Sim:
 func _ready() -> void:
 	position = position.round()  # anchors are fractional; a plate drawn between texels would not sit on the world's grid
 	emblem_bits = absi(String(button_id).hash()) & 0x7FFF
+	_halo = Node2D.new()
+	_halo.z_index = HALO_Z   # relative to the pad (z 0): above the shade (z 5), below the air layer (z 10)
+	_halo.draw.connect(_draw_halo)
+	add_child(_halo)
 	rarity = load("res://content/rarities/%s.tres" % _sim().pad_rarity(button_id)) as RarityDef
 	var b: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if b != null:
@@ -124,7 +137,7 @@ func _ready() -> void:
 			add_child(_chip)
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
-			stat_color = CLOVER_TRIM   # gems and pip take the Clover gold, not the Clover reward green
+			# The gold is only the rim, lit rim and rarity ring. Gems, pip and the flowers keep the Clover reward green.
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
 
@@ -166,6 +179,10 @@ func _physics_process(delta: float) -> void:
 	if sig != _sig:
 		_sig = sig
 		queue_redraw()
+	var hsig: int = _halo_signature()
+	if hsig != _halo_sig:
+		_halo_sig = hsig
+		_halo.queue_redraw()
 
 
 func _press() -> void:
@@ -382,12 +399,9 @@ func _draw() -> void:
 					continue
 				var w: int = roundi(float(ihx) * (1.0 - absf(float(dy)) / (float(ihy) + 0.5)))
 				draw_rect(Rect2(-w, top + dy, w * 2 + 1, 1), StatStyle.gain().darkened(0.2))
-	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Legendary adds corner studs.
+	# Rarity frame: a second ring just inside the rim in the tier colour (Common has none). Its corner glints are on the halo node.
 	if rarity != null and rarity.rank > 0:
 		_dashed_diamond(0.86, top, _trim if _trim.a > 0.0 else rarity.tint())  # dashed, so Uncommon green never reads as the buy-state green
-		if rarity.rank >= 4:
-			for c: Vector2i in [Vector2i(-hx + 4, 0), Vector2i(hx - 4, 0), Vector2i(0, -hy + 2), Vector2i(0, hy - 2)]:
-				draw_rect(Rect2(c.x, top + c.y, 1, 1), Color.WHITE)
 	if FORGE_ART.has(tier_row):
 		_draw_forge(top, ink)
 	elif FLOWERS.has(flower_row):
@@ -603,6 +617,72 @@ func _draw_emblem(top: int, ink: Color) -> void:
 
 ## A 1 texel diamond outline built from whole-texel rects. draw_polyline's diagonals are anti-aliased and finer than
 ## the world's pixel grid, which made the plate look like a high-res overlay on the chunky scene.
+## Night level 0..1 from the zone's sky (PadGlow.night01, set by main.gd). 0 with no glow node, as in the tests.
+func _night() -> float:
+	return glow.night01 if glow != null else 0.0
+
+
+## Density of the buy glow at full strength, 0..1: green when buyable, red (a little softer) when not, magnified at night.
+static func glow_amount(ready: bool, night: float) -> float:
+	var base: float = GLOW_DAY if ready else GLOW_DAY * 0.8
+	return clampf(base * (1.0 + GLOW_NIGHT_GAIN * clampf(night, 0.0, 1.0)), 0.0, 1.0)
+
+
+## Width of the glow band in diamond norm (1.0 is the plate edge). Wider at night, so it reads from a distance.
+static func glow_spread(night: float) -> float:
+	return GLOW_SPREAD_DAY + GLOW_SPREAD_NIGHT * clampf(night, 0.0, 1.0)
+
+
+## Night level in 8 steps: the halo redraws only when this changes, not every frame.
+static func glow_night_step(night: float) -> int:
+	return roundi(clampf(night, 0.0, 1.0) * 8.0)
+
+
+func _halo_signature() -> int:
+	var rank: int = rarity.rank if rarity != null else 0
+	return int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | glow_night_step(_night()) << 5 | int(locked) << 9 | rank << 10
+
+
+## The buy glow and rarity glints. Dithered on world texels, so the band is pixel-crisp and does not crawl as the walker moves.
+func _draw_halo() -> void:
+	if locked:
+		return
+	var s: int = sink_texels()
+	var top: int = s - (1 if hovered and s == 0 else 0)   # the same lift as _draw
+	var night: float = _night()
+	var ready: bool = pad_state() == PadState.READY
+	var col: Color = StatStyle.gain() if ready else StatStyle.cant()
+	var amount: float = glow_amount(ready, night)
+	var spread: float = glow_spread(night)
+	var o: Vector2i = Vector2i(position.round())
+	var rx: int = ceili(HALF.x * (GLOW_INNER + spread)) + 1
+	var ry: int = ceili(HALF.y * (GLOW_INNER + spread)) + 1
+	for dy in range(-ry, ry + 1):
+		for dx in range(-rx, rx + 1):
+			var d: float = absf(float(dx)) / HALF.x + absf(float(dy)) / HALF.y
+			if d <= GLOW_INNER or d > GLOW_INNER + spread:
+				continue
+			var k: float = (1.0 - (d - GLOW_INNER) / spread) * amount   # thins out toward the band's outer edge
+			if BAYER[((dy + top + o.y) & 3) * 4 + ((dx + o.x) & 3)] < roundi(k * 16.0):
+				draw_rect(Rect2(dx, top + dy, 1, 1), col)
+	# Rarity glints: a small plus on each corner of the plate, just outside it. Epic and up glow in the rarity colour; Legendary and up get a bright heart.
+	if rarity != null and rarity.rank > 0:
+		var rc: Color = _trim if _trim.a > 0.0 else rarity.tint()
+		var heart: Color = rc.lerp(Color.WHITE, 0.6) if rarity.rank >= 4 else rc
+		for c: Vector2i in [Vector2i(-int(HALF.x) - 2, 0), Vector2i(int(HALF.x) + 2, 0), Vector2i(0, -int(HALF.y) - 2), Vector2i(0, int(HALF.y) + 2)]:
+			_glint(c.x, top + c.y, rc, heart, night >= 0.5)
+
+
+## One corner glint: a plus in the rarity colour with a bright centre, and diagonal sparks at night.
+func _glint(x: int, y: int, rc: Color, heart: Color, sparks: bool) -> void:
+	for q: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+		draw_rect(Rect2(x + q.x, y + q.y, 1, 1), rc)
+	draw_rect(Rect2(x, y, 1, 1), heart)
+	if sparks:
+		for q: Vector2i in [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
+			draw_rect(Rect2(x + q.x, y + q.y, 1, 1), rc.lerp(Color.WHITE, 0.3))
+
+
 func _outline(scale: float, y: int, col: Color) -> void:
 	var rx: float = HALF.x * scale
 	var ry: float = HALF.y * scale

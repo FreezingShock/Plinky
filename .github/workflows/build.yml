@@ -1,7 +1,8 @@
 name: Build
 
 # Test builds for sharing. Run it by hand (Actions > Build > Run workflow) or push a tag like v0.1.0.
-# Artifacts: Plinky-windows.zip and Plinky-macos.zip. A tag also publishes a GitHub release.
+# Artifacts: Plinky-windows.zip and Plinky-macos.zip. A tag also publishes a GitHub release, after Nathan approves the
+# `public-release` environment (see the publish job and docs/ci.md).
 
 on:
   workflow_dispatch:
@@ -13,7 +14,7 @@ env:
   TEMPLATE_DIR: "4.7.stable"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -36,11 +37,11 @@ jobs:
         run: |
           mkdir -p ~/godot ~/.local/share/godot/export_templates
           base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
-          curl -fsSL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -fsSL --retry 4 --retry-all-errors -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
           unzip -q /tmp/godot.zip -d ~/godot
           mv ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 ~/godot/godot
           chmod +x ~/godot/godot
-          curl -fsSL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          curl -fsSL --retry 4 --retry-all-errors -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}_export_templates.tpz"
           unzip -q /tmp/templates.tpz -d /tmp/templates
           mv /tmp/templates/templates ~/.local/share/godot/export_templates/${TEMPLATE_DIR}
 
@@ -73,8 +74,23 @@ jobs:
           name: plinky-test-build
           path: dist/*.zip
 
-      - name: Publish release (tags only)
-        if: startsWith(github.ref, 'refs/tags/')
+  # Publishing is a separate job behind the `public-release` environment, which has Nathan as a required reviewer.
+  # A tag push waits for his approval before the GitHub release goes out. Manual runs never publish.
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: public-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: plinky-test-build
+          path: dist
+
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip

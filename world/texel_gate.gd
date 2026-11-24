@@ -2,7 +2,8 @@ class_name TexelGate
 extends Node2D
 ## Zone gate marker. Walking in once the Sim has latched the gate enters the next zone. A zone can give the gate
 ## its own drawn arch (ZoneDef.gate_art): "forge" is the Ember Quarry's basalt and iron arch with glowing seams,
-## shut behind an iron grate until the gate opens. Zones without art keep the plain pulsing ring.
+## shut behind an iron grate until the gate opens. "meadow" is the Meadow's timber and flower arch: a vine-hung
+## lattice gate that opens onto green light. Zones without art keep the plain pulsing ring.
 
 signal dead_end   ## the gate is open but leads nowhere yet (the last zone built); main shows a banner
 
@@ -10,7 +11,7 @@ const RADIUS: float = 16.0
 const HALF_SPAN: float = 26.0        ## pillar centres sit this far either side of the gate anchor
 const PILLAR_W: int = 10
 const HEIGHT: int = 46
-const HIT: Rect2 = Rect2(-34.0, -56.0, 68.0, 62.0)
+const HIT: Rect2 = Rect2(-36.0, -62.0, 72.0, 68.0)   ## covers the whole arch, keystone bloom included
 
 var zone_id: StringName
 var art: StringName = &""
@@ -107,6 +108,9 @@ func _draw() -> void:
 	if art == &"forge":
 		_draw_forge(open)
 		return
+	if art == &"meadow":
+		_draw_meadow(open)
+		return
 	if not open:
 		return
 	var r: float = 10.0 + float(int(_t * 6.0) % 3)
@@ -185,6 +189,87 @@ func _draw_forge(open: bool) -> void:
 	draw_rect(Rect2(-4, -HEIGHT - 2, 8, 8), soot)
 	draw_rect(Rect2(-3, -HEIGHT - 1, 6, 6), p[6])
 	draw_rect(Rect2(-1, -HEIGHT + 1, 2, 2), seam_on if open else p[1])
+
+
+## Meadow palette indices: 0 ink, 1 deep green, 2 leaf, 3 green, 4 light green, 5 cream, 6 timber, 7 paper.
+func _draw_meadow(open: bool) -> void:
+	var p: PackedColorArray = palette
+	var ink: Color = p[0]
+	var timber: Color = p[6]
+	var leaf: Color = p[3] if int(_t * 2.0) % 2 == 0 else p[4]   # the leaves shiver
+	var rx: float = -HALF_SPAN + float(PILLAR_W) * 0.5
+	var rw: float = HALF_SPAN * 2.0 - float(PILLAR_W)
+	# the doorway: dark green while shut; open, it shows the green light of the next clearing, lit from the floor up
+	draw_rect(Rect2(rx, -HEIGHT, rw, HEIGHT), p[1])
+	if open:
+		for i in 14:
+			var band: Color = p[4] if i < 4 else p[3] if i < 9 else p[2]
+			draw_rect(Rect2(rx, -float(i) * 3.0 - 3.0, rw, 3.0), band)
+		for i in 6:
+			var fx: float = rx + 4.0 + float(i) * (rw - 8.0) / 6.0
+			var ph: float = fmod(_t * (9.0 + float(i) * 2.0) + float(i) * 11.0, float(HEIGHT - 6))
+			draw_rect(Rect2(floorf(fx), -2.0 - floorf(ph), 1, 1), p[5])
+	else:
+		# wooden lattice across the opening
+		var x: float = rx + 2.0
+		while x < rx + rw - 2.0:
+			draw_rect(Rect2(x, -HEIGHT + 3, 1, HEIGHT - 5), timber)
+			x += 4.0
+		for y: int in [-36, -22, -9]:
+			draw_rect(Rect2(rx, y, rw, 2), timber)
+			draw_rect(Rect2(rx, y, rw, 1), p[5])
+		# two vines weaving up the lattice in opposite phase. Each is a 4-texel light outline around a 2-texel bright core,
+		# so the ribbon reads at 1x against the dark doorway; the tips carry cream blooms.
+		var mid: float = rx + rw * 0.5
+		for y: int in range(-HEIGHT + 3, -1, 2):
+			var wave: float = sin(float(y) * 0.42)
+			var vx: float = mid + wave * (rw * 0.34) - 2.0
+			draw_rect(Rect2(floorf(vx), y, 4, 2), p[3])
+			draw_rect(Rect2(floorf(vx) + 1.0, y, 2, 2), p[4] if posmod(y, 4) < 2 else leaf)
+			var vx2: float = mid - wave * (rw * 0.34) - 2.0
+			draw_rect(Rect2(floorf(vx2), y + 1, 4, 2), p[2])
+			draw_rect(Rect2(floorf(vx2) + 1.0, y + 1, 2, 2), p[4] if posmod(y, 4) >= 2 else leaf)
+		# blooms at the tips of the vines
+		var tip: float = sin(float(-HEIGHT + 3) * 0.42) * (rw * 0.34)
+		draw_rect(Rect2(floorf(mid + tip) - 3.0, -HEIGHT + 1, 6, 4), p[7])
+		draw_rect(Rect2(floorf(mid - tip) - 3.0, -HEIGHT + 2, 6, 4), p[5])
+	# posts: timber shaded on the left, lit on the right, a cream cap, and moss and grass at the foot
+	for side: int in [-1, 1]:
+		var cx: int = int(side * HALF_SPAN) - PILLAR_W / 2
+		draw_rect(Rect2(cx, -HEIGHT, PILLAR_W / 2, HEIGHT), p[1])
+		draw_rect(Rect2(cx + PILLAR_W / 2, -HEIGHT, PILLAR_W / 2, HEIGHT), timber)
+		draw_rect(Rect2(cx - 1, -HEIGHT, PILLAR_W + 2, 2), p[5])
+		draw_rect(Rect2(cx, -HEIGHT + 2, PILLAR_W, 1), ink)
+		# vines hanging down the outer edge of the post
+		for y in range(-HEIGHT + 8, -10, 6):
+			draw_rect(Rect2(cx - 2 if side < 0 else cx + PILLAR_W, y, 2, 2), leaf)
+			draw_rect(Rect2(cx - 2 if side < 0 else cx + PILLAR_W + 1, y + 2, 1, 2), p[3])
+		# moss band and grass tufts at the foot
+		draw_rect(Rect2(cx - 2, -6, PILLAR_W + 4, 4), p[2])
+		draw_rect(Rect2(cx - 2, -6, PILLAR_W + 4, 1), p[3])
+		for gx in range(cx - 3, cx + PILLAR_W + 3, 3):
+			draw_rect(Rect2(gx, -3, 1, 3), p[4] if (gx + side) % 2 == 0 else p[3])
+	# lintel: a timber beam across the post tops, garlanded with leaves and flowers
+	var lx: int = int(-HALF_SPAN) - PILLAR_W / 2 - 3
+	var lw: int = int(HALF_SPAN) * 2 + PILLAR_W + 6
+	draw_rect(Rect2(lx, -HEIGHT - 6, lw, 6), timber)
+	draw_rect(Rect2(lx, -HEIGHT - 6, lw, 1), p[5])
+	draw_rect(Rect2(lx, -HEIGHT - 2, lw, 1), p[1])
+	for x in range(lx + 2, lx + lw - 2, 4):
+		draw_rect(Rect2(x, -HEIGHT - 8, 2, 2), leaf)
+		if (x / 4) % 3 == 0:
+			var bloom: Color = p[7] if (x + int(_t * 3.0)) % 6 < 3 else p[5]
+			draw_rect(Rect2(x - 1, -HEIGHT - 10, 2, 2), bloom)
+	# keystone: a yellow bloom with a timber heart
+	draw_rect(Rect2(-5, -HEIGHT - 11, 10, 10), p[1])
+	draw_rect(Rect2(-4, -HEIGHT - 10, 8, 8), p[5])
+	draw_rect(Rect2(-2, -HEIGHT - 8, 4, 4), timber)
+	# petals drifting down through the opening while it is open
+	if open:
+		for i in 9:
+			var px: float = rx + 2.0 + fposmod(float(i) * 11.0 + sin(_t * 1.3 + float(i)) * 3.0, rw - 6.0)
+			var py: float = -float(HEIGHT) + fposmod(_t * (5.0 + float(i) * 0.7) + float(i) * 9.0, float(HEIGHT - 4))
+			draw_rect(Rect2(floorf(px), floorf(py), 3, 3), p[7] if i % 2 == 0 else p[5])
 
 
 # ---------------------------------------------------------------- the way back: a cave mouth to the meadow
