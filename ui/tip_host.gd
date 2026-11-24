@@ -369,16 +369,23 @@ func _beside(view: Vector2) -> Vector2:
 		for n: Node in get_tree().get_nodes_in_group(AVOID_GROUP):
 			if n is Control and (n as Control).is_visible_in_tree():
 				avoid.append((n as Control).get_global_rect())
-	var screen := Rect2(Vector2(2.0, 2.0), view - Vector2(4.0, 4.0))
+	# The anchor itself is off limits too, so the tip never hides the thing it describes.
+	avoid.append(a)
+	# Each side is clamped onto the screen first, so a tip too wide for its side still lands on screen. The first
+	# spot that touches no panel wins; if none is clear, the one with the least overlap.
+	var best: Vector2 = cands[0]
+	var best_cost: float = INF
 	for c: Vector2 in cands:
-		var r := Rect2(c, size)
-		if not screen.encloses(r):
-			continue
-		var clear: bool = true
+		var p := Vector2(clampf(c.x, 2.0, maxf(2.0, view.x - size.x - 2.0)),
+				clampf(c.y, 2.0, maxf(2.0, view.y - size.y - 2.0)))
+		var r := Rect2(p, size)
+		var cost: float = 0.0
 		for av: Rect2 in avoid:
 			if av.intersects(r):
-				clear = false
-				break
-		if clear:
-			return c
-	return cands[0]
+				cost += r.intersection(av).get_area()
+		if cost <= 0.0:
+			return p
+		if cost < best_cost:
+			best_cost = cost
+			best = p
+	return best
