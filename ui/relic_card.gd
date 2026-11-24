@@ -1,15 +1,15 @@
 class_name RelicCard
 extends PanelContainer
-## One relic in the gallery: a small square card. The icon sits centred, the edge is the exact rarity colour, and a
-## stack count shows in the corner once you own more than one. Names and state live in the hover tip and the detail
-## view, so the grid stays dense. An unfound relic is a dark silhouette. Equipped cards get the lifted fill, and a
-## focused card gets a marching focus ring. The whole card is the click target, and Tip.bind goes on the card.
+## One relic in the gallery: a 40 px square, six across. The icon is centred. The rarity letter sits top left in the
+## tier colour, so the tier reads without colour alone. An E marks an equipped relic, and a stack count shows bottom
+## right once you own more than one. An unfound relic is a dark silhouette. Focus gets an accent edge and a focus ring,
+## which stays still under Reduce Flashing. The whole card is the click target, and Tip.bind goes on it, so focus
+## shows the same tooltip as hover.
 
 signal pressed(card: RelicCard)
 
-## Square side. Four across in the gallery.
-const W: float = 62.0
-const ICON: int = 24
+const W: float = 40.0
+const ICON: int = 16
 
 var relic: RelicDef
 var stacks: int = 0
@@ -31,7 +31,7 @@ func _init() -> void:
 	draw.connect(_on_draw)
 
 
-## `p_silhouette` draws a relic you have not found: a dark icon, no count.
+## `p_silhouette` draws a relic you have not found: a dark icon, no marks.
 func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = false, p_silhouette: bool = false) -> void:
 	relic = def
 	stacks = p_stacks
@@ -58,16 +58,39 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	if p_silhouette:
 		icon.modulate = Color(0.2, 0.2, 0.26, 1.0)
 	center.add_child(icon)
-	if not p_silhouette and p_stacks > 1:
-		var n := Label.new()
-		n.text = "x%d" % p_stacks
-		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		n.add_theme_color_override("font_color", RelicStyle.text)
-		n.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-		n.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		n.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		root.add_child(n)
+	# Rarity letter, top left, in the tier colour. It stays on silhouettes too, so the tier shows before you own one.
+	var rc: Color = def.rarity.readable_color(RelicStyle.ink) if not p_silhouette else RelicStyle.dim
+	_mark(root, def.rarity.display_name.substr(0, 1), rc, Corner.TOP_LEFT)
+	if not p_silhouette:
+		if p_picked:
+			_mark(root, "S", RelicStyle.accent, Corner.BOTTOM_LEFT)
+		elif p_equipped:
+			_mark(root, "E", RelicStyle.good, Corner.BOTTOM_LEFT)
+		if p_stacks > 1:
+			_mark(root, "x%d" % p_stacks, RelicStyle.text, Corner.BOTTOM_RIGHT)
 	_restyle()
+
+
+enum Corner { TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT }
+
+
+## A small text mark in one corner of the card. Labels ignore the mouse, so the card stays the click target.
+func _mark(root: Control, text: String, c: Color, corner: Corner) -> void:
+	var l := Label.new()
+	l.text = text
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.add_theme_color_override("font_color", c)
+	match corner:
+		Corner.TOP_LEFT:
+			l.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		Corner.BOTTOM_LEFT:
+			l.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+			l.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		Corner.BOTTOM_RIGHT:
+			l.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+			l.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+			l.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	root.add_child(l)
 
 
 func _restyle() -> void:
@@ -75,15 +98,21 @@ func _restyle() -> void:
 		return
 	var lit: bool = _hover or has_focus()
 	var kind: AsciiBox.Kind = AsciiBox.Kind.SELECT if (lit or equipped) else AsciiBox.Kind.BUTTON
-	var b := AsciiBox.make(kind, 3.0, 2.0)
-	b.edge_override = RelicStyle.accent if picked else relic.rarity.tint()
+	var b := AsciiBox.make(kind, 2.0, 2.0)
+	# Focus and a waiting swap use the accent edge; otherwise the card keeps its rarity colour.
+	b.edge_override = RelicStyle.accent if (picked or has_focus()) else relic.rarity.tint()
 	add_theme_stylebox_override("panel", b)
 	queue_redraw()
 
 
 func _on_draw() -> void:
-	if has_focus():
-		PadInput.draw_focus_ring(self, Rect2(Vector2.ZERO, size).grow(1), RelicStyle.accent)
+	if not has_focus():
+		return
+	var r := Rect2(Vector2.ZERO, size).grow(1.0)
+	if FxConfig.reduce_flashing:
+		draw_rect(r, RelicStyle.accent, false, 1.0)
+	else:
+		PadInput.draw_focus_ring(self, r, RelicStyle.accent)
 
 
 func _gui_input(e: InputEvent) -> void:
@@ -96,5 +125,6 @@ func _gui_input(e: InputEvent) -> void:
 
 
 func _process(_d: float) -> void:
-	if has_focus():
-		queue_redraw()   # marching dots
+	# The marching focus ring moves, so it only runs when Reduce Flashing is off.
+	if has_focus() and not FxConfig.reduce_flashing:
+		queue_redraw()

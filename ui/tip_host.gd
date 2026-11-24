@@ -351,6 +351,28 @@ func _place() -> void:
 	p.x = clampf(p.x, 2.0, maxf(2.0, view.x - size.x - 2.0))
 	p.y = clampf(p.y, 2.0, maxf(2.0, view.y - size.y - 2.0))
 	global_position = p.round()
+	# The size above can be from before the text wrapped. Check again once layout has run.
+	call_deferred("_settle_on_screen")
+
+
+## Nudges the tip back inside the view by however far it has spilled, using its real size after layout.
+func _settle_on_screen() -> void:
+	if not visible or not is_inside_tree():
+		return
+	var view: Vector2 = _view_size()
+	var r: Rect2 = get_global_rect()
+	var dx: float = 0.0
+	var dy: float = 0.0
+	if r.position.x < 2.0:
+		dx = 2.0 - r.position.x
+	elif r.end.x > view.x - 2.0:
+		dx = (view.x - 2.0) - r.end.x
+	if r.position.y < 2.0:
+		dy = 2.0 - r.position.y
+	elif r.end.y > view.y - 2.0:
+		dy = (view.y - 2.0) - r.end.y
+	if dx != 0.0 or dy != 0.0:
+		global_position = (global_position + Vector2(dx, dy)).round()
 
 
 func _view_size() -> Vector2:
