@@ -100,3 +100,9 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Fix:** `TexelPad._refresh_sign` reads the cost (`Formulas.button_cost`) and the gain (`press_gain_preview`) with the same `format()` the tooltip uses, every 0.2 s, and redraws only when a value changes. The plank is a fixed 50 texels wide, so it never resizes. A value that is too wide drops its fraction first (`fit_sign_text`). The sign's z is now `LOCK_CHIP_Z` 4, between the plate (0) and the shade (5).
 - **Checked in the cloud:** `tests/run.gd` 6841 checks, 0 failed. Midnight and noon captures of the real `main.tscn`.
 - **Not verified on the PC:** the night look. In the cloud capture a sign inside a pad's glow still reads brighter than the dark ground, as the pad and the ground beside it do. The PC night shot is the check.
+
+## 2026-11-24: Quarry scene prefetch warms its script (gate walk parse error)
+- **QA finding:** walking onto the Larkmoor Ember gate logged `Parse Error: Failed` at `res://world/quarry_scene.tscn:7` (the script line) on every head tested, including before the entrance art. Direct zone-2 boots, which load on the main thread, were clean.
+- **Likely cause:** `main.gd` `_prefetch_scene` loads the scene on a worker thread, and the quarry script uses several game classes. The threaded load failed and `_take_prefetched` fell back to a plain synchronous `load`, so the quarry still opened (log error and a small stall).
+- **Changed:** `_prefetch_scene` first loads the scene's script on the main thread for scenes in `WARM_SCRIPTS` (the quarry only; Larkmoor's script preloads large textures, so warming it would bring the stall back). The threaded request then reuses the compiled script.
+- **Not run in-engine:** this is a read-the-code fix. PC QA should walk onto the gate and confirm the error is gone.

@@ -1,0 +1,1 @@
+Walking into the Ember gate no longer logs a parse error: the quarry scene's script is compiled on the main thread before the background prefetch, so the quarry loads from the prefetch instead of falling back to a synchronous load.
