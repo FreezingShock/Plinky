@@ -10,7 +10,7 @@ const MANIFEST: String = "res://assets/art/zone1b/farm/farm.json"
 const DIR: String = "res://assets/art/zone1b/farm/"
 const FIELD_PREFIX: String = "farm_field"
 const FIELD_FRAMES: int = 8
-const FIELD_FRAME_W: int = 96
+const FIELD_FRAME_W: int = 96        # default; each field item carries its own frame_w
 const FIELD_FRAME_H: int = 28
 const FIELD_RATE: float = 0.5        # gust frames per life step, as the cozy wheat
 
@@ -55,7 +55,8 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 			sp.material = rim
 		parent.add_child(sp)
 		if kind.begins_with(FIELD_PREFIX):
-			anim.add_sheet(sp, FIELD_FRAMES, FIELD_FRAME_W, FIELD_FRAME_H, int(item.get("phase", 0)), FIELD_RATE)
+			anim.add_sheet(sp, FIELD_FRAMES, int(item.get("frame_w", FIELD_FRAME_W)), FIELD_FRAME_H,
+					int(item.get("phase", 0)), FIELD_RATE)
 			continue
 		if shadows != null:
 			shadows.add_caster(sp, "", Vector2(float(item.get("w", 0)), float(item.get("h", 0))))
@@ -64,3 +65,8 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 		var fences: FarmFences = FarmFences.make(runs)
 		fences.name = "FarmFences"
 		parent.add_child(fences)
+	var channels: Array = data.get("brooks", []) as Array
+	if not channels.is_empty():
+		var channel: CozyBrook = CozyBrook.make(channels)
+		channel.name = "FarmChannel"
+		parent.add_child(channel)

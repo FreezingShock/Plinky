@@ -34,9 +34,10 @@ func run(t: Object) -> void:
 		if tex == null:
 			continue
 		if kind.begins_with(FarmProps.FIELD_PREFIX):
-			t.eq(tex.get_width(), FarmProps.FIELD_FRAME_W * FarmProps.FIELD_FRAMES, "%s sheet holds %d frames" % [kind, FarmProps.FIELD_FRAMES])
+			var fw: int = int(item.get("frame_w", 0))
+			t.eq(tex.get_width(), fw * FarmProps.FIELD_FRAMES, "%s sheet holds %d frames" % [kind, FarmProps.FIELD_FRAMES])
 			t.eq(tex.get_height(), FarmProps.FIELD_FRAME_H, "%s sheet is one row of frames" % kind)
-			t.eq(int(rect.size.x), FarmProps.FIELD_FRAME_W, "%s is one frame wide" % kind)
+			t.eq(int(rect.size.x), fw, "%s is one frame wide" % kind)
 		else:
 			t.eq(tex.get_width(), int(rect.size.x), "%s sprite width matches its box" % kind)
 			t.eq(tex.get_height(), int(rect.size.y), "%s sprite height matches its box" % kind)
@@ -65,6 +66,22 @@ func run(t: Object) -> void:
 		var item: Dictionary = v as Dictionary
 		if str(item.kind).begins_with(FarmProps.FIELD_PREFIX):
 			phases.append(int(item.get("phase", 0)))
+	t.ok(phases.size() >= 6, "the farm has at least six fields (%d)" % phases.size())
+	# The water channel: at least a few ripples long, inside the box, and not running through any item.
+	var channels: Array = data.get("brooks", []) as Array
+	t.ok(channels.size() == 1, "the farm has one water channel")
+	if not channels.is_empty():
+		var cpts: Array = (channels[0] as Dictionary).get("points", []) as Array
+		t.ok(cpts.size() >= 8, "the channel has at least 8 points (%d)" % cpts.size())
+		var through: int = 0
+		for p: Variant in cpts:
+			var a: Array = p as Array
+			var q := Vector2(float(a[0]), float(a[1]))
+			t.ok(box.has_point(q), "a channel point is inside the farm box")
+			for r: Rect2 in rects:
+				if r.has_point(q):
+					through += 1
+		t.eq(through, 0, "the channel does not run through any farm item")
 	t.ok(phases.size() >= 2, "the farm has at least two fields")
 	if phases.size() >= 2:
 		t.ok(phases[0] != phases[1], "neighbouring fields start their gust wave at different frames")
@@ -75,6 +92,7 @@ func run(t: Object) -> void:
 	var sprites: int = 0
 	var animated: int = 0
 	var fences: int = 0
+	var channel_nodes: int = 0
 	for c: Node in parent.get_children():
 		if c is Sprite2D:
 			sprites += 1
@@ -82,9 +100,12 @@ func run(t: Object) -> void:
 				animated += 1
 		elif c is FarmFences:
 			fences += 1
+		elif c is CozyBrook:
+			channel_nodes += 1
 	t.eq(sprites, items.size(), "the farm spawns one sprite per item")
 	t.eq(animated, phases.size(), "every field is an animated sheet")
 	t.eq(fences, 1, "the fences spawn as one node")
+	t.eq(channel_nodes, 1, "the channel spawns as one node")
 	t.ok(parent.get_child_count() <= NODE_BUDGET, "the farm adds at most %d nodes (%d)" % [NODE_BUDGET, parent.get_child_count()])
 	parent.free()
 

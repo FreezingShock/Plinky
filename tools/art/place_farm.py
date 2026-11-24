@@ -45,23 +45,28 @@ SIZES = {
     'farm_barn': (72, 56), 'farm_shed': (40, 34), 'farm_hay_0': (16, 12), 'farm_hay_1': (16, 12),
     'farm_scarecrow': (18, 34), 'farm_cart': (28, 20), 'farm_crates': (12, 12),
     'farm_plot_a': (64, 22), 'farm_plot_b': (64, 22),
-    'farm_field_a': (96, 28), 'farm_field_b': (96, 28),
+    'farm_field_a': (96, 28), 'farm_field_b': (96, 28), 'farm_field_c': (128, 28), 'farm_field_d': (160, 28),
+    'farm_greens': (64, 22),
 }
 FILES = {
     'farm_barn': 'farm_barn.png', 'farm_shed': 'farm_shed.png', 'farm_hay_0': 'farm_hay_0.png',
     'farm_hay_1': 'farm_hay_1.png', 'farm_scarecrow': 'farm_scarecrow.png', 'farm_cart': 'farm_cart.png',
     'farm_crates': 'farm_crates.png', 'farm_plot_a': 'farm_plot_a.png', 'farm_plot_b': 'farm_plot_b.png',
     'farm_field_a': 'field_a_sheet.png', 'farm_field_b': 'field_b_sheet.png',
+    'farm_field_c': 'field_c_sheet.png', 'farm_field_d': 'field_d_sheet.png', 'farm_greens': 'farm_greens.png',
 }
 
 # Where each item wants to go (layout texels). Each is searched outward from its target, nearest first, inside the box.
 # Fields first: they are the big shapes, and the small items fill the gaps around them.
 TARGETS = [
-    ('farm_field_a', 1140, 468), ('farm_field_b', 1176, 596), ('farm_field_a', 1000, 452),
-    ('farm_plot_a', 1120, 592), ('farm_plot_b', 1212, 512), ('farm_plot_a', 1000, 512),
-    ('farm_barn', 1066, 424), ('farm_shed', 1038, 440), ('farm_scarecrow', 1152, 484),
-    ('farm_hay_0', 1068, 596), ('farm_hay_1', 1150, 560), ('farm_hay_0', 1220, 608),
-    ('farm_cart', 1206, 488), ('farm_crates', 1188, 540), ('farm_crates', 1032, 618),
+    ('farm_field_d', 1040, 486), ('farm_field_a', 976, 445), ('farm_field_c', 1116, 596),
+    ('farm_field_b', 1118, 556), ('farm_field_c', 1000, 580), ('farm_field_a', 1196, 470),
+    ('farm_field_d', 1080, 640), ('farm_field_b', 1010, 430),
+    ('farm_greens', 1082, 576), ('farm_plot_a', 984, 506), ('farm_plot_b', 1148, 528),
+    ('farm_greens', 1004, 618), ('farm_plot_a', 1200, 608), ('farm_greens', 1030, 470),
+    ('farm_barn', 1066, 424), ('farm_shed', 1028, 432), ('farm_scarecrow', 1136, 528),
+    ('farm_hay_0', 1064, 593), ('farm_hay_1', 1146, 547), ('farm_hay_0', 1158, 593),
+    ('farm_cart', 1119, 527), ('farm_crates', 1167, 543), ('farm_crates', 1029, 615),
 ]
 
 
@@ -247,13 +252,39 @@ def build(map_only: bool = False) -> dict:
             field_rects.append((x, y, x + w, y + h))
         items.append({'kind': kind, 'file': FILES[kind], 'x': x, 'y': y, 'w': w, 'h': h,
                       'foot': [x + w / 2.0, y + h - 2.0], 'sort_y': float(y + h - 2)})
+        if kind.startswith('farm_field'):
+            items[-1]['frame_w'] = w            # one gust frame; the sheet is 8 frames wide
     # Each field starts its gust wave half a cycle apart from the last, so the two fields do not sway in step.
     for idx, it in enumerate(i for i in items if i['kind'].startswith('farm_field')):
         it['phase'] = (4 * idx) % 8
     fences = _fence_runs(field_rects, ground, placer, rng)
+    channel = _channel(ground, placer)
+    brooks = [{'points': channel, 'width': 2}] if channel else []
     if map_only:
         _print_map(ground, placer, items)
-    return {'items': items, 'fences': fences, 'box_layout': list(BOX), 'scale': S}
+    return {'items': items, 'fences': fences, 'brooks': brooks, 'box_layout': list(BOX), 'scale': S}
+
+
+def _channel(ground: Ground, placer: Placer):
+    """An irrigation channel across the box: the longest stretch of a horizontal run that stands clear of every
+    item, the paths and the pads. Points are about 6 canvas texels apart, so the channel reads as water in a few
+    short ripples. It runs beside the fields, not through them, so no field is cut."""
+    bx, by, bw, bh = BOX
+    best: list = []
+    for ly in range(int(by - bh / 2) + 6, int(by + bh / 2) - 6, 4):
+        y = ly * S
+        run: list = []
+        for lx in range(int(bx - bw / 2) + 2, int(bx + bw / 2) - 2, 3):
+            x = lx * S
+            if _fence_ok(ground, placer, x, y):
+                run.append([float(x), float(y)])
+            else:
+                if len(run) > len(best):
+                    best = run
+                run = []
+        if len(run) > len(best):
+            best = run
+    return [[round(px, 1), round(py, 1)] for (px, py) in best] if len(best) >= 8 else []
 
 
 def _print_map(ground: Ground, placer: Placer, items):

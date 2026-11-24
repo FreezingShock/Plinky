@@ -25,8 +25,9 @@ ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 
 WHEAT_FRAMES = 8
-FIELD_W, FIELD_H = 96, 28       # one gust frame of a wheat field
-FIELD_SEEDS = {'field_a': 11, 'field_b': 23}
+FIELD_W, FIELD_H = 96, 28       # the default gust frame of a wheat field
+# name, frame width, seed. Wider fields are bigger patches; every field shares the height and the 8-frame wave.
+FIELD_SPECS = [('field_a', 96, 11), ('field_b', 96, 23), ('field_c', 128, 37), ('field_d', 160, 51)]
 
 
 def barn() -> Canvas:
@@ -131,20 +132,20 @@ def crates() -> Canvas:
     return c
 
 
-def wheat_field_frame(frame: int, seed: int) -> Canvas:
-    """One gust frame of a wheat field, FIELD_W x FIELD_H. Stalk heights vary across the field and taper at the
+def wheat_field_frame(frame: int, seed: int, fw: int = FIELD_W) -> Canvas:
+    """One gust frame of a wheat field, fw x FIELD_H. Stalk heights vary across the field and taper at the
     edges, so the outline is ragged, not a rectangle. The wave runs across the field as the frame advances."""
     rng = random.Random(seed)
-    c = Canvas(FIELD_W, FIELD_H)
+    c = Canvas(fw, FIELD_H)
     phase = 2.0 * math.pi * frame / WHEAT_FRAMES
     base_y = FIELD_H - 3
     # Grass under the stalks, with a ragged top edge so the field blends into the meadow.
-    for x in range(FIELD_W):
+    for x in range(fw):
         top = base_y - 1 + (1 if rng.random() < 0.3 else 0)
         c.rect(x, top, x, FIELD_H - 1, DEEP)          # tilled soil under the stalks: a darker patch that reads as a field
     x = 1
-    while x < FIELD_W - 1:
-        taper = min(1.0, x / 10.0, (FIELD_W - 1 - x) / 10.0)
+    while x < fw - 1:
+        taper = min(1.0, x / 10.0, (fw - 1 - x) / 10.0)
         if taper < 0.35 and rng.random() < 0.6:       # thin out the very edge
             x += 2
             continue
@@ -153,20 +154,20 @@ def wheat_field_frame(frame: int, seed: int) -> Canvas:
         bend = 2.4 * math.sin(x * 0.42 - phase)
         top_x = x + bend
         top_y = base_y - h
-        c.seg(x, base_y, top_x, top_y, LIGHT)
+        c.seg(x, base_y, top_x, top_y, ACCENT)   # golden straw stalks
         hx, hy = round(top_x), round(top_y)
-        c.set(hx, hy, ACCENT)                         # the head
+        c.set(hx, hy, EARTH)                          # the head, orange-gold
         if h > 12:
-            c.set(hx, hy + 1, ACCENT)
-            c.set(hx - 1, hy + 1, ACCENT)
+            c.set(hx, hy + 1, EARTH)
+            c.set(hx - 1, hy + 1, EARTH)
         x += rng.choice([1, 2, 2])
     return c
 
 
-def wheat_sheet(seed: int) -> Image.Image:
-    sheet = Image.new('RGBA', (FIELD_W * WHEAT_FRAMES, FIELD_H), (0, 0, 0, 0))
+def wheat_sheet(seed: int, fw: int = FIELD_W) -> Image.Image:
+    sheet = Image.new('RGBA', (fw * WHEAT_FRAMES, FIELD_H), (0, 0, 0, 0))
     for f in range(WHEAT_FRAMES):
-        sheet.paste(wheat_field_frame(f, seed).image(), (f * FIELD_W, 0))
+        sheet.paste(wheat_field_frame(f, seed, fw).image(), (f * fw, 0))
     return sheet
 
 
@@ -199,6 +200,23 @@ def tilled_plot(seed: int, w: int = 64, h: int = 22) -> Canvas:
     return c
 
 
+def greens_plot(seed: int, w: int = 64, h: int = 22) -> Canvas:
+    """A plot of leafy greens: rows of tufts at uneven heights over the tilled soil, so it reads as a crop, not a bare field."""
+    rng = random.Random(seed)
+    c = tilled_plot(seed, w, h)
+    for y in range(4, h - 2, 4):
+        for x in range(4, w - 4, 4):
+            if rng.random() < 0.15:
+                continue                              # a gap in the row, so growth looks uneven
+            top = y - rng.randint(3, 5)
+            c.set(x, y - 1, BASE)
+            c.set(x, y, BASE)
+            c.set(x - 1, top + 1, LIGHT)
+            c.set(x, top, LIGHT)
+            c.set(x + 1, top + 1, LIGHT)
+    return c
+
+
 PROPS = [
     ('farm_barn', barn),
     ('farm_shed', shed),
@@ -209,6 +227,7 @@ PROPS = [
     ('farm_crates', crates),
     ('farm_plot_a', lambda: tilled_plot(41)),
     ('farm_plot_b', lambda: tilled_plot(77)),
+    ('farm_greens', lambda: greens_plot(59)),
 ]
 
 
@@ -217,9 +236,9 @@ def main() -> int:
     for name, make in PROPS:
         make().image().save(os.path.join(OUT, name + '.png'))
         print('wrote', name)
-    for name, seed in FIELD_SEEDS.items():
-        wheat_sheet(seed).save(os.path.join(OUT, name + '_sheet.png'))
-        print('wrote', name + '_sheet')
+    for name, fw, seed in FIELD_SPECS:
+        wheat_sheet(seed, fw).save(os.path.join(OUT, name + '_sheet.png'))
+        print('wrote', name + '_sheet', fw * WHEAT_FRAMES, 'px wide')
     # Preview: every sprite on one strip, scaled up, for a quick look.
     strip = []
     for name, make in PROPS:
