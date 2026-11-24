@@ -108,6 +108,13 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Checked in the cloud:** `tests/run.gd` 6841 checks, 0 failed. Midnight and noon captures of the real `main.tscn`.
 - **Not verified on the PC:** the night look. In the cloud capture a sign inside a pad's glow still reads brighter than the dark ground, as the pad and the ground beside it do. The PC night shot is the check.
 
+## 2026-11-24: Every pad shows its cost sign, not just each row's first
+- **Cause:** the sign node was made only for a row's first pad (`row_index == 0`). Pads 2 to 6 of each row, including the Westmere Starbloom pads 4 to 6 (5K, 25K, 125K), drew a bare plate with no price. Nathan's standing rule is a sign on every pad from its first price.
+- **Fix:** `TexelPad.build_sign` makes the sign node on every pad with a cost, and `_ready` calls it for all of them. `_refresh_sign` now runs on every pad, every 0.2 s, reading the same live values as the tooltip.
+- **Spots:** the spot list grows from 8 to 26 (`TexelPad.SIGN_SPOTS`). The first 4 right-side spots are unchanged, so row heads keep their look. Dense pads had no clear spot in the old list (19 pads across the three layouts). Every pad now has one (checked with a script over the real placements, and by `tests/test_pad_signs.gd`). Some pads now sign up to 61 texels above the plate, so the plank sits above its own pad rather than on a neighbour's bed.
+- **Node cost:** one child node per pad that has a cost, so about 25 more in Larkmoor, 12 more in the quarry and a few in the meadow. The zone node ceiling in CI (1350) is the check; the earlier "no new nodes" note in the entry above no longer holds.
+- **Not run:** the cloud cannot run Godot, so the test run, the bench node count and the in-engine look are for CI and PC QA. The Westmere row and the night tones are the PC checks.
+
 ## 2026-11-24: Quarry scene prefetch warms its script (gate walk parse error)
 - **QA finding:** walking onto the Larkmoor Ember gate logged `Parse Error: Failed` at `res://world/quarry_scene.tscn:7` (the script line) on every head tested, including before the entrance art. Direct zone-2 boots, which load on the main thread, were clean.
 - **Likely cause:** `main.gd` `_prefetch_scene` loads the scene on a worker thread, and the quarry script uses several game classes. The threaded load failed and `_take_prefetched` fell back to a plain synchronous `load`, so the quarry still opened (log error and a small stall).

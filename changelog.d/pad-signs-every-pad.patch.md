@@ -1,0 +1,1 @@
+Every pad shows its cost sign from its first price. Before, only each row's first pad had one, so the Westmere Starbloom pads 4 to 6 showed bare plates. Each sign now finds a spot clear of every bed and the walker's press spot, using a wider set of spots for the dense rows.
