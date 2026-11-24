@@ -26,7 +26,7 @@ func run(t: Object) -> void:
 	var a: Dictionary = TitleMood.sample(0.0)
 	var b: Dictionary = TitleMood.sample(1.0)
 	t.ok((a["sky"] as PackedColorArray)[1].is_equal_approx((b["sky"] as PackedColorArray)[1]), "phase 1.0 wraps to midnight")
-	t.ok(TitleMood.wrap_phase(-0.25).is_equal_approx(0.75), "negative phases wrap into the day")
+	t.near(TitleMood.wrap_phase(-0.25), 0.75, 1e-6, "negative phases wrap into the day")
 
 	# Between two keyframes the colour sits between them, with no jump at the edges of the blend.
 	var at_key: Color = (TitleMood.sample(0.72)["sky"] as PackedColorArray)[4]
