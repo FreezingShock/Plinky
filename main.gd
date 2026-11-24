@@ -542,7 +542,7 @@ func _zone_banner() -> Dictionary:
 		cal = calendar.call("now") as Dictionary
 	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
 	var phase: float = sky.clock_phase() if sky != null else 0.5
-	if sky == null:  # themed zones have no seasons: keep the time, drop the date
+	if sky == null or not sky.seasonal:  # themed zones have no seasons: keep the time, drop the date
 		for k: String in ["season", "season_name", "month_name", "day"]:
 			cal.erase(k)
 	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(zone_id))
