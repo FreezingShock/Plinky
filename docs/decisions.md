@@ -890,3 +890,10 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Kept as is:** `group_shown` still hides a zone's contents until that zone opens. The HUD currency chips and the Stats index use it, so their behaviour does not change. The gallery uses the new `UpgradeText.tab_shown`.
 - **Tab look:** the active tab is drawn in its accent colour with a solid underline, not a dotted focus box. The tab keeps the ">" marker and sweep on hover or focus. The title and pause menus keep their focus box.
 - Not verified in-engine: the strip at 640x360 with two zones, and the tab order after a zone change. PC QA should check the meadow and the quarry.
+
+## Tap-to-move ignores clicks on the GUI (2026-11-24)
+- **Why:** with the Relics panel open, a click inside it drew the walk ring and dots under the panel. Godot only routes a click to `_unhandled_input` when no Control stopped it, and a panel background with PASS or IGNORE lets it through.
+- **Rule:** `GuiGuard.covers` (ui/gui_guard.gd) checks rectangles of visible Controls at the click point. It counts STOP and PASS controls and any Panel or PanelContainer whatever its filter. It skips IGNORE labels and containers and full-screen layout roots, so floating numbers and the pixel view never block the world.
+- **Menus:** no tap-to-move at all while a menu is open, since the walker is frozen then and a late walk after the menu closes would surprise.
+- **Chosen over** `gui_get_hovered_control()`, because the hovered control is only updated on mouse motion and can be stale on a click. The check runs on the click's own position.
+- Not verified in-engine: a click on the Relics panel, the HUD and a tooltip, and a click on empty meadow next to a panel edge. PC QA should check all four.
