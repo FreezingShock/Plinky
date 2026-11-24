@@ -31,8 +31,8 @@ var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
 var _attr_rows: Dictionary = {}   # attribute id -> UpgradeCard
-const UPGRADE_LIST_WIDTH: float = 556.0   ## two cards across, plus the scrollbar, in the 640 px base
-const UPGRADE_LIST_HEIGHT: float = 232.0  ## about four rows of cards so the panel fits above the bottom bar at 640x360; the rest scroll
+const UPGRADE_LIST_WIDTH: float = 318.0   ## two cards across (UpgradeCard.CARD_SIZE) plus a gap and the scrollbar
+const UPGRADE_LIST_HEIGHT: float = 180.0   ## the most the list takes (about three rows); a shorter tab takes only what it needs, and the rest scrolls
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -427,18 +427,21 @@ func _build_upgrades() -> void:
 	_upgrades_box.add_child(_upg_tabs)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, UPGRADE_LIST_HEIGHT)
+	scroll.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, 0.0)
 	scroll.follow_focus = true
 	_upgrades_box.add_child(scroll)
+	_upg_scroll = scroll
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 6)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 	_upg_list = list
+	MenuAnim.front_on_show(_upgrades_panel)   # the menu draws above the meters, relic bar and sprint trail
 	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
 
 
 var _upg_list: VBoxContainer
+var _upg_scroll: ScrollContainer
 var _upg_tabs: HBoxContainer
 var _upg_order: Array[StringName] = []          # the currency of each tab, in menu order
 var _upg_tab_btns: Dictionary = {}              # currency stat id -> its tab (MenuTextButton)
@@ -448,12 +451,21 @@ var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance 
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
 
 
-## Opening the panel builds the cards the first time (the node budget), then shows only tabs the player can see.
+## Opening the panel builds the cards the first time (the node budget), then opens on the current zone's tab.
 func _on_upgrades_shown() -> void:
 	if not _upgrades_panel.visible:
 		return
 	_fill_upgrades()
+	_upg_tab = _zone_tab()
 	_sync_upgrade_tabs()
+
+
+## The zone's own gift tab when it shows, else the first tab the player can see.
+func _zone_tab() -> StringName:
+	var here: ZoneResetDef = sim.reset_for_zone()
+	if here != null and UpgradeText.group_shown(sim, here.currency):
+		return here.currency
+	return _first_shown_tab()
 
 
 ## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page of tiers;
@@ -495,6 +507,7 @@ func _fill_upgrades() -> void:
 			page.add_child(tier)
 			grid = GridContainer.new()
 			grid.columns = 2
+			grid.custom_minimum_size = Vector2(UpgradeCard.CARD_SIZE.x * 2.0 + 6.0, 0.0)   # every tier the same width
 			grid.add_theme_constant_override("h_separation", 6)
 			grid.add_theme_constant_override("v_separation", 5)
 			page.add_child(grid)
@@ -509,26 +522,42 @@ func _fill_upgrades() -> void:
 		_row_tips[a.id] = spec
 		Tip.bind_all(card, spec)
 		_attr_rows[a.id] = card
-	_select_upgrade_tab(_first_shown_tab())
+	_upg_tab = _first_shown_tab()
+	_apply_upgrade_tab()
 
 
+## A tab was pressed (mouse, keyboard or pad): the page and the highlight follow it together.
 func _select_upgrade_tab(cur: StringName) -> void:
 	_upg_tab = cur
+	_apply_upgrade_tab()
+
+
+## The one place the active tab is applied: its page shows, every other page hides, and the tab highlight moves to match.
+## Runs on every select and every refresh, so a programmatic switch (opening in another zone) can never leave the highlight behind.
+func _apply_upgrade_tab() -> void:
 	for c: StringName in _upg_pages:
-		(_upg_pages[c] as Control).visible = c == cur
+		(_upg_pages[c] as Control).visible = c == _upg_tab
 	for c2: StringName in _upg_tab_btns:
+		var on: bool = c2 == _upg_tab
 		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
-		b.rest_color = StatStyle.color(c2) if c2 == cur else RelicStyle.dim
+		b.rest_color = StatStyle.color(c2) if on else RelicStyle.dim
 		b.queue_redraw()
+	_fit_upgrade_list()
+
+
+## The list takes the height its tab needs, up to UPGRADE_LIST_HEIGHT; longer tabs scroll.
+func _fit_upgrade_list() -> void:
+	if _upg_scroll != null and _upg_list != null:
+		_upg_scroll.custom_minimum_size.y = minf(_upg_list.get_combined_minimum_size().y, UPGRADE_LIST_HEIGHT)
 
 
 ## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
 func _sync_upgrade_tabs() -> void:
 	for cur: StringName in _upg_tab_btns:
 		(_upg_tab_btns[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
-	var want: StringName = _upg_tab if _upg_tab != &"" and UpgradeText.group_shown(sim, _upg_tab) else _first_shown_tab()
-	if want != _upg_tab:
-		_select_upgrade_tab(want)
+	if _upg_tab == &"" or not UpgradeText.group_shown(sim, _upg_tab):
+		_upg_tab = _first_shown_tab()
+	_apply_upgrade_tab()   # idempotent: keeps pages and highlight in step on every refresh
 
 
 ## The first tab the player can see, or &"" when none is shown yet.

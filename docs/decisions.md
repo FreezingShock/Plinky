@@ -850,3 +850,13 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Lock text:** "Unlocks after 1 Nucleus reset" (was "Nucleuss").
 - **Taste call for Nathan:** hover puts a faint wash on a card you can afford. Say if you want the hover left off.
 - Not verified in-engine: the sparks, the pop timing and the taller panel. PC QA should check both zones with motion on and off.
+
+## Upgrades menu fit and menu layer (2026-11-24)
+- **Cards:** stacked to three lines (name and level; now to next; pips and cost). The Buy button is gone: the whole card buys, and Enter or Space buys while the card has focus. Two across at 150 px, so the panel is about a third narrower.
+- **Outline and dim:** affordable is a bright green frame; unaffordable is a red frame with the contents dimmed to 55%, so the two read apart. Maxed is gold, locked is dim.
+- **Uniform tiers:** each tier's grid has a fixed width, so tier 2 matches tier 1.
+- **Height:** the list takes what its tab needs, up to 180 px, then scrolls.
+- **Menu layer:** a shown menu moves to the end of its parent (`MenuAnim.bring_front`), so the relic bar, momentum meter, sprint trail and HUD chips all draw under it. No HUD piece draws over an open menu. Every menu is covered: animated ones through `MenuAnim.attach`, the rest through `MenuAnim.front_on_show`.
+- **Tab highlight:** one function (`Hud._apply_upgrade_tab`) sets the page and the highlight together, and runs on every select and refresh. Opening the menu picks the current zone's tab.
+- Not verified in-engine: the new size at 640x360, the z order against each HUD piece, the dim levels. PC QA should check both zones and a click, a hold and a Enter buy.
+
