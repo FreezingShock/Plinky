@@ -119,6 +119,7 @@ func setup(a: AttributeDef) -> void:
 	_delta.clip_contents = true
 	_delta.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_delta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_delta.focus_mode = Control.FOCUS_NONE   # the card is the focus stop; this line is only text, so Tab skips it
 	_delta.add_theme_color_override("default_color", RelicStyle.text)
 	_body.add_child(_delta)
 	# Line 3: pips, then the cost on the right.
