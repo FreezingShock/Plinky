@@ -483,3 +483,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Cause of the flicker:** the stats refresh set the rate's visibility on its own timer, which overrode the per-frame placement. The refresh no longer touches visibility.
 - **Check in-engine:** idle, the Sunlight rate is hidden. A simulated Sunlight gain shows the rate beside the gain label, and both hide after the fade.
 - **Open:** if Nathan wants idle income visible after all, the change is one condition in `_place_rates`.
+
+## 2026-11-24: Income rate stays visible; gain label sits after it (reverses the entry above)
+- **Why:** the coordinator's review of #366: the "+x/s" income rate is long-standing information that Nathan never asked to hide. It only looked like a stray label in QA. Hiding it while idle was the wrong call.
+- **Decision:** the rate shows whenever the row has income, as before. The gain label now sits just past the rate instead of between the panel and the rate. The rate never moves when a gain appears or fades, and the gain label never overlaps it. Only the gain label's own width changes the strip's extent, and only while it is up.
+- **Check in-engine:** Sunlight's rate sat at x=93 idle and while a gain was up, and at x=93 after the fade. The gain label sat at x=133, which is 93 + rate width 37 + 3.
+- **Not done:** no animation on the gain label's position, so nothing glides or jumps.
