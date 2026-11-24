@@ -295,3 +295,9 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - **Groves:** three north-east candidates (pine at 1190,380; oak at 1010,240; bush at 1150,470). The forest-edge count goes 6 to 7. The density bar is the lighthouse grove at 640,590 (oak, 4 per group, radius 60).
 - **Regen:** `gen_larkmoor.py`, then `gen_life_anchors.py --bounds 380,220,2680,1450 --sway-count 1680`, then `--add-keys --farm assets/art/zone1b/farm/farm.json`, then `gen_gardens.py`. Lamps 23, flowers 240 (life), gardens 2238.
 - Not run in-engine yet: the zoom 1 and zoom 3 captures, and the walk test.
+
+## 2026-11-24: Larkmoor dragonflies larger at 1x
+| Decision | Why |
+|---|---|
+| Dragonfly sprites go from 9 by 3 to 11 by 5 texels (wings up and down), with a wider gold body. The draw origin moves to match (`-5, -2`). Fish and owls are unchanged. | PC QA said the wildlife reads thin at 1x. At 9 texels the dragonflies were specks over the lake. |
+| Not in this change: ambient creatures near the Larkmoor start position. The nearest water and forest edge are about 650 texels from the start, and rabbits and other ground critters are placed from the anchor data. Adding start-area creatures needs an anchor placement decision. | Kept this PR to what can be checked here. |
