@@ -357,12 +357,21 @@ def make_sign(rng):
         return d, m
     return f, (14, 4), 17, 3.0
 def make_lantern(rng):
+    """A garden lantern in the 19 by 29 window (LANTERN_WIN): a stone foot, a timber post, a lamp box whose window is the
+    lit part (paper, lifted in the shade so it reads at night), four dark corner posts, a pitched cap and a finial.
+    The lit window sits at about 17 texels above the foot, where the glow sprite and the lamp's light are placed."""
     def f(x, y, z):
-        d = sdf_capsule(x, y, z, (0, 0, -1), (0, 0, 13), .9); m = np.full(x.shape, M_BARK, np.int16)
-        dl = sdf_box(x, y, z, (0, 0, 17), (2.6, 2.6, 3.2), .4); sel = dl < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, dl)
-        dc = sdf_box(x, y, z, (0, 0, 20.8), (3.6, 3.6, .8), .3); sel = dc < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dc)
+        # the foot is kept within 1.9 texels of the centre: its front corner must stay inside the window's 2 below the foot
+        d = sdf_box(x, y, z, (0, 0, 0.9), (1.9, 1.9, 0.9), .25); m = np.full(x.shape, M_ROCK, np.int16)
+        dp = sdf_capsule(x, y, z, (0, 0, 1.6), (0, 0, 13.4), .55); sel = dp < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dp)
+        dl = sdf_box(x, y, z, (0, 0, 16.2), (1.7, 1.7, 2.8), .2); sel = dl < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, dl)
+        for px, py in ((-2.1, -2.1), (2.1, -2.1), (-2.1, 2.1), (2.1, 2.1)):
+            dc = sdf_capsule(x, y, z, (px, py, 13.4), (px, py, 19.0), .4); sel = dc < d; m = np.where(sel, M_INK, m); d = np.minimum(d, dc)
+        roof = np.maximum(np.abs(x) + np.abs(y) - (4.6 - (z - 19.2) * 1.2), np.maximum(19.0 - z, z - 23.2))   # a hipped cap that overhangs the lamp
+        sel = roof < d; m = np.where(sel, M_BARKT, m); d = np.minimum(d, roof)
+        fin = sdf_capsule(x, y, z, (0, 0, 23.0), (0, 0, 24.3), .45); sel = fin < d; m = np.where(sel, M_INK, m); d = np.minimum(d, fin)
         return d, m
-    return f, (7, 7), 23, 2.5
+    return f, (7, 7), 26, 2.5
 def make_windmill(rng):
     def f(x, y, z):
         r = 9.5 - z * .12
@@ -471,8 +480,8 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, pa
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
     return True
-def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **kw):
-    rng = random.Random(prng.randint(0, 1 << 30))
+def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, seed=None, **kw):
+    rng = random.Random(prng.randint(0, 1 << 30) if seed is None else seed)   # seed: no draw from the shared stream
     rot = rng.uniform(0, 6.283) if rot is None else rot
     big = kw.get('big', True)
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
@@ -553,35 +562,61 @@ for kind, c_, rad, n in LAY.GROVES:
     try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
-# lanterns: one size, one rhythm. Every path gets a lamp each LANTERN_STEP texels of its length (screen units), set
-# just off the path edge on whichever side has room. Only the facing varies (four quarter turns, in a fixed order).
-# They keep clear of the junctions and gates (the first and last LANTERN_END texels of a path), the pads (in `placed`)
-# and the walker's spawn. Each lamp is one light for the night pools (gen_life_anchors reads the lantern sprites).
-LANTERN_STEP, LANTERN_END, LANTERN_OFF = 150.0, 70.0, 19.0   # 19: clear of the wider path (half-width up to about 13)
-def _lantern_spots():
-    for pp in LAY.PATHS:
-        seg = [(x1 - x0, y1 - y0, math.hypot(x1 - x0, y1 - y0)) for (x0, y0), (x1, y1) in zip(pp, pp[1:])]
-        total = sum(L_ for _, _, L_ in seg)
-        t = LANTERN_END
-        while t < total - LANTERN_END:
-            acc = 0.0
-            for (x0, y0), (x1, y1), (dx, dy, L_) in zip(pp, pp[1:], seg):
-                if acc + L_ >= t:
-                    f_ = (t - acc) / L_; px, py = x0 + dx * f_, y0 + dy * f_
-                    nx, ny = -dy / L_, dx / L_
-                    yield px, py, nx, ny
-                    break
-                acc += L_
-            t += LANTERN_STEP
+# lanterns: one size, one rhythm per path tier. A road gets a lamp about every LANTERN_STEP['road'] texels of its length
+# (screen units), a lane every LANTERN_STEP['lane'], a trail none ('trail' 400 leaves two, one at each end of its
+# span). Each path's lamps are spread evenly along it with the same LANTERN_END margin at both ends, so the gaps match
+# and no lamp sits on a junction or a gate. A lamp stands LANTERN_OFF texels off the centre line, and the side
+# alternates along a path so the row reads as a rhythm. If that spot is blocked (trees, pads, slope), the lamp slides
+# along its path, up to a third of its step, to the first free spot. No two lamps are closer than LANTERN_MIN, and the
+# great lantern counts, so two paths meeting do not double up. Only the facing varies (four quarter turns, in a fixed
+# order). Each lamp is one light for the night pools, and gen_life_anchors reads the lantern sprites for its glow.
+LANTERN_STEP = {'road': 110.0, 'lane': 200.0, 'trail': 400.0}
+LANTERN_END, LANTERN_OFF, LANTERN_MIN = 70.0, 19.0, 80.0   # 19: clear of the wider path (half-width up to about 13)
+LANTERN_SLIDE = 8.0                                         # texels per slide step along the path
+LANTERN_STREAM_DRAWS = 25     # lamps the old rhythm placed on main after the districts moved: the props after the lanterns keep their random stream
+def _along(pp, t):
+    """Point and unit normal at arc length t along a polyline (clamped to its ends)."""
+    segs = list(zip(pp, pp[1:])); acc = 0.0
+    for k, ((x0, y0), (x1, y1)) in enumerate(segs):
+        L_ = math.hypot(x1 - x0, y1 - y0)
+        if t <= acc + L_ or k == len(segs) - 1:
+            f_ = min(1.0, max(0.0, (t - acc) / L_)); dx, dy = x1 - x0, y1 - y0
+            return x0 + dx * f_, y0 + dy * f_, -dy / L_, dx / L_
+        acc += L_
+def _lantern_slots():
+    """(path index, arc length, preferred side) for every lamp, evenly spread along each path that has a lamp tier."""
+    for pi, (pp, tier) in enumerate(zip(LAY.PATHS, LAY.PATH_TIER)):
+        step = LANTERN_STEP[tier]
+        if step <= 0: continue
+        total = sum(math.hypot(x1 - x0, y1 - y0) for (x0, y0), (x1, y1) in zip(pp, pp[1:]))
+        span = total - 2 * LANTERN_END
+        n = max(1, round(span / step) + 1)
+        for i in range(n):
+            t = LANTERN_END + (span * i / (n - 1) if n > 1 else span / 2)
+            yield pi, t, (1.0 if i % 2 == 0 else -1.0)
 lantern_count = 0
-for k_, (px, py, nx, ny) in enumerate(_lantern_spots()):
-    for sgn in (1.0, -1.0):
-        mx, my = px + nx * LANTERN_OFF * sgn, py + ny * LANTERN_OFF * sgn
-        u, v = s2uv(mx, my)
-        if ok_spot(u, v, 3, path=True, gap=0, slope_max=.7):
-            put('lantern', u, v, 1.0, rot=(k_ % 4) * math.pi / 2)
-            lantern_count += 1
-            break
+lamp_xy = [tuple(lm['at']) for lm in LAY.LANDMARKS if lm['kind'] == 'great_lantern']   # screen positions of lamps already placed
+for pi, t0, side0 in _lantern_slots():
+    step = LANTERN_STEP[LAY.PATH_TIER[pi]]
+    shifts = [0.0] + [s_ * LANTERN_SLIDE for k_ in range(1, int(step / 3 / LANTERN_SLIDE) + 1) for s_ in (k_, -k_)]
+    done = False
+    for sh in shifts:
+        px, py, nx, ny = _along(LAY.PATHS[pi], t0 + sh)
+        for sgn in (side0, -side0):
+            mx, my = px + nx * LANTERN_OFF * sgn, py + ny * LANTERN_OFF * sgn
+            if any(math.hypot(mx - qx, my - qy) < LANTERN_MIN for qx, qy in lamp_xy): continue
+            u, v = s2uv(mx, my)
+            if ok_spot(u, v, 3, path=True, gap=0, slope_max=.7):
+                put('lantern', u, v, 1.0, rot=(lantern_count % 4) * math.pi / 2, seed=lantern_count)
+                lamp_xy.append((mx, my)); lantern_count += 1; done = True
+                break
+        if done: break
+    if not done: log('lamp left out: no free spot on path %d near %.0f' % (pi, t0))
+# the props after the lanterns draw from the same stream they did under the old rhythm, and take the same ids, so only
+# the lanterns change. The old rhythm used LANTERN_STREAM_DRAWS draws and ids; pad what this one did not use.
+assert lantern_count <= LANTERN_STREAM_DRAWS, 'more lamps than the stream was kept for'
+for _ in range(LANTERN_STREAM_DRAWS): prng.randint(0, 1 << 30)
+inst_id[0] += LANTERN_STREAM_DRAWS - lantern_count
 log('lanterns placed', lantern_count)
 log('trees/rocks placed', len(placed))
 

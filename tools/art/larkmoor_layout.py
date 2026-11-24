@@ -24,6 +24,9 @@ PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094,
 # West trail: off the east side of the west road, north of the lake and along its north shore, to the Westmere pads on the west bank.
 PATH_WM = [(600, 540), (590, 470), (540, 452), (470, 440), (400, 444), (336, 486)]
 PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_WM]
+# Path hierarchy, parallel to PATHS: a road (the main route), a lane (the forks to the districts) or a trail (the side
+# track). gen_larkmoor.py spaces the lanterns by tier: roads closest, lanes sparser, trails only a pair at the ends.
+PATH_TIER = ['road', 'lane', 'lane', 'trail']
 # Land lobes: the island's radius grows by amp * R around angle a (uv angle; -135 deg is screen up, 0 is screen down-right).
 # They give the new north and bottom-right land its shape. Width w is in radians.
 LOBES = [(-135.0, 0.20, 0.55), (0.0, 0.16, 0.50)]
