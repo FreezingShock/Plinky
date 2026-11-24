@@ -1,0 +1,1 @@
+Garden flowers, shrubs and field flowers now show from above: each head is a foreshortened rosette on a stem with a soft ground shadow. They change with the season (spring buds, autumn seed heads, winter bare stalks) and shut their petals at night.

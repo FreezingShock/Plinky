@@ -19,6 +19,19 @@ var _t: float = 0.0
 var _step: int = -1
 var _view: Rect2 = Rect2()   # the rect the last draw was culled to
 
+## The season the flowers show (GardenArt.SEASON_*), and whether their heads are shut (night). Set by the scene each frame;
+## a change redraws the field.
+var season: int = GardenArt.SEASON_SUMMER:
+	set(v):
+		if v != season:
+			season = v
+			queue_redraw()
+var closed: bool = false:
+	set(v):
+		if v != closed:
+			closed = v
+			queue_redraw()
+
 
 func setup(flowers: Array) -> void:
 	_flowers.resize(flowers.size() * 4)
@@ -82,6 +95,6 @@ func _draw() -> void:
 		var stat: StringName = GardenArt.STATS[_flowers[i * 4 + 2]]
 		var variant: int = _flowers[i * 4 + 3]
 		var l: int = lean(x, y, t, MeadowLife.wind, pusher) if moving else 0
-		var tex: Texture2D = GardenArt.frame(stat, variant, l)
+		var tex: Texture2D = GardenArt.frame(stat, variant, l, season, closed)
 		var sz: Vector2i = Vector2i(tex.get_size())
 		draw_texture(tex, Vector2(x - (sz.x >> 1), y - sz.y + 1 + GardenArt.foot_drop(variant)))

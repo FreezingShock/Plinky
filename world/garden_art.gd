@@ -1,25 +1,32 @@
 class_name GardenArt
 extends RefCounted
-## Pixel sprites for the flower gardens that grow around each statistic's pad row (world/garden_layer.gd draws them).
-## Four hand-drawn flower variants per statistic, then two leafy shrubs (variants 4 and 5) that frame a garden. Each is baked once into three sway frames
+## Sprites for the flower gardens that grow around each statistic's pad row (world/garden_layer.gd draws them).
+## Every flower is seen from the elevated, looking-down camera (the wheat mockup D angle): its head is a foreshortened
+## rosette on a stem, with the top lit from the upper left and a soft ground shadow under the foot. Four small flowers per
+## statistic, two leafy shrubs that frame a garden (variants 4 and 5), and twelve field flowers (variants 6 and up): the
+## same rosette at 1x, 2x or 3x in four tints. Each is baked once per season, open or closed, into three sway frames
 ## (leaning left, upright, leaning right), so a garden of hundreds of flowers is one draw call per flower and no node per flower.
-## Letters: # petal, d shaded petal, l light petal, c heart, g leaf, G shaded leaf, s stem. '.' is empty.
-## Rows run top to bottom; the sprite stands on its last row, centred on its middle column.
+## Seasons: spring buds (closed heads, fresh leaves), summer full bloom, autumn faded and seeded, winter bare stalks with frost.
+## Night and early morning can close the petals (`closed`). Shrubs keep their shape and only change colour and dots.
 
-## Variants 0 to 3 are small flowers, 4 and 5 are shrubs: leafy mounds dotted with the statistic's petals, so a garden has bushes around it
-## without a single prop node. Variants 6 and up are the FIELD flowers: the statistic's own pad flower (TexelPad.FLOWERS, 13 by 10
-## texels) at 1x, 2x or 3x with a one texel ink outline, in four tints (the last one mirrored), so a field of them reads as the
-## pad's flower grown large. Variant = FIELD_FIRST + scale index * FIELD_TINTS + tint.
 const FLOWER_VARIANTS: int = 4
+const SHRUB_VARIANTS: int = 2
 const FIELD_FIRST: int = 6
 const FIELD_SCALES: Array[int] = [1, 2, 3]
 const FIELD_TINTS: int = 4
+const SEASON_SPRING: int = 0
+const SEASON_SUMMER: int = 1
+const SEASON_AUTUMN: int = 2
+const SEASON_WINTER: int = 3
 const INK: Color = Color("14161c")
-## Which TexelPad.FLOWERS table each statistic's pad stands on.
-const PAD_FLOWER: Dictionary = {
-	&"dewdrop": &"sprout", &"clover": &"clover", &"thistle": &"thistle",
-	&"heather": &"heather", &"foxglove": &"foxglove", &"starbloom": &"starbloom",
-}
+const LEAF: String = "3d9a45"
+const LEAF_DARK: String = "28683a"
+const LEAF_LIGHT: String = "7ccf6a"
+const SEED: String = "6b4a2a"
+const FROST: String = "eaf6ff"
+const SHADOW: Color = Color(0.04, 0.14, 0.10, 0.42)   # soft ground shadow: a translucent dark green, so grass shows through
+const FOLD_CLOSED: float = 0.56   # the petal radius when a head is shut at night
+const FOLD_SPRING: float = 0.74   # spring heads are half open buds
 
 const STATS: Array[StringName] = [&"dewdrop", &"clover", &"thistle", &"heather", &"foxglove", &"starbloom"]
 
@@ -32,72 +39,25 @@ const COLORS: Dictionary = {
 	&"foxglove": ["ffb62e", "d27a14", "ffe28a", "7a3416"],
 	&"starbloom": ["ff7bff", "c248c2", "ffc9ff", "ffffff"],
 }
-const LEAF: String = "3d9a45"
-const LEAF_DARK: String = "28683a"
 
-const VARIANTS: Dictionary = {
-	# Dewdrop: white bells that nod on a thread of stem, a daisy, a seed head of dew, a bud pair.
-	&"dewdrop": [
-		["..l..", ".#l#.", ".###.", "..d..", "..s..", "..s..", ".gsg.", "..s.."],
-		["#.l.#", ".###.", "#.c.#", ".###.", "..s..", "g.s.g", ".gsg.", "..s.."],
-		[".l.", "###", "#d#", ".s.", ".s.", "gsg", ".s."],
-		["l...", "##.#", "#d.d", ".s.s", ".gsg", "..s."],
-		["...ggg...", ".gggGggg.", "ggGgg#ggg", "gggg#gGgg", "gGggggg#g", ".GGGGGGG."],
-		["..gggg...", ".ggGgggg.", "gg#gggGgg", "gGgg#gggg", "gggGgg#gg", ".GGGGGGG."],
-	],
-	# Clover: three-leaf patches with a round white-green blossom on a stem.
-	&"clover": [
-		[".#.#.", "#####", ".#c#.", "..s..", ".ggg.", "g.s.g"],
-		[".l#l.", "#####", ".###.", "..s..", "..s.."],
-		["gg.gg", "gGggG", ".gGg.", "..s..", "gg.gg", ".gGg."],
-		["..c..", ".l#l.", "#####", ".###.", "..s..", ".gsg."],
-		["...ggg...", ".gggGggg.", "gGggggGgg", "ggg#ggggg", "gGgggg#gg", ".GGGGGGG."],
-		["..gggg...", ".gGgggg#.", "gggGggggg", "g#gggGggg", "gggg#gggg", ".GGGGGGG."],
-	],
-	# Thistle: a spiky violet crown on a stem with jagged leaves.
-	&"thistle": [
-		["#.#.#", ".#l#.", "#####", ".ddd.", "..s..", ".gsg.", "g.s.g", "..s.."],
-		["..#..", ".#l#.", ".###.", ".ddd.", "..s..", "g.s..", ".gsg.", "..s.."],
-		["#.#.#", ".###.", "..d..", "..s..", ".gsg.", "g.s.g"],
-		[".#.#.", "#l#l#", ".###.", "..s..", "g.sg.", "..s.."],
-		["..g.ggg..", ".gggGgg#.", "ggGggg#gg", "gggg#gGgg", "gGggggg#g", ".GGGGGGG."],
-		["...ggg...", ".ggggGgg.", "g#gGgggg#", "gggg#gGgg", "gGggggggg", ".GGGGGGG."],
-	],
-	# Heather: short purple sprigs of bells up a woody stem, in tufts.
-	&"heather": [
-		["..#..", ".d#..", "..#d.", ".#d..", "..s..", ".gsg."],
-		[".#.#.", "#l#.#", ".d#d.", ".s.s.", ".sgs.", "..s.."],
-		["..#.", ".d#.", ".#d#", "..#d", ".s..", ".sg."],
-		["#..#", "dl.d", ".#d.", "..s.", ".gs.", "..s."],
-		["...ggg...", ".gg#gggg.", "g#ggGg#gg", "gg#gg#ggg", "gGg#ggg#g", ".GGGGGGG."],
-		["..gggg...", ".ggg#ggg.", "gg#gggGg#", "g#gg#gggg", "gggg#gg#g", ".GGGGGGG."],
-	],
-	# Foxglove: tall spires of bells, lighter at the top, heart-spotted.
-	&"foxglove": [
-		["..#..", "..#..", ".#l#.", ".#c#.", "#d#d#", ".#c#.", "#d#d#", "..s..", ".gsg.", "g.s.g"],
-		["..#..", ".#l#.", ".#d#.", "#d#d#", ".#c#.", "..s..", ".gsg.", "..s.."],
-		[".l.", "###", "dcd", "###", ".s.", "gsg", ".s."],
-		["..l..", ".#d#.", ".#c#.", "#d#d#", "..s..", "g.s.g", ".gsg.", "..s.."],
-		["...ggg...", ".gggGgg#.", "gGggg#ggg", "ggg#gGg#g", "gGggggggg", ".GGGGGGG."],
-		["..g.ggg..", ".ggggg#g.", "gg#gGgggg", "gggg#gGg#", "gGggggggg", ".GGGGGGG."],
-	],
-	# Starbloom: five-petal stars on a stem, one with a bright centre, one a small pair.
-	&"starbloom": [
-		["..l..", "l#c#l", ".###.", ".d#d.", "..s..", ".gsg.", "..s.."],
-		["#.l.#", ".#c#.", "#####", ".#d#.", "..s..", "g.s.g", "..s.."],
-		[".l.", "#c#", ".#.", ".s.", "gsg"],
-		["l..l", "#cc#", ".##.", ".ds.", ".gs.", "..s."],
-		["...ggg...", ".gggG#gg.", "ggGggggg#", "g#ggg#gGg", "gGggggggg", ".GGGGGGG."],
-		["..gggg...", ".g#ggggg.", "gggG#gggg", "gg#gggG#g", "gGgggggg#", ".GGGGGGG."],
-	],
+## Petal count and edge sharpness per statistic: dewdrop a six-bell daisy, clover a trefoil, thistle a spiky crown,
+## heather five bells, foxglove a ring of seven bells, starbloom a sharp five-point star.
+const SHAPE: Dictionary = {
+	&"dewdrop": [6, 1.0], &"clover": [3, 1.0], &"thistle": [9, 2.4],
+	&"heather": [5, 1.0], &"foxglove": [7, 1.6], &"starbloom": [5, 3.0],
 }
 
-static var _frames: Dictionary = {}   # "stat:variant:lean" -> ImageTexture (lean 0 upright, -1 left, 1 right)
+## Small flower layout per variant: radius across, petal phase, stem length, leaves on the stem.
+const HEADS: Array = [[4, 0.0, 2, 1], [4, 0.5, 3, 0], [4, 0.2, 2, 2], [4, 0.9, 3, 1]]
+## Shrub layout: radius across, radius down, hash seed (so the two shrubs differ).
+const SHRUBS: Array = [[5, 3, 11], [6, 4, 29]]
+
+static var _frames: Dictionary = {}   # "stat:variant:lean:season:closed" -> ImageTexture
 
 
 ## How many hand-drawn variants (flowers and shrubs) a statistic has.
-static func table_count(stat: StringName) -> int:
-	return (VARIANTS[stat] as Array).size()
+static func table_count(_stat: StringName) -> int:
+	return FLOWER_VARIANTS + SHRUB_VARIANTS
 
 
 ## Every variant id a flower may carry: the hand-drawn ones, then the field flowers.
@@ -109,6 +69,10 @@ static func is_field(variant: int) -> bool:
 	return variant >= FIELD_FIRST
 
 
+static func is_shrub(variant: int) -> bool:
+	return variant >= FLOWER_VARIANTS and variant < FIELD_FIRST
+
+
 static func field_scale(variant: int) -> int:
 	return FIELD_SCALES[(variant - FIELD_FIRST) / FIELD_TINTS]
 
@@ -117,101 +81,224 @@ static func field_tint(variant: int) -> int:
 	return (variant - FIELD_FIRST) % FIELD_TINTS
 
 
-## Texels the sprite hangs below its foot row: a field flower's outline adds one row under the stem.
+## Texels the sprite hangs below its foot row: a field flower's ink outline adds one row under its ground shadow.
 static func foot_drop(variant: int) -> int:
 	return 1 if is_field(variant) else 0
 
 
-static func sprite_size(stat: StringName, variant: int) -> Vector2i:
-	return Vector2i(frame(stat, variant, 0).get_size())
-
-
-## The baked sprite for `stat`/`variant` leaning -1, 0 or +1. The top rows shift a texel with the lean, the stem foot stays put.
-static func frame(stat: StringName, variant: int, lean: int) -> Texture2D:
-	var key: String = "%s:%d:%d" % [stat, variant, lean]
+## The baked sprite for `stat`/`variant` leaning -1, 0 or +1 in `season` (0 spring to 3 winter), open or `closed`.
+## The head's top rows shift a texel with the lean and the stem foot stays put. Shrubs do not lean.
+static func frame(stat: StringName, variant: int, lean: int, season: int = SEASON_SUMMER, closed: bool = false) -> Texture2D:
+	var lean_used: int = 0 if is_shrub(variant) else lean
+	var key: String = "%s:%d:%d:%d:%d" % [stat, variant, lean_used, season, 1 if closed else 0]
 	if _frames.has(key):
 		return _frames[key] as Texture2D
-	if is_field(variant):
-		var ft: ImageTexture = ImageTexture.create_from_image(_field_image(stat, variant, lean))
-		_frames[key] = ft
-		return ft
-	var rows: Array = (VARIANTS[stat] as Array)[variant]
-	var w: int = (rows[0] as String).length()
-	var h: int = rows.size()
-	var pad: int = 1
-	var img := Image.create(w + pad * 2, h, false, Image.FORMAT_RGBA8)
-	var col: Array = COLORS[stat] as Array
-	for y in h:
-		var line: String = rows[y]
-		var from_bottom: int = h - 1 - y
-		var shift: int = 0
-		if lean != 0 and from_bottom * 2 >= h:   # the upper half leans, the lower half is planted
-			shift = lean
-		for x in w:
-			var ch: String = line[x]
-			if ch == ".":
-				continue
-			var c: Color = Color.WHITE
-			match ch:
-				"#": c = Color(String(col[0]))
-				"d": c = Color(String(col[1]))
-				"l": c = Color(String(col[2]))
-				"c": c = Color(String(col[3]))
-				"g": c = Color(LEAF)
-				"G", "s": c = Color(LEAF_DARK)
-			img.set_pixel(x + pad + shift, y, c)
-	var tex: ImageTexture = ImageTexture.create_from_image(img)
+	var tex: ImageTexture = ImageTexture.create_from_image(_bake(stat, variant, lean_used, season, closed))
 	_frames[key] = tex
 	return tex
 
 
-## A field flower: the pad's flower table at its scale, a one texel ink outline, a leaning top half. Padded one texel each side so
-## a lean never clips.
-static func _field_image(stat: StringName, variant: int, lean: int) -> Image:
-	var rows: Array = TexelPad.FLOWERS[PAD_FLOWER[stat]] as Array
-	var k: int = field_scale(variant)
-	var tint: int = field_tint(variant)
-	var n: int = rows.size()
-	var cols: int = (rows[0] as String).length()
-	var body_w: int = cols * k
-	var body_h: int = n * k
-	var w: int = body_w + 4        # outline and lean room each side
-	var h: int = body_h + 2        # outline above and below
-	var base: Color = TexelPad.STAT_COLORS[stat] as Color
-	var petal: Color = base
-	match tint:
-		1: petal = base.lightened(0.22)
-		2: petal = base.darkened(0.24)
-		3: petal = base.lerp(Color("ffe9a8"), 0.18)
-	var shade: Color = petal.darkened(0.35)
-	var leaf: Color = Color(LEAF).lightened(0.1) if tint == 1 else (Color(LEAF).darkened(0.12) if tint == 2 else Color(LEAF))
-	var cells: Dictionary = {}   # Vector2i -> Color, before the lean
-	for ry in n:
-		var line: String = rows[ry]
-		for rx in cols:
-			var ch: String = line[(cols - 1 - rx) if tint == 3 else rx]   # tint 3 is the mirror image
-			if ch == ".":
+## Palette of one stat: petal, shade, light, heart as colours.
+static func _palette(stat: StringName) -> Array[Color]:
+	var pal: Array = COLORS[stat] as Array
+	var out: Array[Color] = []
+	for s: String in pal:
+		out.append(Color(s))
+	return out
+
+
+static func _bake(stat: StringName, variant: int, lean: int, season: int, closed: bool) -> Image:
+	var cells: Dictionary = {}   # Vector2i -> Color, centred on x = 0; y grows downward, the head sits around y = 0
+	if is_shrub(variant):
+		_shrub(cells, SHRUBS[variant - FLOWER_VARIANTS] as Array, season, _palette(stat))
+		return _to_image(cells, 0)
+	var pal: Array[Color] = _palette(stat)
+	var petal: Color = pal[0]
+	var shade: Color = pal[1]
+	var light: Color = pal[2]
+	var heart: Color = pal[3]
+	var shape: Array = SHAPE[stat] as Array
+	var n: int = int(shape[0])
+	var sharp: float = float(shape[1])
+	var rx: int
+	var stem: int
+	var leaves: int
+	var phase: float = 0.0
+	var outline: bool = is_field(variant)
+	if is_field(variant):
+		var k: int = field_scale(variant)
+		var tint: int = field_tint(variant)
+		rx = 4 * k + 1
+		stem = 3 * k
+		leaves = 2
+		phase = 0.35 * float(tint) if tint < 3 else -0.6   # the last tint is the mirror image
+		if tint == 1:
+			petal = petal.lightened(0.22)
+		elif tint == 2:
+			petal = petal.darkened(0.24)
+		elif tint == 3:
+			petal = petal.lerp(Color("ffe9a8"), 0.18)
+		shade = petal.darkened(0.35)
+		light = petal.lightened(0.35)
+	else:
+		var head: Array = HEADS[variant] as Array
+		rx = int(head[0])
+		phase = float(head[1])
+		stem = int(head[2])
+		leaves = int(head[3])
+	var ry: int = maxi(2, roundi(float(rx) * 0.7))   # the head is a foreshortened ellipse: about 0.7 as tall as it is wide
+	# seasons: buds in spring, faded petals and seed heads in autumn, bare stalks in winter
+	var fold: float = FOLD_CLOSED if closed else (FOLD_SPRING if season == SEASON_SPRING else 1.0)
+	if season == SEASON_AUTUMN:
+		petal = petal.lerp(Color("b0743a"), 0.5)
+		shade = shade.lerp(Color("6b4420"), 0.5)
+		light = light.lerp(Color("d9a25a"), 0.4)
+		heart = Color(SEED)
+	elif season == SEASON_SPRING:
+		petal = petal.lerp(Color(LEAF_LIGHT), 0.1)
+		heart = heart.lerp(Color(LEAF_LIGHT), 0.25)
+	var foot: int = ry + stem + 1
+	var stem_top: int = 0 if season != SEASON_WINTER else -ry
+	var leaf_row: int = ry + 2 if season != SEASON_WINTER else 0
+	for y in range(stem_top, foot):
+		cells[Vector2i(0, y)] = Color(LEAF_DARK)
+	var leaf_color: Color = Color(LEAF) if season != SEASON_WINTER else Color(LEAF_DARK)
+	if season == SEASON_AUTUMN:
+		leaf_color = Color("b8702e")
+	for i in leaves:
+		var y: int = leaf_row + i
+		if y >= foot:
+			break
+		var tip: Color = Color(FROST) if season == SEASON_WINTER else leaf_color
+		cells[Vector2i(-1, y)] = tip
+		cells[Vector2i(-2, y)] = tip if i == 0 else leaf_color
+		cells[Vector2i(1, y)] = Color(LEAF_DARK) if season != SEASON_AUTUMN else Color("7a4220")
+		cells[Vector2i(2, y)] = Color(LEAF_DARK) if i == 0 else Color(LEAF_DARK).darkened(0.1)
+	if season != SEASON_WINTER:
+		_head(cells, rx, ry, n, sharp, phase, fold, petal, shade, light, heart)
+	# the soft shadow under the foot, only where nothing is drawn yet
+	for x in range(-rx - 1, rx + 2):
+		var q := Vector2i(x, foot)
+		if not cells.has(q):
+			cells[q] = Color(SHADOW.r, SHADOW.g, SHADOW.b, SHADOW.a)
+	if outline:
+		_outline(cells)
+	return _to_image(cells, lean)
+
+
+## A foreshortened rosette: an ellipse about 0.62 as tall as wide, its edge scalloped into petals. The top-left of the
+## petals is lit and the lower-right is shaded, so the head reads as a surface seen from above.
+static func _head(cells: Dictionary, rx: int, ry: int, n: int, sharp: float, phase: float, fold: float,
+		petal: Color, shade: Color, light: Color, heart: Color) -> void:
+	for y in range(-ry, ry + 1):
+		for x in range(-rx, rx + 1):
+			var u: float = float(x) / float(rx)
+			var v: float = float(y) / float(ry)
+			var r: float = sqrt(u * u + v * v)
+			var lobe: float = pow(0.5 + 0.5 * cos(float(n) * atan2(v, u) + phase), sharp)
+			var edge: float = (0.62 + 0.38 * lobe) * fold
+			if r > edge + 0.05:
 				continue
-			var col: Color = petal
-			match ch:
-				"d": col = shade
-				"c", "W": col = Color.WHITE
-				"g": col = leaf
-			for oy in k:
-				for ox in k:
-					cells[Vector2i(rx * k + ox, ry * k + oy)] = col
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	var shifted: Dictionary = {}
+			var lit: float = -(u * 0.7 + v * 0.7)
+			var c: Color = petal
+			if lit > 0.45:
+				c = light
+			elif lit < -0.25:
+				c = shade
+			if r <= 0.34:
+				c = heart
+			cells[Vector2i(x, y)] = c
+
+
+## A leafy mound seen from above: lit upper-left, a darker front lip for depth, petal dots on top and a soft shadow.
+static func _shrub(cells: Dictionary, layout: Array, season: int, pal: Array[Color]) -> void:
+	var rx: int = int(layout[0])
+	var ry: int = int(layout[1])
+	var seed_v: int = int(layout[2])
+	var lit: Color = Color(LEAF_LIGHT)
+	var base: Color = Color(LEAF)
+	var dark: Color = Color(LEAF_DARK)
+	var dots: float = 0.16
+	match season:
+		SEASON_SPRING:
+			lit = Color("a6e27a")
+			dots = 0.07
+		SEASON_AUTUMN:
+			lit = Color("e0a448")
+			base = Color("b8702e")
+			dark = Color("7a4220")
+			dots = 0.1
+		SEASON_WINTER:
+			lit = Color("4f9a6a")
+			base = Color("2b6a4a")
+			dark = Color("1d4a36")
+			dots = 0.0
+	for y in range(-ry, ry + 1):
+		for x in range(-rx, rx + 1):
+			var u: float = float(x) / float(rx)
+			var v: float = float(y) / float(ry)
+			var r: float = sqrt(u * u + v * v)
+			if r > 1.0 + (_hash(x, y, seed_v) - 0.5) * 0.14:
+				continue
+			var c: Color = base
+			var lit_amount: float = -(u * 0.7 + v * 0.7)
+			if lit_amount > 0.35:
+				c = lit
+			elif v > 0.55 and r > 0.7:
+				c = dark                  # the front lip of the mound
+			elif lit_amount < -0.3:
+				c = dark
+			var h: float = _hash(x, y, seed_v + 7)
+			if season == SEASON_WINTER and c == lit and h < 0.3:
+				c = Color(FROST)
+			elif h < dots:
+				var pick: float = _hash(x, y, seed_v + 13)
+				c = pal[0] if pick < 0.5 else (pal[2] if pick < 0.8 else pal[1])
+			cells[Vector2i(x, y)] = c
+	for x in range(-rx, rx + 2):
+		var q := Vector2i(x, ry + 1)
+		if not cells.has(q):
+			cells[q] = Color(SHADOW.r, SHADOW.g, SHADOW.b, SHADOW.a)
+
+
+## A one texel ink line round the outside of a field flower (empty cells beside it only).
+static func _outline(cells: Dictionary) -> void:
+	var edge: Array[Vector2i] = []
 	for c: Vector2i in cells:
-		var from_bottom: int = body_h - 1 - c.y
-		var shift: int = lean if (lean != 0 and from_bottom * 2 >= body_h) else 0   # the upper half leans, the stem foot stays planted
-		shifted[Vector2i(c.x + 2 + shift, c.y + 1)] = cells[c]
-	for c: Vector2i in shifted:
 		for o: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 			var q: Vector2i = c + o
-			if not shifted.has(q) and q.x >= 0 and q.y >= 0 and q.x < w and q.y < h:
-				img.set_pixelv(q, INK)
-	for c: Vector2i in shifted:
-		img.set_pixelv(c, shifted[c] as Color)
+			if not cells.has(q) and not edge.has(q):
+				edge.append(q)
+	for q: Vector2i in edge:
+		cells[q] = INK
+
+
+## Cell map to an image: centred on the middle column with room for a lean each side. A lean moves the top half one texel.
+static func _to_image(cells: Dictionary, lean: int) -> Image:
+	var half: int = 2
+	var ymin: int = 0
+	var ymax: int = 0
+	var first: bool = true
+	for c: Vector2i in cells:
+		half = maxi(half, absi(c.x) + 2)
+		if first:
+			ymin = c.y
+			ymax = c.y
+			first = false
+		else:
+			ymin = mini(ymin, c.y)
+			ymax = maxi(ymax, c.y)
+	var h: int = ymax - ymin + 1
+	var img := Image.create(half * 2 + 1, maxi(h, 1), false, Image.FORMAT_RGBA8)
+	for c: Vector2i in cells:
+		var from_bottom: int = ymax - c.y
+		var shift: int = lean if (lean != 0 and from_bottom * 2 >= h) else 0
+		img.set_pixel(c.x + half + shift, c.y - ymin, cells[c] as Color)
 	return img
 
+
+## A cheap deterministic 0 to 1 value per texel, so a shrub's dots and edge are the same every bake.
+static func _hash(x: int, y: int, seed_v: int) -> float:
+	var h: int = (x * 73856093) ^ (y * 19349663) ^ (seed_v * 83492791)
+	h = (h ^ (h >> 13)) * 1274126177
+	return float(h & 0xffff) / 65535.0

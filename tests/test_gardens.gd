@@ -6,31 +6,28 @@ const DATA: String = "res://world/larkmoor_gardens.json"
 
 
 func run(t: Object) -> void:
-	# sprite tables: four variants per statistic, equal-width rows, every letter known
+	# sprite tables: four small flowers, two shrubs and twelve field flowers per statistic, all baked to real sizes
 	for stat: StringName in GardenArt.STATS:
-		t.ok(GardenArt.COLORS.has(stat) and GardenArt.VARIANTS.has(stat), "%s has colours and sprites" % stat)
+		t.ok(GardenArt.COLORS.has(stat) and GardenArt.SHAPE.has(stat), "%s has colours and a head shape" % stat)
 		t.eq(GardenArt.table_count(stat), GardenArt.FLOWER_VARIANTS + 2, "%s has four flower variants and two shrubs" % stat)
 		t.eq(GardenArt.variant_count(stat), GardenArt.FIELD_FIRST + 12, "%s adds twelve field flowers (three sizes, four tints)" % stat)
 		for v in GardenArt.table_count(stat):
-			var rows: Array = (GardenArt.VARIANTS[stat] as Array)[v]
-			var w0: int = (rows[0] as String).length()
-			var same: bool = true
-			var known: bool = true
-			for r: String in rows:
-				same = same and r.length() == w0
-				for ch in r:
-					known = known and ch in ".#dlcgGs"
-			t.ok(same and known, "%s variant %d: equal rows, known letters" % [stat, v])
 			for lean in [-1, 0, 1]:
 				var tex: Texture2D = GardenArt.frame(stat, v, lean)
-				t.eq(tex.get_size(), Vector2(w0 + 2, rows.size()), "%s variant %d lean %d is baked at its size" % [stat, v, lean])
-	# field flowers: the pad's own flower, scaled, outlined, with the lean moving only the top
+				t.ok(tex.get_width() % 2 == 1 and tex.get_height() >= 6, "%s variant %d lean %d is baked, centred and tall enough" % [stat, v, lean])
+			t.ok(GardenArt.frame(stat, v, 0).get_image().get_data() != GardenArt.frame(stat, v, 0, GardenArt.SEASON_WINTER).get_image().get_data(), "%s variant %d changes in winter" % [stat, v])
+	# the looking-down look: a flower's head is wider than it is tall, and the foot row is a translucent ground shadow
 	for stat: StringName in GardenArt.STATS:
 		for v in range(GardenArt.FIELD_FIRST, GardenArt.variant_count(stat)):
 			var k: int = GardenArt.field_scale(v)
-			var up: Texture2D = GardenArt.frame(stat, v, 0)
-			t.eq(up.get_size(), Vector2(13 * k + 4, 10 * k + 2), "%s field flower %d is the pad flower at %dx plus its outline" % [stat, v, k])
-			t.ok(GardenArt.frame(stat, v, 1).get_image().get_data() != up.get_image().get_data(), "%s field flower %d leans" % [stat, v])
+			var up: Image = GardenArt.frame(stat, v, 0).get_image()
+			t.ok(up.get_width() >= 2 * (4 * k + 1) + 1, "%s field flower %d is at least its head wide at %dx" % [stat, v, k])
+			t.ok(up.get_pixel(up.get_width() >> 1, up.get_height() - 2).a < 0.99, "%s field flower %d sits on a translucent ground shadow" % [stat, v])
+			t.ok(GardenArt.frame(stat, v, 1).get_image().get_data() != up.get_data(), "%s field flower %d leans" % [stat, v])
+	# the season and night states bake distinct frames for a head, and a shrub keeps its shape
+	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER, true).get_image().get_data(), "a closed head is smaller than an open one")
+	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SPRING).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_AUTUMN).get_image().get_data(), "spring buds and autumn seed heads differ")
+	t.eq(GardenArt.frame(&"heather", 4, 1).get_size(), GardenArt.frame(&"heather", 4, 0).get_size(), "a shrub does not lean but keeps its size")
 	# the lean: the walker pushes a flower away from itself, a calm spell leaves it upright, wind tips it
 	t.eq(GardenLayer.lean(110, 100, 0.0, 0.2, Vector2(100, 100)), 1, "a flower right of the walker leans right")
 	t.eq(GardenLayer.lean(90, 100, 0.0, 0.2, Vector2(100, 100)), -1, "a flower left of the walker leans left")

@@ -161,6 +161,7 @@ func _add_gardens() -> void:
 	add_child(layer)
 	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
 	layer.pusher_group = &"walker"
+	_gardens = layer
 
 
 func _add_life(ground: Sprite2D) -> void:
@@ -203,6 +204,7 @@ var _lanterns_lit: bool = false       # lantern pools are added once per scene, 
 const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
 var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
+var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
 const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
 
 
@@ -264,6 +266,12 @@ func _process(_delta: float) -> void:
 	_glows = _glows.filter(func(g: Variant) -> bool: return is_instance_valid(g))
 	for g in _glows:
 		(g as Sprite2D).modulate.a = night
+	# the flowers follow the season, and shut their heads once it is dark
+	if _gardens != null:
+		var cal: Node = get_node_or_null(^"/root/Calendar")   # an autoload: named by path, since --script tests have no autoloads
+		if cal != null:
+			_gardens.season = int((cal.call(&"now") as Dictionary).get("season", GardenArt.SEASON_SUMMER))
+		_gardens.closed = night > 0.6
 
 
 func _exit_tree() -> void:
