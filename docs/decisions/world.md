@@ -94,3 +94,9 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Node cost:** still one child node per row head (the old chip node), redrawn only when the held state flips. No new nodes, so the zone node counts are unchanged.
 - **Checked in the cloud:** `tests/run.gd` 6759 checks, 0 failed. Headless captures of the real `TexelPad` (open and locked) and of the real `main.tscn` opening pads show the signs.
 - **Not verified on the PC:** the Vulkan render of the signs. The cloud renders with OpenGL 3 under xvfb.
+
+## 2026-11-24: Pad cost signs show the live tooltip values and sit under the night shade
+- **Cause:** the sign showed "+1" from the button definition, while the tooltip shows the live gain (`Sim.press_gain_preview`, e.g. +439B). The sign also drew at z 11, above the night shade (z 5), so it stayed fully lit at night.
+- **Fix:** `TexelPad._refresh_sign` reads the cost (`Formulas.button_cost`) and the gain (`press_gain_preview`) with the same `format()` the tooltip uses, every 0.2 s, and redraws only when a value changes. The plank is a fixed 50 texels wide, so it never resizes. A value that is too wide drops its fraction first (`fit_sign_text`). The sign's z is now `LOCK_CHIP_Z` 4, between the plate (0) and the shade (5).
+- **Checked in the cloud:** `tests/run.gd` 6841 checks, 0 failed. Midnight and noon captures of the real `main.tscn`.
+- **Not verified on the PC:** the night look. In the cloud capture a sign inside a pad's glow still reads brighter than the dark ground, as the pad and the ground beside it do. The PC night shot is the check.
