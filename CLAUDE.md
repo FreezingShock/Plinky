@@ -14,7 +14,7 @@ Read only what your task touches. Grep the big docs rather than reading them who
 
 ## Docs (grep for the section you need)
 - `docs/SPEC.md` system spec and section 5 stream ownership. `docs/interfaces.md` signals and APIs. `docs/art-bible.md` art values.
-- `docs/decisions.md` decision log. Newest at the bottom. Grep it by topic, do not read it whole.
+- `docs/decisions/README.md` decision log index. Read the index, then only the topic file you need (`docs/decisions/<topic>.md`: core, world, meadow, quarry, art, audio, hud, balance, ci-workflow). Never read every topic file.
 - `docs/workflow.md` process. `docs/versioning.md` version rules. `docs/ci.md` jobs, ruleset and release.
 - The design library (specs, art, longer docs) lives outside the repo at `/mnt/project-files/plinky/`. Its README is the index.
 
@@ -37,7 +37,7 @@ Read only what your task touches. Grep the big docs rather than reading them who
 - Every PR that touches game folders adds one `changelog.d/<slug>.patch.md` or `.minor.md` (small = patch, feature = minor). Do not edit the version or `CHANGELOG.md`. MAJOR only when Nathan asks.
 - CI (`test` check, see docs/ci.md) must be green. Draft or conflicting PRs do not run CI: merge main in, mark ready, merge promptly.
 - Parallel work: stay inside your stream's folders. Only the main session edits project.godot, the main scene, this file and docs/interfaces.md. Cross-area changes go through the coordinator.
-- Log decisions in `docs/decisions.md`.
+- Log decisions by appending to the matching topic file in `docs/decisions/`, as `## <date>: <title>` with one line of reasoning. Find the topic in the index.
 
 ## Working with Nathan
 - Lead with the result, then the reasoning.

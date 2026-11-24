@@ -1,4 +1,4 @@
-# Plinky decisions log
+# Decision log has moved
 
 Format: date, decision, one line of reasoning. Newest at the bottom. The build agent appends here. Project-side decisions made in the Claude Project go here too (SPEC section 8).
 
@@ -910,3 +910,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Taste call to confirm with Nathan:** holding is now slow (zone 1: one press every 2 s). If he wants a fast hold back, it needs a separate hold rate, which breaks "same speed" on purpose.
 - **Stale figure:** `content/config/sim_profiles.tres` still has a "hold" profile at 4.0 presses a second. It is a harness assumption, so it was not changed here; it should be set to the active rate (0.5) if the hold profile is kept.
 - Not verified in-engine. PC QA should hold a pad and stand on one in zone 1 and Larkmoor, and check that the stacked popup still builds while held and folds on release.
+The log is now split by topic. Start at [docs/decisions/README.md](decisions/README.md) and open only the topic file you need.
