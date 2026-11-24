@@ -184,6 +184,23 @@ func run_meadow(t: Object) -> void:
 		sky.call("_ready")   # holder is outside the tree, so the sky is not readied for us
 		t.ok(sky._haze_mat != null, "meadow sky built its haze material")
 		t.ok(sky.get_node_or_null("Haze") != null, "meadow has a haze rect")
+	# lanterns: every lantern in the meadow life data is a night-only light pool, and every lantern sprite is one size
+	var lantern_lights: int = 0
+	for L: Variant in MeadowLife.load_data().get("lights", []) as Array:
+		if String((L as Dictionary).get("kind", "")) == "lantern":
+			lantern_lights += 1
+	var lantern_pools: int = 0
+	if sky != null:
+		for P: Dictionary in sky._lights:
+			if P.kind == &"lantern":
+				lantern_pools += 1
+	t.eq(lantern_pools, lantern_lights, "every meadow lantern is a night-only light pool (%d)" % lantern_lights)
+	var lantern_sizes: Dictionary = {}
+	var placed: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/zone1/meadow3d/placements3d.json")) as Dictionary
+	for s: Dictionary in placed.sprites as Array:
+		if String(s.kind) == "lantern":
+			lantern_sizes["%dx%d" % [int(s.w), int(s.h)]] = true
+	t.eq(lantern_sizes.size(), 1, "meadow lanterns share one sprite size")
 	holder.free()
 
 
