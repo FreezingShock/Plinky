@@ -33,6 +33,7 @@ var sim: Sim
 var detail_id: StringName = &""          ## the stat showing on the detail page, or &"" on the grid
 var _icon: TextureRect
 var _icon_sheet: Texture2D
+var _icon_tween: Tween = null   # the header icon's frame tween, killed when the body is freed
 var _title: Label
 var _tabs: Array[PixelButton] = []
 var _scroll: ScrollContainer
@@ -369,6 +370,9 @@ func _teardown() -> void:
 		_page_tween.kill()
 	if _blink != null:
 		_blink.kill()
+	if _icon_tween != null:
+		_icon_tween.kill()
+	_icon_tween = null
 	_busy = false
 	_clock = 0.0
 	detail_id = &""
@@ -423,13 +427,18 @@ func _play_icon() -> void:
 	_set_frame(0)
 	if FxConfig.reduce_flashing:
 		return
-	var t := create_tween()
+	if _icon_tween != null:
+		_icon_tween.kill()
+	_icon_tween = create_tween()
+	var t: Tween = _icon_tween
 	t.set_speed_scale(0.2 if slow_mo else 1.0)
 	t.tween_method(func(f: float) -> void: _set_frame(int(f) % 4), 0.0, 8.0, 0.6)
 	t.tween_callback(_set_frame.bind(0))
 
 
 func _set_frame(f: int) -> void:
+	if _icon == null:   # the body was freed while the frame tween ran
+		return
 	var a := AtlasTexture.new()
 	a.atlas = _icon_sheet
 	a.region = Rect2(f * 16, 0, 16, 16)
