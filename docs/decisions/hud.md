@@ -464,9 +464,15 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - Not run in-engine from the cloud: the Seeds card, the Bloom and Nucleus pages and the one-size panel were rendered headless under xvfb (`tools/gifts_shot.tscn`). The Core Shards card was covered by a world gate tooltip in that harness and is checked by `tests/test_zone_currency.gd`. PC QA should click both rows and both tabs.
 ## 2026-11-24: HUD gain label beside each statistic
 - **Why:** Nathan wants the stat strip to show what a stat just earned, without a per-gain number in the world. The new label is a small "+123" right of the stats panel, level with its row, with the income rate ("+x/s") moved just past it.
-- **Source:** `EventBus.button_pressed` (every pad press, auto and relic pulses included) and `EventBus.bonus_gained` (streak and critter payouts). Idle income is not a gain here, so the label stays hidden while a stat only ticks up passively.
+- **Source:** `EventBus.button_pressed` (every pad press, auto and relic pulses included). Bonus payouts are not a source; see the 2026-11-24 pad-only entry below. Idle income is not a gain here, so the label stays hidden while a stat only ticks up passively.
 - **Behaviour:** a run starts at the stat's first gain and sums every gain until HOLD (3 s) after the last one, then fades and drifts up over OUT (0.4 s). A gain during the run keeps adding to the same number; a gain after the run starts again from zero. It hides when its row is hidden.
 - **Colour:** the streak tier of the latest pad press (`Juice.last_tier`), using the same `PopupStyle` colours as the world numbers. Tier 0 uses the stat's own colour. A bonus payout uses whatever tier the last press had.
 - **Performance:** one pooled `HudGainLabel` per row, and the sums live in `HudGainTally`. No node is made per gain. Sparkles are a fixed pool of six per label.
 - **Reduce Motion:** the label keeps its fade and drops the rise, the jump and the sparkles.
 - Not run in-engine from the cloud: check the label's position beside a long value, the "+x/s" moving past it, and the sparkles on a crit.
+
+## 2026-11-24: HUD gain labels follow pad presses only
+- **Why:** PC QA on v0.85.2 saw "+X" beside Sunlight after Sprout presses, not Dewdrops. Traced in-engine: finishing a pad row fires the streak bonus (`bonus_gained`), which pays `streak_bonus_seconds` of income to every passive stat. Sunlight is passive, Dewdrops is not, so the label went to Sunlight. The Sunlight gain was real, but the stat strip should show what the pad that was pressed gave.
+- **Decision:** the stat label takes its gains from `EventBus.button_pressed` only (the pad's `reward_stat`). `bonus_gained` is no longer connected to the HUD. Streak and critter payouts keep their gold popup at the walker or critter (`main.gd` `_on_bonus_gained`), which already shows the Sunlight payout.
+- **Not chosen:** showing bonus payouts on the stat labels. A bonus would look like a press on Sunlight, which the player did not make.
+- **Check in-engine:** three `sim.try_press` calls on `sprout_1..3` leave only the `dewdrop` label visible (before the fix, a `sunlight` label appeared too).
