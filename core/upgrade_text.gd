@@ -124,6 +124,13 @@ static func group_shown(sim: Sim, currency: StringName) -> bool:
 	return sim.rebirth_here()
 
 
+## True when the group paid in `currency` has a tab in the Upgrades gallery. Every zone reset's gifts have one, in whichever
+## zone you stand in, so a zone with nothing open yet still shows its gifts (locked, with the gate on each tier).
+## Prestige and Rebirth Point upgrades keep the rule in group_shown.
+static func tab_shown(sim: Sim, currency: StringName) -> bool:
+	return sim.reset_for_currency(currency) != null or group_shown(sim, currency)
+
+
 static func currency_name(a: AttributeDef) -> String:
 	return String(CURRENCY_NAMES.get(a.currency, String(a.currency).capitalize()))
 

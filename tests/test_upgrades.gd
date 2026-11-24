@@ -71,3 +71,10 @@ func run(t: Object) -> void:
 	for cur: StringName in UpgradeText.tab_currencies(sim):
 		t.ok(UpgradeText.tab_name(sim, cur) != "", "%s has a tab name" % cur)
 	t.ok(not UpgradeText.tab_currencies(sim).has(&"prestige") and not UpgradeText.tab_currencies(sim).has(&"rp"), "Prestige and Rebirth Perks have no tab")
+	# Every zone's gifts have a tab, whichever zone you stand in, even before anything is open.
+	sim.zone_id = &"zone1"
+	t.ok(UpgradeText.tab_shown(sim, &"seeds") and UpgradeText.tab_shown(sim, &"shards"), "meadow shows the Bloom and Nucleus gift tabs")
+	t.ok(not UpgradeText.group_shown(sim, &"shards"), "a zone's gift group still hides its contents until it opens (group_shown unchanged)")
+	sim.zone_id = &"zone2"
+	t.ok(UpgradeText.tab_shown(sim, &"seeds") and UpgradeText.tab_shown(sim, &"shards"), "quarry shows the Bloom and Nucleus gift tabs")
+	t.ok(not UpgradeText.tab_shown(sim, &"prestige") and not UpgradeText.tab_shown(sim, &"rp"), "no Prestige or Rebirth Point tab outside a Rebirth zone")
