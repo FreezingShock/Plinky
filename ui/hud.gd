@@ -1375,7 +1375,7 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or Banner.is_showing()   # tips never cover an open menu, a tooltip, a confirm card or a banner
+	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or Banner.is_showing() or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card or a banner
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():
