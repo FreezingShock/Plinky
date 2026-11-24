@@ -43,7 +43,7 @@ ROW_STEP_UP, ROW_STEP_DOWN = (44, -22), (44, 22)   # a row climbs to the right (
 # The Clover row is the fifth entry, so pad_buttons order still lines up, but it stands by the Heronmere lake path, not in
 # Cairnfold's own centre (the area list in content/areas says Heronmere for it). Both rows sit on walkable ground. Lanternwood has none.
 DISTRICTS = [
-    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(868, 646, *ROW_STEP_UP),
+    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=row(864, 642, *ROW_STEP_UP),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
     dict(id='heronmere', name='Heronmere', c=(520, 580), pads=[(534, 600), (578, 622), (622, 644)],
          note='West lake with reed shores and a little jetty. The Sprout row runs across the open grass between the main path and the lake, well in from the arrival gate; the Clover row lines the south shore.'),

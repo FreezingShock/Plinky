@@ -136,3 +136,8 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** the plain pulsing ring read as a placeholder, and the arch gives the gate the hover tooltip the forge gate already has.
 - **Not in this slice:** the path to the gate is still baked sand (gen_meadow3d.py). Path edges (stepping stones, flowers) are the next gate-and-path step.
 - **Not run in the cloud:** the look and the draw code in-engine (no Godot here). The PC QA thread should screenshot the gate closed and open.
+
+## 2026-11-24: Thistle row clear of the oak
+- **Why:** the two Thistle pads in Gatehouse Green, at (868,646) and (912,624), sat behind an oak on main. The walk mask does not catch a sprite standing in front of a pad.
+- **What:** the Thistle row moved to centre (864,642), so its pads sit at (820,664), (864,642) and (908,620). Every Larkmoor pad now passes the sprite occlusion check on the regenerated placements, and every footprint is walkable.
+- Not run in-engine. Please check the Thistle row on a PC capture.
