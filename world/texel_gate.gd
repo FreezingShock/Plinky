@@ -276,21 +276,25 @@ func _draw_meadow_swirl(p: PackedColorArray, rx: float, rw: float, clock: float,
 			draw_rect(Rect2(x - 1.0, y, 2, 2), c)
 	if not open:
 		return
-	# cream rim across the top and light green down both jambs, so the opening reads as lit
-	draw_rect(Rect2(rx, -HEIGHT + 1, rw, 1), p[5])
-	draw_rect(Rect2(rx, -HEIGHT + 1, 1, HEIGHT - 2), p[4])
-	draw_rect(Rect2(rx + rw - 1, -HEIGHT + 1, 1, HEIGHT - 2), p[4])
-	# green spill: a dithered pool on the ground in front, light at its centre, deep green at the fringe
-	var reach: float = HALF_SPAN + 10.0
-	for dy in range(0, 14, 2):
+	# bright cream rim: a two-texel band across the top with a paper highlight on its upper edge, and cream down both
+	# jambs, so the opening reads as lit from its frame
+	draw_rect(Rect2(rx, -HEIGHT, rw, 1), p[7])
+	draw_rect(Rect2(rx, -HEIGHT + 1, rw, 2), p[5])
+	draw_rect(Rect2(rx, -HEIGHT + 1, 2, HEIGHT - 2), p[5])
+	draw_rect(Rect2(rx + rw - 2, -HEIGHT + 1, 2, HEIGHT - 2), p[5])
+	# stronger spill: a dithered pool on the ground in front, cream at the core, light green, then leaf at the fringe
+	var reach: float = HALF_SPAN + 16.0
+	for dy in range(0, 16, 2):
 		for dx in range(int(-reach), int(reach), 2):
 			var d: float = sqrt(float(dx * dx) + float(dy * dy * 4)) / reach
 			if d >= 1.0:
 				continue
 			var k2: float = (1.0 - d) + (_bayer(dx, dy) - 0.5) * 0.4
-			if k2 > 0.72:
+			if k2 > 0.7:
+				draw_rect(Rect2(dx, dy, 2, 2), p[5])
+			elif k2 > 0.45:
 				draw_rect(Rect2(dx, dy, 2, 2), p[4])
-			elif k2 > 0.3:
+			elif k2 > 0.2:
 				draw_rect(Rect2(dx, dy, 2, 2), p[2])
 
 
