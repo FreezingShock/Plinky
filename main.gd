@@ -349,6 +349,12 @@ func _build_pads() -> void:
 			pad.material = pad_mat as ShaderMaterial
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	# Each pad's cost sign takes a spot clear of every pad on this zone, so no sign covers a bed or a press spot.
+	var spots: Array[Vector2] = []
+	for p: TexelPad in pads.values():
+		spots.append(p.position)
+	for p: TexelPad in pads.values():
+		p.set_sign_neighbours(spots)
 	var first: TexelPad = pads.get(&"sprout_1") as TexelPad
 	if first != null:
 		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
