@@ -159,12 +159,12 @@
   {
    "file": "entrance/crates_2.png",
    "kind": "ember_prop",
-   "x": 1602,
+   "x": 1612,
    "y": 508,
    "w": 36,
    "h": 36,
    "foot": [
-    1620.0,
+    1630.0,
     544.0
    ],
    "sort_y": 544.0
