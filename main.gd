@@ -162,9 +162,20 @@ func _ready() -> void:
 	Audio.start(sim.zone_id)
 
 
+## Lit pads close together share the light: each pad counts the lit pads within TexelPad.CROWD_RANGE, itself included.
+func _update_pad_crowding() -> void:
+	for a: TexelPad in pads.values():
+		var n: int = 0
+		for b: TexelPad in pads.values():
+			if not b.locked and a.position.distance_to(b.position) <= TexelPad.CROWD_RANGE:
+				n += 1
+		a.crowd = maxi(n, 1)
+
+
 func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
+	_update_pad_crowding()
 	var boost_id: StringName = sim.current_zone().boost_stat if sim.current_zone() != null else &""
 	var mult: float = (sim.get_stat(boost_id).to_float() if boost_id != &"" else 0.0) + 1.0
 	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
@@ -175,6 +186,7 @@ func _process(_delta: float) -> void:
 	if _night_sky != null:   # each pad's light pool takes its buy colour (green or red) from the shared shade shader
 		for pad: TexelPad in pads.values():
 			_night_sky.set_pool_tint_at(pad.position, pad.light_tint())
+			_night_sky.set_pool_strength_at(pad.position, pad.light_strength())
 	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)
