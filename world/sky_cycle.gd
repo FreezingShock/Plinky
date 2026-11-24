@@ -209,11 +209,11 @@ func _pond_array() -> Array:
 	return out
 
 
-## Add a light pool. `follow` (optional) is a node the pool tracks each frame.
-func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
+## Add a light pool. `tint` (optional, alpha > 0) recolours the pool; the default keeps the warm pool colour.
+func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed", tint: Color = Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
-	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": Color(0.0, 0.0, 0.0, 0.0)})
+	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": tint})
 
 
 ## The pad pool nearest `pos` within 1.5 texels, or an empty dictionary. Pads are added with kind &"pad".
