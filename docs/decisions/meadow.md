@@ -208,3 +208,10 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 |---|---|
 | The Sprout row's district is **Reedgate** (new, `reedgate`), the Clover row's district is **Heronmere** (the lake, south shore). **Cairnfold** (stones and crystals, no pads) is a district marker of its own again at the stones, not at the Clover row. | The rows moved beside the paths, so the old names (Sprout at Heronmere, Clover at Cairnfold) named places they no longer sit in. The Cairnfold banner was showing over the Clover road. |
 | Area defs split the same way: `larkmoor_reedgate.tres` lists the Sprout pads, `larkmoor_heronmere.tres` the Clover pads; orders shifted by one. Ids of existing areas are unchanged. | One row per district matches the other districts. |
+
+## 2026-11-24: Stage plates and a thicker Thistle field
+| Decision | Why |
+|---|---|
+| Flower pads change the slab itself from stage 3: a one texel tier-colour stripe on the side faces (stage 3), a second lighter one (stage 4), gold stripes on rows 1 and 3 (stage 5). The stage 5 crown is now an outlined gold band with five points and a white jewel, one texel above the flower. Stripes and crown are skipped on locked pads. | Stages 3 to 5 differed only by flower count and a one texel crown line, so they blurred together at 1x. Reviewed in `tools/pad_sheet.tscn`. |
+| The Thistle garden reaches 100 uv (was 82) with 100 big flowers per plate (was 66). | The row's field was a thin strip beside the road. |
+| `tools/garden_shots.gd` takes `-- phase=0.95` to shoot a row at night. | Night review of the rows. Software Vulkan hits the shader-instance limit after about six night shots; shoot the later rows by themselves. |

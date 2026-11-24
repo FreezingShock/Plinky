@@ -2,9 +2,11 @@ extends Node
 ## Garden tour: starts the real game in Larkmoor with every tier open, then frames each statistic's pad row at zoom 2 (and the
 ## whole row at zoom 1) and saves PNGs to shots/garden_<row>.png. Run: godot --path . tools/garden_shots.tscn
 ## (headless servers: xvfb-run with the software Vulkan driver). Look at the PNGs.
+## Add `-- phase=0.95` to pin the time of day (0.5 noon, 0.66 golden hour, around 0.95 deep night); shots then end in _p095.
 
 var main: Control
 var root: Window
+var suffix: String = ""
 
 ## Shot name -> [tier row, first pad index, last pad index]. Starbloom is two gardens: Emberwatch (pads 1 to 3) and Westmere (4 to 6).
 const ROWS: Dictionary = {
@@ -35,6 +37,10 @@ func _goto(p: Vector2, zoom: int) -> void:
 
 func _ready() -> void:
 	root = get_tree().root
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("phase="):
+			SkyCycle.debug_phase = float(a.substr(6))
+			suffix = "_p" + a.substr(6).replace(".", "")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
 	var sim: Sim = GameState.sim
 	sim.gates_open[&"zone1"] = true
@@ -59,7 +65,7 @@ func _ready() -> void:
 			c += p
 		c /= float(pts.size())
 		await _goto(c + Vector2(0, 46), 2)
-		await _shot("garden_%s" % shot_name)
+		await _shot("garden_%s%s" % [shot_name, suffix])
 		await _goto(c + Vector2(0, 46), 1)
-		await _shot("garden_%s_wide" % shot_name)
+		await _shot("garden_%s_wide%s" % [shot_name, suffix])
 	get_tree().quit(0)
