@@ -247,3 +247,13 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Each row is a thick mass over a dark under-mass, and rows overlap, so no soil or water shows between them. Water streams were dropped at Nathan's request.
 - world/farm/farm_wheat.gdshader pushes the stalks away from the walker. Tips move, the rows' bases stay, and the push falls off with distance. FarmWheat feeds it the walker's position, and the push is zero under Reduce Motion.
 - The parting is subtle at Larkmoor's zoom, so it needs a look on Nathan's PC.
+
+## 2026-11-24: Larkmoor wheat is clumps of stalks, placed in organic patches, and parts around the walker
+- Nathan's notes: each stalk needs its own shading and shadow, the walker must sort by Y and stand out above the wheat, the rustle must be real bending and parting rather than a blur, the fields need organic outlines, and the stalks should be bigger.
+- The wheat is now clumps. `world/farm/wheat_clump.gd` generates each clump from a seed: stalks with a dark root, a golden body, a darker side on some, a lit head, a dark root mass for thickness, and a dithered contact shadow. Each gust frame bends the tips.
+- `tools/art/place_farm.py` places the clumps in four wobbly patches. Each clump is a prop with its own foot, so the walker sorts against every clump by Y. The old rectangular fields and their fence runs are gone.
+- `tools/bake_wheat.gd` bakes eight gust frames per clump into `assets/art/zone1b/farm/wheat/`. Far clumps play the sheets.
+- `world/farm/farm_wheat.gd` redraws the clumps near the walker each frame from their stalks. Each stalk leans away from the walker and grows towards the tip, and the walker's push point follows a soft spring that bounces back after the walker passes. Under Reduce Motion nothing parts.
+- Not changed here: the grass blades. Those belong to the grass and ground work.
+- Not verified on the PC: how the parting reads at the player's own zoom and speed.
+
