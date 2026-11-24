@@ -47,3 +47,14 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Budget:** the regenerated layout has 100 props against 96 before. All 18 pads are reachable from spawn on the walk mask. The CI play job checks the node ceiling.
 - Not run in-engine from the cloud.
 - **Sway tips:** `world/larkmoor_life.json` was regenerated from the new backdrop with the command in the 2026-11-23 Larkmoor entry (`--bounds 190,110,1340,725 --sway-count 420`). The old tips sat on the old ground, so `tests/test_life.gd` failed in CI. Checked here: all 420 tips sit on the palette colour the old tips used. Not run in engine.
+
+## Restored after the #220 split (lost text from the pre-split log)
+
+## 2026-11-23 Larkmoor Dewdrop and Clover rows (minor)
+- **Why the pads were tutorial-only:** the flower ladder (v0.27.0) made Sprout (Dewdrops) and Clover Leaves the meadow's first two tiers. Clover Leaves is the meadow gate stat (9 to open Larkmoor), and Larkmoor was built as Thistle, Heather, Foxglove and Starbloom. The hand-off was intended, not a bug.
+- **Added (Nathan's call):** two rows in Larkmoor, each its own tier so meadow unlocks stay apart. `lark_sprout` (Dewdrops, common) at Heronmere beside the lake path, paid in Sunlight at 10, 100, 1000 for 1, 8, 64 Dewdrops. `lark_clover` (Clover Leaves, uncommon) at Cairnfold beside the north path, paid in Dewdrops at 300, 1200, 4800 for 1, 8, 64 Clover Leaves. Larkmoor now opens on Sprout, then Clover, then Thistle, matching rarity order.
+- **Art:** pads reuse the meadow flower art through `TexelPad.FLOWER_OF`, so pad 1 is plain, pad 2 adds sprouts and pad 3 is the flower bed with glints (the #212 stages). Pad 1 is the end nearest the road.
+- **Layout:** rows placed in `tools/art/larkmoor_layout.py`, art regenerated with `gen_larkmoor.py`. Every pad passes the generator's walk-reach check. `world/larkmoor_life.json` regenerated with the arguments recorded above.
+- **Pacing (`tools/sim.gd`, median of 8 seeds, active profile):** far gate 51.6 to 51.8 min; idle 114.8 to 117.7 min (idle about 2.3x active). Rejected: meadow-scale Clover costs (3000/12000/48000 Dewdrops) gave 62.8 min, and Sunlight costs of 100/1000/10000 with Dewdrops 1000/3000/9000 gave 79.5 min.
+- **Flag:** the hold profile (4 presses/s, a fast clicker) falls from 30.1 to 16.2 min to the Larkmoor gate. Left as is; a taste call for Nathan whether to raise the new costs.
+- Not run in the engine: the pad art and placement (screenshots need a GPU; the headless sim and tests did run).
