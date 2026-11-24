@@ -111,6 +111,8 @@ func run(t: Object) -> void:
 	t.eq(UpgradeText.second_value(sim.attribute_defs[&"bloom_head_start"], 3, 5.0), "", "a gift with one effect has no second line")
 	t.ok(UpgradeText.second_sentence(wide, 4, 5.0).begins_with("Also now"), "the tooltip sentence says now and next")
 	t.ok(UpgradeText.state(sim, wide)["second_now"] == "+0% a Bloom", "the state carries the second effect")
+	t.eq(UpgradeText.second_short(twin, 10, 5.0), "5% for 5x", "the card's second line for Twin Petals")
+	t.eq(UpgradeText.second_short(wide, 10, 5.0), "+10%/Bloom", "the card's second line for Wide Bloom")
 	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, wide), &"pad_yield")["body"]).contains("Also now"), "the Upgrades tooltip names the second effect")
 
 

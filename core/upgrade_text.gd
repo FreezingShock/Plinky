@@ -31,6 +31,21 @@ static func second_value(a: AttributeDef, level: int, proc_mult: float) -> Strin
 	return "+%s%% %s" % [pct, String(a.effect2).replace("_", " ")]
 
 
+## The compact form for a card's second line, short enough to sit after "now -> next": "5% for 5x", "+10%/Bloom".
+static func second_short(a: AttributeDef, level: int, proc_mult: float) -> String:
+	if a.effect2 == &"":
+		return ""
+	var pct: String = _trim(float(level) * a.per_level2 * 100.0)
+	match a.effect2:
+		&"press_proc":
+			return "%s%% for %sx" % [pct, _trim(proc_mult)]
+		&"bloom_bonus":
+			return "+%s%%/Bloom" % pct
+		&"nucleus_bonus":
+			return "+%s%%/Nuc" % pct
+	return "+%s%%" % pct
+
+
 ## The sentence a tooltip uses for the second effect, or "" when the gift has none (or is still locked).
 static func second_sentence(a: AttributeDef, level: int, proc_mult: float) -> String:
 	if a.effect2 == &"":
@@ -101,6 +116,8 @@ static func currencies(sim: Sim) -> Array[StringName]:
 static func group_shown(sim: Sim, currency: StringName) -> bool:
 	var r: ZoneResetDef = sim.reset_for_currency(currency)
 	if r != null:
+		if r != sim.reset_for_zone():
+			return false   # only the zone you are in shows its own gifts
 		return sim.reset_count(r.id) > 0 or sim.reset_unlocked(r.id) or not sim.get_stat(currency).is_zero()
 	if currency == &"rp":
 		return sim.rebirth_here() and (sim.rebirth_count > 0 or not sim.rp_available().is_zero())
@@ -159,6 +176,7 @@ static func state(sim: Sim, a: AttributeDef) -> Dictionary:
 		"currency": a.currency, "currency_name": currency_name(a), "blurb": a.blurb,
 		"lock": lock_text(a, sim), "rebirths": _have_for_lock(sim, a), "need": a.unlock_rebirths,
 		"second_now": second_value(a, lv, sim.config.press_proc_mult),
+		"second_short": second_short(a, lv, sim.config.press_proc_mult) if sim.attr_unlocked(a.id) else "",
 		"second_next": "" if maxed else second_value(a, lv + 1, sim.config.press_proc_mult),
 	}
 
