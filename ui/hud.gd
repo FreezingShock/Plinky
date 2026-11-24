@@ -662,6 +662,32 @@ func _fill_upgrades() -> void:
 	_apply_upgrade_tab()
 
 
+## Tab walks the tab strip, then the rail and the gifts of the tab on show, and wraps at both ends, forward and back.
+## Godot's own order follows the tree (every tab's page, not the layout) and does not wrap Shift+Tab from the first
+## control, so the ring is wired here. Gifts not built yet are left out; each card built rewires the ring.
+func _wire_upgrade_focus() -> void:
+	if not is_inside_tree() or _upg_tab == &"" or not _tier_btns.has(_upg_tab):
+		return
+	var ring: Array[Control] = []
+	for t: Node in _upg_tabs.get_children():
+		if t is MenuTextButton and (t as Control).visible:
+			ring.append(t as Control)
+	for b: Variant in _tier_btns[_upg_tab]:
+		ring.append(b as Control)
+	var tiers: Array = _tier_attrs.get(_upg_tab, [])
+	var tier: int = int(_tier_sel.get(_upg_tab, 0))
+	if tier < tiers.size():
+		for a: Variant in tiers[tier]:
+			var card: Control = _attr_rows.get((a as AttributeDef).id) as Control
+			if card != null:
+				ring.append(card)
+	var n: int = ring.size()
+	for i in n:
+		var c: Control = ring[i]
+		c.focus_next = c.get_path_to(ring[posmod(i + 1, n)])
+		c.focus_previous = c.get_path_to(ring[posmod(i - 1, n)])
+
+
 ## Starts building the queued cards, once per open. The shown tab goes first, so its gifts are there at once.
 func _start_cards() -> void:
 	if _cards_started or _card_queue.is_empty():
@@ -705,6 +731,7 @@ func _add_card(a: AttributeDef, grid: GridContainer) -> void:
 	_row_tips[a.id] = spec
 	Tip.bind_all(card, spec)
 	_attr_rows[a.id] = card
+	_wire_upgrade_focus()
 
 
 ## One tier of a tab on show: its gifts take the grid and its rail row is lit. Tiers swap in place, so nothing moves.
@@ -718,6 +745,7 @@ func _select_tier(cur: StringName, i: int) -> void:
 	var btns: Array = _tier_btns.get(cur, [])
 	for j: int in btns.size():
 		(btns[j] as MenuTextButton).selected = j == i
+	_wire_upgrade_focus()
 
 
 ## Focus landed on a tier row: with the keyboard or pad the rail follows the focus, as the tab strip does.
@@ -800,6 +828,7 @@ func _apply_upgrade_tab() -> void:
 		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
 		b.selected = on
 		b.queue_redraw()
+	_wire_upgrade_focus()
 
 
 
