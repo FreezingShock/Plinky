@@ -599,6 +599,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	# Saturation: the noon boost of a brighter scene (noon_boost) goes into exposure and contrast only. Scaling the
 	# saturation too pushed Larkmoor's autumn ground into the orange and green cast.
 	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * noon01)
+	# lightning: a brief cool lift in heavy rain; zero under Reduce motion or Reduce flashing (steady)
+	_light_mat.set_shader_parameter("flash", 0.0 if steady else SkyModel.lightning_flash(t, rain01))
 	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01) + _config.noon_contrast * nb)
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette

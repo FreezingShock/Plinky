@@ -59,3 +59,17 @@ func run(t: Object) -> void:
 	GraphicsQuality.set_level(GraphicsQuality.Level.HIGH, false)
 	t.ok(GraphicsQuality.rain_rings_and_mist(), "High quality keeps rain rings and dawn mist")
 	GraphicsQuality.set_level(before, false)
+
+	# Lightning: only in heavy rain, never more than full, and it does strike sometimes in a long downpour.
+	t.ok(SkyModel.lightning_flash(100.0, 0.0) == 0.0, "no lightning in clear weather")
+	t.ok(SkyModel.lightning_flash(100.0, 0.5) == 0.0, "no lightning in light rain")
+	var struck: bool = false
+	var in_range_l: bool = true
+	for i in 4000:
+		var f: float = SkyModel.lightning_flash(float(i) * 0.1, 1.0)
+		if f < 0.0 or f > 1.0:
+			in_range_l = false
+		if f > 0.2:
+			struck = true
+	t.ok(in_range_l, "lightning stays within 0..1")
+	t.ok(struck, "a long heavy downpour has at least one strike")
