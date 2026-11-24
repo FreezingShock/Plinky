@@ -104,3 +104,11 @@ func run(t: Object) -> void:
 	t.ok(SkyCycle.clock_pin_needed(0.5, 0.2), "a calendar far from the pin is moved")
 	t.ok(not SkyCycle.clock_pin_needed(0.999, 0.001), "times either side of midnight count as close")
 	t.ok(not SkyCycle.clock_pin_needed(0.5, 0.5015), "a tiny drift inside a frame does not reset the clock")
+
+	# Rain bloom: dry leaves the lamps alone, full rain swells them, and the multipliers stay monotone
+	var dry: Vector2 = SkyModel.lamp_bloom(0.0)
+	var wet: Vector2 = SkyModel.lamp_bloom(1.0)
+	t.ok(dry == Vector2(1.0, 1.0), "lamps are unchanged in dry weather")
+	t.ok(wet.x > 1.0 and wet.y > 1.0, "lamps swell and brighten in full rain (%.2f, %.2f)" % [wet.x, wet.y])
+	t.ok(SkyModel.lamp_bloom(0.5).y > dry.y and SkyModel.lamp_bloom(0.5).y < wet.y, "the bloom grows with the rain")
+	t.ok(SkyModel.lamp_bloom(3.0) == wet, "the bloom caps at full rain")

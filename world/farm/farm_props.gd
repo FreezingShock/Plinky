@@ -1,6 +1,6 @@
 class_name FarmProps
 extends RefCounted
-## The Larkmoor farm district (Thistle Rise): irregular fields of wheat on tilled soil that gust and part around the walker, a barn, a
+## The Larkmoor farm district (Foxglove Rise): irregular fields of wheat on tilled soil that gust and part around the walker, a barn, a
 ## shed, a scarecrow, hay bales, a cart and crates. The layout comes from assets/art/zone1b/farm/farm.json
 ## (tools/art/place_farm.py); the props from tools/art/gen_farm.py; the wheat sheets from tools/bake_wheat.gd, drawn by
 ## WheatClump from each clump's seed. Plain props are sprites at their foot with the meadow's rim light and a cast

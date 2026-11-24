@@ -2,7 +2,7 @@ extends Node
 ## Shadow review tour: the real Larkmoor scene at chosen sun phases, walker moved to each district and the gate.
 ## Saves PNGs to shots/shadow_<phase>_<place>.png. Used to tune cast and ground shadows (softness, strength, length).
 ## Run: godot --path . tools/shadow_shots.tscn [-- season=N] [-- phases=0.5,0.66] [-- places=heronmere,gate]
-## Defaults: autumn (season 2), noon 0.5 and golden hour 0.66, at the Heronmere grove, Thistle Rise, Emberwatch and the gate.
+## Defaults: autumn (season 2), noon 0.5 and golden hour 0.66, at the Heronmere grove, Foxglove Rise, Emberwatch and the gate.
 
 var main: Control
 

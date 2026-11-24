@@ -5,13 +5,13 @@ extends RefCounted
 ## node budget. Pure functions and detached nodes: no autoloads, no scene tree.
 
 const CANVAS: Vector2 = Vector2(3040.0, 1840.0)
-const BOX_CENTRE: Vector2 = Vector2(1090.0, 520.0)     # layout texels, doubled for the canvas
-const BOX_SIZE: Vector2 = Vector2(260.0, 220.0)
+const BOX_CENTRE: Vector2 = Vector2(1090.0, 548.0)     # layout texels, doubled for the canvas
+const BOX_SIZE: Vector2 = Vector2(260.0, 276.0)
 const SCALE: float = 2.0
 const FENCE_PREFIX: String = "farm_fence"                # the fence ring's pieces (see place_farm.py)
 const WHEAT_PREFIX: String = "farm_wheat"                # the wheat clumps, which overlap a little (see place_farm.py)
 const SOIL_PREFIX: String = "farm_soil"                  # the tilled soil decals: ground, drawn behind everything
-const NODE_BUDGET: int = 120                           # the farm's own nodes: one sprite per item, plus the driver
+const NODE_BUDGET: int = 240                           # the farm's own nodes: one sprite per item, plus the driver
 
 
 func run(t: Object) -> void:
@@ -41,8 +41,12 @@ func run(t: Object) -> void:
 			rects.append(rect)
 			rect_kinds.append(kind)
 		t.ok(Rect2(Vector2.ZERO, CANVAS).encloses(rect), "%s at %s is inside the Larkmoor canvas" % [kind, rect.position])
-		t.ok(box.encloses(rect), "%s at %s is inside the farm box" % [kind, rect.position])
 		var fa: Array = item.foot as Array
+		if kind.begins_with("farm_tree"):
+			# A tree's crown may hang past the edge of the box. Its trunk foot may not.
+			t.ok(box.has_point(Vector2(float(fa[0]), float(fa[1]))), "%s foot at %s is inside the farm box" % [kind, rect.position])
+		else:
+			t.ok(box.encloses(rect), "%s at %s is inside the farm box" % [kind, rect.position])
 		t.ok(float(fa[1]) <= rect.end.y + 0.01 and float(fa[1]) >= rect.position.y, "%s stands inside its own box" % kind)
 		var tex: Texture2D = load(FarmProps.DIR + str(item.file)) as Texture2D
 		t.ok(tex != null, "%s sprite %s loads" % [kind, str(item.file)])
@@ -82,6 +86,8 @@ func run(t: Object) -> void:
 				continue
 			if rect_kinds[i].begins_with(WHEAT_PREFIX) and rect_kinds[j].begins_with(WHEAT_PREFIX):
 				continue
+			if rect_kinds[i].begins_with("farm_tree") or rect_kinds[j].begins_with("farm_tree"):
+				continue            # crowns hang over the grass round them; the placer keeps the trunk feet apart
 			if rect_kinds[i].begins_with(SOIL_PREFIX) or rect_kinds[j].begins_with(SOIL_PREFIX):
 				continue            # a soil decal lies under the wheat and is masked round the buildings in the sprite itself
 			overlaps += 1

@@ -519,3 +519,19 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** the other toasts. Relic and achievement toasts already use AsciiBox. The subtitle bar keeps its ink plate with no green frame, on purpose, so captions read over the world.
 - **Check in-engine:** hold Shift and tap Ctrl. The tag should show cream text in the notched green frame, centred over the panel, with no resize of the Momentum panel.
 - **Not run in-engine:** the cloud cannot run Godot.
+
+## 2026-11-24: Upgrades menu uses a tier rail
+- **Decision:** each zone's gift page is a tier rail on the left (one row per tier, its gate in the tier's colour, e.g. "2  Requires 1 Bloom") and the chosen tier's gifts two across on the right. The rail follows the mouse, Up and Down with keyboard and pad, and opens on the frontier tier (the first tier with a gift open and not maxed). Tier colours are palette roles 3, 6, 4, 5, 7, then the currency colour for a sixth tier.
+- **Why:** the old page stacked six tiers in one scrolling list with small cards, which read as cluttered. Nathan picked the rail from three mockups (tier chips, a five-across gallery, the rail), and asked for coloured tiers and "Requires N Bloom(s)" gates.
+- **Not chosen:** the five-across gallery (all 15 gifts at once, too dense) and the tier chips (cramped gate labels at 640 px). A description line under the gifts was dropped at Nathan's request; the shared Tip on each card carries the detail.
+- **Kept:** `UpgradeText.tier_head` keeps its "Unlocks After" wording, which tests read. The rail uses the new `UpgradeText.tier_gate`.
+- **Checked:** `tests/run.gd` passes headless (6839 checks, 0 failed). The gifts capture (`tools/gifts_shot.tscn`) and a tier-switch check ran under Godot 4.7.2 with lavapipe. The panel stays 523 by 262 across tiers and tabs.
+- **Not run in-engine on the PC:** the look on a real GPU, and the feel of the rail hover and focus.
+## 2026-11-24: Bloom and Nucleus ritual, themed moments and a gift card
+- Picked by Nathan from three mockups: themed moments per reset (Bloom petals and a light shaft, Nucleus streaks, core and shards) plus a bigger Gift Ready card. Reduce flashing and Still meadow keep the calm fade; world and hover tips are held while the ritual runs.
+## 2026-11-24: Sprint tag centred over the Momentum panel
+- **Why:** PC QA batch 99 on v0.89.29 saw the tag on the panel's left edge, about 27 px off centre (a 138 px tag on a 192 px panel).
+- **Decision:** the tag centres on the panel's width, floored to a whole pixel, and is re-placed every frame it shows, since its width changes with the state.
+- **Colour:** the tag's font colour is `RelicStyle.text` (palette index 7, paper, cream in every zone). An in-engine capture at Zone 1 shows cream. QA's "green" report matches the pre-#428 tag, so the editor probably still runs the old code. Re-check after a pull and F5.
+- **Check in-engine:** hold Shift, then tap Ctrl. The tag's centre sits over the panel's centre, and the tag is cream.
+- **Not run on the PC:** the capture was a headless Godot 4.7.2 run under xvfb in the cloud, not Nathan's machine.

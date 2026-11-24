@@ -259,6 +259,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Field distances use the ground's own path, water and dirt colours (the Larkmoor palette, which the meadow shares), so no flowers sit on the path. | Nothing new to tune by hand. |
 | Checks: `tests/run.gd` 6429 checks, 0 failed. Screenshots in the cloud (xvfb, lavapipe): `tools/clearing_shots.tscn`. | The fields are in, but the meadow already has many baked flower beds and a gate banner covers part of the view. PC QA should judge the read at 1x and 2x, and night. |
 
+## 2026-11-24: Larkmoor district names follow their rows
+| Decision | Why |
+|---|---|
+| Renamed four districts: Gatehouse Green to Thistledown Green (Thistle row), Old Oak Crossing to Heather Hollow (Heather row, the oak stays as its landmark), Thistle Rise to Foxglove Rise (Foxglove row), Emberwatch to Starbloom Terrace (Starbloom north row). Reedgate, Heronmere, Westmere, Lanternwood and Cairnfold keep their names. | Nathan asked for each area to be named after its row. "Thistle Rise" sat on the Foxglove row, and the Thistle row was in Gatehouse Green. The gate and landmark wording (Emberwatch gate, ember_watchtower) is unchanged. |
+| Changed in `content/areas/*.tres` (display_name), `assets/art/zone1b/larkmoor/placements3d.json` (district names), `tools/art/larkmoor_layout.py`, and code and tool comments. The farm keeps its own name and now sits in Foxglove Rise. | Keeps the layout, the art data and the in-game names in step, so a regenerate does not bring the old names back. |
+| Checks: `tests/run.gd` 7783 checks, 0 failed, on current main (v0.94.0) plus these renames. Not run in-engine: the banner and district text on a PC. | Name changes only, so the tests cover the lookups. |
+
 ## 2026-11-24: Foxglove and Starbloom fields thicker
 | Decision | Why |
 |---|---|
@@ -321,3 +328,31 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Not changed: the forest edge has only 8 points in the zone and none near Old Oak Crossing, so deer cannot appear there. Dragonflies need a season with a share (none in winter by design), and the walker in reach of the lake. | Separate data and design questions, reported to the coordinator. |
 
 - **2026-11-24, Old Oak Crossing deer:** the hub has no woods, only the lone elder oak, so the forest-edge rule finds no spot there. `tools/art/gen_life_anchors.py` `oak_ring_points()` adds three grass tips 20 to 60 texels from the trunk (`OAK_TRUNK`), clear of every pad, to `forest_edge`. Added to `world/larkmoor_life.json` by hand-run of the same function, leaving the other keys as they were. Not run in engine.
+
+## 2026-11-24: Ember Quarry cave entrance (Larkmoor, north gate)
+- **Brief (Nathan, via coordinator):** make the way into Ember Quarry a landmark: a mountain cave cut into the cliff, a mineshaft, lanterns, several distinct organic decor props, dirt around it, and a glowing neon EMBER QUARRY sign with a down arrow either side. Nathan picked mockup B (timber headframe).
+- **Perspective:** Larkmoor is a 2:1 elevated orthographic view with the cliff facing the camera (like the gateway and tower sprites). The cave has no vanishing point: widths stay constant and depth only moves things up the screen. Boxes are front-facing with a top strip, not 45 degree cubes. Every post stands on a stone footing.
+- **Pipeline:** `tools/art/gen_ember_entrance.py export` writes `assets/art/zone1b/larkmoor/entrance/` (sprites, `entrance.json`). `larkmoor_scene.gd` merges its sprites into the placements, so a regenerated `placements3d.json` does not drop them. `mock <dir> B` renders day and night mockups on the real cliff.
+- **Nodes:** 12 prop sprites and 2 lanterns (76 texels apart: ordinary lamps keep 75) (chunk streamed) plus one `EmberEntrance` node (`world/ember_entrance.gd`) for the sign and glow. Under the 1350 ceiling.
+- **Walk-in:** the lane x 1510 to 1534 stays clear of decor (checked by `tests/test_ember_entrance.gd`). Cave, rails and dirt are flat sprites sorted behind the walker. The gate anchor and its trigger are unchanged.
+- **Accessibility:** Reduce Flashing stops the neon flicker and Reduce Motion freezes the glints; the sign then stays steadily lit.
+- **Not run in the cloud:** Godot and the headless tests. PC QA should screenshot day, dusk and night and walk through the gate.
+
+## 2026-11-24: Ember Quarry entrance polish (after Nathan's "refine" ask)
+- **Art:** inside the mine mouth only the nearest frame keeps a lintel and sill; deeper frames are bare posts on footings, so the tunnel reads as depth, not rungs. The far glow is larger and brighter, sleepers are lighter, and the rock around the arch uses fewer pale highlights so it sits closer to the cliff.
+- **Immersion:** `EmberEntrance` draws 12 embers rising out of the mine (a pure function of the clock, 8 steps per second, 1 texel each), a cave fire that breathes in steps, and lifts the neon and cave glow with `MeadowLife.rain` (a heavy rain counts as 0.7 of night). Reduce Motion removes the sparks and freezes the glints; Reduce Flashing stops the breathing and the neon flicker.
+- **Checked:** `tools/art/gen_ember_entrance.py mock <dir> B` renders day, dusk, night and rain tiles on the real cliff (`times_B.png`). The in-engine look is still for PC QA.
+
+## 2026-11-24: Starting Clearing opened up (option B, neater)
+- **Brief (Nathan):** the Starting Clearing is too cluttered. Expand it and redraw its flat 2D assets into the looking-down view. Nathan picked option B after three composite mockups (open glade, grove cut-through, sand loop). The neater B version and the front-lantern and pond-path notes came next.
+- **Change:** `tools/art/clearing_layout.py` (run once on the committed meadow) drops the 3 rocks inside the pad strip and the 2 lanterns nearest the camera from `placements3d.json`, and makes the ground under them walkable in `walkable.png` where it is grass or path (706 texels). It moves the cozy benches, the blanket and the fountain onto the rim, drops one fence run, and re-places the redrawn props by their ground foot. Pads, gate, spawn, water and the flower stats are untouched.
+- **Art:** `tools/art/gen_cozy.py` redraws the bench, blanket, fence, signposts and stepping stones from above (2:1 iso, lit upper-left, dithered dark side, 1-texel ink outline). The cottage, well, swing, campfire, wheel and wheat are still flat; their constants in `world/cozy/cozy_props.gd` are tied to the flat sprites, so they need a separate pass. The fountain sprite is also still flat, for the same reason.
+- **Flowers:** `world/clearing_gardens.json` is regenerated (157 flowers, format 2, same keys and entry shape, so the flower glow contract holds). Fields are derived from positions.
+- **Not done:** the pond path. The sand path is baked into `ground.png`, and a cleaner spur needs a `gen_meadow3d.py` change and a full meadow regen, so it is a follow-up.
+- **Checked:** `tests/run.gd` 7777 checks, 0 failed (Godot 4.7.2 headless). Screenshots from `tools/clearing_shots.tscn` (xvfb) render. The gate banner and tips cover the 2x sprout view, so PC QA should judge the read at 1x and 2x, at day and night.
+
+## 2026-11-24: Pond spur on the meadow path
+- **Brief (Nathan, via coordinator):** make the path to the pond better.
+- **Change:** `tools/art/gen_meadow3d.py` paints a 3.6-texel path spur (`SPUR_S`) from the main path to the pond's south-east shore, as path material only. Placement and the random sequence are untouched. `ground.png` and `ground_fg.png` get the new spur; the normal and height maps stay as committed. `world/meadow_life.json` is regenerated from the patched ground and placements (4 light pools now, the two removed lanterns no longer glow), and `world/clearing_gardens.json` is regenerated (153 flowers).
+- **Why a window, not a full regen:** running `gen_meadow3d.py` on current main does not reproduce the committed `ground.png`. About 16,900 texels differ, spread across the whole meadow, and the normal and height maps differ far more. A full regen would change the look of the entire meadow, so only a 20-texel disc around the spur (centre frame (214, 228)) takes the regenerated colour. The placements are identical on a rerun, so no prop moves.
+- **Open:** the spur's in-engine read is hidden by the HUD and the pad sign in the cloud shots. PC QA should check it at 1x and 2x, day and night. A generator rerun in the future will change the meadow, so do it deliberately.

@@ -10,6 +10,7 @@ const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg
 const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
 const GARDEN_PATH: String = "res://world/larkmoor_gardens.json"
+const ENTRANCE_PATH: String = "res://assets/art/zone1b/larkmoor/entrance/entrance.json"   # the Ember Quarry cave entrance props (world/ember_entrance.gd)
 const DISTRICT_RADIUS: float = 220.0   # texels (2x the old 110 with the frame); the banner shows the nearest district inside this
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
@@ -41,6 +42,7 @@ var districts: Array[Dictionary] = []   # {id, name, pos}
 
 func _ready() -> void:
 	_data = JSON.parse_string(FileAccess.get_file_as_string(placements_path))
+	_merge_entrance()
 	var w: Array = _data.get("world", []) as Array
 	if w.size() == 4:
 		world_rect = Rect2(float(w[0]), float(w[1]), float(w[2]), float(w[3]))
@@ -90,6 +92,16 @@ func _ready() -> void:
 	_add_sky()
 
 
+## The cave entrance props live in their own file so a regenerated placements3d.json keeps them. They join the sprite
+## list before the chunk index is built, so they stream, light and cast shadows like any other prop.
+func _merge_entrance() -> void:
+	if not FileAccess.file_exists(ENTRANCE_PATH):
+		return
+	var e: Variant = JSON.parse_string(FileAccess.get_file_as_string(ENTRANCE_PATH))
+	if e is Dictionary:
+		(_data.sprites as Array).append_array((e as Dictionary).get("sprites", []) as Array)
+
+
 ## Day/night shade, rain and wind over the whole world (world/sky_cycle.gd).
 func _add_sky() -> void:
 	_shadows = SkyShadows.new()
@@ -105,10 +117,27 @@ func _add_sky() -> void:
 	pad_material = _sky.pad_material(ZoneAssets.texture(DIR + "ground_h.png"), _ground.position)
 	_place_atmosphere()
 	add_child(_sky)
+	_add_flower_glow()
 	var water_glow := WaterNightGlow.new()   # night glow on the lake and river (world/water_night_glow.gd)
 	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
 	water_glow.setup(_sky, ZoneAssets.texture(DIR + "ground_n.png"), _ground.position)
 	_add_lights()
+	var entrance := EmberEntrance.new()   # the neon sign and the ember glow at the mine mouth, above the night shade
+	add_child(entrance)
+	entrance.setup(_sky)
+	_sky.add_light(Vector2(1520.0, 500.0), _sky.light_config().pool_gate_radius, 0.8, &"fixed", Color(1.0, 0.42, 0.2, 1.0))
+
+
+## The night light on the flower fields (world/flower_glow.gd). Sits just above the night shade (z 5 of the sky), so it
+## stays lit in the dark, and it is built once from the same flowers as the gardens.
+func _add_flower_glow() -> void:
+	if not FlowerGlow.enabled or _garden_flowers.is_empty():
+		return
+	_flower_glow = FlowerGlow.new()
+	_flower_glow.name = "FlowerGlow"
+	_flower_glow.z_index = 5
+	add_child(_flower_glow)
+	_flower_glow.setup(_garden_flowers, FlowerGlow.pad_centres(_data.anchors))
 
 
 ## Haze over the mountain strip along the top of the backdrop (all the way across: there is no island in front of
@@ -168,7 +197,8 @@ func _add_gardens() -> void:
 	var layer := GardenLayer.new()
 	layer.name = "Gardens"
 	add_child(layer)
-	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
+	_garden_flowers = (parsed as Dictionary).get("flowers", []) as Array
+	layer.setup(_garden_flowers)
 	layer.pusher_group = &"walker"
 	_gardens = layer
 
@@ -247,6 +277,8 @@ const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
 var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
 var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
+var _garden_flowers: Array = []          # the flower list the gardens were drawn from (world/larkmoor_gardens.json)
+var _flower_glow: FlowerGlow             # the night light on each field's flowers (world/flower_glow.gd)
 const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
 
 
@@ -303,7 +335,7 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_rebuild_bushes()
 
 
-## The Thistle Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
+## The Foxglove Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
 func _add_farm(parent: Node2D) -> void:
 	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
 
@@ -334,6 +366,8 @@ func _process(_delta: float) -> void:
 			_gardens.season = int(snap.get("season", GardenArt.SEASON_SUMMER))
 			hour = int(snap.get("hour", 12))
 		_gardens.closed = night > 0.6
+		if _flower_glow != null:
+			_flower_glow.set_night(night)
 		_gardens.dew = not _gardens.closed and hour >= 5 and hour < 9   # the first morning hours: drops on the open heads
 
 
@@ -641,7 +675,7 @@ func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 			if s.has("nrm"):
 				sp.material = _prop_mat(false, String(s.nrm))
 	parent.add_child(sp)
-	if _shadows != null:
+	if _shadows != null and not String(s.kind).begins_with("ember_flat"):   # cave, rails and dirt are flat on the ground or the cliff
 		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
 	if String(s.kind) == "bush":
 		sp.set_meta(&"bush", true)

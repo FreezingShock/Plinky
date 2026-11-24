@@ -301,7 +301,7 @@
   },
   {
    "kind": "district",
-   "name": "Gatehouse Green",
+   "name": "Thistledown Green",
    "id": "green",
    "u": 986.0,
    "v": 948.0,
@@ -319,7 +319,7 @@
   },
   {
    "kind": "district",
-   "name": "Old Oak Crossing",
+   "name": "Heather Hollow",
    "id": "oak",
    "u": 973.0,
    "v": 745.0,
@@ -328,7 +328,7 @@
   },
   {
    "kind": "district",
-   "name": "Thistle Rise",
+   "name": "Foxglove Rise",
    "id": "thistle",
    "u": 1223.0,
    "v": 923.0,
@@ -364,7 +364,7 @@
   },
   {
    "kind": "district",
-   "name": "Emberwatch",
+   "name": "Starbloom Terrace",
    "id": "emberwatch",
    "u": 637.0,
    "v": 599.0,

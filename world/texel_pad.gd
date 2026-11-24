@@ -46,9 +46,12 @@ const FORGE_ART: Dictionary = {&"cinder": "cinder", &"ore": "ore", &"slagrow": "
 const FORGE_DIR: String = "res://assets/art/zone2/ladder/"
 const FLICKER_MS: int = 260
 static var _forge_tex: Dictionary = {}   # "name_f" -> Texture2D
-## Pad 2's side sprouts (x, y from the plate base, kind): a small bloom on a stem.
-const BUD: Array[Vector3i] = [Vector3i(0, -4, 0), Vector3i(-1, -3, 0), Vector3i(1, -3, 0), Vector3i(0, -3, 2), Vector3i(0, -2, 3), Vector3i(0, -1, 3), Vector3i(-1, -1, 3), Vector3i(1, -2, 3)]
 const LEAF: Color = Color("3d9a45")
+## Baked bed art for the open tiers (tools/art/gen_pad_beds.py): a plate shadow, the leaves, and the blooms in greyscale that take
+## the stat colour here, so the colour-blind tint still applies. Each file is 48 x 44 with the plate centre at (24, 27).
+const BED_DIR: String = "res://assets/art/zone1/pads/"
+const BED_ORIGIN: Vector2 = Vector2(-24.0, -27.0)
+static var _bed_tex: Dictionary = {}   # file name -> Texture2D
 ## Art stages per tier: pad 1 is a single flower, pad 5 a crowned bed.
 const MAX_STAGE: int = 5
 const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
@@ -62,7 +65,7 @@ const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
-const LOCK_CHIP_Z: int = 11       # the chip's z relative to its pad: one above the air layer (z 10), so nothing draws over it
+const LOCK_CHIP_Z: int = 4        # the sign's z relative to its pad: above the plate (z 0), under the night shade (z 5), so it takes the day and night light like the props
 var _chip: Node2D = null          # the chip's own node, made for a row's first pad only
 ## Buy glow and rarity corner glints, on their own child node above the night shade (z 5), so the glow reads brighter as the ground darkens.
 const HALO_Z: int = 6
@@ -70,8 +73,10 @@ const HALO_Z: int = 6
 const GLOW_INNER: float = 1.1     # the halo starts at the plate's edge (its ink sits just inside this)
 const GLOW_DAY: float = 0.6       # strength by day (0..1): clearly there at noon, still under the scene's light
 const GLOW_NIGHT_GAIN: float = 0.5  # extra strength at full night: 0.6 by day, 0.9 at midnight
-const GLOW_SPREAD_DAY: float = 3.0  # how far the halo reaches past the plate, in plate units, by day (reach ~1.9x the old one)
-const GLOW_SPREAD_NIGHT: float = 2.6  # and the extra reach at full night (reach ~1.8x the old one)
+const GLOW_SPREAD_DAY: float = 0.25  # how far the halo reaches past the plate, in plate units, by day (small: a ring on the plate, not a wash on the path)
+const GLOW_SPREAD_NIGHT: float = 0.35  # and the extra reach at full night
+const GLOW_MAX_AMOUNT: float = 0.7  # ceiling on the glow's brightness at any hour, so it never blows out over the path or the field light
+const GLOW_MAX_SPREAD: float = 0.35  # ceiling on how far the glow reaches past the plate (diamond norm): a ring on the plate, never a wash
 const GLOW_PEAK: float = 1.0      # peak alpha at the plate's edge, before the strength scales it
 const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
 const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
@@ -82,14 +87,16 @@ const CROWD_SHARE: float = 0.5    # each lit pad in the crowd (itself included) 
 var crowd: int = 1                # lit pads within CROWD_RANGE, self included; main.gd sets it each frame
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
 static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
-const HAZE_REACH: float = 1.4       # the volumetric bloom above the plate, in plate units
+const HAZE_REACH: float = 0.6       # the volumetric bloom above the plate, in plate units
 const HAZE_LIFT: int = 9            # its centre sits this many texels above the plate's top face
 static var _haze_tex: Dictionary = {}   # "ready_step" -> ImageTexture for the bloom
 var _halo: Node2D = null
 var _halo_sig: int = -1
 const SIGN_X: float = 17.0        # the plank's frame, pad-local texels: beside and behind the plate, clear of the walker's footprint
 const SIGN_Y: float = -27.0
-const SIGN_W: float = 36.0        # widened for long costs, see sign_box
+const SIGN_W: float = 50.0        # fixed: the plank never resizes as the numbers change. Holds six 5 px glyphs (see SIGN_TEXT_CAP)
+const SIGN_TEXT_X: float = 14.0   # the cost and reward text start this far in from the plank's left edge
+const SIGN_TEXT_CAP: float = 32.0 # texels the text may use: the plank's width less the text inset and the right margin
 const SIGN_H: float = 25.0
 const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
@@ -144,6 +151,7 @@ func _init() -> void:
 	_halo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # one texel per world texel: the halo stays pixel-crisp
 	_halo.draw.connect(_draw_halo)
 	add_child(_halo)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # the baked bed is a texture: keep it one texel per texel
 
 
 func _ready() -> void:
@@ -156,16 +164,14 @@ func _ready() -> void:
 		tier_row = b.row
 		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
 		if b.row_index == 0:
-			# A button's cost depends only on its definition, so the chip text is fixed for the pad's life.
-			_lock_cost = Formulas.button_cost(b).format()
 			_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
 			_reward_icon = IconSet.get_icon(String(b.reward_stat), LOCK_ICON)
-			_reward_text = "+" + NumberFormat.short(b.reward)
 			_chip = Node2D.new()
-			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the air layer is at z 10
+			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the night shade is at z 5
 			_chip.visible = false
 			_chip.draw.connect(_draw_cost_sign)
 			add_child(_chip)
+			_refresh_sign(_sim(), b)
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
 			# The gold is only the rim, lit rim and rarity ring. Gems, pip and the flowers keep the Clover reward green.
@@ -284,6 +290,7 @@ func _refresh_progress(sim: Sim) -> void:
 	if b == null:
 		progress = 0.0
 		return
+	_refresh_sign(sim, b)
 	if affordable:
 		progress = 1.0
 		return
@@ -331,7 +338,7 @@ func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
 		| _level_step() << 24 | int(locked) << 26 | int(_bloom_t * 10.0) << 27 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18
-		| _forge_frame() << 32 | _twinkle() << 36)
+		| _forge_frame() << 32)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -483,12 +490,12 @@ func _draw() -> void:
 	# The cost sign draws on its own child node, above the air layer: see _draw_cost_sign.
 
 
-## The cost sign, drawn on the child node _chip at z LOCK_CHIP_Z, above the air layer (z 10), so fireflies, glow and the pad
-## shimmer never draw over it. A wooden plank on a post, beside and behind the plate so the walker on the plate is not covered.
+## The cost sign, drawn on the child node _chip at z LOCK_CHIP_Z, under the night shade (z 5), so it darkens at night with the
+## world and the props instead of glowing on the scene. A wooden plank on a post, beside and behind the plate so the walker on the plate is not covered.
 ## Two rows: the cost over the reward, each with its stat icon. The top band is green when the cost is held and red when not.
 ## Whole texels throughout, so it stays crisp at 1x.
 func _draw_cost_sign() -> void:
-	var box: Rect2 = sign_box(_lock_cost, _reward_text)
+	var box: Rect2 = sign_box()
 	var ink: Color = palette[0]
 	var wood: Color = palette[6]
 	var wood_hi: Color = wood.lightened(0.2)
@@ -535,10 +542,21 @@ func _draw_cost_sign() -> void:
 	if _reward_icon != null:
 		_chip.draw_texture(_reward_icon, Vector2(x0 + 4.0, y0 + 15.0))
 	# Cost and reward, cream on wood with a one-texel shadow
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 15.0, y0 + 13.0), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, wood_dk)
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 14.0, y0 + 12.0), _lock_cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, CHIP_CREAM)
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 15.0, y0 + 23.0), _reward_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, wood_dk)
-	_chip.draw_string(LOCK_FONT, Vector2(x0 + 14.0, y0 + 22.0), _reward_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, CHIP_CREAM)
+	var tx: float = x0 + SIGN_TEXT_X
+	_draw_run(Vector2(tx + 1.0, y0 + 13.0), _lock_cost, wood_dk)
+	_draw_run(Vector2(tx, y0 + 12.0), _lock_cost, CHIP_CREAM)
+	_draw_run(Vector2(tx + 1.0, y0 + 23.0), _reward_text, wood_dk)
+	_draw_run(Vector2(tx, y0 + 22.0), _reward_text, CHIP_CREAM)
+
+
+## One line of sign text, glyph by glyph: one texel between glyphs when it fits the plank, none when it does not.
+func _draw_run(pos: Vector2, text: String, col: Color) -> void:
+	var gap: float = float(LOCK_DIGIT_GAP) if run_width(text, LOCK_DIGIT_GAP) <= SIGN_TEXT_CAP else 0.0
+	var x: float = pos.x
+	for i in text.length():
+		var ch: String = text.substr(i, 1)
+		_chip.draw_string(LOCK_FONT, Vector2(x, pos.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, col)
+		x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + gap
 
 
 ## Shows or hides the sign node, and redraws it when it appears or when the cost is newly held or lost.
@@ -561,23 +579,50 @@ static func shows_cost_sign(cost: String) -> bool:
 
 ## Width of the digits with one texel between each glyph (no gap after the last one).
 static func chip_text_width(text: String) -> float:
+	return run_width(text, LOCK_DIGIT_GAP)
+
+
+## Width of a line of sign text with `gap` texels between its glyphs.
+static func run_width(text: String, gap: float) -> float:
 	var w: float = 0.0
 	for i in text.length():
 		w += LOCK_FONT.get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
-	return w + float(LOCK_DIGIT_GAP * maxi(text.length() - 1, 0))
+	return w + gap * float(maxi(text.length() - 1, 0))
 
 
-## The sign's frame in pad-local texels: the plank is SIGN_H tall, and widens past SIGN_W only for a long cost or reward.
-static func sign_box(cost: String, gain: String) -> Rect2:
-	var tw: float = maxf(chip_text_width(cost), chip_text_width(gain))
-	return Rect2(SIGN_X, SIGN_Y, maxf(SIGN_W, ceilf(tw) + 18.0), SIGN_H)
+## The sign's frame in pad-local texels. Fixed size, so the plank never resizes or shifts as the numbers change.
+static func sign_box() -> Rect2:
+	return Rect2(SIGN_X, SIGN_Y, SIGN_W, SIGN_H)
 
 
-## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
-func _twinkle() -> int:
-	if not FLOWERS.has(flower_row) or MeadowLife.reduce_motion or locked:
-		return 0
-	return (Time.get_ticks_msec() / 400) % 3
+## Fits a cost or reward to the plank's text width. A value that is too wide drops its fraction first ("20.75B" becomes
+## "20B"), then loses characters from the end. Spleen has no smaller size, so the text stays at its native 8 px.
+static func fit_sign_text(text: String) -> String:
+	if LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x <= SIGN_TEXT_CAP:
+		return text
+	var dot: int = text.find(".")
+	if dot >= 0:
+		var end: int = dot + 1
+		while end < text.length() and text[end] >= "0" and text[end] <= "9":
+			end += 1
+		text = text.substr(0, dot) + text.substr(end)
+	while text.length() > 1 and LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x > SIGN_TEXT_CAP:
+		text = text.substr(0, text.length() - 1)
+	return text
+
+
+## Sets the sign's cost and reward to the live values the pad tooltip shows, and redraws only when one changes.
+func _refresh_sign(sim: Sim, b: ButtonDef) -> void:
+	if _chip == null:
+		return
+	var cost: String = fit_sign_text(Formulas.button_cost(b).format())
+	var gain: String = fit_sign_text("+" + sim.press_gain_preview(button_id).format())
+	if cost == _lock_cost and gain == _reward_text:
+		return
+	_lock_cost = cost
+	_reward_text = gain
+	if _chip.visible:
+		_chip.queue_redraw()
 
 
 ## 0..2: which flicker frame the forge object is on (always 0 under Reduce motion). Part of the redraw signature.
@@ -632,48 +677,39 @@ static func stage_of(row_index: int) -> int:
 	return clampi(row_index + 1, 1, MAX_STAGE)
 
 
-## A half-height copy of the tier flower (the bloom's top four rows over the stem's last three) at x offset `ox`, `by` texels
-## above the plate; appended to `cells` (x, y, kind) like the main flower.
-static func _half_flower(cells: Array[Vector3i], rows: Array, n: int, ox: int, by: int) -> void:
-	for k in 7:
-		var ml: String = rows[k] if k < 4 else rows[n - 7 + k]
-		for rx in range(4, 9):
-			var mc: String = ml[rx]
-			if mc != ".":
-				cells.append(Vector3i(rx - 6 + ox, by + k, "#dcgW".find(mc)))
+## Draws the baked bed for this pad's stage over the plate: the shadow, the leaves, then the blooms in the stat colour.
+func _draw_bed_art(top: int, stage: int) -> void:
+	var at: Vector2 = BED_ORIGIN + Vector2(0.0, float(top))
+	draw_texture(bed_texture("shade_s%d.png" % stage), at)
+	draw_texture(bed_texture("leaf_s%d.png" % stage), at)
+	draw_texture(bed_texture("%s_bloom_s%d.png" % [flower_row, stage]), at, stat_color)
 
 
-## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier
-## opens it rises row by row and throws a ring of petals. One pip per pad position (1..3) sits at the front corner.
+## The baked bed texture for one file in BED_DIR, loaded once.
+static func bed_texture(file: String) -> Texture2D:
+	if not _bed_tex.has(file):
+		_bed_tex[file] = load(BED_DIR + file) as Texture2D
+	return _bed_tex[file] as Texture2D
+
+
+## The tier flower standing on the plate with a 1 texel ink outline. Open pads draw the baked bed (see _draw_bed_art). Locked
+## pads show a small closed bud, and when the tier opens it rises row by row and throws a ring of petals. One pip per pad
+## position (1..3) sits at the front corner.
 func _draw_flowers(top: int, ink: Color) -> void:
 	var rows: Array = FLOWERS[flower_row]
 	var n: int = rows.size()
 	var base: int = top - 1
-	var shown: int = 3 if locked else n
-	if _bloom_t > 0.0:
-		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
-	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
 	var stage: int = MAX_STAGE
 	var sbd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if sbd != null:
 		stage = stage_of(sbd.row_index)
-	if not locked and _bloom_t <= 0.0 and stage >= 2:
-		for side in [-1, 1]:
-			if stage == 2:   # pad 2: a sprout and a smaller bud beside the flower, and a leaf tuft at its foot
-				for bc: Vector3i in BUD:
-					cells.append(Vector3i(bc.x + side * 9, base + bc.y, bc.z))
-					cells.append(Vector3i(bc.x + side * 15, base + bc.y + 2, bc.z))
-				for lc: Vector2i in [Vector2i(5, 0), Vector2i(6, -1), Vector2i(7, -2), Vector2i(4, 1)]:
-					cells.append(Vector3i(side * lc.x, base + lc.y, 3))
-			else:            # pad 3 and up: two half-height flowers of the same tier, so the row reads as a bed
-				_half_flower(cells, rows, n, side * 10, base - 6)
-			if stage >= 4:   # pad 4: the bed widens (a bud at each outer edge) and two taller blooms stand up behind
-				if stage == 4:
-					for bc: Vector3i in BUD:
-						cells.append(Vector3i(bc.x + side * 17, base + bc.y + 1, bc.z))
-				else:        # pad 5: those outer buds are full half flowers
-					_half_flower(cells, rows, n, side * 17, base - 5)
-				_half_flower(cells, rows, n, side * 4, base - 12)
+	var baked: bool = not locked and _bloom_t <= 0.0
+	if baked:
+		_draw_bed_art(top, stage)
+	var shown: int = 0 if baked else (3 if locked else n)
+	if _bloom_t > 0.0:
+		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
+	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
 	for k in shown:
 		var line: String = rows[n - 1 - k]
 		for rx in 13:
@@ -683,16 +719,6 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			if locked and ch != "g":
 				ch = "g"
 			cells.append(Vector3i(rx - 6, base - k, "#dcgW".find(ch)))
-	if stage >= 5 and not locked and _bloom_t <= 0.0:   # the grand pad wears a gold crown over the flower: a band and five points
-		var cy0: int = base - n - 3
-		for cx in range(-3, 4):
-			cells.append(Vector3i(cx, cy0, 5))
-			cells.append(Vector3i(cx, cy0 + 1, 5))
-		for cx in [-3, -1, 1, 3]:
-			cells.append(Vector3i(cx, cy0 - 1, 5))
-		cells.append(Vector3i(0, cy0 - 1, 5))
-		cells.append(Vector3i(0, cy0 - 2, 5))
-		cells.append(Vector3i(0, cy0 + 1, 2))   # a white jewel in the band
 	for c: Vector3i in cells:
 		for o: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 			draw_rect(Rect2(c.x + o.x, c.y + o.y, 1, 1), ink)
@@ -710,16 +736,6 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			var ang: float = float(i) / 10.0 * TAU
 			var q: Vector2 = Vector2(cos(ang) * 14.0, sin(ang) * 7.0) * r
 			draw_rect(Rect2(roundf(q.x), roundf(top - 4 + q.y), 1, 1), Color.WHITE if i % 2 == 0 else stat_color)
-	if stage >= 3 and not locked and _bloom_t <= 0.0 and not MeadowLife.reduce_motion:   # twinkling petal glints over the bed
-		var tw: int = (Time.get_ticks_msec() / 400) % 3
-		var spots: Array[Vector2i] = [Vector2i(-9, -13), Vector2i(8, -14), Vector2i(0, -20)]
-		if stage >= 4:
-			spots.append_array([Vector2i(-16, -10), Vector2i(15, -11), Vector2i(-4, -25)])
-		if stage >= 5:
-			spots.append_array([Vector2i(-22, -7), Vector2i(21, -8), Vector2i(5, -28), Vector2i(0, -14)])
-		for gi in spots.size():
-			if (gi + tw) % 3 == 0:
-				draw_rect(Rect2(spots[gi].x, base + spots[gi].y + 3, 1, 1), Color.WHITE)
 	var pips: int = 1
 	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if bd != null:
@@ -769,12 +785,12 @@ func light_strength() -> float:
 ## Density of the buy glow at full strength, 0..1: green when buyable, red (a little softer) when not, magnified at night.
 static func glow_amount(ready: bool, night: float) -> float:
 	var base: float = GLOW_DAY if ready else GLOW_DAY * 0.8
-	return clampf(base * (1.0 + GLOW_NIGHT_GAIN * clampf(night, 0.0, 1.0)), 0.0, 1.0)
+	return clampf(base * (1.0 + GLOW_NIGHT_GAIN * clampf(night, 0.0, 1.0)), 0.0, GLOW_MAX_AMOUNT)
 
 
 ## Width of the glow band in diamond norm (1.0 is the plate edge). Wider at night, so it reads from a distance.
 static func glow_spread(night: float) -> float:
-	return GLOW_SPREAD_DAY + GLOW_SPREAD_NIGHT * clampf(night, 0.0, 1.0)
+	return minf(GLOW_SPREAD_DAY + GLOW_SPREAD_NIGHT * clampf(night, 0.0, 1.0), GLOW_MAX_SPREAD)
 
 
 ## Night level in 8 steps: the halo redraws only when this changes, not every frame.
