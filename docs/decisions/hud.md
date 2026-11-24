@@ -511,3 +511,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Boundaries:** the sun-phase bands are unchanged. Dusk starts at sun phase 0.7, which is 17:46 at daylight 0.6, about 86 minutes before sunset at 19:12. If QA wants Dusk later, change the 0.7 band in `period_of`; that is a taste call.
 - **Tests:** `tests/test_banner.gd` checks the dawn, noon and sunset clock fractions, 17:28 as Afternoon, and the fallback line "17:28 - Afternoon".
 - **Not run in-engine:** the cloud cannot run Godot.
+
+## 2026-11-24: Sprint tag matches the HUD frame and text
+- **Why:** Nathan's screenshot of "SPRINTING ENABLED" above the Momentum panel looked dim, dark green and borderless, unlike the cream text in the panel's green notched frame. Cause in code: the tag used a plain square StyleBoxFlat plate with a 1px dim edge, not the AsciiBox frame, and it took a per-state green (`RelicStyle.good`, or `accent` for HELD) with a 2px ink outline that likely thins the 14px glyph strokes (not confirmed in-engine).
+- **Decision:** the tag uses `AsciiBox.make(PANEL, 6, 2)`, the same frame as the panel and the relic and achievement toasts, with `RelicStyle.text` for both states and no font outline. The state is still shown by the word.
+- **Not chosen:** keeping HELD in the accent yellow. It is a one-line change if Nathan wants the colour back.
+- **Checked:** the other toasts. Relic and achievement toasts already use AsciiBox. The subtitle bar keeps its ink plate with no green frame, on purpose, so captions read over the world.
+- **Check in-engine:** hold Shift and tap Ctrl. The tag should show cream text in the notched green frame, centred over the panel, with no resize of the Momentum panel.
+- **Not run in-engine:** the cloud cannot run Godot.
