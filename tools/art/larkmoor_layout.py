@@ -20,12 +20,8 @@ EMBER_GATE = (760, 268)       # the gate that leads on to Zone 2, set into the n
 PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 520), (770, 486), (762, 454), (752, 420), (756, 386), (770, 350), (766, 310), (760, 268)]
 PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1100, 548), (1060, 520), (990, 500), (900, 490), (770, 486)]
-PATH_NW = [(752, 420), (700, 384), (640, 362), (590, 340), (550, 318)]
-PATH_NE = [(770, 350), (820, 346), (880, 338), (930, 352), (966, 368)]     # ends at the Great Lantern, not in the open
-PATH_SE1 = [(1100, 548), (1150, 596), (1200, 640), (1210, 690)]          # bottom-right trail off the east road, to a lamp
-PATH_SE2 = [(930, 592), (950, 640), (975, 690), (1030, 752)]          # south from the east road, to a trail sign
-PATH_NW2 = [(550, 318), (520, 276), (496, 226)]                           # north-west trail, to the standing menhir
-PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_NW, PATH_NE, PATH_SE1, PATH_SE2, PATH_NW2]
+# Only the main road runs north: to the Ember gate, top middle. The side trails stop short of the mountainside.
+PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST]
 # Land lobes: the island's radius grows by amp * R around angle a (uv angle; -135 deg is screen up, 0 is screen down-right).
 # They give the new north and bottom-right land its shape. Width w is in radians.
 LOBES = [(-135.0, 0.20, 0.55), (0.0, 0.16, 0.50)]
@@ -77,9 +73,6 @@ LANDMARKS = [
     dict(id='cairn_spire', kind='obelisk', at=(540, 306)),          # the cairn at the centre of the stone ring
     dict(id='great_lantern', kind='great_lantern', at=(978, 376)),
     dict(id='ember_watchtower', kind='tower', at=(800, 250)),       # beside the Emberwatch gate, on its wall
-    dict(id='se_lamp', kind='lantern', at=(1210, 690)),             # the bottom-right trail ends at a lamp
-    dict(id='se_sign', kind='sign', at=(1030, 752)),                # the south-east trail ends at a sign
-    dict(id='nw_menhir', kind='menhir', at=(494, 220)),             # the north-west trail ends at a standing menhir
 ]
 # Tall-prop groves: kind, centre, radius, count
 GROVES = [
@@ -153,7 +146,8 @@ for _d in DISTRICTS:
 # ---- the bigger frame ----
 # Every position above is authored in the 1520x920 frame. _apply_scale() grows the whole world by S about the screen
 # origin: that keeps the 2:1 projection exact (OX, OY, W, H, N, CU, CV, R and PLAY scale too). Sprites and voxel props
-# keep their texel size. Grove counts do not scale: every tall prop is a scene node, and the node ceiling is 1350.
+# keep their texel size, so grove counts scale by S squared to keep the same density. The scene loads props by chunk around
+# the walker (world/larkmoor_scene.gd), which keeps the live node count under the 1350 ceiling.
 def _apply_scale():
     global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, PAD_CLEAR, GROVES
     def sc(p): return (p[0] * S, p[1] * S)
@@ -171,7 +165,7 @@ def _apply_scale():
     for d in DISTRICTS:
         d['c'] = sc(d['c']); d['pads'] = [sc(q) for q in d['pads']]
     for lm in LANDMARKS: lm['at'] = sc(lm['at'])
-    GROVES[:] = [(kind, sc(c), rad * S, n) for kind, c, rad, n in GROVES]   # counts stay: the node ceiling, not the area, sets them
+    GROVES[:] = [(kind, sc(c), rad * S, round(n * S * S)) for kind, c, rad, n in GROVES]   # full density; world/larkmoor_scene.gd loads them by chunk
     PAD_CLEAR = PAD_CLEAR * S
 
 _apply_scale()

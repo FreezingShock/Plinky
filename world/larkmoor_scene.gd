@@ -169,36 +169,151 @@ func _add_life(ground: Sprite2D) -> void:
 	lg.pusher_group = &"walker"
 
 
-## Each tall prop is its own sprite at its foot, so the walker sorts behind or in front of it.
+## Props load by chunk. The map is cut into CHUNK-texel squares. The chunks within LOAD_RING of the walker's chunk are
+## spawned, and a chunk is unloaded once it is more than KEEP_RING away. Each prop is a sprite plus a shadow quad, so
+## loading the whole 2x map at once would break the 1350-node ceiling (docs/perf.md). Each prop is still its own sprite
+## at its foot, so the walker sorts behind or in front of it.
+const CHUNK: float = 320.0
+const LOAD_RING: int = 1
+const KEEP_RING: int = 2
+
+var _occ_parent: Node2D = null
+var _prop_index: Dictionary = {}     # Vector2i chunk -> Array of prop dictionaries (placements3d.json sprites)
+var _loaded: Dictionary = {}         # Vector2i chunk -> Array of the Sprite2D props spawned for it
+var _center: Vector2i = Vector2i(-99999, -99999)
+
+
+## Index the props by chunk and light the lanterns. Nothing is spawned yet; the caller loads the chunks around the start.
+func _begin(parent: Node2D) -> void:
+	_occ_parent = parent
+	_prop_index.clear()
+	_loaded.clear()
+	_center = Vector2i(-99999, -99999)
+	for s: Dictionary in _data.sprites:
+		var key: Vector2i = _chunk_of(Vector2(float(s.foot[0]), float(s.foot[1])))
+		if not _prop_index.has(key):
+			_prop_index[key] = []
+		(_prop_index[key] as Array).append(s)
+		if String(s.kind) == "lantern" and _sky != null:
+			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
+					_sky.light_config().pool_shrine_radius * 0.7, 0.9)
+
+
 func spawn_occluders(parent: Node2D) -> void:
-	var bush_sprites: Array = []
-	for s: Dictionary in _data.sprites:
-		_spawn_one(parent, s, bush_sprites)
-	if react != null:
-		react.set_bushes(bush_sprites)
+	_begin(parent)
+	_refresh_center(_start_point())
 
 
-## Same result as spawn_occluders, but yields to the next frame whenever `budget_ms` of a frame is used up. A zone swap
-## under the transition wipe uses it: the 400-odd texture loads and padded copies cost about 170 ms in one go, which
-## was a visible stall at the wipe's peak.
+## Same chunks as spawn_occluders, but yields to the next frame whenever `budget_ms` of a frame is used up. A zone swap
+## under the transition wipe uses it, so the first load does not stall the wipe's peak.
 func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
-	var bush_sprites: Array = []
-	var start: int = Time.get_ticks_usec()
-	var i: int = 0
-	for s: Dictionary in _data.sprites:
-		i += 1
-		_spawn_one(parent, s, bush_sprites)
-		if float(Time.get_ticks_usec() - start) / 1000.0 >= budget_ms:
-			var yielded: int = Time.get_ticks_usec()
-			await get_tree().process_frame
-			start = Time.get_ticks_usec()
-			if PerfStats.tracing and float(start - yielded) / 1000.0 > 25.0:
-				PerfStats.trace.append("slice frame gap %.1f ms (after %d props)" % [float(start - yielded) / 1000.0, i])
-	if react != null:
-		react.set_bushes(bush_sprites)
+	_begin(parent)
+	_center = _chunk_of(_start_point())
+	var start_us: int = Time.get_ticks_usec()
+	for key: Vector2i in _needed_keys(_center):
+		if not _loaded.has(key):
+			_load_chunk(key)
+			if float(Time.get_ticks_usec() - start_us) / 1000.0 >= budget_ms:
+				await get_tree().process_frame
+				start_us = Time.get_ticks_usec()
+	_rebuild_bushes()
 
 
-func _spawn_one(parent: Node2D, s: Dictionary, bush_sprites: Array) -> void:
+## Keep the loaded chunks in step with the walker. Runs every frame, but only does work when the walker changes chunk.
+func _process(_delta: float) -> void:
+	if _occ_parent == null:
+		return
+	var w: Node2D = get_tree().get_first_node_in_group(&"walker") as Node2D
+	if w != null:
+		_refresh_center(w.position)
+
+
+func _exit_tree() -> void:
+	for key: Vector2i in _loaded.keys():
+		for sp in _loaded[key]:
+			if is_instance_valid(sp):
+				(sp as Sprite2D).queue_free()
+	_loaded.clear()
+
+
+## Props spawned now, and every prop in the placements (tests and the bench read these).
+func loaded_prop_count() -> int:
+	var n: int = 0
+	for key: Vector2i in _loaded.keys():
+		n += (_loaded[key] as Array).size()
+	return n
+
+
+func prop_total() -> int:
+	var n: int = 0
+	for key: Vector2i in _prop_index.keys():
+		n += (_prop_index[key] as Array).size()
+	return n
+
+
+func _chunk_of(p: Vector2) -> Vector2i:
+	return Vector2i(floori(p.x / CHUNK), floori(p.y / CHUNK))
+
+
+func _start_point() -> Vector2:
+	for a: Dictionary in _data.anchors:
+		if String(a.kind) == "player_spawn":
+			return Vector2(float(a.sx), float(a.sy))
+	return world_rect.get_center()
+
+
+func _needed_keys(c: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for dy: int in range(-LOAD_RING, LOAD_RING + 1):
+		for dx: int in range(-LOAD_RING, LOAD_RING + 1):
+			out.append(c + Vector2i(dx, dy))
+	return out
+
+
+func _refresh_center(p: Vector2) -> void:
+	var c: Vector2i = _chunk_of(p)
+	if c == _center:
+		return
+	_center = c
+	for key: Vector2i in _needed_keys(c):
+		if not _loaded.has(key):
+			_load_chunk(key)
+	for key: Vector2i in _loaded.keys():
+		if maxi(absi(key.x - c.x), absi(key.y - c.y)) > KEEP_RING:
+			_unload_chunk(key)
+	_rebuild_bushes()
+
+
+func _load_chunk(key: Vector2i) -> void:
+	var list: Array = []
+	if _prop_index.has(key):
+		for s: Dictionary in _prop_index[key]:
+			list.append(_spawn_one(_occ_parent, s))
+	_loaded[key] = list
+
+
+func _unload_chunk(key: Vector2i) -> void:
+	for sp in _loaded[key]:
+		if is_instance_valid(sp):
+			if _shadows != null:
+				_shadows.remove_caster(sp as Sprite2D)
+			(sp as Sprite2D).queue_free()
+	_loaded.erase(key)
+
+
+## Bushes rustle when the walker passes (LifeReact); the list follows the chunks that are loaded.
+func _rebuild_bushes() -> void:
+	if react == null:
+		return
+	var bushes: Array = []
+	for key: Vector2i in _loaded.keys():
+		for sp in _loaded[key]:
+			if is_instance_valid(sp) and (sp as Sprite2D).has_meta(&"bush"):
+				bushes.append(sp)
+	react.set_bushes(bushes)
+
+
+func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 	var sp := Sprite2D.new()
 	sp.name = "Occ_" + String(s.file).get_file().get_basename()
 	sp.texture = load(DIR + String(s.file)) as Texture2D
@@ -219,8 +334,6 @@ func _spawn_one(parent: Node2D, s: Dictionary, bush_sprites: Array) -> void:
 	parent.add_child(sp)
 	if _shadows != null:
 		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
-	if _sky != null and String(s.kind) == "lantern":
-		_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
-				_sky.light_config().pool_shrine_radius * 0.7, 0.9)
 	if String(s.kind) == "bush":
-		bush_sprites.append(sp)
+		sp.set_meta(&"bush", true)
+	return sp

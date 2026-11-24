@@ -69,9 +69,20 @@ func _quad(nm: String) -> Sprite2D:
 func add_caster(src: Sprite2D, kind: String, size: Vector2) -> void:
 	var k: Vector2 = KIND.get(kind, DEFAULT_KIND) as Vector2
 	var sp: Sprite2D = _quad("Sh_" + String(src.name))
-	_items.append({"sprite": sp, "foot": src.position, "w": size.x * k.x, "h": size.y * k.y, "ov": null})
+	_items.append({"sprite": sp, "foot": src.position, "w": size.x * k.x, "h": size.y * k.y, "ov": null, "src": src})
 	_maybe_overlay(_items[_items.size() - 1])
 	_lay(_items[_items.size() - 1])
+
+
+## Drop the shadow of a prop that has been unloaded (Larkmoor loads props by chunk). Frees its quad and its pad copy.
+func remove_caster(src: Sprite2D) -> void:
+	for i: int in range(_items.size() - 1, -1, -1):
+		var it: Dictionary = _items[i]
+		if it.get("src") == src:
+			(it.sprite as Sprite2D).queue_free()
+			if it.ov != null:
+				(it.ov as Sprite2D).queue_free()
+			_items.remove_at(i)
 
 
 ## A shadow for something that is not a prop sprite (a pad slab): foot position, width, and the height it stretches from.
