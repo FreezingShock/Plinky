@@ -59,14 +59,14 @@ var tier_row: StringName = &""
 ## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
 var flower_row: StringName = &""
 var locked: bool = false
-## Cost sign on every pad (from its first price, open or locked): a wooden plank on a post, the cost (currency icon and amount)
+## Cost sign on each row's first pad only (button _1, from its first price, open or locked): a wooden plank on a post, the cost (currency icon and amount)
 ## over the reward (stat icon and gain). The plank is one child node, redrawn only when the cost is held or lost.
 const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
 const LOCK_CHIP_Z: int = 4        # the sign's z relative to its pad: above the plate (z 0), under the night shade (z 5), so it takes the day and night light like the props
-var _chip: Node2D = null          # the sign's own node, made by build_sign on every pad with a cost
+var _chip: Node2D = null          # the sign's own node, made by build_sign on a row's first pad only (null on every other pad)
 ## Buy glow and rarity corner glints, on their own child node above the night shade (z 5), so the glow reads brighter as the ground darkens.
 const HALO_Z: int = 6
 ## Buy glow: an additive radial halo on the ground, larger than the plate. Plate units: 1.0 is the plate's edge.
@@ -179,7 +179,8 @@ func _ready() -> void:
 		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
 		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
-		build_sign(_sim(), b)   # every pad carries its cost sign from its first price, open or locked
+		if gets_sign(b):
+			build_sign(_sim(), b)   # a row's first pad carries the row's cost sign, open or locked
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
 			# The gold is only the rim, lit rim and rarity ring. Gems, pip and the flowers keep the Clover reward green.
@@ -214,7 +215,7 @@ func _physics_process(delta: float) -> void:
 	if _sign_t <= 0.0:
 		_sign_t = SIGN_REFRESH_S
 		var sign_def: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
-		if sign_def != null:
+		if sign_def != null and _chip != null:
 			_refresh_sign(sim, sign_def)
 	_punch_t = maxf(_punch_t - delta / PUNCH_TIME, 0.0)
 	_lvl_t = maxf(_lvl_t - delta / LEVEL_TIME, 0.0)
@@ -585,7 +586,12 @@ func _sync_lock_chip() -> void:
 		_chip.queue_redraw()
 
 
-## Whether a pad draws its cost sign: every pad with a cost does, open or locked, and only when the font loaded.
+## Whether a button gets a cost sign at all: only a row's first pad (button _1) does. The other pads show their price in the tooltip.
+static func gets_sign(b: ButtonDef) -> bool:
+	return b.row_index == 0
+
+
+## Whether a pad draws its cost sign: a row's first pad with a cost does, open or locked, and only when the font loaded.
 static func shows_cost_sign(cost: String) -> bool:
 	return cost != "" and LOCK_FONT != null
 
@@ -660,7 +666,7 @@ static func fit_sign_text(text: String) -> String:
 
 
 ## Gives this pad its cost sign on a child node: the cost and reward icons, the node at the sign's spot, and the first
-## text. Every pad calls this, so a row's later pads show their price as well as its first (test_pad_signs.gd checks it).
+## text. Only a row's first pad calls this (see gets_sign); test_pad_signs.gd checks that the other pads have no sign.
 func build_sign(sim: Sim, b: ButtonDef) -> void:
 	_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
 	_reward_icon = IconSet.get_icon(String(b.reward_stat), LOCK_ICON)
