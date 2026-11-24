@@ -73,3 +73,8 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** PC QA on v0.58.2: the "Needs Dewdrops" chip did not show at 1x, and the Clover rim read green at 3x. The Clover row is uncommon, so its rarity ring was the uncommon green, and its gems were the Clover reward green. Both drew over the one-texel gold rim.
 - **What:** Clover pads take the gold `#f2c14e` on the rim, the lit rim, the dashed rarity ring and the corner gems. The chip is a cream box with an ink border and ink text, drawn under the plate. The buy-state green inside the plate is unchanged.
 - Not run in-engine from the cloud. Please check the chip and the rim at 1x and 3x on a PC capture.
+
+## 2026-11-24: Cost chip legible at 1x
+- **Why:** PC QA on v0.58.4: the cream chip now shows, but its digits did not read at 1x. The chip was drawn with the 5x8 font at size 16, which doubles every glyph. The text filled the chip in ink and ran past its top and bottom edges.
+- **What:** The chip uses the font's native size 8, so each glyph is one screen texel. The chip is 12 rows (ink border, 10 cream rows) with the 8-row text centred in it, and every origin and width is a whole texel.
+- Not run in-engine from the cloud. Please check the chip at 1x on a PC capture.
