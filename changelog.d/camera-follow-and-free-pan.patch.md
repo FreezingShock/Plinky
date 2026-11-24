@@ -1,1 +1,0 @@
-Camera: zoom no longer flings the view toward a far cursor, a resting mouse at the screen edge no longer drifts the view, and free pan returns cleanly to the walker. A stuck drag clears when the window loses focus.
