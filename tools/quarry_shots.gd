@@ -1,6 +1,7 @@
 extends Node
 ## Ember Quarry tour: the hub, the gate and the lava pools at zoom 1 (the quarry is a 1400x760 canvas, so the view follows
-## the walker), then one pad per row at zoom 3. Pass "locked" for the locked look.
+## the walker), then one pad per row at zoom 3. Pass "locked" for the locked look. Pass "phase=0.0" (midnight)
+## to "phase=0.5" (noon) to pin the sky's time of day, so before and after shots compare like for like.
 ## Run: godot --path . tools/quarry_shots.tscn   (headless servers: xvfb-run with the software Vulkan driver)
 
 var main: Control
@@ -30,6 +31,10 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
 	var sim: Sim = GameState.sim
 	var locked: bool = "locked" in OS.get_cmdline_user_args()
+	var pinned: float = -1.0
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("phase="):
+			pinned = arg.trim_prefix("phase=").to_float()
 	sim.gates_open[&"zone1"] = true
 	sim.gates_open[&"larkmoor"] = true
 	sim.zone_id = &"zone2"
@@ -42,6 +47,12 @@ func _ready() -> void:
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await _wait(40)
 	var tag: String = "_locked" if locked else ""
+	if pinned >= 0.0:
+		var sky: SkyCycle = main.meadow.find_child("Sky", true, false) as SkyCycle
+		if sky != null:
+			sky.debug_phase = pinned
+		tag += "_p%s" % str(pinned).replace(".", "")
+		await _wait(30)
 	var spawn: Vector2 = main.walker.position
 	await _goto(spawn, 1)
 	await _shot("q_hub" + tag)
