@@ -113,6 +113,8 @@ func set_night(night01: float) -> void:
 		_apply_alpha()
 
 
+var _rain_seen: float = -1.0
+
 func _process(_delta: float) -> void:
 	if _job != null:
 		if _job.task < 0:
@@ -123,7 +125,14 @@ func _process(_delta: float) -> void:
 			WorkerThreadPool.wait_for_task_completion(_job.task)
 			_install(_job)
 			_job = null
-	if _fields.is_empty() or FxConfig.reduce_motion or FxConfig.reduce_flashing or not _breathes():
+	if _fields.is_empty():
+		return
+	# rain changes the glow even with Reduce motion on, so the alpha follows it; the breath stays off under Reduce motion
+	if MeadowLife.rain != _rain_seen:
+		_rain_seen = MeadowLife.rain
+		_apply_alpha()
+		return
+	if FxConfig.reduce_motion or FxConfig.reduce_flashing or not _breathes():
 		return
 	_apply_alpha()
 
@@ -133,8 +142,11 @@ func _draw() -> void:
 		draw_texture(field.tex as ImageTexture, field.pos as Vector2, Color(1.0, 1.0, 1.0, float(field.a)))
 
 
+## Rain: the flower light swells by RAIN_BLOOM at full rain (the lamps' bloom is SkyModel.lamp_bloom).
+const RAIN_BLOOM: float = 0.5
+
 func _apply_alpha() -> void:
-	var a: float = lerpf(DAY_ALPHA, NIGHT_ALPHA, _night)
+	var a: float = lerpf(DAY_ALPHA, NIGHT_ALPHA, _night) * (1.0 + RAIN_BLOOM * clampf(MeadowLife.rain, 0.0, 1.0))
 	if not (FxConfig.reduce_motion or FxConfig.reduce_flashing):
 		var phase: float = fposmod(float(Time.get_ticks_msec()) / 1000.0 / BREATH_TIME, 1.0)
 		a *= 1.0 - BREATH_DEPTH * (0.5 - 0.5 * cos(TAU * phase))

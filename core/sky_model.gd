@@ -91,6 +91,10 @@ static func weather_words(rain01: float, snow_k: float, wet01: float) -> String:
 
 ## How wet the ground is, 0..1: the mean rain over the last WET_WINDOW seconds, so puddles fill during a shower and
 ## drain slowly after it (a minute of rain takes about the same time to dry). Pure, sampled the same way as rain().
+## Rain bloom: at full rain each lamp pool grows by BLOOM_RADIUS and gains BLOOM_STRENGTH, so lamps and pad rings glow
+## wider and warmer in a shower. Returns (radius multiplier, strength multiplier) for rain01 0..1.
+const BLOOM_RADIUS: float = 0.35
+const BLOOM_STRENGTH: float = 0.4
 const WET_WINDOW: float = 45.0
 const WET_SAMPLES: int = 9
 const WET_GAIN: float = 1.8
@@ -180,6 +184,12 @@ func mist(t: float, rain01: float = 0.0) -> float:
 ## The ramps in sky.tres are Gradient resources sampled at this value.
 func ramp(t: float) -> float:
 	return phase(t)
+
+
+## Lamp pool bloom for a rain level: Vector2(radius multiplier, strength multiplier), both 1.0 when dry.
+static func lamp_bloom(rain01: float) -> Vector2:
+	var k: float = clampf(rain01, 0.0, 1.0)
+	return Vector2(1.0 + BLOOM_RADIUS * k, 1.0 + BLOOM_STRENGTH * k)
 
 
 ## Lightning flash, 0..1, at game time t. Only in heavy rain (rain01 from 0.7 up, full at 1). Each 40 s window has a
