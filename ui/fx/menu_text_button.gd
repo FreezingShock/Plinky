@@ -38,6 +38,13 @@ var icon_id: String = "":
 		_fit()
 ## 0 resting .. 1 fully hovered. Read by tests.
 var t: float = 0.0
+## The active tab of a tab strip: drawn in the accent colour with a solid underline, and no ">" marker.
+var selected: bool = false:
+	set(v):
+		selected = v
+		queue_redraw()
+## The Button's focus box (marching dots). Tabs turn it off, since the ">" marker and the underline already show focus.
+var show_focus_ring: bool = true
 
 
 func _ready() -> void:
@@ -79,11 +86,12 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	super._draw()
+	if show_focus_ring:
+		super._draw()
 	var fs: int = FONT_SIZE
 	var tw: float = FONT.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
 	var down: bool = get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
-	var col: Color = RelicStyle.dim if disabled else rest_color.lerp(accent_color, 1.0 if t > 0.0 else 0.0)
+	var col: Color = RelicStyle.dim if disabled else (accent_color if (t > 0.0 or selected) else rest_color)
 	var x: float = PAD_X + float(NUDGE) + float(nudge_px(t))
 	var base: float = floorf(pad_y + FONT.get_ascent(fs)) + (1.0 if down else 0.0)
 	if icon_id != "":
@@ -101,3 +109,5 @@ func _draw() -> void:
 		FONT.draw_string(get_canvas_item(), Vector2(mx, base), ">", HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, Color(col, clampf(t * 2.0, 0.0, 1.0)))
 		var uy: float = base + 3.0
 		draw_rect(Rect2(x, uy, float(underline_px(tw, t)), 1.0), col)
+	if selected and t <= 0.0:
+		draw_rect(Rect2(x, base + 3.0, tw, 1.0), col)

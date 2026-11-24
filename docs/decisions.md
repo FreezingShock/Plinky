@@ -1,4 +1,4 @@
-# Plinky decisions log
+# Decision log has moved
 
 Format: date, decision, one line of reasoning. Newest at the bottom. The build agent appends here. Project-side decisions made in the Claude Project go here too (SPEC section 8).
 
@@ -889,3 +889,22 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **What:** a tighter frame pad (5x3 texels, not the usual 8x6 from theme.md section 5, a deliberate deviation for this one card); the category icon at its native 16 texels; the card is 36% of the HUD width, clamped to 168 to 240 texels, so it scales with the window; the middle sits at 30% of the height, higher than before; the name and description wrap to two lines at most and then end in an ellipsis, so the card cannot grow taller; the shakes are softer (0.06 and 0.14).
 - Not run in-engine. PC QA should check it at 640x360 and at a small window, beside the stat strip and the zone panel.
 
+## Every zone's gifts get a tab in Upgrades (2026-11-24)
+- **Why:** #228 showed only the zone you stand in, so the quarry's Upgrades gallery was one lone "Nucleus Gifts" header. It read as empty.
+- **Tabs:** every zone reset's gifts have a tab, locked or not. The zone you stand in comes first in the strip, then the others in reset order. Each tier already says what gates it.
+- **Kept as is:** `group_shown` still hides a zone's contents until that zone opens. The HUD currency chips and the Stats index use it, so their behaviour does not change. The gallery uses the new `UpgradeText.tab_shown`.
+- **Tab look:** the active tab is drawn in its accent colour with a solid underline, not a dotted focus box. The tab keeps the ">" marker and sweep on hover or focus. The title and pause menus keep their focus box.
+- Not verified in-engine: the strip at 640x360 with two zones, and the tab order after a zone change. PC QA should check the meadow and the quarry.
+
+## Upgrade tabs follow keyboard focus (2026-11-24)
+- **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
+- **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
+- Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
+
+## WASD walks while a menu is open (2026-11-24)
+- **Why:** opening any menu froze the walker, so a player could not walk while a panel was up. The ask was WASD only, with GUI clicks still blocked.
+- **Rule:** `PadInput.move_vector` reads WASD by physical key while `menu_open` (`menu_walk_vector`, `walk_from_keys`). Arrows, d-pad and the left stick do not walk in a menu, because Godot's ui_* actions use them for menu focus. Pad users still cannot walk in a menu. That is a choice, not a gap.
+- **Still blocked:** Space (jump) while a menu is open, because Space presses buttons. Typing in any LineEdit or TextEdit (Feedback, dev console) stops all walking. A Settings key rebind (`PadInput.key_capture`, set by the display panel) stops walking too, so W can be bound without moving.
+- **Sprint and crouch** still work while walking in a menu. They are modifiers, and no menu uses Shift or C.
+- **Tap-to-move:** a pending walk target is dropped when a menu opens or a field takes keys, so the walker does not keep walking after the menu is up.
+- Not verified in-engine: walking with WASD under the Upgrades, Relics and Settings panels, typing in Feedback with W/A/S/D, and rebinding W in Settings. PC QA should check those four.

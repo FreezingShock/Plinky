@@ -256,7 +256,6 @@ func _build_toggle(row: HBoxContainer, def: Dictionary) -> void:
 		SettingsRegistry.set_value(def["id"], not bool(SettingsRegistry.value(def["id"])))
 		_show_hint(def)
 		refresh())
-	b.mouse_entered.connect(_show_hint.bind(def))
 	row.add_child(b)
 	_refreshers.append(func() -> void:
 		b.text = "[x] On" if bool(SettingsRegistry.value(def["id"])) else "[ ] Off")
@@ -294,8 +293,6 @@ func _build_choice(row: HBoxContainer, def: Dictionary) -> void:
 		refresh()
 	prev.pressed.connect(step.bind(-1))
 	nxt.pressed.connect(step.bind(1))
-	prev.mouse_entered.connect(_show_hint.bind(def))
-	nxt.mouse_entered.connect(_show_hint.bind(def))
 	_refreshers.append(func() -> void:
 		var opts: Array = _options(def)
 		val.text = "-" if opts.is_empty() else String((opts[_option_index(opts, SettingsRegistry.value(def["id"]))] as Array)[1]))
@@ -314,7 +311,6 @@ func _build_slider(row: HBoxContainer, def: Dictionary) -> void:
 	s.value_changed.connect(func(v: float) -> void:
 		SettingsRegistry.set_value(def["id"], v)
 		put.call(v))
-	s.mouse_entered.connect(_show_hint.bind(def))
 	row.add_child(s)
 	row.add_child(val)
 	_refreshers.append(func() -> void:
@@ -337,7 +333,6 @@ func _build_action(row: HBoxContainer, def: Dictionary) -> void:
 		_armed = &""
 		b.text = label
 		_hint.text = String(((def["run"]) as Callable).call()))
-	b.mouse_entered.connect(_show_hint.bind(def))
 	b.mouse_exited.connect(func() -> void:
 		if _armed == id:
 			_armed = &""
@@ -359,6 +354,15 @@ func _build_key(row: HBoxContainer, def: Dictionary) -> void:
 	row.add_child(b)
 	_refreshers.append(func() -> void:
 		b.text = "Press a key..." if _capture == action else Keybinds.key_name(action))
+
+
+func _process(_delta: float) -> void:
+	# A waiting rebind owns the keys, so WASD must not walk the walker while it waits.
+	PadInput.key_capture = visible and _capture != &""
+
+
+func _exit_tree() -> void:
+	PadInput.key_capture = false
 
 
 func _input(event: InputEvent) -> void:

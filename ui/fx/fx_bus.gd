@@ -22,6 +22,7 @@ func _popup_parent() -> Node:
 			n = n.get_parent()
 		if n != null:
 			PopupNumber.ui_theme = (n as Control).theme
+			CrispFont.theme_font(PopupNumber.ui_theme, &"PopupLabel")   # popup glyphs: no grey AA, whole pixels
 	return _overlay
 
 ## World (texel) position -> screen position, including camera zoom and pan. Whole texels.
