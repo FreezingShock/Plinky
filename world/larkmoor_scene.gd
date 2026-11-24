@@ -207,6 +207,7 @@ func _begin(parent: Node2D) -> void:
 
 func spawn_occluders(parent: Node2D) -> void:
 	_begin(parent)
+	_add_farm(parent)
 	_refresh_center(_start_point())
 
 
@@ -214,6 +215,7 @@ func spawn_occluders(parent: Node2D) -> void:
 ## under the transition wipe uses it, so the first load does not stall the wipe's peak.
 func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_begin(parent)
+	_add_farm(parent)
 	_center = _chunk_of(_start_point())
 	var start_us: int = Time.get_ticks_usec()
 	for key: Vector2i in _needed_keys(_center):
@@ -223,6 +225,11 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 				await get_tree().process_frame
 				start_us = Time.get_ticks_usec()
 	_rebuild_bushes()
+
+
+## The Thistle Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
+func _add_farm(parent: Node2D) -> void:
+	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
 
 
 ## Keep the loaded chunks in step with the walker. Runs every frame, but only does work when the walker changes chunk.
