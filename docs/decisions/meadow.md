@@ -202,3 +202,9 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - The sails get their own id, far above the instance counter, and are voxelized directly, not through `put()`, so the placement random stream and every later prop stay where they were.
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
+
+## 2026-11-24: Districts follow the rows (Larkmoor)
+| Decision | Why |
+|---|---|
+| The Sprout row's district is **Reedgate** (new, `reedgate`), the Clover row's district is **Heronmere** (the lake, south shore). **Cairnfold** (stones and crystals, no pads) is a district marker of its own again at the stones, not at the Clover row. | The rows moved beside the paths, so the old names (Sprout at Heronmere, Clover at Cairnfold) named places they no longer sit in. The Cairnfold banner was showing over the Clover road. |
+| Area defs split the same way: `larkmoor_reedgate.tres` lists the Sprout pads, `larkmoor_heronmere.tres` the Clover pads; orders shifted by one. Ids of existing areas are unchanged. | One row per district matches the other districts. |

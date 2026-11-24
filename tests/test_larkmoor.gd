@@ -69,6 +69,9 @@ func run(t: Object) -> void:
 	t.ok(anchors.get_node_or_null("Gate") != null and anchors.get_node_or_null("Arch") != null and anchors.get_node_or_null("Walker") != null, "Gate, Arch and Walker anchors exist")
 	var d: Dictionary = scene.call("district_at", (anchors.get_node("District_heronmere") as Marker2D).position)
 	t.eq(String(d.get("name", "")), "Heronmere", "district lookup names Heronmere at its centre")
+	for pair: Array in [["reedgate", "Reedgate"], ["cairnfold", "Cairnfold"]]:
+		var dd: Dictionary = scene.call("district_at", (anchors.get_node("District_" + String(pair[0])) as Marker2D).position)
+		t.eq(String(dd.get("name", "")), String(pair[1]), "district lookup names %s at its centre" % pair[1])
 	t.ok((scene.call("district_at", Vector2(20.0, 20.0)) as Dictionary).is_empty(), "no district over open water")
 	# lighting: every prop casts a shadow and lanterns light the ground (same wiring as the meadow)
 	var props := Node2D.new()

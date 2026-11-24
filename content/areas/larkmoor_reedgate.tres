@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/area_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"reedgate"
+zone = &"larkmoor"
+display_name = "Reedgate"
+order = 1
+icon = "lake"
+theme_role = 7
+blurb = "Where the west road leaves the main road for the lake, with the first reeds beside it. Five Sprout pads line the road, paid in Dewdrops. Clover opens once the last Sprout pad is pressed."
+pad_buttons = PackedStringArray("lark_sprout_1", "lark_sprout_2", "lark_sprout_3", "lark_sprout_4", "lark_sprout_5")
