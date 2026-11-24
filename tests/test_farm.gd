@@ -124,11 +124,11 @@ func run(t: Object) -> void:
 	for y: int in range(40):
 		for x: int in range(48):
 			var px: Color = plain.get_pixel(x, y)
-			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_INK]):
+			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_SHADE]):
 				has_root = true
-			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_ACCENT]):
+			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_GOLD_HI]):
 				has_body = true
-	t.ok(has_root and has_body, "each stalk has a dark root and a golden body")
+	t.ok(has_root and has_body, "each stalk has a dark root and a gold head")
 	# Gust: a field steps through all its frames, and holds still under Reduce Motion.
 	var seen: Dictionary = {}
 	for step in range(0, 64):
