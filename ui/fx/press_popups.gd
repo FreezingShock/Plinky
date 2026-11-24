@@ -131,7 +131,7 @@ func _exit_tree() -> void:
 		instance = null
 
 
-## HoldPress.end(): every running popup holds a moment, then floats away with a last burst.
+## TexelPad.hold_release(): every running popup holds a moment, then floats away with a last burst.
 static func release_runs() -> void:
 	if instance != null:
 		instance.release_all()

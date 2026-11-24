@@ -33,7 +33,7 @@ const MAX_LABEL: int = 12
 
 const ATTR_TIPS: Dictionary = {
 	&"walk_speed": "How fast the walker moves between pads.",
-	&"press_rate": "How often a pad pays while you stand on it.",
+	&"press_rate": "How often a pad pays while you stand on it or hold it.",
 	&"crit_chance": "Chance that a press is a critical hit and pays extra.",
 	&"luck": "Better odds that a press drops a relic.",
 	&"offline_hours": "Hours of income you collect while the game is closed.",
