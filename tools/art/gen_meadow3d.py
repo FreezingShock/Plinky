@@ -7,7 +7,7 @@ import numpy as np, math, random, json, os, sys, time
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import depth_pass, grass_tex
-GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
+GRASS = os.environ.get('GRASS', 'f')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAST = '--fast' in sys.argv
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
