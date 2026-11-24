@@ -1,1 +1,0 @@
-Larkmoor has one connected river from Heronmere to the mere, with a wide plank bridge and a footbridge. The walker can jump across narrow water, and landing in the river puts it on the nearest bank. The south and west edges now rise into a rim.
