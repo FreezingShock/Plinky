@@ -19,6 +19,7 @@ var prefix: String = ""
 var text: String = ""
 var _shown: String = ""
 var _lift: int = 0
+var _hovered: bool = false
 var _rest: AsciiBox
 var _lit: AsciiBox
 
@@ -28,10 +29,15 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	focus_mode = Control.FOCUS_ALL
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	mouse_entered.connect(queue_redraw)
-	mouse_exited.connect(queue_redraw)
+	mouse_entered.connect(_set_hover.bind(true))
+	mouse_exited.connect(_set_hover.bind(false))
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
+
+
+func _set_hover(on: bool) -> void:
+	_hovered = on
+	queue_redraw()
 
 
 func setup(p_icon: Texture2D, p_outline: Color, p_amount_color: Color, p_amount: BigNum, p_prefix: String, p_text: String) -> void:
@@ -64,7 +70,7 @@ func show_amount(progress: float, lift_px: int) -> void:
 func _draw() -> void:
 	if _rest == null:
 		return
-	var lit: bool = is_hovered() or has_focus()
+	var lit: bool = _hovered or has_focus()
 	(_lit if lit else _rest).draw(get_canvas_item(), Rect2(Vector2.ZERO, size))
 	var lift: int = _lift + (1 if lit and not _calm() else 0)
 	if icon_tex != null:
