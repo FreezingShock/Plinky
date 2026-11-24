@@ -23,7 +23,7 @@ extends Resource
 ## Cap on rain intensity, 0..1. Keeps it light.
 @export var rain_max: float = 0.6
 ## Rain drops at full intensity over the 860x500 sky box.
-@export var rain_drops: int = 3000
+@export var rain_drops: int = 900
 
 ## Wind. Calm is the steady breeze, gusts ride above it, rain adds a little.
 @export var wind_calm: float = 0.2
