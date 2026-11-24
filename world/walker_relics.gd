@@ -33,15 +33,6 @@ func _ready() -> void:
 	_rebuild()
 
 
-## Highest rarity rank among equipped relics (-1 for none). Pure: used by the walker and the tests.
-static func top_rank(inv: RelicInventory) -> int:
-	var best: int = -1
-	for id: StringName in inv.equipped:
-		if inv.defs.has(id):
-			best = maxi(best, (inv.defs[id] as RelicDef).rarity.rank)
-	return best
-
-
 func _rebuild() -> void:
 	var inv: RelicInventory = GameState.relics
 	_ids = []

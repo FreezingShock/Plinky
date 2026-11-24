@@ -181,11 +181,11 @@ func run(t: SceneTree) -> void:
 
 	# Walker aura: the highest equipped rarity sets the pool colour and whether Epic and up sparkle
 	var aura := RelicInventory.new(cfg, defs)
-	t.eq(WalkerRelics.top_rank(aura), -1, "no equipped relics means no aura rank")
+	t.eq(aura.top_equipped_rank(), -1, "no equipped relics means no aura rank")
 	aura.add_relic(&"r_cash")
 	aura.add_relic(&"r_crit")
 	aura.equip(&"r_cash")
-	t.eq(WalkerRelics.top_rank(aura), 0, "common only: rank 0")
+	t.eq(aura.top_equipped_rank(), 0, "common only: rank 0")
 	aura.equip(&"r_crit")
-	t.eq(WalkerRelics.top_rank(aura), 3, "Epic equipped: rank 3")
+	t.eq(aura.top_equipped_rank(), 3, "Epic equipped: rank 3")
 
