@@ -24,7 +24,7 @@ const LEAF_DARK: String = "28683a"
 const LEAF_LIGHT: String = "7ccf6a"
 const SEED: String = "6b4a2a"
 const FROST: String = "eaf6ff"
-const DEW: String = "f4fbff"      # the bright drops on an open head at dawn
+const DEW: String = "ffffff"      # the bright drops on an open head at dawn
 const STATES: int = 3              # head states in the atlas: open, shut at night, dew at dawn
 const SHADOW: Color = Color(0.04, 0.14, 0.10, 0.42)   # soft ground shadow: a translucent dark green, so grass shows through
 const FOLD_CLOSED: float = 0.56   # the petal radius when a head is shut at night
@@ -247,6 +247,13 @@ static func _bake(stat: StringName, variant: int, lean: int, season: int, closed
 	var leaf_row: int = ry + 2 if season != SEASON_WINTER else 0
 	for y in range(stem_top, foot):
 		cells[Vector2i(0, y)] = Color(LEAF_DARK)
+	if season == SEASON_WINTER:
+		# frost: the stalk's top two rows and a crown either side of them are white, so a bare stalk reads at 1x
+		for y in [stem_top, stem_top + 1]:
+			cells[Vector2i(0, y)] = Color(FROST)
+		for x in [-1, 1]:
+			cells[Vector2i(x, stem_top + 1)] = Color(FROST)
+			cells[Vector2i(x, stem_top + 2)] = Color("b9d6e0")
 	var leaf_color: Color = Color(LEAF) if season != SEASON_WINTER else Color(LEAF_DARK)
 	if season == SEASON_AUTUMN:
 		leaf_color = Color("b8702e")
@@ -259,15 +266,21 @@ static func _bake(stat: StringName, variant: int, lean: int, season: int, closed
 		cells[Vector2i(-2, y)] = tip if i == 0 else leaf_color
 		cells[Vector2i(1, y)] = Color(LEAF_DARK) if season != SEASON_AUTUMN else Color("7a4220")
 		cells[Vector2i(2, y)] = Color(LEAF_DARK) if i == 0 else Color(LEAF_DARK).darkened(0.1)
+		if season == SEASON_WINTER:
+			cells[Vector2i(1, y)] = Color("b9d6e0")   # the shaded side of a dead leaf takes the frost too
+			cells[Vector2i(2, y)] = Color("9fc0cc")
 	if season != SEASON_WINTER:
 		_head(cells, rx, ry, n, sharp, phase, fold, petal, shade, light, heart)
 		if dew and not closed:
 			_dew(cells, rx, ry, stat_seed(stat), heart)
-	# the soft shadow under the foot, only where nothing is drawn yet
+	# the soft shadow under the foot, only where nothing is drawn yet; in winter a pale rime lies on the ground instead
+	var ground: Color = Color(SHADOW.r, SHADOW.g, SHADOW.b, SHADOW.a)
+	if season == SEASON_WINTER:
+		ground = Color(0.78, 0.9, 0.94, 0.55)
 	for x in range(-rx - 1, rx + 2):
 		var q := Vector2i(x, foot)
 		if not cells.has(q):
-			cells[q] = Color(SHADOW.r, SHADOW.g, SHADOW.b, SHADOW.a)
+			cells[q] = ground
 	if outline:
 		_outline(cells)
 	return _to_image(cells, lean)
@@ -304,7 +317,7 @@ static func _dew(cells: Dictionary, rx: int, ry: int, seed_v: int, heart: Color)
 			var q := Vector2i(x, y)
 			if not cells.has(q) or (cells[q] as Color).is_equal_approx(heart):
 				continue
-			if _hash(x, y, seed_v + 29) < 0.16:
+			if _hash(x, y, seed_v + 29) < 0.24:
 				cells[q] = Color(DEW)
 
 
@@ -351,7 +364,7 @@ static func _shrub(cells: Dictionary, layout: Array, season: int, pal: Array[Col
 			elif lit_amount < -0.3:
 				c = dark
 			var h: float = _hash(x, y, seed_v + 7)
-			if season == SEASON_WINTER and c == lit and h < 0.3:
+			if season == SEASON_WINTER and c == lit and h < 0.5:
 				c = Color(FROST)
 			elif h < dots:
 				var pick: float = _hash(x, y, seed_v + 13)
