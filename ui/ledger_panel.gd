@@ -35,7 +35,7 @@ func _init() -> void:
 	v.add_child(head)
 	var title := Label.new()
 	title.theme_type_variation = &"TitleLabel"
-	title.text = "Ledger"
+	title.text = "Achievements"
 	head.add_child(title)
 	_count = Label.new()
 	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL

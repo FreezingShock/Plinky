@@ -8,6 +8,10 @@ extends Resource
 @export var display_name: String
 @export var effect: StringName
 @export var per_level: float = 0.05
+## An optional second effect the same gift has, worth per_level2 a level ("" for none). Its total adds to effect_total(effect2),
+## so the rest of the game reads it like any other effect. The menu shows only per_level, so the blurb names the second one.
+@export var effect2: StringName = &""
+@export var per_level2: float = 0.0
 @export var cap: int = 20
 @export var base_cost: float = 3.0
 @export var cost_growth: float = 1.4

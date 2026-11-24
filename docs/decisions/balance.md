@@ -78,3 +78,48 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - 2026-11-23, Nathan: global Prestige is retired as the main loop. Every zone gets its own rebirth/ascension with its own currency and its own themed upgrade menu, in the same menu style as Upgrades. Meadow = Bloom (Seeds, Bloom Gifts). Ember Quarry = Reforge later. Keep layers modest.
 - Built as `ZoneResetDef` (data/zone_reset_def.gd), one .tres per zone in content/resets/. A new zone needs: the def, a currency stat, an icon at 8/16/24/32 px, a colour in StatStyle.COLORS, and gift attributes with `currency` set to it.
 - Bloom repeat pacing: resets only Sunlight and Larkmoor's flowers (not Dewdrops or Clover Leaves), +25% pad reward per use, requirement shrinks 15% per use down to 30%. Unmeasured in-engine; run tools/sim_bloom.gd on the PC.
+
+## Relic abilities expansion (2026-11-24)
+- **Why:** Nathan asked for many more relics, each with a unique ability rather than a stat bump. Six relics were not enough variety.
+- **What:** 27 relics across Common to Mythic (4 to 6 each), using 11 new effect kinds appended to `RelicDef.Effect` so existing `.tres` values keep their meaning. Divine and Special are unchanged (weight 0, granted by rebirths and achievements).
+- **Chosen:** each relic gets a distinct trigger (zone, period, heat, repeat, drop, refund, offline rate, pity timer) so a relic reads as its own ability. Some effect kinds appear at two or three rarities with different numbers and triggers; that is a deliberate tier ladder.
+- **Random sequence:** a new roll (free presses) only runs when a Free Presses relic is equipped, so runs without one keep the same random sequence.
+- **Offline cap:** away income is capped at 0.75 of the awake rate (`offline_rate_cap`). Without the cap, three max lanterns reached 1.12, which broke the rule that idle takes about 2x as long as active (#221). Set by the coordinator on 2026-11-24. `tools/sim.gd` has not been run on the new relics yet; that is the PC QA step.
+- **Not verified in-engine:** the new scripts were written and read but not run in Godot here. CI's unit and sim jobs run the new relic tests and the sim paths.
+
+## 2026-11-24 Bigger Bloom and Nucleus gifts (minor)
+- **Why:** most gifts were small nudges (+6% pad reward per level, +50 starting Sunlight). Nathan asked for gifts that matter more, and for existing ones to be improved before new ones are added.
+- **Chosen:** keep the gift list and the tiers (unlock by Blooms or Nucleus count). Raise the per-level value of the gifts that already move the game most, in data only (`content/attributes/bloom_*.tres`, `nucleus_*.tres`). No script change, so the Upgrades layout (#232) is untouched and the menu text reads the new numbers itself.
+- **Changed (per level, cap 10 unless noted):**
+
+| Gift | Before | After | At cap |
+|---|---|---|---|
+| Head Start (starting Sunlight) | 50 | 120 | 510 to 1,210 start; sprout 3 (1,000) now affordable at once |
+| Deep Soil (Sunlight income) | 10% | 15% | +100% to +150% |
+| Wide Bloom (pad reward) | 6% | 12% | +60% to +120% |
+| Seed Pods (Seeds per Bloom) | 15% | 30% | +150% to +300% |
+| Twin Petals (double press) | 4% | 6% | +40% to +60% |
+| Bramble (crit chance) | 2% | 3% | +20% to +30% |
+| Rooted Study (pad XP) | 15% | 25% | +75% to +125% |
+| Anvil Plates (pad reward) | 6% | 12% | +60% to +120% |
+| Shard Veins (Core Shards per Nucleus) | 15% | 30% | +150% to +300% |
+| Stoked Fire (Embers income) | 10% | 15% | +100% to +150% |
+| Flint Edge (crit chance) | 2% | 3% | +20% to +30% |
+| Anvil Study (pad XP) | 15% | 25% | +75% to +125% |
+| Twin Strike (double press) | 4% | 6% | +40% to +60% |
+
+- **Left alone, on purpose:** Warm Start already opens cinder 3 (600 Embers) at its cap of 1,010, so it does not need more. Wildflower, Dew Sprites, Forge Hands and Heart Strike already press or pay for free at up to 1 to 1.6 a second, and raising them would push idle past the 2x target. Bloom Echo and Core Echo already add 0.25 per Bloom before their own bonus. Roots and Banked Rows keep flowers and rows, which is already the strongest effect in each list. Long Dusk and Slow Burn stay at +4 hours of offline cap, since offline is already 0.5x.
+- **Pacing:** not checked. `tools/sim.gd` (the CI sim gate) plays without attributes, so it cannot see these changes. `tools/sim_bloom.gd` plays with the meadow gifts, but Godot does not run in the cloud. Before this ships, the PC QA run should run `tools/sim_bloom.gd` and report minutes per Bloom and the idle:active ratio. Head Start is the one most likely to shift the first cycle.
+- **Tests:** `tests/test_nucleus.gd` had the old values (0.10 and 0.15) written in. It now reads them from the gift, so the test follows the data.
+- Not run in the engine: the tests and both sims. The menu text and the gift cards are data-driven, so they read the new numbers without a screenshot change, but PC QA should still check a Bloom and a Nucleus card for text width.
+
+## 2026-11-24 Gift second effects and the press proc (minor)
+- **Why:** #237 raised the numbers, but each gift still did one thing. Nathan asked for gifts that matter more, so four gifts now carry a second effect that changes how the game plays.
+- **Schema:** `AttributeDef` gains `effect2` and `per_level2` (default empty and 0). `Sim.effect_total` sums both, so the rest of the game reads a second effect like any other. Existing gifts are unchanged.
+- **Press proc (new effect `press_proc`):** each press has a chance of `per_level2` a level to pay `GameConfig.press_proc_mult` (5) times its reward. Twin Petals and Twin Strike carry it at 0.5% a level, so the cap of 10 gives a 5% chance, about +20% expected press reward. The roll is `Formulas.proc_mult`, which is pure and tested. The roll only draws from the RNG when the effect is owned, so runs without it keep the same random sequence.
+- **Reward-bonus synergy:** Wide Bloom adds 1% a level to `bloom_bonus` and Anvil Plates adds 1% a level to `nucleus_bonus`. Each Bloom or Nucleus then pays that much more on every pad, stacking with the base 25% and with Echo. At cap that is +10% a Bloom, so ten Blooms add 100% on top.
+- **Idle:** the proc runs on presses only, so it raises active play and slightly lengthens the idle ratio. The Bloom bonus applies to pad rewards, and offline tending pays pad rewards too, so it lifts both sides. Neither was measured.
+- **Not done:** no new Bloom-count tier. The existing `unlock_resets` tiers already do the job.
+- **Shown:** the gift card puts the second effect on its line 2, after "now -> next" ("+12% -> +14%  +10%/Bloom"), so the card stays at 52 px and the 180 px list cap holds (per the coordinator, after #242's compact cards). The Upgrades tooltip and the Stats index say "Also now X, next Y". `UpgradeText.second_short` and `second_value` do the text. Line 2 may be too wide for a 150 px card with a long second value, so PC QA should check it at 640x360.
+- **Not shown:** the stat breakdown (`StatSources`) and `TipText.attribute` (no caller in the game, only tests) still show only the primary effect.
+- **Not run in the engine:** the new unit tests run in CI. The idle ratio and pacing still need `tools/sim_bloom.gd` on the PC.

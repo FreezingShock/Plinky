@@ -14,6 +14,8 @@ extends Resource
 ## Idle should take about twice as long as active play (locked rule), so away time pays this fraction of the live
 ## income rate. Tending can't compound it: with one slice the whole stretch is priced at the rate you left with.
 @export var offline_income_fraction: float = 0.5
+## Most share of income time away can pay, relics included. Keeps idle at well under the awake rate (Nathan: idle about 2x as long as active).
+@export var offline_rate_cap: float = 0.75
 @export var offline_slices: int = 1
 @export var offline_tend_fraction: float = 0.1
 ## Relic drop rolls run at this fraction of the awake rate (same chance, luck and pity rules), at most
@@ -22,6 +24,8 @@ extends Resource
 @export var offline_relic_max_drops: int = 3
 @export var prestige_exponent: float = 0.8
 @export var crit_multiplier: float = 5.0
+## What a press proc (the press_proc gift effect) pays when it lands: a multiple of the press.
+@export var press_proc_mult: float = 5.0
 ## Rebirth needs this stat at or above rebirth_min_value, and converts it to prestige.
 @export var prestige_source_stat: StringName = &"reb"
 @export var prestige_stat: StringName = &"prestige"

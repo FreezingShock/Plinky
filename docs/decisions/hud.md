@@ -264,3 +264,45 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Lock text:** "Unlocks after 1 Nucleus reset" (was "Nucleuss").
 - **Taste call for Nathan:** hover puts a faint wash on a card you can afford. Say if you want the hover left off.
 - Not verified in-engine: the sparks, the pop timing and the taller panel. PC QA should check both zones with motion on and off.
+
+## 2026-11-24 Achievement banner and the Achievements tile
+- **Layout:** the unlock card is now a wide banner centred across the screen, its middle at 38% of the height (a bit above centre), 380 texels wide, so it sits clear of the bottom bar and the centre of the pads. A taste call made in this thread; Nathan can ask for another height.
+- **Menus:** unlocks are held while any menu is open, and a banner up when a menu opens is cut short and shown again later. This replaces the old z-order-only rule, so a menu is never covered.
+- **Look:** the banner unfurls from a sliver in eight whole steps (no smooth scale), Reduce Flashing turns off the dither ink. Per-section particle styles and chimes use existing sound files, so no new audio was added.
+- **Naming:** the hamburger tile and the window title read "Achievements". The internal id `ledger` and the icon file stay, so saves and tests are unaffected.
+- **Not run in-engine:** Godot is not available in the cloud. Unverified: the banner's real size and position at 640x360 and at other window sizes, the particle look, the unfurl timing and the chimes. PC QA should capture an unlock in each section and check it against an open menu.
+- **Every banner waits for menus (PC QA, 2026-11-24):** the season banner and the zone banners (`Banner`, via `Banner.hold`) and the relic toast also wait while a menu is open, and a banner up when a menu opens is held back to the front of the queue and shown after it closes. PC QA saw the season banner cut across the Upgrades cards, and the achievement toast over Stats and Upgrades. Subtitles and tip cards are unchanged (tips already yield to open menus).
+
+## Upgrades menu fit and menu layer (2026-11-24)
+- **Cards:** stacked to three lines (name and level; now to next; pips and cost). The Buy button is gone: the whole card buys, and Enter or Space buys while the card has focus. Two across at 150 px, so the panel is about a third narrower.
+- **Outline and dim:** affordable is a bright green frame; unaffordable is a red frame with the contents dimmed to 55%, so the two read apart. Maxed is gold, locked is dim.
+- **Uniform tiers:** each tier's grid has a fixed width, so tier 2 matches tier 1.
+- **Height:** the list takes what its tab needs, up to 180 px, then scrolls.
+- **Menu layer:** a shown menu moves to the end of its parent (`MenuAnim.bring_front`), so the relic bar, momentum meter, sprint trail and HUD chips all draw under it. No HUD piece draws over an open menu. Every menu is covered: animated ones through `MenuAnim.attach`, the rest through `MenuAnim.front_on_show`.
+- **Tab highlight:** one function (`Hud._apply_upgrade_tab`) sets the page and the highlight together, and runs on every select and refresh. Opening the menu picks the current zone's tab.
+- Not verified in-engine: the new size at 640x360, the z order against each HUD piece, the dim levels. PC QA should check both zones and a click, a hold and a Enter buy.
+
+## Menus clear of the meter, zone gifts only in Upgrades (2026-11-24)
+- **Meter:** a centred menu whose column reaches the momentum meter's column stops 6 px above the meter, so the meter's corner is never covered. Menus that do not reach the meter's column stay centred on the frame. Chosen over hiding the meter while a menu is open, because the meter's state stays visible during a menu.
+- **Attributes:** the Stats and Attributes page lists only Prestige and Rebirth Perk attributes. Zone gifts (Bloom, Nucleus) appear only in the Upgrades gallery, which already groups them. Chosen over filtering by zone, because a gift has one home and two places showing it would drift.
+- Not verified in-engine: the panel's new height above the meter at 640x360, and the Attributes page with a Nucleus save. PC QA should check both.
+
+## Every zone's gifts get a tab in Upgrades (2026-11-24)
+- **Why:** #228 showed only the zone you stand in, so the quarry's Upgrades gallery was one lone "Nucleus Gifts" header. It read as empty.
+- **Tabs:** every zone reset's gifts have a tab, locked or not. The zone you stand in comes first in the strip, then the others in reset order. Each tier already says what gates it.
+- **Kept as is:** `group_shown` still hides a zone's contents until that zone opens. The HUD currency chips and the Stats index use it, so their behaviour does not change. The gallery uses the new `UpgradeText.tab_shown`.
+- **Tab look:** the active tab is drawn in its accent colour with a solid underline, not a dotted focus box. The tab keeps the ">" marker and sweep on hover or focus. The title and pause menus keep their focus box.
+- Not verified in-engine: the strip at 640x360 with two zones, and the tab order after a zone change. PC QA should check the meadow and the quarry.
+
+## Tap-to-move ignores clicks on the GUI (2026-11-24)
+- **Why:** with the Relics panel open, a click inside it drew the walk ring and dots under the panel. Godot only routes a click to `_unhandled_input` when no Control stopped it, and a panel background with PASS or IGNORE lets it through.
+- **Rule:** `GuiGuard.covers` (ui/gui_guard.gd) checks rectangles of visible Controls at the click point. It counts STOP and PASS controls and any Panel or PanelContainer whatever its filter. It skips IGNORE labels and containers and full-screen layout roots, so floating numbers and the pixel view never block the world.
+- **Pads and critters:** the same check stops a click on the GUI from pressing a pad or catching a critter under it. Clicks in the world are unchanged.
+- **Menus:** no tap-to-move at all while a menu is open, since the walker is frozen then and a late walk after the menu closes would surprise.
+- **Chosen over** `gui_get_hovered_control()`, because the hovered control is only updated on mouse motion and can be stale on a click. The check runs on the click's own position.
+- Not verified in-engine: a click on the Relics panel, the HUD and a tooltip, and a click on empty meadow next to a panel edge. PC QA should check all four.
+
+## Upgrade tabs follow keyboard focus (2026-11-24)
+- **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
+- **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
+- Not verified in-engine. PC QA should check Left and Right across both zones' tabs.

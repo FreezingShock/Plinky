@@ -112,13 +112,16 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 	return rows
 
 
-## One row per Attribute, then placeholders for the ones that are still on their way.
+## One row per Prestige or Rebirth Perk Attribute. A zone reset's gifts (Bloom, Nucleus) live only in the Upgrades gallery,
+## so they have no section here.
 static func attributes(sim: Sim) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	var ids: Array = sim.attribute_defs.keys()
 	ids.sort()
 	for aid: StringName in ids:
 		var a: AttributeDef = sim.attribute_defs[aid]
+		if sim.reset_for_currency(a.currency) != null:
+			continue
 		var lv: int = sim.attr_level(aid)
 		var now: String = effect_text(a, float(lv) * a.per_level)
 		var tip: String = a.blurb if a.blurb != "" else String(ATTR_TIPS.get(a.effect, "A permanent upgrade."))
@@ -128,15 +131,17 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 			tip += "\nMaxed out."
 		else:
 			tip += "\nNext level: %s\nCost: %s %s" % [effect_text(a, float(lv + 1) * a.per_level), sim.attribute_cost(aid).format(), UpgradeText.currency_name(a)]
+		if sim.attr_unlocked(aid) and a.effect2 != &"":
+			tip += "\n" + UpgradeText.second_sentence(a, lv, sim.config.press_proc_mult)
 		var perk: bool = a.currency == &"rp"
 		var zr: ZoneResetDef = sim.reset_for_currency(a.currency)
-		var group_name: String = "Rebirth Perks" if perk else (zr.menu_title if zr != null else "Attributes")
+		var group_name: String = "Rebirth Perks" if perk else "Attributes"
 		var r: Dictionary = _row(aid, group_name, a.display_name, attr_icon(a), "Lv %d/%d" % [lv, a.cap], now, tip)
 		r["level"] = lv
 		r["cap"] = a.cap
 		r["maxed"] = lv >= a.cap
-		r["color_id"] = &"rp" if perk else (a.currency if zr != null else a.effect)   # StatStyle colour: perks wear their currency's colour
-		r["group_color_id"] = &"rp" if perk else (a.currency if zr != null else &"")
+		r["color_id"] = &"rp" if perk else a.effect   # StatStyle colour: perks wear the Rebirth Point colour
+		r["group_color_id"] = &"rp" if perk else &""
 		rows.append(r)
 	return rows
 

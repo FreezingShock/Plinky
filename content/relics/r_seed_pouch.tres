@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RelicDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://data/relic_def.gd" id="1"]
+[ext_resource type="Resource" path="res://content/rarities/common.tres" id="2"]
+[ext_resource type="Texture2D" path="res://assets/icons/relics/r_seed_pouch.png" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = &"r_seed_pouch"
+display_name = "Seed Pouch"
+rarity = ExtResource("2")
+icon = ExtResource("3")
+effect = 12
+stacking = 0
+per_stack = 0.08
+max_stacks = 10
+description = "Mastery XP from each press is {value} higher."
