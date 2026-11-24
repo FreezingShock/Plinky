@@ -1,1 +1,0 @@
-The meadow's path to the pond is a short sand spur off the main path now, instead of a rough patch of baked sand. The pond's light pools also follow the two lanterns removed from the Starting Clearing.
