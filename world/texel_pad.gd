@@ -46,9 +46,12 @@ const FORGE_ART: Dictionary = {&"cinder": "cinder", &"ore": "ore", &"slagrow": "
 const FORGE_DIR: String = "res://assets/art/zone2/ladder/"
 const FLICKER_MS: int = 260
 static var _forge_tex: Dictionary = {}   # "name_f" -> Texture2D
-## Pad 2's side sprouts (x, y from the plate base, kind): a small bloom on a stem.
-const BUD: Array[Vector3i] = [Vector3i(0, -4, 0), Vector3i(-1, -3, 0), Vector3i(1, -3, 0), Vector3i(0, -3, 2), Vector3i(0, -2, 3), Vector3i(0, -1, 3), Vector3i(-1, -1, 3), Vector3i(1, -2, 3)]
 const LEAF: Color = Color("3d9a45")
+## Baked bed art for the open tiers (tools/art/gen_pad_beds.py): a plate shadow, the leaves, and the blooms in greyscale that take
+## the stat colour here, so the colour-blind tint still applies. Each file is 48 x 44 with the plate centre at (24, 27).
+const BED_DIR: String = "res://assets/art/zone1/pads/"
+const BED_ORIGIN: Vector2 = Vector2(-24.0, -27.0)
+static var _bed_tex: Dictionary = {}   # file name -> Texture2D
 ## Art stages per tier: pad 1 is a single flower, pad 5 a crowned bed.
 const MAX_STAGE: int = 5
 const BLOOM_TIME: float = 0.9   # the rise when this pad's tier opens
@@ -148,6 +151,7 @@ func _init() -> void:
 	_halo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # one texel per world texel: the halo stays pixel-crisp
 	_halo.draw.connect(_draw_halo)
 	add_child(_halo)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # the baked bed is a texture: keep it one texel per texel
 
 
 func _ready() -> void:
@@ -334,7 +338,7 @@ func _signature() -> int:
 	return (int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | nearness() << 5 | (_ripple_step() + 1) << 7
 		| _pulse_step() << 10 | int(progress * 8.0) << 12 | int(holding) << 16
 		| _level_step() << 24 | int(locked) << 26 | int(_bloom_t * 10.0) << 27 | int(glow != null and glow.flash_t > 0.0) << 17 | (glow.color_index if glow != null else 0) << 18
-		| _forge_frame() << 32 | _twinkle() << 36)
+		| _forge_frame() << 32)
 
 
 func _rows(cx: int, cy: int, hx: int, hy: int, left: Color, right: Color) -> void:
@@ -621,13 +625,6 @@ func _refresh_sign(sim: Sim, b: ButtonDef) -> void:
 		_chip.queue_redraw()
 
 
-## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
-func _twinkle() -> int:
-	if not FLOWERS.has(flower_row) or MeadowLife.reduce_motion or locked:
-		return 0
-	return (Time.get_ticks_msec() / 400) % 3
-
-
 ## 0..2: which flicker frame the forge object is on (always 0 under Reduce motion). Part of the redraw signature.
 func _forge_frame() -> int:
 	if not FORGE_ART.has(tier_row) or MeadowLife.reduce_motion or locked:
@@ -680,48 +677,39 @@ static func stage_of(row_index: int) -> int:
 	return clampi(row_index + 1, 1, MAX_STAGE)
 
 
-## A half-height copy of the tier flower (the bloom's top four rows over the stem's last three) at x offset `ox`, `by` texels
-## above the plate; appended to `cells` (x, y, kind) like the main flower.
-static func _half_flower(cells: Array[Vector3i], rows: Array, n: int, ox: int, by: int) -> void:
-	for k in 7:
-		var ml: String = rows[k] if k < 4 else rows[n - 7 + k]
-		for rx in range(4, 9):
-			var mc: String = ml[rx]
-			if mc != ".":
-				cells.append(Vector3i(rx - 6 + ox, by + k, "#dcgW".find(mc)))
+## Draws the baked bed for this pad's stage over the plate: the shadow, the leaves, then the blooms in the stat colour.
+func _draw_bed_art(top: int, stage: int) -> void:
+	var at: Vector2 = BED_ORIGIN + Vector2(0.0, float(top))
+	draw_texture(bed_texture("shade_s%d.png" % stage), at)
+	draw_texture(bed_texture("leaf_s%d.png" % stage), at)
+	draw_texture(bed_texture("%s_bloom_s%d.png" % [flower_row, stage]), at, stat_color)
 
 
-## The tier flower standing on the plate with a 1 texel ink outline. Locked pads show a small closed bud. When the tier
-## opens it rises row by row and throws a ring of petals. One pip per pad position (1..3) sits at the front corner.
+## The baked bed texture for one file in BED_DIR, loaded once.
+static func bed_texture(file: String) -> Texture2D:
+	if not _bed_tex.has(file):
+		_bed_tex[file] = load(BED_DIR + file) as Texture2D
+	return _bed_tex[file] as Texture2D
+
+
+## The tier flower standing on the plate with a 1 texel ink outline. Open pads draw the baked bed (see _draw_bed_art). Locked
+## pads show a small closed bud, and when the tier opens it rises row by row and throws a ring of petals. One pip per pad
+## position (1..3) sits at the front corner.
 func _draw_flowers(top: int, ink: Color) -> void:
 	var rows: Array = FLOWERS[flower_row]
 	var n: int = rows.size()
 	var base: int = top - 1
-	var shown: int = 3 if locked else n
-	if _bloom_t > 0.0:
-		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
-	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
 	var stage: int = MAX_STAGE
 	var sbd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if sbd != null:
 		stage = stage_of(sbd.row_index)
-	if not locked and _bloom_t <= 0.0 and stage >= 2:
-		for side in [-1, 1]:
-			if stage == 2:   # pad 2: a sprout and a smaller bud beside the flower, and a leaf tuft at its foot
-				for bc: Vector3i in BUD:
-					cells.append(Vector3i(bc.x + side * 9, base + bc.y, bc.z))
-					cells.append(Vector3i(bc.x + side * 15, base + bc.y + 2, bc.z))
-				for lc: Vector2i in [Vector2i(5, 0), Vector2i(6, -1), Vector2i(7, -2), Vector2i(4, 1)]:
-					cells.append(Vector3i(side * lc.x, base + lc.y, 3))
-			else:            # pad 3 and up: two half-height flowers of the same tier, so the row reads as a bed
-				_half_flower(cells, rows, n, side * 10, base - 6)
-			if stage >= 4:   # pad 4: the bed widens (a bud at each outer edge) and two taller blooms stand up behind
-				if stage == 4:
-					for bc: Vector3i in BUD:
-						cells.append(Vector3i(bc.x + side * 17, base + bc.y + 1, bc.z))
-				else:        # pad 5: those outer buds are full half flowers
-					_half_flower(cells, rows, n, side * 17, base - 5)
-				_half_flower(cells, rows, n, side * 4, base - 12)
+	var baked: bool = not locked and _bloom_t <= 0.0
+	if baked:
+		_draw_bed_art(top, stage)
+	var shown: int = 0 if baked else (3 if locked else n)
+	if _bloom_t > 0.0:
+		shown = maxi(1, ceili(float(n) * (1.0 - _bloom_t)))
+	var cells: Array[Vector3i] = []   # x, y, kind (0 petal 1 shade 2 heart 3 leaf)
 	for k in shown:
 		var line: String = rows[n - 1 - k]
 		for rx in 13:
@@ -731,16 +719,6 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			if locked and ch != "g":
 				ch = "g"
 			cells.append(Vector3i(rx - 6, base - k, "#dcgW".find(ch)))
-	if stage >= 5 and not locked and _bloom_t <= 0.0:   # the grand pad wears a gold crown over the flower: a band and five points
-		var cy0: int = base - n - 3
-		for cx in range(-3, 4):
-			cells.append(Vector3i(cx, cy0, 5))
-			cells.append(Vector3i(cx, cy0 + 1, 5))
-		for cx in [-3, -1, 1, 3]:
-			cells.append(Vector3i(cx, cy0 - 1, 5))
-		cells.append(Vector3i(0, cy0 - 1, 5))
-		cells.append(Vector3i(0, cy0 - 2, 5))
-		cells.append(Vector3i(0, cy0 + 1, 2))   # a white jewel in the band
 	for c: Vector3i in cells:
 		for o: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 			draw_rect(Rect2(c.x + o.x, c.y + o.y, 1, 1), ink)
@@ -758,16 +736,6 @@ func _draw_flowers(top: int, ink: Color) -> void:
 			var ang: float = float(i) / 10.0 * TAU
 			var q: Vector2 = Vector2(cos(ang) * 14.0, sin(ang) * 7.0) * r
 			draw_rect(Rect2(roundf(q.x), roundf(top - 4 + q.y), 1, 1), Color.WHITE if i % 2 == 0 else stat_color)
-	if stage >= 3 and not locked and _bloom_t <= 0.0 and not MeadowLife.reduce_motion:   # twinkling petal glints over the bed
-		var tw: int = (Time.get_ticks_msec() / 400) % 3
-		var spots: Array[Vector2i] = [Vector2i(-9, -13), Vector2i(8, -14), Vector2i(0, -20)]
-		if stage >= 4:
-			spots.append_array([Vector2i(-16, -10), Vector2i(15, -11), Vector2i(-4, -25)])
-		if stage >= 5:
-			spots.append_array([Vector2i(-22, -7), Vector2i(21, -8), Vector2i(5, -28), Vector2i(0, -14)])
-		for gi in spots.size():
-			if (gi + tw) % 3 == 0:
-				draw_rect(Rect2(spots[gi].x, base + spots[gi].y + 3, 1, 1), Color.WHITE)
 	var pips: int = 1
 	var bd: ButtonDef = _sim().button_defs.get(button_id) as ButtonDef
 	if bd != null:

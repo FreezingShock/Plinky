@@ -356,3 +356,6 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Groves:** the biggest oaks and pines (`TREE_FILES`) are copied into `assets/art/zone1b/farm/trees/` and placed as plain props (`farm_tree_N`). The placer checks only the trunk foot, so a crown may hang past the grass. This avoids editing `gen_larkmoor.py`, which other threads own. Ten trees fit; the free grass south and east is narrow.
 - **Budget:** the bench (low quality, headless) shows Larkmoor at 1178 nodes at peak against the 1350 ceiling. The farm test's node budget goes from 120 to 240.
 - **Checked:** in the cloud with Godot 4.7.2 under xvfb and software Vulkan (shots in `/mnt/project-files/plinky/farm-edge-in-engine/`), tests 7740 checks, 0 failed. Not checked on the PC. `tools/farm_edge_shots.tscn` captures the farm at day and night (`-- zoom=1|2`).
+
+## 2026-11-24: Pad beds drawn from above
+Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mockups/` on the project files, over the stalks and the planter. The beds are baked by `tools/art/gen_pad_beds.py` into a leaf layer, a shade layer and a greyscale bloom layer, so the stat colour and the colour-blind tint still apply at runtime. The side sprouts, the gold crown and the twinkle glints are now in the art or gone; a glint pass can come back on the bloom tops.
