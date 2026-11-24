@@ -154,6 +154,7 @@ static func attributes(sim: Sim) -> Array[Dictionary]:
 		r["desc"] = desc
 		r["locked"] = locked
 		r["lock"] = lock_msg
+		r["now"] = now
 		r["next"] = "" if (maxed or locked) else next
 		r["cost"] = "" if (maxed or locked) else cost.format()
 		r["can"] = not (maxed or locked) and not sim.attribute_available(a).lt(cost)
