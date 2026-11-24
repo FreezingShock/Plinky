@@ -264,9 +264,10 @@ func _burst(d: AchievementDef, titled: bool) -> void:
 	sp.spawn(shape, colors, n, Vector2(_full * 0.5, _card_h * 0.5))
 
 
-## Pure: the card's full width for an HUD `area_x` wide. It scales with the window, within MIN_WIDTH and MAX_WIDTH.
+## Pure: the card's full width for an HUD `area_x` wide. It scales with the window, within MIN_WIDTH and MAX_WIDTH, and
+## is whole texels so the card and its centring stay on the pixel grid.
 static func banner_width(area_x: float) -> float:
-	return clampf(area_x * WIDTH_SHARE, MIN_WIDTH, MAX_WIDTH)
+	return roundf(clampf(area_x * WIDTH_SHARE, MIN_WIDTH, MAX_WIDTH))
 
 
 ## Pure: the card width while `openness` of the unfurl is done, out of a `full` wide card. Eases out in whole steps.
