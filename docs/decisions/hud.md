@@ -564,6 +564,10 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** the open menu matches main pixel for pixel in the tiles and header. The footer labels (Close Menu, Quit To Title, Quit Game) sit 1 px to the right of main's, and that holds after 2.5 s, so it is not the open animation. Not traced yet; likely how MenuTextButton measures its label on its first `_ready`. `tests/run.gd` passes. Two tests now show the menu before reading its tiles.
 - **Not run in-engine:** the focus feel on a real PC.
 
+## 2026-11-24: A menu takes the screen from an achievement banner at once
+- **Decision:** when a menu opens while a banner is on screen, the banner is hidden on that frame, with no close animation. Its sparks are freed too. The unlock goes back to the front of the queue and shows after the menu closes. Ritual holds keep the animated close.
+- **Why:** the boot achievement banner drew over the open Gallery at zoom 3 (PC QA on main 190d09cd). The banner sits at `TOAST_Z`, which beats the menu's tree order, and the old path ran a 0.3 s close during which the banner stayed on top.
+- **Checked:** `tests/run.gd` passes (7955 checks, 0 failed). The menu test now requires the banner to hide on the same frame. Not run in-engine: the visual check on the PC.
 ## 2026-11-24: Menu text buttons measure with crisp font settings from the start (footer alignment)
 - **Decision:** `MenuTextButton` applies `CrispFont` in `_init`, not only in `_ready`. The menus set `label` before the button enters the tree, and the setter measures the text right away, so the first measurement used the default font settings.
 - **Why:** the Gallery footer (Close Menu, Quit To Title, Quit Game) sat 1 px right in the lazy build (PR #464) and not in the eager build. A/B probe, footer button widths: before 120 / 128 / 114 eager and 120 / 127 / 113 lazy; after 119 / 127 / 113 in both. Positions are now 136 / 259 / 390 in both builds.
