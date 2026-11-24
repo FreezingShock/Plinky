@@ -225,7 +225,7 @@ func _step_collect(delta: float) -> void:
 	_queue_t -= delta
 	while _queue_t <= 0.0 and not _queue.is_empty():
 		var t: WelcomeTile = _queue.pop_front()
-		var centre: Vector2 = to_local(t.get_global_rect().get_center())
+		var centre: Vector2 = get_global_transform().affine_inverse() * t.get_global_rect().get_center()
 		var colours: Array[Color] = [t.outline, RelicStyle.accent]
 		ParticleBurst.spawn(self, centre, colours, SPARKS)
 		_tick()
