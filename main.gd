@@ -133,6 +133,8 @@ func _ready() -> void:
 	_wire_menus()
 	hud.move_child(hud.bottom_bar(), -1)
 	hud.move_child(hud.menu_chip(), -1)   # chips stay above every open menu, so they stay clickable
+	hud.bottom_bar().z_index = 1   # menus come to the front of the HUD when shown (MenuAnim.bring_front); the chips stay above them
+	hud.menu_chip().z_index = 1
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
 	window_frame = WindowFrame.new()
 	add_child(window_frame)
@@ -668,6 +670,7 @@ func _wire_relics() -> void:
 	relic_panel = panel
 	panel.visible = false
 	hud.add_child(panel)
+	MenuAnim.front_on_show(panel)
 	panel.bind(inv)
 	hud.relic_panel_toggled.connect(func(_open: bool) -> void: menus.toggle(&"relics"))
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
@@ -689,10 +692,12 @@ func _wire_index() -> void:
 func _wire_display() -> void:
 	display_panel = DisplayPanel.new()
 	hud.add_child(display_panel)
+	MenuAnim.front_on_show(display_panel)
 	display_panel.bind(get_window())
 	hud.settings_toggled.connect(func(_open: bool) -> void: menus.toggle(&"settings"))
 	feedback_panel = FeedbackPanel.new()
 	hud.add_child(feedback_panel)
+	MenuAnim.front_on_show(feedback_panel)
 	feedback_panel.bind(GameState.sim)
 	display_panel.feedback_requested.connect(_toggle_feedback)
 
