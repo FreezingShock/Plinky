@@ -1,0 +1,1 @@
+HUD edit mode: the Add Stats chips now wrap into as many per line as the footer bar is wide (instead of six across), so the grid no longer pushes past the panel edge or cuts an icon in half, and the footer stays inside the panel.
