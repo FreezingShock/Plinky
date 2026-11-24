@@ -1,1 +1,1 @@
-Larkmoor shadows draw in a few batched layers instead of one node per prop, which cuts the scene's node count by about a fifth at the busiest spot and leaves room for the next streaming step.
+Larkmoor props load a few chunks a frame as the walker moves, their textures are readied ahead of time, and their shadows draw in a few batched layers instead of one node per prop, so walking into new ground hitches less and the busiest spot stays under the node ceiling.
