@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <rect width="640" height="360" fill="#1c1628"/>
+  <rect x="8" y="8" width="624" height="344" fill="none" stroke="#e0b44a" stroke-width="4" stroke-dasharray="16 8"/>
+  <rect x="24" y="24" width="592" height="312" fill="none" stroke="#4fb7a8" stroke-width="2"/>
+  <text x="320" y="170" font-family="monospace" font-size="28" fill="#e0b44a" text-anchor="middle">SCREENSHOT PENDING</text>
+  <text x="320" y="206" font-family="monospace" font-size="18" fill="#9d8fc4" text-anchor="middle">in-engine capture from the PC QA run</text>
+</svg>
