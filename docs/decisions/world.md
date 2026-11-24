@@ -69,3 +69,8 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Fix:** `SkyCycle._update_season` jumps the calendar to the pin (`GameCalendar.jump_to_season`) whenever the calendar is in another season. Pure rule: `SkyCycle.pin_jump_needed(pin, current)`.
 - **Scope:** only when the pin is set, which is tools and tests. Normal play never sets it.
 - **Not verified on the PC:** whether frost reads clearly at zoom 1 and 4 once the flowers switch.
+## 2026-11-24: Walk grid cells are open only when every pixel is walkable
+- **Why:** the Larkmoor path-tier PR (#406) changed trees, and its route test failed on one Westmere route: a waypoint step crossed a 3-cell hole in the walk mask. The hole was on main too. `WalkMask._build_grid` sampled only a cell's corners and centre, so a hole smaller than a cell could sit inside an open cell and a route could cut across it.
+- **What:** `world/walk_mask.gd` checks every pixel of each 4x4 cell and closes the cell on any blocked pixel. The old centre check is gone, since the full check covers it.
+- **Measured:** `tests/run.gd` 6651 checks, 0 failed. `tools/route_probe.tscn` (real walker, Larkmoor pads): main had 5 misses, this change has 3 (pads 5 and 9 now route). The other 3 are the same on main. Time 93 s with the change, 106 s on main, within run noise.
+- Not run in-engine: the play-through of the Westmere and Heronmere routes on a PC.
