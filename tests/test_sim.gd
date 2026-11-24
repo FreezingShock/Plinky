@@ -217,6 +217,17 @@ func _offline_extras(t: Object) -> void:
 	t.ok(sim.mastery.level(&"sprout_3") > 0 or sim.mastery.xp(&"sprout_3") > 0.0, "tending earned mastery XP")
 	t.ok(not tend.has(&"clover"), "locked tiers are not tended")
 	t.ok((sim.last_offline["relics"] as Array).size() <= sim.config.offline_relic_max_drops, "relic drops capped")
+	# Away income: lanterns lift the share above the 50% base, but never past offline_rate_cap (75%)
+	var sim4: Sim = t.make_sim()
+	t.near(sim4.offline_fraction(), 0.5, 1e-9, "away income is 50% of the awake rate with no relics")
+	sim4.relics.add_relic(&"r_night_lantern", 8)
+	sim4.relics.add_relic(&"r_tide_lantern", 6)
+	sim4.relics.add_relic(&"r_eternal_lantern", 4)
+	sim4.relics.equip(&"r_night_lantern")
+	sim4.relics.equip(&"r_tide_lantern")
+	sim4.relics.equip(&"r_eternal_lantern")
+	t.near(sim4.offline_fraction(), sim4.config.offline_rate_cap, 1e-9, "three max lanterns stop at the 75% cap")
+	t.ok(sim4.offline_fraction() < 1.0, "away income stays under the awake rate")
 	var sim3: Sim = t.make_sim()
 	sim3.attr_levels[&"bloom_dusk"] = 4
 	sim3.attr_levels[&"rp_rest"] = 2
