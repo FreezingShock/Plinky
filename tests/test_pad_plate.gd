@@ -34,9 +34,18 @@ func run(t: Object) -> void:
 	for line: String in src.split("\n"):
 		if line.begins_with("func "):
 			in_halo = line.begins_with("func _draw_halo") or line.begins_with("func _glint")
-		if in_halo and line.contains("draw_rect(") and not line.contains("_halo.draw_rect("):
+		if in_halo and (line.contains("draw_rect(") or line.contains("draw_texture(")) and not line.contains("_halo.draw_"):
 			bare_draws += 1
-	t.eq(bare_draws, 0, "the glow draws only through its own node (_halo.draw_rect)")
+	t.eq(bare_draws, 0, "the glow draws only through its own node (_halo.draw_rect / _halo.draw_texture)")
+	t.ok(glow_pad._halo.material is CanvasItemMaterial and (glow_pad._halo.material as CanvasItemMaterial).blend_mode == CanvasItemMaterial.BLEND_MODE_ADD, "the glow is additive, so it lights the ground under it")
+	t.ok(glow_pad._halo.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST, "the glow is filtered nearest, so it stays pixel-crisp")
+	var day_halo: ImageTexture = TexelPad.glow_texture(true, 0)
+	var night_halo: ImageTexture = TexelPad.glow_texture(true, 8)
+	t.ok(night_halo.get_width() > day_halo.get_width(), "the halo reaches further at night")
+	t.ok(night_halo.get_width() > 4 * int(TexelPad.HALF.x), "the halo spills well past the plate (more than twice its width)")
+	t.ok(TexelPad.glow_texture(false, 8) != null, "the red halo builds too")
+	var pulse: float = TexelPad.glow_pulse_alpha()
+	t.ok(pulse <= 1.0 and pulse >= 1.0 - TexelPad.GLOW_PULSE_DEPTH - 0.001, "the breath dims the halo by at most its depth")
 	var night_glow := PadGlow.new()
 	night_glow.night01 = 1.0
 	glow_pad.glow = night_glow

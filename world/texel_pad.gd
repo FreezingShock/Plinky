@@ -64,11 +64,17 @@ const LOCK_CHIP_Z: int = 11       # the chip's z relative to its pad: one above 
 var _chip: Node2D = null          # the chip's own node, made for a row's first pad only
 ## Buy glow and rarity corner glints, on their own child node above the night shade (z 5), so the glow reads brighter as the ground darkens.
 const HALO_Z: int = 6
-const GLOW_INNER: float = 1.12    # the glow starts just outside the plate's ink edge (diamond norm 1.0 is the plate edge)
-const GLOW_DAY: float = 0.42      # density of the dithered glow by day (0..1)
-const GLOW_NIGHT_GAIN: float = 1.1  # extra density at full night: a green or red glow about twice as strong at midnight
-const GLOW_SPREAD_DAY: float = 0.2  # width of the glow band in diamond norm, by day
-const GLOW_SPREAD_NIGHT: float = 0.2  # and the extra width at full night
+## Buy glow: an additive radial halo on the ground, larger than the plate. Plate units: 1.0 is the plate's edge.
+const GLOW_INNER: float = 1.1     # the halo starts at the plate's edge (its ink sits just inside this)
+const GLOW_DAY: float = 0.55      # strength by day (0..1): visible, but it stays out of the way of the scene
+const GLOW_NIGHT_GAIN: float = 1.0  # extra strength at full night: about twice as bright at midnight
+const GLOW_SPREAD_DAY: float = 1.1  # how far the halo reaches past the plate, in plate units, by day
+const GLOW_SPREAD_NIGHT: float = 1.6  # and the extra reach at full night
+const GLOW_PEAK: float = 0.75     # peak alpha at the plate's edge, before the strength scales it
+const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
+const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
+static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
+static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
 var _halo: Node2D = null
 var _halo_sig: int = -1
 const LOCK_TOP: int = -6          # the chip's top edge, in pad-local texels: centred on the top face (origin)
@@ -118,6 +124,8 @@ func _init() -> void:
 	# _halo.draw_rect: a draw call on the pad itself would paint on the pad's canvas item, not this one.
 	_halo = Node2D.new()
 	_halo.z_index = HALO_Z   # relative to the pad (z 0): above the night shade (z 5), below the air layer (z 10)
+	_halo.material = additive_material()
+	_halo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # one texel per world texel: the halo stays pixel-crisp
 	_halo.draw.connect(_draw_halo)
 	add_child(_halo)
 
@@ -188,6 +196,7 @@ func _physics_process(delta: float) -> void:
 	if hsig != _halo_sig:
 		_halo_sig = hsig
 		_halo.queue_redraw()
+	_halo.modulate.a = glow_pulse_alpha()   # the breath is a modulate, not a redraw: it costs nothing per frame
 
 
 func _press() -> void:
@@ -643,6 +652,53 @@ static func glow_night_step(night: float) -> int:
 	return roundi(clampf(night, 0.0, 1.0) * 8.0)
 
 
+## The halo for a state and night step: a soft radial falloff, stepped into 8 alpha levels, one texel per world texel. Built
+## once and cached, so the glow costs one texture draw per pad. The colour is the buy-state hex, so the halo reads green or red.
+static func glow_texture(ready: bool, step: int) -> ImageTexture:
+	var key: String = "%d_%d" % [int(ready), step]
+	if _glow_tex.has(key):
+		return _glow_tex[key] as ImageTexture
+	var night: float = float(step) / 8.0
+	var amount: float = glow_amount(ready, night)
+	var spread: float = glow_spread(night)
+	var reach: float = GLOW_INNER + spread
+	var hw: int = ceili(HALF.x * reach)
+	var hh: int = ceili(HALF.y * reach)
+	var img: Image = Image.create(2 * hw + 1, 2 * hh + 1, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.0, 0.0, 0.0, 0.0))
+	var col: Color = StatStyle.gain() if ready else StatStyle.cant()
+	for y in range(-hh, hh + 1):
+		for x in range(-hw, hw + 1):
+			var u: float = float(x) / HALF.x
+			var v: float = float(y) / HALF.y
+			var d: float = sqrt(u * u + v * v)   # plate units: 1.0 is the plate's edge
+			if d <= GLOW_INNER or d >= reach:
+				continue
+			var f: float = 1.0 - (d - GLOW_INNER) / spread
+			var a: float = snappedf(clampf(f * f * GLOW_PEAK * amount, 0.0, 1.0), 0.125)
+			if a > 0.0:
+				img.set_pixel(x + hw, y + hh, Color(col.r, col.g, col.b, a))
+	var tex: ImageTexture = ImageTexture.create_from_image(img)
+	_glow_tex[key] = tex
+	return tex
+
+
+## Additive blend for the halo: where it lands on the ground it adds light, so it reads at night and stays faint by day.
+static func additive_material() -> CanvasItemMaterial:
+	if _glow_mat == null:
+		_glow_mat = CanvasItemMaterial.new()
+		_glow_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return _glow_mat
+
+
+## The gentle breath: the halo dims by up to GLOW_PULSE_DEPTH over GLOW_PULSE_TIME seconds. Still under Reduce Motion or Reduce Flashing.
+static func glow_pulse_alpha() -> float:
+	if FxConfig.reduce_flashing or FxConfig.reduce_motion:
+		return 1.0
+	var phase: float = fposmod(float(Time.get_ticks_msec()) / 1000.0 / GLOW_PULSE_TIME, 1.0)
+	return 1.0 - GLOW_PULSE_DEPTH * (0.5 - 0.5 * cos(TAU * phase))
+
+
 func _halo_signature() -> int:
 	var rank: int = rarity.rank if rarity != null else 0
 	return int(pad_state()) | sink_texels() << 2 | int(hovered) << 4 | glow_night_step(_night()) << 5 | int(locked) << 9 | rank << 10
@@ -656,20 +712,10 @@ func _draw_halo() -> void:
 	var top: int = s - (1 if hovered and s == 0 else 0)   # the same lift as _draw
 	var night: float = _night()
 	var ready: bool = pad_state() == PadState.READY
-	var col: Color = StatStyle.gain() if ready else StatStyle.cant()
-	var amount: float = glow_amount(ready, night)
-	var spread: float = glow_spread(night)
-	var o: Vector2i = Vector2i(position.round())
-	var rx: int = ceili(HALF.x * (GLOW_INNER + spread)) + 1
-	var ry: int = ceili(HALF.y * (GLOW_INNER + spread)) + 1
-	for dy in range(-ry, ry + 1):
-		for dx in range(-rx, rx + 1):
-			var d: float = absf(float(dx)) / HALF.x + absf(float(dy)) / HALF.y
-			if d <= GLOW_INNER or d > GLOW_INNER + spread:
-				continue
-			var k: float = (1.0 - (d - GLOW_INNER) / spread) * amount   # thins out toward the band's outer edge
-			if BAYER[((dy + top + o.y) & 3) * 4 + ((dx + o.x) & 3)] < roundi(k * 16.0):
-				_halo.draw_rect(Rect2(dx, top + dy, 1, 1), col)
+	# One texture draw: the halo is built once per state and night step (glow_texture), centred on the plate's top face.
+	var tex: ImageTexture = glow_texture(ready, glow_night_step(night))
+	var half: Vector2i = Vector2i(tex.get_width() >> 1, tex.get_height() >> 1)
+	_halo.draw_texture(tex, Vector2(-half.x, top - half.y))
 	# Rarity glints: a small plus on each corner of the plate, just outside it. Epic and up glow in the rarity colour; Legendary and up get a bright heart.
 	if rarity != null and rarity.rank > 0:
 		var rc: Color = _trim if _trim.a > 0.0 else rarity.tint()
