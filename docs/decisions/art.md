@@ -272,7 +272,22 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - The farm is 49 sprites, one node each: 9 props, 39 wheat clumps, and the fence ring. The bench puts Larkmoor at 1214 nodes at peak, against the 1350 ceiling.
 - Checked in the cloud render only (xvfb, software Vulkan), not on the PC.
 
+
+## 2026-11-24: Bushes and rocks are re-shaped for the looking-down camera
+- Rocks: a tilted plane shaves each crown flat, so the top reads as one lit face with a bevelled rim. Facets drop from 3 to 5 down to 1 to 3 low side cuts, and the bumpy noise is halved on big rocks. Facets no longer split a stone into pieces.
+- Bushes: the lobes are squashed (height 0.8 of width), smaller crowns ride the top, and a flat skirt sits on the ground so the foot is wider than the crown. Each bush keeps its dark pockets from #361.
+- Larkmoor bushes now get the dark pockets too (the M_DARKF material and ramp, same code as the meadow generator). #361 only changed `gen_meadow3d.py`.
+- `world/larkmoor_life.json`: 9 sway tips no longer sat on palette 4 after the ground changed, so they are removed (1680 to 1671). Nothing else in that file changed.
+- The meadow ground and walkable mask are not re-baked here. Only the meadow bush and rock sprites and `placements3d.json` change.
+- Checked in engine with the cloud's software Vulkan render at game size, in `/mnt/project-files/plinky/bush-rock-looking-down/`. The change is subtle at 1x. Not checked on the PC.
 ## 2026-11-24: Stalk grass style F added beside E (not default)
 - Audit: the live ground props (stumps, mushrooms, reeds, tufts) are SDF 3D renders from the elevated iso camera, so they already match the mockup D view. The flat read is the grass texture only.
 - Added style `f` (`style_stalks` in `tools/art/grass_tex.py`): style E's vertical stalks, denser inside each clump, with the crown lit and the base shaded from the upper left. E's bare lawn between clumps is kept. Compared A, E and F as ground-only crops in `/mnt/project-files/plinky/ground-grass/grass_styles_a_e_f_ground.png`. F reads most like the stalk field of mockup D.
 - Default stays `a` and no baked asset changes. The switch to a grass style belongs to the art-style thread. Recommended pick: F, for Nathan to confirm on PC at noon, since dawn grading hides texture.
+
+## 2026-11-24: Meadow grass blades are a shader layer, not nodes (interactive blades, slice 1)
+- `world/grass_blades.gd` + `world/grass_blades.gdshader`: one quad over the meadow ground. Blades are generated per texel from a hash (one base per 3x3 cell, patch density from value noise), so there are no nodes per blade and nothing extra loads.
+- Blades draw only on grass texels (the ground is palette-exact), so paths, dirt, water and pad plates stay clear. The wind wave and the walker bend use the same rules as `LifeGround.bend`. The node owns its material and sets the wind and pusher uniforms; gameplay still emits nothing new.
+- Replaces the meadow's 120 baked sway tips with this layer. Larkmoor keeps `LifeGround` until the chunk streaming lands (1680 tips there, drawn on the CPU every step).
+- Checked in the cloud render only (xvfb, lavapipe): no shader errors, tests pass. Not verified on the PC: the wind and walker bend, and the look at noon.
+- Follow-up on the same PR: each rock and bush gets a thin, soft-edged dark contact slab under its foot, wider than the stone, so the base reads as shade on the ground. Rock tops are flatter (tilt .03 to .14). After main moved under the PR, the Larkmoor ground was regenerated, then `gen_gardens.py` (flower placement reads the ground) and the sway tips were refreshed; 6 sway tips were removed. Suite: 6428 checks, 0 failed.
