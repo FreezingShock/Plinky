@@ -413,3 +413,14 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 
 ## 2026-11-24: Gain popups fold and stack
 - Same-currency presses within 120 px fold into one number that rolls up to its total (was 40 px, so neighbouring pads never folded). Placement boxes count the stat caption, which is about 2.4 times the number's width, and a popup stacks above another when every fixed lane is taken. Reason: Nathan's Starbloom screenshot had captions overlapping as separate popups.
+
+## 2026-11-24: Title and loading screens follow the day (golden hour)
+- **Time of day comes from the meadow's own sky.** `core/title_mood.gd` samples keyframes by `SkyModel` phase (midnight, dawn, sunrise, morning, noon, afternoon, golden hour, sunset, dusk), and the sun or moon rides `SkyModel.azimuth`. Reason: the title then shows the same arc, golden light and night shade as the game, and the look is tested in pure GDScript.
+- **Palettes are per keyframe, not per zone.** Sky and far land take the eight palette roles, and the meadow ground takes four new ground roles (`g0` to `g3`), so golden hour warms the sky without turning the grass orange. Golden hour and sunset use the README banner's plum-to-orange sunset.
+- **Scenery is graded, not repainted.** The scenery is baked once in meadow indices; the mood's tint multiplies it and a Bayer dither adds the night shade (`boot/title_scenery.gdshader`), the same way `day_night.gdshader` shades the meadow. Fireflies come out at night, birds fly by day.
+- **Smooth transitions, one clock.** The title and loading screens share one `TitleBackground` clock. The chip in the bottom left names the time and runs the sky forward to the next stop over 1.6 s. Reason: nothing snaps.
+- **Reduce Motion (call made):** the clock holds on golden hour, the parallax stays still, the chip jumps instantly, and the screen change cross-fades instead of sweeping. Reason: the sweep is motion, and the fade keeps the same ink colour.
+- **Scene change is a themed wipe** (`boot/title_wipe.gdshader`): a slanted, dithered sweep in the mood's ink with a sun-coloured lead line, used for Continue, New Game, Saves slots and the loading screen's hand-off. Reason: replaces the plain ink dissolve.
+- **Tagline (call made):** "+ Press. Walk. Bloom. +" from the README banner replaces "Press. Tally. Rebirth.", on both screens. Revert if the old line was intended.
+- **Icon:** the 1024 master is drawn by `tools/art/gen_app_icon.py` on a 64 texel grid from the golden keyframe, with the existing walker sprite pasted unchanged. Reason: it matches the title and reads at 16 px.
+- Not run in-engine from the cloud (no Godot here): the shader, the wipe and the chip need a PC look at each time of day and at Reduce Motion.
