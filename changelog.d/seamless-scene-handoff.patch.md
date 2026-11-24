@@ -1,0 +1,1 @@
+Title to game is one continuous handoff: the screen sweeps to reveal the next one, with no black or grey frames. The loading screen names what it loads ("Loading Larkmoor art... 62%") and its bar follows the real load.
