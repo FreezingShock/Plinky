@@ -770,6 +770,8 @@ dif = np.clip(allp['nx'] * L[0] + allp['ny'] * L[1] + allp['nz'] * L[2], 0, 1)
 lp = .04 + 1.05 * dif
 tex = vn3(u_ * .8, v_ * .8, z_ * .8, 3) - .5
 lp += np.where(np.isin(mat_, [M_FOL, M_PINE, M_MOSS]), tex * .55 + (vn3(u_ * 2.2, v_ * 2.2, z_ * 2.2, 9) - .5) * .4, 0)
+# pine tiers: upward-facing tier tops lift a band, downward ledges drop one (the ramp is only four bands)
+lp += np.where(mat_ == M_PINE, .45 * np.clip((nz_ - .1) / .45, 0, 1) - .3 * np.clip((-nz_ - .05) / .4, 0, 1), 0)
 lp += np.where(np.isin(mat_, [M_ROCK]), tex * .5, 0) + np.where(mat_ == M_BARK, tex * .35, 0) + np.where(mat_ == M_FOL, (z_ - 20) * .012, 0)
 lp += np.where(mat_ == M_CRYS, .10, 0) + np.where(mat_ == M_PAPER + 20, .5, 0) + np.where(mat_ == M_GRASS, (z_ - samp(H0, u_, v_)) * .035 - .05, 0)
 lp += np.where(mat_ == M_LILY, .12, 0)

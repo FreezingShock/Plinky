@@ -276,3 +276,13 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - Audit: the live ground props (stumps, mushrooms, reeds, tufts) are SDF 3D renders from the elevated iso camera, so they already match the mockup D view. The flat read is the grass texture only.
 - Added style `f` (`style_stalks` in `tools/art/grass_tex.py`): style E's vertical stalks, denser inside each clump, with the crown lit and the base shaded from the upper left. E's bare lawn between clumps is kept. Compared A, E and F as ground-only crops in `/mnt/project-files/plinky/ground-grass/grass_styles_a_e_f_ground.png`. F reads most like the stalk field of mockup D.
 - Default stays `a` and no baked asset changes. The switch to a grass style belongs to the art-style thread. Recommended pick: F, for Nathan to confirm on PC at noon, since dawn grading hides texture.
+
+## 2026-11-24: Trees to the looking-down angle (audit)
+| Date | Decision | Why |
+|------|----------|-----|
+| 2026-11-24 | Oaks are already on the elevated 3/4 view. Crowns are lit from the upper left, the right side and underside take shadow, and the trunk shows. No change | Audit against wheat mockup D (style-guide "Camera angle standard"). Oak crown tops read as tops. |
+| 2026-11-24 | Pines get a light bias on their tier tops: upward-facing normals lift the baked light, downward ledges drop it (`tools/art/gen_larkmoor.py`, `tools/art/gen_meadow3d.py`). Silhouettes, footprints and placement stay identical | Each tier's top reads from above. The four-band pine ramp is kept, so the runtime re-pick (`prop_ramps.gdshaderinc`) is unchanged. |
+| 2026-11-24 | Tried wider tier steps. Rejected: the silhouettes got lumpy and grew detached tails | Those tails look worse than the gain at game zoom. |
+| 2026-11-24 | Not done: a dedicated pine tier-top band. That needs a fifth pine ramp band in `RAMP` and a regenerated `prop_ramps.gdshaderinc` | Larger change. Make it after Nathan picks a direction from mockups. |
+- Checked in the cloud render only (xvfb, software Vulkan), not on the PC. Pink-tinted pines appear in both the before and after renders (Lanternwood), so that is pre-existing.
+- Only pine `.png` and `_n.png` files change in both zones, plus the Larkmoor preview. Placement, walkable mask and `ground.png` are byte-identical.
