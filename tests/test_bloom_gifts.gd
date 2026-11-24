@@ -26,7 +26,7 @@ func run(t: Object) -> void:
 	sim.stats[&"seeds"] = BigNum.from_float(500.0)
 	t.ok(sim.attr_unlocked(&"bloom_head_start"), "the first gifts are open from the start")
 	t.ok(not sim.attr_unlocked(pods.id) and not sim.buy_attribute(pods.id), "Seed Pods wait for the first Bloom")
-	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom reset" % pods.unlock_resets, "lock text names the reset")
+	t.eq(String(UpgradeText.state(sim, pods)["lock"]), "Unlocks after %d Bloom %s" % [pods.unlock_resets, "reset" if pods.unlock_resets == 1 else "resets"], "lock text names the reset")
 	sim.reset_counts[&"bloom"] = wild.unlock_resets
 	t.ok(sim.attr_unlocked(wild.id) and sim.buy_attribute(wild.id), "gifts unlock by Blooms done")
 	sim.reset_counts[&"bloom"] = 0
@@ -117,18 +117,18 @@ func run(t: Object) -> void:
 	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, wide), &"pad_yield")["body"]).contains("Also now"), "the Upgrades tooltip names the second effect")
 
 
-	# The Bloom Crown: after five Blooms, one Seeds level doubles every pad in the meadow and Larkmoor, and no other zone's.
+	# The Bloom Crown: after ten Blooms, one Seeds level doubles every pad in the meadow and Larkmoor, and no other zone's.
 	var crown: AttributeDef = sim.attribute_defs[&"bloom_crown"]
-	t.ok(crown.currency == &"seeds" and crown.cap == 1 and crown.unlock_resets == 5, "the Bloom Crown is a one-level Seeds gift after five Blooms")
-	t.eq(UpgradeText.tier_head(sim, crown), "Unlocks After 5 Blooms", "the crown heads its own tier")
+	t.ok(crown.currency == &"seeds" and crown.cap == 1 and crown.unlock_resets == 10, "the Bloom Crown is a one-level Seeds gift after ten Blooms")
+	t.eq(UpgradeText.tier_head(sim, crown), "Unlocks After 10 Blooms", "the crown heads its own tier")
 	sim.attr_levels.clear()
-	sim.reset_counts[&"bloom"] = 4
+	sim.reset_counts[&"bloom"] = 9
 	sim.stats[&"seeds"] = BigNum.from_float(1000.0)
-	t.ok(not sim.buy_attribute(crown.id), "the crown waits for five Blooms")
-	sim.reset_counts[&"bloom"] = 5
+	t.ok(not sim.buy_attribute(crown.id), "the crown waits for ten Blooms")
+	sim.reset_counts[&"bloom"] = 10
 	var meadow_before: float = sim.press_gain_preview(&"sprout_1").to_float()
 	var quarry_before: float = sim.press_gain_preview(&"cinder_1").to_float()
-	t.ok(sim.buy_attribute(crown.id), "the crown is bought with Seeds after five Blooms")
+	t.ok(sim.buy_attribute(crown.id), "the crown is bought with Seeds after ten Blooms")
 	t.near(sim.press_gain_preview(&"sprout_1").to_float(), meadow_before * 2.0, 1e-6, "every meadow pad pays double")
 	t.near(sim.press_gain_preview(&"cinder_1").to_float(), quarry_before, 1e-6, "the quarry's pads do not")
 	t.near(sim.zone_pad_mult(&"larkmoor"), 2.0, 1e-9, "Larkmoor counts with the meadow")

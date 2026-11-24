@@ -65,6 +65,8 @@ func _process(delta: float) -> void:
 			_seek_t = -1.0
 	elif not still():
 		clock += delta
+	# The art is centred in whatever the window shows, so the backdrop fills any aspect ratio.
+	_mat.set_shader_parameter("canvas_texels", size)
 	var want: Vector2 = Vector2.ZERO
 	if not still():
 		want = parallax_for(get_local_mouse_position(), size)

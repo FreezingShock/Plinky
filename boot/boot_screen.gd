@@ -77,6 +77,8 @@ var _log: PanelOverlay
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The loading screen fills any window like the title does. Main turns this off again.
+	DisplaySettings.set_pregame_fill(get_window(), true)
 	_pal = Palettes.colors(Palettes.MEADOW)
 
 	_handoff = handoff
