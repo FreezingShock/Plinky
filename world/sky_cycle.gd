@@ -60,6 +60,8 @@ var _rays_rect: ColorRect
 var _warm: int = 4                  # frames the rays stay drawn after the scene loads, so their shader compiles at load, not at the first sunset
 var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
+var _pool_index: Dictionary = {}        # pad pool position -> its entry in _lights (rebuilt after add_light)
+var _pool_index_built: bool = false
 var _pushed: int = 0                    # pools packed for the shader on the last frame
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
@@ -214,10 +216,21 @@ func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = 
 	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
 	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": tint})
+	_pool_index.clear()
+	_pool_index_built = false
 
 
 ## The pad pool nearest `pos` within 1.5 texels, or an empty dictionary. Pads are added with kind &"pad".
 func _pad_pool_at(pos: Vector2) -> Dictionary:
+	# Exact hits come from a position index (a pad pool sits on its anchor), so the per-pad calls each frame are O(1).
+	# Anything else falls back to the nearest-pad scan below.
+	if not _pool_index_built:
+		_pool_index_built = true
+		for L: Dictionary in _lights:
+			if L.kind == &"pad" and not _pool_index.has(L.pos):
+				_pool_index[L.pos] = L
+	if _pool_index.has(pos):
+		return _pool_index[pos] as Dictionary
 	var best: Dictionary = {}
 	var best_d: float = 1.5
 	for L: Dictionary in _lights:
