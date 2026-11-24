@@ -102,8 +102,7 @@ func setup(p_sim: Sim) -> void:
 	var bus: Node = get_node("/root/EventBus")
 	_save_note.connect_bus(bus)
 	bus.offline_gained.connect(_on_offline)
-	bus.button_pressed.connect(_on_gain_pressed)   # every pad press, auto and relic pulses included
-	bus.bonus_gained.connect(_on_gain_bonus)
+	bus.button_pressed.connect(_on_gain_pressed)   # every pad press, auto and relic pulses included; bonuses stay out (see decisions/hud.md)
 	var report: Dictionary = get_node("/root/Save").take_offline_report()
 	if not report.is_empty():
 		_on_offline(report["seconds"], report["gains"])
@@ -1046,12 +1045,6 @@ func _on_gain_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, 
 	var def: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
 	if def != null:
 		_note_gain(def.reward_stat, gain, crit)
-
-
-## A bonus paid out (streak, critter): each stat it paid adds to that stat's gain label.
-func _on_gain_bonus(_kind: StringName, gains: Dictionary) -> void:
-	for sid: StringName in gains:
-		_note_gain(sid, gains[sid] as BigNum, false)
 
 
 func _note_gain(stat: StringName, gain: BigNum, crit: bool) -> void:
