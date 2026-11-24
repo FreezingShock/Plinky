@@ -65,6 +65,12 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Measured (headless, no renderer, Godot 4.7.2, `tools/larkmoor_view_probe.gd`):** at zoom 1, 2 and 4, five pans each (the walker spot plus 900 and 600 texels away, and a diagonal), every frame checked: 0 frames with an on-screen chunk unloaded. Max node count 1154 at zoom 1 and 1121 at zoom 2, both on the diagonal pan; 1105 at zoom 4. Baseline idle at the spawn was 995 nodes, now 1005. With the 1300 budget and the hard ceiling (same probe, 2026-11-24): still 0 pop-in frames at every zoom and pan, peak 1298. The diagonal leg (`tools/larkmoor_hitch_probe.gd`) peaks at 1300 headless.
 - **Not run in-engine:** frame time, pan feel and the edge look. The PC pass should pan at zoom 1 and 2 and watch the edges.
 
+## 2026-11-24: Larkmoor lamp glows draw in one node
+- **What:** the lamp-head glows were one child Sprite2D per lamp. They are now one `LampGlows` node (z 6, additive) that draws every loaded lamp's glow (`_draw_lamps`). The positions are rebuilt when a chunk loads or unloads (`_rebuild_lamps`), not every frame. The rain multipliers from #454 are unchanged: alpha is `night * bloom.y`, size is `bloom.x`, and the node applies them once.
+- **Why:** one batch instead of one draw per lamp. In an A/B on the 1951 to 2092 band, hiding the lamp glows cut the average from 15.6 to 13.0 ms.
+- **Checked:** cloud render at night and in rain matches main within about 3 units per channel (rain thread). On the PC, night and rain at zoom 1 and 3 match main (batch 116).
+- **Not done:** spawning a chunk's props over several frames was tried and dropped. It cut the frame-4 spike on the reload walk from 33 to 18 ms but pushed frame 5 from about 13 to 20 to 22 ms. The untimed cost of those frames is still open.
+
 ## 2026-11-24: A pinned season moves the calendar (winter pin now reaches the clock and the flowers)
 - **Cause:** `SkyCycle.debug_season` (tools and screenshots) only changed the sky's season weights. The HUD clock, the flower gardens (frost comes from `Calendar.now()`) and the sim's season bonuses all read the real calendar, so a winter pin showed snow on the ground but still read Early Spring and drew no frost.
 - **Fix:** `SkyCycle._update_season` jumps the calendar to the pin (`GameCalendar.jump_to_season`) whenever the calendar is in another season. Pure rule: `SkyCycle.pin_jump_needed(pin, current)`.
