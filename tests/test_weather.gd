@@ -136,3 +136,8 @@ func run(t: Object) -> void:
 	t.ok(rumble != null and rumble.data.size() == want, "the thunder rumble is made at its set length")
 	t.ok(rumble.loop_mode == AudioStreamWAV.LOOP_DISABLED, "the rumble plays once, not on a loop")
 	scape.free()
+
+	# Mist halo: clear air leaves the lamps alone, full mist spreads them, and the value is capped
+	t.ok(SkyModel.fog_halo(0.0) == 1.0, "lamps are unchanged in clear air")
+	t.ok(SkyModel.fog_halo(1.0) > 1.0, "lamps spread in full mist (%.2f)" % SkyModel.fog_halo(1.0))
+	t.ok(SkyModel.fog_halo(4.0) == SkyModel.fog_halo(1.0), "the mist halo caps at full mist")

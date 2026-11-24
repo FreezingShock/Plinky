@@ -383,3 +383,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Decision:** `FarmWheat` creates each clump as a `RenderingServer` canvas item parented to the y-sorted prop parent, at the clump's foot, instead of a `Sprite2D` per clump. One node owns all 176. The items y-sort against the walker, trees and props exactly as the sprites did, because the renderer sorts a parent's child items by their transform origin. Plain props, trees, the fence and soil stay `Sprite2D` (they take the rim material or shadows).
 - **Why:** #434 laid 176 clumps, which put Larkmoor at 1357 against the 1350 ceiling. The bench now shows about 1000 nodes at peak. A single draw node would have lost the per-clump sort with the walker.
 - **Same look:** same sheet frames, same live redraw near the walker, same nearest filter. Day shots at five spots match before and after except for the gust and sun clock. Tests 7941 checks, 0 failed. Not run on the PC.
+
+## 2026-11-24: Lamps spread into mist (Nathan picked "fog halo only" of three)
+- **Look:** at full mist each lamp pool grows 60% wider (`SkyModel.fog_halo`, `FOG_HALO` 0.6). Clear air leaves the lamps as they were. Mist comes from `SkyModel.mist` (dawn, dusk and after rain), and `MeadowLife.fog` carries it to the lights. Outdoor scenes only.
+- **Not changed:** the lamp-head glow sprites do not grow with mist, only the light pools. That keeps this change off the batched lamp glows (#463).
+- **Rejected for now:** tree drips off the crowns. They are small in still frames and need a look in motion on the PC first. The prototype is kept in the project files, not committed.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests pass; the fog halo is tested in `tests/test_weather.gd`.
+- **Not verified on the PC:** how far the spread reads at dawn in a real mist.
