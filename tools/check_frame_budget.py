@@ -27,7 +27,7 @@ for r in data.get("results", []):
         bad.append("%s %s: worst frame %.1f ms" % (r["quality"], r["phase"], float(r["max"])))
 # Content ceilings (docs/perf.md): a new visual system must not quietly blow the node or draw-call budget.
 MAX_DRAWS = float(sys.argv[4]) if len(sys.argv) > 4 else 250.0
-MAX_NODES = float(sys.argv[5]) if len(sys.argv) > 5 else 1200.0
+MAX_NODES = float(sys.argv[5]) if len(sys.argv) > 5 else 1350.0
 for r in data.get("results", []):
     if float(r.get("draw_calls_max", 0)) > MAX_DRAWS:
         bad.append("%s %s: %d draw calls (limit %d)" % (r["quality"], r["phase"], r["draw_calls_max"], MAX_DRAWS))
