@@ -543,3 +543,10 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** in a headless capture the open panel looks the same as before (the world behind it differs by time of day). `tests/run.gd` passes (7941 checks, 0 failed).
 - **Next:** Upgrades (about 392 nodes after close) and Stats/Attributes plus Gallery, same pattern, in their own PRs.
 - **Not run in-engine:** the focus feel on a real PC.
+
+## 2026-11-24: Gallery menu builds on open, frees on close (node budget)
+- **Decision:** `GalleryMenu` keeps only its frame (the wipe, the panel shell and the close X) while shut. The header, the nine tiles, the footer actions and the arrow-key wiring are built when it opens and freed when it closes.
+- **Why:** the tiles and footer sat in the boot tree. Headless probe in the meadow: 677 nodes at boot before, 651 after. Open is 677 both ways. After closing, 680 before and 654 after; the 3 left over are the shared tooltip layer, which first use creates.
+- **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. `_wire_focus` runs when the body is built, and skips a menu that is shown off-tree (tests).
+- **Checked:** the open menu matches main pixel for pixel in the tiles and header. The footer labels (Close Menu, Quit To Title, Quit Game) sit 1 px to the right of main's, and that holds after 2.5 s, so it is not the open animation. Not traced yet; likely how MenuTextButton measures its label on its first `_ready`. `tests/run.gd` passes. Two tests now show the menu before reading its tiles.
+- **Not run in-engine:** the focus feel on a real PC.
