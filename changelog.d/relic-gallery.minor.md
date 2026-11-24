@@ -1,1 +1,0 @@
-The Relics screen is now a gallery: rarity tabs with a found count, relics you have not found shown as dark silhouettes with how to find them, and a detail view with the ability, its art and a clear Equip or Unequip button.
