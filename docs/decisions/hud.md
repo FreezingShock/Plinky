@@ -574,6 +574,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** the footer crop is pixel-identical between the eager and lazy builds with this change. The footer text is 1 px narrower on `Close Menu` and `Quit To Title` than the old eager build showed, which is the crisp measurement.
 - **Not run in-engine:** the footer on a real PC.
 
+## 2026-11-24: Stats and Attributes wire their own Tab ring (keyboard focus)
+- **Decision:** `IndexPanel` sets `focus_next` and `focus_previous` on its two tabs and its gift cards, as one ring that wraps at both ends. On a detail page the ring is the two tabs and Back. It is rewired when the cards rebuild and when a detail page opens.
+- **Why:** PC QA (batch 118, keyboard only, zoom 1 and 3): Tab walked all 22 Stats controls in order and wrapped, but Shift+Tab from the first control stopped instead of wrapping. Godot's default focus order does not wrap backward on its own.
+- **Checked:** `tests/run.gd` passes (7959 checks, 0 failed), including the ring arithmetic (`IndexPanel.ring_step`). The wiring itself needs a scene in the tree, which the test runner does not have.
+- **Not run in-engine:** Shift+Tab from the first and last control on a PC. Upgrades has the same backward stop and is not changed here.
 ## 2026-11-24: Upgrades cards build a few per frame after open (open hitch)
 - **Decision:** on open, the Upgrades header, tabs, tier rails and empty tier grids are built at once, as before. The gift cards are then built `CARDS_PER_FRAME` (12) to a frame, starting with the tab on show, while the open wipe plays. Teardown on close stops a builder left over from the closed panel (a generation counter), clears the queue and frees everything as before.
 - **Why:** building every card in one frame cost a hitch of about 32 to 38 ms per open on the PC. Keeping the lazy build keeps the node ceiling (the cards are still freed on close). A card that is not built yet is not in `_attr_rows`, so `_buy_upgrade` checks for it.
