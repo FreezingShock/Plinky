@@ -1,1 +1,0 @@
-Starting Clearing opened up: the rocks, bushes and two lanterns in front of the first pads are gone, so the pad strip reads as an open green. The cozy benches, blanket, fence and signposts are redrawn from above, and the fountain moved to the east rim.
