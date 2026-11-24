@@ -112,3 +112,9 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Dewdrops:** the Sprout row moved from (644,658), (688,680), (732,702) to (634,568), (678,590), (722,612), beside the main path north of the gatehouse tower. The nearest pad is 111 texels from the arrival gate, up from 31. Every footprint is on walkable ground, and all 18 pads are reachable from spawn on the walk mask.
 - **Art:** `gen_larkmoor.py` regenerated the Larkmoor art, and the sway tips in `world/larkmoor_life.json` were regenerated with the recorded arguments. All 420 tips sit on the same backdrop colour.
 - Not run in-engine from the cloud. Please check the pads on a PC capture.
+
+## 2026-11-24: Meadow river fix (after PC QA of #272)
+- **QA finding:** the upper two thirds of the stream read as a pale green checker with orange banks, so foam, not water. Bank spots 16 texels out were walkable in only about a third of cases.
+- **Cause:** the foam test covered the outer 1.6 texels of a 9-texel channel, so about two thirds of it was white water. The bed was only 0.9 deep, which is a light water ramp.
+- **Changed:** foam only at the outer 0.8 texels; bed 2.6 deep so the middle is dark water; bank blend over 4 texels; low meadow ground beside the stream eased toward the water (never the mountain itself).
+- **Not fixed:** the east bank runs along the mountain foot and is rock. Walkable banks are on the meadow side only (about 11 of 30 samples at 16 texels). Making the mountain side walkable means reshaping the mountain foot, which is part of the bigger-map slice.
