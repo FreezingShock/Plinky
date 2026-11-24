@@ -8,7 +8,6 @@ extends SceneTree
 const DT: float = 0.25
 const MAX_SECONDS: float = 12.0 * 3600.0
 const MIN_CYCLES: int = 5   ## the run must reach at least this many Blooms, each cycle ending sooner than the first
-const GIFT_ORDER: Array[StringName] = [&"bloom_head_start", &"bloom_soil", &"bloom_wide", &"bloom_dusk"]
 
 
 func _order(sim: Sim) -> Array[ButtonDef]:

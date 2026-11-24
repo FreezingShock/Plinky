@@ -350,6 +350,12 @@ func _build_pads() -> void:
 			pad.material = pad_mat as ShaderMaterial
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	# Each pad's cost sign takes a spot clear of every pad on this zone, so no sign covers a bed or a press spot.
+	var spots: Array[Vector2] = []
+	for p: TexelPad in pads.values():
+		spots.append(p.position)
+	for p: TexelPad in pads.values():
+		p.set_sign_neighbours(spots)
 	var first: TexelPad = pads.get(&"sprout_1") as TexelPad
 	if first != null:
 		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
@@ -653,6 +659,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 	_crossing = true
 	walker.stop()
 	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
+	WalkMask.prefetch(_zone_mask_path(zone_id))   # the walk mask too, so the first walk there does not load it
 	await transitions.cross_zone(func() -> void:
 		await _enter_zone_visuals(zone_id, true)
 		if _clear_spawn_pending:

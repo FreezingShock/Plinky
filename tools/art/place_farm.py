@@ -42,8 +42,8 @@ FIELD_SAND_CLEAR = 22                    # canvas texels: wheat and soil keep th
 FENCE_SAND_CLEAR = 10                    # canvas texels: a fence chord keeps this far from the sand path
 PAD_CLEAR = 30 * S
 WINDMILL_CLEAR = 24 * S
-WHEAT_DX = 9 # canvas texels: two clumps' centres stay at least this far apart in x ...
-WHEAT_DY = 5 # ... or in y, so clumps overlap a little, never stack
+WHEAT_DX = 7 # canvas texels: two clumps' centres stay at least this far apart in x ...
+WHEAT_DY = 4 # ... or in y, so clumps overlap a little, never stack
 MERE_MARGIN = 12                        # layout texels
 GAP = 4                                 # canvas texels between farm items
 
@@ -263,12 +263,12 @@ FIELDS = [
     FF.Field('blob', 1070, 650, 1.10, True, 45),
     FF.Field('blob', 1050, 600, 0.95, False, 46),
 ]
-CLUMP_SIZES = [(32, 30), (30, 30), (34, 32), (32, 28)]     # canvas texels (w, h): smaller clumps, tighter grid, more stalks
-EDGE_SIZES = [(28, 26), (30, 28)]       # smaller clumps along a field's edge, so the irregular outline reads
+CLUMP_SIZES = [(24, 24), (22, 24), (26, 26), (24, 22)]     # canvas texels (w, h): fine clumps, many stalks each
+EDGE_SIZES = [(20, 20), (22, 22)]
 EDGE_BAND = 3.0 # layout texels: clumps whose foot is this close to the edge use EDGE_SIZES
 EDGE_INSET = -3.0                       # layout texels: a clump's foot may stand this far outside the field's edge, so the wheat fills out to the soil
-GRID_X = 5.5 # layout texels between clump centres across a row
-GRID_Y = 3.0 # layout texels between rows; clumps still keep WHEAT_DX or WHEAT_DY apart
+GRID_X = 4.3 # layout texels between clump centres across a row
+GRID_Y = 2.5 # layout texels between rows; clumps still keep WHEAT_DX or WHEAT_DY apart
 WHEAT_RADIUS = 12                       # layout texels: how far a clump may slide from its grid point to find room
 
 
