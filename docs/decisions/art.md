@@ -357,6 +357,8 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Budget:** the bench (low quality, headless) shows Larkmoor at 1178 nodes at peak against the 1350 ceiling. The farm test's node budget goes from 120 to 240.
 - **Checked:** in the cloud with Godot 4.7.2 under xvfb and software Vulkan (shots in `/mnt/project-files/plinky/farm-edge-in-engine/`), tests 7740 checks, 0 failed. Not checked on the PC. `tools/farm_edge_shots.tscn` captures the farm at day and night (`-- zoom=1|2`).
 
+## 2026-11-24: Pad beds drawn from above
+Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mockups/` on the project files, over the stalks and the planter. The beds are baked by `tools/art/gen_pad_beds.py` into a leaf layer, a shade layer and a greyscale bloom layer, so the stat colour and the colour-blind tint still apply at runtime. The side sprouts, the gold crown and the twinkle glints are now in the art or gone; a glint pass can come back on the bloom tops.
 ## 2026-11-24: Walker is redrawn from above with 8 facings (Nathan picked mockup B)
 - **Look:** mockup B of the three walker mockups. The walker is drawn from the elevated, looking-down view: a lit shoulder top plane, a domed hood with the face set lower in it, and lit toe caps. The silhouette, cloak colours, scarf and satchel stay.
 - **Facings:** N, NE, E, SE, S, SW, W, NW. Five are drawn (E, SE, S, NE, N) and SW, W and NW are mirrors at runtime, so the art is not duplicated. The mirror keeps light from the upper left, as the other flipped sprites do.
