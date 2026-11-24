@@ -6,20 +6,12 @@ extends RefCounted
 enum Sort { RARITY, NAME, STACKS, EQUIPPED }
 enum Scope { ALL, EQUIPPED, UNEQUIPPED }
 
-const SORT_NAMES: Array[String] = ["Rarity", "Name", "Stacks", "Equipped"]
-const SCOPE_NAMES: Array[String] = ["All", "Equipped", "Unequipped"]
 
 var sort: Sort = Sort.RARITY
 var scope: Scope = Scope.ALL
 ## Only this rarity rank, or -1 for every rarity.
 var rarity_rank: int = -1
 
-
-func cycle_sort() -> void:
-	sort = ((int(sort) + 1) % SORT_NAMES.size()) as Sort
-
-func cycle_scope() -> void:
-	scope = ((int(scope) + 1) % SCOPE_NAMES.size()) as Scope
 
 ## Steps through the rarities the player owns, then back to all. Falls back to all if the current one is gone.
 func cycle_rarity(inv: RelicInventory) -> void:
@@ -29,12 +21,6 @@ func cycle_rarity(inv: RelicInventory) -> void:
 		return
 	var i: int = ranks.find(rarity_rank)
 	rarity_rank = ranks[i + 1] if i >= 0 and i + 1 < ranks.size() else -1
-
-func sort_name() -> String:
-	return SORT_NAMES[sort]
-
-func scope_name() -> String:
-	return SCOPE_NAMES[scope]
 
 func rarity_name(inv: RelicInventory) -> String:
 	for d: RelicDef in inv.defs.values():

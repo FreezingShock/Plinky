@@ -116,10 +116,6 @@ func clear() -> void:
 	current = {}
 
 
-func is_idle() -> bool:
-	return current.is_empty() and pending.is_empty()
-
-
 # ---- timeline
 
 ## {in, hold, out, stagger} in seconds for a banner whose longest line has `max_chars` characters. `snap` (reduced
