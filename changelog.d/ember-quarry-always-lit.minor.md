@@ -1,0 +1,1 @@
+The Ember Quarry is always bright now. Its light no longer darkens at night: lava, vents, braziers and lamps light the zone, and rocks and pillars glow when they sit near them. Weather is off underground, and the HUD clock still runs.

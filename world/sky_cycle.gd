@@ -25,6 +25,8 @@ const MAX_LIGHT_SOURCES: int = 256
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
 const SWAY_STEP: float = 1.0 / 8.0
+## Phase the light holds at when `underground` is set: 0 midnight, 0.5 midday (sun_of is -1 at 0 and +1 at 0.5).
+const UNDERGROUND_PHASE: float = 0.5
 
 ## Debug and screenshot overrides. Negative = off.
 static var debug_phase: float = -1.0
@@ -40,6 +42,9 @@ var rim_material: ShaderMaterial        # for rocks and crystals: same shader as
 ## Scales the high-sun exposure, contrast and saturation fix. Scenes with brighter, greener ground (Larkmoor) set it above 1.
 var noon_boost: float = 1.0
 var seasonal: bool = true              ## false: no calendar seasons (the Ember Quarry): spring look, no season particles
+## true: the light does not follow the clock (the Ember Quarry is underground). The shade, grade, sun, rim, haze and
+## light pass hold at midday, and weather stays off. The HUD clock still runs on the real time (clock_phase).
+var underground: bool = false
 var night01: float = 0.0                ## 0 day .. 1 full night, from the sun model. QuarryLight reads it for its glow.
 var atmosphere: bool = true             # false: no mountain haze or mist
 ## Where haze and mist are drawn, in world texels. Empty = the whole sky box (the meadow). Larkmoor gives the
@@ -334,8 +339,18 @@ func _push_season(m: ShaderMaterial, ground: bool) -> void:
 	m.set_shader_parameter("season_snow", _season.ground_snow if ground else _season.prop_snow)
 
 
+## Model time the light is computed at. Underground it is midday, whatever the clock says; the HUD clock keeps _model_time.
+func _light_time(t: float) -> float:
+	return underground_time(model) if underground else _model_time(t)
+
+
+## Model time of midday for this model, the moment an underground zone's light holds at.
+static func underground_time(m: SkyModel) -> float:
+	return (m.clock_of_phase(UNDERGROUND_PHASE) - m.clock_of_phase(m.start_phase)) * m.day_seconds
+
+
 func _update(t: float) -> void:
-	var mt: float = _model_time(t)
+	var mt: float = _light_time(t)
 	_update_season()
 	night01 = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
 	_shade_mat.set_shader_parameter("night", night01 * _config.night_shade)
@@ -350,6 +365,9 @@ func _update(t: float) -> void:
 	var wind: float = model.wind(t)
 	if debug_rain >= 0.0:
 		wind = maxf(wind, 0.5)
+	if underground:      # no weather under the ground
+		rain = 0.0
+		wind = 0.0
 	_shade_mat.set_shader_parameter("rain", rain)
 	MeadowLife.wind = 0.0 if MeadowLife.reduce_motion else wind
 	rain_layer.visible = not MeadowLife.reduce_motion

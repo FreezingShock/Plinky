@@ -92,6 +92,9 @@ func setup(data: Dictionary, area: Rect2, sky: SkyCycle, cfg: SkyConfig, cols: P
 
 	_glow_mat = ShaderMaterial.new()
 	_glow_mat.shader = GLOW_SHADER
+	_glow_mat.set_shader_parameter("halo_reach", cfg.glow_halo_reach)
+	_glow_mat.set_shader_parameter("halo_gain", cfg.glow_halo_gain)
+	_glow_mat.set_shader_parameter("hot_gain", cfg.glow_hot_gain)
 	var glow := ColorRect.new()
 	glow.name = "Glow"
 	glow.position = area.position
@@ -247,7 +250,7 @@ func _fill_prop(p: Dictionary, steady: bool) -> void:
 		var c: Color = d.col
 		var lvl: float = LavaFlicker.level(_clock, i, _depth(int(d.kind)), steady)
 		lp.append(Vector4(q.x - origin.x, q.y - origin.y, PROP_LIFT, float(d.radius) * PROP_REACH))
-		lc.append(Vector4(c.r, c.g, c.b, float(d.strength) * lvl))
+		lc.append(Vector4(c.r, c.g, c.b, float(d.strength) * lvl * _cfg.prop_glow))
 	while lp.size() < PROP_LIGHTS:
 		lp.append(Vector4.ZERO)
 		lc.append(Vector4.ZERO)

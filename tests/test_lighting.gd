@@ -4,6 +4,7 @@ extends RefCounted
 func run(t: Object) -> void:
 	run_meadow(t)
 	run_quarry(t)
+	run_underground(t)
 	run_quarry_shaders(t)
 	var cfg: SkyConfig = load(SkyCycle.CONFIG_PATH) as SkyConfig
 	t.ok(cfg != null, "sky.tres loads")
@@ -225,6 +226,17 @@ const QUARRY_SHADERS: Array[String] = [
 	"res://render/shaders/quarry_prop.gdshader",
 	"res://render/shaders/heat_shimmer.gdshader",
 ]
+
+
+## Underground light (the Ember Quarry): the light holds at midday, so the clock's night never reaches it. The real clock
+## still gives night at midnight, so the test shows the midday hold is doing the work.
+func run_underground(t: Object) -> void:
+	var m := SkyModel.new()
+	var midnight: float = (m.clock_of_phase(0.0) - m.clock_of_phase(m.start_phase)) * m.day_seconds
+	t.ok(m.night(midnight) > 0.5, "sanity: the real clock is dark at midnight (%.2f)" % m.night(midnight))
+	var held: float = SkyCycle.underground_time(m)
+	t.ok(m.night(held) < 0.001, "underground light has no night (%.4f)" % m.night(held))
+	t.ok(SkyModel.sun_of(m.phase(held)) > 0.99, "underground light is at midday (sun %.3f)" % SkyModel.sun_of(m.phase(held)))
 
 
 func run_quarry_shaders(t: Object) -> void:
