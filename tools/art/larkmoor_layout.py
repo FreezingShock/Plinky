@@ -132,6 +132,7 @@ GROVES = [
     ('crystals', (520, 340), 40, 2), ('crystals', (640, 296), 40, 2), ('crystals', (1100, 300), 40, 1),
     ('oak', (1150, 620), 45, 3), ('bush', (1110, 720), 40, 4),                  # new bottom-right land
     ('rock', (470, 250), 40, 2), ('pine', (440, 230), 40, 3),                   # new north-west land
+    ('pine', (1190, 380), 40, 4), ('oak', (1010, 240), 50, 4), ('bush', (1150, 470), 40, 4),   # north-east candidates: the forest edge, and oaks and bushes at the watchtower grove's density
 ]
 
 
