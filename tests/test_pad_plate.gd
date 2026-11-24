@@ -40,8 +40,10 @@ func run(t: Object) -> void:
 	var text_w: float = TexelPad.LOCK_FONT.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TexelPad.LOCK_SIZE).x
 	var box: Rect2 = TexelPad.lock_chip_box(cost, icon != null)
 	t.ok(text_w > 0.0, "the cost has a measurable width at the native size")
-	t.eq(box.size.x, text_w + float(TexelPad.LOCK_ICON + TexelPad.LOCK_GAP) + 6.0, "the box holds the icon, the gap and the digits")
+	t.ok(absf(TexelPad.chip_text_width(cost) - (text_w + float(cost.length() - 1))) < 0.01, "the digits sit one texel apart")
+	t.eq(box.size.x, TexelPad.chip_text_width(cost) + float(TexelPad.LOCK_ICON + TexelPad.LOCK_GAP) + 6.0, "the box holds the icon, the gap and the digits")
 	t.eq(box.size.y, 12.0, "the chip is 12 rows tall")
-	t.ok(box.position.y >= float(TexelPad.THICK), "the chip sits under the plate")
+	t.ok(box.position.x >= TexelPad.HALF.x, "the chip sits beside the plate, out of the walker's footprint")
+	t.eq(box.position.y + box.size.y * 0.5, 0.0, "the chip is centred on the plate's top face")
 	for i in cost.length():
 		t.ok(TexelPad.LOCK_FONT.has_char(cost.unicode_at(i)), "the font has a glyph for '%s'" % cost.substr(i, 1))
