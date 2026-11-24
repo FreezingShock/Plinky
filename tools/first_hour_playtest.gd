@@ -8,9 +8,9 @@ extends Node
 
 const OUT_DIR: String = "res://shots/first_hour"
 const STEPS_PER_SECOND: int = 10         ## fixed ticks per simulated second (matches GameState's tick_rate)
-const MAX_SIM_SECONDS: float = 5400.0    ## stop after 90 sim minutes if nothing else ends the run
+const MAX_SIM_SECONDS: float = 14400.0   ## stop after 4 sim hours if nothing else ends the run
 const SHOT_MARKS: Array[float] = [60.0, 240.0, 400.0, 600.0]   ## sim seconds at which to save a screenshot
-const LARK_MARKS: Array[float] = [30.0, 900.0, 1800.0]          ## seconds after Larkmoor opens
+const LARK_MARKS: Array[float] = [30.0, 900.0, 1800.0, 3600.0, 7200.0]          ## seconds after Larkmoor opens
 
 var main: Control
 var root: Window
@@ -21,6 +21,7 @@ var _start_zone: StringName = &""
 var _entered_at: float = -1.0
 var _seen: Dictionary = {}
 var _walking_to_gate: bool = false
+var _last_zone: StringName = &""
 var _tick_dt: float = 0.1
 const TIPS: Array[StringName] = [&"welcome", &"first_press", &"walk", &"streak", &"critter", &"clover_row", &"relic", &"gate_open", &"rebirth_button", &"zone_reset", &"upgrades"]
 
@@ -33,6 +34,7 @@ func _ready() -> void:
 	_onb = gs.onboarding
 	_tick_dt = 1.0 / float(sim.config.tick_rate)
 	_start_zone = sim.zone_id
+	_last_zone = sim.zone_id
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -138,16 +140,19 @@ func _play() -> void:
 				shots_taken.append(mark)
 				_log("mark_%d" % int(mark))
 				await _shot("03_t%03d" % int(mark))
-		if sim.zone_id == _start_zone and _walking_to_gate == false and sim.is_gate_open(sim.zone_id) and _once("gate_open"):
-			_log("gate_open")
-			await _shot("04_gate_open")
-			_walking_to_gate = true
-		if sim.zone_id != _start_zone and _entered_at < 0.0:
-			_entered_at = t
+		var here: ZoneDef = sim.current_zone()
+		if here != null and here.id != _last_zone:
+			_last_zone = here.id
 			_walking_to_gate = false
-			_log("zone_entered")
+			_log("zone_entered_%s" % String(here.id))
 			await _frames(60)
-			await _shot("05_zone_entered")
+			await _shot("05_zone_%s" % String(here.id))
+			if _entered_at < 0.0 and here.id != _start_zone:
+				_entered_at = t
+		if here != null and not _walking_to_gate and here.next_zone != &"" and sim.is_gate_open(here.id) and _once("gate_open_%s" % String(here.id)):
+			_log("gate_open_%s" % String(here.id))
+			await _shot("04_gate_open_%s" % String(here.id))
+			_walking_to_gate = true
 		if _entered_at >= 0.0:
 			var since: float = t - _entered_at
 			for mark: float in LARK_MARKS:
