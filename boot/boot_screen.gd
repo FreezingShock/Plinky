@@ -9,6 +9,7 @@ extends Control
 ## title's time of day, loads the chosen slot's zone art (the real stall on Play) and labels that step by name.
 
 const GAME_SCENE: String = "res://main.tscn"
+const GARDEN_BAKE_MS: float = 3.0   ## milliseconds a frame spent baking the game's flower atlas on the loading screen
 const MEADOW_SCENE: String = "res://world/meadow3d_scene.tscn"
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
 const WALKER_SHEET_PATH: String = "res://assets/brand/walker-press-sheet-1x.png"
@@ -79,7 +80,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# The loading screen fills any window like the title does. Main turns this off again.
 	DisplaySettings.set_pregame_fill(get_window(), true)
-	GardenArt.prepare()   # the flower atlas composes on a worker while the loading screen runs, not on the game's first frame
+	GardenArt.prepare()   # the flower atlas is planned now and baked a slice a frame while the loading screen runs (_process)
 	_pal = Palettes.colors(Palettes.MEADOW)
 
 	_handoff = handoff
@@ -250,6 +251,7 @@ func _process(delta: float) -> void:
 	_animate_tips(delta)
 	if _phase == Phase.LOADING:
 		_update_loading(delta)
+	GardenArt.prepare_slice(GARDEN_BAKE_MS)   # the flower atlas, a few milliseconds a frame until it exists
 
 
 func _update_loading(delta: float) -> void:
