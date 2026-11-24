@@ -35,7 +35,7 @@ def text_mask(s, gap=1, space=6):
     return cells, x - gap
 
 
-def neon_layer(cv, cells, ox, oy, glow=1.0, off=False):
+def neon_layer(cv, cells, ox, oy, glow=1.0, off=False, dim=False):
     """Draw neon tubes at (ox, oy) into cv: hot top-left edge, amber body, dithered ember halo around them."""
     S = set((ox + x, oy + y) for x, y in cells)
     if off:
@@ -57,10 +57,10 @@ def neon_layer(cv, cells, ox, oy, glow=1.0, off=False):
                         cv.px(px_, py_, lvl)
     for (x, y) in S:
         hot = ((x - 1, y) not in S) or ((x, y - 1) not in S)
-        cv.px(x, y, QPAPER if hot else QLIGHT)
+        cv.px(x, y, (QLIGHT if hot else QBASE) if dim else (QPAPER if hot else QLIGHT))
 
 
-def sign(style):
+def sign(style, dim=False):
     cells, tw = text_mask("EMBER QUARRY")
     aw = len(ARROW[0]); ah = len(ARROW)
     gapa = 9
@@ -79,9 +79,10 @@ def sign(style):
         cv.rect(rx, ry, rx + 1, ry + 1, QACCENT); cv.px(rx + 1, ry + 1, QSHADOW)
     ox = 10 + aw + gapa; oy = (H - 9) // 2
     arr = [(x, y) for y, r in enumerate(ARROW) for x, v in enumerate(r) if v == "1"]
-    neon_layer(cv, cells, ox, oy)
-    neon_layer(cv, arr, 10, (H - ah) // 2)
-    neon_layer(cv, arr, W - 10 - aw, (H - ah) // 2)
+    g_ = .35 if dim else 1.0
+    neon_layer(cv, cells, ox, oy, g_, dim=dim)
+    neon_layer(cv, arr, 10, (H - ah) // 2, g_, dim=dim)
+    neon_layer(cv, arr, W - 10 - aw, (H - ah) // 2, g_, dim=dim)
     if style == "A":      # bracket legs into the cliff
         for x in (10, W - 12):
             cv.rect(x, H - 2, x + 1, H + 5, QEARTH); cv.px(x, H - 2, QACCENT)
@@ -453,6 +454,21 @@ def dirt_apron(g, X0, Y0):
             g.putpixel((x, y), c)
 
 
+LAMPS = ((1494, 526), (1548, 526), (1494, 572), (1548, 572))   # lantern feet: 26 texels off the path centre, nothing on the lane
+CAVE_AT = (1456, 431)        # cave sprite top-left; its ground contact is y 522
+SIGN_Y = 414
+
+
+def decor_list():
+    """(canvas, foot x, foot y, kind). Everything sits at least 20 texels off the path lane (x 1503..1540)."""
+    return [
+        (crate_stack(), 1466, 547, "crates"), (barrels(), 1440, 556, "barrels"), (timber_pile(), 1426, 532, "timber"),
+        (ore_pile(3), 1578, 548, "ore"), (cart_tipped(), 1592, 568, "cart"), (pick_rack(), 1568, 530, "rack"),
+        (boulder(4, 34, 22), 1446, 570, "boulder"), (boulder(9, 26, 18), 1624, 558, "boulder"),
+        (ore_pile(7, 22), 1472, 576, "ore"), (crate_stack(), 1604, 540, "crates"),
+    ]
+
+
 def build_scene(style, night):
     X0, Y0, X1, Y1 = 1380, 372, 1660, 600
     g = Image.open(LK + "ground_fg.png").convert("RGBA").crop((X0, Y0, X1, Y1))
@@ -464,29 +480,24 @@ def build_scene(style, night):
         fx, fy = s["foot"]
         if X0 - 30 < s["x"] < X1 and Y0 - 40 < s["y"] < Y1 + 30 and s["kind"] in ("gateway", "tower", "rock", "lantern", "crystals"):
             items.append((fy, Image.open(LK + s["file"]).convert("RGBA"), s["x"] - X0, s["y"] - Y0, s["kind"]))
-    cvv = cave(style); items.append((470, cvv.im, 1456 - X0, 431 - Y0, "cave"))
+    cvv = cave(style); items.append((470, cvv.im, CAVE_AT[0] - X0, CAVE_AT[1] - Y0, "cave"))
     # rails decal on the approach
     rl = Canvas(34, 28)
     for y in range(0, 27, 4): rl.rect(4, y, 29, y + 1, QDEEP); rl.rect(4, y, 29, y, EARTH)
     for x_ in (9, 25):
         for y in range(28): rl.px(x_, y, QPAPER if y % 7 else QACCENT); rl.px(x_ + 1, y, QEARTH)
     items.append((495, rl.im, 1520 - 17 - X0, 519 - Y0, "rails"))
-    decor = [
-        (crate_stack(), 1486, 547, 1), (barrels(), 1462, 552, 1), (timber_pile(), 1436, 530, 1),
-        (ore_pile(3), 1562, 548, 1), (cart_tipped(), 1584, 567, 1), (pick_rack(), 1556, 528, 1),
-        (boulder(4, 34, 22), 1444, 566, 1), (boulder(9, 26, 18), 1620, 556, 1), (ore_pile(7, 22), 1470, 574, 1),
-        (crate_stack(), 1596, 548, 1),
-    ]
+    decor = decor_list()
     for (cv_, fx, fy, _) in decor:
         items.append((fy, cv_.im, fx - cv_.w // 2 - X0, fy - cv_.h - Y0, "decor"))
     lam = load_sprite("lantern_294")
-    for (fx, fy) in ((1494, 526), (1548, 526), (1494, 572), (1548, 572)):
+    for (fx, fy) in LAMPS:
         items.append((fy, lam, fx - lam.width // 2 - X0, fy - lam.height - Y0 + 3, "lamp"))
     items.sort(key=lambda t: t[0])
     for (_, im, x, y, tag) in items: g.alpha_composite(im, (int(x), int(y)))
     sg = sign(style)
     sx = 1520 - sg.w // 2 - X0
-    sy = {"A": 404, "B": 414, "C": 399}[style] - Y0
+    sy = {"A": 404, "B": SIGN_Y, "C": 399}[style] - Y0
     if night:
         a = g.convert("RGB")
         mult = Image.new("RGB", a.size, (62, 88, 150))
@@ -501,7 +512,7 @@ def build_scene(style, night):
                     if t > 0:
                         t = t * t * k
                         p = gp[x, y]; gp[x, y] = tuple(min(255, int(p[i] + col[i] * t)) for i in range(3))
-        for (fx, fy) in ((1494, 526), (1548, 526), (1494, 572), (1548, 572)):
+        for (fx, fy) in LAMPS:
             pool(fx - X0, fy - Y0 - 16, 46, 26, (255, 190, 100), 1.0)
         pool(1520 - X0, 500 - Y0, 62, 40, (255, 110, 50), 1.0)
         pool(1520 - X0, 420 - Y0, 90, 34, (255, 100, 40), .75 if style != "C" else .9)
@@ -518,8 +529,57 @@ def build_scene(style, night):
     return g
 
 
+def dirt_decal():
+    """The dirt apron as an alpha sprite over the baked ground (sand path pixels and grass outside stay untouched)."""
+    X0, Y0, X1, Y1 = 1370, 506, 1670, 620
+    g = Image.open(LK + "ground_fg.png").convert("RGBA").crop((X0, Y0, X1, Y1))
+    before = g.copy()
+    dirt_apron(g, X0, Y0)
+    out = Image.new("RGBA", g.size, CLEAR)
+    for y in range(g.height):
+        for x in range(g.width):
+            if g.getpixel((x, y)) != before.getpixel((x, y)): out.putpixel((x, y), g.getpixel((x, y)))
+    return out, X0, Y0
+
+
+def export():
+    out = os.path.join(LK, "entrance"); os.makedirs(out, exist_ok=True)
+    sprites = []
+    def add(im, name, fx, fy, kind, x=None, y=None):
+        im.save(os.path.join(out, name + ".png"))
+        w, h = im.size
+        x = fx - w // 2 if x is None else x; y = fy - h if y is None else y
+        sprites.append(dict(file="entrance/%s.png" % name, kind=kind, x=int(x), y=int(y), w=w, h=h, foot=[float(fx), float(fy)], sort_y=float(fy)))
+    dimg, dx, dy = dirt_decal(); add(dimg, "dirt", 1520, 455, "ember_flat", dx, dy)
+    cv = cave("B"); add(cv.im, "cave", 1520, 470, "ember_flat", CAVE_AT[0], CAVE_AT[1])
+    rl = Canvas(34, 28)
+    for y in range(0, 27, 4): rl.rect(4, y, 29, y + 1, QDEEP); rl.rect(4, y, 29, y, EARTH)
+    for x_ in (9, 25):
+        for y in range(28): rl.px(x_, y, QPAPER if y % 7 else QACCENT); rl.px(x_ + 1, y, QEARTH)
+    add(rl.im, "rails", 1520, 495, "ember_flat", 1503, 519)
+    counts = {}
+    glints = [[1520, 489], [1503, 497], [1538, 495], [1513, 480], [1529, 484], [1508, 506], [1534, 508]]
+    for (cvv, fx, fy, tag) in decor_list():
+        counts[tag] = counts.get(tag, 0) + 1
+        add(cvv.im, "%s_%d" % (tag, counts[tag]), fx, fy, "ember_prop")
+        if tag in ("ore", "cart", "boulder", "crates"):
+            glints += [[fx - 5, fy - 9], [fx + 5, fy - 6], [fx, fy - 13]]
+    lam = [s for s in json.load(open(LK + "placements3d.json"))["sprites"] if s["file"] == "sprites/lantern_294.png"][0]
+    for (fx, fy) in LAMPS:
+        sprites.append(dict(file=lam["file"], nrm=lam["nrm"], kind="lantern", x=fx - 10, y=fy - 26, w=19, h=29, foot=[float(fx), float(fy)], sort_y=float(fy)))
+    on, dim = sign("B"), sign("B", dim=True)
+    on.save(os.path.join(out, "sign_on.png")); dim.save(os.path.join(out, "sign_dim.png"))
+    sx = 1520 - on.w // 2
+    data = dict(sprites=sprites, glints=glints,
+                sign=dict(x=sx, y=SIGN_Y, w=on.w, h=on.h, on="entrance/sign_on.png", dim="entrance/sign_dim.png"),
+                glow=dict(cave=[1520, 496, 46, 30], sign=[1520, SIGN_Y + 14, on.w // 2 + 16, 24]))
+    json.dump(data, open(os.path.join(out, "entrance.json"), "w"), indent=1)
+    print("exported", len(sprites), "sprites,", len(glints), "glints")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
+    if cmd == "export": export(); sys.exit(0)
     if cmd == "mock":
         out = sys.argv[2]; os.makedirs(out, exist_ok=True)
         for st in (sys.argv[3] if len(sys.argv) > 3 else "ABC"):

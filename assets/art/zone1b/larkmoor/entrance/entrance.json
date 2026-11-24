@@ -1,0 +1,365 @@
+{
+ "sprites": [
+  {
+   "file": "entrance/dirt.png",
+   "kind": "ember_flat",
+   "x": 1370,
+   "y": 506,
+   "w": 300,
+   "h": 114,
+   "foot": [
+    1520.0,
+    455.0
+   ],
+   "sort_y": 455.0
+  },
+  {
+   "file": "entrance/cave.png",
+   "kind": "ember_flat",
+   "x": 1456,
+   "y": 431,
+   "w": 128,
+   "h": 92,
+   "foot": [
+    1520.0,
+    470.0
+   ],
+   "sort_y": 470.0
+  },
+  {
+   "file": "entrance/rails.png",
+   "kind": "ember_flat",
+   "x": 1503,
+   "y": 519,
+   "w": 34,
+   "h": 28,
+   "foot": [
+    1520.0,
+    495.0
+   ],
+   "sort_y": 495.0
+  },
+  {
+   "file": "entrance/crates_1.png",
+   "kind": "ember_prop",
+   "x": 1448,
+   "y": 511,
+   "w": 36,
+   "h": 36,
+   "foot": [
+    1466.0,
+    547.0
+   ],
+   "sort_y": 547.0
+  },
+  {
+   "file": "entrance/barrels_1.png",
+   "kind": "ember_prop",
+   "x": 1425,
+   "y": 530,
+   "w": 30,
+   "h": 26,
+   "foot": [
+    1440.0,
+    556.0
+   ],
+   "sort_y": 556.0
+  },
+  {
+   "file": "entrance/timber_1.png",
+   "kind": "ember_prop",
+   "x": 1406,
+   "y": 510,
+   "w": 40,
+   "h": 22,
+   "foot": [
+    1426.0,
+    532.0
+   ],
+   "sort_y": 532.0
+  },
+  {
+   "file": "entrance/ore_1.png",
+   "kind": "ember_prop",
+   "x": 1561,
+   "y": 526,
+   "w": 34,
+   "h": 22,
+   "foot": [
+    1578.0,
+    548.0
+   ],
+   "sort_y": 548.0
+  },
+  {
+   "file": "entrance/cart_1.png",
+   "kind": "ember_prop",
+   "x": 1572,
+   "y": 544,
+   "w": 40,
+   "h": 24,
+   "foot": [
+    1592.0,
+    568.0
+   ],
+   "sort_y": 568.0
+  },
+  {
+   "file": "entrance/rack_1.png",
+   "kind": "ember_prop",
+   "x": 1557,
+   "y": 504,
+   "w": 22,
+   "h": 26,
+   "foot": [
+    1568.0,
+    530.0
+   ],
+   "sort_y": 530.0
+  },
+  {
+   "file": "entrance/boulder_1.png",
+   "kind": "ember_prop",
+   "x": 1429,
+   "y": 548,
+   "w": 34,
+   "h": 22,
+   "foot": [
+    1446.0,
+    570.0
+   ],
+   "sort_y": 570.0
+  },
+  {
+   "file": "entrance/boulder_2.png",
+   "kind": "ember_prop",
+   "x": 1611,
+   "y": 540,
+   "w": 26,
+   "h": 18,
+   "foot": [
+    1624.0,
+    558.0
+   ],
+   "sort_y": 558.0
+  },
+  {
+   "file": "entrance/ore_2.png",
+   "kind": "ember_prop",
+   "x": 1459,
+   "y": 554,
+   "w": 26,
+   "h": 22,
+   "foot": [
+    1472.0,
+    576.0
+   ],
+   "sort_y": 576.0
+  },
+  {
+   "file": "entrance/crates_2.png",
+   "kind": "ember_prop",
+   "x": 1586,
+   "y": 504,
+   "w": 36,
+   "h": 36,
+   "foot": [
+    1604.0,
+    540.0
+   ],
+   "sort_y": 540.0
+  },
+  {
+   "file": "sprites/lantern_294.png",
+   "nrm": "sprites/lantern_294_n.png",
+   "kind": "lantern",
+   "x": 1484,
+   "y": 500,
+   "w": 19,
+   "h": 29,
+   "foot": [
+    1494.0,
+    526.0
+   ],
+   "sort_y": 526.0
+  },
+  {
+   "file": "sprites/lantern_294.png",
+   "nrm": "sprites/lantern_294_n.png",
+   "kind": "lantern",
+   "x": 1538,
+   "y": 500,
+   "w": 19,
+   "h": 29,
+   "foot": [
+    1548.0,
+    526.0
+   ],
+   "sort_y": 526.0
+  },
+  {
+   "file": "sprites/lantern_294.png",
+   "nrm": "sprites/lantern_294_n.png",
+   "kind": "lantern",
+   "x": 1484,
+   "y": 546,
+   "w": 19,
+   "h": 29,
+   "foot": [
+    1494.0,
+    572.0
+   ],
+   "sort_y": 572.0
+  },
+  {
+   "file": "sprites/lantern_294.png",
+   "nrm": "sprites/lantern_294_n.png",
+   "kind": "lantern",
+   "x": 1538,
+   "y": 546,
+   "w": 19,
+   "h": 29,
+   "foot": [
+    1548.0,
+    572.0
+   ],
+   "sort_y": 572.0
+  }
+ ],
+ "glints": [
+  [
+   1520,
+   489
+  ],
+  [
+   1503,
+   497
+  ],
+  [
+   1538,
+   495
+  ],
+  [
+   1513,
+   480
+  ],
+  [
+   1529,
+   484
+  ],
+  [
+   1508,
+   506
+  ],
+  [
+   1534,
+   508
+  ],
+  [
+   1461,
+   538
+  ],
+  [
+   1471,
+   541
+  ],
+  [
+   1466,
+   534
+  ],
+  [
+   1573,
+   539
+  ],
+  [
+   1583,
+   542
+  ],
+  [
+   1578,
+   535
+  ],
+  [
+   1587,
+   559
+  ],
+  [
+   1597,
+   562
+  ],
+  [
+   1592,
+   555
+  ],
+  [
+   1441,
+   561
+  ],
+  [
+   1451,
+   564
+  ],
+  [
+   1446,
+   557
+  ],
+  [
+   1619,
+   549
+  ],
+  [
+   1629,
+   552
+  ],
+  [
+   1624,
+   545
+  ],
+  [
+   1467,
+   567
+  ],
+  [
+   1477,
+   570
+  ],
+  [
+   1472,
+   563
+  ],
+  [
+   1599,
+   531
+  ],
+  [
+   1609,
+   534
+  ],
+  [
+   1604,
+   527
+  ]
+ ],
+ "sign": {
+  "x": 1450,
+  "y": 414,
+  "w": 141,
+  "h": 42,
+  "on": "entrance/sign_on.png",
+  "dim": "entrance/sign_dim.png"
+ },
+ "glow": {
+  "cave": [
+   1520,
+   496,
+   46,
+   30
+  ],
+  "sign": [
+   1520,
+   428,
+   86,
+   24
+  ]
+ }
+}

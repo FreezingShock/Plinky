@@ -10,6 +10,7 @@ const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg
 const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
 const GARDEN_PATH: String = "res://world/larkmoor_gardens.json"
+const ENTRANCE_PATH: String = "res://assets/art/zone1b/larkmoor/entrance/entrance.json"   # the Ember Quarry cave entrance props (world/ember_entrance.gd)
 const DISTRICT_RADIUS: float = 220.0   # texels (2x the old 110 with the frame); the banner shows the nearest district inside this
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
@@ -41,6 +42,7 @@ var districts: Array[Dictionary] = []   # {id, name, pos}
 
 func _ready() -> void:
 	_data = JSON.parse_string(FileAccess.get_file_as_string(placements_path))
+	_merge_entrance()
 	var w: Array = _data.get("world", []) as Array
 	if w.size() == 4:
 		world_rect = Rect2(float(w[0]), float(w[1]), float(w[2]), float(w[3]))
@@ -90,6 +92,16 @@ func _ready() -> void:
 	_add_sky()
 
 
+## The cave entrance props live in their own file so a regenerated placements3d.json keeps them. They join the sprite
+## list before the chunk index is built, so they stream, light and cast shadows like any other prop.
+func _merge_entrance() -> void:
+	if not FileAccess.file_exists(ENTRANCE_PATH):
+		return
+	var e: Variant = JSON.parse_string(FileAccess.get_file_as_string(ENTRANCE_PATH))
+	if e is Dictionary:
+		(_data.sprites as Array).append_array((e as Dictionary).get("sprites", []) as Array)
+
+
 ## Day/night shade, rain and wind over the whole world (world/sky_cycle.gd).
 func _add_sky() -> void:
 	_shadows = SkyShadows.new()
@@ -109,6 +121,10 @@ func _add_sky() -> void:
 	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
 	water_glow.setup(_sky, load(DIR + "ground_n.png") as Texture2D, _ground.position)
 	_add_lights()
+	var entrance := EmberEntrance.new()   # the neon sign and the ember glow at the mine mouth, above the night shade
+	add_child(entrance)
+	entrance.setup(_sky)
+	_sky.add_light(Vector2(1520.0, 500.0), _sky.light_config().pool_gate_radius, 0.8, &"fixed", Color(1.0, 0.42, 0.2, 1.0))
 
 
 ## Haze over the mountain strip along the top of the backdrop (all the way across: there is no island in front of
@@ -641,7 +657,7 @@ func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 			if s.has("nrm"):
 				sp.material = _prop_mat(false, String(s.nrm))
 	parent.add_child(sp)
-	if _shadows != null:
+	if _shadows != null and not String(s.kind).begins_with("ember_flat"):   # cave, rails and dirt are flat on the ground or the cliff
 		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
 	if String(s.kind) == "bush":
 		sp.set_meta(&"bush", true)
