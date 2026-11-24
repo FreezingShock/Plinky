@@ -11,3 +11,12 @@ static func apply(f: FontFile) -> FontFile:
 	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
 	f.force_autohinter = false
 	return f
+
+
+## The font a theme gives for one variation, made crisp in place. The face is a shared resource, so every label
+## that uses it gets the same settings. Returns null only if the theme has no font at all.
+static func theme_font(theme: Theme, variation: StringName) -> Font:
+	var f: Font = theme.get_font(&"font", variation)
+	if f is FontFile:
+		apply(f as FontFile)
+	return f

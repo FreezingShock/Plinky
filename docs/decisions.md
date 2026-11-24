@@ -895,3 +895,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
 - **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
 - Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
+
+## Popup text is crisp (2026-11-24)
+- **Why:** Nathan's screenshot: "+418K" and the quarry's "Iron Ore" caption looked smeared, half-transparent and unevenly outlined. The game draws at 640x360 and scales that up with nearest filtering, so grey anti-aliasing and light hinting show as soft edges at the base size.
+- **Cause:** `PressPopups` and `PopupNumber` drew with the shared `PixelifySans-popup.ttf` at its import defaults. The `CrispFont` settings (AA off, normal hinting, no subpixel positioning) only applied to titles and menu text.
+- **Fix:** `CrispFont.theme_font` applies those settings to the `PopupLabel` face in place. `fx_bus` and `PressPopups` both use it. Glyphs are drawn on whole pixels, as before.
+- **Fades are stepped, not alpha.** The last 30% of a popup's life blinks off and on at 8 Hz (`PopupStyle.shows_now`). Reduce Flashing holds the popup solid to its end, then cuts it. `PopupNumber` blinks the same way. Taste call: no half-transparent letters, to match the hard-step look elsewhere.
+- **Kept:** outline stays 2 px (the 2026-11-23 popup font entry depends on it). I found no single pixel unit in the Pixelify Sans outlines (checked with fontTools), so there is no clear "native" size. Sizes stay on the existing integer list.
+- Test: `tests/test_press_popups.gd` checks the popup face is non-AA and sits on whole pixels, and that the blink covers the tail without fading.
+- Not verified in-engine: no Godot in the cloud. PC QA should check "+418K" and "Iron Ore" at 1x and 3x in the meadow and the quarry, with Reduce Flashing on and off.
