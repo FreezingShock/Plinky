@@ -5,7 +5,8 @@ extends Control
 ## The sim has already reset by the time this runs; the HUD rows are told to count down from the old values over the
 ## same span (RollValue.countdown), so they all land together. Then a centred sequence plays (ui/fx/bloom_timeline.gd
 ## has the clock): a light-dither veil and a closing ring of ASCII marks, a flash, a big pop of the currency icon, pixel
-## rings, sparkles and petals, the earned amount counting up, and a fly into the HUD row, which then rolls to its new total.
+## rings, sparkles and petals, the earned amount counting up, then the icon and number drift straight up out of the middle
+## and shrink away while a last ring closes on the spot. The HUD row rolls to its new total as they go.
 ##
 ## Only pixels: 4x4 Bayer dither, whole-texel rects, nearest-filtered icon at integer scales, the theme's fonts.
 ## No camera shake. Reduce flashing, Still meadow and Calm camera swap it for a short fade (no flash, rings or particles);
@@ -16,6 +17,7 @@ const FLOWERS: Array[StringName] = [&"dewdrop", &"clover", &"thistle", &"heather
 const MARKS: String = ".o*O"
 const SKIP_AFTER: float = 0.45
 const NUMBER_SIZE: int = 32
+const RISE_PX: float = 40.0   ## how far the icon and number drift up while they go away, always on the centre line
 const HEAD_SIZE: int = 24
 
 var sim: Sim
@@ -42,6 +44,7 @@ var _parts: Array[Dictionary] = []
 var _rings: Array[Dictionary] = []
 var _sparks: Array[Dictionary] = []
 var _mote_acc: float = 0.0
+var _exit_pulsed: bool = false
 var _seeds_row: RollValue
 var _font: Font
 
@@ -124,6 +127,7 @@ func start(reset_id: StringName, gained: int) -> void:
 	_rings.clear()
 	_sparks.clear()
 	_burst_done = false
+	_exit_pulsed = false
 	_released = false
 	_ticks = 0
 	_mote_acc = 0.0
@@ -193,6 +197,9 @@ func _process(delta: float) -> void:
 		_burst()
 	_set_light(p)
 	_step_text(p)
+	if not _exit_pulsed and _t >= float(p["hold_end"]):
+		_exit_pulsed = true
+		_exit_ring()
 	_step_fx(delta, p)
 	if not _released and _t >= float(p["fly_end"]):
 		_released = true
@@ -229,19 +236,19 @@ func _step_text(p: Dictionary) -> void:
 	var alpha: float = fade_in * (1.0 - clampf((fly - 0.35) / 0.65, 0.0, 1.0))
 	_text.modulate = Color(1.0, 1.0, 1.0, alpha)
 	_hint.modulate.a = clampf((_t - float(p["up_end"])) / 0.3, 0.0, 1.0)
-	var home: Vector2 = _center() + Vector2(0.0, 68.0)
-	_text.position = (home.lerp(_target() , fly)).round()
+	_text.position = (_center() + Vector2(0.0, 68.0 - RISE_PX * fly)).round()
 
 
-## Where the icon and number fly to: the HUD row of the currency.
-func _target() -> Vector2:
-	if _seeds_row != null and is_instance_valid(_seeds_row):
-		return (_seeds_row.global_position + _seeds_row.size * 0.5 - global_position).round()
-	return Vector2(40.0, 20.0)
-
-
+## Where the icon sits: the centre, rising straight up as it goes away.
 func _icon_pos(fly: float) -> Vector2:
-	return _center().lerp(_target(), fly).round()
+	return (_center() - Vector2(0.0, RISE_PX * fly)).round()
+
+
+## One ring that closes on the spot as the icon leaves, so the exit reads as the reset going away, not sliding off.
+func _exit_ring() -> void:
+	if _calm:
+		return
+	_rings.append({"age": 0.0, "life": 0.6, "r0": 22.0, "r1": 60.0, "col": _color, "w": 1})
 
 
 func _burst() -> void:

@@ -85,9 +85,54 @@ static func unit(a: AttributeDef) -> String:
 static func lock_text(a: AttributeDef, sim: Sim = null) -> String:
 	if a.unlock_resets > 0:
 		var r: ZoneResetDef = sim.reset_for_currency(a.currency) if sim != null else null
-		var nm: String = r.display_name if r != null else "resets"
-		return "Unlocks after %d %s" % [a.unlock_resets, nm + ("s" if a.unlock_resets != 1 and r != null else "")]
+		if r == null:
+			return "Unlocks after %d resets" % a.unlock_resets
+		return "Unlocks after %d %s %s" % [a.unlock_resets, r.display_name, "reset" if a.unlock_resets == 1 else "resets"]
 	return "Unlocks at %d Rebirths" % a.unlock_rebirths
+
+
+## How many resets (or Rebirths) a gift waits for. 0 is open from the start. The gallery groups gifts into tiers by this.
+static func tier_of(a: AttributeDef) -> int:
+	return a.unlock_resets if a.unlock_resets > 0 else a.unlock_rebirths
+
+
+## Heading of a tier section in the gallery: "Open From Start", "After 2 Bloom resets", "After 1 Rebirth".
+static func tier_title(sim: Sim, currency: StringName, tier: int) -> String:
+	if tier <= 0:
+		return "Open From Start"
+	var r: ZoneResetDef = sim.reset_for_currency(currency)
+	if r != null:
+		return "After %d %s %s" % [tier, r.display_name, "reset" if tier == 1 else "resets"]
+	return "After %d %s" % [tier, "Rebirth" if tier == 1 else "Rebirths"]
+
+
+## Tab title: "Bloom Gifts", "Nucleus Gifts", "Prestige", "Rebirth Perks". A new zone reset gets its own tab from its menu_title.
+static func tab_title(sim: Sim, currency: StringName) -> String:
+	if currency == &"prestige":
+		return "Prestige"
+	if currency == &"rp":
+		return "Rebirth Perks"
+	var r: ZoneResetDef = sim.reset_for_currency(currency)
+	if r != null and r.menu_title != "":
+		return r.menu_title
+	return String(currency).capitalize()
+
+
+## The gallery's tabs that show now, in menu order (see group_shown).
+static func tabs(sim: Sim) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for c: StringName in currencies(sim):
+		if group_shown(sim, c):
+			out.append(c)
+	return out
+
+
+## The tab that opens first: the current zone's reset when it shows, else the first tab. &"" when there are none.
+static func default_tab(sim: Sim, shown: Array[StringName]) -> StringName:
+	var here: ZoneResetDef = sim.reset_for_zone()
+	if here != null and shown.has(here.currency):
+		return here.currency
+	return shown[0] if not shown.is_empty() else &""
 
 
 ## Upgrades in menu order: Prestige upgrades, then Rebirth Point perks. Each group: open from the start first, then by Rebirths needed.

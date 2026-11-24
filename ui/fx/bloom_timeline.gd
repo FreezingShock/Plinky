@@ -7,7 +7,7 @@ extends RefCounted
 ##   burst           flash, rings, sparkles, and the big Seeds icon pops in
 ##   burst+pop ..    the Seeds earned count up beside the icon, one tick per step
 ##   hold .. fly     the icon and number rest, a gift hint shows if one can be bought
-##   fly .. total    icon and number shrink into the HUD's Seeds row, which then rolls up to its new total
+##   fly .. total    icon and number drift up off the centre line and shrink away; the HUD's Seeds row then rolls up to its new total
 ##
 ## calm (Reduce flashing, Still meadow or Reduce screen effects): shorter, no flash, rings or particles, the icon only
 ## fades in. The countdown and the number are the same.

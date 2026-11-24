@@ -1,0 +1,1 @@
+Upgrades is now a gallery: a tab per gift group (Bloom, Nucleus, Prestige), gifts in tiers, and whole cards that buy, with green or red outlines for what you can afford. Bloom and Nucleus now drift away on the centre line.

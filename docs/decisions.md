@@ -778,3 +778,13 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Why:** PR #224 added six missing Godot `.uid` sidecars, and a scan of main then showed `tests/test_nucleus.gd` had none either. Nothing stopped the next one.
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
+
+## Upgrades gallery (2026-11-24)
+- **Layout:** the Upgrades panel body is `ui/upgrade_gallery.gd`, not rows in the HUD. Tabs come from `UpgradeText.currencies()`, so a new zone reset gets its own tab with no code change. Each tab is a list of tiers (`UpgradeText.tier_of`: the resets or Rebirths a gift waits for), each tier a 3-column grid of cards. The tab for the current zone opens first, every time the panel opens.
+- **Card:** `ui/gift_card.gd` is a Button, so the whole card is the buy target. Outline: green when affordable, red with a dim fill when not (both through `StatStyle.buy`, so the colour-safe option applies), gold when maxed, dim while locked. `AsciiBox.Kind.CARD` draws the notched frame with no fill, so the card background stays transparent.
+- **Lazy build:** a tab's pages and cards are built the first time it is shown. The default tab is about 13 cards, so the node cost is about half of building all 27 at once.
+- **Purchase feedback:** the card pops, throws seven pixel sparks from its centre (drawn, not nodes), the header badge pops, and the cost flies off as before. Reduce motion and reduce flashing skip the motion and keep the sounds.
+- **Lock text:** "Unlocks after 1 Nucleus reset" (the old text said "Nucleuss").
+- **Bloom and Nucleus exit:** the icon and number rise straight up from the centre and shrink away with a fade, and one ring closes on the spot. They no longer fly into the HUD corner. The Seeds or Shards row still rolls up on release.
+- **Taste call for Nathan:** tabs are the only way between groups (no Q/E shortcuts). Recommended pick: leave it, since the Upgrades key already opens the panel.
+- **Not verified in-engine:** the layout at 640x360, the sparks, the exit timing. PC QA should check the panel in both zones, Reduce Motion on and off, and a Bloom and a Nucleus run.

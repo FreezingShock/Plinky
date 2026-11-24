@@ -30,9 +30,7 @@ var _prestige_label: Label
 var _modal: ModalCard            # rebirth confirm and the offline summary, centred
 var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
-var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
-var _attr_rows: Dictionary = {}   # attribute id -> UpgradeRow
-const UPGRADE_LIST_HEIGHT: float = 168.0   ## about six rows so the panel fits above the bottom bar at 640x360; the rest scroll
+var _gallery: UpgradeGallery      # the tabs, tiers and gift cards inside the Upgrades panel
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -407,50 +405,19 @@ func _build_upgrades() -> void:
 	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
 	head.add_child(x_gap)
 	_upgrades_box.add_child(PanelDivider.new())
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, UPGRADE_LIST_HEIGHT)
-	scroll.follow_focus = true
-	_upgrades_box.add_child(scroll)
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 4)
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
-	_upg_list = list
-	_upgrades_panel.visibility_changed.connect(_fill_upgrades)
+	_gallery = UpgradeGallery.new()
+	_upgrades_box.add_child(_gallery)
+	_gallery.setup(sim, _cur_badges)
+	_gallery.buy_pressed.connect(_buy_upgrade)
+	_upgrades_panel.visibility_changed.connect(_on_upgrades_visibility)
 
 
-var _upg_list: VBoxContainer
+## Opening the menu picks the zone's tab; while it is open, _refresh keeps the gallery current.
+func _on_upgrades_visibility() -> void:
+	if _upgrades_panel.visible:
+		_gallery.open()
 
 
-## The 27 rows are built the first time the menu opens, not at boot (node budget).
-func _fill_upgrades() -> void:
-	if not _upgrades_panel.visible or not _attr_rows.is_empty():
-		return
-	var list: VBoxContainer = _upg_list
-	var group: StringName = &"prestige"
-	for a: AttributeDef in UpgradeText.ordered(sim):
-		if a.currency != group:   # a small heading where each perk group starts
-			group = a.currency
-			var gh := Label.new()
-			gh.text = UpgradeText.group_head(sim, group)
-			gh.add_theme_color_override("font_color", StatStyle.color(group))
-			list.add_child(gh)
-			_group_heads[group] = gh
-		var row := UpgradeRow.new()
-		list.add_child(row)
-		row.setup(a)
-		var cur: StringName = a.currency
-		row.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
-		row.buy_pressed.connect(_buy_upgrade)
-		row.refresh(UpgradeText.state(sim, a))
-		var eff: StringName = a.effect
-		var spec: Callable = func() -> Variant: return UpgradeText.tip(row.state(), eff)
-		_row_tips[a.id] = spec
-		Tip.bind_all(row, spec)
-		_attr_rows[a.id] = row
-
-var _group_heads: Dictionary = {}   # currency stat id -> the small heading above its upgrades
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
 
@@ -483,15 +450,10 @@ func _balance(sid: StringName) -> BigNum:
 	return sim.rp_available() if sid == &"rp" else sim.prestige_available()
 
 
-## A row asked to buy. The sim decides; the row plays the animation only if it went through.
+## A gift asked to buy. The sim decides; the card plays its animation only if the buy went through.
 func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
-		var row: UpgradeRow = _attr_rows[aid]
-		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
-		# A tooltip already showing (the pointer is on the button) must pick up the new level.
-		for c: Node in [row] + row.get_children():
-			if c is Control:
-				Tip.set_spec(c as Control, _row_tips[aid])
+		_gallery.played_buy(aid)
 
 
 func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next would take Tab first
@@ -673,12 +635,7 @@ func _refresh() -> void:
 			(_cur_vals[sid] as Label).text = _balance(sid).format()
 		for cur: StringName in _cur_badges:
 			(_cur_badges[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
-		for cur2: StringName in _group_heads:
-			(_group_heads[cur2] as Control).visible = UpgradeText.group_shown(sim, cur2)
-		for aid2: StringName in _attr_rows:
-			(_attr_rows[aid2] as Control).visible = UpgradeText.group_shown(sim, sim.attribute_defs[aid2].currency)
-		for aid: StringName in _attr_rows:
-			(_attr_rows[aid] as UpgradeRow).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
+		_gallery.refresh()
 
 
 func _on_offline(seconds: float, gains: Dictionary) -> void:

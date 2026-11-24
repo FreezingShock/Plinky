@@ -61,3 +61,20 @@ func run(t: Object) -> void:
 	sim.stats[&"prestige"] = BigNum.from_float(50.0)
 	t.ok(bool(UpgradeText.state(sim, press)["can_afford"]), "with Prestige: can afford")
 	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, press), &"press_rate")["hint"]).begins_with("Costs"), "tooltip hint names the cost")
+
+	# gallery: tiers, tab names and the tab that opens first
+	sim.new_game()
+	var pods: AttributeDef = sim.attribute_defs[&"bloom_seed_pods"]
+	t.eq(UpgradeText.tier_of(pods), 1, "Seed Pods wait for one Bloom")
+	t.eq(UpgradeText.tier_of(press), 0, "Press Rate is open from the start")
+	t.eq(UpgradeText.tier_title(sim, &"seeds", 2), "After 2 Bloom resets", "tier heading names the reset and counts plurals")
+	t.eq(UpgradeText.tier_title(sim, &"seeds", 1), "After 1 Bloom reset", "tier heading is singular at one")
+	t.eq(UpgradeText.tier_title(sim, &"prestige", 0), "Open From Start", "tier 0 heading")
+	t.eq(UpgradeText.tier_title(sim, &"prestige", 2), "After 2 Rebirths", "Rebirth tiers count Rebirths")
+	t.eq(UpgradeText.tab_title(sim, &"seeds"), "Bloom Gifts", "Bloom tab is named from the reset")
+	t.eq(UpgradeText.tab_title(sim, &"shards"), "Nucleus Gifts", "Nucleus tab is named from the reset")
+	t.eq(UpgradeText.tab_title(sim, &"prestige"), "Prestige", "Prestige tab")
+	t.eq(String(UpgradeText.state(sim, sim.attribute_defs[&"nucleus_veins"])["lock"]), "Unlocks after 1 Nucleus reset", "Nucleus lock text reads cleanly")
+	t.eq(UpgradeText.default_tab(sim, [&"prestige", &"seeds"] as Array[StringName]), &"seeds", "the zone's tab opens first")
+	t.eq(UpgradeText.default_tab(sim, [&"prestige"] as Array[StringName]), &"prestige", "with no zone tab showing, the first tab opens")
+	t.eq(UpgradeText.default_tab(sim, [] as Array[StringName]), &"", "no tabs, nothing opens")
