@@ -330,3 +330,8 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - **Walk-in:** the lane x 1510 to 1534 stays clear of decor (checked by `tests/test_ember_entrance.gd`). Cave, rails and dirt are flat sprites sorted behind the walker. The gate anchor and its trigger are unchanged.
 - **Accessibility:** Reduce Flashing stops the neon flicker and Reduce Motion freezes the glints; the sign then stays steadily lit.
 - **Not run in the cloud:** Godot and the headless tests. PC QA should screenshot day, dusk and night and walk through the gate.
+
+## 2026-11-24: Ember Quarry entrance polish (after Nathan's "refine" ask)
+- **Art:** inside the mine mouth only the nearest frame keeps a lintel and sill; deeper frames are bare posts on footings, so the tunnel reads as depth, not rungs. The far glow is larger and brighter, sleepers are lighter, and the rock around the arch uses fewer pale highlights so it sits closer to the cliff.
+- **Immersion:** `EmberEntrance` draws 12 embers rising out of the mine (a pure function of the clock, 8 steps per second, 1 texel each), a cave fire that breathes in steps, and lifts the neon and cave glow with `MeadowLife.rain` (a heavy rain counts as 0.7 of night). Reduce Motion removes the sparks and freezes the glints; Reduce Flashing stops the breathing and the neon flicker.
+- **Checked:** `tools/art/gen_ember_entrance.py mock <dir> B` renders day, dusk, night and rain tiles on the real cliff (`times_B.png`). The in-engine look is still for PC QA.

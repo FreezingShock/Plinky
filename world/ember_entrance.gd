@@ -9,6 +9,9 @@ extends Node2D
 
 const DIR: String = "res://assets/art/zone1b/larkmoor/"
 const GLINT_STEP: float = 3.0            ## clock steps per second for the glints (stepped, not smooth)
+const SPARKS: int = 12                   ## embers drifting up out of the mine mouth
+const SPARK_STEP: float = 8.0            ## clock steps per second for the sparks (stepped, 1 texel each)
+const SPARK_ORIGIN: Vector2 = Vector2(1520.0, 488.0)
 const FLICKER_EVERY: float = 9.0         ## seconds between neon flickers
 const FLICKER_LEN: float = 0.5           ## seconds a flicker lasts
 const FLICKER_STEP: float = 10.0         ## steps per second inside a flicker
@@ -88,9 +91,10 @@ func _process(_delta: float) -> void:
 		return
 	var t: float = float(Time.get_ticks_msec()) / 1000.0
 	var night_q: int = int(round(_sky.night01 * 16.0))
-	var key: int = night_q + (1 if _dim_now(t) else 0) * 100
+	var rain_q: int = int(round(MeadowLife.rain * 8.0))
+	var key: int = night_q + (1 if _dim_now(t) else 0) * 100 + rain_q * 10000
 	if not MeadowLife.reduce_motion:
-		key += int(floor(t * GLINT_STEP)) * 1000
+		key += int(floor(t * SPARK_STEP)) * 1000000
 	if key == _last_key:
 		return
 	_last_key = key
@@ -110,19 +114,39 @@ func _draw_glow() -> void:
 		return
 	var t: float = float(Time.get_ticks_msec()) / 1000.0
 	var night: float = floorf(_sky.night01 * 16.0 + 0.5) / 16.0
-	var k: float = 0.22 + 0.6 * night            # the neon and the cave glow all day, and more at night
+	var rain: float = floorf(MeadowLife.rain * 8.0 + 0.5) / 8.0
+	var dark: float = maxf(night, rain * 0.7)    # a heavy rain darkens the sky, so the neon and the mine glow come up with it
+	var k: float = 0.22 + 0.6 * dark + 0.25 * rain   # the neon and the cave glow all day, more at night, most in the rain
 	if _dim_now(t):
 		k *= 0.45
+	var breathe: float = 1.0
+	if not (MeadowLife.reduce_motion or FxConfig.reduce_flashing):
+		breathe = 0.92 + 0.08 * float(int(floor(t * 4.0)) % 3)     # the forge fire in the cave breathes in steps
 	_draw_halo(_glow_sign, Color(EMBER.r, EMBER.g, EMBER.b, k * 0.55))
-	_draw_halo(_glow_cave, Color(EMBER.r, EMBER.g, EMBER.b, (0.18 + 0.55 * night) * 0.9))
+	_draw_halo(_glow_cave, Color(EMBER.r, EMBER.g, EMBER.b, (0.18 + 0.55 * dark + 0.2 * rain) * 0.9 * breathe))
 	var step: int = 0 if MeadowLife.reduce_motion else int(floor(t * GLINT_STEP))
 	for i in _glints.size():
 		var on: bool = MeadowLife.reduce_motion or ((i * 7 + step * 3) % 5) < 2
 		if not on:
 			continue
-		var a: float = 0.55 + 0.45 * night
+		var a: float = 0.55 + 0.45 * dark
 		var p: Vector2 = _glints[i].floor()
 		_glow.draw_rect(Rect2(p, Vector2.ONE), Color(GLINT.r, GLINT.g, GLINT.b, a))
+	if not MeadowLife.reduce_motion:
+		_draw_sparks(t, dark)
+
+
+## Embers lifting out of the mine mouth: each one rises on its own phase, sways with a fixed curve, shrinks to nothing.
+## No state: position is a pure function of the clock, quantised to whole texels and SPARK_STEP steps per second.
+func _draw_sparks(t: float, dark: float) -> void:
+	var clock: float = floorf(t * SPARK_STEP) / SPARK_STEP
+	for i in SPARKS:
+		var life: float = fmod(clock * (0.11 + 0.012 * float(i % 4)) + float(i) * 0.083, 1.0)
+		var sway: float = sin(float(i) * 2.3 + life * 5.0) * (3.0 + 7.0 * life)
+		var p := Vector2(SPARK_ORIGIN.x + (float(i % 5) - 2.0) * 3.0 + sway, SPARK_ORIGIN.y - life * 46.0).floor()
+		var a: float = (1.0 - life) * (0.5 + 0.5 * dark)
+		var c: Color = GLINT if life < 0.45 else EMBER
+		_glow.draw_rect(Rect2(p, Vector2.ONE), Color(c.r, c.g, c.b, a))
 
 
 func _draw_halo(h: Vector4, col: Color) -> void:
