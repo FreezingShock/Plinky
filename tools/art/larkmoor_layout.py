@@ -74,23 +74,25 @@ def curve_row(ctrl, n, gap=PAD_GAP):
 
 
 # Districts: name, centre, pads (screen coords), landmark. Pads are six rows, listed in the order of their tiers. The
-# common and uncommon rows (Sprout at Heronmere, Clover on the south lake shore) open first, then Thistle, Heather,
+# common and uncommon rows (Sprout at Reedgate, Clover on the Heronmere south shore) open first, then Thistle, Heather,
 # Foxglove and Starbloom. Pad 1 of each row is the end nearest the road, so its row_index 0 plate is the one the walker meets first.
-# The Clover row is the fifth entry, so pad_buttons order still lines up, but it stands by the Heronmere lake path, not in
-# Cairnfold's own centre (the area list in content/areas says Heronmere for it). Both rows sit on walkable ground. Lanternwood has none.
+# A district with a row takes its centre from the row (_lay_rows). Lanternwood and Cairnfold (the stones) have no pads, so
+# their entries sit in the list without moving the pad order.
 DISTRICTS = [
     dict(id='green', name='Gatehouse Green', c=(760, 640), pads=curve_row([(816, 656), (856, 662), (896, 654), (936, 640)], 5),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
-    dict(id='heronmere', name='Heronmere', c=(520, 580), pads=curve_row([(716, 664), (676, 660), (636, 656), (598, 650)], 5),
-         note='West lake with reed shores and a little jetty. The Sprout row runs across the open grass between the main path and the lake, well in from the arrival gate; the Clover row lines the south shore.'),
+    dict(id='reedgate', name='Reedgate', c=(670, 624), pads=curve_row([(716, 664), (676, 660), (636, 656), (598, 650)], 5),
+         note='Where the west road leaves the main road for the lake, with the first reeds beside it. The Sprout row lines the road.'),
     dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
     dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(986, 640), (1026, 648), (1064, 646), (1100, 632)], 5),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
-    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
-         note='Rocky foothills, glowing crystals, a ring of standing stones. Its Clover row sits on the Heronmere south shore, pad 1 nearest the road.'),
+    dict(id='heronmere', name='Heronmere', c=(540, 637), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
+         note='West lake with reed shores and a little jetty. The Clover row lines the road along the south shore, pad 1 nearest the arrival gate.'),
     dict(id='lanternwood', name='Lanternwood', c=(960, 330), pads=[],
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
+    dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[],
+         note='Rocky foothills, glowing crystals, a ring of standing stones. No pads.'),
     dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=curve_row([(806, 350), (830, 338), (858, 334)], 3),
          note='Last plaza before the quarry. The Starbloom row, and the far gate set in the cliff.'),
     dict(id='westmere', name='Westmere', c=(332, 512), pads=curve_row([(296, 494), (326, 508), (352, 514)], 3),
@@ -289,7 +291,7 @@ ROWS = {
     'sprout': (1, 54.0, 1, 5), 'clover': (1, 264.0, -1, 5), 'foxglove': (2, 174.0, 1, 5), 'thistle': (0, 402.0, 1, 5),
     'heather': (2, 852.0, -1, 5), 'starbloom_n': (0, 930.0, 1, 3), 'starbloom_w': (3, 569.0, 1, 3),
 }
-_ROW_OF = {'green': 'thistle', 'heronmere': 'sprout', 'oak': 'heather', 'thistle': 'foxglove', 'cairnfold': 'clover',
+_ROW_OF = {'green': 'thistle', 'reedgate': 'sprout', 'oak': 'heather', 'thistle': 'foxglove', 'heronmere': 'clover',
            'emberwatch': 'starbloom_n', 'westmere': 'starbloom_w'}
 _ROW_FROM = {'starbloom_w': 'wm'}   # pad 1 is the end nearest the road (the spawn), except the Westmere pads, nearest the trail's start
 
