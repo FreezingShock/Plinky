@@ -41,7 +41,7 @@ def neon_layer(cv, cells, ox, oy, glow=1.0, off=False):
     if off:
         for (x, y) in S: cv.px(x, y, QSHADOW if (x + y) & 1 else QEARTH)
         return
-    R = 5
+    R = 8
     for (x, y) in list(S):
         for dy in range(-R, R + 1):
             for dx in range(-R, R + 1):
@@ -50,10 +50,10 @@ def neon_layer(cv, cells, ox, oy, glow=1.0, off=False):
                 d = math.hypot(dx, dy)
                 if d > R: continue
                 t = (1 - d / (R + .5)) * glow
-                if bayer(px_, py_) < t * t * 1.15:
+                if bayer(px_, py_) < t * 0.95:
                     cur = cv.get(px_, py_)
-                    lvl = QBASE if d <= 1.5 else QDEEP if d <= 3 else QSHADOW
-                    if cur[3] == 0 or cur[:3] in (QINK[:3], QSHADOW[:3], QEARTH[:3], QDEEP[:3]):
+                    lvl = QBASE if d <= 1.5 else QDEEP if d <= 3.5 else QSHADOW
+                    if cur[3] == 0 or cur[:3] in (QINK[:3], QSHADOW[:3], QEARTH[:3], QDEEP[:3], QBASE[:3]):
                         cv.px(px_, py_, lvl)
     for (x, y) in S:
         hot = ((x - 1, y) not in S) or ((x, y - 1) not in S)
@@ -175,12 +175,13 @@ def cave(style):
         for i in range(3):
             cv.px(cx - 2 + i, ky + 4 + i, QBASE); cv.px(cx + 3 - i, ky + 4 + i, QBASE)
         cv.px(cx, ky + 7, QLIGHT)
-    # ---- interior
-    gx, gy = cx, 49
+    # ---- interior. The world is a 2:1 elevated orthographic view with the cliff facing the camera, like the gateway and
+    # tower sprites: width never converges, depth only moves things UP the screen (one texel of depth is half a texel up).
+    gx, gy = cx, 47
     for y in range(H):
         for x in range(W):
             if not in_open(x, y): continue
-            dd = math.hypot((x - gx) / 15.0, (y - gy) / 11.0)
+            dd = math.hypot((x - gx) / 17.0, (y - gy) / 9.0)
             t = max(0.0, 1 - dd) * (1.25 if style == "C" else 1.0)
             lv = t * 4.2 + (bayer(x, y) - .5) * .9
             c = QINK
@@ -189,71 +190,74 @@ def cave(style):
             elif lv > 1.5: c = QDEEP
             elif lv > .7: c = QSHADOW
             cv.px(x, y, c)
-    # floor trapezoid
-    fl_top, fl_bot = 50, base
-    def hw(y): return 3 + (y - fl_top) / float(fl_bot - fl_top) * (cr - 1)
+    fl_top, fl_bot = 52, base
+    fh = cr - 1                                    # floor half width: constant, no vanishing point
     for y in range(fl_top, fl_bot + 1):
         for x in range(W):
-            if not in_open(x, y): continue
-            if abs(x + .5 - cx) > hw(y): continue
+            if not in_open(x, y) or abs(x + .5 - cx) > fh: continue
             near = (y - fl_top) / float(fl_bot - fl_top)
-            warm = max(0.0, near * 1.1 - abs(x - cx) / 40.0)
-            lv = warm * 2.6 + (bayer(x, y) - .5) * .9 + (1 - near) * .5 * max(0, 1 - math.hypot((x - gx) / 12.0, (y - gy) / 9.0))
+            warm = max(0.0, near * 1.1 - abs(x - cx) / 44.0)
+            lv = warm * 2.6 + (bayer(x, y) - .5) * .9
             c = QSHADOW
             if lv > 1.9: c = QDEEP
-            elif lv > .9: c = QEARTH if near > .55 else QSHADOW
+            elif lv > .9: c = QEARTH if near > .5 else QSHADOW
             if lv > 2.5: c = QBASE
             cv.px(x, y, c)
-    # rails + sleepers
-    sl = [87, 83, 78, 73, 69, 65, 62, 59, 56, 53]
-    for y in sl:
-        h = hw(y) * .82
-        cv.rect(cx - h, y, cx + h, y, QDEEP if y > 66 else QSHADOW)
-        cv.rect(cx - h, y - 1, cx + h, y - 1, EARTH if y > 70 else QEARTH)
+    for y in range(fl_top, fl_bot + 1, 2):         # packed-earth speckle so the floor plane reads
+        for x in range(cx - fh, cx + fh):
+            if in_open(x, y) and hsh(x, y, 5) > .93 and cv.get(x, y)[:3] != QBASE[:3]: cv.px(x, y, QINK if y < 66 else QSHADOW)
+    # rails: parallel lines, sleepers every 4 rows (half-foreshortened: 2 texels thick)
+    for y in range(fl_bot - 3, fl_top, -4):
+        cv.rect(cx - 12, y, cx + 12, y + 1, QDEEP if y > 66 else QSHADOW)
+        cv.rect(cx - 12, y, cx + 12, y, EARTH if y > 70 else QEARTH)
+        cv.px(cx - 13, y, QSHADOW); cv.px(cx + 13, y, QSHADOW)
     for y in range(fl_top + 1, fl_bot + 1):
-        h = hw(y) * .38 + 1.5
-        for s in (-1, 1):
-            xx = round(cx + s * h)
-            cv.px(xx, y, QPAPER if y > 60 else QACCENT); cv.px(xx + s, y, QEARTH if y > 60 else QSHADOW)
-    # mine cart on the rails
+        for sx_ in (-8, 8):
+            cv.px(cx + sx_, y, QPAPER if y > 62 else QACCENT); cv.px(cx + sx_ + (1 if sx_ > 0 else -1), y, QEARTH if y > 62 else QSHADOW)
+    # mine cart, front on: box, top rim strip, wheels
     cy_ = 70
-    cv.poly([(cx - 8, cy_ - 7), (cx + 8, cy_ - 7), (cx + 6, cy_ + 2), (cx - 6, cy_ + 2)], QEARTH)
-    cv.poly([(cx - 8, cy_ - 7), (cx + 8, cy_ - 7), (cx + 7, cy_ - 4), (cx - 7, cy_ - 4)], QPAPER)
-    cv.rect(cx - 6, cy_ - 3, cx - 6, cy_ + 1, QACCENT); cv.rect(cx + 5, cy_ - 3, cx + 6, cy_ + 1, QSHADOW)
-    for i in range(-5, 6, 2): cv.px(cx + i, cy_ - 1, QDEEP)
-    cv.px(cx - 6, cy_ + 3, QINK); cv.px(cx - 5, cy_ + 3, QINK); cv.px(cx + 5, cy_ + 3, QINK); cv.px(cx + 6, cy_ + 3, QINK)
-    for i, (ox_, oy_, r_) in enumerate(((-5, -9, 3), (0, -11, 4), (5, -9, 3), (-2, -8, 3))):   # ore heap, ember in the cracks
-        cv.ell(cx + ox_, cy_ + oy_, r_ + .5, r_ * .8, QINK)
-        cv.ell(cx + ox_, cy_ + oy_ - .3, r_ - .5, r_ * .6, QEARTH)
+    cv.rect(cx - 8, cy_ - 8, cx + 8, cy_ + 1, QEARTH); cv.rect(cx - 8, cy_ - 11, cx + 8, cy_ - 9, QPAPER)
+    cv.rect(cx - 8, cy_ - 8, cx - 8, cy_ + 1, QACCENT); cv.rect(cx + 7, cy_ - 8, cx + 8, cy_ + 1, QSHADOW)
+    for i in range(-6, 7, 3): cv.rect(cx + i, cy_ - 7, cx + i, cy_ - 2, QDEEP)
+    for ox_ in (-5, 4): cv.ell(cx + ox_ + .5, cy_ + 2, 2.6, 2.2, QINK); cv.px(cx + ox_, cy_ + 2, QACCENT)
+    for (ox_, oy_, r_) in ((-5, -12, 3), (0, -14, 4), (5, -12, 3), (-2, -11, 3)):   # ore heap, ember in the cracks
+        cv.ell(cx + ox_, cy_ + oy_, r_ + .6, r_ * .8 + .5, QINK)
+        cv.ell(cx + ox_, cy_ + oy_ - .3, r_ - .4, r_ * .6, QEARTH)
         cv.px(cx + ox_ - 1, cy_ + oy_ - 1, QACCENT)
-    for (ox_, oy_) in ((-3, -10), (2, -12), (5, -9), (-6, -8)): cv.px(cx + ox_, cy_ + oy_, QLIGHT)
-    cv.px(cx + 1, cy_ - 10, QBASE)
-    # timber frames, far to near
-    frames = [(54, 8, 14), (62, 12, 22), (73, 17, 32), (86, 22, 44)]
-    for i, (fy, h_, ht) in enumerate(frames):
-        pw = max(2, h_ // 4 + 1)
+    for (ox_, oy_) in ((-3, -13), (2, -15), (5, -12), (-6, -11)): cv.px(cx + ox_, cy_ + oy_, QLIGHT)
+    cv.px(cx + 1, cy_ - 13, QBASE)
+    # timber frames, far to near. Same width at every depth, each one up the screen by half its depth. Every post
+    # stands on a stone footing block and a sill beam ties the post feet together.
+    frames = [(58, 0), (67, 1), (77, 2), (86, 3)]
+    for (fy, i) in frames:
+        pw = 4; hw_ = fh - 2
         dark = i < 2
         body, hi, lo = ((QDEEP, QEARTH, QSHADOW) if dark else (EARTH, ACCENT, QDEEP))
-        top = fy - ht
-        for s in (-1, 1):
-            x0 = cx + s * h_ - (pw if s < 0 else 0)
-            for y in range(top, fy + 1):
+        ht = 44; top = fy - ht
+        for sgn in (-1, 1):
+            x0 = cx + sgn * hw_ - (pw if sgn < 0 else 0)
+            for y in range(top, fy - 3):
                 for x in range(x0, x0 + pw):
-                    if not in_open(x, y): continue
-                    cv.px(x, y, hi if (x == x0 and s < 0) or (x == x0 and s > 0) else body)
-                    if x == x0 + pw - 1: cv.px(x, y, lo)
-        lt = max(2, pw)
-        for y in range(top, top + lt):
-            for x in range(cx - h_ - pw - 1, cx + h_ + pw + 1):
-                if in_open(x, y) or (y >= cy0 and False): cv.px(x, y, hi if y == top else body if y < top + lt - 1 else lo)
-        if i == 3:             # corner braces
-            for s in (-1, 1):
+                    if in_open(x, y): cv.px(x, y, lo if x == x0 + pw - 1 else hi if x == x0 else body)
+            # stone footing: wider than the post, front face plus a lit top strip
+            for y in range(fy - 3, fy + 1):
+                for x in range(x0 - 1, x0 + pw + 1):
+                    if in_open(x, y):
+                        cv.px(x, y, QACCENT if y == fy - 3 else QEARTH if x < x0 + pw else QSHADOW)
+            cv.rect(x0 - 1, fy, x0 + pw, fy, QINK)
+            cv.px(x0 + pw // 2, fy - 2, QINK)             # mortar notch
+        for x in range(cx - hw_ + pw, cx + hw_ - pw + 1):  # sill beam between the footings
+            if in_open(x, fy - 1): cv.px(x, fy - 2, hi); cv.px(x, fy - 1, body)
+        for y in range(top, top + 4):
+            for x in range(cx - hw_ - pw - 1, cx + hw_ + pw + 1):
+                if in_open(x, y): cv.px(x, y, hi if y == top else body if y < top + 3 else lo)
+        if i == 3:             # corner braces on the near frame
+            for sgn in (-1, 1):
                 for k in range(9):
-                    xx = cx + s * (h_ - 1 - k); yy = top + lt + k
+                    xx = cx + sgn * (hw_ - pw - k * 1 + (0 if sgn > 0 else 3)); yy = top + 4 + k
                     cv.px(xx, yy, body); cv.px(xx, yy + 1, lo)
-            cv.rect(cx - 1, top + lt, cx, top + lt + 5, QEARTH)       # king post stub holding the lamp chain
     # hanging lamp inside the near frame
-    lx, ly = cx - 12, 52
+    lx, ly = cx - 11, 54
     for t in range(-6, 7):
         for u in range(-6, 7):
             d = math.hypot(t, u)
@@ -273,12 +277,20 @@ def cave(style):
         for x in range(W):
             if in_open(x, y) and not all(in_open(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, -1))) and y < base:
                 cv.px(x, y, QINK)
-    if style == "B":      # timber headframe outside: two posts, crossbeam, pulley
-        for s in (-1, 1):
-            x0 = cx + s * 38 - 2
-            cv.rect(x0, 8, x0 + 4, base + 1, QDEEP); cv.rect(x0, 8, x0, base + 1, ACCENT); cv.rect(x0 + 4, 8, x0 + 4, base + 1, QSHADOW)
-            for k in range(14):
-                cv.px(x0 + (5 + k if s < 0 else -k), 20 + k, EARTH); cv.px(x0 + (5 + k if s < 0 else -k), 21 + k, QSHADOW)
+    if style == "B":      # timber headframe outside: two posts on stone footings, braces, crossbeam, pulley
+        for sgn in (-1, 1):
+            x0 = cx + sgn * 38 - 2
+            cv.rect(x0, 8, x0 + 4, base - 4, QDEEP); cv.rect(x0, 8, x0, base - 4, ACCENT); cv.rect(x0 + 4, 8, x0 + 4, base - 4, QSHADOW)
+            # footing: a stone plinth (front face and lit top strip) with a base plate and two iron straps
+            cv.rect(x0 - 3, base - 8, x0 + 7, base - 7, QACCENT)                 # top face, seen from above
+            cv.rect(x0 - 3, base - 6, x0 + 7, base + 1, QEARTH)                  # front face
+            cv.rect(x0 - 3, base - 6, x0 - 3, base + 1, QACCENT); cv.rect(x0 + 7, base - 6, x0 + 7, base + 1, QSHADOW)
+            for yy in (base - 3,): cv.rect(x0 - 3, yy, x0 + 7, yy, QSHADOW)      # course line
+            cv.rect(x0 - 1, base - 9, x0 + 5, base - 8, QPAPER)                   # iron base plate
+            for yy in (base - 14, base - 22): cv.rect(x0, yy, x0 + 4, yy, QPAPER)
+            cv.rect(x0 - 3, base + 2, x0 + 7, base + 2, QINK)
+            for k in range(14):        # diagonal brace to the cliff
+                cv.px(x0 + (5 + k if sgn < 0 else -k), 20 + k, EARTH); cv.px(x0 + (5 + k if sgn < 0 else -k), 21 + k, QSHADOW)
         cv.rect(cx - 44, 4, cx + 44, 9, QDEEP); cv.rect(cx - 44, 4, cx + 44, 4, ACCENT); cv.rect(cx - 44, 9, cx + 44, 9, QSHADOW)
         cv.ell(cx, 15, 6, 6, QINK); cv.ell(cx, 15, 4.5, 4.5, QEARTH); cv.ell(cx, 15, 1.6, 1.6, QINK)
         for k in range(12): cv.px(cx - 5, 15 + k, QACCENT)
@@ -289,31 +301,33 @@ def cave(style):
 def lit(cv, c_light, c_mid, c_dark): return c_light, c_mid, c_dark
 
 
-def iso_box(cv, cx, cy, hw, h, top, left, right, ink=QINK):
-    hh = hw // 2
-    cv.poly([(cx, cy - h - hh), (cx + hw, cy - h), (cx, cy - h + hh), (cx - hw, cy - h)], top)
-    cv.poly([(cx - hw, cy - h), (cx, cy - h + hh), (cx, cy + hh), (cx - hw, cy)], left)
-    cv.poly([(cx, cy - h + hh), (cx + hw, cy - h), (cx + hw, cy), (cx, cy + hh)], right)
+def front_box(cv, cx, base_y, w, h, top, front, side, d=6):
+    """Front-facing box in the world's elevated view: the front face is a plain rectangle, the top is a strip d/2 texels
+    tall straight above it (depth only moves up the screen), and a sliver of right side shows the light from the left."""
+    x0, x1 = cx - w // 2, cx + w // 2
+    cv.rect(x0, base_y - h, x1, base_y, front)
+    cv.rect(x0, base_y - h - d // 2, x1, base_y - h - 1, top)
+    cv.rect(x1 - 1, base_y - h, x1, base_y, side)
+    cv.rect(x0, base_y, x1, base_y, side)
 
 
 def crate(cv, cx, cy, hw, h, glow=False):
-    iso_box(cv, cx, cy, hw, h, ACCENT, EARTH, QDEEP)
-    hh = hw // 2
-    for k in range(1, 3):                      # planks
-        yy = cy - h + k * h // 3
-        cv.line(cx - hw + 1, yy, cx - 1, yy + hh, QDEEP); cv.line(cx + 1, yy + hh, cx + hw - 1, yy, QSHADOW)
-    cv.line(cx - hw, cy - h, cx - hw, cy, ACCENT); cv.line(cx, cy + hh, cx, cy - h + hh, QSHADOW)
-    cv.line(cx - hw, cy - h, cx, cy - h - hh, PAPER)
+    w = hw * 2
+    front_box(cv, cx, cy, w, h, ACCENT, EARTH, QDEEP, d=7)
+    x0, x1 = cx - hw, cx + hw
+    cv.rect(x0, cy - h, x1, cy - h, QDEEP); cv.rect(x0, cy - h // 2, x1, cy - h // 2, QDEEP)   # plank seams
+    cv.line(x0, cy, x1, cy - h, QDEEP) if h > 8 else None                                      # cross brace
+    cv.rect(x0, cy - h - 3, x0, cy, PAPER if False else ACCENT)
+    cv.rect(x0, cy - h - 3, x1, cy - h - 3, PAPER)
     if glow:
-        cv.rect(cx - 3, cy - h - 1, cx + 3, cy - h + 1, QINK)
-        for i in range(-2, 3, 2): cv.px(cx + i, cy - h, QLIGHT if i else QBASE)
+        cv.rect(cx - 3, cy - h - 2, cx + 3, cy - h - 1, QINK)
+        for i in range(-2, 3, 2): cv.px(cx + i, cy - h - 2, QLIGHT if i else QBASE)
     cv.outline(QINK)
 
 
 def crate_stack():
-    cv = Canvas(34, 38)
-    crate(cv, 12, 30, 10, 11); crate(cv, 26, 31, 8, 9, glow=True); crate(cv, 14, 19, 9, 9)
-    cv.px(14, 8, QLIGHT)
+    cv = Canvas(36, 36)
+    crate(cv, 12, 33, 10, 12); crate(cv, 27, 34, 8, 9, glow=True); crate(cv, 13, 20, 8, 9)
     return cv
 
 
@@ -323,7 +337,7 @@ def timber_pile():
         for i in range(n):
             x = 6 + i * 8 + (4 if row == 1 else 6 if row == 2 else 0) - (0 if row == 0 else 0)
             cv.rect(x, y - 3, x + 22, y + 2, EARTH); cv.rect(x, y - 3, x + 22, y - 3, ACCENT); cv.rect(x, y + 2, x + 22, y + 2, QDEEP)
-            cv.ell(x, y, 3.2, 3.2, ACCENT); cv.ell(x, y, 2.0, 2.0, EARTH); cv.px(x, y, QDEEP)
+            cv.rect(x, y - 3, x + 1, y + 2, ACCENT)
             for k in range(3, 20, 5): cv.px(x + k, y - 1, QDEEP)
     cv.rect(18, 1, 20, 21, QEARTH)       # a lashing post
     cv.outline(QINK)
@@ -415,10 +429,35 @@ def load_sprite(name):
     return Image.open(LK + "sprites/" + name + ".png").convert("RGBA")
 
 
+def dirt_apron(g, X0, Y0):
+    """Worn, trampled dirt and spoil around the mine mouth, thinning into the grass by 4x4 dither. The sand path stays."""
+    sand = ACCENT[:3]
+    for y in range(g.height):
+        for x in range(g.width):
+            wx, wy = x + X0, y + Y0
+            # main apron under the cliff foot, plus a lobe that follows the path south
+            e1 = math.hypot((wx - 1520) / 118.0, (wy - 540) / 36.0)
+            e2 = math.hypot((wx - 1522) / 40.0, (wy - 580) / 30.0)
+            e = min(e1, e2 * 1.05) + (vnoise(wx / 6.0, wy / 4.0, 31) - .5) * .35
+            if e > 1.0 or wy < 506: continue
+            t = 1.0 - e                      # 0 at the rim, 1 in the middle
+            if t < .2 and bayer(wx, wy) > t / .2: continue
+            cur = g.getpixel((x, y))
+            if cur[:3] == sand: continue
+            n = vnoise(wx / 2.0, wy / 1.6, 33)
+            c = EARTH
+            if n > .70: c = ACCENT if bayer(wx, wy) < .45 else EARTH
+            elif n < .30: c = QDEEP
+            if hsh(wx, wy, 7) > .965: c = QEARTH           # pebbles
+            if t < .45 and n > .5 and c == EARTH: c = QDEEP if bayer(wx, wy) < .3 else EARTH   # darker trampled rim
+            g.putpixel((x, y), c)
+
+
 def build_scene(style, night):
     X0, Y0, X1, Y1 = 1380, 372, 1660, 600
     g = Image.open(LK + "ground_fg.png").convert("RGBA").crop((X0, Y0, X1, Y1))
     sc = Canvas(X1 - X0, Y1 - Y0); sc.im = g; sc.d = ImageDraw.Draw(g)
+    dirt_apron(g, X0, Y0)
     items = []     # (sort_y, Image, x, y, tag)
     d = json.load(open(LK + "placements3d.json"))
     for s in d["sprites"]:
@@ -428,10 +467,9 @@ def build_scene(style, night):
     cvv = cave(style); items.append((470, cvv.im, 1456 - X0, 431 - Y0, "cave"))
     # rails decal on the approach
     rl = Canvas(34, 28)
-    for k, y in enumerate(range(0, 27, 4)):
-        rl.rect(5 + k // 3, y, 28 - k // 3, y + 1, QDEEP); rl.px(5 + k // 3, y, EARTH)
-    for s_ in (-1, 1):
-        for y in range(28): rl.px(17 + s_ * (9 + y // 6), y, QPAPER if y % 7 else QACCENT)
+    for y in range(0, 27, 4): rl.rect(4, y, 29, y + 1, QDEEP); rl.rect(4, y, 29, y, EARTH)
+    for x_ in (9, 25):
+        for y in range(28): rl.px(x_, y, QPAPER if y % 7 else QACCENT); rl.px(x_ + 1, y, QEARTH)
     items.append((495, rl.im, 1520 - 17 - X0, 519 - Y0, "rails"))
     decor = [
         (crate_stack(), 1486, 547, 1), (barrels(), 1462, 552, 1), (timber_pile(), 1436, 530, 1),
@@ -484,7 +522,7 @@ if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "mock":
         out = sys.argv[2]; os.makedirs(out, exist_ok=True)
-        for st in "ABC":
+        for st in (sys.argv[3] if len(sys.argv) > 3 else "ABC"):
             day = build_scene(st, False); night = build_scene(st, True)
             S = 3
             W, H = day.width * S, day.height * S
