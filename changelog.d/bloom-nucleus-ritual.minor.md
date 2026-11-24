@@ -1,0 +1,1 @@
+Bloom and Nucleus resets get a bigger show: petals fall or shards burst out, a light shaft or a hot core marks the burst, the pay counts up with short numbers (1.2K), and a Gift Ready card names the gift you can buy. Tips and tooltips stay hidden while the ritual plays.

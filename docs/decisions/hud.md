@@ -519,3 +519,6 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** the other toasts. Relic and achievement toasts already use AsciiBox. The subtitle bar keeps its ink plate with no green frame, on purpose, so captions read over the world.
 - **Check in-engine:** hold Shift and tap Ctrl. The tag should show cream text in the notched green frame, centred over the panel, with no resize of the Momentum panel.
 - **Not run in-engine:** the cloud cannot run Godot.
+
+## 2026-11-24: Bloom and Nucleus ritual, themed moments and a gift card
+- Picked by Nathan from three mockups: themed moments per reset (Bloom petals and a light shaft, Nucleus streaks, core and shards) plus a bigger Gift Ready card. Reduce flashing and Still meadow keep the calm fade; world and hover tips are held while the ritual runs.
