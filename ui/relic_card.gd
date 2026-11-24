@@ -60,33 +60,33 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	center.add_child(icon)
 	# Rarity letter, top left, in the tier colour. It stays on silhouettes too, so the tier shows before you own one.
 	var rc: Color = def.rarity.readable_color(RelicStyle.ink) if not p_silhouette else RelicStyle.dim
-	_mark(root, def.rarity.display_name.substr(0, 1), rc, Corner.TOP_LEFT)
+	_mark(root, def.rarity.display_name.substr(0, 1), rc, MarkCorner.TOP_LEFT)
 	if not p_silhouette:
 		if p_picked:
-			_mark(root, "S", RelicStyle.accent, Corner.BOTTOM_LEFT)
+			_mark(root, "S", RelicStyle.accent, MarkCorner.BOTTOM_LEFT)
 		elif p_equipped:
-			_mark(root, "E", RelicStyle.good, Corner.BOTTOM_LEFT)
+			_mark(root, "E", RelicStyle.good, MarkCorner.BOTTOM_LEFT)
 		if p_stacks > 1:
-			_mark(root, "x%d" % p_stacks, RelicStyle.text, Corner.BOTTOM_RIGHT)
+			_mark(root, "x%d" % p_stacks, RelicStyle.text, MarkCorner.BOTTOM_RIGHT)
 	_restyle()
 
 
-enum Corner { TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT }
+enum MarkCorner { TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT }
 
 
 ## A small text mark in one corner of the card. Labels ignore the mouse, so the card stays the click target.
-func _mark(root: Control, text: String, c: Color, corner: Corner) -> void:
+func _mark(root: Control, text: String, c: Color, corner: MarkCorner) -> void:
 	var l := Label.new()
 	l.text = text
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.add_theme_color_override("font_color", c)
 	match corner:
-		Corner.TOP_LEFT:
+		MarkCorner.TOP_LEFT:
 			l.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		Corner.BOTTOM_LEFT:
+		MarkCorner.BOTTOM_LEFT:
 			l.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 			l.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		Corner.BOTTOM_RIGHT:
+		MarkCorner.BOTTOM_RIGHT:
 			l.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 			l.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 			l.grow_vertical = Control.GROW_DIRECTION_BEGIN
