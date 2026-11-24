@@ -19,10 +19,10 @@ const TAB_COLUMNS: int = 3
 const PANEL_W: float = COLUMNS * RelicCard.W + (COLUMNS - 1) * GAP
 ## Chips and tabs keep this height or more, so they are easy to hit with a mouse or a pad.
 const CHIP_H: float = 20.0
-## The view-hidden eye button is bigger than a chip, so it is an easy target and reads as a control.
-const SHOW_W: float = 34.0
-const SHOW_H: float = 22.0
-const SHOW_EYE_W: int = 14
+## The view-hidden eye is a chip-height button around a 12 by 8 glyph, drawn at 2x so it is 24 by 16 on screen.
+const SHOW_W: float = 30.0
+const SHOW_H: float = CHIP_H
+const SHOW_EYE_W: int = 12
 const SHOW_EYE_H: int = 8
 ## The grid scrolls past this height. Shorter content just makes the panel shorter.
 const MAX_GALLERY_HEIGHT: float = 150.0
@@ -100,6 +100,10 @@ func _init() -> void:
 	# Boost chips pack from the right edge, so the buffs line up against the panel's right side.
 	_bonus.alignment = FlowContainer.ALIGNMENT_END
 	_top.add_child(_bonus)
+	# Same room as the header's close-X gap, so the boost chips end on the counter's and the eye's right edge.
+	var top_gap := Control.new()
+	top_gap.custom_minimum_size = Vector2(CloseX.HEADER_GAP, 1.0)
+	_top.add_child(top_gap)
 	outer.add_child(PanelDivider.new(2))
 	_tabs = GridContainer.new()
 	_tabs.columns = TAB_COLUMNS
@@ -146,7 +150,7 @@ func _show_tip() -> Dictionary:
 	return on
 
 
-## A pixel eye, 14 by 8 and drawn at 2x so it stays crisp. Open when every relic shows. Slashed, in the accent, when
+## A pixel eye, 12 by 8 and drawn at 2x so it stays crisp. Open when every relic shows. Slashed, in the accent, when
 ## only owned relics show. Colours are baked in, so the icon does not depend on the button's hover state.
 func _eye_texture(open: bool) -> Texture2D:
 	var img := Image.create(SHOW_EYE_W, SHOW_EYE_H, false, Image.FORMAT_RGBA8)
@@ -163,7 +167,7 @@ func _eye_texture(open: bool) -> Texture2D:
 			var d: float = sqrt(nx * nx + ny * ny)
 			if d >= 0.8 and d <= 1.0:
 				img.set_pixel(x, y, ink_c)
-			elif dx * dx + dy * dy <= 2.5:
+			elif dx * dx + dy * dy <= 0.6:
 				img.set_pixel(x, y, ink_c)
 	if not open:
 		for i in SHOW_EYE_W:
