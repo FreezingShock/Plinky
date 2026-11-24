@@ -137,7 +137,7 @@ func _add_flower_glow() -> void:
 	_flower_glow.name = "FlowerGlow"
 	_flower_glow.z_index = 5
 	add_child(_flower_glow)
-	_flower_glow.setup(_garden_flowers)
+	_flower_glow.setup(_garden_flowers, FlowerGlow.pad_centres(_data.anchors))
 
 
 ## Haze over the mountain strip along the top of the backdrop (all the way across: there is no island in front of

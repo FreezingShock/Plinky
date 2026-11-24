@@ -32,6 +32,10 @@ static var SPILL_ALPHA: float = 0.35    # the spill's strength against the core
 const LEVELS: int = 16                  # alpha steps: pixel-crisp, no soft gradient to band
 const BREATH_TIME: float = 3.0          # seconds for one slow breath
 const BREATH_DEPTH: float = 0.12        # how far the breath dims the glow (0 = none)
+## The field light stays off the pad plates: under each plate it is cut to PAD_CUT, easing back to full by PAD_CUT_EDGE
+## (plate units, diamond-ellipse norm). The pad rings then read against dark ground, not against the field.
+const PAD_CUT: float = 0.3
+const PAD_CUT_EDGE: float = 1.6
 const START_DELAY_FRAMES: int = 8       # frames after a zone's glow is set up before its bake starts on a worker
 
 var _fields: Array = []   # built layers: {"tex": ImageTexture, "pos": Vector2, "a": float}
@@ -45,9 +49,10 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
-## flowers: [x, y, stat index, variant] per flower, in ground texels (the GardenLayer list). Queues the whole bake (the
-## clustering and every field's core and spill layer) on a worker thread; the textures appear when it finishes.
-func setup(flowers: Array) -> void:
+## flowers: [x, y, stat index, variant] per flower, in ground texels (the GardenLayer list). pads: the plate centres in the
+## same texels (pad_centres), so the field light is cut under them. Queues the whole bake (the clustering and every
+## field's core and spill layer) on a worker thread; the textures appear when it finishes.
+func setup(flowers: Array, pads: PackedVector2Array = PackedVector2Array()) -> void:
 	_fields.clear()
 	_job = null
 	if flowers.is_empty():
@@ -76,6 +81,7 @@ func setup(flowers: Array) -> void:
 	job.spill_saturate = SPILL_SATURATE
 	job.spill_alpha = SPILL_ALPHA
 	job.levels = LEVELS
+	job.pads = pads
 	_job = job
 	_start_in = START_DELAY_FRAMES
 	_apply_alpha()
@@ -200,6 +206,15 @@ static func cluster_fields(xs: PackedInt32Array, ys: PackedInt32Array, stats: Pa
 	return out
 
 
+## The plate centres of a zone's pad anchors (kind "pad", sx and sy in texels), for setup.
+static func pad_centres(anchors: Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for a: Dictionary in anchors:
+		if String(a.kind) == "pad":
+			out.append(Vector2(float(a.sx), float(a.sy)))
+	return out
+
+
 static func _cell_of(x: int, y: int, cell: float) -> Vector2i:
 	return Vector2i(floori(float(x) / cell), floori(float(y) / cell))
 
@@ -218,6 +233,7 @@ class BakeJob extends RefCounted:
 	var spill_saturate: float = 2.5
 	var spill_alpha: float = 0.35
 	var levels: int = 16
+	var pads: PackedVector2Array = PackedVector2Array()   # plate centres the field light is cut under
 	var task: int = -1
 	var layers: Array = []         # finished layers: {"w", "h", "origin": Vector2i, "bytes", "a"}
 
@@ -229,6 +245,28 @@ class BakeJob extends RefCounted:
 			layers.append(_bake(group, head_radius, saturate, 1.0, tint))
 			if spill_radius > 0.0:
 				layers.append(_bake(group, spill_radius, spill_saturate, spill_alpha, tint))
+
+	## Dims the field light under each pad plate, so the plate's ring reads against dark ground rather than the field.
+	func _cut_pads(density: PackedFloat32Array, w: int, h: int, org: Vector2i) -> void:
+		var hx: float = TexelPad.HALF.x
+		var hy: float = TexelPad.HALF.y
+		for pc: Vector2 in pads:
+			var cx: float = pc.x - float(org.x)
+			var cy: float = pc.y - float(org.y)
+			var x0: int = maxi(0, floori(cx - hx * PAD_CUT_EDGE))
+			var x1: int = mini(w - 1, ceili(cx + hx * PAD_CUT_EDGE))
+			var y0: int = maxi(0, floori(cy - hy * PAD_CUT_EDGE))
+			var y1: int = mini(h - 1, ceili(cy + hy * PAD_CUT_EDGE))
+			for y in range(y0, y1 + 1):
+				var ny: float = (float(y) - cy) / hy
+				for x in range(x0, x1 + 1):
+					var nx: float = (float(x) - cx) / hx
+					var e: float = sqrt(nx * nx + ny * ny)
+					if e >= PAD_CUT_EDGE:
+						continue
+					var t: float = clampf((e - 1.0) / (PAD_CUT_EDGE - 1.0), 0.0, 1.0)
+					var f: float = lerpf(PAD_CUT, 1.0, t * t * (3.0 - 2.0 * t))
+					density[y * w + x] *= f
 
 	## One layer's texture data. Every head stamps a soft round light (squared falloff to zero at radius) into a density
 	## grid, the grid is quantised to LEVELS alpha steps, and the colour is the field's petal colour. One texel per texel.
@@ -259,6 +297,7 @@ class BakeJob extends RefCounted:
 				var row: int = (cy - r + ky) * w + (cx - r)
 				for kx in side:
 					density[row + kx] += kernel[ky * side + kx]
+		_cut_pads(density, w, h, org)
 		var bytes: PackedByteArray = PackedByteArray()
 		bytes.resize(w * h * 4)
 		var red: int = roundi(tint.r * 255.0)
