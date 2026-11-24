@@ -15,6 +15,7 @@ permissions:
   pull-requests: write
   issues: write
   checks: read
+  actions: write
 
 concurrency:
   group: stuck-pr-watch
@@ -35,6 +36,20 @@ jobs:
             const { owner, repo } = context.repo;
             const now = Date.now();
             const minutes = (ms) => Math.round(ms / 60000);
+
+            // A `test` run cancelled on the CURRENT head commit was not superseded by a newer push (a newer push
+            // would have changed the head), so nothing will ever re-run it. Re-run it once. run_attempt > 1 means the
+            // watchdog (or a person) already re-ran it, so a second cancel is left for the owner: no loops.
+            const rerunCancelled = async (sha) => {
+              const runs = (await github.rest.actions.listWorkflowRunsForRepo({
+                owner, repo, head_sha: sha, event: 'pull_request', per_page: 100,
+              })).data.workflow_runs.filter((x) => x.name === 'CI');
+              if (runs.some((x) => x.status !== 'completed')) return null;
+              const last = runs.sort((a, b) => b.id - a.id)[0];
+              if (!last || last.conclusion !== 'cancelled' || last.run_attempt > 1) return null;
+              await github.rest.actions.reRunWorkflow({ owner, repo, run_id: last.id });
+              return last.html_url;
+            };
 
             const listed = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
             const rows = [];
@@ -66,7 +81,13 @@ jobs:
                 } else if (['failure', 'timed_out', 'action_required'].includes(r.conclusion)) {
                   reasons.push(`\`${r.name}\` failed: ${r.html_url}`);
                 } else if (r.conclusion === 'cancelled' && r.name === 'test') {
-                  reasons.push('`test` was cancelled and never re-run. Re-run the workflow or push a fix.');
+                  const rerun = await rerunCancelled(pr.head.sha).catch((err) => {
+                    core.warning(`Could not re-run CI for #${pr.number}: ${err.message}`);
+                    return null;
+                  });
+                  reasons.push(rerun
+                    ? `\`test\` was cancelled with nothing newer on the head, so the watchdog re-ran CI: ${rerun}`
+                    : '`test` was cancelled and could not be re-run automatically. Re-run the workflow or push a fix.');
                 }
               }
 
