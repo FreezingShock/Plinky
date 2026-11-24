@@ -17,6 +17,7 @@ const VEIL: Shader = preload("res://ui/fx/bloom_veil.gdshader")
 const FLOWERS: Array[StringName] = [&"dewdrop", &"clover", &"thistle", &"heather", &"foxglove", &"starbloom"]
 const MARKS: String = ".o*O"
 const SKIP_AFTER: float = 0.45
+const FLIGHT_TIME: float = 0.45   ## the coin's flight from the confirm icon to the centre
 const NUMBER_SIZE: int = 32
 const HEAD_SIZE: int = 24
 
@@ -47,6 +48,9 @@ var _mote_acc: float = 0.0
 var _exit_acc: float = 0.0
 var _seeds_row: RollValue
 var _font: Font
+## Set by the reset confirm before the reset runs (global coordinates of its icon). The ritual flies its coin out of there.
+static var launch_global: Vector2 = Vector2.INF
+var _origin: Vector2 = Vector2.INF   ## this control's local point the coin flies from; INF when none
 var _gift: String = ""   ## the gift on offer, shown on the reveal card; "" when none can be bought
 
 
@@ -133,6 +137,8 @@ func start(reset_id: StringName, gained: int) -> void:
 	_mote_acc = 0.0
 	_exit_acc = 0.0
 	_font = get_theme_default_font()
+	_origin = get_global_transform().affine_inverse() * launch_global if launch_global.is_finite() else Vector2.INF
+	launch_global = Vector2.INF
 	_count_down_rows()
 	var d: StatDef = sim.stat_defs.get(_reset.currency) as StatDef
 	_head.text = _reset.display_name
@@ -422,7 +428,7 @@ func _draw() -> void:
 			var ch: String = marks[(i + int(_t * 18.0)) % marks.length()]
 			var at: Vector2 = c + Vector2(cos(a), sin(a) * 0.8) * radius
 			draw_string(_font, (at + Vector2(-3.0, 4.0)).round(), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, _color.lerp(Color.WHITE, u))
-	var icon_scale: int = BloomTimeline.icon_scale(_t, p)
+	var icon_scale: int = 4 if _flying() else BloomTimeline.icon_scale(_t, p)
 	var exit: float = BloomTimeline.exit_progress(_t, p)
 	# Slow rays behind the resting icon. In the exit they fold in toward the centre as the coin shrinks.
 	if not _calm and _t >= burst and exit < 1.0:
@@ -466,8 +472,20 @@ func _draw() -> void:
 		if _calm:
 			tint.a = clampf((_t - burst) / 0.4, 0.0, 1.0) * BloomTimeline.exit_alpha(_t, p)
 		var bob: float = 0.0 if _calm or exit > 0.0 or _t < burst + 0.3 else roundf(sin(_t * 3.0))
-		var centre: Vector2 = c + Vector2(0.0, bob)
+		var centre: Vector2 = _coin_at(c) + Vector2(0.0, bob)
 		draw_texture_rect(_icon, Rect2((centre - Vector2(px, px) * 0.5).round(), Vector2(px, px)), false, tint)
+
+
+## The coin flies out of the reset confirm's icon (see _origin) to the centre, over FLIGHT_TIME. Calm just fades in place.
+func _flying() -> bool:
+	return _origin.is_finite() and not _calm and _t < FLIGHT_TIME
+
+
+func _coin_at(c: Vector2) -> Vector2:
+	if not _flying():
+		return c
+	var u: float = _t / FLIGHT_TIME
+	return _origin.lerp(c, 1.0 - pow(1.0 - u, 3.0)).round()
 
 
 ## A ring of single pixels, dashed as it goes, drawn at `radius` around `c`.
