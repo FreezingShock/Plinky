@@ -12,6 +12,7 @@ const HALF_SPAN: float = 26.0        ## pillar centres sit this far either side 
 const PILLAR_W: int = 10
 const HEIGHT: int = 46
 const HIT: Rect2 = Rect2(-36.0, -62.0, 72.0, 68.0)   ## covers the whole arch, keystone bloom included
+const BAYER4: PackedInt32Array = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]   ## the 4x4 ordered-dither matrix
 
 var zone_id: StringName
 var art: StringName = &""
@@ -136,6 +137,8 @@ func _draw_forge(open: bool) -> void:
 			var col: Color = p[3] if i < 5 else p[2] if i < 9 else p[1]
 			if i % 2 == 0 or i < 4:
 				draw_rect(Rect2(rx + float(i % 3), gy - 1.0, rw - float(i % 3) * 2.0, 1.5), col)
+	if open:
+		_draw_portal(p, rx, rw)
 	# ground glow under the opening when open
 	if open:
 		draw_rect(Rect2(-HALF_SPAN + 6, -2, HALF_SPAN * 2 - 12, 2), p[3])
@@ -189,6 +192,59 @@ func _draw_forge(open: bool) -> void:
 	draw_rect(Rect2(-4, -HEIGHT - 2, 8, 8), soot)
 	draw_rect(Rect2(-3, -HEIGHT - 1, 6, 6), p[6])
 	draw_rect(Rect2(-1, -HEIGHT + 1, 2, 2), seam_on if open else p[1])
+
+
+## An open forge gate reads as a portal: a dithered swirl of soot, deep red, brick and ember inside the doorway, a hot
+## gold rim down both jambs and across the top, sparks lifting out of the opening, and a dithered red spill on the
+## floor in front. Presentation only. Reduce Motion freezes the swirl and sparks; the rim and spill stay put.
+func _draw_portal(p: PackedColorArray, rx: float, rw: float) -> void:
+	var clock: float = 0.0 if MeadowLife.reduce_motion else _t
+	# swirl: spiral bands turning inside the doorway, 2-texel cells, ordered-dithered between the palette's tones
+	var mid_x: float = rx + rw * 0.5
+	var mid_y: float = -float(HEIGHT) * 0.5
+	var half_w: float = rw * 0.5
+	var half_h: float = float(HEIGHT) * 0.5
+	var cols: int = int(rw) / 2
+	for j in range(0, HEIGHT - 4, 2):
+		for i in cols:
+			var x: float = rx + float(i * 2) + 1.0
+			var y: float = -float(j) - 3.0
+			var dx: float = (x - mid_x) / half_w
+			var dy: float = (y - mid_y) / half_h
+			var r: float = sqrt(dx * dx + dy * dy)
+			if r > 1.0:
+				continue
+			var s: float = fposmod(r * 1.8 - atan2(dy, dx) / TAU + clock * 0.22, 1.0)
+			var k: float = s + (_bayer(i, j) - 0.5) * 0.3
+			var c: Color = p[3] if k > 0.72 else p[2] if k > 0.42 else p[1] if k > 0.14 else p[0]
+			draw_rect(Rect2(x - 1.0, y, 2, 2), c)
+	# hot rim: steady gold down both jambs and across the top, so the opening reads as lit
+	draw_rect(Rect2(rx, -HEIGHT + 1, rw, 1), p[3])
+	draw_rect(Rect2(rx, -HEIGHT + 1, 1, HEIGHT - 2), p[4])
+	draw_rect(Rect2(rx + rw - 1, -HEIGHT + 1, 1, HEIGHT - 2), p[4])
+	# sparks: pale heads with an ember tail, lifting and swaying out of the opening
+	for i in 5:
+		var ph: float = fmod(clock * (9.0 + float(i) * 2.5) + float(i) * 11.0, float(HEIGHT - 8))
+		var sx: float = floorf(rx + 6.0 + float(i) * 7.0 + sin(clock * 2.0 + float(i)) * 2.0)
+		draw_rect(Rect2(sx, -4.0 - floorf(ph), 1, 1), p[7])
+		draw_rect(Rect2(sx, -3.0 - floorf(ph), 1, 1), p[4])
+	# red spill: a dithered pool on the floor in front, ember at its centre, deep red at its fringe
+	var reach: float = HALF_SPAN + 16.0
+	for dy in range(0, 18, 2):
+		for dx in range(int(-reach), int(reach), 2):
+			var d: float = sqrt(float(dx * dx) + float(dy * dy * 4)) / reach
+			if d >= 1.0:
+				continue
+			var k2: float = (1.0 - d) + (_bayer(dx, dy) - 0.5) * 0.4
+			if k2 > 0.72:
+				draw_rect(Rect2(dx, dy, 2, 2), p[3])
+			elif k2 > 0.3:
+				draw_rect(Rect2(dx, dy, 2, 2), p[1])
+
+
+## 4x4 Bayer threshold in 0..1 for a texel, so dithered portal detail stays pinned to the world grid.
+static func _bayer(x: int, y: int) -> float:
+	return (float(BAYER4[posmod(y, 4) * 4 + posmod(x, 4)]) + 0.5) / 16.0
 
 
 ## Meadow palette indices: 0 ink, 1 deep green, 2 leaf, 3 green, 4 light green, 5 cream, 6 timber, 7 paper.
