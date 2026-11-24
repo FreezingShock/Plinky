@@ -38,6 +38,12 @@ const WATER_KEEP: float = 1.1          # a critter on land keeps this far outsid
 const FADE_RATE: float = 0.8           # per second: how fast a critter dissolves in or out
 const RIPPLE_LIFE: float = 1.0
 const RIPPLE_EVERY: float = 0.45
+const CHICKEN_SCARE: float = 30.0      # walker distance that sends a chicken running
+const CHICKEN_RUN: float = 22.0        # texels per second when running
+const CHICKEN_STROLL: float = 5.0      # texels per second when strolling
+const CHICKEN_WAIT: Vector2 = Vector2(1.5, 5.0)  # seconds a chicken pecks between strolls
+const CHICKEN_PER_AREA: float = 0.0006 # chickens per square texel of farm yard, at most CHICKEN_MAX
+const CHICKEN_MAX: int = 6
 const RABBIT_COUNT_MIN: int = 2
 const RABBIT_COUNT_MAX: int = 8
 const RABBIT_SPACING: float = 30.0   # texels between burrow spots
@@ -72,6 +78,8 @@ const DUCK_SLEEP_ART: Array = [
 ]
 const FROG_ART: Array = [".kwkwk.", "kwkbwk.", "kblllbk", "kbbbbbk", "ddbbbdd"]
 const FROG_TUCK_ART: Array = [".kkwk", "klllk", "bbbbb", "kbbbk"]
+const CHICKEN_ART: Array = ["..ff..", ".kwwk.", "kwwwwy", "kwwwwk", ".f..f."]
+const CHICKEN_PECK_ART: Array = ["......", "..ff..", "..kwwy", ".kwwwk", ".f..f."]
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _sprites: Dictionary = {}             # name -> {runs: Array[PackedInt32Array], w, h}
@@ -82,6 +90,8 @@ var _shore: Array[Vector2] = []           # grass tips just outside a water edge
 var _rabbits: Array[Dictionary] = []
 var _ducks: Array[Dictionary] = []
 var _frogs: Array[Dictionary] = []
+var _farms: Array[Rect2] = []             # farm yards from the life data ("farm": [[x, y, w, h], ...])
+var _chickens: Array[Dictionary] = []
 var _ripples: Array[Dictionary] = []      # {pos, age}
 var _ripple_clock: float = 0.0
 var _ci: CanvasItem                       # the node being drawn into this redraw (set by draw)
@@ -116,6 +126,11 @@ func setup(life: Dictionary) -> void:
 				break
 	_spawn_rabbits()
 	_spawn_water_critters()
+	_farms.clear()
+	for fr: Variant in life.get("farm", []) as Array:
+		var fa: Array = fr as Array
+		_farms.append(Rect2(float(fa[0]), float(fa[1]), float(fa[2]), float(fa[3])))
+	_spawn_chickens()
 	_fly.setup(life)
 
 
@@ -177,6 +192,85 @@ func _water_point(b: int, grow: float, seed_n: int) -> Vector2:
 	return Vector2(float(w.x) + cos(ang) * float(w.rx) * rad, float(w.y) + sin(ang) * float(w.ry) * rad)
 
 
+## Chickens scratch about the farm yards ("farm" rectangles in the life data; none means no chickens). They stroll and
+## peck, run from the walker within the yard, and roost in the coop at night and in rain.
+func _spawn_chickens() -> void:
+	_chickens.clear()
+	for k: int in _farms.size():
+		var box: Rect2 = _farms[k]
+		var n: int = clampi(roundi(box.get_area() * CHICKEN_PER_AREA), 0, CHICKEN_MAX)
+		for i: int in n:
+			var at: Vector2 = box.position + box.size * Vector2(MeadowLife.hash01(k * 31 + i * 7 + 1), MeadowLife.hash01(k * 31 + i * 7 + 2))
+			if MeadowLife.near_any(at, _pads, PAD_KEEP) or MeadowLife.in_water(at, _water, WATER_KEEP):
+				continue
+			_chickens.append({"farm": k, "pos": at, "to": at, "lift": 0.0,
+				"wait": CHICKEN_WAIT.x + MeadowLife.hash01(i * 5 + k) * (CHICKEN_WAIT.y - CHICKEN_WAIT.x),
+				"scared": 0.0, "dir": 1.0, "seed": 90 + k * 17 + i, "fade": 0.0})
+
+
+## Chickens are out by day, and roost in the coop at night or in rain.
+static func chicken_share() -> float:
+	return (1.0 - MeadowLife.night) * (1.0 - MeadowLife.rain * 0.9)
+
+
+## A point in the yard, chosen by hash.
+func _yard_point(box: Rect2, seed_n: int) -> Vector2:
+	return box.position + box.size * Vector2(MeadowLife.hash01(seed_n), MeadowLife.hash01(seed_n + 1))
+
+
+func _update_chickens(delta: float, wp: Vector2, calm: bool) -> void:
+	var share: float = chicken_share()
+	for c: Dictionary in _chickens:
+		_fade(c, _out(int(c.seed) * 13 + 5, share), delta)
+		if float(c.fade) <= 0.0:
+			continue
+		var box: Rect2 = _farms[int(c.farm)]
+		var pos: Vector2 = c.pos as Vector2
+		if not calm and float(c.scared) <= 0.0 and MeadowLife.iso_distance(pos, wp) < CHICKEN_SCARE:
+			var best: Vector2 = pos
+			var best_d: float = -1.0
+			for tries: int in 6:
+				var p: Vector2 = _yard_point(box, int(c.seed) * 11 + tries * 3 + int(_t * 2.0))
+				var d: float = MeadowLife.iso_distance(p, wp)
+				if d > best_d:
+					best_d = d
+					best = p
+			c.to = best
+			c.scared = 2.5
+		if float(c.scared) > 0.0:
+			c.scared = float(c.scared) - delta
+		if calm:
+			continue
+		var step: Vector2 = (c.to as Vector2) - pos
+		if step.length() > 0.2:
+			var speed: float = CHICKEN_RUN if float(c.scared) > 0.0 else CHICKEN_STROLL
+			var nxt: Vector2 = pos + step.normalized() * minf(speed * delta, step.length())
+			if MeadowLife.near_any(nxt, _pads, PAD_KEEP) or MeadowLife.in_water(nxt, _water, WATER_KEEP):
+				c.to = pos   # the way is blocked: stop here
+			else:
+				pos = nxt
+				c.pos = pos
+			if absf(step.x) > 0.1:
+				c.dir = signf(step.x)
+		else:
+			c.wait = float(c.wait) - delta
+			if float(c.wait) <= 0.0:
+				c.to = _yard_point(box, int(c.seed) * 23 + int(_t * 3.0))
+				c.wait = CHICKEN_WAIT.x + MeadowLife.hash01(int(c.seed) + int(_t)) * (CHICKEN_WAIT.y - CHICKEN_WAIT.x)
+
+
+func _draw_chicken(c: Dictionary, tb: float) -> void:
+	if float(c.fade) <= 0.0:
+		return
+	var at: Vector2 = c.pos as Vector2
+	if not _seen(at):
+		return
+	var pecking: bool = float(c.wait) > 0.0 and float(c.scared) <= 0.0 and fposmod(tb + float(c.seed), 2.0) < 0.7
+	var spr: Dictionary = _sprites["chicken_peck" if pecking else "chicken"] as Dictionary
+	var origin: Vector2i = Vector2i(roundi(at.x) - int(spr.w) / 2, roundi(at.y) - int(spr.h) + 1)
+	_blit(spr, origin, float(c.dir) < 0.0, float(c.fade))
+
+
 ## Rabbits are out by day in spring and summer, fewer in autumn and winter, and sit out the rain.
 static func rabbit_share() -> float:
 	var by_season: float = MeadowLife.season_mix([1.0, 0.85, 0.7, 0.35])
@@ -204,6 +298,7 @@ func update(delta: float, wp: Vector2) -> void:
 	var fshare: float = frog_share()
 	for f: Dictionary in _frogs:
 		_update_frog(f, delta, wp, calm, _out(int(f.seed) * 11 + 3, fshare))
+	_update_chickens(delta, wp, calm)
 	for r: Dictionary in _ripples:
 		r.age = float(r.age) + delta
 	var alive: Array[Dictionary] = []
@@ -419,6 +514,8 @@ func draw(ci: CanvasItem, tb: float) -> void:
 	_fly.draw(ci, tb)
 	for r: Dictionary in _ripples:
 		_draw_ripple(r)
+	for c: Dictionary in _chickens:
+		_draw_chicken(c, tb)
 	for f: Dictionary in _frogs:
 		_draw_frog(f)
 	for d: Dictionary in _ducks:
@@ -518,6 +615,8 @@ func _build_sprites() -> void:
 	_sprites["duck_sleep"] = _make_sprite(DUCK_SLEEP_ART)
 	_sprites["frog"] = _make_sprite(FROG_ART)
 	_sprites["frog_tuck"] = _make_sprite(FROG_TUCK_ART)
+	_sprites["chicken"] = _make_sprite(CHICKEN_ART)
+	_sprites["chicken_peck"] = _make_sprite(CHICKEN_PECK_ART)
 
 
 ## Turns sprite text rows into runs of one colour: [x, y, length, palette index]. '.' is empty.

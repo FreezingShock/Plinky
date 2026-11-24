@@ -16,6 +16,7 @@ const BIRD_COUNT: int = 6
 const BIRD_SCARE: float = 44.0        # walker distance that startles a perched bird
 const BIRD_RETURN_AFTER: float = 9.0  # seconds a scattered bird stays away
 const BIRD_FLIGHT: float = 1.6        # seconds spent leaving or returning
+const BIRD_FLOCK: float = 22.0        # perched birds this close to one that takes off go up with it
 const SHORE_REACH: float = 26.0       # walker distance from the water edge that makes ripples
 const SHORE_LINGER: float = 2.5       # seconds ripples keep coming after the walker stops at the shore
 const RIPPLE_EVERY: float = 0.4
@@ -144,6 +145,13 @@ func _process(delta: float) -> void:
 			bird.scared = -1.0 if since >= BIRD_RETURN_AFTER + BIRD_FLIGHT else since
 		elif not calm and bool(bird.out) and wp.distance_to(bird.home as Vector2) <= BIRD_SCARE:
 			bird.scared = 0.0
+	# A flock goes up together: birds perched near one that just took off (scared exactly 0 this frame) go with it.
+	for bird: Dictionary in _birds:
+		if float(bird.scared) != 0.0:
+			continue
+		for other: Dictionary in _birds:
+			if float(other.scared) < 0.0 and bool(other.out) and (other.home as Vector2).distance_to(bird.home as Vector2) <= BIRD_FLOCK:
+				other.scared = 0.0
 	if not calm:
 		for w: Dictionary in _water:
 			var p: Vector2 = shore_point(w, wp, SHORE_REACH)

@@ -242,6 +242,51 @@ func run(t: Object) -> void:
 	t.ok((mcrit.get("_rabbits") as Array).size() >= 2, "the Starting Clearing has rabbits")
 	t.ok((mcrit.get("_ducks") as Array).size() >= 1, "the Starting Clearing has a duck on its water")
 
+	# Chickens: a farm yard in the life data gets a flock, none means none, a walker sends them running, reduce motion
+	# keeps them still, and night roosts them.
+	t.eq((mcrit.get("_chickens") as Array).size(), 0, "no farm yard in the data means no chickens")
+	MeadowLife.night = 0.0
+	MeadowLife.rain = 0.0
+	var yard: Dictionary = meadow.duplicate()
+	yard["farm"] = [[-4000.0, -4000.0, 200.0, 120.0]]
+	var hens := LifeCritters.new()
+	hens.setup(yard)
+	var hen_list: Array = hens.get("_chickens") as Array
+	t.eq(hen_list.size(), LifeCritters.CHICKEN_MAX, "a big farm yard gets the full flock (%d)" % hen_list.size())
+	var far: Vector2 = Vector2(-9000.0, -9000.0)
+	for i: int in 60:
+		hens.update(1.0 / 30.0, far)
+	var out_hens: int = 0
+	for h: Variant in hen_list:
+		if float((h as Dictionary).fade) > 0.5:
+			out_hens += 1
+	t.ok(out_hens == hen_list.size(), "by day every chicken is out in the yard (%d of %d)" % [out_hens, hen_list.size()])
+	var hen: Dictionary = hen_list[0] as Dictionary
+	var near_hen: Vector2 = (hen.pos as Vector2) + Vector2(6.0, 0.0)
+	hens.update(1.0 / 30.0, near_hen)
+	t.ok(float(hen.scared) > 0.0, "a walker close by sends a chicken running")
+	var calm_hens := LifeCritters.new()
+	calm_hens.setup(yard)
+	MeadowLife.reduce_motion = true
+	for i: int in 60:
+		calm_hens.update(1.0 / 30.0, far)
+	var calm_hen: Dictionary = (calm_hens.get("_chickens") as Array)[0] as Dictionary
+	var calm_pos: Vector2 = calm_hen.pos as Vector2
+	calm_hens.update(1.0 / 30.0, (calm_pos + Vector2(6.0, 0.0)))
+	t.ok(float(calm_hen.scared) <= 0.0 and (calm_hen.pos as Vector2).distance_to(calm_pos) < 0.001,
+		"reduce motion: a walker does not send chickens running")
+	MeadowLife.reduce_motion = keep_calm
+	MeadowLife.night = 1.0
+	for i: int in 90:
+		hens.update(1.0 / 30.0, far)
+	var roost_n: int = 0
+	for h: Variant in hen_list:
+		if float((h as Dictionary).fade) > 0.0:
+			roost_n += 1
+	t.eq(roost_n, 0, "night: the chickens roost in the coop, none in the yard")
+	MeadowLife.night = keep[0]
+	MeadowLife.rain = keep[2]
+
 
 func _vecs(a: Array) -> Array[Vector2]:
 	var out: Array[Vector2] = []

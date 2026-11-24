@@ -20,14 +20,18 @@ const ORBIT_SPEED: float = 1.7    # radians per second
 const FADE_RATE: float = 0.8      # per second: how fast a butterfly dissolves in or out
 const DEFAULT_DRIFT: Array = [34.0, 104.0, 572.0, 226.0]  # fallback beds when the data has no flowers
 
-## Butterfly frames, 7 x 4 texels, centred on column 3. a = accent wing, e = earth wing, k = ink body.
-const BUTTERFLY_OPEN: Array = ["aa.k.aa", "aaakaaa", "ee.k.ee", ".e.k.e."]
-const BUTTERFLY_CLOSED: Array = ["..k.k..", "...k...", "..aka..", "..eke.."]
+## Butterfly frames, 11 x 7 texels, centred on column 5. a = upper wing, e = lower wing, w = wing spot, k = ink.
+## The flap runs open, half, closed, half at FLAP_FPS, so the wings read at 1x.
+const BUTTERFLY_OPEN: Array = [".kkkk.kkkk.", "kaaaakaaaak", "aawaakaawaa", "aaeeakaeeaa", "keeeekeeeek", "keeeekeeeek", ".kkkk.kkkk."]
+const BUTTERFLY_HALF: Array = ["....k.k....", "kkkkkkkkkkk", "aawaakaawaa", "kaaaakaaaak", "keeeekeeeek", ".keeekeeek.", "..kkk.kkk.."]
+const BUTTERFLY_CLOSED: Array = ["....k.k....", "kkkkkkkkkkk", "aawaakaawaa", "kkkkkkkkkkk", ".keekkkeek.", "..kk.k.kk..", "..........."]
+const FLAP_FRAMES: Array = [BUTTERFLY_OPEN, BUTTERFLY_HALF, BUTTERFLY_CLOSED, BUTTERFLY_HALF]
+const FLAP_FPS: float = 5.0
 
-## Wing colour pairs (big wing, small wing) as palette indices: accent over earth, paper over accent, light over earth.
-const WINGS: Array = [[5, 6], [7, 5], [4, 6]]
+## Wing colour pairs (upper wing, lower wing) as palette indices: bright accent over earth, paper over accent, accent over light.
+const WINGS: Array = [[5, 6], [7, 5], [5, 4]]
 const IDX_INK: int = 0
-const IDX_EARTH: int = 6
+const IDX_PAPER: int = 7
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _beds: Array[Vector2] = []
@@ -138,8 +142,7 @@ func draw(ci: CanvasItem, tb: float) -> void:
 		var origin: Vector2i = Vector2i(roundi(p.x), roundi(p.y))
 		if _view.has_area() and not _view.grow(10.0).has_point(p):
 			continue
-		var open: bool = int(tb * 6.0 + float(f.seed)) % 2 == 0
-		var rows: Array = BUTTERFLY_OPEN if open else BUTTERFLY_CLOSED
+		var rows: Array = FLAP_FRAMES[posmod(int(tb * FLAP_FPS + float(f.seed)), FLAP_FRAMES.size())]
 		var flip: bool = (float(f.dur) > 0.0 and (f.to as Vector2).x < (f.from as Vector2).x) \
 			or (float(f.dur) <= 0.0 and int(f.seed) % 2 == 1)
 		var wing: Array = WINGS[int(f.seed) % WINGS.size()] as Array
@@ -150,8 +153,8 @@ func draw(ci: CanvasItem, tb: float) -> void:
 				var ch: String = row[rx]
 				if ch == ".":
 					continue
-				var col: int = rx - 3 if not flip else 3 - rx
-				var idx: int = IDX_INK if ch == "k" else (int(wing[0]) if ch == "a" else int(wing[1]))
+				var col: int = rx - 5 if not flip else 5 - rx
+				var idx: int = IDX_INK if ch == "k" else (IDX_PAPER if ch == "w" else (int(wing[0]) if ch == "a" else int(wing[1])))
 				var x: int = origin.x + col
 				var y: int = origin.y + ry - top
 				if MeadowLife.dissolved(fade, x, y):

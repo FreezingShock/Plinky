@@ -26,7 +26,7 @@ func run(t: Object) -> void:
 	var dr: Array = data.get("drift", []) as Array
 	t.eq(dr.size(), 4, "drift box is in the data")
 	t.ok(dr.size() == 4 and float(dr[2]) > 100.0 and float(dr[3]) > 50.0, "drift box is a usable size")
-	for frame: Array in [LifeButterflies.BUTTERFLY_OPEN, LifeButterflies.BUTTERFLY_CLOSED]:
+	for frame: Array in [LifeButterflies.BUTTERFLY_OPEN, LifeButterflies.BUTTERFLY_HALF, LifeButterflies.BUTTERFLY_CLOSED]:
 		var w0: int = (frame[0] as String).length()
 		var same: bool = true
 		for row: String in frame:
