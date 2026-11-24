@@ -198,6 +198,25 @@ func run(t: Object) -> void:
 	t.ok((calm_deer.pos as Vector2).distance_to(deer_start) < 0.001, "reduce motion: the deer stays where it is")
 	t.ok(not jumped, "reduce motion: the fish do not leap")
 
+	# The arrival point (life data "start"): two rabbits sit at the grass edge near it, and two butterflies start over the flowers near it.
+	var sa: Array = lark.get("start", []) as Array
+	var arrival := Vector2(float(sa[0]), float(sa[1]))
+	var arrive := LifeCritters.new()
+	arrive.setup(lark)
+	var near_rabbits: int = 0
+	for r: Variant in arrive.get("_rabbits") as Array:
+		if MeadowLife.iso_distance((r as Dictionary).home as Vector2, arrival) <= LifeCritters.START_REACH:
+			near_rabbits += 1
+	t.ok(near_rabbits >= 2, "two rabbits sit at the grass edge near the arrival point (%d)" % near_rabbits)
+	var fly := LifeButterflies.new()
+	fly.setup(lark)
+	var beds: Array = fly.get("_beds") as Array
+	var near_fly: int = 0
+	for f: Variant in fly.get("_flies") as Array:
+		if MeadowLife.iso_distance(beds[int((f as Dictionary).bed)] as Vector2, arrival) <= LifeButterflies.START_REACH:
+			near_fly += 1
+	t.ok(near_fly >= 2, "two butterflies start over the flowers near the arrival point (%d)" % near_fly)
+
 	# Tidy up the globals the suite changed.
 	MeadowLife.season = keep_season
 	MeadowLife.night = keep[0]
