@@ -149,3 +149,9 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Why not scale it by level:** one level at x2 is the jump Nathan asked for. A cap of 1 makes it a goal to save for, not a grind.
 - **Price (unverified):** 150 is the audit's proposal. It has not been checked against Bloom payouts (2 to 10 Seeds at the usual levels), so it may land late or early. `tools/sim_bloom.gd` buys the cheapest gifts first, so the crown lands last; PC QA should read the Bloom count at which it is bought.
 - **Not run in the engine:** the new tests in `test_bloom_gifts.gd` and `test_nucleus.gd` run in CI only. The icons were drawn from one outline at each staged size (see hud.md).
+
+## 2026-11-24: Mastery matters (yield 0.008, crit 0.003, XP growth 1.25)
+- Nathan's audit pick: a maxed pad now pays +20% (was +2.5%) and reaches level 25 in about 12,700 XP, about 7 hours on one pad at 0.5 XP/s. Crit chance per level 0.003 (+7.5% at level 25).
+- The audit's idle note was wrong: idle is 0.4 of active press rate (1.6 of 4.0 on #287), so the idle rule did not change. Idle's gate time is still about 2.4× active on main (CI sim, 93b063fe), so the gate-time ratio is set by the gate, not the press rate.
+- Larkmoor gate on main (93b063fe) is 106 min active, not the 51.6 min in the audit (v0.28.1). The gate change is pending a decision, not part of this entry.
+- Not run in-engine. CI `sim` on this PR is the check.
