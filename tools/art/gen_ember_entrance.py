@@ -123,7 +123,7 @@ def cave(style):
             if d < 5 and bayer(x, y) > d / 5.0 and y < base - 3: continue
             n = vnoise(x / 3.2, y / 2.1, 3) * .6 + vnoise(x / 1.6, y / 1.4, 8) * .4
             c = rock_lo
-            if n > .66 - 0.18 * (1 - (x + y) / 200.0): c = rock_mid
+            if n > .74 - 0.14 * (1 - (x + y) / 200.0): c = rock_mid
             elif n < .30: c = rock_hi if style != "C" else QSHADOW
             if style == "C" and n > .55 and vnoise(x / 2.0, y / 5.0, 11) > .72: c = QBASE   # ember seams in the basalt
             cv.px(x, y, c)
@@ -178,12 +178,12 @@ def cave(style):
         cv.px(cx, ky + 7, QLIGHT)
     # ---- interior. The world is a 2:1 elevated orthographic view with the cliff facing the camera, like the gateway and
     # tower sprites: width never converges, depth only moves things UP the screen (one texel of depth is half a texel up).
-    gx, gy = cx, 47
+    gx, gy = cx, 45
     for y in range(H):
         for x in range(W):
             if not in_open(x, y): continue
-            dd = math.hypot((x - gx) / 17.0, (y - gy) / 9.0)
-            t = max(0.0, 1 - dd) * (1.25 if style == "C" else 1.0)
+            dd = math.hypot((x - gx) / 22.0, (y - gy) / 13.0)
+            t = max(0.0, 1 - dd) * 1.35
             lv = t * 4.2 + (bayer(x, y) - .5) * .9
             c = QINK
             if lv > 3.4: c = QLIGHT
@@ -208,10 +208,9 @@ def cave(style):
         for x in range(cx - fh, cx + fh):
             if in_open(x, y) and hsh(x, y, 5) > .93 and cv.get(x, y)[:3] != QBASE[:3]: cv.px(x, y, QINK if y < 66 else QSHADOW)
     # rails: parallel lines, sleepers every 4 rows (half-foreshortened: 2 texels thick)
-    for y in range(fl_bot - 3, fl_top, -4):
-        cv.rect(cx - 12, y, cx + 12, y + 1, QDEEP if y > 66 else QSHADOW)
-        cv.rect(cx - 12, y, cx + 12, y, EARTH if y > 70 else QEARTH)
-        cv.px(cx - 13, y, QSHADOW); cv.px(cx + 13, y, QSHADOW)
+    for y in range(fl_bot - 3, fl_top, -5):
+        cv.rect(cx - 11, y, cx + 11, y + 1, QSHADOW if y < 70 else QDEEP)
+        if y > 74: cv.rect(cx - 11, y, cx + 11, y, QEARTH)
     for y in range(fl_top + 1, fl_bot + 1):
         for sx_ in (-8, 8):
             cv.px(cx + sx_, y, QPAPER if y > 62 else QACCENT); cv.px(cx + sx_ + (1 if sx_ > 0 else -1), y, QEARTH if y > 62 else QSHADOW)
@@ -229,7 +228,7 @@ def cave(style):
     cv.px(cx + 1, cy_ - 13, QBASE)
     # timber frames, far to near. Same width at every depth, each one up the screen by half its depth. Every post
     # stands on a stone footing block and a sill beam ties the post feet together.
-    frames = [(58, 0), (67, 1), (77, 2), (86, 3)]
+    frames = [(60, 0), (69, 1), (78, 2), (86, 3)]
     for (fy, i) in frames:
         pw = 4; hw_ = fh - 2
         dark = i < 2
@@ -247,9 +246,10 @@ def cave(style):
                         cv.px(x, y, QACCENT if y == fy - 3 else QEARTH if x < x0 + pw else QSHADOW)
             cv.rect(x0 - 1, fy, x0 + pw, fy, QINK)
             cv.px(x0 + pw // 2, fy - 2, QINK)             # mortar notch
-        for x in range(cx - hw_ + pw, cx + hw_ - pw + 1):  # sill beam between the footings
-            if in_open(x, fy - 1): cv.px(x, fy - 2, hi); cv.px(x, fy - 1, body)
-        for y in range(top, top + 4):
+        if i == 3:
+            for x in range(cx - hw_ + pw, cx + hw_ - pw + 1):  # sill beam between the footings (near frame only)
+                if in_open(x, fy - 1): cv.px(x, fy - 2, hi); cv.px(x, fy - 1, body)
+        for y in range(top, top + 4 if i == 3 else top):
             for x in range(cx - hw_ - pw - 1, cx + hw_ + pw + 1):
                 if in_open(x, y): cv.px(x, y, hi if y == top else body if y < top + 3 else lo)
         if i == 3:             # corner braces on the near frame
@@ -469,7 +469,10 @@ def decor_list():
     ]
 
 
-def build_scene(style, night):
+def build_scene(style, mode):
+    night = mode != 'day'
+    K = dict(dusk=.5, night=1.0, rain=.85).get(mode, 0)
+    TINT = dict(dusk=((255, 196, 160), 1.0), night=((62, 88, 150), 1.35), rain=((140, 158, 182), 1.15)).get(mode)
     X0, Y0, X1, Y1 = 1380, 372, 1660, 600
     g = Image.open(LK + "ground_fg.png").convert("RGBA").crop((X0, Y0, X1, Y1))
     sc = Canvas(X1 - X0, Y1 - Y0); sc.im = g; sc.d = ImageDraw.Draw(g)
@@ -500,9 +503,15 @@ def build_scene(style, night):
     sy = {"A": 404, "B": SIGN_Y, "C": 399}[style] - Y0
     if night:
         a = g.convert("RGB")
-        mult = Image.new("RGB", a.size, (62, 88, 150))
+        mult = Image.new("RGB", a.size, TINT[0])
         from PIL import ImageChops
-        dark = ImageChops.multiply(a, mult).point(lambda v: int(v * 1.35))
+        dark = ImageChops.multiply(a, mult).point(lambda v: int(min(255, v * TINT[1])))
+        if mode == 'rain':
+            rg = Image.new('RGB', a.size, (0, 0, 0)); rp = rg.load()
+            for ry in range(a.size[1]):
+                for rx in range(a.size[0]):
+                    if (rx * 5 + ry * 3 + int(hsh(rx // 7, ry // 5, 3) * 9)) % 23 == 0 and hsh(rx, ry, 9) > .55: rp[rx, ry] = (60, 66, 80)
+            dark = ImageChops.add(dark, rg)
         # light pools: lantern lamps and the cave's ember glow (dither-free soft here, the game dithers them)
         glow = Image.new("RGB", a.size, (0, 0, 0)); gp = glow.load()
         def pool(cx, cy, rx, ry, col, k):
@@ -513,9 +522,9 @@ def build_scene(style, night):
                         t = t * t * k
                         p = gp[x, y]; gp[x, y] = tuple(min(255, int(p[i] + col[i] * t)) for i in range(3))
         for (fx, fy) in LAMPS:
-            pool(fx - X0, fy - Y0 - 16, 46, 26, (255, 190, 100), 1.0)
-        pool(1520 - X0, 500 - Y0, 62, 40, (255, 110, 50), 1.0)
-        pool(1520 - X0, 420 - Y0, 90, 34, (255, 100, 40), .75 if style != "C" else .9)
+            pool(fx - X0, fy - Y0 - 16, 46, 26, (255, 190, 100), K)
+        pool(1520 - X0, 500 - Y0, 62, 40, (255, 110, 50), K * (1.25 if mode == 'rain' else 1.0))
+        pool(1520 - X0, 420 - Y0, 90, 34, (255, 100, 40), K * (1.0 if mode == 'rain' else .75))
         a = ImageChops.add(dark, glow)
         g = a.convert("RGBA")
         # self-lit: cave interior lamp area and the neon stay bright
@@ -582,12 +591,12 @@ if __name__ == "__main__":
     if cmd == "export": export(); sys.exit(0)
     if cmd == "mock":
         out = sys.argv[2]; os.makedirs(out, exist_ok=True)
-        for st in (sys.argv[3] if len(sys.argv) > 3 else "ABC"):
-            day = build_scene(st, False); night = build_scene(st, True)
-            S = 3
-            W, H = day.width * S, day.height * S
-            sheet = Image.new("RGB", (W, H * 2 + 6), (20, 20, 24))
-            sheet.paste(day.convert("RGB").resize((W, H), Image.NEAREST), (0, 0))
-            sheet.paste(night.convert("RGB").resize((W, H), Image.NEAREST), (0, H + 6))
-            sheet.save(os.path.join(out, "mock_%s.png" % st))
+        for st in (sys.argv[3] if len(sys.argv) > 3 else "B"):
+            S = 2
+            tiles = [build_scene(st, m).convert("RGB") for m in ("day", "dusk", "night", "rain")]
+            W, H = tiles[0].width * S, tiles[0].height * S
+            sheet = Image.new("RGB", (W * 2 + 6, H * 2 + 6), (20, 20, 24))
+            for i, t_ in enumerate(tiles):
+                sheet.paste(t_.resize((W, H), Image.NEAREST), ((i % 2) * (W + 6), (i // 2) * (H + 6)))
+            sheet.save(os.path.join(out, "times_%s.png" % st))
             print("wrote", st)

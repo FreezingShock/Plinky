@@ -1,0 +1,1 @@
+Ember Quarry entrance polish: a clearer tunnel inside the mine mouth (one lintel, bare posts behind it, brighter far glow), calmer rock around it, embers drifting up out of the mine, a breathing cave fire, and the neon and mine glow come up in rain (steady under Reduce Motion and Reduce Flashing).
