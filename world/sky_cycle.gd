@@ -209,11 +209,11 @@ func _pond_array() -> Array:
 	return out
 
 
-## Add a light pool. `follow` (optional) is a node the pool tracks each frame.
-func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
+## Add a light pool. `tint` (optional, alpha > 0) recolours the pool; the default keeps the warm pool colour.
+func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed", tint: Color = Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
-	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": Color(0.0, 0.0, 0.0, 0.0)})
+	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": tint})
 
 
 ## The pad pool nearest `pos` within 1.5 texels, or an empty dictionary. Pads are added with kind &"pad".
@@ -482,7 +482,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	if shadows != null:
 		var len: float = model.shadow_length(mt, _config.shadow_len_noon, _config.shadow_len_low, _config.shadow_len_moon)
 		shadows.set_sun(az, len, model.shadow_strength(mt, _config.shadow_moon, rain01),
-				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip, "low": low_sun_k})
+				{"foot": _config.shadow_density_foot, "tip": _config.shadow_density_tip, "low": low_sun_k,
+				"soft": _config.shadow_softness})
 	# rim light on props: whole-texel direction toward the light, warm when the sun is low, cool under the moon
 	var low: float = model.low_sun(mt)
 	var night_k: float = clampf(-model.sun_of(model.phase(mt)) * 2.0, 0.0, 1.0)
@@ -524,7 +525,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
-			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k) * GraphicsQuality.shadow_stride())
+			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 2.5, low_sun_k) * GraphicsQuality.shadow_stride())
+			gm.set_shader_parameter("shadow_soft", _config.shadow_softness)
 			gm.set_shader_parameter("march_steps", GraphicsQuality.shadow_steps())
 			gm.set_shader_parameter("ao_taps", GraphicsQuality.ao_taps())
 			gm.set_shader_parameter("ao_amt", _config.ground_ao)
@@ -542,7 +544,8 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			pm.set_shader_parameter("sun_px", sun_px)
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			pm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
-			pm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
+			pm.set_shader_parameter("shadow_reach", lerpf(1.6, 2.5, low_sun_k))
+			pm.set_shader_parameter("shadow_soft", _config.shadow_softness)
 	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
 	if rim_key != _rim_key:
 		_rim_key = rim_key
@@ -575,15 +578,19 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var lit_k: float = (1.0 - clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * 0.75) * (1.0 - 0.7 * rain01)
 	_light_mat.set_shader_parameter("sun_dir", Vector2(az, -1.0))
 	_light_mat.set_shader_parameter("light_col", rim_col)
-	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.74, 0.52, 0.78), model.low_sun(mt)))
+	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.66, 0.6, 0.8), model.low_sun(mt)))
 	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k * (0.75 + 0.5 * low_sun_k))
 	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k) * (0.9 + 0.5 * low_sun_k))
 	var night01: float = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
 	var noon01: float = smoothstep(0.7, 1.0, model.elevation(mt)) * (1.0 - 0.6 * rain01)
 	var nb: float = noon01 * noon_boost
-	_light_mat.set_shader_parameter("noon_tint", Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.95, 0.88), clampf(nb * 0.6, 0.0, 1.0)))
+	# the warm noon cast is a tint on top of the autumn ground, which is already orange; it stays at the meadow's level
+	# (noon01, not noon_boost) so Larkmoor's noon stops stacking orange on orange
+	_light_mat.set_shader_parameter("noon_tint", Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.95, 0.88), clampf(noon01 * 0.6, 0.0, 1.0)))
 	_light_mat.set_shader_parameter("exposure", 1.0 - _config.noon_exposure * nb)
-	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * nb)
+	# Saturation: the noon boost of a brighter scene (noon_boost) goes into exposure and contrast only. Scaling the
+	# saturation too pushed Larkmoor's autumn ground into the orange and green cast.
+	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * noon01)
 	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01) + _config.noon_contrast * nb)
 	_light_mat.set_shader_parameter("lift", _config.light_lift)
 	# vignette
@@ -605,6 +612,12 @@ func _find_walker() -> Node2D:
 	return null
 
 
+## How much a lantern's pool is lit: 0 through the day, 1 once it is dark. Dusk and dawn fade it in and out, so a lamp
+## is never a warm patch on a sunny lawn (the shade shader's warm cast does not depend on the night on its own).
+static func lamp_light_k(night: float) -> float:
+	return smoothstep(0.1, 0.5, night)
+
+
 ## Radius wobble of a light pool in texels, -1..1, on a 6 fps beat. Zero when `steady` (Reduce motion or Reduce flashing).
 static func light_flicker(t: float, key: int, steady: bool) -> float:
 	if steady:
@@ -619,6 +632,7 @@ func _push_lights(t: float, steady: bool) -> void:
 		_walker = _find_walker()
 	var focus: Vector2 = _walker.position if _walker != null else area.get_center()
 	var picks: Array[Dictionary] = []
+	var lamp_k: float = lamp_light_k(night01)
 	for L: Dictionary in _lights:
 		var is_walker: bool = L.kind == &"walker"
 		var pos: Vector2 = L.pos
@@ -627,7 +641,10 @@ func _push_lights(t: float, steady: bool) -> void:
 				continue
 			pos = _walker.position
 		var q: Vector2 = pos - focus
-		picks.append({"pos": pos, "radius": float(L.radius), "strength": float(L.strength), "tint": L.tint as Color,
+		var strength: float = float(L.strength) * (lamp_k if L.kind == &"lantern" else 1.0)
+		if strength <= 0.0:
+			continue   # a lamp by day takes no slot in the shader
+		picks.append({"pos": pos, "radius": float(L.radius), "strength": strength, "tint": L.tint as Color,
 				"walker": is_walker, "d": Vector2(q.x, q.y * 2.0).length_squared()})
 	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if a.walker != b.walker:
