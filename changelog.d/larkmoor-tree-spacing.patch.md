@@ -1,1 +1,0 @@
-Larkmoor's trees have room between their crowns now, instead of standing in walls. The north-east pine stand is thinner, with clearings between the trunks. Trees and bushes keep their clearance from the paths as before.
