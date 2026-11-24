@@ -150,6 +150,34 @@ static func tip(s: Dictionary, effect: StringName) -> Dictionary:
 	return {"title": title, "body": body, "hint": hint}
 
 
+## The tab name of a currency's group in the Upgrades gallery: Prestige, Rebirth Perks, or the zone reset's own menu title.
+static func tab_name(sim: Sim, currency: StringName) -> String:
+	if currency == &"prestige":
+		return "Prestige"
+	if currency == &"rp":
+		return "Rebirth Perks"
+	var r: ZoneResetDef = sim.reset_for_currency(currency)
+	if r == null:
+		return String(currency).capitalize()
+	return r.menu_title if r.menu_title != "" else r.display_name
+
+
+## Two upgrades share a tier when their unlock gates match. `ordered()` sorts by these gates, so tiers come out in order.
+static func tier_key(a: AttributeDef) -> String:
+	return "%d/%d" % [a.unlock_rebirths, a.unlock_resets]
+
+
+## The heading over a tier of the Upgrades gallery: "Open" for the start, else the gate in Title Case.
+static func tier_head(sim: Sim, a: AttributeDef) -> String:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency)
+		var nm: String = r.display_name if r != null else "Reset"
+		return "Unlocks After %d %s" % [a.unlock_resets, nm if a.unlock_resets == 1 else nm + "s"]
+	if a.unlock_rebirths > 0:
+		return "Unlocks At %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
+	return "Open"
+
+
 ## 3 -> "3", 2.5 -> "2.5".
 static func _trim(f: float) -> String:
 	var s: String = "%.1f" % f

@@ -61,3 +61,14 @@ func run(t: Object) -> void:
 	sim.stats[&"prestige"] = BigNum.from_float(50.0)
 	t.ok(bool(UpgradeText.state(sim, press)["can_afford"]), "with Prestige: can afford")
 	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, press), &"press_rate")["hint"]).begins_with("Costs"), "tooltip hint names the cost")
+
+	# tabs and tiers: a start upgrade opens the first tier, and a gated one names its gate
+	t.eq(UpgradeText.tier_head(sim, press), "Open", "a start upgrade is in the Open tier")
+	t.eq(UpgradeText.tier_key(press), "0/0", "a start upgrade has no gate")
+	for a: AttributeDef in gated:
+		var want: String = "Unlocks At %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
+		t.eq(UpgradeText.tier_head(sim, a), want, "%s is headed by its Rebirth gate" % a.id)
+	t.eq(UpgradeText.tab_name(sim, &"prestige"), "Prestige", "the Prestige tab")
+	t.eq(UpgradeText.tab_name(sim, &"rp"), "Rebirth Perks", "the Rebirth Perks tab")
+	for cur: StringName in UpgradeText.currencies(sim):
+		t.ok(UpgradeText.tab_name(sim, cur) != "", "%s has a tab name" % cur)

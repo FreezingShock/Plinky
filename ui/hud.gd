@@ -31,8 +31,9 @@ var _modal: ModalCard            # rebirth confirm and the offline summary, cent
 var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
-var _attr_rows: Dictionary = {}   # attribute id -> UpgradeRow
-const UPGRADE_LIST_HEIGHT: float = 168.0   ## about six rows so the panel fits above the bottom bar at 640x360; the rest scroll
+var _attr_rows: Dictionary = {}   # attribute id -> UpgradeCard
+const UPGRADE_LIST_WIDTH: float = 556.0   ## two cards across, plus the scrollbar, in the 640 px base
+const UPGRADE_LIST_HEIGHT: float = 196.0  ## about three and a half rows of cards so the panel fits above the bottom bar at 640x360; the rest scroll
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -389,7 +390,7 @@ func _build_upgrades() -> void:
 	add_child(_upgrades_panel)
 	keep_centered(_upgrades_panel)
 	_upgrades_box = VBoxContainer.new()
-	_upgrades_box.add_theme_constant_override("separation", 2)
+	_upgrades_box.add_theme_constant_override("separation", 3)
 	_upgrades_panel.add_child(_upgrades_box)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
@@ -407,52 +408,123 @@ func _build_upgrades() -> void:
 	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
 	head.add_child(x_gap)
 	_upgrades_box.add_child(PanelDivider.new())
+	# One tab per currency group (Prestige, Rebirth Perks, then each zone reset's gifts). Tabs are made from the data,
+	# so a new zone reset gets its own tab with no change here.
+	_upg_tabs = HBoxContainer.new()
+	_upg_tabs.add_theme_constant_override("separation", 12)
+	_upgrades_box.add_child(_upg_tabs)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, UPGRADE_LIST_HEIGHT)
+	scroll.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, UPGRADE_LIST_HEIGHT)
 	scroll.follow_focus = true
 	_upgrades_box.add_child(scroll)
 	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 4)
+	list.add_theme_constant_override("separation", 6)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 	_upg_list = list
-	_upgrades_panel.visibility_changed.connect(_fill_upgrades)
+	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
 
 
 var _upg_list: VBoxContainer
-
-
-## The 27 rows are built the first time the menu opens, not at boot (node budget).
-func _fill_upgrades() -> void:
-	if not _upgrades_panel.visible or not _attr_rows.is_empty():
-		return
-	var list: VBoxContainer = _upg_list
-	var group: StringName = &"prestige"
-	for a: AttributeDef in UpgradeText.ordered(sim):
-		if a.currency != group:   # a small heading where each perk group starts
-			group = a.currency
-			var gh := Label.new()
-			gh.text = UpgradeText.group_head(sim, group)
-			gh.add_theme_color_override("font_color", StatStyle.color(group))
-			list.add_child(gh)
-			_group_heads[group] = gh
-		var row := UpgradeRow.new()
-		list.add_child(row)
-		row.setup(a)
-		var cur: StringName = a.currency
-		row.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
-		row.buy_pressed.connect(_buy_upgrade)
-		row.refresh(UpgradeText.state(sim, a))
-		var eff: StringName = a.effect
-		var spec: Callable = func() -> Variant: return UpgradeText.tip(row.state(), eff)
-		_row_tips[a.id] = spec
-		Tip.bind_all(row, spec)
-		_attr_rows[a.id] = row
-
-var _group_heads: Dictionary = {}   # currency stat id -> the small heading above its upgrades
+var _upg_tabs: HBoxContainer
+var _upg_order: Array[StringName] = []          # the currency of each tab, in menu order
+var _upg_tab_btns: Dictionary = {}              # currency stat id -> its tab (MenuTextButton)
+var _upg_pages: Dictionary = {}                 # currency stat id -> the page of that group's tiers
+var _upg_tab: StringName = &""                  # the tab on show
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
+
+
+## Opening the panel builds the cards the first time (the node budget), then shows only tabs the player can see.
+func _on_upgrades_shown() -> void:
+	if not _upgrades_panel.visible:
+		return
+	_fill_upgrades()
+	_sync_upgrade_tabs()
+
+
+## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page of tiers;
+## a tier is a heading and a two-across grid of cards, so a tier of gifts reads as one group.
+func _fill_upgrades() -> void:
+	if not _attr_rows.is_empty():
+		return
+	_upg_order = UpgradeText.currencies(sim)
+	for cur: StringName in _upg_order:
+		var page := VBoxContainer.new()
+		page.add_theme_constant_override("separation", 4)
+		page.visible = false
+		_upg_list.add_child(page)
+		_upg_pages[cur] = page
+		var tab := MenuTextButton.new()
+		tab.label = UpgradeText.tab_name(sim, cur)
+		tab.accent_color = StatStyle.color(cur)
+		tab.rest_color = RelicStyle.dim
+		tab.pressed.connect(_select_upgrade_tab.bind(cur))
+		_upg_tabs.add_child(tab)
+		_upg_tab_btns[cur] = tab
+	var grid: GridContainer = null
+	var last_key: String = ""
+	var last_cur: StringName = &""
+	var tier_no: int = 0   # tiers number from 1 within each currency
+	for a: AttributeDef in UpgradeText.ordered(sim):
+		var cur: StringName = a.currency
+		var page: VBoxContainer = _upg_pages.get(cur) as VBoxContainer
+		if page == null:
+			continue
+		var key: String = "%s %s" % [cur, UpgradeText.tier_key(a)]
+		if key != last_key:
+			last_key = key
+			tier_no = tier_no + 1 if cur == last_cur else 1
+			last_cur = cur
+			var tier := Label.new()
+			tier.text = "Tier %d: %s" % [tier_no, UpgradeText.tier_head(sim, a)]
+			tier.add_theme_color_override("font_color", RelicStyle.soft())
+			page.add_child(tier)
+			grid = GridContainer.new()
+			grid.columns = 2
+			grid.add_theme_constant_override("h_separation", 6)
+			grid.add_theme_constant_override("v_separation", 5)
+			page.add_child(grid)
+		var card := UpgradeCard.new()
+		grid.add_child(card)
+		card.setup(a)
+		card.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
+		card.buy_pressed.connect(_buy_upgrade)
+		card.refresh(UpgradeText.state(sim, a))
+		var eff: StringName = a.effect
+		var spec: Callable = func() -> Variant: return UpgradeText.tip(card.state(), eff)
+		_row_tips[a.id] = spec
+		Tip.bind_all(card, spec)
+		_attr_rows[a.id] = card
+	_select_upgrade_tab(_first_shown_tab())
+
+
+func _select_upgrade_tab(cur: StringName) -> void:
+	_upg_tab = cur
+	for c: StringName in _upg_pages:
+		(_upg_pages[c] as Control).visible = c == cur
+	for c2: StringName in _upg_tab_btns:
+		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
+		b.rest_color = StatStyle.color(c2) if c2 == cur else RelicStyle.dim
+		b.queue_redraw()
+
+
+## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
+func _sync_upgrade_tabs() -> void:
+	for cur: StringName in _upg_tab_btns:
+		(_upg_tab_btns[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
+	var want: StringName = _upg_tab if _upg_tab != &"" and UpgradeText.group_shown(sim, _upg_tab) else _first_shown_tab()
+	if want != _upg_tab:
+		_select_upgrade_tab(want)
+
+
+## The first tab the player can see, or &"" when none is shown yet.
+func _first_shown_tab() -> StringName:
+	for cur: StringName in _upg_order:
+		if UpgradeText.group_shown(sim, cur):
+			return cur
+	return &""
 
 
 ## "[icon] 793" in the stat's colour, with the stat tooltip. Returns the box; the value label is in _cur_vals.
@@ -486,7 +558,7 @@ func _balance(sid: StringName) -> BigNum:
 ## A row asked to buy. The sim decides; the row plays the animation only if it went through.
 func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
-		var row: UpgradeRow = _attr_rows[aid]
+		var row: UpgradeCard = _attr_rows[aid]
 		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
 		# A tooltip already showing (the pointer is on the button) must pick up the new level.
 		for c: Node in [row] + row.get_children():
@@ -673,12 +745,9 @@ func _refresh() -> void:
 			(_cur_vals[sid] as Label).text = _balance(sid).format()
 		for cur: StringName in _cur_badges:
 			(_cur_badges[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
-		for cur2: StringName in _group_heads:
-			(_group_heads[cur2] as Control).visible = UpgradeText.group_shown(sim, cur2)
-		for aid2: StringName in _attr_rows:
-			(_attr_rows[aid2] as Control).visible = UpgradeText.group_shown(sim, sim.attribute_defs[aid2].currency)
+		_sync_upgrade_tabs()
 		for aid: StringName in _attr_rows:
-			(_attr_rows[aid] as UpgradeRow).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
+			(_attr_rows[aid] as UpgradeCard).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
 
 
 func _on_offline(seconds: float, gains: Dictionary) -> void:
