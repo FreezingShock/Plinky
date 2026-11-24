@@ -273,6 +273,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Still one `world/larkmoor_gardens.json` format 2 and one garden layer node, so the node count does not change. | Larkmoor sits near the 1350 ceiling. |
 | Not run in-engine: night shots of these rows, and the look on a real GPU. | The cloud renderer stops after about six night shots. |
 
+## 2026-11-24: Foxglove and Starbloom fields thicker
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` raises `n` and `small` for the Foxglove row (66/30 to 96/46) and both Starbloom rows (64/28 to 100/46 and 66/28 to 74/33 for Westmere). Result: Foxglove 315 flowers, Starbloom north 291, Westmere 301 (was 267, 252, 292 on the same generator). Clover and Thistle are unchanged. | Nathan's pick from the handoff: the thin rows were about 1.6x thinner than Clover and Thistle. Target was about 300 per row, and Nathan likes the current density, so only the thin rows grow. |
+| Still one `world/larkmoor_gardens.json` format 2 and one garden layer node, so the node count does not change. | Larkmoor sits near the 1350 ceiling. |
+| Not run in-engine: night shots of these rows, and the look on a real GPU. | The cloud renderer stops after about six night shots. |
+
 ## 2026-11-24: Less clumped fields
 | Decision | Why |
 |---|---|
