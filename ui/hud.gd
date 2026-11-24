@@ -432,12 +432,20 @@ func _chip(parent: Control, icon_name: String, tip_title: String, tip_body: Stri
 	return c
 
 
+## The shell is the only part built at boot: the animated panel the menu router and the close X hold. Its contents are
+## built each time it opens and freed when it closes (node budget, docs/perf.md), see _build_upgrades_body().
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
 	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.panel())
 	_upgrades_panel.visible = false
 	add_child(_upgrades_panel)
 	keep_centered(_upgrades_panel)
+	MenuAnim.front_on_show(_upgrades_panel)   # the menu draws above the meters, relic bar and sprint trail
+	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
+
+
+## The panel's contents: the header with balances, the tab strip, and the page area the tabs fill.
+func _build_upgrades_body() -> void:
 	_upgrades_box = VBoxContainer.new()
 	_upgrades_box.add_theme_constant_override("separation", 3)
 	_upgrades_panel.add_child(_upgrades_box)
@@ -467,8 +475,33 @@ func _build_upgrades() -> void:
 	_upg_list.add_theme_constant_override("separation", 6)
 	_upg_list.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, 0.0)
 	_upgrades_box.add_child(_upg_list)
-	MenuAnim.front_on_show(_upgrades_panel)   # the menu draws above the meters, relic bar and sprint trail
-	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
+
+
+## Frees the panel's contents on close. The tabs, tiers and cards are rebuilt on the next open. The tier each tab had
+## open is kept in _kept_tier, so a reopen shows the same tier.
+func _teardown_upgrades_body() -> void:
+	if _upgrades_box == null:
+		return
+	Tip.hide_all()
+	_kept_tier = _tier_sel.duplicate()
+	_upgrades_panel.remove_child(_upgrades_box)
+	_upgrades_box.queue_free()
+	_upgrades_box = null
+	_upg_list = null
+	_upg_tabs = null
+	_cur_vals.clear()
+	_cur_badges.clear()
+	_attr_rows.clear()
+	_row_tips.clear()
+	_upg_tab_btns.clear()
+	_upg_pages.clear()
+	_upg_rails.clear()
+	_upg_hosts.clear()
+	_tier_grids.clear()
+	_tier_attrs.clear()
+	_tier_btns.clear()
+	_tier_sel.clear()
+	_upg_order.clear()
 
 
 var _upg_list: VBoxContainer
@@ -484,6 +517,7 @@ var _tier_grids: Dictionary = {}                # currency stat id -> Array of G
 var _tier_attrs: Dictionary = {}                # currency stat id -> Array of tiers, each an Array of AttributeDef
 var _tier_btns: Dictionary = {}                 # currency stat id -> Array of MenuTextButton, the rail rows
 var _tier_sel: Dictionary = {}                  # currency stat id -> the tier shown on that tab
+var _kept_tier: Dictionary = {}                 # currency stat id -> the tier it showed when the panel last closed
 var _upg_tab: StringName = &""                  # the tab on show
 var _pending_tab: StringName = &""              # the tab a zone currency's row asked for, taken on show
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
@@ -493,7 +527,10 @@ var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + v
 ## Opening the panel builds the cards the first time (the node budget), then opens on the current zone's tab.
 func _on_upgrades_shown() -> void:
 	if not _upgrades_panel.visible:
+		_teardown_upgrades_body()
 		return
+	if _upgrades_box == null:
+		_build_upgrades_body()
 	_fill_upgrades()
 	_upg_tab = _zone_tab()
 	if _pending_tab != &"" and UpgradeText.tab_shown(sim, _pending_tab):
@@ -501,8 +538,8 @@ func _on_upgrades_shown() -> void:
 	_pending_tab = &""
 	_order_upgrade_tabs()
 	_sync_upgrade_tabs()
-	for cur: StringName in _tier_grids:   # every tab opens on its frontier tier
-		_select_tier(cur, _frontier_tier(cur))
+	for cur: StringName in _tier_grids:   # a tab opens on the tier it last showed, else on its frontier tier
+		_select_tier(cur, int(_kept_tier[cur]) if _kept_tier.has(cur) else _frontier_tier(cur))
 
 
 ## The zone's own gift tab when it shows, else the first tab the player can see.
