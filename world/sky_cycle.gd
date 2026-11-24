@@ -510,6 +510,7 @@ static func padded(tex: Texture2D) -> Texture2D:
 
 ## Sun, shadows, rim light, haze, mist, rays, vignette and light pools for this moment.
 func _update_light(t: float, mt: float, rain: float) -> void:
+	MeadowLife.sky_time = t   # the storm schedule (thunder, lightning) reads the sky's own clock
 	MeadowLife.night = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
 	MeadowLife.low_sun = model.low_sun(mt)
 	MeadowLife.rain = clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0)
