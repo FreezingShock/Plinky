@@ -13,7 +13,8 @@ const REVEAL_TIME: float = 0.25
 const SHAKE_TURN: float = 0.12        ## radians at full shake
 const SHAKE_HZ: float = 70.0
 const PICTURE_PX: float = 96.0        ## 16 px pouch at 6x, an integer scale
-const ICON_PX: float = 48.0           ## 16 px relic icon at 3x
+const ICON_PX: float = 32.0           ## 16 px relic icon at 2x
+const VIEW_MARGIN: float = 12.0       ## room kept clear of the window edge, panel border included
 const PANEL_W: float = 220.0
 const OVERLAY_LAYER: int = 120        ## above the HUD (100) and the relic toast (its layer is inside the HUD)
 const BACKDROP: Color = Color(0.0, 0.0, 0.0, 0.6)
@@ -32,6 +33,9 @@ var _layer: CanvasLayer
 var _pouch: TextureRect
 var _reveal: VBoxContainer
 var _continue: Button
+var _stage: CenterContainer
+var _scroll: ScrollContainer
+var _body: VBoxContainer
 
 
 ## Shows the overlay on top of everything. Call it once the relic has been granted, so `stacks` is the new count.
@@ -66,18 +70,25 @@ func _ready() -> void:
 	panel.custom_minimum_size.x = PANEL_W
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	center.add_child(panel)
+	# The body scrolls only when the window is too short for it, so the reveal never runs off the screen.
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.custom_minimum_size.x = PANEL_W
+	panel.add_child(_scroll)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	panel.add_child(v)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(v)
+	_body = v
 	var title := Label.new()
 	title.theme_type_variation = &"TitleLabel"
 	title.text = _cache.display_name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(title)
 	# The stage holds the pouch for the shake and the crack, then the reveal takes its place.
-	var stage := CenterContainer.new()
-	stage.custom_minimum_size = Vector2(PANEL_W - 24.0, PICTURE_PX)
-	v.add_child(stage)
+	_stage = CenterContainer.new()
+	_stage.custom_minimum_size = Vector2(PANEL_W - 24.0, PICTURE_PX)
+	v.add_child(_stage)
 	_pouch = TextureRect.new()
 	_pouch.texture = SealedArt.texture(_cache.palette)
 	_pouch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -85,7 +96,7 @@ func _ready() -> void:
 	_pouch.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_pouch.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_pouch.pivot_offset = Vector2(PICTURE_PX, PICTURE_PX) * 0.5
-	stage.add_child(_pouch)
+	_stage.add_child(_pouch)
 	_reveal = VBoxContainer.new()
 	_reveal.add_theme_constant_override("separation", 4)
 	_reveal.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -130,6 +141,7 @@ func _ready() -> void:
 		_enter(Phase.REVEAL)
 	else:
 		_enter(Phase.SHAKE)
+	_clamp_height.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -164,9 +176,11 @@ func _enter(p: int) -> void:
 			_burst()
 		Phase.REVEAL:
 			_pouch.visible = false
+			_stage.visible = false   # the reveal takes the stage's room, so the card stays short
 			_reveal.visible = true
 			_reveal.modulate.a = 1.0 if FxConfig.reduce_motion else 0.0
 			_continue.grab_focus()
+			_clamp_height.call_deferred()
 
 
 ## Sparks in the rarity colour, from the pouch's centre. Skipped under Reduce Motion.
@@ -211,6 +225,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_accept") and _phase != Phase.REVEAL:
 		_skip_to_reveal()
 		get_viewport().set_input_as_handled()
+
+
+## Caps the panel's height at the window's height less a margin. The body scrolls past that, so a short window never clips the reveal.
+func _clamp_height() -> void:
+	if _scroll == null or _body == null or not is_inside_tree():
+		return
+	var room: float = get_viewport_rect().size.y - VIEW_MARGIN * 2.0
+	_scroll.custom_minimum_size.y = minf(_body.get_combined_minimum_size().y, room)
 
 
 func _close() -> void:

@@ -6,18 +6,17 @@ extends VBoxContainer
 ## Opening one spends the currency, rolls a relic and shows SealedPullOverlay. Tooltips use the shared Tip.
 
 const GAP: int = 4
-const CARD_H: float = 46.0
-const PICTURE: float = 32.0
+const CARD_H: float = 38.0
+const PICTURE: float = 24.0
 const CARD_GOLD: Color = Color("f2c94c")
 const PULL_HINT: String = "Click to open!"
 
 var _cards: Dictionary = {}   ## cache id -> Button
 var _pictures: Dictionary = {}  ## cache id -> TextureRect
 var _names: Dictionary = {}     ## cache id -> Label
-var _prices: Dictionary = {}    ## cache id -> Label
-var _counts: Dictionary = {}    ## cache id -> Label
+var _prices: Dictionary = {}    ## cache id -> Label: price and pulls left on one line
 var _borders: Dictionary = {}   ## cache id -> last border Color applied, so the styles are only rebuilt on a change
-var _row: HBoxContainer
+var _row: VBoxContainer
 var _bus: Node = null
 
 
@@ -29,7 +28,7 @@ func _init() -> void:
 	head.text = "Sealed Caches"
 	head.add_theme_color_override("font_color", RelicStyle.dim)
 	add_child(head)
-	_row = HBoxContainer.new()
+	_row = VBoxContainer.new()
 	_row.add_theme_constant_override("separation", GAP)
 	_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_child(_row)
@@ -96,14 +95,16 @@ func _build() -> void:
 		name_l.theme_type_variation = &"TitleLabel"
 		name_l.text = def.display_name
 		name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		name_l.clip_text = true
+		name_l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		col.add_child(name_l)
 		var price_l := Label.new()
 		price_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		price_l.clip_text = true
+		price_l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		price_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		col.add_child(price_l)
-		var count_l := Label.new()
-		count_l.add_theme_color_override("font_color", RelicStyle.dim)
-		count_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.add_child(count_l)
 		card.pressed.connect(_on_pressed.bind(def.id))
 		Tip.bind(card, _tip_for.bind(def.id))
 		_row.add_child(card)
@@ -111,7 +112,6 @@ func _build() -> void:
 		_pictures[def.id] = pic
 		_names[def.id] = name_l
 		_prices[def.id] = price_l
-		_counts[def.id] = count_l
 
 
 ## Re-reads the caches: price, pulls left, whether the reset is used, and the border. Cheap; safe to call often.
@@ -144,10 +144,9 @@ func refresh() -> void:
 			_apply_border(card, border)
 			_borders[def.id] = border
 		card.modulate = Color(1.0, 1.0, 1.0, 1.0) if used else Color(1.0, 1.0, 1.0, 0.5)
-		(_prices[def.id] as Label).text = "%s %s" % [NumberFormat.format(price), unit] if used else "Locked"
-		(_counts[def.id] as Label).text = ("%d of %d left this %s" % [left, def.cap_per_reset, currency]) if used else "Opens after your first %s" % currency
-		(_counts[def.id] as Label).add_theme_color_override("font_color", border if left <= 0 or not used else RelicStyle.dim)
-		(_prices[def.id] as Label).add_theme_color_override("font_color", border if used else RelicStyle.dim)
+		var detail: Label = _prices[def.id] as Label
+		detail.text = ("%s %s, %d of %d left" % [NumberFormat.format(price), unit, left, def.cap_per_reset]) if used else "Unlocks after first %s" % currency
+		detail.add_theme_color_override("font_color", border if used else RelicStyle.dim)
 
 
 ## True when a pull can happen right now: the reset is used, pulls are left, the currency covers the price and the pool has a relic.
