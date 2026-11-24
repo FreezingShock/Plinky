@@ -270,7 +270,7 @@ func _draw_meadow_swirl(p: PackedColorArray, rx: float, rw: float, clock: float,
 			var k: float = s + (_bayer(i, j) - 0.5) * 0.3
 			var c: Color
 			if open:
-				c = p[5] if k > 0.84 else p[4] if k > 0.62 else p[3] if k > 0.38 else p[2] if k > 0.12 else p[1]
+				c = p[5] if k > 0.78 else p[4] if k > 0.58 else p[3] if k > 0.36 else p[2] if k > 0.18 else p[1]
 			else:
 				c = p[2] if k > 0.6 else p[1]
 			draw_rect(Rect2(x - 1.0, y, 2, 2), c)
