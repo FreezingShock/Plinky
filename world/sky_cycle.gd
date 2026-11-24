@@ -35,6 +35,8 @@ var shadows: SkyShadows                 # set by MeadowScene before this node en
 var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
 ## Scales the high-sun exposure, contrast and saturation fix. Scenes with brighter, greener ground (Larkmoor) set it above 1.
 var noon_boost: float = 1.0
+var seasonal: bool = true              ## false: no calendar seasons (the Ember Quarry): spring look, no season particles
+var night01: float = 0.0                ## 0 day .. 1 full night, from the sun model. QuarryLight reads it for its glow.
 var atmosphere: bool = true             # false: no mountain haze or mist
 ## Where haze and mist are drawn, in world texels. Empty = the whole sky box (the meadow). Larkmoor gives the
 ## mountain strip, the sea band under it, and one small rect for each pond, so the shader only runs where it shows.
@@ -162,6 +164,7 @@ func _ready() -> void:
 	particles.area = area
 	particles.config = _cal_cfg
 	particles.boost = _event_boost()
+	particles.visible = seasonal
 	add_child(particles)
 	sway_material = ShaderMaterial.new()
 	sway_material.shader = SWAY_SHADER
@@ -278,7 +281,7 @@ func _update_season() -> void:
 	if debug_season >= 0:
 		w = [0.0, 0.0, 0.0, 0.0]
 		w[clampi(debug_season, 0, 3)] = 1.0
-	elif _cal != null:
+	elif _cal != null and seasonal:
 		w = _cal.season_weights()
 	_season = SeasonLook.blend(_cal_cfg, w)
 	var key: Vector4 = _season.key()
@@ -308,7 +311,8 @@ func _push_season(m: ShaderMaterial, ground: bool) -> void:
 func _update(t: float) -> void:
 	var mt: float = _model_time(t)
 	_update_season()
-	_shade_mat.set_shader_parameter("night", clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * _config.night_shade)
+	night01 = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
+	_shade_mat.set_shader_parameter("night", night01 * _config.night_shade)
 	var ramp: float = model.ramp(mt)
 	if _config.grade_tint != null:
 		var gc: Color = _config.grade_tint.sample(ramp)

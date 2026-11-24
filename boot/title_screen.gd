@@ -26,6 +26,10 @@ const WALKER_FEET: Vector2 = Vector2(470.0, 294.0)
 const WALKER_BASE_Y: float = 47.0
 const FADE_SECONDS: float = 0.5
 const MENU_X: float = 26.0
+## Shared with the loading screen, so both read the same.
+const TAGLINE: String = "+ Press. Walk. Bloom. +"
+const WIPE_SECONDS: float = 0.9
+const CHIP_Y: float = 340.0
 
 ## Set by the boot screen (or loaded on demand) so Play does not wait on disk.
 static var game_scene: PackedScene
@@ -47,6 +51,11 @@ var _new_game: MenuTextButton
 var _menu_buttons: Array[MenuTextButton] = []
 var _version: VersionLink
 var _pal: PackedColorArray
+var _logo: Label
+var _tagline: Label
+var _chip: MenuTextButton
+## Time of day the screen last themed itself for; the accents only change when the name does.
+var _themed_for: String = ""
 
 
 ## True when this launch should go straight into the game (dev and test launches).
@@ -99,8 +108,10 @@ func _ready() -> void:
 	_build_walker()
 	_build_column()
 	_build_version()
+	_build_time_chip()
 	_build_panels(ui_theme)
 	_refresh_menu()
+	_refresh_theme()
 	# Fade in from ink, the mirror of the boot screen's dissolve.
 	if not (FxConfig.reduce_flashing or MeadowLife.reduce_motion):
 		_bg.set_dissolve(1.0)
@@ -129,8 +140,18 @@ func _build_column() -> void:
 	column.add_theme_constant_override("separation", 2)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(column)
-	column.add_child(_label("PLINKY", DISPLAY_FONT, 48, _pal[7], 4))
-	column.add_child(_label("Press. Tally. Rebirth.", BODY_FONT, -1, _pal[5], 1))
+	_logo = _label("PLINKY", DISPLAY_FONT, 48, _pal[7], 4)
+	# A chunky drop shadow in ink, so the logo sits on any part of the sky.
+	_logo.add_theme_color_override("font_shadow_color", _pal[0])
+	_logo.add_theme_constant_override("shadow_offset_x", 0)
+	_logo.add_theme_constant_override("shadow_offset_y", 4)
+	_logo.add_theme_constant_override("shadow_outline_size", 4)
+	column.add_child(_logo)
+	_tagline = _label(TAGLINE, BODY_FONT, -1, _pal[5], 1)
+	_tagline.add_theme_color_override("font_shadow_color", _pal[0])
+	_tagline.add_theme_constant_override("shadow_offset_x", 1)
+	_tagline.add_theme_constant_override("shadow_offset_y", 1)
+	column.add_child(_tagline)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(1.0, 8.0)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -161,6 +182,39 @@ func _build_column() -> void:
 	for b: MenuTextButton in _menu_buttons:
 		b.custom_minimum_size.x = widest
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+## The time chip: names the time of day on screen, and a click runs the sky forward to the next one.
+func _build_time_chip() -> void:
+	_chip = _button("", "", _pal[5], _on_time_chip)
+	_chip.position = Vector2(MENU_X, CHIP_Y)
+	add_child(_chip)
+
+
+func _on_time_chip() -> void:
+	_bg.skip_to_next()
+
+
+## Re-colour the logo, tagline, chip and menu accents for the time of day on screen. Runs every frame but only
+## writes when the time of day changes name.
+func _refresh_theme() -> void:
+	var now_name: String = _bg.time_name()
+	if now_name == _themed_for:
+		return
+	_themed_for = now_name
+	var ink: Color = _bg.role(0)
+	var paper: Color = _bg.role(7)
+	var accent: Color = _bg.role(5)
+	_logo.add_theme_color_override("font_color", paper)
+	_logo.add_theme_color_override("font_outline_color", ink)
+	_logo.add_theme_color_override("font_shadow_color", ink)
+	_tagline.add_theme_color_override("font_color", accent)
+	_tagline.add_theme_color_override("font_outline_color", ink)
+	_chip.label = now_name
+	_chip.rest_color = paper
+	_chip.accent_color = accent
+	for b: MenuTextButton in _menu_buttons:
+		b.accent_color = accent
 
 
 func _build_version() -> void:
@@ -317,9 +371,10 @@ func _begin(n: int, fresh: bool) -> void:
 			save.call("select_slot", n)
 		save.set("paused", false)
 		save.call("save_game")  # a new slot gets its file now, so it shows up in Saves straight away
-	var tween := create_tween()
-	tween.tween_method(_bg.set_dissolve, 0.0, 1.0, FADE_SECONDS)
-	tween.tween_callback(func() -> void: get_tree().change_scene_to_packed(game))
+	var wipe := TitleWipe.new()
+	add_child(wipe)
+	wipe.setup(_bg.role(0), _bg.role(5))
+	wipe.play(WIPE_SECONDS, TitleBackground.still(), func() -> void: get_tree().change_scene_to_packed(game))
 
 
 func _on_quit() -> void:
@@ -337,6 +392,12 @@ func _process(delta: float) -> void:
 	_walk_t += delta
 	var frame: int = int(_walk_t * WALKER_FPS) % WALKER_FRAME_COUNT
 	_walker_tex.region = Rect2(frame * WALKER_CELL, 0, WALKER_CELL, WALKER_CELL)
+	_refresh_theme()
+	# The scenery takes the time of day's tint and life: fireflies by night, birds by day.
+	var mood: Dictionary = _bg.mood()
+	var tint: Color = mood.get("tint", Color.WHITE)
+	_scenery.set_mood(tint, float(mood.get("shade", 0.0)), TitleMood.night_amount(_bg.sky, _bg.clock), TitleMood.day_amount(_bg.sky, _bg.clock))
+	_walker.modulate = Color.WHITE.lerp(tint, 0.5)
 	# Both scenes share one smoothed parallax, so the walker and the layers move as a set.
 	_scenery.parallax = _bg.parallax
 	_walker.position = Vector2(WALKER_FEET.x - float(WALKER_CELL) * 0.5, WALKER_FEET.y - WALKER_BASE_Y) + TitleScenery.layer_shift(_bg.parallax, TitleScenery.NEAR_K)

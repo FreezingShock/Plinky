@@ -3,6 +3,8 @@ extends RefCounted
 
 func run(t: Object) -> void:
 	run_meadow(t)
+	run_quarry(t)
+	run_quarry_shaders(t)
 	var cfg: SkyConfig = load(SkyCycle.CONFIG_PATH) as SkyConfig
 	t.ok(cfg != null, "sky.tres loads")
 	if cfg == null:
@@ -172,3 +174,89 @@ func run_meadow(t: Object) -> void:
 		t.ok(sky._haze_mat != null, "meadow sky built its haze material")
 		t.ok(sky.get_node_or_null("Haze") != null, "meadow has a haze rect")
 	holder.free()
+
+
+## Ember Quarry light: the flicker is stepped at 6 fps, bounded, and steady when asked; the emitter list is capped.
+func run_quarry(t: Object) -> void:
+	t.eq(LavaFlicker.frame(0.0), 0, "flicker frame starts at 0")
+	t.eq(LavaFlicker.frame(0.17), 1, "flicker frame advances at 6 fps")
+	t.ok(LavaFlicker.level(0.01, 3, 0.3, true) == 1.0, "steady flicker holds full brightness")
+	t.ok(LavaFlicker.level(0.01, 3, 0.0, false) == 1.0, "zero depth never dims")
+	var steps_ok: bool = true
+	var same_in_step: bool = true
+	for i in range(200):
+		var v: float = LavaFlicker.level(float(i) * 0.05, 7, 0.35, false)
+		if v < 0.65 - 1e-6 or v > 1.0 + 1e-6:
+			steps_ok = false
+		if LavaFlicker.level(float(LavaFlicker.frame(float(i) * 0.05)) / 6.0 + 0.01, 7, 0.35, false) != v:
+			same_in_step = false
+	t.ok(steps_ok, "flicker stays within 1 - depth .. 1")
+	t.ok(same_in_step, "flicker is constant inside one 1/6 s step")
+	var cfg: SkyConfig = load(SkyCycle.CONFIG_PATH) as SkyConfig
+	t.ok(cfg.lava_glow > 0.0 and cfg.shimmer_amount > 0.0, "quarry light tuning loads from sky.tres")
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/zone2/quarry/placements3d.json"))
+	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(&"zone2"))
+	var list: Array[Dictionary] = QuarryLight.emitters(data, cfg, cols)
+	t.ok(list.size() > 0 and list.size() <= QuarryLight.MAX_EMIT, "quarry emitters fit the shader array")
+	t.ok(list.size() > 0 and int(list[0].kind) >= QuarryLight.KIND_BRAZIER, "braziers and lamps are packed first")
+	var near_list: Array[Dictionary] = []
+	for i in range(10):
+		near_list.append({"pos": Vector2(float(i) * 5.0, 0.0), "radius": 20.0, "strength": 1.0, "kind": 0, "col": Color.WHITE})
+	var near: Array[int] = QuarryLight.nearest(near_list, Vector2(0.0, 0.0), Vector2(10.0, 10.0), QuarryLight.PROP_LIGHTS)
+	t.ok(near.size() > 0 and near.size() <= QuarryLight.PROP_LIGHTS, "a prop takes at most PROP_LIGHTS sources")
+	var best: int = 0
+	for k in range(near_list.size()):
+		if near_list[k].pos.distance_to(Vector2(5.0, 5.0)) < near_list[best].pos.distance_to(Vector2(5.0, 5.0)):
+			best = k
+	t.eq(near[0], best, "the nearest source comes first")
+	var sorted: bool = true
+	for k in range(1, near.size()):
+		if near_list[near[k]].pos.distance_to(Vector2(5.0, 5.0)) < near_list[near[k - 1]].pos.distance_to(Vector2(5.0, 5.0)):
+			sorted = false
+	t.ok(sorted, "sources are listed nearest first")
+
+
+## Shader guard: every Ember Quarry shader loads and makes a ShaderMaterial, and none exits early from fragment() or
+## vertex(). Godot rejects `return` there ("Using 'return' in the 'fragment' processor function is incorrect"), so a
+## shader with one loads fine in tests and then fails on the PC when the quarry spawns its props.
+const QUARRY_SHADERS: Array[String] = [
+	"res://render/shaders/quarry_glow.gdshader",
+	"res://render/shaders/quarry_haze.gdshader",
+	"res://render/shaders/quarry_prop.gdshader",
+	"res://render/shaders/heat_shimmer.gdshader",
+]
+
+
+func run_quarry_shaders(t: Object) -> void:
+	for path: String in QUARRY_SHADERS:
+		var sh: Shader = load(path) as Shader
+		t.ok(sh != null, "%s loads" % path.get_file())
+		if sh == null:
+			continue
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		t.ok(mat.shader == sh, "%s makes a ShaderMaterial" % path.get_file())
+		for header: String in ["void fragment()", "void vertex()"]:
+			t.ok(not _body_has_return(sh.code, header), "%s: no return in %s" % [path.get_file(), header])
+
+
+## True when the function that starts with `header` has a `return` inside its own braces.
+static func _body_has_return(src: String, header: String) -> bool:
+	var at: int = src.find(header)
+	if at < 0:
+		return false
+	var open: int = src.find("{", at)
+	if open < 0:
+		return false
+	var depth: int = 0
+	var i: int = open
+	while i < src.length():
+		var ch: String = src[i]
+		if ch == "{":
+			depth += 1
+		elif ch == "}":
+			depth -= 1
+			if depth == 0:
+				break
+		i += 1
+	return src.substr(open, i - open).contains("return")

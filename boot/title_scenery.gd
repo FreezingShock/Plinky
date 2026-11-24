@@ -7,6 +7,7 @@ extends Control
 ## sits in (matching title_background.gdshader's layer_shift). Reduce motion keeps it all still.
 
 const W: int = 640
+const GRADE_SHADER: Shader = preload("res://boot/title_scenery.gdshader")
 const MID_K: float = 0.38
 const NEAR_K: float = 1.0
 const TREES: Array[Dictionary] = [
@@ -25,6 +26,9 @@ var _trunks: Array[ImageTexture] = []
 var _flies: Array[Dictionary] = []
 var _birds: Array[Dictionary] = []
 var _leaves: Array[Dictionary] = []
+## Night and day amounts 0..1 from TitleMood: fireflies come out in the dark, birds fly in the light.
+var _night: float = 0.0
+var _day: float = 1.0
 
 
 ## Mirror of mid_ridge() in title_background.gdshader.
@@ -46,6 +50,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var grade := ShaderMaterial.new()
+	grade.shader = GRADE_SHADER
+	material = grade
 	_pal = Palettes.colors(Palettes.MEADOW)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 41
@@ -65,6 +72,17 @@ func _process(delta: float) -> void:
 	if not (FxConfig.reduce_flashing or MeadowLife.reduce_motion):
 		_t += delta
 	queue_redraw()
+
+
+## Push the time of day in: the tint and night shade grade every scenery texel, and night and day decide which
+## life is out (fireflies at night, birds by day).
+func set_mood(tint: Color, shade: float, night: float, day: float) -> void:
+	var grade: ShaderMaterial = material as ShaderMaterial
+	if grade != null:
+		grade.set_shader_parameter("tint", tint)
+		grade.set_shader_parameter("shade", clampf(shade, 0.0, 1.0))
+	_night = clampf(night, 0.0, 1.0)
+	_day = clampf(day, 0.0, 1.0)
 
 
 # ---- Baking ----------------------------------------------------------------------------------------------------------
@@ -247,6 +265,8 @@ func _draw_cottage(base: Vector2) -> void:
 
 ## Birds crossing the sky: a two-frame flap, drifting right and wrapping.
 func _draw_birds() -> void:
+	if _day < 0.15:
+		return
 	for b: Dictionary in _birds:
 		var x: float = fposmod(float(b["x"]) + _t * float(b["sp"]), float(W + 40)) - 20.0
 		var y: float = floorf(float(b["y"]) + sin(_t * 0.7 + float(b["ph"])) * 3.0)
@@ -278,6 +298,8 @@ func _draw_trees(near: Vector2) -> void:
 
 ## Fireflies: slow Lissajous wander, blink on a stepped timer, a plus-shaped glow at the peak.
 func _draw_flies(near: Vector2) -> void:
+	if _night < 0.15:
+		return
 	for f: Dictionary in _flies:
 		var ph: float = float(f["ph"])
 		var x: float = float(f["x"]) + sin(_t * float(f["sp"]) + ph) * 12.0

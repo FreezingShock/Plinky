@@ -92,3 +92,77 @@ func run(t: Object) -> void:
 		return "pong")
 	t.eq(c.run("ping 1 2"), "pong", "registered commands run")
 	t.eq(hits, [2], "registered commands get their arguments")
+
+	# Short names, two-word commands and help.
+	t.eq(DevCommands.resolve("g"), "give", "g is give")
+	t.eq(DevCommands.resolve("Sea"), "season", "aliases ignore case")
+	var hits2: Array = []
+	c.register("probe lap", "test two-word command", func(a: PackedStringArray) -> String:
+		hits2.append(a.size())
+		return "lap")
+	t.eq(c.run("probe lap 1 2"), "lap", "a two-word command runs")
+	t.eq(hits2, [2], "a two-word command gets the rest of the line")
+	t.ok(c.run("help time").contains("dawn"), "help time names the time words")
+	t.ok(c.run("help nope").begins_with("No command"), "help for an unknown command is reported")
+	t.ok(c.run("help").contains("g = give"), "help lists the short names")
+	t.eq(c.usage_of("t"), "time [set <time> | add <amount>]", "usage_of resolves aliases")
+
+	# Time of day, Minecraft-style. The calendar keeps its day; only the clock moves.
+	var cal: GameCalendar = sim.calendar
+	var day_before: int = cal.now()["total_day"]
+	t.ok(c.run("time set noon").begins_with("Time is now"), "time set noon is accepted")
+	t.eq(cal.now()["clock_text"], "12:00", "time set noon is 12:00")
+	t.eq(cal.now()["total_day"], day_before, "time set keeps the day")
+	c.run("time set 18:30")
+	t.eq(cal.now()["clock_text"], "18:30", "time set takes hh:mm")
+	c.run("time set midnight")
+	t.eq(cal.now()["clock_text"], "00:00", "time set midnight is 00:00")
+	c.run("time set night")
+	t.ok(not cal.is_day(), "time set night is after sunset")
+	c.run("time set day")
+	t.ok(cal.is_day(), "time set day is in daylight")
+	c.run("t noon")
+	t.eq(cal.now()["clock_text"], "12:00", "t is the time alias and takes a bare word")
+	t.ok(c.run("time set nope").contains("not a time"), "a bad time is reported")
+	t.ok(c.run("time set").begins_with("Usage"), "time set needs a time")
+	t.ok(c.run("time").contains("It is"), "time alone reads the clock")
+	c.run("time set noon")
+	var e0: float = cal.elapsed_days
+	c.run("time add 2h")
+	t.near(cal.elapsed_days - e0, 120.0 / 1440.0, 0.0001, "time add 2h moves two in-game hours")
+	t.ok(c.run("time add nope").contains("not an amount"), "a bad time amount is reported")
+	cal.set_day_fraction(0.25)
+	t.eq(cal.now()["hour"], 6, "set_day_fraction moves the clock to 06:00")
+	t.eq(cal.now()["total_day"], day_before, "set_day_fraction keeps the day")
+	c.run("season set summer")
+	t.eq(cal.season_index(), 1, "season set summer jumps to summer")
+
+	t.near(DevCommands.time_fraction("dawn", 0.5), 0.25, 1e-9, "dawn is sunrise")
+	t.near(DevCommands.time_fraction("dusk", 0.5), 0.75, 1e-9, "dusk is sunset")
+	t.near(DevCommands.time_fraction("night", 0.5), 0.875, 1e-9, "night is between sunset and midnight")
+	t.near(DevCommands.time_fraction("18:30"), 1110.0 / 1440.0, 1e-9, "hh:mm is minutes into the day")
+	t.near(DevCommands.time_fraction("25:00"), -1.0, 1e-9, "hours past 23 are not a time")
+	t.near(DevCommands.parse_game_minutes("2h"), 120.0, 1e-9, "2h is 120 in-game minutes")
+	t.near(DevCommands.parse_game_minutes("1d"), 1440.0, 1e-9, "1d is a day")
+	t.near(DevCommands.parse_game_minutes("45"), 45.0, 1e-9, "a bare number is minutes")
+	t.near(DevCommands.parse_game_minutes("soon"), -1.0, 1e-9, "a word is not an amount")
+	t.near(DevCommands.weather_level("rain"), 1.0, 1e-9, "rain forces rain")
+	t.near(DevCommands.weather_level("auto"), -1.0, 1e-9, "auto gives the weather back to the sky")
+	t.near(DevCommands.weather_level("snow"), -2.0, 1e-9, "unknown weather is reported")
+
+	# Tab completion and suggestions.
+	t.ok(c.complete("gi").has("give"), "tab completes a command from its first letters")
+	t.ok(c.complete("give ").has("sunlight"), "tab suggests stat ids after give")
+	t.ok(c.complete("give su").has("sunlight"), "and filters them by what is typed")
+	t.eq(c.complete("time s"), PackedStringArray(["set"]), "time offers set")
+	t.ok(c.complete("time set n").has("night") and c.complete("time set n").has("noon"), "time set offers the time words")
+	t.ok(c.complete("").has("help"), "an empty line offers every command")
+	t.ok(c.complete("help ").has("time"), "help offers command names")
+	t.ok(c.complete("nonsense x").is_empty(), "an unknown command has no suggestions")
+
+	# Reply colours.
+	t.eq(DevCommands.reply_kind("Usage: give <stat>"), &"usage", "usage lines are usage")
+	t.eq(DevCommands.reply_kind("No stat 'x'."), &"error", "a missing stat is an error")
+	t.eq(DevCommands.reply_kind("'x' is not a number."), &"error", "a bad number is an error")
+	t.eq(DevCommands.reply_kind("Gave 1 stack(s) each of 1 relic(s)."), &"ok", "success is ok")
+	t.eq(DevCommands.reply_kind("This wipes your save. Type 'reset confirm'."), &"warn", "reset asks first")

@@ -2,7 +2,8 @@ extends RefCounted
 ## The Nucleus: the Ember Quarry's own zone reset (Core Shards, forge gifts), and the move from the old quarry Rebirth.
 
 const GIFTS: Array[StringName] = [&"nucleus_hearth", &"nucleus_furnace", &"nucleus_plates", &"nucleus_smoulder", &"nucleus_veins", &"nucleus_twin",
-	&"nucleus_stride", &"nucleus_hands", &"nucleus_edge", &"nucleus_banked", &"nucleus_resonance", &"nucleus_study", &"nucleus_heartstrike"]
+	&"nucleus_stride", &"nucleus_hands", &"nucleus_edge", &"nucleus_banked", &"nucleus_resonance", &"nucleus_study", &"nucleus_heartstrike",
+	&"nucleus_crown"]
 
 
 func run(t: Object) -> void:
@@ -115,3 +116,20 @@ func run(t: Object) -> void:
 	var meadow: Sim = t.make_sim()
 	meadow.from_dict({"zone": "zone1", "ladder": 3, "stats": {"prestige": 5.0}, "rebirth_count": 2})
 	t.ok(not meadow.get_stat(&"prestige").is_zero() and meadow.get_stat(&"shards").is_zero(), "a save that never reached the quarry is left alone")
+
+	# The Nucleus Crown: after five Nuclei, one Core Shards level doubles every pad in the quarry, and no meadow pad.
+	var crown: AttributeDef = sim.attribute_defs[&"nucleus_crown"]
+	t.ok(crown.currency == &"shards" and crown.cap == 1 and crown.unlock_resets == 5, "the Nucleus Crown is a one-level Core Shards gift after five Nuclei")
+	sim.attr_levels.clear()
+	sim.reset_counts[&"nucleus"] = 4
+	sim.stats[&"shards"] = BigNum.from_float(1000.0)
+	t.ok(not sim.buy_attribute(crown.id), "the crown waits for five Nuclei")
+	sim.reset_counts[&"nucleus"] = 5
+	var quarry_before: float = sim.press_gain_preview(&"cinder_1").to_float()
+	var meadow_before: float = sim.press_gain_preview(&"sprout_1").to_float()
+	t.ok(sim.buy_attribute(crown.id), "the crown is bought with Core Shards after five Nuclei")
+	t.near(sim.press_gain_preview(&"cinder_1").to_float(), quarry_before * 2.0, 1e-6, "every quarry pad pays double")
+	t.near(sim.press_gain_preview(&"sprout_1").to_float(), meadow_before, 1e-6, "the meadow's pads do not")
+	t.near(sim.zone_pad_mult(&"zone2"), 2.0, 1e-9, "the quarry's multiplier is the crown's")
+	sim.attr_levels.clear()
+	sim.reset_counts[&"nucleus"] = 0
