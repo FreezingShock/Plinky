@@ -22,6 +22,7 @@ uniform float ao_amt = 0.0;
 uniform int march_steps = 12;                   // height-march taps toward the sun (GraphicsQuality: Low 6 at double the stride)
 uniform int ao_taps = 4;                        // occlusion taps around the texel (Low 2)
 uniform float shadow_reach = 2.0;               // texels per march step; longer when the sun is low
+uniform float shadow_soft = 0.0;                // 0 hard-edged march, 1 feathered penumbra that fades with distance (SkyConfig.shadow_softness)
 uniform vec3 shadow_tint : source_color = vec3(0.45, 0.52, 0.80);   // cool colour multiplied into shadowed texels
 uniform int debug_view = 0;                     // 0 off, 1 albedo, 2 normal, 3 height, 4 shadow only, 5 lit (F6 cycles)
 uniform vec3 fog_col : source_color = vec3(0.7, 0.85, 0.7);
@@ -129,15 +130,20 @@ void fragment() {
 			float sh = 0.0;
 			float occ = 0.0;
 			// No cast shadow and no occlusion to apply means no taps to spend (identical result, most of the day's cost).
+			// Soft march: a blocker well above the sun ray gives full shadow, a near miss a partial one, so the edge
+			// of a shadow feathers (the palette steps and the Bayer blend turn that into dither). Softer shadows also
+			// thin with distance, so a far wall does not lay a hard strip across the ground.
 			if (shadow_amt * relight > 0.002 || debug_view == 4) {
+				float pen = 0.5 + 6.0 * shadow_soft;
 				for (int k = 1; k <= 12; k++) {
 					if (k > march_steps) {
 						break;
 					}
 					float hn = texture(h_tex, UV + sun_px * float(k) * shadow_reach * px).r * 255.0;
-					if (hn > 0.5 && hn - h0 > shadow_slope * float(k) * shadow_reach) {
-						sh = 1.0;
-					}
+					float over = hn - h0 - shadow_slope * float(k) * shadow_reach;   // > 0: this blocker stands above the sun ray
+					float hit = smoothstep(-pen, pen, over) * step(0.5, hn);
+					float fall = 1.0 - shadow_soft * float(k) / float(march_steps + 1);
+					sh = max(sh, hit * fall);
 				}
 			}
 			if (ao_amt > 0.0) {
@@ -160,9 +166,7 @@ void fragment() {
 				int step_i = int(lo) + ((f > thr && int(lo) < cnt) ? 1 : 0);
 				c.rgb = PAL[RAMP_IDX[RAMP_START[code] + step_i]];
 			}
-			if (sh > 0.5) {
-				c.rgb *= mix(vec3(1.0), shadow_tint, min(shadow_amt, 1.0));
-			}
+			c.rgb *= mix(vec3(1.0), shadow_tint, min(shadow_amt, 1.0) * sh);
 			if (debug_view == 4) {
 				c.rgb = vec3(sh);
 			}

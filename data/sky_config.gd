@@ -66,6 +66,9 @@ extends Resource
 ## Dither density at the foot of a shadow and at its tip (soft edge that thins with distance).
 @export var shadow_density_foot: float = 0.85
 @export var shadow_density_tip: float = 0.25
+## How soft the shadows are, 0..1. 0 is crisp-edged, 1 a wide feathered penumbra. Sets how far a cast shadow's edge
+## fades (the oval quads and the ground height march) and how much the march thins with distance.
+@export var shadow_softness: float = 0.5
 
 @export_group("Light pools and rim")
 ## Pool radius and strength multipliers for each light kind.
