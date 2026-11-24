@@ -249,17 +249,29 @@ static func _bake(stat: StringName, variant: int, lean: int, season: int, closed
 	var foot: int = ry + stem + 1
 	if stat == &"clover" and season != SEASON_WINTER:
 		foot = maxi(foot, 2 * _clover_radius(rx, fold) + 4)   # the stalk shows under the lowest leaflet, the shadow stays clear of it
-	var stem_top: int = 0 if season != SEASON_WINTER else -ry
+	# winter field stalks differ by tint: the tint adds height, tints 1 and 3 carry a dry seed head, tint 2 is fully frosted
+	# and tint 0 has only a frosted tip
+	var tint_w: int = field_tint(variant) if is_field(variant) and season == SEASON_WINTER else 0
+	var stem_top: int = 0 if season != SEASON_WINTER else -ry - tint_w
 	var leaf_row: int = ry + 2 if season != SEASON_WINTER else foot - 2   # winter: the dead leaves lie at the stalk's foot
 	for y in range(stem_top, foot):
 		cells[Vector2i(0, y)] = Color(LEAF_DARK)
 	if season == SEASON_WINTER:
-		# frost: the stalk's top two rows and a crown either side of them are white, so a bare stalk reads at 1x
-		for y in [stem_top, stem_top + 1]:
-			cells[Vector2i(0, y)] = Color(FROST)
-		for x in [-1, 1]:
-			cells[Vector2i(x, stem_top + 1)] = Color(FROST)
-			cells[Vector2i(x, stem_top + 2)] = Color("b9d6e0")
+		if is_field(variant) and (tint_w == 1 or tint_w == 3):
+			# a dry seed head on the stalk, with one frosted shoulder so it reads at 1x
+			cells[Vector2i(0, stem_top)] = Color(SEED)
+			for x in [-1, 0, 1]:
+				cells[Vector2i(x, stem_top + 1)] = Color(SEED)
+			cells[Vector2i(0, stem_top + 2)] = Color(SEED).darkened(0.25)
+			cells[Vector2i(-1, stem_top)] = Color(FROST)
+		else:
+			# frost: the stalk's top rows are white, and tint 2 adds a crown either side, so a bare stalk reads at 1x
+			for y in [stem_top, stem_top + 1]:
+				cells[Vector2i(0, y)] = Color(FROST)
+			if not (is_field(variant) and tint_w == 0):
+				for x in [-1, 1]:
+					cells[Vector2i(x, stem_top + 1)] = Color(FROST)
+					cells[Vector2i(x, stem_top + 2)] = Color("b9d6e0")
 	var leaf_color: Color = Color(LEAF) if season != SEASON_WINTER else Color(LEAF_DARK)
 	if season == SEASON_AUTUMN:
 		leaf_color = Color("b8702e")
