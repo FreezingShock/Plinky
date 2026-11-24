@@ -786,3 +786,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Unlock kept:** Clover opens when the last Sprout pad is pressed, as before. The cost is Dewdrops. The tooltip says so, and the first pad of a locked row now draws "Needs <cost>" under its plate.
 - **Budget:** the regenerated layout has 100 props against 96 before. All 18 pads are reachable from spawn on the walk mask. The CI play job checks the node ceiling.
 - Not run in-engine from the cloud.
+- **Sway tips:** `world/larkmoor_life.json` was regenerated from the new backdrop with the command in the 2026-11-23 Larkmoor entry (`--bounds 190,110,1340,725 --sway-count 420`). The old tips sat on the old ground, so `tests/test_life.gd` failed in CI. Checked here: all 420 tips sit on the palette colour the old tips used. Not run in engine.
