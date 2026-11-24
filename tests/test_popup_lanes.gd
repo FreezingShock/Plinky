@@ -86,9 +86,9 @@ func run(t: Object) -> void:
 	var pc := PressPopups.new()
 	pc._ready()
 	for i in spots.size():
-		pc.press(StringName("pad_%d" % i), spots[i], 13240.0 + float(i), 0, false, false, false, 0.0, "Heather Sprigs", Color.WHITE)
+		pc.press(StringName("pad_%d" % i), spots[i], 13240.0 + float(i), 0, false, false, false, 0.0, "Stat %d" % i, Color.WHITE)
 	for i in 3:
-		pc.press(StringName("echo_%d" % i), Vector2(175.0, 150.0), 13240.0, 0, false, false, true, 0.3 + 0.1 * float(i), "Heather Sprigs", Color.WHITE)
+		pc.press(StringName("echo_%d" % i), Vector2(175.0, 150.0), 13240.0, 0, false, false, true, 0.3 + 0.1 * float(i), "Echo Stat", Color.WHITE)
 	for p in pc._pops:
 		if p.live:
 			p.age = maxf(p.age, 0.0)   # every delayed echo has started by now
@@ -106,3 +106,42 @@ func run(t: Object) -> void:
 	t.eq(clashes, 0, "no two visible popups overlap after a crowd of presses and late echoes")
 	PressPopups.instance = null
 	pc.free()
+
+	# --- one label per currency: near gains keep one number going, it holds its spot, floats only once gains stop
+	var lab := PressPopups.new()
+	lab._ready()
+	lab.press(&"pad_a", Vector2(100.0, 100.0), 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	var lbl: PressPopups.Pop = null
+	for p in lab._pops:
+		if p.live:
+			lbl = p
+	t.ok(lbl != null and lbl.hold, "a new gain starts as a holding label")
+	var spot: Vector2 = lab._pos_of(lbl)
+	var near_pads: Array[Vector2] = [Vector2(160.0, 120.0), Vector2(120.0, 180.0), Vector2(180.0, 160.0)]
+	for k in near_pads.size():
+		lab.press(StringName("pad_near_%d" % k), near_pads[k], 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	t.eq(lab.live_count(), 1, "same-currency gains from pads near the label keep one label")
+	t.near(lbl.total, 1080.0 * 4.0, 1e-3, "the one label carries every gain")
+	t.near(lab._pos_of(lbl).x, spot.x, 1e-6, "a label that is still gaining does not move sideways")
+	t.near(lab._pos_of(lbl).y, spot.y, 1e-6, "a label that is still gaining does not rise")
+
+	lab._float_if_quiet(lbl)
+	t.ok(lbl.hold, "a label does not float while its last gain is fresh")
+	lbl.since_bump = PressPopups.QUIET_AFTER
+	lab._float_if_quiet(lbl)
+	t.ok(not lbl.hold, "a label starts to float once gains have been quiet for QUIET_AFTER")
+	t.ok(lbl.life > lbl.t0 and lbl.life < 9999.0, "a floating label has a finite life that starts now")
+
+	var before_refold: Vector2 = lab._pos_of(lbl)
+	lab.press(&"pad_late", Vector2(140.0, 130.0), 1080.0, 0, false, false, false, 0.0, "Thistle Down", Color.WHITE)
+	t.ok(lbl.hold, "a gain landing on a floating label holds it again")
+	t.near(lab._pos_of(lbl).y, before_refold.y, 1e-3, "and the label stays where it was when the gain landed")
+	t.eq(lab.live_count(), 1, "the late gain still lands on the same label")
+
+	var shown_before: float = lbl.shown
+	lab._roll(lbl, 0.01, false)
+	t.ok(lbl.shown > shown_before and lbl.shown < lbl.total, "a new gain rolls the number up instead of jumping (shown %s)" % lbl.shown)
+	lab._roll(lbl, 0.0, true)
+	t.eq(lbl.shown, lbl.total, "under Reduce Motion the number snaps to its total")
+	PressPopups.instance = null
+	lab.free()
