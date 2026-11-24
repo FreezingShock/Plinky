@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bloom_stride"
+display_name = "Spring Step"
+effect = &"walk_speed"
+per_level = 0.08
+cap = 5
+base_cost = 5.0
+cost_growth = 1.6
+order = 8
+currency = &"seeds"
+unlock_resets = 2
+blurb = "The walker moves faster between pads."
+icon = &"walk"
+unit_text = "walk speed"

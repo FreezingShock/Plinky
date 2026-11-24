@@ -33,6 +33,8 @@ const PAL_EARTH := 6
 const PAL_PAPER := 7
 ## Set by the settings screen (M4). Respected by every effect below.
 static var reduce_flashing := false
+## True while the Bloom sequence plays (set by BloomRitual). Toasts wait on it so they never cover the number and icon.
+static var bloom_running := false
 static var reduce_shake := false
 ## Banners and other typed text show whole, with no typing or collapse.
 static var reduce_motion := false

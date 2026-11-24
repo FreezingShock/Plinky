@@ -5,6 +5,7 @@ extends Control
 
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
 const MEADOW_PATH: String = "res://world/meadow3d_scene.tscn"
+const ZONE_BANNER_HOLD: float = 3.0   ## seconds the full zone banner holds before it collapses
 
 var sim: Sim
 var pv: PixelViewport
@@ -139,6 +140,7 @@ func _ready() -> void:
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 	Banner.attach(hud)
+	BloomRitual.attach(hud, sim, get_node("/root/EventBus"))   # the zone reset animation (Bloom, Nucleus)
 
 	var bus: Node = get_node("/root/EventBus")
 	bus.button_pressed.connect(_on_button_pressed)
@@ -150,7 +152,7 @@ func _ready() -> void:
 	bus.season_changed.connect(_on_season_changed)
 	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
 	_enter_zone_visuals(sim.zone_id)
-	get_tree().create_timer(1.2).timeout.connect(func() -> void: _announce_zone_arrival(sim.zone_id))
+	get_tree().create_timer(1.2).timeout.connect(_announce_zone_arrival)
 	_clear_spawn()
 	_prev_zone = _previous_zone(sim.zone_id)
 	camera.snap()
@@ -519,41 +521,39 @@ func _on_season_changed(season: int) -> void:
 			"duration": 2.6, "key": "season_event_%d" % season})
 
 
-## Arrival banner for a zone. Zones that name their districts (Larkmoor) let the district banner do it instead.
-func _announce_zone_arrival(zone_id: StringName) -> void:
-	if meadow != null and meadow.has_method("district_at"):
-		return
+## Full arrival banner, once per zone entry: the Meadow, Larkmoor and the Ember Quarry each get one. Subareas inside a
+## zone get none; the area card in the zone panel changes instead (see _update_district).
+## Its name, then season and date, then the time of day. Reads the Calendar autoload when it exists (now() returns a
+## dictionary, see core/area_banner.gd) and falls back to the sky clock. The zone's own palette styles it.
+func _announce_zone_arrival() -> void:
+	Banner.announce({"key": "zone_arrival", "resolve": _zone_banner})
+
+
+## Built when the banner is about to show (see Banner's `resolve`): the zone the walker is in then, and the calendar
+## as it is then. Returns {} for an indoor zone.
+func _zone_banner() -> Dictionary:
+	var zone_id: StringName = sim.zone_id
 	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
-	if z != null:
-		_announce_area(z.display_name, "", zone_id)
-
-
-## The shared banner for an outdoor area: its name, then season and date, then the time of day. Reads the Calendar
-## autoload when it exists (now() returns a dictionary, see core/area_banner.gd) and falls back to the sky clock.
-func _announce_area(area_name: String, area_id: String, zone_id: StringName = &"") -> void:
-	var z: ZoneDef = sim.zone_defs.get(zone_id if zone_id != &"" else sim.zone_id) as ZoneDef
-	if z != null and not z.outdoor:
-		return
+	if z == null or not z.outdoor:
+		return {}
 	var cal: Dictionary = {}
 	var calendar: Node = get_node_or_null("/root/Calendar")
 	if calendar != null and calendar.has_method("now"):
 		cal = calendar.call("now") as Dictionary
 	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
 	var phase: float = sky.clock_phase() if sky != null else 0.5
-	if sky == null:  # themed areas have no seasons: keep the time, drop the date
+	if sky == null:  # themed zones have no seasons: keep the time, drop the date
 		for k: String in ["season", "season_name", "month_name", "day"]:
 			cal.erase(k)
-	var icon: String = ""
-	var area: AreaDef = sim.area_defs.get(StringName(area_id)) as AreaDef if area_id != "" else null
-	if area != null:
-		icon = area.icon
-	var tint: Variant = null
-	if sky != null and not cal.is_empty() and calendar.has_method("season_color"):
-		tint = calendar.call("season_color", int(cal.get("season", 0)))
-	Banner.announce(AreaBanner.compose(area_name, cal, phase, icon, tint))
+	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(zone_id))
+	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, phase, "", cols[clampi(z.theme_role, 0, 7)])
+	spec["fill"] = cols[0]
+	spec["duration"] = ZONE_BANNER_HOLD
+	spec["key"] = "zone:" + String(zone_id)
+	return spec
 
 
-## Names the district the walker is in, once per entry.
+## Names the district the walker is in. The zone panel's area card changes in place; no banner.
 func _update_district(delta: float) -> void:
 	_district_t -= delta
 	if _district_t > 0.0 or not meadow.has_method("district_at"):
@@ -565,7 +565,6 @@ func _update_district(delta: float) -> void:
 		_district_id = id
 		if id != "":
 			hud.set_district(StringName(id))
-			_announce_area(String(d.get("name", "")), String(d.get("id", "")))
 
 
 ## Zone 2 vents: present only when the zone scene has Vent anchors.
@@ -590,7 +589,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 		_enter_zone_visuals(zone_id)
 		Juice.zone_enter()
 		_after_crossing(zone_id)
-		_announce_zone_arrival(zone_id)
+		_announce_zone_arrival()
 		return
 	_crossing = true
 	walker.stop()
@@ -602,7 +601,7 @@ func _on_zone_entered(zone_id: StringName) -> void:
 			_clear_spawn())
 	_crossing = false
 	_after_crossing(zone_id)
-	_announce_zone_arrival(zone_id)
+	_announce_zone_arrival()
 
 
 func _after_crossing(zone_id: StringName) -> void:
@@ -629,8 +628,12 @@ func _on_mastery_leveled(button_id: StringName, level: int) -> void:
 
 
 func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
-	sim.feed_press_momentum(crit)
 	var pad: TexelPad = pads.get(button_id) as TexelPad
+	if sim.auto_press_active:   # a Bloom gift pressed it (Dew Sprites, Wildflower): a quiet popup, no momentum, no streak
+		if pad != null:
+			Juice.auto_press(pad, pad.position, gain.to_float())
+		return
+	sim.feed_press_momentum(crit)
 	if pad == null:
 		return
 	# A relic pulse presses the neighbours of the pad you pressed: Juice draws those as echoes that ripple outward.
@@ -642,6 +645,9 @@ func _on_button_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum
 	if from == Vector2.INF and (pad.standing or pad.holding):
 		walker.squash()
 	Juice.press(pad, pad.position, gain.to_float(), crit, pad.holding and from == Vector2.INF, from, sim.pulse_order)
+	var petals: int = int(sim.effect_total(&"petal_burst"))
+	if petals > 0 and from == Vector2.INF:
+		Juice.petals(pad, pad.position, petals)
 
 
 ## Relic UI (PR #5): equipped bar, drop toast, collection panel, pad flash on Epic and above.

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_furnace"
+display_name = "Stoked Fire"
+effect = &"ember_rate"
+per_level = 0.1
+cap = 10
+base_cost = 2.0
+cost_growth = 1.5
+order = 2
+currency = &"shards"
+unlock_resets = 0
+blurb = "Embers flow in faster, all the time."
+icon = &"heat"
+unit_text = "Embers income"

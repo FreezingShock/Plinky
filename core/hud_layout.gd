@@ -6,9 +6,10 @@ extends RefCounted
 ## A zone with no entry is on the Default layout: the zone's own stats in ladder order. The first edit copies that
 ## into an explicit row list, and from then on the list is the layout. Stats the zone gains later (a future
 ## ladder, a patch) are appended the first time they show up, so an old layout never hides new content.
-## A row can also be a stat from another zone (a pinned extra); `MAX_ROWS` caps the list.
+## A row can also be a stat from another zone (a pinned extra); `cap_for()` caps the list.
 
-const MAX_ROWS: int = 10
+const MAX_ROWS: int = 12   ## the most rows a strip holds, unless the zone's own Default is longer (see cap_for)
+const HARD_MAX: int = 16   ## a loaded layout is cut to this, so a damaged save cannot build a huge strip
 
 var _zones: Dictionary = {}   # zone id (String) -> {"rows": Array of String, "seen": Array of String}
 
@@ -52,8 +53,13 @@ func suggestions(zone: StringName, defaults: Array[StringName], pool: Array[Stri
 	return out
 
 
+## The row limit in a zone: MAX_ROWS, but never below the zone's own Default (the strip must always fit its Default).
+static func cap_for(defaults: Array[StringName]) -> int:
+	return maxi(MAX_ROWS, defaults.size())
+
+
 func is_full(zone: StringName, defaults: Array[StringName]) -> bool:
-	return rows(zone, defaults).size() >= MAX_ROWS
+	return rows(zone, defaults).size() >= cap_for(defaults)
 
 
 ## Take a row off the strip. The last row cannot be removed (the strip is never empty). True if it changed.
@@ -70,7 +76,7 @@ func hide(zone: StringName, sid: StringName, defaults: Array[StringName]) -> boo
 func add(zone: StringName, sid: StringName, defaults: Array[StringName]) -> bool:
 	var e: Dictionary = _edit(zone, defaults)
 	var r: Array = e["rows"]
-	if r.has(String(sid)) or r.size() >= MAX_ROWS or String(sid) == "":
+	if r.has(String(sid)) or r.size() >= cap_for(defaults) or String(sid) == "":
 		return false
 	r.append(String(sid))
 	return true
@@ -142,7 +148,7 @@ func from_dict(d: Variant, valid: Array = []) -> void:
 				rows_out.append(s)
 		if rows_out.is_empty():
 			continue
-		while rows_out.size() > MAX_ROWS:
+		while rows_out.size() > HARD_MAX:
 			rows_out.pop_back()
 		var seen_out: Array = rows_out.duplicate()
 		var sv: Variant = (e as Dictionary).get("seen")

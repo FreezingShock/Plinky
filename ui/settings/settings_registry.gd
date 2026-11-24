@@ -420,8 +420,8 @@ static func _register_qol() -> void:
 		"apply": func(v: Variant) -> void: SaveIndicator.enabled = bool(v),
 	})
 	_add({
-		"id": &"confirm_rebirth", "tab": "Gameplay", "label": "Confirm rebirth", "kind": Kind.TOGGLE, "default": true,
-		"hint": "Ask before a rebirth resets your Cash and pads.",
+		"id": &"confirm_rebirth", "tab": "Gameplay", "label": "Confirm reset", "kind": Kind.TOGGLE, "default": true,
+		"hint": "Ask before a zone reset (Bloom, Nucleus) resets your pads.",
 		"apply": func(v: Variant) -> void: ModalCard.rebirth_confirm = bool(v),
 	})
 

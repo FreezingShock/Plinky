@@ -10,6 +10,11 @@ extends Resource
 @export var offline_base_cap_hours: float = 2.0
 ## While away the meadow is tended at this fraction of your press rate: each open tier presses its top unlocked pad,
 ## paying the same cost and reward as a real press, limited by what the tier below left in stock. 0 turns it off.
+## Offline time is credited in this many slices so tending feeds the income of the next slice.
+## Idle should take about twice as long as active play (locked rule), so away time pays this fraction of the live
+## income rate. Tending can't compound it: with one slice the whole stretch is priced at the rate you left with.
+@export var offline_income_fraction: float = 0.5
+@export var offline_slices: int = 1
 @export var offline_tend_fraction: float = 0.1
 ## Relic drop rolls run at this fraction of the awake rate (same chance, luck and pity rules), at most
 ## offline_relic_max_drops per return. 0 turns offline drops off.
@@ -34,7 +39,9 @@ extends Resource
 @export var rp_base: float = 1.0
 @export var rp_growth: float = 0.1
 ## Rebirth, Prestige and Rebirth Points show only in these zones. Every other zone runs on its own ZoneResetDef (content/resets).
-@export var rebirth_zones: PackedStringArray = PackedStringArray(["zone2"])
+@export var rebirth_zones: PackedStringArray = PackedStringArray()
+## Saves from before the Nucleus: old Rebirths carry over as this many Nucleus uses at most (each adds the pad bonus).
+@export var nucleus_carry_max: int = 8
 ## Momentum: walking charges it (pressing nudges it), then it holds a moment and falls. Income gets
 ## x(1 + momentum * momentum_max_bonus + the kickers of every stage reached). Stages: Idle, then one per threshold.
 ## Full bar = max_bonus + sum(tier_bonus) = +40%.

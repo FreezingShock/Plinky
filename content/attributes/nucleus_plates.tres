@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AttributeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/attribute_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nucleus_plates"
+display_name = "Anvil Plates"
+effect = &"pad_yield"
+per_level = 0.06
+cap = 10
+base_cost = 3.0
+cost_growth = 1.5
+order = 3
+currency = &"shards"
+unlock_resets = 0
+blurb = "Every pad pays more on every press."
+icon = &"ingot"
+unit_text = "pad reward"

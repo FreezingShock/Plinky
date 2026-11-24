@@ -32,7 +32,17 @@ extends Resource
 ## After a reset this stat starts at its start value plus the total of this gift effect ("" for none).
 @export var start_stat: StringName = &""
 @export var start_effect: StringName = &""
+## Gift effects that bend the reset itself. keep_effect: how many of the stats in `resets` (after the start stat, in listed
+## order) survive a use. pay_effect: +x payout (0.5 = +50%). bonus_effect: added to bonus_per_use for every use.
+@export var keep_effect: StringName = &""
+@export var pay_effect: StringName = &""
+@export var bonus_effect: StringName = &""
 ## Menu skin: the heading of its section in Upgrades, and the words on its button, tooltip, confirm card and tutorial tip.
+## Animation skin (ui/fx/bloom_ritual.gd): the stats whose colours the burst particles use (the zone's ladder), the characters
+## of the closing ring of marks, and whether the particles rise like sparks (true) or fall like petals (false).
+@export var fx_stats: PackedStringArray = PackedStringArray()
+@export var fx_marks: String = ".o*O"
+@export var fx_rise: bool = false
 @export var menu_title: String = ""
 @export var button_hint: String = ""
 @export_multiline var tip_body: String = ""

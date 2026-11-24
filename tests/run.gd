@@ -37,6 +37,8 @@ const SUITES: Array[String] = [
 	"res://tests/test_upgrades.gd",
 	"res://tests/test_rebirth_points.gd",
 	"res://tests/test_bloom.gd",
+	"res://tests/test_bloom_gifts.gd",
+	"res://tests/test_nucleus.gd",
 	"res://tests/test_icon_set.gd",
 	"res://tests/test_script_loads.gd",
 	"res://tests/test_window.gd",
@@ -65,6 +67,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_title_scene.gd",
 	"res://tests/test_world_anchor.gd",
 	"res://tests/test_press_popups.gd",
+	"res://tests/test_popup_clear.gd",
 	"res://tests/test_ambient.gd",
 	"res://tests/test_banner.gd",
 ]

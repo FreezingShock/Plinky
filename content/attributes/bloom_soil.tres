@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = &"bloom_soil"
-display_name = "Deep soil"
+display_name = "Deep Soil"
 effect = &"sun_rate"
 per_level = 0.1
 cap = 10
@@ -13,3 +13,7 @@ base_cost = 2.0
 cost_growth = 1.5
 order = 2
 currency = &"seeds"
+unlock_resets = 0
+blurb = "Sunlight trickles in faster, all the time."
+icon = &"heat"
+unit_text = "Sunlight income"
