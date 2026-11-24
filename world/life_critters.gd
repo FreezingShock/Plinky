@@ -15,7 +15,8 @@ extends RefCounted
 const RABBIT_NEAR: float = 26.0        # walker distance (texels, y doubled) that starts a flight from a rabbit
 const RABBIT_WATCH: float = 42.0       # walker distance that makes a rabbit sit up and watch
 const RABBIT_WATCH_TIME: float = 2.5   # seconds a rabbit keeps watching after the walker has gone
-const RABBIT_WANDER: float = 30.0      # how far a grazing rabbit strays from its burrow spot
+const RABBIT_WANDER: float = 90.0      # how far a grazing rabbit strays from its burrow spot (iso texels)
+const RABBIT_GRAZE_SPEED: float = 30.0 # texels a second a grazing hop covers, so a long hop takes a few seconds
 const RABBIT_FLEE_HOP: float = 11.0    # texels per flight hop
 const RABBIT_FLEE_TIME: float = 0.18   # seconds per flight hop
 const RABBIT_GRAZE_TIME: float = 0.5   # seconds per grazing hop
@@ -49,7 +50,8 @@ const RABBIT_COUNT_MAX: int = 8
 const RABBIT_SPACING: float = 30.0   # texels between burrow spots
 const START_RABBITS: int = 2         # rabbits that sit at the grass edge near the arrival point
 const START_REACH: float = 260.0     # iso texels: how far from the arrival point those burrows may be
-const RABBIT_GRAZE_REACH: float = 16.0  # the longest grazing hop, texels
+const RABBIT_GRAZE_REACH: float = 180.0 # the longest grazing hop, iso texels (the pool around the burrow is 2 x RABBIT_WANDER across)
+const START_CLEAR: float = 90.0        # start rabbits sit this far from the arrival point, so the walker does not make them freeze
 
 ## Palette roles used by the sprites below (art-bible section 3): k ink, d shadow, g deep, b base, l light, y accent,
 ## f earth, w paper. The sprite art is kept as text so it can be read and edited by eye.
@@ -159,6 +161,8 @@ func _spawn_rabbits() -> void:
 		for g: Vector2 in by_start:
 			if near_start.size() >= START_RABBITS or MeadowLife.iso_distance(g, _start) > START_REACH:
 				break
+			if MeadowLife.iso_distance(g, _start) < START_CLEAR:
+				continue
 			var apart: bool = true
 			for h: Vector2 in near_start:
 				if h.distance_to(g) < RABBIT_SPACING:
@@ -180,10 +184,19 @@ func _spawn_rabbits() -> void:
 						break
 				if spaced:
 					break
-		_rabbits.append({"home": home, "pos": home, "from": home, "to": home, "lift": 0.0,
+		_rabbits.append({"home": home, "pool": _pool_near(home), "pos": home, "from": home, "to": home, "lift": 0.0,
 			"hop_t": 0.0, "hop_dur": 0.0, "fleeing": false, "route": home,
 			"timer": 1.0 + MeadowLife.hash01(i * 3 + 2) * 4.0, "watch": 0.0, "fade": 0.0, "cool": 0.0,
 			"face": 1.0, "seed": i * 31 + 3})
+
+
+## The grass tips a rabbit grazes among: every tip within RABBIT_WANDER of its burrow spot.
+func _pool_near(home: Vector2) -> Array:
+	var pool: Array = []
+	for g: Vector2 in _graze:
+		if MeadowLife.iso_distance(g, home) <= RABBIT_WANDER:
+			pool.append(g)
+	return pool
 
 
 ## The arrival point from the zone data ("start"), or Vector2.INF when the zone has none.
@@ -358,7 +371,8 @@ func update(delta: float, wp: Vector2) -> void:
 	var budget: int = GraphicsQuality.life_scaled(_rabbits.size())
 	var rshare: float = rabbit_share()
 	for i: int in _rabbits.size():
-		_update_rabbit(_rabbits[i], delta, wp, calm, i < budget and _out(int(_rabbits[i].seed) * 7 + 1, rshare))
+		var start_pair: bool = _start.is_finite() and i < START_RABBITS   # the two by the arrival point are out by day too
+		_update_rabbit(_rabbits[i], delta, wp, calm, i < budget and (start_pair or _out(int(_rabbits[i].seed) * 7 + 1, rshare)))
 	_update_ducks(delta, wp, calm)
 	var fshare: float = frog_share()
 	for f: Dictionary in _frogs:
@@ -482,18 +496,18 @@ func _next_flee_hop(r: Dictionary) -> void:
 
 func _plan_graze(r: Dictionary) -> void:
 	r.timer = 3.0
-	if _graze.is_empty():
+	var pool: Array = r.pool as Array
+	if pool.is_empty():
 		return
 	var here: Vector2 = r.pos as Vector2
-	var home: Vector2 = r.home as Vector2
 	for tries: int in 10:
-		var c: Vector2 = _hash_pick(_graze, int(r.seed) * 19 + tries * 3 + int(_t * 3.0))
+		var c: Vector2 = pool[int(MeadowLife.hash01(int(r.seed) * 19 + tries * 3 + int(_t * 3.0)) * float(pool.size())) % pool.size()]
 		var reach: float = MeadowLife.iso_distance(c, here)
-		if reach < 4.0 or reach > RABBIT_GRAZE_REACH or MeadowLife.iso_distance(c, home) > RABBIT_WANDER:
+		if reach < 4.0 or reach > RABBIT_GRAZE_REACH:
 			continue
 		if not _path_clear(here, c):
 			continue
-		_start_hop(r, c, RABBIT_GRAZE_TIME)
+		_start_hop(r, c, maxf(RABBIT_GRAZE_TIME, reach / RABBIT_GRAZE_SPEED))
 		return
 
 

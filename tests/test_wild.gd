@@ -216,6 +216,24 @@ func run(t: Object) -> void:
 		if MeadowLife.iso_distance(beds[int((f as Dictionary).bed)] as Vector2, arrival) <= LifeButterflies.START_REACH:
 			near_fly += 1
 	t.ok(near_fly >= 2, "two butterflies start over the flowers near the arrival point (%d)" % near_fly)
+	# Rabbits: the two by the arrival point are out in daylight, stay clear of the walker, and graze (they move) when left alone.
+	MeadowLife.night = 0.0
+	MeadowLife.low_sun = 0.0
+	MeadowLife.reduce_motion = false   # the reduce-motion section above is still on: rabbits only graze with motion
+	var start_rab: Array = arrive.get("_rabbits") as Array
+	var clear_ok: bool = true
+	for i: int in 2:
+		clear_ok = clear_ok and MeadowLife.iso_distance((start_rab[i] as Dictionary).home as Vector2, arrival) >= LifeCritters.START_CLEAR
+	t.ok(clear_ok, "the start rabbits sit clear of the walker's spawn spot")
+	for i: int in 300:
+		arrive.update(1.0 / 30.0, arrival + Vector2(4000.0, 4000.0))
+	t.ok(float((start_rab[0] as Dictionary).fade) > 0.5 and float((start_rab[1] as Dictionary).fade) > 0.5, "the two start rabbits are out by day")
+	var grazed: bool = false
+	for i: int in 900:
+		arrive.update(1.0 / 30.0, arrival + Vector2(4000.0, 4000.0))
+		if float((start_rab[0] as Dictionary).hop_dur) > 0.0:
+			grazed = true
+	t.ok(grazed, "a rabbit grazes (hops) when the walker is away")
 
 	# Tidy up the globals the suite changed.
 	MeadowLife.season = keep_season
