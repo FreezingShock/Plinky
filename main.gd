@@ -212,6 +212,9 @@ func _process(_delta: float) -> void:
 
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
 func _update_tooltip() -> void:
+	if FxConfig.bloom_running:   # nothing hovers over a ritual: no world tip while Bloom or Nucleus plays
+		tooltip.hide_tip()
+		return
 	var over: Control = get_viewport().gui_get_hovered_control()
 	var m: Vector2 = world.get_local_mouse_position()
 	# only a control that takes the click blocks the world tooltip: a PASS control (the clock chip) is hovered too, but lets the
