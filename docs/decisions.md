@@ -842,3 +842,14 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Lock text:** "Unlocks after 1 Nucleus reset" (was "Nucleuss").
 - **Taste call for Nathan:** hover puts a faint wash on a card you can afford. Say if you want the hover left off.
 - Not verified in-engine: the sparks, the pop timing and the taller panel. PC QA should check both zones with motion on and off.
+
+
+## Heronmere rows on walkable ground (2026-11-24)
+- **Why:** Nathan's marked-up screenshot of v0.51.1 (PC QA): the Dewdrop (Sprout) row should sit on the open grass below the main path, and the Clover row on the south lake shore. The Clover pads had most of their footprint off the walk mask, so they sat on the shore edge rather than on walkable ground.
+- **Sprout (dewdrops):** `(644,658)`, `(688,680)`, `(732,702)`, pad 1 nearest the road. Every footprint pixel is walkable and the row clears the path and landmarks by at least 16 texels.
+- **Clover (clover leaves):** `(546,648)`, `(502,626)`, `(458,604)`, pad 1 nearest the road. The walk mask only covers a narrow band along the lake shore, so the row sits on that band, a few texels inward from where the pads sat before.
+- **Cost chip:** the first pad of a locked row draws "Needs <cost>" on a dark backing box. The chip was not visible in PC QA. The code path checks out (button_id is set before `_ready`), so the backing box is the fix to confirm on a capture.
+- **Colour:** Clover pads have a gold rim (`#f2c14e`) in place of the grass green. A buyable Clover pad keeps the buy-state green.
+- **Props and lights:** props went from 100 to 90 and glow lights from 5 to 3, because the generator cleared props around the moved pads.
+- **Sway tips:** regenerated with the 2026-11-23 command. All 420 sit on the palette colour.
+- Not run in-engine from the cloud.

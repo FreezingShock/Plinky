@@ -56,6 +56,9 @@ var locked: bool = false
 ## Cost hint drawn under a locked row's first pad, so a closed row reads as "needs this stat" before it is pressed.
 const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
 var _lock_hint: String = ""
+## Clover pads get a gold rim (not the grass green Sprout and Clover share), so the two rows read apart on the lake shore.
+const CLOVER_TRIM: Color = Color("f2c14e")
+var _trim: Color = Color(0.0, 0.0, 0.0, 0.0)
 var _bloom_t: float = 0.0   # 1 -> 0 after the tier opens: the flower rises and bursts into petals
 var rarity: RarityDef
 var emblem_bits: int = 0  # 15 bits: the unique pattern for this pad
@@ -104,6 +107,8 @@ func _ready() -> void:
 		var cost_def: StatDef = _sim().stat_defs.get(b.cost_stat) as StatDef
 		if b.row_index == 0 and cost_def != null:
 			_lock_hint = "Needs %s" % cost_def.display_name
+		if tier_row == &"lark_clover":
+			_trim = CLOVER_TRIM
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
 	hold = HoldPress.new()
@@ -328,6 +333,8 @@ func _draw() -> void:
 	# Rim: brighter as the walker approaches or the mouse hovers.
 	var near: int = nearness()
 	var rim: Color = StatStyle.cant().darkened(0.3) if st != PadState.READY else StatStyle.gain()
+	if _trim.a > 0.0 and st != PadState.READY:
+		rim = _trim   # a buyable Clover pad keeps the buy-state green
 	if near >= 2:
 		rim = rim.lerp(Color.WHITE, 0.4)
 	if hovered:
@@ -386,9 +393,9 @@ func _draw() -> void:
 		_outline(0.38, top, palette[7])
 	# A locked row's first pad names what it needs, under the plate, in a dark-outlined cream so it reads on grass.
 	if locked and _lock_hint != "" and LOCK_FONT != null:
-		var at: Vector2 = Vector2(-40.0, float(THICK + 9))
-		draw_string(LOCK_FONT, at + Vector2(1.0, 1.0), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, ink)
-		draw_string(LOCK_FONT, at, _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, palette[6])
+		var tw: float = LOCK_FONT.get_string_size(_lock_hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16).x
+		draw_rect(Rect2(-tw * 0.5 - 3.0, float(THICK + 4), tw + 6.0, 10.0), ink)   # a dark backing, so the text reads on any grass
+		draw_string(LOCK_FONT, Vector2(-40.0, float(THICK + 11)), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, palette[6])
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
