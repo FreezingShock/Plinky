@@ -24,3 +24,23 @@ Each engine job uses `.github/actions/setup-godot`, which restores the cached Go
 Runs on every push to `main` touching `changelog.d/`. It folds fragments into CHANGELOG.md, bumps `core/build_info.gd` and `export_presets.cfg`, and pushes `Release vX.Y.Z [skip ci]` to `main`. The default Actions token cannot pass the ruleset, so the job checks out and pushes with the repo secret **`RELEASE_TOKEN`**, a fine-grained personal access token owned by an admin (Contents: read and write, Plinky only). The admin bypass lets that push through. Never print or echo the token.
 
 **Expiry: Dec 23, 2026.** After it expires the job only warns and fragments pile up for the next release; nothing else breaks. To renew: GitHub > Settings > Developer settings > Fine-grained tokens > regenerate (or create a new one with the same scope), then repo Settings > Secrets and variables > Actions > update `RELEASE_TOKEN`. Then run Actions > Release > Run workflow once.
+
+## Reading a red check (audit 2026-11-24)
+When a PR says "All checks have failed", open the failed job: its **Summary** tab and the red annotations now show the cause (`tools/ci_summary.py`). Causes seen so far:
+
+| Cause | What it looks like | Fix |
+|---|---|---|
+| Real test failure | `FAIL [test_x.gd] ... (got A, expected B)` | The PR's owner fixes the test or the code. Most red runs are this. |
+| Suite does not compile | `FAIL [test_x.gd] suite failed to load or compile`, `Compile Error: Failed to compile depended scripts` | Fix the script error above it. |
+| Autoload named in a `--script` test | `Compile Error: Identifier not found: Audio` (also EventBus, GameState, Save, Fx, Juice) | `--script` mode has no autoloads: pass the node in, or look it up by `get_node` in the running game, never name the autoload in a tested script. |
+| Missing `.uid` | `uid-guard`: `Missing <file>.uid` | Open the project in Godot once and commit the `.uid` file it creates. |
+| `changelog-guard` | PR edits the version files, or game folders without a fragment | Add `changelog.d/<slug>.patch.md`, and revert version/CHANGELOG edits. |
+| Perf gates | `NOT reached`, frame budget, node ceiling in the bench | Real regression: fix it, or raise the documented ceiling in docs/perf.md and ci.yml with a reason. |
+| Superseded run | Run shows grey "cancelled", usually two runs on one commit seconds apart | Not a failure. A newer push cancelled it; `test` is skipped, not red. Open the newest run on the head commit. |
+| Cancelled run on `main` | Grey run on a merge commit | Was a shared concurrency group cancelling the older queued run when merges landed close together. Each push to `main` now has its own group (its sha). |
+| Release bot commit | `Release vX.Y.Z [skip ci]` has no checks | Expected: it only edits version files and runs no CI. Its own Release run is the check; look there. |
+| `Preload file ... has no resource loaders` | Printed by the first `--import` step | Harmless noise (fonts preloaded before the first import). Not a failure; the test steps are the real gate. |
+| Conflicting PR | No CI at all, `mergeable_state: dirty` | Merge main in. Draft and conflicting PRs never run CI. |
+
+## Merge conflicts in the decision log
+`.gitattributes` marks `docs/decisions.md` and `docs/decisions/*.md` as `merge=union`, so `git merge main` on your machine or in a cloud thread keeps both sides' appended entries without a conflict. It only works for local merges, and only for append-only edits; if you edited an existing entry, check the result.

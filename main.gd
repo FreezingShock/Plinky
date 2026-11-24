@@ -663,11 +663,13 @@ func _wire_relics() -> void:
 	var toast := RelicToast.new()
 	toast.position = Vector2(220, 274)  # clear of the bottom bar (y 334)
 	hud.add_child(toast)
+	toast.menu_open = func() -> bool: return not menus.open_kinds().is_empty()   # never drawn over an open menu
 	toast.bind(inv)
 	var panel := RelicPanel.new()
 	relic_panel = panel
 	panel.visible = false
 	hud.add_child(panel)
+	MenuAnim.front_on_show(panel)
 	panel.bind(inv)
 	hud.relic_panel_toggled.connect(func(_open: bool) -> void: menus.toggle(&"relics"))
 	inv.relic_gained.connect(func(id: StringName, _s: int) -> void:
@@ -689,10 +691,12 @@ func _wire_index() -> void:
 func _wire_display() -> void:
 	display_panel = DisplayPanel.new()
 	hud.add_child(display_panel)
+	MenuAnim.front_on_show(display_panel)
 	display_panel.bind(get_window())
 	hud.settings_toggled.connect(func(_open: bool) -> void: menus.toggle(&"settings"))
 	feedback_panel = FeedbackPanel.new()
 	hud.add_child(feedback_panel)
+	MenuAnim.front_on_show(feedback_panel)
 	feedback_panel.bind(GameState.sim)
 	display_panel.feedback_requested.connect(_toggle_feedback)
 
@@ -722,6 +726,12 @@ func _wire_menus() -> void:
 	var ach_toast := AchievementToast.new()
 	hud.add_child(ach_toast)
 	ach_toast.enabled = func() -> bool: return GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)   # quiet during the tutorial
+	ach_toast.menu_open = func() -> bool: return not menus.open_kinds().is_empty()   # held back while any menu is open
+	Banner.hold = func() -> bool: return not menus.open_kinds().is_empty()   # season and zone banners wait for menus too
+	ach_toast.play_sfx = func(sfx: StringName, pitch: float, db: float) -> void: Audio.play(sfx, pitch, db)
+	ach_toast.shake = func(amount: float) -> void:
+		if Juice.shake:
+			Juice.shake.add(amount)
 	ach_toast.bind(sim)
 	hud.keep_centered(gallery)
 	hud.keep_centered(update_log)

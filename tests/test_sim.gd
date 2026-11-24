@@ -217,6 +217,34 @@ func _offline_extras(t: Object) -> void:
 	t.ok(sim.mastery.level(&"sprout_3") > 0 or sim.mastery.xp(&"sprout_3") > 0.0, "tending earned mastery XP")
 	t.ok(not tend.has(&"clover"), "locked tiers are not tended")
 	t.ok((sim.last_offline["relics"] as Array).size() <= sim.config.offline_relic_max_drops, "relic drops capped")
+	# Away income: lanterns lift the share above the 50% base, but never past offline_rate_cap (75%)
+	var sim4: Sim = t.make_sim()
+	t.near(sim4.offline_fraction(), 0.5, 1e-9, "away income is 50% of the awake rate with no relics")
+	sim4.relics.add_relic(&"r_night_lantern", 8)
+	sim4.relics.add_relic(&"r_tide_lantern", 6)
+	sim4.relics.add_relic(&"r_eternal_lantern", 4)
+	sim4.relics.equip(&"r_night_lantern")
+	sim4.relics.equip(&"r_tide_lantern")
+	sim4.relics.equip(&"r_eternal_lantern")
+	t.near(sim4.offline_fraction(), sim4.config.offline_rate_cap, 1e-9, "three max lanterns stop at the 75% cap")
+	t.ok(sim4.offline_fraction() < 1.0, "away income stays under the awake rate")
+
+	# Pad tooltip: the relic part of a zone pad's reward, and the names behind it
+	var sim5: Sim = t.make_sim()
+	var zpad: StringName = &""
+	for k in sim5.button_defs.keys():
+		if (sim5.button_defs[k] as ButtonDef).zone == &"zone1":
+			zpad = k
+			break
+	t.ok(zpad != &"", "a zone1 pad exists to test")
+	var bare: PackedStringArray = sim5.press_relic_bonus(zpad)["names"]
+	t.eq(bare.size(), 0, "no relics means no relic names on the pad tooltip")
+	sim5.relics.add_relic(&"r_meadow_honey")
+	sim5.relics.equip(&"r_meadow_honey")
+	var rb: Dictionary = sim5.press_relic_bonus(zpad)
+	t.near(float(rb["mult"]), sim5.relics.zone_mult(&"zone1"), 1e-9, "a zone relic gives the pad its bonus multiplier")
+	var named: PackedStringArray = rb["names"]
+	t.eq(named.size(), 1, "the pad tooltip names the one relic behind the bonus")
 	var sim3: Sim = t.make_sim()
 	sim3.attr_levels[&"bloom_dusk"] = 4
 	sim3.attr_levels[&"rp_rest"] = 2

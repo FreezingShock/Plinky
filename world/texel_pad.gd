@@ -53,6 +53,9 @@ var tier_row: StringName = &""
 ## The flower this pad stands on (FLOWERS key). The Larkmoor Sprout and Clover rows are their own tiers, so they draw the meadow flowers.
 var flower_row: StringName = &""
 var locked: bool = false
+## Cost hint drawn under a locked row's first pad, so a closed row reads as "needs this stat" before it is pressed.
+const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
+var _lock_hint: String = ""
 var _bloom_t: float = 0.0   # 1 -> 0 after the tier opens: the flower rises and bursts into petals
 var rarity: RarityDef
 var emblem_bits: int = 0  # 15 bits: the unique pattern for this pad
@@ -98,6 +101,9 @@ func _ready() -> void:
 		stat_color = AccessOptions.tint(STAT_COLORS.get(b.reward_stat, stat_color) as Color)
 		tier_row = b.row
 		flower_row = FLOWER_OF.get(tier_row, tier_row) as StringName
+		var cost_def: StatDef = _sim().stat_defs.get(b.cost_stat) as StatDef
+		if b.row_index == 0 and cost_def != null:
+			_lock_hint = "Needs %s" % cost_def.display_name
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
 	hold = HoldPress.new()
@@ -158,6 +164,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton) or event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event.pressed:
+		if GuiGuard.covers(get_tree().root, event.position):
+			return   # a click on any GUI (panel, HUD, tooltip) never presses a pad under it
 		if hit((get_parent() as Node2D).get_local_mouse_position()):
 			holding = true
 			hold.begin()
@@ -378,6 +386,11 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
+	# A locked row's first pad names what it needs, under the plate, in a dark-outlined cream so it reads on grass.
+	if locked and _lock_hint != "" and LOCK_FONT != null:
+		var at: Vector2 = Vector2(-40.0, float(THICK + 9))
+		draw_string(LOCK_FONT, at + Vector2(1.0, 1.0), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, ink)
+		draw_string(LOCK_FONT, at, _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, 80.0, 16, palette[6])
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.

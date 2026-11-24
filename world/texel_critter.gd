@@ -58,6 +58,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
 		return
+	if GuiGuard.covers(get_tree().root, event.position):
+		return   # a click on any GUI does not catch a critter under it
 	var m: Vector2 = (get_parent() as Node2D).get_local_mouse_position()
 	if m.distance_to(position) <= CLICK_RADIUS and GameState.sim.catch_critter():
 		get_viewport().set_input_as_handled()

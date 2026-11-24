@@ -11,20 +11,24 @@ signal resume_requested
 signal quit_to_title_requested
 signal quit_game_requested
 
-const COLUMNS: int = 3
+## Four columns, so the Play and Info rows are exactly as wide as the footer's grid and the panel has no empty strip.
+const COLUMNS: int = 4
 const GAP: int = 4
-## kind, label, icon file under assets/icons/big/
+## kind, label, icon file under assets/icons/big/. Play first (the things you spend on and the ways you move), then
+## Info (records you read), then Settings alone on its own full-width row.
 const ENTRIES: Array = [
-	[&"stats", "Stats", "menu_stats"],
-	[&"attributes", "Attributes", "menu_attributes"],
 	[&"upgrades", "Upgrades", "menu_upgrades"],
 	[&"relics", "Relics", "menu_relics"],
+	[&"attributes", "Attributes", "menu_attributes"],
 	[&"travel", "Travel", "menu_travel"],
-	[&"settings", "Settings", "menu_settings"],
+	[&"stats", "Stats", "menu_stats"],
 	[&"history", "History", "menu_history"],
-	[&"ledger", "Ledger", "menu_ledger"],
+	[&"ledger", "Achievements", "menu_ledger"],
 	[&"log", "Update Log", "menu_log"],
+	[&"settings", "Settings", "menu_settings"],
 ]
+## Tiles per row group, in ENTRIES order. Settings is a single tile that stretches across the full width.
+const GROUPS: Array[int] = [4, 4, 1]
 
 ## Section colours, the same fixed stat colours the gallery cards use: Cash gold, Multiplier blue and so on.
 const COLORS: Dictionary = {
@@ -62,23 +66,32 @@ func _init() -> void:
 	x_gap.custom_minimum_size = Vector2(CloseX.HEADER_GAP, 1.0)
 	head.add_child(x_gap)
 	v.add_child(PanelDivider.new())
-	var grid := GridContainer.new()
-	grid.columns = COLUMNS
-	grid.add_theme_constant_override("h_separation", GAP)
-	grid.add_theme_constant_override("v_separation", GAP)
-	v.add_child(grid)
-	for e: Array in ENTRIES:
-		var tile := GalleryTile.new()
-		tile.kind = e[0]
-		tile.label = e[1]
-		tile.accent = COLORS.get(e[0], Color(0, 0, 0, 0)) as Color
-		tile.big_icon = load("res://assets/icons/big/%s.png" % e[2]) as Texture2D
-		var k: StringName = e[0]
-		tile.pressed.connect(func() -> void:
-			if not tile.locked:
-				chosen.emit(k))
-		grid.add_child(tile)
-		_tiles[k] = tile
+	var index: int = 0
+	for n: int in GROUPS:
+		if index > 0:
+			v.add_child(PanelDivider.new(2))
+		var grid := GridContainer.new()
+		grid.columns = mini(COLUMNS, n)
+		grid.add_theme_constant_override("h_separation", GAP)
+		grid.add_theme_constant_override("v_separation", GAP)
+		v.add_child(grid)
+		for i in n:
+			var e: Array = ENTRIES[index + i]
+			var tile := GalleryTile.new()
+			tile.kind = e[0]
+			tile.label = e[1]
+			tile.accent = COLORS.get(e[0], Color(0, 0, 0, 0)) as Color
+			tile.big_icon = load("res://assets/icons/big/%s.png" % e[2]) as Texture2D
+			# A lone tile in its row stretches to the full width of the menu (the Settings row).
+			if n == 1:
+				tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var k: StringName = e[0]
+			tile.pressed.connect(func() -> void:
+				if not tile.locked:
+					chosen.emit(k))
+			grid.add_child(tile)
+			_tiles[k] = tile
+		index += n
 	v.add_child(PanelDivider.new(2))
 	# Text actions, kept visually apart from the icon tiles: Resume in the good green, the quits in the accent.
 	var actions := HBoxContainer.new()

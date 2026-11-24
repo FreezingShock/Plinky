@@ -61,3 +61,20 @@ func run(t: Object) -> void:
 	sim.stats[&"prestige"] = BigNum.from_float(50.0)
 	t.ok(bool(UpgradeText.state(sim, press)["can_afford"]), "with Prestige: can afford")
 	t.ok(str(UpgradeText.tip(UpgradeText.state(sim, press), &"press_rate")["hint"]).begins_with("Costs"), "tooltip hint names the cost")
+
+	# tabs and tiers: a start upgrade opens the first tier, and a gated one names its gate
+	t.eq(UpgradeText.tier_head(sim, press), "Open", "a start upgrade is in the Open tier")
+	t.eq(UpgradeText.tier_key(press), "0/0", "a start upgrade has no gate")
+	for a: AttributeDef in gated:
+		var want: String = "Unlocks At %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
+		t.eq(UpgradeText.tier_head(sim, a), want, "%s is headed by its Rebirth gate" % a.id)
+	for cur: StringName in UpgradeText.tab_currencies(sim):
+		t.ok(UpgradeText.tab_name(sim, cur) != "", "%s has a tab name" % cur)
+	t.ok(not UpgradeText.tab_currencies(sim).has(&"prestige") and not UpgradeText.tab_currencies(sim).has(&"rp"), "Prestige and Rebirth Perks have no tab")
+	# Every zone's gifts have a tab, whichever zone you stand in, even before anything is open.
+	sim.zone_id = &"zone1"
+	t.ok(UpgradeText.tab_shown(sim, &"seeds") and UpgradeText.tab_shown(sim, &"shards"), "meadow shows the Bloom and Nucleus gift tabs")
+	t.ok(not UpgradeText.group_shown(sim, &"shards"), "a zone's gift group still hides its contents until it opens (group_shown unchanged)")
+	sim.zone_id = &"zone2"
+	t.ok(UpgradeText.tab_shown(sim, &"seeds") and UpgradeText.tab_shown(sim, &"shards"), "quarry shows the Bloom and Nucleus gift tabs")
+	t.ok(not UpgradeText.tab_shown(sim, &"prestige") and not UpgradeText.tab_shown(sim, &"rp"), "no Prestige or Rebirth Point tab outside a Rebirth zone")

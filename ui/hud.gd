@@ -30,8 +30,9 @@ var _modal: ModalCard            # rebirth confirm and the offline summary, cent
 var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
-var _attr_rows: Dictionary = {}   # attribute id -> UpgradeRow
-const UPGRADE_LIST_HEIGHT: float = 168.0   ## about six rows so the panel fits above the bottom bar at 640x360; the rest scroll
+var _attr_rows: Dictionary = {}   # attribute id -> UpgradeCard
+const UPGRADE_LIST_WIDTH: float = 318.0   ## two cards across (UpgradeCard.CARD_SIZE) plus a gap and the scrollbar
+const UPGRADE_LIST_HEIGHT: float = 180.0   ## the most the list takes (about three rows); a shorter tab takes only what it needs, and the rest scrolls
 var _tip_card: TipCard
 var _gated: Array = []            # [node, feature] pairs; see gate()
 var _gates_ready: bool = false    # false until the first pass, so nothing flashes at startup
@@ -64,8 +65,9 @@ var _sug_grid: GridContainer
 var _sug_note: Label
 var _count_label: Label
 var _layout_sig: String = ""
-const SUG_COLUMNS: int = 6
-const CTL_W: float = 20.0   ## width of the grip and hide mark that open at the left of every row in edit mode
+const SUG_COLUMNS: int = 4   ## add chips per line to start with; _place_edit refits it to the footer bar
+var _foot_bar: HBoxContainer
+const CTL_W: float = 28.0   ## width of the grip and hide mark that open at the left of every row in edit mode (the mark has room around it)
 
 
 func setup(p_sim: Sim) -> void:
@@ -231,7 +233,10 @@ func _build_stats() -> void:
 		_rows[sid] = [val, rate]
 		Tip.bind_all(h, func() -> Variant:
 			var inc: BigNum = sim.income_per_second(sid)
-			return TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format()))
+			var spec: Dictionary = TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format())
+			if _edit_mode:
+				spec["hint"] = "Drag to reorder."
+			return spec)
 		_row_boxes[sid] = h
 		_row_node[h] = true
 		h.gui_input.connect(_on_row_input.bind(sid))
@@ -398,7 +403,7 @@ func _build_upgrades() -> void:
 	add_child(_upgrades_panel)
 	keep_centered(_upgrades_panel)
 	_upgrades_box = VBoxContainer.new()
-	_upgrades_box.add_theme_constant_override("separation", 2)
+	_upgrades_box.add_theme_constant_override("separation", 3)
 	_upgrades_panel.add_child(_upgrades_box)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
@@ -416,52 +421,163 @@ func _build_upgrades() -> void:
 	x_gap.custom_minimum_size = Vector2(CloseX.SIZE, 1.0)
 	head.add_child(x_gap)
 	_upgrades_box.add_child(PanelDivider.new())
+	# One tab per currency group (Prestige, Rebirth Perks, then each zone reset's gifts). Tabs are made from the data,
+	# so a new zone reset gets its own tab with no change here.
+	_upg_tabs = HBoxContainer.new()
+	_upg_tabs.add_theme_constant_override("separation", 12)
+	_upgrades_box.add_child(_upg_tabs)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, UPGRADE_LIST_HEIGHT)
+	scroll.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, 0.0)
 	scroll.follow_focus = true
 	_upgrades_box.add_child(scroll)
+	_upg_scroll = scroll
 	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 4)
+	list.add_theme_constant_override("separation", 6)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 	_upg_list = list
-	_upgrades_panel.visibility_changed.connect(_fill_upgrades)
+	MenuAnim.front_on_show(_upgrades_panel)   # the menu draws above the meters, relic bar and sprint trail
+	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
 
 
 var _upg_list: VBoxContainer
-
-
-## The 27 rows are built the first time the menu opens, not at boot (node budget).
-func _fill_upgrades() -> void:
-	if not _upgrades_panel.visible or not _attr_rows.is_empty():
-		return
-	var list: VBoxContainer = _upg_list
-	var group: StringName = &"prestige"
-	for a: AttributeDef in UpgradeText.ordered(sim):
-		if a.currency != group:   # a small heading where each perk group starts
-			group = a.currency
-			var gh := Label.new()
-			gh.text = UpgradeText.group_head(sim, group)
-			gh.add_theme_color_override("font_color", StatStyle.color(group))
-			list.add_child(gh)
-			_group_heads[group] = gh
-		var row := UpgradeRow.new()
-		list.add_child(row)
-		row.setup(a)
-		var cur: StringName = a.currency
-		row.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
-		row.buy_pressed.connect(_buy_upgrade)
-		row.refresh(UpgradeText.state(sim, a))
-		var eff: StringName = a.effect
-		var spec: Callable = func() -> Variant: return UpgradeText.tip(row.state(), eff)
-		_row_tips[a.id] = spec
-		Tip.bind_all(row, spec)
-		_attr_rows[a.id] = row
-
-var _group_heads: Dictionary = {}   # currency stat id -> the small heading above its upgrades
+var _upg_scroll: ScrollContainer
+var _upg_tabs: HBoxContainer
+var _upg_order: Array[StringName] = []          # the currency of each tab, in menu order
+var _upg_tab_btns: Dictionary = {}              # currency stat id -> its tab (MenuTextButton)
+var _upg_pages: Dictionary = {}                 # currency stat id -> the page of that group's tiers
+var _upg_tab: StringName = &""                  # the tab on show
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
+
+
+## Opening the panel builds the cards the first time (the node budget), then opens on the current zone's tab.
+func _on_upgrades_shown() -> void:
+	if not _upgrades_panel.visible:
+		return
+	_fill_upgrades()
+	_upg_tab = _zone_tab()
+	_order_upgrade_tabs()
+	_sync_upgrade_tabs()
+
+
+## The zone's own gift tab when it shows, else the first tab the player can see.
+func _zone_tab() -> StringName:
+	var here: ZoneResetDef = sim.reset_for_zone()
+	if here != null and UpgradeText.tab_shown(sim, here.currency):
+		return here.currency
+	return _first_shown_tab()
+
+
+## The strip lists the zone you stand in first; the other zones' tabs follow in reset order.
+func _order_upgrade_tabs() -> void:
+	var here: ZoneResetDef = sim.reset_for_zone()
+	if here == null or not _upg_tab_btns.has(here.currency):
+		return
+	_upg_tabs.move_child(_upg_tab_btns[here.currency] as Control, 0)
+
+
+## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page of tiers;
+## a tier is a heading and a two-across grid of cards, so a tier of gifts reads as one group.
+func _fill_upgrades() -> void:
+	if not _attr_rows.is_empty():
+		return
+	_upg_order = UpgradeText.tab_currencies(sim)
+	for cur: StringName in _upg_order:
+		var page := VBoxContainer.new()
+		page.add_theme_constant_override("separation", 4)
+		page.visible = false
+		_upg_list.add_child(page)
+		_upg_pages[cur] = page
+		var tab := MenuTextButton.new()
+		tab.label = UpgradeText.tab_name(sim, cur)
+		tab.accent_color = StatStyle.color(cur)
+		tab.rest_color = RelicStyle.dim
+		tab.show_focus_ring = false   # the ">" marker and the underline show focus; no dotted box
+		tab.pressed.connect(_select_upgrade_tab.bind(cur))
+		tab.focus_entered.connect(_select_upgrade_tab.bind(cur))   # Left and Right move focus along the strip: the page follows the focus
+		_upg_tabs.add_child(tab)
+		_upg_tab_btns[cur] = tab
+	var grid: GridContainer = null
+	var last_key: String = ""
+	var last_cur: StringName = &""
+	var tier_no: int = 0   # tiers number from 1 within each currency
+	for a: AttributeDef in UpgradeText.ordered(sim):
+		var cur: StringName = a.currency
+		var page: VBoxContainer = _upg_pages.get(cur) as VBoxContainer
+		if page == null:
+			continue
+		var key: String = "%s %s" % [cur, UpgradeText.tier_key(a)]
+		if key != last_key:
+			last_key = key
+			tier_no = tier_no + 1 if cur == last_cur else 1
+			last_cur = cur
+			var tier := Label.new()
+			tier.text = "Tier %d: %s" % [tier_no, UpgradeText.tier_head(sim, a)]
+			tier.add_theme_color_override("font_color", RelicStyle.soft())
+			page.add_child(tier)
+			grid = GridContainer.new()
+			grid.columns = 2
+			grid.custom_minimum_size = Vector2(UpgradeCard.CARD_SIZE.x * 2.0 + 6.0, 0.0)   # every tier the same width
+			grid.add_theme_constant_override("h_separation", 6)
+			grid.add_theme_constant_override("v_separation", 5)
+			page.add_child(grid)
+		var card := UpgradeCard.new()
+		grid.add_child(card)
+		card.setup(a)
+		card.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
+		card.buy_pressed.connect(_buy_upgrade)
+		card.refresh(UpgradeText.state(sim, a))
+		var eff: StringName = a.effect
+		var spec: Callable = func() -> Variant: return UpgradeText.tip(card.state(), eff)
+		_row_tips[a.id] = spec
+		Tip.bind_all(card, spec)
+		_attr_rows[a.id] = card
+	_upg_tab = _first_shown_tab()
+	_apply_upgrade_tab()
+
+
+## A tab was pressed (mouse, keyboard or pad): the page and the highlight follow it together.
+func _select_upgrade_tab(cur: StringName) -> void:
+	_upg_tab = cur
+	_apply_upgrade_tab()
+
+
+## The one place the active tab is applied: its page shows, every other page hides, and the tab highlight moves to match.
+## Runs on every select and every refresh, so a programmatic switch (opening in another zone) can never leave the highlight behind.
+func _apply_upgrade_tab() -> void:
+	for c: StringName in _upg_pages:
+		(_upg_pages[c] as Control).visible = c == _upg_tab
+	for c2: StringName in _upg_tab_btns:
+		var on: bool = c2 == _upg_tab
+		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
+		b.selected = on
+		b.queue_redraw()
+	_fit_upgrade_list()
+
+
+## The list takes the height its tab needs, up to UPGRADE_LIST_HEIGHT; longer tabs scroll.
+func _fit_upgrade_list() -> void:
+	if _upg_scroll != null and _upg_list != null:
+		_upg_scroll.custom_minimum_size.y = minf(_upg_list.get_combined_minimum_size().y, UPGRADE_LIST_HEIGHT)
+
+
+## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
+func _sync_upgrade_tabs() -> void:
+	for cur: StringName in _upg_tab_btns:
+		(_upg_tab_btns[cur] as Control).visible = UpgradeText.tab_shown(sim, cur)
+	if _upg_tab == &"" or not UpgradeText.tab_shown(sim, _upg_tab):
+		_upg_tab = _first_shown_tab()
+	_apply_upgrade_tab()   # idempotent: keeps pages and highlight in step on every refresh
+
+
+## The first tab the player can see, or &"" when none is shown yet.
+func _first_shown_tab() -> StringName:
+	for cur: StringName in _upg_order:
+		if UpgradeText.tab_shown(sim, cur):
+			return cur
+	return &""
 
 
 ## "[icon] 793" in the stat's colour, with the stat tooltip. Returns the box; the value label is in _cur_vals.
@@ -495,8 +611,15 @@ func _balance(sid: StringName) -> BigNum:
 ## A row asked to buy. The sim decides; the row plays the animation only if it went through.
 func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
-		var row: UpgradeRow = _attr_rows[aid]
+		var row: UpgradeCard = _attr_rows[aid]
 		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
+		# The header balance of that currency pops too, so the spend reads at the counter.
+		var badge: Control = _cur_badges.get((sim.attribute_defs[aid] as AttributeDef).currency) as Control
+		if badge != null and not (MeadowLife.reduce_motion or FxConfig.reduce_flashing):
+			badge.pivot_offset = badge.size * 0.5
+			badge.scale = Vector2(1.18, 1.18)
+			var bt := create_tween()
+			bt.tween_property(badge, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		# A tooltip already showing (the pointer is on the button) must pick up the new level.
 		for c: Node in [row] + row.get_children():
 			if c is Control:
@@ -626,7 +749,11 @@ func _place() -> void:
 		if is_instance_valid(cp2) and cp2.visible:
 			var free_h: float = frame.y - (_bottom.size.y if _bottom != null else 0.0) - 8.0
 			var psz: Vector2 = cp2.size.max(cp2.get_combined_minimum_size())
-			var at: Vector2 = Vector2(floorf((frame.x - psz.x) * 0.5), maxf(4.0, floorf((free_h - psz.y) * 0.5)) + float(cp2.get_meta(&"menu_slide", 0.0)))
+			var px: float = floorf((frame.x - psz.x) * 0.5)
+			# A centred menu whose column reaches the momentum meter stops above the meter, so it never covers the meter's corner.
+			if _momentum != null and _momentum.visible and px < _momentum.position.x + _momentum.size.x and px + psz.x > _momentum.position.x:
+				free_h = minf(free_h, _momentum.position.y - 6.0)
+			var at: Vector2 = Vector2(px, maxf(4.0, floorf((free_h - psz.y) * 0.5)) + float(cp2.get_meta(&"menu_slide", 0.0)))
 			if cp2.position != at:
 				cp2.position = at
 	if _menu_chip != null:
@@ -684,13 +811,10 @@ func _refresh() -> void:
 		for sid: StringName in _cur_vals:
 			(_cur_vals[sid] as Label).text = _balance(sid).format()
 		for cur: StringName in _cur_badges:
-			(_cur_badges[cur] as Control).visible = UpgradeText.group_shown(sim, cur)
-		for cur2: StringName in _group_heads:
-			(_group_heads[cur2] as Control).visible = UpgradeText.group_shown(sim, cur2)
-		for aid2: StringName in _attr_rows:
-			(_attr_rows[aid2] as Control).visible = UpgradeText.group_shown(sim, sim.attribute_defs[aid2].currency)
+			(_cur_badges[cur] as Control).visible = UpgradeText.tab_shown(sim, cur)
+		_sync_upgrade_tabs()
 		for aid: StringName in _attr_rows:
-			(_attr_rows[aid] as UpgradeRow).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
+			(_attr_rows[aid] as UpgradeCard).refresh(UpgradeText.state(sim, sim.attribute_defs[aid]))
 
 
 func _on_offline(seconds: float, gains: Dictionary) -> void:
@@ -935,7 +1059,7 @@ func _build_row_controls(h: HBoxContainer, sid: StringName) -> void:
 	h.move_child(ctl, 0)
 	var grip: StripButton = StripButton.grip()
 	var mark: StripButton = StripButton.hide_mark()
-	mark.position = Vector2(10.0, 0.0)
+	mark.position = Vector2(12.0, 0.0)
 	grip.grabbed.connect(_start_drag.bind(sid))
 	grip.nudged.connect(_nudge.bind(sid))
 	mark.pressed.connect(_hide_row.bind(sid))
@@ -985,10 +1109,11 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	_sug_grid.add_theme_constant_override("v_separation", 2)
 	_foot_edit.add_child(_sug_grid)
 	_sug_note = Label.new()
-	_sug_note.text = "Every stat is on the strip."
+	_sug_note.text = "All stats added."
 	_sug_note.add_theme_color_override("font_color", RelicStyle.dim)
 	_foot_edit.add_child(_sug_note)
 	var bar := HBoxContainer.new()
+	_foot_bar = bar
 	bar.add_theme_constant_override("separation", 3)
 	_foot_edit.add_child(bar)
 	_count_label = Label.new()
@@ -1021,6 +1146,11 @@ func set_edit_mode(on: bool) -> void:
 	_known_chips.clear()
 	_foot_normal.visible = not on and GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP)
 	_ease_edit(on)
+	for sidc: StringName in _row_boxes:   # the whole row shows the drag hand in edit mode
+		for c: Node in (_row_boxes[sidc] as Control).get_children():
+			if c is Control and c != _row_ctl.get(sidc):
+				(c as Control).mouse_default_cursor_shape = Control.CURSOR_DRAG if on else Control.CURSOR_ARROW
+		(_row_boxes[sidc] as Control).mouse_default_cursor_shape = Control.CURSOR_DRAG if on else Control.CURSOR_ARROW
 	Tip.hide_all()
 	if not on:
 		var sv: Node = get_node_or_null("/root/Save")
@@ -1051,17 +1181,21 @@ func _set_edit_t(t: float) -> void:
 	_foot_edit.modulate.a = _edit_t
 	_foot_edit.visible = _edit_t > 0.0
 	if _edit_t <= 0.0:
-		_foot_clip.custom_minimum_size.y = 0.0
+		_foot_clip.custom_minimum_size = Vector2.ZERO
 
 
 ## Every frame: size the edit footer to its content (the clip grows with the ease) and fade the marks of rows you are not on.
 func _place_edit() -> void:
 	if _foot_edit == null or _edit_t <= 0.0:
 		return
+	# The chips wrap into as many per line as the count, Reset and Done bar is wide, so the grid never widens the panel.
+	var cols: int = clampi(int((_foot_bar.get_combined_minimum_size().x + 2.0) / (StripButton.CHIP_SIZE + 2.0)), 3, 6)
+	if _sug_grid.columns != cols:
+		_sug_grid.columns = cols
 	var need: Vector2 = _foot_edit.get_combined_minimum_size()
 	_foot_edit.position = Vector2.ZERO
 	_foot_edit.size = Vector2(maxf(_foot_clip.size.x, need.x), need.y)
-	_foot_clip.custom_minimum_size.y = roundf(need.y * _edit_t)
+	_foot_clip.custom_minimum_size = Vector2(roundf(need.x * _edit_t), roundf(need.y * _edit_t))   # the footer sets the panel's width: Reset and Done are never clipped
 	var mp: Vector2 = get_global_mouse_position()
 	for sid: StringName in _row_ctl:
 		var b: Control = _row_boxes.get(sid) as Control
@@ -1113,10 +1247,19 @@ func _nudge(dir: int, sid: StringName) -> void:
 ## Right-click a row to hide it (Settings > Gameplay > Right-click hides a row turns that off).
 func _on_row_input(event: InputEvent, sid: StringName) -> void:
 	var mb: InputEventMouseButton = event as InputEventMouseButton
-	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_RIGHT or not _opt(&"strip_rclick", true):
+	if mb == null or not mb.pressed:
 		return
-	(_row_boxes[sid] as Control).accept_event()
-	_hide_row(sid)
+	if mb.button_index == MOUSE_BUTTON_LEFT:
+		# In edit mode the whole row is a drag handle (icon, value, the gaps), except the hide mark and the space around it.
+		if _edit_mode and _edit_t >= 0.5 and _drag_sid == &"":
+			var mark: Control = (_row_ctl[sid] as Control).get_meta(&"hide") as Control
+			if not mark.get_global_rect().grow(3.0).has_point(get_global_mouse_position()):
+				(_row_boxes[sid] as Control).accept_event()
+				_start_drag(sid)
+		return
+	if mb.button_index == MOUSE_BUTTON_RIGHT and _opt(&"strip_rclick", true):
+		(_row_boxes[sid] as Control).accept_event()
+		_hide_row(sid)
 
 
 # ---- drag to reorder
@@ -1282,7 +1425,7 @@ func _build_tip_card() -> void:
 
 
 func _poll_tips() -> void:
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or Banner.is_showing()   # tips never cover an open menu, a tooltip, a confirm card or a banner
+	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or Banner.is_showing() or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card or a banner
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

@@ -49,6 +49,7 @@ func _ready() -> void:
 	_body.name = "Body"
 	add_child(_body)
 	_body.colors = palette
+	add_child(WalkerRelics.new())   # equipped relics: motes, pool and sparks (world/walker_relics.gd)
 
 
 ## True while the walker is off the ground. Pads only count a walker that is standing on them.
@@ -263,6 +264,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		motion.queue_jump()
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# No tap-to-move while a menu is open (the walker is frozen then) or when the click lands on any GUI.
+		if PadInput.menu_open or GuiGuard.covers(get_tree().root, event.position):
+			return
 		var p: Vector2 = (get_parent() as Node2D).to_local(get_global_mouse_position())
 		_target = WalkMask.nearest_inset(Vector2(clampf(p.x, bounds.position.x, bounds.end.x), clampf(p.y, bounds.position.y, bounds.end.y)))
 		_has_target = true
