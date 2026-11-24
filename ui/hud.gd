@@ -919,13 +919,11 @@ func _refresh() -> void:
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
-	var show_rates: bool = _opt(&"strip_rates", true)
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
 		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
-		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
-		(pair[1] as Label).visible = show_rates
+		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""   # shown by _place_rates
 	_fit_columns()
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
@@ -1123,7 +1121,9 @@ func _update_gain_labels() -> void:
 	_gain_tally.prune(now)
 
 
-## Park each gain label just right of the panel, level with its row, and the row's income rate just past it.
+## Park each row's income rate just right of the panel, level with its row, always while income is non-zero.
+## The gain label sits just past the rate, so neither moves when a gain label appears or fades. Its width is
+## the only thing that changes the layout, and only while it is up.
 func _place_rates() -> void:
 	var show_rates: bool = _opt(&"strip_rates", true)
 	var right: float = _stats_panel.position.x + _stats_panel.size.x + 3.0
@@ -1132,22 +1132,24 @@ func _place_rates() -> void:
 		var rate: Label = (_rows[sid] as Array)[1] as Label
 		var box: Control = _row_boxes[sid] as Control
 		var gl: HudGainLabel = _gain_labels.get(sid) as HudGainLabel
-		var gain_w: float = 0.0
-		if gl != null and gl.visible:
-			gain_w = gl.size.x + 3.0
-			var gat: Vector2 = Vector2(right, box.global_position.y - global_position.y + floorf((box.size.y - gl.size.y) * 0.5)).floor()
-			if gl.position != gat:
-				gl.position = gat
+		var row_y: float = box.global_position.y - global_position.y
 		var show: bool = show_rates and box.visible and rate.text != ""
 		rate.visible = show
-		if not show:
-			widest = maxf(widest, gain_w)
-			continue
-		var at: Vector2 = Vector2(right + gain_w, box.global_position.y - global_position.y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
-		if rate.position != at:
-			rate.position = at
-		rate.modulate.a = box.modulate.a
-		widest = maxf(widest, gain_w + rate.size.x + 3.0)
+		var x: float = right
+		var extent: float = 0.0
+		if show:
+			var at: Vector2 = Vector2(right, row_y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
+			if rate.position != at:
+				rate.position = at
+			rate.modulate.a = box.modulate.a
+			x = right + rate.size.x + 3.0
+			extent = x - right
+		if gl != null and gl.visible:
+			var gat: Vector2 = Vector2(x, row_y + floorf((box.size.y - gl.size.y) * 0.5)).floor()
+			if gl.position != gat:
+				gl.position = gat
+			extent += gl.size.x + 3.0
+		widest = maxf(widest, extent)
 	_rates_w = widest
 
 
