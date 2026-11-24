@@ -37,7 +37,7 @@ SCALE_PLATE = {1: 1.0, 2: 1.3, 3: 1.9}   # a bigger flower keeps further from a 
 GARDENS = [
     dict(stat='dewdrop',   row='sprout',      seed=1.0, reach=84, n=70, small=34, scales=(3, 4, 1), strays=40),
     dict(stat='clover',    row='clover',      seed=2.0, reach=84, n=30, small=80, scales=(6, 4, 0), strays=40),
-    dict(stat='thistle',   row='thistle',     seed=3.0, reach=100, n=100, small=46, scales=(2, 4, 2), strays=48),
+    dict(stat='thistle',   row='thistle',     seed=3.0, reach=100, n=100, small=46, scales=(2, 4, 2), strays=48, gap=1.12),
     dict(stat='heather',   row='heather',     seed=4.0, reach=88, n=74, small=34, scales=(3, 4, 1), strays=42),
     dict(stat='foxglove',  row='foxglove',    seed=5.0, reach=84, n=120, small=56, scales=(1, 3, 4), strays=38),
     dict(stat='starbloom', row='starbloom_n', seed=6.0, reach=80, n=136, small=62, scales=(2, 4, 2), strays=32),
@@ -126,6 +126,7 @@ def garden(cfg, pads, grass, near_bad, boxes, rng, taken):
         cell = (xi // 4, yi // 3)
         r = 6 if (shrub or k >= 3) else 4
         need_x, need_y = (14.0, 7.0) if shrub else (SPREAD * (3.2 * k + 1.0) * jitter, SPREAD * (1.3 * k + 1.0) * jitter)
+        need_x, need_y = need_x * cfg.get('gap', 1.0), need_y * cfg.get('gap', 1.0)   # a row with more grass between its flowers
         for dx in range(-r, r + 1):
             for dy in range(-r, r + 1):
                 for q in taken.get((cell[0] + dx, cell[1] + dy), ()):

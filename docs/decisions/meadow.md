@@ -273,6 +273,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | The garden layer stays one node whatever the flower count, so the node ceiling is not affected. | Larkmoor's node ceiling is about 1350. |
 | Not run in-engine: the look at night and on a real GPU. | The cloud renderer stops after about six night shots. |
 
+## 2026-11-24: Thistle field spacing (option A, grass between)
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` gives the Thistle row a `gap` of 1.12, which widens its spacing by 12%. Thistle goes from 364 to 328 flowers (about 10% fewer). Other rows change only through the shared spacing, by a few flowers (Heather 351 to 356). | Nathan picked option A from the winter Thistle mockups, which includes grass between the stalks. The coordinator capped the drop at about 10%. |
+| The winter mixed heights and seed heads come from the tint sprites in PR #472, and tints are still random. No scale mix change, because a more even size mix raised the Thistle count to about 400. | Keeps the density Nathan likes. |
+| Not run in-engine: the winter field at zoom 1 and 2. | PC QA checks it. |
+
 ## 2026-11-24: Foxglove and Starbloom fields thicker
 | Decision | Why |
 |---|---|
