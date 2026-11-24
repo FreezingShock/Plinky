@@ -396,15 +396,24 @@ func _draw() -> void:
 		_outline(0.38, top, palette[7])
 	# A locked row's first pad names what it needs, under the plate: native 8 px glyphs on a cream chip with an ink border.
 	# Whole texels throughout (integer width, integer origin), so the text stays crisp at 1x.
-	if locked and _lock_hint != "" and LOCK_FONT != null:
-		var tw: int = ceili(LOCK_FONT.get_string_size(_lock_hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x)
-		var bx: int = -(tw / 2) - 3
-		var by: int = THICK + 3
-		# Chip is 12 rows: ink border top and bottom, 10 cream rows. Glyphs have 8 rows, so one cream row shows above and below.
-		draw_rect(Rect2(bx, by, tw + 6, 12), ink)
-		draw_rect(Rect2(bx + 1, by + 1, tw + 4, 10), CHIP_CREAM)
-		# Baseline is 7 rows below the glyph top (font base=7), so baseline by+9 puts the glyphs on rows by+2 .. by+9.
-		draw_string(LOCK_FONT, Vector2(-(tw / 2), by + 9), _lock_hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
+	if shows_lock_chip(locked, _lock_hint):
+		var box: Rect2 = lock_chip_box(_lock_hint)
+		draw_rect(box, ink)                   # ink border
+		draw_rect(box.grow(-1.0), CHIP_CREAM) # cream interior: 10 rows, the 8-row glyphs leave one cream row above and below
+		# Same call shape as the 16 px version that drew, at the font's native size. The baseline sits at THICK + 12, which
+		# puts the glyph rows at THICK + 5 .. THICK + 12, centred in the cream.
+		draw_string(LOCK_FONT, Vector2(box.position.x, float(THICK + 12)), _lock_hint, HORIZONTAL_ALIGNMENT_CENTER, box.size.x, LOCK_SIZE, ink)
+
+
+## Whether a pad draws its cost chip: only a locked row's first pad carries a hint, and only when the font loaded.
+static func shows_lock_chip(is_locked: bool, hint: String) -> bool:
+	return is_locked and hint != "" and LOCK_FONT != null
+
+
+## The cost chip's box in pad-local texels: 12 rows under the plate, 3 texels of pad either side of the text.
+static func lock_chip_box(hint: String) -> Rect2:
+	var tw: float = LOCK_FONT.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
+	return Rect2(-tw * 0.5 - 3.0, float(THICK + 3), tw + 6.0, 12.0)
 
 
 ## 0..2: the glint step over a pad 3 flower bed (0 under Reduce motion). Part of the redraw signature.
