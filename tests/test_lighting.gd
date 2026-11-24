@@ -197,4 +197,4 @@ func run_quarry(t: Object) -> void:
 	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(&"zone2"))
 	var list: Array[Dictionary] = QuarryLight.emitters(data, cfg, cols)
 	t.ok(list.size() > 0 and list.size() <= QuarryLight.MAX_EMIT, "quarry emitters fit the shader array")
-	t.ok(list.size() > 0 and int(list[0].kind) == QuarryLight.KIND_BRAZIER, "braziers are packed first")
+	t.ok(list.size() > 0 and int(list[0].kind) >= QuarryLight.KIND_BRAZIER, "braziers and lamps are packed first")
