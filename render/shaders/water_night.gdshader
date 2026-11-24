@@ -15,6 +15,7 @@ global uniform float world_scale;
 
 uniform sampler2D nrm_tex : filter_nearest;
 uniform vec2 tex_size = vec2(3040.0, 1840.0);   // ground_n.png in texels; world texels map 1:1 onto it (anchors do)
+uniform vec2 tex_origin = vec2(0.0);            // world texel of the texture's top-left (the ground's position)
 
 uniform float amount = 0.0;                     // 0..1, night (SkyCycle.night01) times the variant's strength
 uniform float shimmer = 0.0;                    // moon glints on the water
@@ -47,7 +48,7 @@ float hash21(vec2 p) {
 
 // Material code of a world texel (0 outside the art).
 int code_at(vec2 p) {
-	vec2 t = floor(p);
+	vec2 t = floor(p - tex_origin);
 	if (t.x < 0.0 || t.y < 0.0 || t.x >= tex_size.x || t.y >= tex_size.y) {
 		return 0;
 	}

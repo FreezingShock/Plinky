@@ -166,6 +166,11 @@ EDGE_DENSE_MIN = 8
 EDGE_COUNT = 30
 EDGE_SPACING = 50.0
 EDGE_PAD_KEEP = 24.0        # a forest-edge spot keeps this far from every pad
+# Old Oak Crossing has no woods, only the elder oak (a lone tree, not a stand), so the forest-edge rule finds nothing
+# there. Deer graze on a ring of grass tips around that trunk instead. Trunk in texels: the placements tree at (1580, 886).
+OAK_TRUNK = (1580.0, 886.4)
+OAK_RING = (20.0, 60.0)     # iso texels from the trunk
+OAK_RING_COUNT = 3
 
 
 def _iso(ax: float, ay: float, bx: float, by: float) -> float:
@@ -223,6 +228,31 @@ def forest_edge_points(trees, sway, pads):
             out.append((x, y))
         if len(out) >= EDGE_COUNT:
             break
+    return [[round(x), round(y)] for x, y in out]
+
+
+def oak_ring_points(sway, pads):
+    """Grass tips in a ring round the elder oak at Old Oak Crossing, where deer graze. Tips within EDGE_PAD_KEEP of a
+    pad are left out. Picks OAK_RING_COUNT tips, each as far as it can be from the ones already picked (the first is the
+    tip nearest the trunk), so the deer spread round the tree."""
+    cands = []
+    for p in sway:
+        x, y = float(p[0]), float(p[1])
+        r = _iso(x, y, OAK_TRUNK[0], OAK_TRUNK[1])
+        if not (OAK_RING[0] <= r <= OAK_RING[1]):
+            continue
+        if any(_iso(x, y, px, py) < EDGE_PAD_KEEP for px, py in pads):
+            continue
+        cands.append((r, x, y))
+    cands.sort()
+    out = []
+    while cands and len(out) < OAK_RING_COUNT:
+        if not out:
+            pick = cands[0]
+        else:
+            pick = max(cands, key=lambda c: min(_iso(c[1], c[2], o[0], o[1]) for o in out))
+        cands.remove(pick)
+        out.append((pick[1], pick[2]))
     return [[round(x), round(y)] for x, y in out]
 
 
@@ -344,7 +374,8 @@ def main() -> None:
             data["farm_items"] = [[it["x"], it["y"], it["w"], it["h"]] for it in fm["items"]]
         trees, pines = load_trees(args.placements)
         data["perches"] = perch_points(pines)
-        data["forest_edge"] = forest_edge_points(trees, data["sway"], data["pad_sites"])
+        data["forest_edge"] = (forest_edge_points(trees, data["sway"], data["pad_sites"])
+                               + oak_ring_points(data["sway"], data["pad_sites"]))
     with open(args.out, "w") as f:
         json.dump(data, f, indent=1)
         f.write("\n")

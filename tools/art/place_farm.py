@@ -36,18 +36,20 @@ ZONE = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'larkmoor')
 OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 S = 2                                   # canvas texels per layout texel
 
-BOX = (1090, 520, 260, 220)             # centre x, centre y, width, height (layout)
-PATH_CLEAR = 19 * S
+BOX = (1090, 548, 260, 276)             # centre x, centre y, width, height (layout); runs south of the yard to the open grass
+SAND_CLEAR = 12                          # canvas texels: props keep this far from the drawn sand path
+FIELD_SAND_CLEAR = 22                    # canvas texels: wheat and soil keep this far from the drawn sand path (11 layout texels)
+FENCE_SAND_CLEAR = 10                    # canvas texels: a fence chord keeps this far from the sand path
 PAD_CLEAR = 30 * S
 WINDMILL_CLEAR = 24 * S
-WHEAT_DX = 18                           # canvas texels: two clumps' centres stay at least this far apart in x ...
-WHEAT_DY = 12                           # ... or in y, so clumps overlap a little, never stack
+WHEAT_DX = 15                           # canvas texels: two clumps' centres stay at least this far apart in x ...
+WHEAT_DY = 9                           # ... or in y, so clumps overlap a little, never stack
 MERE_MARGIN = 12                        # layout texels
 GAP = 4                                 # canvas texels between farm items
 
 # Sprite sizes (canvas texels), from gen_farm.py. Wheat clumps are placed by FIELDS below.
 SIZES = {
-    'farm_barn': (72, 56), 'farm_shed': (40, 34), 'farm_hay_0': (16, 12), 'farm_hay_1': (16, 12),
+    'farm_barn': (72, 58), 'farm_shed': (40, 36), 'farm_hay_0': (16, 14), 'farm_hay_1': (16, 14),
     'farm_scarecrow': (18, 34), 'farm_cart': (28, 20), 'farm_crates': (12, 12),
 }
 FILES = {
@@ -65,15 +67,7 @@ TARGETS = [
 ]
 
 
-def _densify(poly, step=4.0):
-    pts = []
-    for (ax, ay), (bx, by) in zip(poly, poly[1:]):
-        n = max(1, int(math.hypot(bx - ax, by - ay) / step))
-        for i in range(n):
-            t = i / n
-            pts.append((ax + (bx - ax) * t, ay + (by - ay) * t))
-    pts.append(poly[-1])
-    return np.array(pts, dtype=float) * S
+SMALL_PROPS = ('farm_hay_0', 'farm_hay_1', 'farm_crates', 'farm_scarecrow', 'farm_cart')   # low props: soil runs under them
 
 
 def _rect_dist(px, py, x0, y0, x1, y1):
@@ -83,16 +77,52 @@ def _rect_dist(px, py, x0, y0, x1, y1):
     return np.hypot(dx, dy)
 
 
+def _box_sum(mask, r: int):
+    """Number of True texels in the (2r+1) square around each texel. Summed-area table, so it is fast on the canvas."""
+    H, W = mask.shape
+    sat = np.zeros((H + 1, W + 1), dtype=np.int64)
+    sat[1:, 1:] = mask.astype(np.int64).cumsum(0).cumsum(1)
+    ys, xs = np.arange(H), np.arange(W)
+    y0 = np.clip(ys - r, 0, H)
+    y1 = np.clip(ys + r + 1, 0, H)
+    x0 = np.clip(xs - r, 0, W)
+    x1 = np.clip(xs + r + 1, 0, W)
+    Y0, X0 = np.meshgrid(y0, x0, indexing='ij')
+    Y1, X1 = np.meshgrid(y1, x1, indexing='ij')
+    return sat[Y1, X1] - sat[Y0, X1] - sat[Y1, X0] + sat[Y0, X0]
+
+
+def _near_mask(mask, r: int):
+    """True where any True texel of mask lies within r of that texel (a (2r+1) square)."""
+    return _box_sum(mask, r) > 0
+
+
+def _open_mask(mask, r: int):
+    """Morphological opening: removes specks thinner than (2r+1) texels, such as dithered light flecks in the grass,
+    and keeps the drawn path band."""
+    eroded = _box_sum(mask, r) == (2 * r + 1) ** 2
+    return _near_mask(eroded, r)
+
+
 class Ground:
     def __init__(self):
-        walk = np.array(Image.open(os.path.join(ZONE, 'walkable.png')).convert('L'))
-        self.walk = walk == 255
+        # walkable.png is RGBA since #376, and the game's walk mask (world/walk_mask.gd) reads it the same way: magenta
+        # (255, 0, 255) is walkable ground, green (0, 255, 0) is water, black is not walkable.
+        wrgb = np.array(Image.open(os.path.join(ZONE, 'walkable.png')).convert('RGB')).astype(int)
+        self.walk = (wrgb[..., 0] == 255) & (wrgb[..., 1] == 0) & (wrgb[..., 2] == 255)
+        self.water = (wrgb[..., 0] == 0) & (wrgb[..., 1] == 255) & (wrgb[..., 2] == 0)
+        # The sand path as drawn: ACCENT (242, 230, 160) and its near-sand texels in ground.png. This is the only path
+        # check. LAY.PATHS is a different frame from the drawn ground, so it is not used for clearance.
         g = np.array(Image.open(os.path.join(ZONE, 'ground.png')).convert('RGB')).astype(int)
-        r, gg, b = g[..., 0], g[..., 1], g[..., 2]
-        self.grass = (gg - r >= 15) & (gg >= b + 8) & (r < 200)
+        gr, gg, gb = g[..., 0], g[..., 1], g[..., 2]
+        # Light-sand colour from ground.png, then opened so the dithered light flecks in the grass drop out. What is left
+        # is the drawn path band.
+        self.sand = _open_mask((gr >= 225) & (gg >= 210) & (gb <= 180) & (gr - gb >= 50), 2)
+        self.sand_near = _near_mask(self.sand, SAND_CLEAR)   # texels within SAND_CLEAR of the drawn sand
+        self.sand_field = _near_mask(self.sand, FIELD_SAND_CLEAR)   # wheat and soil stay clear of the path by this much
+        self.sand_fence = _near_mask(self.sand, FENCE_SAND_CLEAR)
+        self.grass = (gg - gr >= 15) & (gg >= gb + 8) & (gr < 200)
         self.H, self.W = self.walk.shape
-        paths = [p for pp in LAY.PATHS for p in [_densify(pp)]]
-        self.path_pts = np.vstack(paths)
         pads = [(x, y) for d in LAY.DISTRICTS for (x, y) in d['pads']]
         self.pad_pts = np.array(pads, dtype=float) * S
         self.obstacles = [(lm['at'][0] * S, lm['at'][1] * S) for lm in LAY.LANDMARKS if lm['kind'] in ('windmill', 'great_lantern')]
@@ -100,7 +130,19 @@ class Ground:
         m = LAY.MERE
         self.mere = (m['c'][0] * S, m['c'][1] * S, (m['rx'] + MERE_MARGIN) * S, (m['ry'] + MERE_MARGIN) * S)
 
-    def ok_rect(self, x0, y0, x1, y1):
+    def fence_ok(self, x0, y0, x1, y1):
+        """A fence is a blocker: it stays inside the canvas, off the water and off the sand paths. A chord that would sit
+        on a path is dropped, so the ring leaves a gap where a path meets it and the path stays open. Buildings and wheat
+        are checked by the placer's taken rects, not here."""
+        if x0 < 0 or y0 < 0 or x1 > self.W or y1 > self.H:
+            return False
+        if self.water[y0:y1, x0:x1].any():
+            return False
+        if self.sand[y0:y1, x0:x1].any():             # the drawn sand path, from ground.png: a chord never sits on it
+            return False
+        return True
+
+    def ok_rect(self, x0, y0, x1, y1, field=False):
         """True when the canvas rect [x0, x1) x [y0, y1) is walkable grass and clear of every constraint."""
         if x0 < 0 or y0 < 0 or x1 > self.W or y1 > self.H:
             return False
@@ -109,7 +151,7 @@ class Ground:
             return False
         if self.grass[y0:y1, x0:x1].mean() < 0.9:
             return False
-        if _rect_dist(self.path_pts[:, 0], self.path_pts[:, 1], x0, y0, x1, y1).min() < PATH_CLEAR:
+        if (self.sand_field if field else self.sand_near)[y0:y1, x0:x1].any():
             return False
         if _rect_dist(self.pad_pts[:, 0], self.pad_pts[:, 1], x0, y0, x1, y1).min() < PAD_CLEAR:
             return False
@@ -171,7 +213,7 @@ class Placer:
             x1, y1 = x0 + w, y0 + h
             if not _inside_box(x0, y0, x1, y1):
                 continue
-            if not self.g.ok_rect(x0, y0, x1, y1):
+            if not self.g.ok_rect(x0, y0, x1, y1, field=(tag == 'wheat')):
                 continue
             if not self.clear_of_taken(x0, y0, x1, y1, tag):
                 continue
@@ -196,7 +238,7 @@ def _fence_ok(ground: Ground, placer: Placer, px: float, py: float) -> bool:
         return False
     if not (ground.walk[iy, ix] and ground.grass[iy, ix]):
         return False
-    if _rect_dist(ground.path_pts[:, 0], ground.path_pts[:, 1], ix, iy, ix, iy).min() < PATH_CLEAR:
+    if ground.sand_near[iy, ix]:
         return False
     if _rect_dist(ground.pad_pts[:, 0], ground.pad_pts[:, 1], ix, iy, ix, iy).min() < PAD_CLEAR:
         return False
@@ -210,19 +252,24 @@ def _fence_ok(ground: Ground, placer: Placer, px: float, py: float) -> bool:
 # mirrored and warped differently, so they read as different fields scattered round the farm. Every clump goes through
 # the placer, so it never overlaps a path, a pad, or another item.
 FIELDS = [
-    # kind, centre x, centre y (layout texels), scale, mirrored, warp seed. Each centre sits on the walkable ground the
-    # placer allows inside the farm box (the map is walkable grass west and south of centre, cliffs and the mere east).
+    # kind, centre x, centre y (layout texels), scale, mirrored, warp seed. The first four are the original fields; the
+    # last three sit on the open grass south of them, found by a search that keeps FIELD_SAND_CLEAR from every path and
+    # clear of the yard. Fields may touch: their soil runs together, and the fence only runs round the outside.
     FF.Field('notched', 1005, 530, 1.55, False, 1),
     FF.Field('blob', 1000, 470, 1.35, True, 2),
     FF.Field('blob', 1065, 580, 1.05, False, 3),
     FF.Field('notched', 1075, 470, 0.80, True, 4),
+    FF.Field('notched', 1020, 620, 1.25, False, 44),
+    FF.Field('blob', 1070, 650, 1.10, True, 45),
+    FF.Field('blob', 1050, 600, 0.95, False, 46),
 ]
 CLUMP_SIZES = [(32, 28), (28, 26), (32, 26), (30, 28)]     # canvas texels (w, h): smaller clumps, tighter grid, more stalks
 EDGE_SIZES = [(24, 22), (26, 24)]       # smaller clumps along a field's edge, so the irregular outline reads
 EDGE_BAND = 5.0                         # layout texels: clumps whose foot is this close to the edge use EDGE_SIZES
-EDGE_INSET = 2.0                        # layout texels: a clump's foot stays this far inside the field's edge
-GRID_X = 10.0                           # layout texels between clump centres across a row
-GRID_Y = 8.0                            # layout texels between rows (the placer keeps clumps 9 x 6 apart at least)
+EDGE_INSET = -3.0                       # layout texels: a clump's foot may stand this far outside the field's edge, so the wheat fills out to the soil
+GRID_X = 7.5                           # layout texels between clump centres across a row
+GRID_Y = 4.5                            # layout texels between rows; clumps still keep WHEAT_DX or WHEAT_DY apart
+WHEAT_RADIUS = 12                       # layout texels: how far a clump may slide from its grid point to find room
 
 
 def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
@@ -244,7 +291,7 @@ def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
                 sizes = EDGE_SIZES if edge > -EDGE_BAND else CLUMP_SIZES
                 w, h = sizes[rng.randrange(len(sizes))]
                 stage = 2 if f.tone(gx, gy) > 0.38 and rng.random() < 0.7 else 1
-                at = placer.place(w, h, gx, gy, radius=5, tag='wheat')
+                at = placer.place(w, h, gx, gy, radius=WHEAT_RADIUS, tag="wheat")
                 if at is None:
                     continue
                 x, y = at
@@ -259,8 +306,31 @@ def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
 FENCE_OFFSET = 12                       # layout texels beyond the field's edge: a paddock, clear of every clump's reach
 FENCE_CHORD = 24                        # canvas texels per fence piece (one sprite each)
 FENCE_GATE = 11                         # canvas texels of walk-in gap, half on each side of a gate
+FENCE_MIN_RUN = 3                       # chords: a fence run shorter than this is dropped, so there are no stubs
 FENCE_GATES = 2                         # walk-in gaps per field
+SOIL_REACH = 7.0                        # layout texels past a field's edge that hold tilled soil: up to 3 short of the fence
+SOIL_BAND = 2.0                         # layout texels of Bayer dissolve beyond SOIL_REACH
 SOIL_PAD = 2                            # canvas texels of air kept between the soil and any building or prop
+
+
+class YardRing:
+    """The farmyard: a rectangle around the barn, shed, hay, cart, crates and scarecrow, fenced like a field with one
+    walk-in gate. It only has the parts _fence_items reads (cx, cy, gates, contour), so it is never wheat or soil."""
+
+    def __init__(self, x0: float, y0: float, x1: float, y1: float, gates: int = 1):
+        self.cx, self.cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+        self.box = (x0, y0, x1, y1)
+        self.gates = gates
+
+    def contour(self, offset: float, n: int = 96):
+        x0, y0, x1, y1 = self.box
+        return [(x0 - offset, y0 - offset), (x1 + offset, y0 - offset), (x1 + offset, y1 + offset),
+                (x0 - offset, y1 + offset)]
+
+
+# The yard covers every building target (layout texels, from TARGETS and SIZES): the barn and shed at the top, the scarecrow,
+# cart and hay in the middle, and the crates at the bottom.
+YARD = YardRing(1005, 402, 1180, 628)
 
 
 def _fence_items(ground: Ground, placer: Placer, fields: list, start: int):
@@ -288,22 +358,45 @@ def _fence_items(ground: Ground, placer: Placer, fields: list, start: int):
                 i += 1
             t = (target - acc) / seg[i] if seg[i] > 0 else 0.0
             pts.append((ring[i][0] + (ring[i + 1][0] - ring[i][0]) * t, ring[i][1] + (ring[i + 1][1] - ring[i][1]) * t))
-        gates = [rng.uniform(0, 2 * math.pi) for _ in range(FENCE_GATES)]
+        gates = [rng.uniform(0, 2 * math.pi) for _ in range(getattr(f, 'gates', FENCE_GATES))]
         mean_r = total / (2 * math.pi)
         half_gate = (FENCE_GATE / 2.0) / mean_r
+        keep = [False] * count
+        cand = {}
         for k in range(count):
             (ax, ay), (bx, by) = pts[k], pts[(k + 1) % count]
             mid = math.atan2((ay + by) / 2.0 - f.cy * S, (ax + bx) / 2.0 - f.cx * S)
             if any(_angle_gap(mid, g) < half_gate for g in gates):
                 continue
+            # a chord inside a neighbouring field's soil is dropped, so touching fields share no inner fence
+            mx, my = (ax + bx) / 2.0 / S, (ay + by) / 2.0 / S
+            if any(o is not f and hasattr(o, 'sdf') and o.sdf(mx, my) < SOIL_REACH + 1.0 for o in fields):
+                continue
             x0 = int(math.floor(min(ax, bx))) - 1
             y0 = int(math.floor(min(ay, by))) - 8          # room above the line for the posts
             x1 = int(math.ceil(max(ax, bx))) + 2
             y1 = int(math.ceil(max(ay, by))) + 2
-            if not _inside_box(x0, y0, x1, y1) or not ground.ok_rect(x0, y0, x1, y1):
+            if not _inside_box(x0, y0, x1, y1) or not ground.fence_ok(x0, y0, x1, y1):
+                continue
+            if ground.sand_fence[y0:y1, x0:x1].any():
                 continue
             if not placer.clear_of_taken(x0, y0, x1, y1):
                 continue
+            keep[k] = True
+            cand[k] = (x0, y0, x1, y1, ax, ay, bx, by)
+        # No stubs: a run of fewer than FENCE_MIN_RUN chords is dropped, so every fence reads as a connected line.
+        for k in range(count):
+            if not keep[k]:
+                continue
+            run = 1
+            for step in (1, -1):
+                j = k + step
+                while keep[j % count] and run < count:
+                    run += 1
+                    j += step
+            if run < FENCE_MIN_RUN and run < count:
+                continue
+            x0, y0, x1, y1, ax, ay, bx, by = cand[k]
             w, h = x1 - x0, y1 - y0
             kind = 'farm_fence_%d' % n
             items.append({'kind': kind, 'file': 'fence/%s.png' % kind, 'x': x0, 'y': y0, 'w': w, 'h': h,
@@ -324,10 +417,10 @@ def _fence_batch(pieces: list) -> list:
     Each piece keeps its own rect and chord, so the test can still check the pieces against the wheat and buildings."""
     if not pieces:
         return []
-    x0 = min(p['x'] for p in pieces)
-    y0 = min(p['y'] for p in pieces)
-    x1 = max(p['x'] + p['w'] for p in pieces)
-    y1 = max(p['y'] + p['h'] for p in pieces)
+    x0 = min(p['x'] for p in pieces) - 1      # one texel of transparent margin, matching gen_farm.FENCE_PAD
+    y0 = min(p['y'] for p in pieces) - 1
+    x1 = max(p['x'] + p['w'] for p in pieces) + 1
+    y1 = max(p['y'] + p['h'] for p in pieces) + 1
     w, h = x1 - x0, y1 - y0
     return [{'kind': 'farm_fence', 'file': 'fence/farm_fence.png', 'x': x0, 'y': y0, 'w': w, 'h': h,
              'foot': [x0 + w / 2.0, float(y0)], 'sort_y': float(y0), 'pieces': pieces}]
@@ -345,18 +438,18 @@ def _soil_items(ground: Ground, placer: Placer, fields: list, start: int):
     blockers = [r for r, t in zip(placer.taken, placer.tags) if t is None]
     n = start
     for f in fields:
-        lx0, ly0, lx1, ly1 = f.bounds(10.0 * f.k + 1.0)
+        lx0, ly0, lx1, ly1 = f.bounds(SOIL_REACH + SOIL_BAND + 1.0)
         x0, y0 = max(int(math.floor(lx0 * S)), box[0]), max(int(math.floor(ly0 * S)), box[1])
         x1, y1 = min(int(math.ceil(lx1 * S)), box[2]), min(int(math.ceil(ly1 * S)), box[3])
         if x1 - x0 < 4 or y1 - y0 < 4:
             continue
-        mask = ground.walk[y0:y1, x0:x1] & ground.grass[y0:y1, x0:x1]
+        mask = ground.walk[y0:y1, x0:x1] & ground.grass[y0:y1, x0:x1] & ~ground.sand_field[y0:y1, x0:x1]
         for (a, b, c, d) in blockers:
             ax0, ay0 = max(a - SOIL_PAD - x0, 0), max(b - SOIL_PAD - y0, 0)
             ax1, ay1 = min(c + SOIL_PAD - x0, x1 - x0), min(d + SOIL_PAD - y0, y1 - y0)
             if ax0 < ax1 and ay0 < ay1:
                 mask[ay0:ay1, ax0:ax1] = False
-        img = FF.soil_image(f, x0, y0, mask, S)
+        img = FF.soil_image(f, x0, y0, mask, S, SOIL_REACH, SOIL_BAND)
         bb = img.getbbox()
         if bb is None:
             continue
@@ -371,6 +464,77 @@ def _soil_items(ground: Ground, placer: Placer, fields: list, start: int):
     return items, images
 
 
+TREE_FILES = ['oak_013', 'oak_051', 'oak_062', 'oak_044', 'pine_111', 'pine_127', 'pine_128', 'pine_085', 'pine_117']
+GROVES = 3                              # tree clusters along the south and east edge of the farm
+GROVE_TREES = 6                         # trees per cluster
+GROVE_RADIUS = 34                       # layout texels a cluster's trees spread over
+TREE_FIELD_CLEAR = 6.0                  # layout texels a tree's foot stays outside every field's soil
+
+
+def _grove_items(ground: Ground, placer: Placer, fields: list, start: int):
+    """Tree groves on the open grass along the south and east edge. The trees are the zone's own oaks and pines (copied
+    into farm/trees/ so the farm manifest stays self-contained), the biggest in the set so the grove reads from far away.
+    Each cluster centre is the roomiest spot found by a search (free walkable grass, clear of paths, wheat and soil), then
+    the trees are placed nearest the centre first, through the placer, so none sits on a path, a field or another prop."""
+    placements = json.load(open(os.path.join(ZONE, 'placements3d.json')))['sprites']
+    by_name = {os.path.basename(sp['file'])[:-4]: sp for sp in placements}
+    trees = [by_name[n] for n in TREE_FILES if n in by_name]
+    if not trees:
+        return [], {}
+    bx, by, bw, bh = BOX
+    free = ground.walk & ground.grass & ~ground.sand_field
+    for (a, b, c, d) in placer.taken:
+        free[max(b - 2, 0):d + 2, max(a - 2, 0):c + 2] = False
+    centres = []
+    best = []
+    for ly in range(int(by - bh / 2) + 20, int(by + bh / 2) - 12, 6):
+        for lx in range(int(bx - bw / 2) + 20, int(bx + bw / 2) - 12, 6):
+            if any(f.sdf(lx, ly) < SOIL_REACH + TREE_FIELD_CLEAR for f in fields):
+                continue
+            if lx < 1110 and ly < 600:
+                continue                      # groves go on the south and east edge, not the north-west corner
+            r = int(GROVE_RADIUS * S * 0.8)
+            win = free[max(ly * S - r, 0):ly * S + r:3, max(lx * S - r, 0):lx * S + r:3]
+            if win.size:
+                best.append((float(win.mean()), lx, ly))
+    best.sort(reverse=True)
+    for sc, lx, ly in best:
+        if sc < 0.3 or len(centres) >= GROVES:
+            break
+        if all(math.hypot(lx - cx, ly - cy) > GROVE_RADIUS * 1.6 for cx, cy in centres):
+            centres.append((lx, ly))
+    rng = random.Random(77)
+    items, images = [], {}
+    n = start
+    for cx, cy in centres:
+        placed = 0
+        spots = _spiral(GROVE_RADIUS, step=4)
+        rng.shuffle(spots)
+        for dx, dy in spots:
+            if placed >= GROVE_TREES:
+                break
+            sp = rng.choice(trees)
+            w, h = int(sp['w']), int(sp['h'])
+            fx, fy = float(sp['foot'][0]) - float(sp['x']), float(sp['foot'][1]) - float(sp['y'])
+            x0 = int(round((cx + dx) * S - fx))
+            y0 = int(round((cy + dy) * S - fy))
+            if any(f.sdf((x0 + fx) / S, (y0 + fy) / S) < SOIL_REACH + TREE_FIELD_CLEAR for f in fields):
+                continue
+            # The footprint is the trunk base: the crown may hang over the edge of the grass, the foot may not.
+            fr = (int(x0 + fx - 8), int(y0 + fy - 6), int(x0 + fx + 8), int(y0 + fy + 3))
+            if not (_inside_box(*fr) and ground.ok_rect(*fr) and placer.clear_of_taken(*fr)):
+                continue
+            placer.taken.append(fr)
+            placer.tags.append(None)
+            name = os.path.basename(sp['file'])
+            images['trees/' + name] = os.path.join(ZONE, sp['file'])
+            items.append({'kind': 'farm_tree_%d' % n, 'file': 'trees/' + name, 'x': x0, 'y': y0, 'w': w, 'h': h,
+                          'foot': [x0 + fx, y0 + fy], 'sort_y': float(y0 + fy)})
+            n += 1
+            placed += 1
+    return items, images
+
+
 def build(map_only: bool = False) -> dict:
     """Places the whole farm from scratch: the targets, the fence ring around each field, the wheat, the soil under each
     field, and the water channel. The wheat sheets in assets/art/zone1b/farm/wheat/ are baked from this output (tools/bake_wheat.gd), so
@@ -382,7 +546,7 @@ def build(map_only: bool = False) -> dict:
     items = []
     for kind, tx, ty in TARGETS:
         w, h = SIZES[kind]
-        at = placer.place(w, h, tx, ty)
+        at = placer.place(w, h, tx, ty, tag='prop' if kind in SMALL_PROPS else None)
         if at is None:
             print('no room for %s near (%d, %d)' % (kind, tx, ty))
             continue
@@ -390,7 +554,7 @@ def build(map_only: bool = False) -> dict:
         items.append({'kind': kind, 'file': FILES[kind], 'x': x, 'y': y, 'w': w, 'h': h,
                       'foot': [x + w / 2.0, y + h - 2.0], 'sort_y': float(y + h - 2)})
     # The fence ring goes before the wheat: it marks each field's paddock, and the clumps grow inside it.
-    pieces = _fence_items(ground, placer, FIELDS, 0)
+    pieces = _fence_items(ground, placer, FIELDS + [YARD], 0)
     for it in pieces:
         placer.taken.append((it['x'], it['y'], it['x'] + it['w'], it['y'] + it['h']))
         placer.tags.append('fence')
@@ -398,6 +562,8 @@ def build(map_only: bool = False) -> dict:
     items += _wheat_items(placer, rng, len(items), FIELDS)
     soil, soil_images = _soil_items(ground, placer, FIELDS, len(items))
     items += soil
+    groves, tree_files = _grove_items(ground, placer, FIELDS, len(items))
+    items += groves
     channel = _channel(ground, placer)
     brooks = [{'points': channel, 'width': 2}] if channel else []
     if map_only:
@@ -405,7 +571,7 @@ def build(map_only: bool = False) -> dict:
     return {'items': items, 'fences': [], 'brooks': brooks, 'box_layout': list(BOX), 'scale': S,
             'fields': [{'kind': f.kind, 'at': [f.cx, f.cy], 'scale': f.scale, 'mirror': f.mirror, 'seed': f.seed}
                        for f in FIELDS],
-            'soil_images': soil_images}
+            'soil_images': soil_images, 'tree_files': tree_files}
 
 
 def _channel(ground: Ground, placer: Placer):
@@ -446,7 +612,7 @@ def _print_map(ground: Ground, placer: Placer, items):
             for it in items:
                 if it['x'] <= x < it['x'] + it['w'] and it['y'] <= y < it['y'] + it['h']:
                     ch = it['kind'][5]
-            if _rect_dist(ground.path_pts[:, 0], ground.path_pts[:, 1], x, y, x, y).min() < PATH_CLEAR:
+            if ground.sand_near[y, x]:
                 ch = ch if ch != '.' else ','
             row.append(ch)
         rows.append(''.join(row))
@@ -467,6 +633,9 @@ def main() -> int:
             os.remove(os.path.join(soil_dir, old))
     for path, img in out.pop('soil_images').items():
         img.save(os.path.join(OUT, path))
+    os.makedirs(os.path.join(OUT, 'trees'), exist_ok=True)
+    for path, src in out.pop('tree_files').items():
+        Image.open(src).save(os.path.join(OUT, path))
     with open(os.path.join(OUT, 'farm.json'), 'w') as f:
         json.dump(out, f, indent=1)
     fence_n = sum(1 for it in out['items'] if it['kind'].startswith('farm_fence'))

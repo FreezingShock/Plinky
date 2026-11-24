@@ -203,6 +203,13 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
 
+## 2026-11-24: Larkmoor wildlife presence (PC QA on v0.83.3)
+- **QA:** dragonflies at most one by day, no fish or deer seen, nothing at dusk.
+- **Counts follow the light by rank:** the first ceil(share * count) of each kind are out (`LifeWild._rank_out`). Before, one hash decided whether the single deer and each dragonfly was out, so a bad seed hid the whole kind.
+- **More of each:** six dragonflies (was three), three deer (was one), three owls (was two), fish leap every 2.5 to 6 s (was 5 to 16).
+- **Near the walker:** dragonflies, fish and deer pick their next spot near the walker when one exists (`NEAR_WALKER` = 160 iso texels), so they show where the player walks. Scared creatures still go away from the walker.
+- **Readable sprites:** dragonfly with paper wings and a gold head (9 x 3), gold fish with a paper eye (8 x 3), earth-brown deer with a paper belly (10 x 8).
+- **Not run in engine:** the dusk deer on PC. The deer is visible in the cloud render at 1x, but its colour on PC is unchecked.
 ## 2026-11-24: Larkmoor river, jumpable water, bridges and the south-west rim
 - **Water:** one river now runs from Heronmere's north-east shore, through the bridge at (762, 456), into the mere. It is about 14 texels wide with a 3 texel depth. The lake-rim carve no longer leaves a dry gap, so the river and lakes join. The walk mask marks water in green and walkable ground in red and blue, so `WalkMask.is_water()` is one channel read.
 - **Walker:** `texel_walker.gd` lets an airborne step cross water (`_try_step(step, airborne)`). On landing in water, `WalkMask.landing()` returns the nearest walkable texel within 60, and the walker splashes. Reason: a jumpable stream instead of a wall, with no drowning state.
@@ -273,6 +280,14 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | `tests/test_lighting.gd` checks that each meadow lantern life light is a night pool and that the lantern sprites share one size. `tools/lantern_shots.tscn -- meadow` shoots the meadow lanterns at night, dusk and noon. | Regression guard, and the shot tool for the PC check. |
 | A fresh bake on main matches the committed placements except `bush_027`'s width. Some committed sprite and ground files already differed from a fresh bake before this change (`oak_018_n`, `crystals_039_n`, `bush_027`'s width, the ground images and the preview). They were left alone. | Keeps this PR to the lanterns. |
 | Not verified on the PC. Cloud shots (xvfb, software Vulkan) only. In the four cloud shots the meadow's night is much brighter than Larkmoor's (mean luminance about 84 against 62), so the lamp glow reads less there. | Lighting is for the sky owner to tune, not this change. |
+
+## 2026-11-24: Larkmoor wildlife in reach of the walker
+| Decision | Why |
+|---|---|
+| Dragonflies, fish, deer and owls only come out within `REACH` (200 iso texels) of the walker. A creature the walker has left more than `GONE` (300) behind fades out and re-forms inside `REACH` at the next fade-in. Nothing is placed where no one can see it, and nothing is hidden behind a far spot. | PC QA on v0.85.36 saw no creatures. The probe in the real Larkmoor scene showed the dragonflies, deer and fish drifting over the lake and the forest edge about 650 texels from the start, outside the on-screen rect (about 225 by 148 at zoom 2). |
+| Owls pick a perch in reach (`_perch_within`) when the old one is out of reach. Fish leap only at water in reach. Deer graze only edge spots in reach. A dragonfly that is scared darts to water between `DRAGON_SHY * 2` and `REACH`. | Keeps every visible creature near the walker, with no new nodes. |
+| `tests/test_wild.gd` moves the walker to the lake, the forest edge and the perch for the tests that need to see a creature, and checks that far from the water none is out. | The old tests put the walker far away, which now hides everything by design. |
+| Verified in-game with a temporary probe in the real Larkmoor scene (xvfb, software Vulkan, removed after). At the start nothing is in reach. At the lake shore four dragonflies are out and on screen. Not verified on the PC. | The lake is about 650 texels from the start, so the start view shows no wildlife by design. |
 ## 2026-11-24: Larkmoor path drifts, darker trail, north-east groves (review slice 3)
 - **Why:** review items 3 to 5 of the Larkmoor environment handoff. The verge flowers ringed every path edge, the trail tint sat too close to the lane, and the forest-edge tip count sat exactly on its test floor (6).
 - **Drifts:** the verge ring is now patches. Candidates sit 9 to 30 texels from the path edge (`dedge`, so a road, a lane and a trail all keep the same clearance), and a slow noise field (`vn2(u/9, v/9)`, above .5) decides where the drifts are. Nothing hugs an edge, and bare grass shows between drifts.
@@ -280,3 +295,43 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - **Groves:** three north-east candidates (pine at 1190,380; oak at 1010,240; bush at 1150,470). The forest-edge count goes 6 to 7. The density bar is the lighthouse grove at 640,590 (oak, 4 per group, radius 60).
 - **Regen:** `gen_larkmoor.py`, then `gen_life_anchors.py --bounds 380,220,2680,1450 --sway-count 1680`, then `--add-keys --farm assets/art/zone1b/farm/farm.json`, then `gen_gardens.py`. Lamps 23, flowers 240 (life), gardens 2238.
 - Not run in-engine yet: the zoom 1 and zoom 3 captures, and the walk test.
+
+## 2026-11-24: Larkmoor dragonflies larger at 1x
+| Decision | Why |
+|---|---|
+| Dragonfly sprites go from 9 by 3 to 11 by 5 texels (wings up and down), with a wider gold body. The draw origin moves to match (`-5, -2`). Fish and owls are unchanged. | PC QA said the wildlife reads thin at 1x. At 9 texels the dragonflies were specks over the lake. |
+| Not in this change: ambient creatures near the Larkmoor start position. The nearest water and forest edge are about 650 texels from the start, and rabbits and other ground critters are placed from the anchor data. Adding start-area creatures needs an anchor placement decision. | Kept this PR to what can be checked here. |
+
+## 2026-11-24: Larkmoor start view has rabbits and butterflies; deer at dusk
+| Decision | Why |
+|---|---|
+| `larkmoor_life.json` gets a `start` key, the Larkmoor `player_spawn` anchor from `assets/art/zone1b/larkmoor/placements3d.json` (1520, 1349.5). The generator's `--add-keys` path does not write it, so it survives a regenerate. | The start view had no wildlife within reach. The start is the one place every player sees first. |
+| Two rabbits are placed at the grass tips nearest the start, within 260 iso texels and 30 texels apart (`START_RABBITS`, `START_REACH`). Other rabbits keep their random spots. | Rabbits stay near their burrow (wander 30), so they stay in the start view. |
+| The first two butterflies start on the flower beds within 260 iso texels of the start. Their flits stay local, so they stay in that area. They are out in any season with butterfly share 0.2 or more, so they show in autumn too. | Autumn share is 0.35, and the usual hash gate hid both start butterflies in the probe. |
+| Deer share now also rises in the dusk light (`sin(PI * night)`, at most 0.9), and not at full night. Golden hour (low sun) still brings them out too. | Probe at 19.2 h and 19.6 h (night 0.2 to 0.5): no deer, though owls and dragonflies were out. The deer followed low sun only. |
+| Verified in the real Larkmoor scene (temporary probes, removed): at the start, 2 rabbits and 2 butterflies on screen over three checks. At noon, golden hour, dusk and night, dragonflies, deer and owls appear at the lake, forest edge and perch as their share says. Not verified on PC. | Coordinator asked for the start view and the golden-hour and dusk check. |
+
+## 2026-11-24: Rabbits move; start rabbits clear of the walker and out by day
+| Decision | Why |
+|---|---|
+| Each rabbit has a grazing pool: every grass tip within `RABBIT_WANDER` (90 iso texels, was 30) of its burrow spot, built at spawn (`_pool_near`). A graze hop picks from that pool and takes `distance / RABBIT_GRAZE_SPEED` (30 texels a second), at least `RABBIT_GRAZE_TIME`. | The old graze picker drew from all 1673 grass tips and kept only those within 30 texels of the burrow. Each burrow had 1 to 3 such tips, so rabbits almost never found a target and sat still. Probe: 0 moves in 600 frames before, about 25 percent of frames hopping after. |
+| The two start rabbits sit at least `START_CLEAR` (90 iso texels) from the arrival point. Inside `RABBIT_WATCH` (42) of the walker a rabbit sits up and watches and does not graze. | The start rabbits were 23 and 29 texels from the spawn, so they froze while the walker stood there, which reads as a prop. |
+| The two start rabbits are out by day too (`start_pair`). The rest keep the day share, which is low by day (rabbits come out at dusk). | At noon only about 2 of 8 rabbits were out, so the start view often showed none. |
+| `tests/test_wild.gd` checks the start rabbits clear the spawn, are out by day, and hop when the walker is away. Motion is on for that check, since the reduce-motion section runs before it. | Regression guard. |
+| Not changed: the forest edge has only 8 points in the zone and none near Old Oak Crossing, so deer cannot appear there. Dragonflies need a season with a share (none in winter by design), and the walker in reach of the lake. | Separate data and design questions, reported to the coordinator. |
+
+- **2026-11-24, Old Oak Crossing deer:** the hub has no woods, only the lone elder oak, so the forest-edge rule finds no spot there. `tools/art/gen_life_anchors.py` `oak_ring_points()` adds three grass tips 20 to 60 texels from the trunk (`OAK_TRUNK`), clear of every pad, to `forest_edge`. Added to `world/larkmoor_life.json` by hand-run of the same function, leaving the other keys as they were. Not run in engine.
+
+## 2026-11-24: Ember Quarry cave entrance (Larkmoor, north gate)
+- **Brief (Nathan, via coordinator):** make the way into Ember Quarry a landmark: a mountain cave cut into the cliff, a mineshaft, lanterns, several distinct organic decor props, dirt around it, and a glowing neon EMBER QUARRY sign with a down arrow either side. Nathan picked mockup B (timber headframe).
+- **Perspective:** Larkmoor is a 2:1 elevated orthographic view with the cliff facing the camera (like the gateway and tower sprites). The cave has no vanishing point: widths stay constant and depth only moves things up the screen. Boxes are front-facing with a top strip, not 45 degree cubes. Every post stands on a stone footing.
+- **Pipeline:** `tools/art/gen_ember_entrance.py export` writes `assets/art/zone1b/larkmoor/entrance/` (sprites, `entrance.json`). `larkmoor_scene.gd` merges its sprites into the placements, so a regenerated `placements3d.json` does not drop them. `mock <dir> B` renders day and night mockups on the real cliff.
+- **Nodes:** 12 prop sprites and 2 lanterns (76 texels apart: ordinary lamps keep 75) (chunk streamed) plus one `EmberEntrance` node (`world/ember_entrance.gd`) for the sign and glow. Under the 1350 ceiling.
+- **Walk-in:** the lane x 1510 to 1534 stays clear of decor (checked by `tests/test_ember_entrance.gd`). Cave, rails and dirt are flat sprites sorted behind the walker. The gate anchor and its trigger are unchanged.
+- **Accessibility:** Reduce Flashing stops the neon flicker and Reduce Motion freezes the glints; the sign then stays steadily lit.
+- **Not run in the cloud:** Godot and the headless tests. PC QA should screenshot day, dusk and night and walk through the gate.
+
+## 2026-11-24: Ember Quarry entrance polish (after Nathan's "refine" ask)
+- **Art:** inside the mine mouth only the nearest frame keeps a lintel and sill; deeper frames are bare posts on footings, so the tunnel reads as depth, not rungs. The far glow is larger and brighter, sleepers are lighter, and the rock around the arch uses fewer pale highlights so it sits closer to the cliff.
+- **Immersion:** `EmberEntrance` draws 12 embers rising out of the mine (a pure function of the clock, 8 steps per second, 1 texel each), a cave fire that breathes in steps, and lifts the neon and cave glow with `MeadowLife.rain` (a heavy rain counts as 0.7 of night). Reduce Motion removes the sparks and freezes the glints; Reduce Flashing stops the breathing and the neon flicker.
+- **Checked:** `tools/art/gen_ember_entrance.py mock <dir> B` renders day, dusk, night and rain tiles on the real cliff (`times_B.png`). The in-engine look is still for PC QA.

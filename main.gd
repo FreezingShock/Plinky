@@ -27,6 +27,7 @@ var walker: TexelWalker
 var gate: TexelGate
 var arch_gate: TexelGate   ## drawn at the Arch anchor of zones with gate art: the way back
 var pads: Dictionary = {}  # button id -> TexelPad
+var _crowd_sig: int = -1   # signature of the pads the crowd was last counted for (_update_pad_crowding)
 var critter: TexelCritter
 var pointer: PadPointer
 var pad_glow: PadGlow
@@ -165,6 +166,14 @@ func _ready() -> void:
 
 ## Lit pads close together share the light: each pad counts the lit pads within TexelPad.CROWD_RANGE, itself included.
 func _update_pad_crowding() -> void:
+	# The crowd only changes when a pad unlocks or the pads are rebuilt: a cheap signature says so, and the O(n^2) count
+	# runs only then, not every frame.
+	var sig: int = pads.size()
+	for p: TexelPad in pads.values():
+		sig = (sig * 31 + p.get_instance_id() + (1 if p.locked else 0)) & 0x3fffffff
+	if sig == _crowd_sig:
+		return
+	_crowd_sig = sig
 	for a: TexelPad in pads.values():
 		var n: int = 0
 		for b: TexelPad in pads.values():
@@ -573,12 +582,14 @@ func _zone_banner() -> Dictionary:
 	if calendar != null and calendar.has_method("now"):
 		cal = calendar.call("now") as Dictionary
 	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
-	var phase: float = sky.clock_phase() if sky != null else 0.5
+	# sky.clock_phase() is the sun phase; the banner's fallback needs the clock fraction, so convert it with the sky's daylight.
+	var clock: float = sky.model.clock_of_phase(sky.clock_phase()) if sky != null else 0.5
+	var daylight: float = sky.model.daylight_fraction if sky != null else 0.6
 	if sky == null or not sky.seasonal:  # themed zones have no seasons: keep the time, drop the date
 		for k: String in ["season", "season_name", "month_name", "day"]:
 			cal.erase(k)
 	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(zone_id))
-	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, phase, "", cols[clampi(z.theme_role, 0, 7)])
+	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, clock, "", cols[clampi(z.theme_role, 0, 7)], daylight)
 	spec["fill"] = cols[0]
 	spec["duration"] = ZONE_BANNER_HOLD
 	spec["key"] = "zone:" + String(zone_id)

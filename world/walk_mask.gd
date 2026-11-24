@@ -159,19 +159,20 @@ static func _build_grid() -> void:
 	var data: PackedByteArray = im.get_data()
 	var bpp: int = data.size() / maxi(w * h, 1)   # bytes per pixel; the first byte is red for every format the mask loads as
 	var solid: Array[Vector2i] = []
+	# a cell is open only when every pixel in it is walkable. Checking the corners alone let a blocked hole smaller than a
+	# cell (a tree footprint, a rock edge) sit inside an open cell, so a route could cut straight across it.
 	for cy in rows:
 		for cx in cols:
 			var open: bool = true
-			for oy: int in [0, CELL - 1]:
-				for ox: int in [0, CELL - 1]:
+			for oy in CELL:
+				if not open:
+					break
+				for ox in CELL:
 					var px: int = mini(cx * CELL + ox, w - 1)
 					var py: int = mini(cy * CELL + oy, h - 1)
 					if data[(py * w + px) * bpp] <= 127:
 						open = false
-			if open:
-				var mx: int = mini(cx * CELL + CELL / 2, w - 1)
-				var my: int = mini(cy * CELL + CELL / 2, h - 1)
-				open = data[(my * w + mx) * bpp] > 127
+						break
 			if not open:
 				solid.append(Vector2i(cx, cy))
 	for c: Vector2i in solid:

@@ -7,6 +7,8 @@ extends RefCounted
 ## their bed and flap in place. Palette indices, no alpha, drawn in LifeAir's 12 fps steps.
 
 const BUTTERFLIES: int = 6        # the most that are ever out (summer noon)
+const START_FLIES: int = 2        # butterflies that start over the flowers near the arrival point
+const START_REACH: float = 260.0  # iso texels: how far from the arrival point those flower beds may be
 const HOVER_MIN: float = 2.5      # seconds on a bed before the next flit
 const HOVER_MAX: float = 6.0
 const FLIT_MIN: float = 18.0      # texels: the nearest bed a flit may go to
@@ -53,8 +55,18 @@ func setup(life: Dictionary) -> void:
 		for i: int in 16:
 			_beds.append(box.position + box.size * Vector2(MeadowLife.hash01(i * 2 + 1), MeadowLife.hash01(i * 2 + 2)))
 	_flies.clear()
+	# The arrival point (life data "start"): the first butterflies start on the flower beds near it, so the start view is not empty.
+	var near: Array[int] = []
+	var sd: Array = life.get("start", []) as Array
+	if sd.size() >= 2:
+		var start := Vector2(float(sd[0]), float(sd[1]))
+		for j: int in _beds.size():
+			if MeadowLife.iso_distance(_beds[j], start) <= START_REACH:
+				near.append(j)
 	for i: int in BUTTERFLIES:
 		var bed: int = int(MeadowLife.hash01(i * 13 + 4) * float(_beds.size())) % _beds.size()
+		if i < START_FLIES and not near.is_empty():
+			bed = near[int(MeadowLife.hash01(i * 13 + 4) * float(near.size())) % near.size()]
 		var p: Vector2 = _beds[bed]
 		_flies.append({"bed": bed, "pos": p, "from": p, "to": p, "t": 0.0, "dur": 0.0,
 			"hover": HOVER_MIN + MeadowLife.hash01(i * 5 + 9) * (HOVER_MAX - HOVER_MIN),
@@ -68,7 +80,8 @@ func update(delta: float, wp: Vector2) -> void:
 	var budget: int = GraphicsQuality.life_scaled(BUTTERFLIES)
 	for i: int in _flies.size():
 		var f: Dictionary = _flies[i]
-		var out: bool = i < budget and MeadowLife.hash01(int(f.seed) * 19 + 5) < share
+		# The two start butterflies stay out in any season with real butterfly weather (share 0.2 or more), so the arrival view is not empty.
+		var out: bool = i < budget and (MeadowLife.hash01(int(f.seed) * 19 + 5) < share or (i < START_FLIES and share >= 0.2))
 		f.fade = move_toward(float(f.fade), 1.0 if out else 0.0, FADE_RATE * delta)
 		if float(f.fade) <= 0.0:
 			f.dur = 0.0

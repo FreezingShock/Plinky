@@ -20,6 +20,8 @@ const C_LIGHT: int = 4
 const C_ACCENT: int = 5
 const C_EARTH: int = 6
 const C_PAPER: int = 7
+const C_GOLD_HI: int = 8            # wheat-only golds, not in the zone palette: a warm tone and a deeper tone
+const C_GOLD_LO: int = 9
 const PAL: Array[Color] = [
 	Color(20.0 / 255.0, 22.0 / 255.0, 28.0 / 255.0, 1.0),
 	Color(31.0 / 255.0, 59.0 / 255.0, 53.0 / 255.0, 1.0),
@@ -29,9 +31,12 @@ const PAL: Array[Color] = [
 	Color(242.0 / 255.0, 230.0 / 255.0, 160.0 / 255.0, 1.0),
 	Color(194.0 / 255.0, 120.0 / 255.0, 78.0 / 255.0, 1.0),
 	Color(246.0 / 255.0, 239.0 / 255.0, 217.0 / 255.0, 1.0),
+	Color(232.0 / 255.0, 195.0 / 255.0, 90.0 / 255.0, 1.0),
+	Color(185.0 / 255.0, 132.0 / 255.0, 46.0 / 255.0, 1.0),
 ]
 const ROOT_BAND: float = 0.28        # the lowest share of a stalk is its dark root
 const HEAD_START: float = 0.80       # the top share of a stalk is its head
+const SIDE_MARGIN: float = 5.0      # stalk bases stay this far in from the sheet edge: sway and lean add about 3 texels more
 const SIDE_LIGHT: float = 3.0        # softens the sideways direction for stalks right beside the walker
 const SILHOUETTE_HALF: float = 9.0   # stalks within this many texels of the walker's column, and in front of him, are cut
 const SILHOUETTE_TOP: float = 14.0   # ... so their tips stop this many texels above his feet and his outline stays clear
@@ -43,10 +48,10 @@ static func generate(seed_value: int, w: int, h: int, stage: int) -> Dictionary:
 	rng.seed = seed_value
 	var cx: float = w * 0.5
 	var band_y: float = h - 5.0
-	var rx: float = w * 0.47
+	var rx: float = w * 0.47 - SIDE_MARGIN
 	var ry: float = maxf(h * 0.16, 2.0)
-	var count: int = int(w * 2.4) if stage != STAGE_SPROUT else int(w * 1.4)
-	var max_h: float = h - 6.0
+	var count: int = int(w * 3.2) if stage == STAGE_GOLD else (int(w * 2.4) if stage == STAGE_BROWN else int(w * 1.4))
+	var max_h: float = h - 8.0
 	var stalks: Array = []
 	var tries: int = 0
 	while stalks.size() < count and tries < count * 6:
@@ -69,6 +74,7 @@ static func generate(seed_value: int, w: int, h: int, stage: int) -> Dictionary:
 			"sway": rng.randf_range(0.6, 1.8),
 			"phase": rng.randf() * TAU,
 			"part": rng.randf_range(0.75, 1.25),
+			"ripe": rng.randf(),
 		})
 	stalks.sort_custom(func(p: Dictionary, q: Dictionary) -> bool: return float(p.by) < float(q.by))
 	# Contact shadow: a dithered ellipse under the clump, so it sits on the ground rather than floating.
@@ -92,21 +98,38 @@ static func generate(seed_value: int, w: int, h: int, stage: int) -> Dictionary:
 	return {"w": w, "h": h, "stage": stage, "stalks": stalks, "shadow": shadow, "mass": mass}
 
 
+## The colour of a golden stalk's body at `ripe` (0 green, 1 gold). Mid values dither between two roles, so every stalk
+## has its own level of yellow without leaving the palette: green, a dithered green-to-light, light, a dithered light-to-gold, gold.
+static func _ripe_colour(ripe: float, x: int, y: int) -> int:
+	var dither: bool = (x + y) % 2 == 0
+	if ripe < 0.2:
+		return C_BASE
+	if ripe < 0.4:
+		return C_LIGHT if dither and ripe > 0.3 else C_BASE
+	if ripe < 0.6:
+		return C_LIGHT
+	if ripe < 0.8:
+		return C_ACCENT if dither else C_LIGHT
+	return C_ACCENT
+
+
 ## The colours of one stalk at height `t` (0 at the root, 1 at the tip): root, body, head.
-static func _role(stage: int, tone: int, t: float, head: bool) -> int:
+static func _role(stage: int, tone: int, t: float, head: bool, ripe: float, x: int, y: int) -> int:
 	if t < ROOT_BAND:
-		return C_INK
+		return C_SHADE
 	if head and t >= HEAD_START:
 		if stage == STAGE_SPROUT:
 			return C_LIGHT
-		return C_EARTH if stage == STAGE_BROWN or tone == 2 else C_ACCENT
+		if stage == STAGE_BROWN:
+			return C_EARTH if tone < 2 else C_INK
+		return C_GOLD_HI
 	match stage:
 		STAGE_SPROUT:
 			return C_LIGHT if tone == 2 else C_BASE
 		STAGE_BROWN:
 			return C_EARTH if tone < 2 else C_INK
 		_:
-			return C_EARTH if tone == 0 and t < 0.5 else C_ACCENT
+			return _ripe_colour(ripe, x, y)
 
 
 ## One gust frame of the clump. `walker` is the walker's position in texels of this clump (origin top-left); `push` is
@@ -124,13 +147,12 @@ static func rasterize(clump: Dictionary, frame: int, walker: Vector2, push: floa
 		var idx: int = shadow_px[i]
 		img.set_pixel(idx % w, floori(float(idx) / float(w)), shade)
 	var mass_px: PackedInt32Array = clump.mass
-	var root: Color = PAL[C_INK]
-	var deep_ink: Color = PAL[C_EARTH]          # a few dry clods in the root mass
+	var root: Color = PAL[C_SHADE]              # a solid dark root mass, no soil flecks
 	for i: int in mass_px.size():
 		var idx: int = mass_px[i]
 		var mx: int = idx % w
 		var my: int = floori(float(idx) / float(w))
-		img.set_pixel(mx, my, deep_ink if (mx + 2 * my) % 7 == 0 else root)
+		img.set_pixel(mx, my, root)
 	var turn: float = TAU * float(frame) / float(FRAMES)
 	for s: Dictionary in clump.stalks:
 		var bx: float = float(s.bx)
@@ -155,6 +177,7 @@ static func rasterize(clump: Dictionary, frame: int, walker: Vector2, push: floa
 		var head: bool = bool(s.head)
 		var tone: int = int(s.tone)
 		var side_shade: bool = bool(s.side)
+		var ripe: float = float(s.ripe)
 		var n: int = int(maxf(absf(tx - bx), absf(ty - by))) + 1
 		n = maxi(n, int(length))
 		for k: int in range(n + 1):
@@ -167,12 +190,16 @@ static func rasterize(clump: Dictionary, frame: int, walker: Vector2, push: floa
 				y += fall * part * 0.3 * lean_t
 			var ix: int = int(roundf(x))
 			var iy: int = int(roundf(y))
-			var col: int = _role(stage, tone, t, head)
+			var col: int = _role(stage, tone, t, head, ripe, ix, iy)
 			_put(img, ix, iy, col)
 			if t >= HEAD_START and head:
-				_put(img, ix + 1, iy, C_EARTH if stage == STAGE_GOLD and tone < 2 else col)
+				if stage == STAGE_GOLD:
+					_put(img, ix - 1, iy, C_GOLD_HI)
+					_put(img, ix + 1, iy, C_GOLD_LO)
+				else:
+					_put(img, ix + 1, iy, C_EARTH if stage == STAGE_BROWN and tone < 2 else col)
 			elif side_shade and t >= ROOT_BAND and t < HEAD_START and stage != STAGE_SPROUT:
-				_put(img, ix + 1, iy, C_EARTH if stage == STAGE_GOLD else C_INK)
+				_put(img, ix + 1, iy, C_DEEP if stage == STAGE_GOLD else C_INK)
 	return img
 
 
