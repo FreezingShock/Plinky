@@ -13,7 +13,7 @@ func run(t: Object) -> void:
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
-	t.eq(z.pad_buttons.size(), 18, "eighteen pads: six rows of three")
+	t.eq(z.pad_buttons.size(), 21, "twenty-one pads: six rows of three, and the Starbloom row runs three more on the west bank")
 	var rows: Dictionary = {&"lark_sprout": &"sunlight", &"lark_clover": &"dewdrop", &"thistle": &"sunlight", &"heather": &"thistle", &"foxglove": &"heather", &"starbloom": &"foxglove"}
 	for row: StringName in rows:
 		var last: float = 0.0

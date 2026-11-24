@@ -21,7 +21,9 @@ PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 5
 PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1100, 548), (1060, 520), (990, 500), (900, 490), (770, 486)]
 # Only the main road runs north: to the Ember gate, top middle. The side trails stop short of the mountainside.
-PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST]
+# West trail: off the east side of the west road, north of the lake and along its north shore, to the Westmere pads on the west bank.
+PATH_WM = [(600, 540), (590, 470), (540, 452), (470, 440), (400, 444), (336, 486)]
+PATHS = [PATH_MAIN, PATH_WEST, PATH_EAST, PATH_WM]
 # Land lobes: the island's radius grows by amp * R around angle a (uv angle; -135 deg is screen up, 0 is screen down-right).
 # They give the new north and bottom-right land its shape. Width w is in radians.
 LOBES = [(-135.0, 0.20, 0.55), (0.0, 0.16, 0.50)]
@@ -61,6 +63,8 @@ DISTRICTS = [
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
     dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=row(836, 322, *ROW_STEP_UP),
          note='Last plaza before the quarry. The Starbloom row, and the far gate set in the cliff.'),
+    dict(id='westmere', name='Westmere', c=(332, 512), pads=[(288, 490), (332, 512), (376, 534)],
+         note='West bank of the lake, reached by the west trail. No gate. Three more Starbloom pads: the Starbloom row runs on here.'),
 ]
 LANDMARKS = [
     dict(id='elder_oak', kind='elder_oak', at=(790, 444)),
