@@ -14,6 +14,11 @@ const DISTRICT_RADIUS: float = 220.0   # texels (2x the old 110 with the frame);
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
 
+## A prop chunk spawned or was freed. key is the chunk index: the chunk covers Rect2(Vector2(key) * CHUNK, CHUNK x CHUNK) in
+## zone texels. Every chunk in the loaded set emits, including empty ones, so per-chunk nodes (grass quads) follow it exactly.
+signal chunk_loaded(key: Vector2i)
+signal chunk_unloaded(key: Vector2i)
+
 ## main.gd reads these to frame the zone (camera and walker bounds, walk mask, footstep and ambience lookups).
 var world_rect: Rect2 = Rect2(260.0, 40.0, 2520.0, 1620.0)   # 2x the old frame; overwritten from larkmoor_life.json world
 var mask_offset: Vector2i = Vector2i.ZERO
@@ -431,6 +436,7 @@ func _load_chunk(key: Vector2i) -> void:
 			list.append(_spawn_one(_occ_parent, s))
 	_loaded[key] = list
 	PerfStats.lap("chunk load")
+	chunk_loaded.emit(key)
 
 
 func _unload_chunk(key: Vector2i) -> void:
@@ -442,6 +448,7 @@ func _unload_chunk(key: Vector2i) -> void:
 			(sp as Sprite2D).queue_free()
 	_loaded.erase(key)
 	PerfStats.lap("chunk unload")
+	chunk_unloaded.emit(key)
 
 
 ## Bushes rustle when the walker passes (LifeReact); the list follows the chunks that are loaded.

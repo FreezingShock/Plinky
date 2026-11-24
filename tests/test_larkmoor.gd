@@ -98,7 +98,8 @@ func run(t: Object) -> void:
 		t.eq(scene.call("prop_total"), sprites.size(), "every prop in the placements is indexed to a chunk")
 		t.ok(int(scene.call("loaded_prop_count")) < sprites.size(), "only the chunks near the start are loaded (%d of %d)" % [scene.call("loaded_prop_count"), sprites.size()])
 		t.eq(shadows._pads.size(), shadow_pads, "Larkmoor tells its shadows where every pad is")
-		t.ok(shadows._overlay != null and shadows._overlay.get_child_count() > 0, "prop shadows get a clipped copy above the pads")
+		t.ok(shadows._overlay != null and shadows._overlay.multimesh != null and shadows._overlay.multimesh.visible_instance_count == shadows._items.size(), "prop shadows get a clipped copy above the pads (one overlay layer, one instance per caster)")
+		t.ok(shadows._caster_mm != null and shadows._caster_mm.multimesh.visible_instance_count == shadows._items.size(), "every cast shadow is one instance in the batched caster layer")
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
 	t.ok(lanterns > 0 and sky._lights.size() >= lanterns, "every lantern gets a light pool, none dropped at the cap (%d lights, %d lanterns)" % [sky._lights.size(), lanterns])
