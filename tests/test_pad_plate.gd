@@ -42,7 +42,7 @@ func run(t: Object) -> void:
 	var day_halo: ImageTexture = TexelPad.glow_texture(true, 0)
 	var night_halo: ImageTexture = TexelPad.glow_texture(true, 8)
 	t.ok(night_halo.get_width() > day_halo.get_width(), "the halo reaches further at night")
-	t.ok(night_halo.get_width() > 4 * int(TexelPad.HALF.x), "the halo spills well past the plate (more than twice its width)")
+	t.ok(night_halo.get_width() < 4 * int(TexelPad.HALF.x), "the pad glow is a small ring on its plate, not a wash over the path")
 	t.ok(TexelPad.glow_texture(false, 8) != null, "the red halo builds too")
 	var haze_tex: ImageTexture = TexelPad.glow_haze_texture(true, 8)
 	t.ok(haze_tex.get_width() < night_halo.get_width(), "the bloom above the pad is smaller than the halo")

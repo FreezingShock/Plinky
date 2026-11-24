@@ -70,8 +70,10 @@ const HALO_Z: int = 6
 const GLOW_INNER: float = 1.1     # the halo starts at the plate's edge (its ink sits just inside this)
 const GLOW_DAY: float = 0.6       # strength by day (0..1): clearly there at noon, still under the scene's light
 const GLOW_NIGHT_GAIN: float = 0.5  # extra strength at full night: 0.6 by day, 0.9 at midnight
-const GLOW_SPREAD_DAY: float = 3.0  # how far the halo reaches past the plate, in plate units, by day (reach ~1.9x the old one)
-const GLOW_SPREAD_NIGHT: float = 2.6  # and the extra reach at full night (reach ~1.8x the old one)
+const GLOW_SPREAD_DAY: float = 0.25  # how far the halo reaches past the plate, in plate units, by day (small: a ring on the plate, not a wash on the path)
+const GLOW_SPREAD_NIGHT: float = 0.35  # and the extra reach at full night
+const GLOW_MAX_AMOUNT: float = 0.7  # ceiling on the glow's brightness at any hour, so it never blows out over the path or the field light
+const GLOW_MAX_SPREAD: float = 0.35  # ceiling on how far the glow reaches past the plate (diamond norm): a ring on the plate, never a wash
 const GLOW_PEAK: float = 1.0      # peak alpha at the plate's edge, before the strength scales it
 const GLOW_PULSE_TIME: float = 1.6  # seconds for one gentle breath
 const GLOW_PULSE_DEPTH: float = 0.2  # how far the breath dims the halo (0 = none)
@@ -82,7 +84,7 @@ const CROWD_SHARE: float = 0.5    # each lit pad in the crowd (itself included) 
 var crowd: int = 1                # lit pads within CROWD_RANGE, self included; main.gd sets it each frame
 static var _glow_tex: Dictionary = {}           # "ready_step" -> ImageTexture, built once per state and night step
 static var _glow_mat: CanvasItemMaterial = null  # additive: the halo adds light to the ground under it
-const HAZE_REACH: float = 1.4       # the volumetric bloom above the plate, in plate units
+const HAZE_REACH: float = 0.6       # the volumetric bloom above the plate, in plate units
 const HAZE_LIFT: int = 9            # its centre sits this many texels above the plate's top face
 static var _haze_tex: Dictionary = {}   # "ready_step" -> ImageTexture for the bloom
 var _halo: Node2D = null
@@ -815,12 +817,12 @@ func light_strength() -> float:
 ## Density of the buy glow at full strength, 0..1: green when buyable, red (a little softer) when not, magnified at night.
 static func glow_amount(ready: bool, night: float) -> float:
 	var base: float = GLOW_DAY if ready else GLOW_DAY * 0.8
-	return clampf(base * (1.0 + GLOW_NIGHT_GAIN * clampf(night, 0.0, 1.0)), 0.0, 1.0)
+	return clampf(base * (1.0 + GLOW_NIGHT_GAIN * clampf(night, 0.0, 1.0)), 0.0, GLOW_MAX_AMOUNT)
 
 
 ## Width of the glow band in diamond norm (1.0 is the plate edge). Wider at night, so it reads from a distance.
 static func glow_spread(night: float) -> float:
-	return GLOW_SPREAD_DAY + GLOW_SPREAD_NIGHT * clampf(night, 0.0, 1.0)
+	return minf(GLOW_SPREAD_DAY + GLOW_SPREAD_NIGHT * clampf(night, 0.0, 1.0), GLOW_MAX_SPREAD)
 
 
 ## Night level in 8 steps: the halo redraws only when this changes, not every frame.
