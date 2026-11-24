@@ -5,9 +5,6 @@ extends Node2D
 ## coordinates are canvas pixels. Extra anchors: Arch (the way back to the onboarding meadow) and District_<id>
 ## markers that carry the district name for the banner.
 const DIR: String = "res://assets/art/zone1b/larkmoor/"
-const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1b/larkmoor/backdrop_far.png")
-const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg.png")
-const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
 const GARDEN_PATH: String = "res://world/larkmoor_gardens.json"
 const ENTRANCE_PATH: String = "res://assets/art/zone1b/larkmoor/entrance/entrance.json"   # the Ember Quarry cave entrance props (world/ember_entrance.gd)
@@ -50,10 +47,10 @@ func _ready() -> void:
 	var ground := Sprite2D.new()
 	ground.name = "Ground"
 	var far := FarLayer.new()
-	far.texture = FAR_BACKDROP
+	far.texture = ZoneAssets.texture(DIR + "backdrop_far.png")
 	far.base = Vector2(float(bleed.ground_offset[0]) - 64.0, float(bleed.ground_offset[1]))
 	add_child(far)
-	ground.texture = GROUND_FG
+	ground.texture = ZoneAssets.texture(DIR + "ground_fg.png")
 	ground.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ground.centered = false
 	ground.position = Vector2(bleed.ground_offset[0], bleed.ground_offset[1])
@@ -112,7 +109,7 @@ func _add_sky() -> void:
 	_sky.area = world_rect.grow(10.0)
 	_sky.noon_boost = 1.7   # Larkmoor's ground is brighter and greener than the meadow's, so its noon needs more exposure drop and a warmer cast
 	_sky.shadows = _shadows
-	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
+	_sky.ground_texture = ZoneAssets.texture(DIR + "ground.png")   # haze and mist read the full picture, not the cut-out
 	_ground.material = _sky.ground_material(ZoneAssets.texture(DIR + "ground_n.png"), ZoneAssets.texture(DIR + "ground_h.png"))
 	pad_material = _sky.pad_material(ZoneAssets.texture(DIR + "ground_h.png"), _ground.position)
 	_place_atmosphere()
