@@ -540,7 +540,7 @@ func _fill_upgrades() -> void:
 		tab.rest_color = RelicStyle.dim
 		tab.show_focus_ring = false   # the ">" marker and the underline show focus; no dotted box
 		tab.pressed.connect(_select_upgrade_tab.bind(cur))
-		tab.focus_entered.connect(_select_upgrade_tab.bind(cur))   # Left and Right move focus along the strip: the page follows the focus
+		tab.focus_entered.connect(_on_tab_focus.bind(cur))   # Left and Right move focus along the strip: the page follows the focus
 		_upg_tabs.add_child(tab)
 		_upg_tab_btns[cur] = tab
 	var grid: GridContainer = null
@@ -633,6 +633,15 @@ func _gift_header(cur: StringName) -> Control:
 	blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(blurb)
 	return box
+
+
+## Focus landed on a tab. Opening the menu puts focus on its first control quietly (Tip.grab_quiet sets focus_muted), and that
+## first control is the zone's own tab, so the quiet grab must not pick it over the tab the menu opened on. Keyboard and pad
+## moves clear focus_muted (TipHost does that on the first navigation input), and then the page follows the focus.
+func _on_tab_focus(cur: StringName) -> void:
+	if Tip.focus_muted:
+		return
+	_select_upgrade_tab(cur)
 
 
 ## A tab was pressed (mouse, keyboard or pad): the page and the highlight follow it together.

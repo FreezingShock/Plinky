@@ -45,6 +45,13 @@ func _run(zone: StringName, tag: String) -> void:
 	main.hud.open_gifts(sid)
 	await _wait(8)
 	print("row click ", String(sid), " visible ", main.hud._upgrades_panel.visible, " tab ", String(main.hud._upg_tab))
+	# The other zone's row, from here: each currency must open its own tab from any zone.
+	var other: StringName = &"shards" if sid == &"seeds" else &"seeds"
+	main.menus.close_all()
+	await _wait(10)
+	main.hud.open_gifts(other)
+	await _wait(8)
+	print("cross-zone row click ", String(other), " from ", String(zone), " tab ", String(main.hud._upg_tab))
 	main.menus.close_all()
 	await _wait(10)
 	if row != null:
