@@ -411,12 +411,15 @@ log('props defined')
 prng = random.Random(7)
 WATERNEAR = None
 def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5):
+    # r is the real footprint: it sets spacing and the path clearance. The trunk must stand on land, so the water and
+    # edge probes use at most 9 texels, and a crown may overhang a shallow bank.
+    base = min(r, 9.0)
     if not (0 < u < N - 1 and 0 < v < N - 1): return False
-    if np.hypot(u - CU, v - CV) > Re(math.atan2(v - CV, u - CU)) * .9 - r * .5: return False
+    if np.hypot(u - CU, v - CV) > Re(math.atan2(v - CV, u - CU)) * .9 - base * .5: return False
     h = float(terrain_h(u, v))
     if h > hmax or float(slope_at(u, v)) > slope_max: return False
     for a_ in range(0, 360, 60):
-        uu, vv = u + math.cos(math.radians(a_)) * r * .8, v + math.sin(math.radians(a_)) * r * .8
+        uu, vv = u + math.cos(math.radians(a_)) * base * .8, v + math.sin(math.radians(a_)) * base * .8
         if float(samp(WD, uu, vv)) > -.5: return False
         if shore and float(samp(DW, uu, vv)) < 3.5: return False
     if float(samp(WD, u, v)) > -.5: return False
@@ -427,7 +430,7 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5):
     return True
 # Minimum clear gap between two counted props, on top of their real footprints. Trees stand apart, bushes and stones tuck in.
 # Crowns may touch but not stack: an oak is about 18 texels of crown, so its gap is near zero. Bushes bunch loosely.
-MIN_GAP = dict(oak=0.0, pine=1.0, crystals=2.0, rock=1.5, stump=1.5, bush=0.5, sign=1.0, lantern=1.0)
+MIN_GAP = dict(oak=-5.0, pine=-2.0, crystals=2.0, rock=1.5, stump=1.5, bush=0.5, sign=1.0, lantern=1.0)
 FOOT_KINDS = ('oak', 'pine', 'bush', 'crystals', 'rock', 'stump', 'sign', 'lantern')   # props that take ground and get checked
 PLACED_KIND = []     # (u, v, footprint, kind) for every counted prop, read by check_layout
 ANCHOR_PTS = []      # (u, v, radius, kind) for pads, gate, shrine and spawn
@@ -471,11 +474,12 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, see
 
 def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
     got = 0
+    if kind in ('oak', 'pine'): rad = rad * 1.35   # a crown is big: groves get room, so the count holds without stacking
     gap = kw.get('gap', MIN_GAP.get(kind, 1.5))
     okw = {k: w for k, w in kw.items() if k in ('slope_max', 'shore', 'path', 'hmax')}
     big = kw.get('big', True)
     for _ in range(n):
-        for t in range(tries):
+        for t in range(tries * 2):   # more tries: a crown needs room, so groves fill in on the second look
             a_, frac = prng.uniform(0, 6.283), math.sqrt(prng.random())
             # natural falloff: the outer ring of a grove is sparser, so groves thin out at their edge instead of ending in a hard ring
             if prng.random() > .45 + .55 * (1 - frac): continue
@@ -588,20 +592,23 @@ for si, ((ax, ay), (bx, by)) in enumerate(zip(PATH, PATH[1:])):
     seg, tx, ty, nx_, ny_ = seg_frame(ax, ay, bx, by)
     n = max(1, int(round(seg / 40.0)))
     for k in range(n):
-        f0 = (k + .5) / n; side = 1.0 if (si + k) % 2 == 0 else -1.0
+        f0 = (k + .5) / n; side0 = 1.0 if (si + k) % 2 == 0 else -1.0
         found = False
-        for off_ in (PW_MEAN + 3.6, PW_MEAN + 4.6, PW_MEAN + 5.6, PW_MEAN + 6.6):   # a few texels past the rim, never on the walk line
-            for slide in (0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10, 13, -13, 16, -16, 20, -20):   # nearest the slot first
-                f = f0 + slide / seg
-                if not (0 < f < 1): continue
-                u, v = ax + (bx - ax) * f + nx_ * side * off_, ay + (by - ay) * f + ny_ * side * off_
-                # off the walk line: the walker's band is the rim (PW_MEAN), so the post stands a few texels past it
-                if not (PW_MEAN + 3.4 < float(samp(dpath, u, v)) < 14.0): continue
-                # the lantern's real footprint (not a guess) keeps it off rocks, trees, pads and the spawn
-                seed = prng.randint(0, 1 << 30)
-                f_l, half_l, top_l, _r, _rt = _draw('lantern', seed)
-                if ok_spot(u, v, solid_radius(f_l, half_l, top_l), slope_max=.8, path=False, gap=1.0, hmax=14.0):
-                    put('lantern', u, v, 1.0, count=True, seed=seed); lantern_n += 1; found = True; break
+        # the slot's own side first, then the far side: a grove on one bank can crowd the other side out
+        for side in (side0, -side0):
+            for off_ in (PW_MEAN + 3.6, PW_MEAN + 4.6, PW_MEAN + 5.6, PW_MEAN + 6.6):   # a few texels past the rim, never on the walk line
+                for slide in (0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10, 13, -13, 16, -16, 20, -20, 24, -24, 28, -28, 32, -32):   # nearest the slot first
+                    f = f0 + slide / seg
+                    if not (0 < f < 1): continue
+                    u, v = ax + (bx - ax) * f + nx_ * side * off_, ay + (by - ay) * f + ny_ * side * off_
+                    # off the walk line: the walker's band is the rim (PW_MEAN), so the post stands a few texels past it
+                    if not (PW_MEAN + 3.4 < float(samp(dpath, u, v)) < 14.0): continue
+                    # the lantern's real footprint (not a guess) keeps it off rocks, trees, pads and the spawn
+                    seed = prng.randint(0, 1 << 30)
+                    f_l, half_l, top_l, _r, _rt = _draw('lantern', seed)
+                    if ok_spot(u, v, solid_radius(f_l, half_l, top_l), slope_max=.8, path=False, gap=1.0, hmax=14.0):
+                        put('lantern', u, v, 1.0, count=True, seed=seed); lantern_n += 1; found = True; break
+                if found: break
             if found: break
 for si in range(FENCE_FROM, len(PATH) - 1):
     (ax, ay), (bx, by) = PATH[si], PATH[si + 1]
@@ -648,10 +655,11 @@ def check_layout():
     for i, (ui, vi, ri, ki) in enumerate(PLACED_KIND):
         for uj, vj, rj, kj in PLACED_KIND[i + 1:]:
             dd = math.hypot(ui - uj, vi - vj)
-            if dd < ri + rj - .5: bad.append(('prop/prop', ki, kj, round(dd, 1)))
+            # the later prop is the candidate, so its own gap sets the required distance, exactly as ok_spot does
+            if dd < ri + rj + MIN_GAP.get(kj, 1.5) - .5: bad.append(('prop/prop', ki, kj, round(dd, 1)))
         for ua, va, ra, ka in ANCHOR_PTS:
             dd = math.hypot(ui - ua, vi - va)
-            if dd < ri + ra - .5: bad.append(('prop/%s' % ka, ki, round(dd, 1)))
+            if dd < ri + ra + MIN_GAP.get(ki, 1.5) - .5: bad.append(('prop/%s' % ka, ki, round(dd, 1)))
         dp = float(samp(dpath, ui, vi))
         if ki == 'lantern':
             if not (PW_MEAN + 3.0 <= dp <= 14.5): bad.append(('lantern on the walk line', round(dp, 1)))
