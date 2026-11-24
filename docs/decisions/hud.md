@@ -414,6 +414,8 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 ## 2026-11-24: Gain popups fold and stack
 - Same-currency presses within 120 px fold into one number that rolls up to its total (was 40 px, so neighbouring pads never folded). Placement boxes count the stat caption, which is about 2.4 times the number's width, and a popup stacks above another when every fixed lane is taken. Reason: Nathan's Starbloom screenshot had captions overlapping as separate popups.
 
+## 2026-11-24: Gain popups settle every frame
+- Visible popups are pushed up each frame so no two boxes overlap (`PopupLanes.settle`, oldest first). Spawn-time placement alone let overlaps form when popups grew, merged or started late. Relic echoes (delayed popups) now merge and get placed too. Reason: Nathan's v0.62.2 screenshot showed two "+13.24K" popups stacked on each other.
 ## 2026-11-24: Title and loading screens follow the day (golden hour)
 - **Time of day comes from the meadow's own sky.** `core/title_mood.gd` samples keyframes by `SkyModel` phase (midnight, dawn, sunrise, morning, noon, afternoon, golden hour, sunset, dusk), and the sun or moon rides `SkyModel.azimuth`. Reason: the title then shows the same arc, golden light and night shade as the game, and the look is tested in pure GDScript.
 - **Palettes are per keyframe, not per zone.** Sky and far land take the eight palette roles, and the meadow ground takes four new ground roles (`g0` to `g3`), so golden hour warms the sky without turning the grass orange. Golden hour and sunset use the README banner's plum-to-orange sunset.
