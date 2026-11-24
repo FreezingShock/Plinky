@@ -1,7 +1,7 @@
 extends Node2D
 ## Larkmoor, the big meadow past the onboarding gate (tools/art/gen_larkmoor.py, layout in tools/art/larkmoor_layout.py).
 ## Same contract as meadow3d_scene.gd: one ground backdrop, tall props as y-sorted sprites with a foot anchor, and
-## Marker2D anchors for what the game draws itself. The whole world is one 1520x920 canvas at (0, 0), so texel
+## Marker2D anchors for what the game draws itself. The whole world is one 2280x1380 canvas at (0, 0), so texel
 ## coordinates are canvas pixels. Extra anchors: Arch (the way back to the onboarding meadow) and District_<id>
 ## markers that carry the district name for the banner.
 const DIR: String = "res://assets/art/zone1b/larkmoor/"
@@ -9,12 +9,12 @@ const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1b/larkmoor/backdr
 const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg.png")
 const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
-const DISTRICT_RADIUS: float = 110.0   # texels; the banner shows the nearest district inside this
+const DISTRICT_RADIUS: float = 165.0   # texels (1.5x the old 110 with the frame); the banner shows the nearest district inside this
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   # the slab is 3 texels thick and 28 wide
 
 ## main.gd reads these to frame the zone (camera and walker bounds, walk mask, footstep and ambience lookups).
-var world_rect: Rect2 = Rect2(130.0, 20.0, 1260.0, 810.0)
+var world_rect: Rect2 = Rect2(195.0, 30.0, 1890.0, 1215.0)   # 1.5x the old frame; overwritten from larkmoor_life.json world
 var mask_offset: Vector2i = Vector2i.ZERO
 var placements_path: String = DIR + "placements3d.json"
 var ground_path: String = DIR + "ground.png"
@@ -109,7 +109,7 @@ func _place_atmosphere() -> void:
 		if String(a.kind) == "water":
 			ponds.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
 	_sky.ponds = ponds
-	var rects: Array[Rect2] = [Rect2(world_rect.position.x - 130.0, 30.0, world_rect.size.x + 260.0, 170.0)]
+	var rects: Array[Rect2] = [Rect2(world_rect.position.x - 195.0, 45.0, world_rect.size.x + 390.0, 255.0)]
 	for p: Vector4 in ponds:
 		rects.append(Rect2(p.x - p.z * 1.3, p.y - p.w * 1.3, p.z * 2.6, p.w * 2.6))
 	_sky.haze_rects = rects

@@ -1,0 +1,1 @@
+Larkmoor is 1.5 times bigger in each direction (2280 by 1380 texels, up from 1520 by 920). The island, paths, ponds, districts and landmarks grow with it, and the tree and grass density stays the same, so the walk is longer but not emptier. Bridge and jetty crossings are checked on the new walk mask.

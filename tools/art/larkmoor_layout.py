@@ -3,7 +3,8 @@
 Everything here is plain data. Screen coords are (sx, sy) at ground level, projection as zone 1:
 screen = (OX + u - v, OY + (u + v) / 2 - h)."""
 import math
-W, H = 1520, 920
+S = 1.5                        # frame scale: the world grows S in each direction (positions and island size); prop sizes stay
+W, H = 1520, 920              # authored frame; _apply_scale() below grows it by S
 PLAY = (130, 20, 1390, 830)    # camera and walker bounds: the island plus a margin of open water (x0, y0, x1, y1)
 OX, OY = 760, 70
 N = 820
@@ -87,7 +88,7 @@ def _seg_dist(px, py, ax, ay, bx, by):
     return math.hypot(px - (ax + vx * t), py - (ay + vy * t))
 
 
-def dead_ends(tol=30.0):
+def dead_ends(tol=30.0 * S):
     """Every path must reach something: a gate, a pad, a landmark, or another path. Returns the (path index, end)
     pairs that reach nothing. gen_larkmoor.py refuses to build while this list is not empty."""
     anchors = [EMBER_GATE, HOLLOW_GATE] + [p for d in DISTRICTS for p in d['pads']] + [lm['at'] for lm in LANDMARKS]
@@ -136,3 +137,30 @@ def pads_on_path():
 
 for _d in DISTRICTS:
     _d['pads'] = [PAD_NUDGE.get(tuple(p), tuple(p)) for p in _d['pads']]
+
+
+# ---- the bigger frame ----
+# Every position above is authored in the 1520x920 frame. _apply_scale() grows the whole world by S about the screen
+# origin: that keeps the 2:1 projection exact (OX, OY, W, H, N, CU, CV, R and PLAY scale too). Sprites and voxel props
+# keep their texel size, so the grove counts scale by S squared to keep the same density, and the grove radii by S.
+def _apply_scale():
+    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, PAD_CLEAR, GROVES
+    def sc(p): return (p[0] * S, p[1] * S)
+    W, H = round(W * S), round(H * S)
+    OX, OY = OX * S, OY * S
+    N = round(N * S)
+    CU, CV, R = CU * S, CV * S, R * S
+    PLAY = tuple(v * S for v in PLAY)
+    SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE = sc(SPAWN), sc(HOLLOW_GATE), sc(EMBER_GATE), sc(BRIDGE)
+    for i, pp in enumerate(PATHS): PATHS[i] = [sc(q) for q in pp]
+    LAKE['c'], MERE['c'] = sc(LAKE['c']), sc(MERE['c'])
+    LAKE['rx'], LAKE['ry'] = LAKE['rx'] * S, LAKE['ry'] * S
+    MERE['rx'], MERE['ry'] = MERE['rx'] * S, MERE['ry'] * S
+    STREAM[:] = [sc(q) for q in STREAM]
+    for d in DISTRICTS:
+        d['c'] = sc(d['c']); d['pads'] = [sc(q) for q in d['pads']]
+    for lm in LANDMARKS: lm['at'] = sc(lm['at'])
+    GROVES[:] = [(kind, sc(c), rad * S, round(n * S * S)) for kind, c, rad, n in GROVES]
+    PAD_CLEAR = PAD_CLEAR * S
+
+_apply_scale()
