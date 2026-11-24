@@ -1,6 +1,6 @@
 class_name TexelPad
 extends Node2D
-## A pressable pad anchored on the baked meadow art. Standing on it presses at the player's press rate.
+## A pressable pad anchored on the baked meadow art. Standing on it, or holding the mouse on it, presses at the player's press rate.
 ## The art already shows the pad; this adds the live ring and the press logic. Cost and reward show in PadTooltip on hover.
 
 const HALF: Vector2 = Vector2(14.0, 7.0)  # pad half extents in texels (2:1 diamond)
@@ -13,7 +13,8 @@ var standing: bool = false
 var affordable: bool = false
 ## True while the mouse is held down on this pad (hold-to-press). Read by main for Juice.
 var holding: bool = false
-var hold: HoldPress
+## One press clock for both ways of pressing (a walker standing on the pad, or the mouse held on it), so they run at the same rate.
+var _press_clock := PadPressTimer.new()
 ## Set by main each frame: the mouse is over this pad and not over the HUD.
 var hovered: bool = false
 ## 0..1 of the cost you hold (see _refresh_progress). Drives the gauge and the Far / Close / Ready look.
@@ -74,7 +75,6 @@ const NEAR_TEXELS: float = 40.0      # the approach cue starts this far from the
 const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 signal left  ## the walker stepped off, or the mouse was released
-var _timer: float = 0.0
 var _punch_t: float = 0.0   # 1 -> 0 after a press
 var _lvl_t: float = 0.0     # 1 -> 0 after a mastery level-up
 var _ring_t: float = 1.0    # 0 -> 1 ripple; 1 = idle
@@ -111,12 +111,6 @@ func _ready() -> void:
 			_trim = CLOVER_TRIM
 	if b != null and _sim().has_signal(&"tier_opened"):
 		_sim().tier_opened.connect(_on_tier_opened)
-	hold = HoldPress.new()
-	add_child(hold)
-	hold.tick.connect(_press)
-	hold.released.connect(func() -> void:
-		holding = false
-		left.emit())
 
 
 func _on_tier_opened(tier_id: StringName) -> void:
@@ -130,8 +124,8 @@ func _physics_process(delta: float) -> void:
 	var inside: bool = (d.x * d.x) / (HALF.x * HALF.x) + (d.y * d.y) / (HALF.y * HALF.y) <= 1.0
 	if inside and bool(walker.get("airborne")):
 		inside = false   # a jump clears the plate; landing on it presses at once
-	if inside and not standing:
-		_timer = 0.0  # first press is immediate on arrival
+	if inside and not standing and not holding:
+		_press_clock.arm()  # first press is immediate on arrival
 	if standing and not inside:
 		left.emit()
 	standing = inside
@@ -149,11 +143,8 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 	if _ring_t < 1.0:
 		_ring_t = minf(_ring_t + delta / RING_TIME, 1.0)
-	if inside:
-		_timer -= delta
-		if _timer <= 0.0:
-			_press()
-			_timer = sim.press_interval()
+	if _press_clock.step(delta, inside or holding, sim.press_interval()):
+		_press()
 	var sig: int = _signature()
 	if sig != _sig:
 		_sig = sig
@@ -164,18 +155,27 @@ func _press() -> void:
 	_gs().try_press(button_id, Vector3(global_position.x, global_position.y, 0.0))
 
 
-## Click a pad to press it; hold to repeat (HoldPress speeds up while held).
+## Click a pad to press it; hold to keep pressing at the same rate a standing walker gets (Sim.press_interval).
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton) or event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event.pressed:
+		if GuiGuard.covers(get_tree().root, event.position):
+			return   # a click on any GUI (panel, HUD, tooltip) never presses a pad under it
 		if hit((get_parent() as Node2D).get_local_mouse_position()):
 			holding = true
-			hold.begin()
 			_press()
+			_press_clock.start(_sim().press_interval())
 			get_viewport().set_input_as_handled()
 	elif holding:
-		hold.end()
+		hold_release()
+
+
+## Mouse released on a held pad: the stacked popup holds, then floats off, and the walker-style left signal fires.
+func hold_release() -> void:
+	holding = false
+	PressPopups.release_runs()
+	left.emit()
 
 
 ## True if a point in this pad's parent space is over the pad (slightly generous, for hover and clicks).

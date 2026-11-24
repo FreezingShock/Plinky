@@ -131,7 +131,7 @@ func _exit_tree() -> void:
 		instance = null
 
 
-## HoldPress.end(): every running popup holds a moment, then floats away with a last burst.
+## TexelPad.hold_release(): every running popup holds a moment, then floats away with a last burst.
 static func release_runs() -> void:
 	if instance != null:
 		instance.release_all()
@@ -260,7 +260,7 @@ func _ensure_font() -> bool:
 	if font != null:
 		return true
 	if PopupNumber.ui_theme != null:
-		font = PopupNumber.ui_theme.get_font(&"font", &"PopupLabel")
+		font = CrispFont.theme_font(PopupNumber.ui_theme, &"PopupLabel")
 	if font == null:
 		font = ThemeDB.fallback_font
 	return font != null
@@ -618,12 +618,13 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 	x0 = PopupClear.slide_clear(x0, p.w + icon_w, y - float(fs), float(fs) + 6.0, _keep_clear_rects(), 4.0, 4.0)
 	if is_nan(x0):
 		return
-	var fade: float = ceilf(clampf((1.0 - prog) / 0.3, 0.0, 1.0) * 4.0) / 4.0
+	# Glyphs are fully on or off, never half-transparent (see PopupStyle.shows_now), so every edge stays hard.
+	if not PopupStyle.shows_now(prog, p.age, not FxConfig.reduce_flashing):
+		return
 	var n: int = p.text.length()
 	var tcol: float = 0.0 if FxConfig.reduce_flashing else p.age
 	var flash: bool = p.since_bump < 0.05 and not FxConfig.reduce_flashing
 	var oc: Color = PopupStyle.outline_color(p.tier)
-	oc.a = fade
 	var shiver: float = 0.0
 	if p.tier == 2 and not calm and p.since_bump < 0.12:
 		shiver = 1.0 if int(p.age * 60.0) % 2 == 0 else -1.0   # a cold 1 px shiver on arrival
@@ -635,10 +636,8 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 	if p.pulse:
 		var dc: Vector2 = Vector2(x0 + 4.0, y - float(fs) * 0.32)
 		var dk: Color = PopupStyle.INK
-		dk.a = fade
 		_diamond(dc, 4, dk)
 		var pc: Color = PopupStyle.PULSE
-		pc.a = fade
 		_diamond(dc, 3, pc)
 	for i in n:
 		var gx: float = PopupStyle.glitch_x(p.tier, p.rnd, i, p.age, calm)
@@ -646,16 +645,13 @@ func _draw_pop(p: Pop, calm: bool) -> void:
 		var cy: float = roundf(y + (0.0 if calm else PopupStyle.char_wave(p.motion, p.tier, i, p.age)))
 		if p.tier == 4 and not calm:
 			var gr: Color = PopupStyle.CHROMA_RED
-			gr.a = fade
 			var gc: Color = PopupStyle.CHROMA_CYAN
-			gc.a = fade
 			draw_char(font, Vector2(cx - 1.0, cy), p.text[i], fs, gr)
 			draw_char(font, Vector2(cx + 1.0, cy), p.text[i], fs, gc)
 		var col: Color = PopupStyle.STAR if flash else PopupStyle.char_color(p.tier, i, n, tcol, p.rnd, PopupStack.zone)
-		col.a = fade
 		draw_char(font, Vector2(cx, cy), p.text[i], fs, col)
 	if p.stat != "" or (p.running and p.count >= 3):
-		_draw_caption(p, x0 + icon_w + p.w * 0.5, y, fs, fade, tcol, oc)
+		_draw_caption(p, x0 + icon_w + p.w * 0.5, y, fs, tcol, oc)
 
 
 ## The HUD rectangles world popups must not run under (see PopupNumber.keep_clear), as typed rects.
@@ -669,7 +665,7 @@ func _keep_clear_rects() -> Array[Rect2]:
 
 
 ## Under the number, centred: the stat's name in the stat's own colour, then " xN" (streak colour) while a hold stacks.
-func _draw_caption(p: Pop, cx: float, y: float, fs: int, fade: float, tcol: float, oc: Color) -> void:
+func _draw_caption(p: Pop, cx: float, y: float, fs: int, tcol: float, oc: Color) -> void:
 	var count_txt: String = (" x%d" % p.count) if (p.running and p.count >= 3) else ""
 	var w_name: float = 0.0
 	for k in p.stat.length():
@@ -681,12 +677,10 @@ func _draw_caption(p: Pop, cx: float, y: float, fs: int, fade: float, tcol: floa
 	var sy: float = roundf(y + 9.0 + float(fs) * 0.14)
 	if p.stat != "":
 		var sc: Color = p.stat_col
-		sc.a = fade
 		draw_string_outline(font, Vector2(sx, sy), p.stat, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, 2, oc)
 		draw_string(font, Vector2(sx, sy), p.stat, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, sc)
 	if count_txt != "":
 		var cc: Color = PopupStyle.accent_color(p.tier, tcol, PopupStack.zone)
-		cc.a = fade
 		draw_string_outline(font, Vector2(sx + w_name, sy), count_txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, 2, oc)
 		draw_string(font, Vector2(sx + w_name, sy), count_txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, cc)
 

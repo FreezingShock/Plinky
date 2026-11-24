@@ -24,6 +24,8 @@ extends Resource
 @export var offline_relic_max_drops: int = 3
 @export var prestige_exponent: float = 0.8
 @export var crit_multiplier: float = 5.0
+## What a press proc (the press_proc gift effect) pays when it lands: a multiple of the press.
+@export var press_proc_mult: float = 5.0
 ## Rebirth needs this stat at or above rebirth_min_value, and converts it to prestige.
 @export var prestige_source_stat: StringName = &"reb"
 @export var prestige_stat: StringName = &"prestige"

@@ -11,7 +11,12 @@ func run(t: Object) -> void:
 		t.ok(String(r["name"]) != "" and String(r["tip"]) != "", "%s has a name and a tooltip" % r["id"])
 		t.ok(ResourceLoader.exists("res://assets/icons/%s.png" % r["icon"]), "%s icon exists (%s)" % [r["id"], r["icon"]])
 	var attrs: Array[Dictionary] = StatIndex.attributes(sim)
-	t.ok(attrs.size() >= sim.attribute_defs.size(), "attributes index lists every attribute")
+	var zone_gifts: int = 0
+	for aid: StringName in sim.attribute_defs:
+		if sim.reset_for_currency((sim.attribute_defs[aid] as AttributeDef).currency) != null:
+			zone_gifts += 1
+	t.eq(attrs.size(), sim.attribute_defs.size() - zone_gifts, "attributes index lists every Prestige and Rebirth Perk attribute")
+	t.ok(zone_gifts > 0, "the test sim has zone gifts to leave out")
 	for r: Dictionary in attrs:
 		t.ok(ResourceLoader.exists("res://assets/icons/%s.png" % r["icon"]), "attribute icon %s exists" % r["icon"])
 	for r: Dictionary in rows + attrs:

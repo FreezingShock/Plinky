@@ -49,6 +49,7 @@ func _ready() -> void:
 	_body.name = "Body"
 	add_child(_body)
 	_body.colors = palette
+	add_child(WalkerRelics.new())   # equipped relics: motes, pool and sparks (world/walker_relics.gd)
 
 
 ## True while the walker is off the ground. Pads only count a walker that is standing on them.
@@ -83,8 +84,12 @@ func _key_down(action: StringName) -> bool:
 
 func _process(delta: float) -> void:
 	_t += delta
-	var blocked: bool = PadInput.menu_open or _typing()
-	var input: Vector2 = PadInput.move_vector()   # WASD, arrows, d-pad or left stick; analog tilt scales speed
+	# A text field or a key rebind takes every key, and an open menu takes Space and the tap-to-move walk.
+	var typing: bool = _typing() or PadInput.key_capture
+	var blocked: bool = PadInput.menu_open or typing
+	if blocked:
+		_has_target = false   # a tap-to-move walk does not carry on under a menu, as with the click gate
+	var input: Vector2 = Vector2.ZERO if typing else PadInput.move_vector()   # WASD walks in menus too; arrows, d-pad and stick only walk with no menu
 	var dir := Vector2.ZERO
 	if input != Vector2.ZERO:
 		_has_target = false
@@ -99,9 +104,10 @@ func _process(delta: float) -> void:
 		dir = _slide_dir   # a slide commits to its direction
 		_has_target = false
 	motion.cfg = GameState.sim.config
+	# Sprint and crouch are modifiers, so they still work while walking in a menu. Jump is Space, which menus use.
 	motion.tick(delta, dir != Vector2.ZERO,
-		not blocked and _key_down(&"sprint"),
-		not blocked and _key_down(&"crouch"),
+		not typing and _key_down(&"sprint"),
+		not typing and _key_down(&"crouch"),
 		not blocked and (_key_down(&"jump") or Input.is_action_pressed(&"plinky_jump")))
 	speed_factor = motion.speed_factor
 	lift = motion.z
@@ -263,6 +269,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		motion.queue_jump()
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# No tap-to-move while a menu is open (the walker is frozen then) or when the click lands on any GUI.
+		if PadInput.menu_open or GuiGuard.covers(get_tree().root, event.position):
+			return
 		var p: Vector2 = (get_parent() as Node2D).to_local(get_global_mouse_position())
 		_target = WalkMask.nearest_inset(Vector2(clampf(p.x, bounds.position.x, bounds.end.x), clampf(p.y, bounds.position.y, bounds.end.y)))
 		_has_target = true

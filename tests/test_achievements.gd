@@ -121,3 +121,44 @@ func run(t: Object) -> void:
 	var relic_toast := RelicToast.new()
 	t.eq(relic_toast.z_index, toast_z, "the relic toast shares the layer")
 	relic_toast.free()
+
+	# The banner waits while a menu is open, then shows; a menu opening mid-banner closes it and it comes back.
+	var banner := AchievementToast.new()
+	var menu_open: Array = [true]
+	var sfx_played: Array = []
+	banner.menu_open = func() -> bool: return menu_open[0]
+	banner.play_sfx = func(sfx_name: StringName, _pitch: float, _db: float) -> void: sfx_played.append(sfx_name)
+	banner.bind(sim)
+	sim.achievements.clear()
+	sim.check_achievements()
+	t.ok(not banner.visible, "an unlock waits while a menu is open")
+	t.ok(banner.queued() >= 1, "the waiting unlock stays queued")
+	menu_open[0] = false
+	banner._process(0.1)
+	t.ok(banner.visible, "the banner shows once the menu closes")
+	t.ok(sfx_played.size() >= 1, "the banner plays its section chime")
+	menu_open[0] = true
+	banner._process(0.05)   # the menu is seen: the banner starts to close
+	banner._process(1.0)    # and the close finishes
+	t.ok(not banner.visible, "a menu opening over the banner closes it")
+	t.ok(banner.queued() >= 1, "the cut-short banner goes back in the queue")
+	banner.free()
+
+	# Geometry and styling: centred across, a bit above the middle, unfurling from a sliver to the full width.
+	var area := Vector2(640.0, 360.0)
+	var card := Vector2(AchievementToast.WIDTH, 40.0)
+	var at: Vector2 = AchievementToast.origin_for(area, card)
+	t.eq(at.x + card.x * 0.5, area.x * 0.5, "the banner is centred across the screen")
+	t.ok(at.y + card.y * 0.5 < area.y * 0.5, "the banner sits above the vertical middle")
+	t.ok(AchievementToast.width_for(0.0) < AchievementToast.width_for(0.5), "the banner unfurls from a sliver")
+	t.eq(AchievementToast.width_for(1.0), AchievementToast.WIDTH, "fully open it is the full banner width")
+	t.ok(AchievementStyle.count_of(&"spark", true) > AchievementStyle.count_of(&"spark", false), "a titled unlock throws more particles")
+	for c: Array in Achievements.CATEGORIES:
+		var cat: StringName = c[0]
+		var st: Dictionary = AchievementStyle.of(cat)
+		t.ok(AchievementStyle.STYLES.has(cat), "category %s has a banner style" % cat)
+		t.ok(ResourceLoader.exists("res://assets/audio/sfx/%s.ogg" % st["sound"]), "category %s has a chime that exists" % cat)
+	t.ok(ResourceLoader.exists("res://assets/audio/sfx/%s.ogg" % AchievementStyle.TITLE_SOUND), "the title chime exists")
+	for e: Array in GalleryMenu.ENTRIES:
+		if e[0] == &"ledger":
+			t.eq(e[1], "Achievements", "the hamburger tile is called Achievements")

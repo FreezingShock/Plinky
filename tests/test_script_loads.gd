@@ -14,7 +14,7 @@ const FILES: Array[String] = [
 	"res://ui/index_card.gd", "res://ui/index_panel.gd", "res://ui/strip_button.gd",
 	"res://ui/tip.gd", "res://ui/tip_host.gd", "res://ui/tip_text.gd", "res://ui/stat_style.gd", "res://ui/pad_tooltip.gd",
 	"res://world/walker_motion.gd", "res://world/walker_body.gd", "res://ui/fx/popup_style.gd", "res://ui/fx/bloom_timeline.gd",
-	"res://ui/banner.gd",
+	"res://ui/banner.gd", "res://ui/achievement_style.gd", "res://ui/fx/achievement_sparks.gd",
 ]
 
 const AUTOLOADS: PackedStringArray = ["GameState", "EventBus", "Save", "Fx", "Juice", "Audio", "Banner"]

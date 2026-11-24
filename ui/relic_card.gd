@@ -1,13 +1,15 @@
 class_name RelicCard
 extends PanelContainer
-## One relic in the collection: a rarity-framed card. The 20 texel rarity frame and icon on the left, the name in
-## the rarity colour, then stack count and an Equipped mark. The card edge is the exact rarity colour (the same
-## colour-coded outline the gallery cards use); equipped cards sit on a lifted fill, a hovered or focused card
-## gets the lifted fill and a marching focus ring. The whole card is the click target, and Tip.bind goes on the card.
+## One relic in the gallery: a small square card. The icon sits centred, the edge is the exact rarity colour, and a
+## stack count shows in the corner once you own more than one. Names and state live in the hover tip and the detail
+## view, so the grid stays dense. An unfound relic is a dark silhouette. Equipped cards get the lifted fill, and a
+## focused card gets a marching focus ring. The whole card is the click target, and Tip.bind goes on the card.
 
 signal pressed(card: RelicCard)
 
-const W: float = 126.0
+## Square side. Four across in the gallery.
+const W: float = 62.0
+const ICON: int = 24
 
 var relic: RelicDef
 var stacks: int = 0
@@ -21,7 +23,7 @@ var _hover: bool = false
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_ALL
-	custom_minimum_size = Vector2(W, 0.0)
+	custom_minimum_size = Vector2(W, W)
 	mouse_entered.connect(func() -> void: _hover = true; _restyle())
 	mouse_exited.connect(func() -> void: _hover = false; _restyle())
 	focus_entered.connect(_restyle)
@@ -29,7 +31,8 @@ func _init() -> void:
 	draw.connect(_on_draw)
 
 
-func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = false) -> void:
+## `p_silhouette` draws a relic you have not found: a dark icon, no count.
+func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = false, p_silhouette: bool = false) -> void:
 	relic = def
 	stacks = p_stacks
 	equipped = p_equipped
@@ -37,47 +40,34 @@ func setup(def: RelicDef, p_stacks: int, p_equipped: bool, p_picked: bool = fals
 	for c in get_children():
 		remove_child(c)
 		c.queue_free()
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 5)
-	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(h)
-	var s := RelicSlot.new()
-	s.setup(def, p_stacks, false)
-	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	s.focus_mode = Control.FOCUS_NONE
-	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	h.add_child(s)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 0)
-	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	var n := Label.new()
-	n.text = def.display_name
-	n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	n.clip_text = true
-	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	n.add_theme_color_override("font_color", def.rarity.readable_color(RelicStyle.ink))
-	v.add_child(n)
-	var l2 := HBoxContainer.new()
-	l2.add_theme_constant_override("separation", 4)
-	l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(l2)
-	# Rarity by name (not colour alone), then a short state mark: On = equipped, Swap = waiting for a slot.
-	l2.add_child(_label(def.rarity.display_name, RelicStyle.dim))
-	if p_picked:
-		l2.add_child(_label("Swap", RelicStyle.accent))
-	elif p_equipped:
-		l2.add_child(_label("On", RelicStyle.good))
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.custom_minimum_size = Vector2(W, W)
+	add_child(root)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+	var icon := TextureRect.new()
+	icon.texture = IconSet.get_icon(String(def.id), ICON)
+	icon.custom_minimum_size = Vector2(ICON, ICON)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if p_silhouette:
+		icon.modulate = Color(0.2, 0.2, 0.26, 1.0)
+	center.add_child(icon)
+	if not p_silhouette and p_stacks > 1:
+		var n := Label.new()
+		n.text = "x%d" % p_stacks
+		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		n.add_theme_color_override("font_color", RelicStyle.text)
+		n.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		n.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		n.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		root.add_child(n)
 	_restyle()
-
-
-func _label(t: String, c: Color) -> Label:
-	var l := Label.new()
-	l.text = t
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.add_theme_color_override("font_color", c)
-	return l
 
 
 func _restyle() -> void:
@@ -85,7 +75,7 @@ func _restyle() -> void:
 		return
 	var lit: bool = _hover or has_focus()
 	var kind: AsciiBox.Kind = AsciiBox.Kind.SELECT if (lit or equipped) else AsciiBox.Kind.BUTTON
-	var b := AsciiBox.make(kind, 4.0, 3.0)
+	var b := AsciiBox.make(kind, 3.0, 2.0)
 	b.edge_override = RelicStyle.accent if picked else relic.rarity.tint()
 	add_theme_stylebox_override("panel", b)
 	queue_redraw()

@@ -62,6 +62,19 @@ static func hash01(a: int, b: int) -> float:
 	return float(h & 0xFFFF) / 65535.0
 
 
+## Popups never fade by alpha, so no glyph is ever half-transparent. The last 30% of a popup's life blinks off and on
+## in whole steps. Reduce Flashing (blink false) holds the popup solid to its end instead.
+const FADE_START: float = 0.7
+const BLINK_HZ: float = 8.0
+
+
+## True if a popup is drawn this frame. progress is 0 to 1 of its float-away; age is seconds alive.
+static func shows_now(progress: float, age: float, blink: bool) -> bool:
+	if progress < FADE_START or not blink:
+		return true
+	return int(age * BLINK_HZ) % 2 == 0
+
+
 static func pick_motion(tier: int, roll: float) -> int:
 	var list: Array = MOTIONS[clampi(tier, 0, TIERS - 1)] as Array
 	return int(list[clampi(int(roll * float(list.size())), 0, list.size() - 1)])

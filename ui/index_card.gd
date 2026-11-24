@@ -1,7 +1,7 @@
 class_name IndexCard
 extends Button
 ## One gallery card: a 32 px icon, the name and the amount. Hover or focus lifts the icon two texels and tints the
-## frame; the panel shows the full details in its info strip. Click opens the stat's detail page.
+## frame, and the shared tooltip (TipText.index_row) shows the details. Click opens the stat's detail page.
 
 const W: int = 76
 const H: int = 66
@@ -52,7 +52,10 @@ func _label(y: float) -> Label:
 
 func set_data(d: Dictionary) -> void:
 	var first: bool = data.is_empty()
+	var changed: bool = first or d != data
 	data = d
+	if changed:
+		Tip.set_spec(self, Callable(self, "_tip_spec"))   # live: a card that changes while its tip is up refreshes it
 	if first:
 		_icon.texture = icon_for(String(d["icon"]))
 		_paint(StatStyle.color(StringName(d.get("color_id", d["id"]))))
@@ -63,6 +66,11 @@ func set_data(d: Dictionary) -> void:
 	_name.add_theme_color_override("font_color", _col.lerp(RelicStyle.dim, 0.6) if pending else _col)
 	_value.add_theme_color_override("font_color", RelicStyle.dim if pending else (MAX_GOLD if maxed else RelicStyle.good))
 	_icon.modulate = Color(1, 1, 1, 0.5) if pending else Color.WHITE
+
+
+## The tooltip spec, built from the current row each time it shows.
+func _tip_spec() -> Variant:
+	return TipText.index_row(data) if not data.is_empty() else null
 
 
 ## The card wears its stat's colour: a dim outline and the name in the colour, brighter outline and solid fill on hover or focus.

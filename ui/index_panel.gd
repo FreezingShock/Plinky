@@ -1,8 +1,9 @@
 class_name IndexPanel
 extends PanelContainer
-## The Stats and Attributes gallery. Two tabs of big icon cards in sections; hover or focus a card for the amount, the
-## buff and a hint in the info strip; click it for a detail page with the total, what it does, and a gallery of its
-## sources (where it comes from and how to get more). Pages change through a stepped dither wipe.
+## The Stats and Attributes gallery. Two tabs of big icon cards in sections; hover or focus a card for its shared
+## tooltip (TipText.index_row: level or amount, what it does now and next, its cost, a yellow "Click to open!"). Click
+## it for a detail page with the total, what it does, and a gallery of its sources (where it comes from and how to get
+## more). Pages change through a stepped dither wipe.
 ## Read only: it shows StatIndex and StatSources data and never changes the Sim. Arrows or the d-pad move between
 ## cards, Enter or pad A opens one, Esc or pad B goes back, then closes. Shoulder buttons switch tab.
 
@@ -11,7 +12,7 @@ signal closed
 enum Tab { STATS, ATTRIBUTES }
 
 const WIDTH: float = 404.0
-const SCROLL_H: float = 150.0
+const SCROLL_H: float = 200.0   ## the grid's height: the info strip under it is gone, so the grid shows more cards
 const PAGE_OUT: float = 0.16
 const PAGE_IN: float = 0.22
 const REFRESH: float = 0.1
@@ -23,7 +24,6 @@ const KIND_ICONS: Dictionary = {
 }
 const DTABS: Array[String] = ["About", "Sources", "Level"]
 const DETAIL_H: float = 240.0
-const HINT: String = "Hover a card for details. Click it to see where it comes from."
 
 ## Debug: F7 slows the open, close and page wipes 5x so they can be checked by eye.
 static var slow_mo: bool = false
@@ -34,7 +34,6 @@ var detail_id: StringName = &""          ## the stat showing on the detail page,
 var _icon: TextureRect
 var _icon_sheet: Texture2D
 var _title: Label
-var _sub: Label
 var _tabs: Array[PixelButton] = []
 var _scroll: ScrollContainer
 var _grid_box: VBoxContainer
@@ -53,10 +52,6 @@ var _d_pages: Array[VBoxContainer] = []
 var _buy: PixelButton
 var _d_sources: HFlowContainer
 var _back: PixelButton
-var _strip: VBoxContainer
-var _s_head: Label
-var _s_buff: Label
-var _s_tip: Label
 var _anim: MenuAnim
 var _cards: Dictionary = {}              # row id -> IndexCard
 var _key: String = ""
@@ -82,11 +77,10 @@ func _init() -> void:
 	_title = Label.new()
 	_title.theme_type_variation = &"TitleLabel"
 	head.add_child(_title)
-	_sub = Label.new()
-	_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_sub.add_theme_color_override("font_color", RelicStyle.dim)
-	head.add_child(_sub)
+	var spacer := Control.new()   # pushes the close gap to the right edge of the header
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(spacer)
 	var x_gap := Control.new()   # room for the close X floating in the corner
 	x_gap.custom_minimum_size = Vector2(CloseX.HEADER_GAP, 1.0)
 	head.add_child(x_gap)
@@ -108,11 +102,6 @@ func _init() -> void:
 	_back.visible = false
 	Tip.bind(_back, {"title": "Back", "body": "Return to the gallery."})
 	bar.add_child(_back)
-	var close := PixelButton.new()
-	close.text = "Close"
-	close.size_flags_horizontal = Control.SIZE_SHRINK_END | Control.SIZE_EXPAND
-	close.pressed.connect(close_panel)
-	bar.add_child(close)
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = true
@@ -125,24 +114,6 @@ func _init() -> void:
 	_build_detail()
 	_scroll.add_child(_detail_box)
 	_detail_box.visible = false
-	_strip = VBoxContainer.new()
-	_strip.add_theme_constant_override("separation", 0)
-	_strip.custom_minimum_size = Vector2(WIDTH, 40)
-	v.add_child(_strip)
-	_s_head = _strip_label(RelicStyle.text, false)
-	_s_buff = _strip_label(RelicStyle.good, false)
-	_s_tip = _strip_label(RelicStyle.dim, true)
-
-
-func _strip_label(c: Color, wrap: bool) -> Label:
-	var l := Label.new()
-	l.add_theme_color_override("font_color", c)
-	l.clip_text = not wrap
-	if wrap:
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size.x = WIDTH
-	_strip.add_child(l)
-	return l
 
 
 func _build_detail() -> void:
@@ -214,10 +185,21 @@ func _build_detail() -> void:
 	_d_pages[2].add_child(_d_level)
 	_buy = PixelButton.new()
 	_buy.pressed.connect(_on_buy)
-	Tip.bind(_buy, {"title": "Buy level", "body": "Spend Prestige or Rebirth Points on the next level."})
+	Tip.bind(_buy, Callable(self, "_buy_spec"))
 	var buy_row := CenterContainer.new()
 	buy_row.add_child(_buy)
 	_d_pages[2].add_child(buy_row)
+
+
+## Tooltip of the Buy button: the next level's cost, and "Click to buy!" in yellow when the player can pay for it.
+func _buy_spec() -> Variant:
+	if sim == null or not detail_open() or tab != Tab.ATTRIBUTES or not sim.attribute_defs.has(detail_id):
+		return null
+	var ad: AttributeDef = sim.attribute_defs[detail_id] as AttributeDef
+	var maxed: bool = sim.attr_level(detail_id) >= ad.cap
+	var cost: BigNum = sim.attribute_cost(detail_id)
+	var can: bool = not maxed and not sim.attribute_available(ad).lt(cost)
+	return TipText.buy(String(ad.currency), UpgradeText.currency_name(ad), cost.format(), can, maxed)
 
 
 func _right(parent: Node, c: Color) -> Label:
@@ -339,9 +321,7 @@ func open_detail(id: StringName) -> void:
 		_grid_box.visible = false
 		_detail_box.visible = true
 		_back.visible = true
-		_strip.visible = false
 		_scroll.scroll_vertical = 0
-		_strip_idle()
 		_grab.call_deferred(_back))
 
 
@@ -393,7 +373,6 @@ func _sync_tabs() -> void:
 		_tabs[i].set_pressed_no_signal(i == tab)
 	_title.text = TITLES[tab]
 	_back.visible = detail_open()
-	_strip.visible = not detail_open()
 
 
 func _data() -> Array[Dictionary]:
@@ -405,10 +384,8 @@ func _show_grid_now() -> void:
 	_detail_box.visible = false
 	_grid_box.visible = true
 	_back.visible = false
-	_strip.visible = true
 	_key = ""
 	_refresh(true)
-	_strip_idle()
 
 
 func _refresh(force: bool = false) -> void:
@@ -425,7 +402,6 @@ func _refresh(force: bool = false) -> void:
 			(_cards[r["id"]] as IndexCard).set_data(r)
 	if detail_open() and _cards.has(detail_id):
 		_fill_detail((_cards[detail_id] as IndexCard).data)
-	_sub.text = "%s Prestige   %s RP" % [sim.prestige_available().format(), sim.rp_available().format()] if tab == Tab.ATTRIBUTES else ""
 
 
 func _rebuild(rows: Array[Dictionary], key: String) -> void:
@@ -450,30 +426,12 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 			_grid_box.add_child(flow)
 		var card := IndexCard.new()
 		card.set_data(r)
-		card.mouse_entered.connect(_preview.bind(card))
-		card.focus_entered.connect(_preview.bind(card))
-		card.mouse_exited.connect(_strip_idle)
 		card.pressed.connect(open_detail.bind(r["id"]))
 		flow.add_child(card)
 		_cards[r["id"]] = card
 	var tail := Control.new()   # keeps the last card clear of the scroll edge
 	tail.custom_minimum_size = Vector2(1, 4)
 	_grid_box.add_child(tail)
-
-
-func _preview(card: IndexCard) -> void:
-	var d: Dictionary = card.data
-	_s_head.add_theme_color_override("font_color", StatStyle.color(StringName(d.get("color_id", d["id"]))))
-	_s_head.text = "%s   %s" % [d["name"], d["value"]]
-	_s_buff.text = String(d["note"]) if String(d["note"]) != "" else " "
-	_s_tip.text = String(d["tip"]).split("\n")[0]
-
-
-func _strip_idle() -> void:
-	_s_head.add_theme_color_override("font_color", RelicStyle.text)
-	_s_head.text = HINT
-	_s_buff.text = " "
-	_s_tip.text = ""
 
 
 func _fill_detail(d: Dictionary) -> void:
@@ -507,6 +465,7 @@ func _fill_detail(d: Dictionary) -> void:
 		c.queue_free()
 	for s: Dictionary in sim.stat_sources(d["id"], tab == Tab.ATTRIBUTES):
 		_d_sources.add_child(_source_card(s))
+	Tip.set_spec(_buy, Callable(self, "_buy_spec"))   # the price changes after a buy; refreshes the tip if it is up
 	_set_dtab(_dtab)
 
 
@@ -581,9 +540,9 @@ func _layout() -> void:
 	var host: Control = get_parent_control()
 	if host == null:
 		return
-	# The detail page has no info strip under it, so it gets that height too and can grow taller than the grid.
+	# The detail page can grow taller than the grid, which is capped at SCROLL_H.
 	var detail: bool = detail_open()
-	var h: float = clampf(host.size.y - (130.0 if detail else 170.0), 56.0, DETAIL_H if detail else SCROLL_H)
+	var h: float = clampf(host.size.y - 130.0, 56.0, DETAIL_H if detail else SCROLL_H)
 	if _scroll.custom_minimum_size.y != h:
 		_scroll.custom_minimum_size.y = h
 		reset_size()

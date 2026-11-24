@@ -374,6 +374,46 @@ func press_gain_preview(button_id: StringName) -> BigNum:
 	return press_gain(button_id)
 
 
+## The relic part of one pad's press reward right now: the combined multiplier, and the names of the equipped
+## relics behind it. Covers Press Gain (when the pad's reward stat takes it), Zone Press Gain on this pad's zone,
+## and Hot Press Gain while Heat is hot. The pad tooltip shows it so the player can see what applies.
+func press_relic_bonus(button_id: StringName) -> Dictionary:
+	var mult: float = 1.0
+	var names: PackedStringArray = PackedStringArray()
+	var b: ButtonDef = button_defs.get(button_id) as ButtonDef
+	if b == null or relics == null:
+		return {"mult": mult, "names": names}
+	var rs: StatDef = stat_defs.get(b.reward_stat) as StatDef
+	if rs != null and rs.relics_boost_gain:
+		var gain_m: float = relics.multiplier(RelicDef.Effect.MULT_GAIN)
+		if gain_m != 1.0:
+			mult *= gain_m
+			names.append_array(_equipped_names(RelicDef.Effect.MULT_GAIN))
+	var zone_m: float = relics.zone_mult(b.zone)
+	if zone_m != 1.0:
+		mult *= zone_m
+		names.append_array(_equipped_names(RelicDef.Effect.ZONE_GAIN, b.zone))
+	if is_hot():
+		var hot_m: float = 1.0 + _relic_total(RelicDef.Effect.HOT_GAIN)
+		if hot_m != 1.0:
+			mult *= hot_m
+			names.append_array(_equipped_names(RelicDef.Effect.HOT_GAIN))
+	return {"mult": mult, "names": names}
+
+
+## Display names of equipped relics with this effect (and this zone, for ZONE_GAIN).
+func _equipped_names(effect: RelicDef.Effect, zone: StringName = &"") -> PackedStringArray:
+	var out: PackedStringArray = PackedStringArray()
+	for id: StringName in relics.equipped:
+		var d: RelicDef = relics.defs[id] as RelicDef
+		if d.effect != effect:
+			continue
+		if effect == RelicDef.Effect.ZONE_GAIN and d.zone != zone:
+			continue
+		out.append(d.display_name)
+	return out
+
+
 ## Expected reward per press: the preview times the average crit, double-press and surge boosts.
 func press_gain_average(button_id: StringName) -> BigNum:
 	var chance: float = crit_chance(button_id)
@@ -431,6 +471,8 @@ func effect_total(effect: StringName) -> float:
 	for a: AttributeDef in attribute_defs.values():
 		if a.effect == effect:
 			total += a.per_level * float(attr_level(a.id))
+		if a.effect2 != &"" and a.effect2 == effect:
+			total += a.per_level2 * float(attr_level(a.id))
 	return total
 
 
@@ -541,6 +583,9 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	# Echo Stone and Echo Ring: pressing the same pad as the last real press pays more. Pulses don't count.
 	var echo: float = 1.0 + _relic_total(RelicDef.Effect.REPEAT_GAIN) if allow_pulse and button_id == _last_pad else 1.0
 	var gain: BigNum = press_gain(button_id, crit_mult, presses).mul(BigNum.from_float(surge * echo))
+	var proc: float = effect_total(&"press_proc")
+	if proc > 0.0:   # a proc: this press may pay out several times over (Twin Petals, Twin Strike)
+		gain = gain.mul(BigNum.from_float(Formulas.proc_mult(rng.randf(), proc, config.press_proc_mult)))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
 	_open_next_tier(b)

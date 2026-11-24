@@ -1,4 +1,4 @@
-# Plinky decisions log
+# Decision log has moved
 
 Format: date, decision, one line of reasoning. Newest at the bottom. The build agent appends here. Project-side decisions made in the Claude Project go here too (SPEC section 8).
 
@@ -785,6 +785,14 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **What:** a `uid-guard` job in `.github/workflows/ci.yml` fails when any tracked `.gd` or `.gdshader` has no `.uid` next to it on a clean checkout. It is part of the `test` aggregate.
 - **Scenes not covered:** Godot 4 keeps a scene's uid in the `[gd_scene]` header, not in a sidecar. Ten of the twenty `.tscn` files have no header uid, which is valid, so a sidecar rule for scenes would fail main. Add a header check later only if Nathan wants one.
 
+## 2026-11-24 Achievement banner and the Achievements tile
+- **Layout:** the unlock card is now a wide banner centred across the screen, its middle at 38% of the height (a bit above centre), 380 texels wide, so it sits clear of the bottom bar and the centre of the pads. A taste call made in this thread; Nathan can ask for another height.
+- **Menus:** unlocks are held while any menu is open, and a banner up when a menu opens is cut short and shown again later. This replaces the old z-order-only rule, so a menu is never covered.
+- **Look:** the banner unfurls from a sliver in eight whole steps (no smooth scale), Reduce Flashing turns off the dither ink. Per-section particle styles and chimes use existing sound files, so no new audio was added.
+- **Naming:** the hamburger tile and the window title read "Achievements". The internal id `ledger` and the icon file stay, so saves and tests are unaffected.
+- **Not run in-engine:** Godot is not available in the cloud. Unverified: the banner's real size and position at 640x360 and at other window sizes, the particle look, the unfurl timing and the chimes. PC QA should capture an unlock in each section and check it against an open menu.
+- **Every banner waits for menus (PC QA, 2026-11-24):** the season banner and the zone banners (`Banner`, via `Banner.hold`) and the relic toast also wait while a menu is open, and a banner up when a menu opens is held back to the front of the queue and shown after it closes. PC QA saw the season banner cut across the Upgrades cards, and the achievement toast over Stats and Upgrades. Subtitles and tip cards are unchanged (tips already yield to open menus).
+
 ## Relic abilities expansion (2026-11-24)
 - **Why:** Nathan asked for many more relics, each with a unique ability rather than a stat bump. Six relics were not enough variety.
 - **What:** 27 relics across Common to Mythic (4 to 6 each), using 11 new effect kinds appended to `RelicDef.Effect` so existing `.tres` values keep their meaning. Divine and Special are unchanged (weight 0, granted by rebirths and achievements).
@@ -861,6 +869,16 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Props and lights:** props went from 100 to 90 and glow lights from 5 to 3, because the generator cleared props around the moved pads.
 - **Sway tips:** regenerated with the 2026-11-23 command. All 420 sit on the palette colour.
 - Not run in-engine from the cloud.
+## 2026-11-24 Gift second effects and the press proc (minor)
+- **Why:** #237 raised the numbers, but each gift still did one thing. Nathan asked for gifts that matter more, so four gifts now carry a second effect that changes how the game plays.
+- **Schema:** `AttributeDef` gains `effect2` and `per_level2` (default empty and 0). `Sim.effect_total` sums both, so the rest of the game reads a second effect like any other. Existing gifts are unchanged.
+- **Press proc (new effect `press_proc`):** each press has a chance of `per_level2` a level to pay `GameConfig.press_proc_mult` (5) times its reward. Twin Petals and Twin Strike carry it at 0.5% a level, so the cap of 10 gives a 5% chance, about +20% expected press reward. The roll is `Formulas.proc_mult`, which is pure and tested. The roll only draws from the RNG when the effect is owned, so runs without it keep the same random sequence.
+- **Reward-bonus synergy:** Wide Bloom adds 1% a level to `bloom_bonus` and Anvil Plates adds 1% a level to `nucleus_bonus`. Each Bloom or Nucleus then pays that much more on every pad, stacking with the base 25% and with Echo. At cap that is +10% a Bloom, so ten Blooms add 100% on top.
+- **Idle:** the proc runs on presses only, so it raises active play and slightly lengthens the idle ratio. The Bloom bonus applies to pad rewards, and offline tending pays pad rewards too, so it lifts both sides. Neither was measured.
+- **Not done:** no new Bloom-count tier. The existing `unlock_resets` tiers already do the job.
+- **Shown:** the gift card puts the second effect on its line 2, after "now -> next" ("+12% -> +14%  +10%/Bloom"), so the card stays at 52 px and the 180 px list cap holds (per the coordinator, after #242's compact cards). The Upgrades tooltip and the Stats index say "Also now X, next Y". `UpgradeText.second_short` and `second_value` do the text. Line 2 may be too wide for a 150 px card with a long second value, so PC QA should check it at 640x360.
+- **Not shown:** the stat breakdown (`StatSources`) and `TipText.attribute` (no caller in the game, only tests) still show only the primary effect.
+- **Not run in the engine:** the new unit tests run in CI. The idle ratio and pacing still need `tools/sim_bloom.gd` on the PC.
 ## Upgrades menu fit and menu layer (2026-11-24)
 - **Cards:** stacked to three lines (name and level; now to next; pips and cost). The Buy button is gone: the whole card buys, and Enter or Space buys while the card has focus. Two across at 150 px, so the panel is about a third narrower.
 - **Outline and dim:** affordable is a bright green frame; unaffordable is a red frame with the contents dimmed to 55%, so the two read apart. Maxed is gold, locked is dim.
@@ -870,3 +888,28 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Tab highlight:** one function (`Hud._apply_upgrade_tab`) sets the page and the highlight together, and runs on every select and refresh. Opening the menu picks the current zone's tab.
 - Not verified in-engine: the new size at 640x360, the z order against each HUD piece, the dim levels. PC QA should check both zones and a click, a hold and a Enter buy.
 
+
+## Menus clear of the meter, zone gifts only in Upgrades (2026-11-24)
+- **Meter:** a centred menu whose column reaches the momentum meter's column stops 6 px above the meter, so the meter's corner is never covered. Menus that do not reach the meter's column stay centred on the frame. Chosen over hiding the meter while a menu is open, because the meter's state stays visible during a menu.
+- **Attributes:** the Stats and Attributes page lists only Prestige and Rebirth Perk attributes. Zone gifts (Bloom, Nucleus) appear only in the Upgrades gallery, which already groups them. Chosen over filtering by zone, because a gift has one home and two places showing it would drift.
+- Not verified in-engine: the panel's new height above the meter at 640x360, and the Attributes page with a Nucleus save. PC QA should check both.
+
+## Every zone's gifts get a tab in Upgrades (2026-11-24)
+- **Why:** #228 showed only the zone you stand in, so the quarry's Upgrades gallery was one lone "Nucleus Gifts" header. It read as empty.
+- **Tabs:** every zone reset's gifts have a tab, locked or not. The zone you stand in comes first in the strip, then the others in reset order. Each tier already says what gates it.
+- **Kept as is:** `group_shown` still hides a zone's contents until that zone opens. The HUD currency chips and the Stats index use it, so their behaviour does not change. The gallery uses the new `UpgradeText.tab_shown`.
+- **Tab look:** the active tab is drawn in its accent colour with a solid underline, not a dotted focus box. The tab keeps the ">" marker and sweep on hover or focus. The title and pause menus keep their focus box.
+- Not verified in-engine: the strip at 640x360 with two zones, and the tab order after a zone change. PC QA should check the meadow and the quarry.
+
+## Upgrade tabs follow keyboard focus (2026-11-24)
+- **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
+- **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
+- Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
+
+## WASD walks while a menu is open (2026-11-24)
+- **Why:** opening any menu froze the walker, so a player could not walk while a panel was up. The ask was WASD only, with GUI clicks still blocked.
+- **Rule:** `PadInput.move_vector` reads WASD by physical key while `menu_open` (`menu_walk_vector`, `walk_from_keys`). Arrows, d-pad and the left stick do not walk in a menu, because Godot's ui_* actions use them for menu focus. Pad users still cannot walk in a menu. That is a choice, not a gap.
+- **Still blocked:** Space (jump) while a menu is open, because Space presses buttons. Typing in any LineEdit or TextEdit (Feedback, dev console) stops all walking. A Settings key rebind (`PadInput.key_capture`, set by the display panel) stops walking too, so W can be bound without moving.
+- **Sprint and crouch** still work while walking in a menu. They are modifiers, and no menu uses Shift or C.
+- **Tap-to-move:** a pending walk target is dropped when a menu opens or a field takes keys, so the walker does not keep walking after the menu is up.
+- Not verified in-engine: walking with WASD under the Upgrades, Relics and Settings panels, typing in Feedback with W/A/S/D, and rebinding W in Settings. PC QA should check those four.

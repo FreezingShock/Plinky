@@ -23,6 +23,11 @@ static func bring_front(p: Control) -> void:
 	var par: Node = p.get_parent()
 	if par != null and p.visible:
 		par.move_child(p, par.get_child_count() - 1)
+		# The panel's CloseX is a sibling that must stay after it: Godot routes clicks by tree order, so an X left
+		# behind the panel never receives them.
+		for c: Node in par.get_children():
+			if c is CloseX and (c as CloseX).follows(p):
+				par.move_child(c, par.get_child_count() - 1)
 
 
 ## Call once for any menu panel that is not attached with MenuAnim, so it gets the same front-of-HUD order.

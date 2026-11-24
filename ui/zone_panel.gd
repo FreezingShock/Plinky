@@ -428,7 +428,13 @@ func _pad_tip(id: StringName) -> Array:
 	var cost_name: String = (sim.stat_defs[b.cost_stat] as StatDef).display_name
 	var gain_name: String = (sim.stat_defs[b.reward_stat] as StatDef).display_name
 	var state: String = "Ready. Stand on it or hold click." if sim.can_afford(id) else "Need %s more." % cost.sub(sim.get_stat(b.cost_stat)).format()
-	return ["%s %d" % [String(b.row).capitalize(), b.row_index + 1], "Costs %s %s. Gives +%s %s.\n%s" % [cost.format(), cost_name, sim.press_gain_preview(id).format(), gain_name, state]]
+	# Gives already includes relic boosts; this line says which relics are behind them.
+	var rb: Dictionary = sim.press_relic_bonus(id)
+	var names: PackedStringArray = rb["names"]
+	var relic_part: String = ""
+	if not names.is_empty():
+		relic_part = " Relics: %s (%s)." % [NumberFormat.mult_f(float(rb["mult"])), ", ".join(names)]
+	return ["%s %d" % [String(b.row).capitalize(), b.row_index + 1], "Costs %s %s. Gives +%s %s.%s\n%s" % [cost.format(), cost_name, sim.press_gain_preview(id).format(), gain_name, relic_part, state]]
 
 
 func _area_pads(aid: StringName) -> PackedStringArray:

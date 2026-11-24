@@ -1,0 +1,117 @@
+name: Stuck PR watch
+
+# Finds open, non-draft PRs that have been quiet for 20 minutes and are stuck: no check runs, a merge conflict,
+# a red or cancelled check, a run that has been going for 30+ minutes, or auto-merge waiting on a `test` that never passed.
+# It comments once on each such PR (the comment is updated in place, so it does not spam) and writes a summary table.
+# Schedules run from the default branch only, so this file takes effect once it is merged.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: read
+
+concurrency:
+  group: stuck-pr-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check open PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const MARK = '<!-- stuck-pr-watch -->';
+            const QUIET_MS = 20 * 60 * 1000;
+            const RUN_MS = 30 * 60 * 1000;
+            const { owner, repo } = context.repo;
+            const now = Date.now();
+            const minutes = (ms) => Math.round(ms / 60000);
+
+            const listed = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+            const rows = [];
+
+            for (const item of listed) {
+              if (item.draft) continue;
+              const quietMs = now - Date.parse(item.updated_at);
+              if (quietMs < QUIET_MS) continue;
+
+              const pr = (await github.rest.pulls.get({ owner, repo, pull_number: item.number })).data;
+              const runs = (await github.rest.checks.listForRef({ owner, repo, ref: pr.head.sha, per_page: 100 })).data.check_runs;
+
+              // Latest run per check name (reruns keep the name, so the highest id wins).
+              const latest = new Map();
+              for (const r of runs) {
+                if (r.name === 'stuck-pr-watch') continue;
+                const prev = latest.get(r.name);
+                if (!prev || r.id > prev.id) latest.set(r.name, r);
+              }
+
+              const reasons = [];
+              if (latest.size === 0) reasons.push('No check runs on the head commit. CI never started.');
+              if (pr.mergeable_state === 'dirty') reasons.push('Merge conflict with main. Merge main in and push.');
+
+              for (const r of latest.values()) {
+                if (r.status !== 'completed') {
+                  const ageMs = now - Date.parse(r.started_at || r.created_at);
+                  if (ageMs > RUN_MS) reasons.push(`\`${r.name}\` has been running for ${minutes(ageMs)} min: ${r.html_url}`);
+                } else if (['failure', 'timed_out', 'action_required'].includes(r.conclusion)) {
+                  reasons.push(`\`${r.name}\` failed: ${r.html_url}`);
+                } else if (r.conclusion === 'cancelled' && r.name === 'test') {
+                  reasons.push('`test` was cancelled and never re-run. Re-run the workflow or push a fix.');
+                }
+              }
+
+              const test = latest.get('test');
+              if (pr.auto_merge && !(test && test.conclusion === 'success')) {
+                reasons.push('Auto-merge is on, but `test` has not passed on the head commit.');
+              }
+
+              rows.push({ number: pr.number, title: pr.title, quiet: minutes(quietMs), reasons });
+              if (reasons.length === 0) continue;
+
+              const body = [
+                MARK,
+                `**Stuck PR watch:** no activity on this PR for ${minutes(quietMs)} min, and it needs attention.`,
+                '',
+                ...reasons.map((r) => `- ${r}`),
+                '',
+                `Head \`${pr.head.sha.slice(0, 7)}\`, checked ${new Date(now).toISOString()}.`,
+                '',
+                'The thread that owns this PR must fix it, or close it. See docs/pitfalls.md and docs/ci.md.',
+                '',
+                '_Posted by the stuck-PR watchdog (`.github/workflows/stuck-pr-watch.yml`)._',
+              ].join('\n');
+
+              try {
+                const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: pr.number, per_page: 100 });
+                const mine = comments.find((c) => c.body && c.body.includes(MARK));
+                if (mine) {
+                  await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+                } else {
+                  await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                }
+              } catch (err) {
+                core.warning(`Could not comment on #${pr.number}: ${err.message}`);
+              }
+            }
+
+            const flagged = rows.filter((r) => r.reasons.length > 0).length;
+            const summary = core.summary
+              .addHeading('Stuck PR watch')
+              .addRaw(`Checked ${new Date(now).toISOString()}. Open non-draft PRs quiet for 20+ min: ${rows.length}. Flagged: ${flagged}.`, true);
+            if (rows.length > 0) {
+              summary.addTable([
+                [{ data: 'PR', header: true }, { data: 'Quiet', header: true }, { data: 'Status', header: true }],
+                ...rows.map((r) => [`#${r.number} ${r.title}`, `${r.quiet} min`, r.reasons.length ? r.reasons.join(' ') : 'OK']),
+              ]);
+            }
+            await summary.write();
