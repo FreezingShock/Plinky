@@ -329,12 +329,12 @@
    "sort_y": 220.7
   },
   {
-   "file": "sprites/tier_alloy_023.png",
-   "kind": "tier_alloy",
+   "file": "sprites/tier_alloy_alt_023.png",
+   "kind": "tier_alloy_alt",
    "x": 844,
-   "y": 198,
+   "y": 203,
    "w": 42,
-   "h": 36,
+   "h": 31,
    "foot": [
     864.7,
     222.8
@@ -758,12 +758,12 @@
    "sort_y": 323.9
   },
   {
-   "file": "sprites/tier_ingot_056.png",
-   "kind": "tier_ingot",
+   "file": "sprites/tier_ingot_alt_056.png",
+   "kind": "tier_ingot_alt",
    "x": 1045,
-   "y": 300,
+   "y": 310,
    "w": 44,
-   "h": 35,
+   "h": 25,
    "foot": [
     1067.5,
     324.0
@@ -1148,12 +1148,12 @@
    "sort_y": 397.3
   },
   {
-   "file": "sprites/tier_slag_086.png",
-   "kind": "tier_slag",
-   "x": 1077,
-   "y": 375,
-   "w": 38,
-   "h": 34,
+   "file": "sprites/tier_slag_alt_086.png",
+   "kind": "tier_slag_alt",
+   "x": 1078,
+   "y": 377,
+   "w": 36,
+   "h": 31,
    "foot": [
     1096.1,
     399.3
@@ -1720,12 +1720,12 @@
    "sort_y": 510.8
   },
   {
-   "file": "sprites/tier_ore_130.png",
-   "kind": "tier_ore",
-   "x": 482,
-   "y": 486,
-   "w": 44,
-   "h": 35,
+   "file": "sprites/tier_ore_alt_130.png",
+   "kind": "tier_ore_alt",
+   "x": 485,
+   "y": 493,
+   "w": 38,
+   "h": 26,
    "foot": [
     503.9,
     510.4
@@ -2266,12 +2266,12 @@
    "sort_y": 619.4
   },
   {
-   "file": "sprites/tier_cinder_172.png",
-   "kind": "tier_cinder",
-   "x": 724,
-   "y": 601,
-   "w": 44,
-   "h": 33,
+   "file": "sprites/tier_cinder_alt_172.png",
+   "kind": "tier_cinder_alt",
+   "x": 727,
+   "y": 607,
+   "w": 38,
+   "h": 26,
    "foot": [
     746.5,
     623.0
