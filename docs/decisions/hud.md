@@ -306,3 +306,10 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Why:** PC QA found that Left and Right moved the tab highlight in the quarry but left the cards on Nucleus. The tab only selected on press, so focus and selection drifted apart.
 - **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
 - Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
+
+## 2026-11-24: Shared tooltips for the Stats and Attributes index
+- The index's hover strip is gone, so the grid is taller (`IndexPanel.SCROLL_H` 150 to 200). Each card binds `Tip` to `TipText.index_row`: header with icon, name and stat colour; level or amount; effect now and next; cost; description; then a yellow "Click to open!". Buy says "Click to buy!" when affordable.
+- Reason: one shared, pooled tooltip for every menu, instead of a per-menu strip. `TipHost` reuses its rows, labels and icons between shows.
+- The stale "Prestige and RP" header is removed (both went in #209). Display settings drop their hover-to-hint lines; rows with a hint use the shared tooltip.
+- Yellow is `TipText.CLICK` (#ffd93d). Not run in-engine: `tests/test_tooltips.gd` passed on CI's unit job after one fix (the "now" field). PC QA should hover each card, check spacing at 640x360 and a large UI scale, and buy one attribute.
+
