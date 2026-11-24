@@ -545,8 +545,11 @@ for lm in LAY.LANDMARKS:
 # bridge where the main road crosses the stream
 bu, bv = s2uv(*LAY.BRIDGE); put('bridge', bu, bv, 1.0, rot=.785, z_extra=3.0, count=False)
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
+# trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
+TREE_GAP = dict(oak=6.0, pine=8.0)
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
+    if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
