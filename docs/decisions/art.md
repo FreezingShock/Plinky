@@ -365,3 +365,11 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Idle keeps the last facing,** so the walker stays turned the way it last moved. It used to snap to front.
 - **Atlas:** 55 cells in 8 columns (512 x 448). `world/walker_pose.gd` holds the cell numbers and the octant mapping, and `tests/test_walker_pose.gd` checks them.
 - **Not verified in-engine on the PC:** the diagonal three-quarter views and the sprint tails at normal zoom. Checked in the cloud with Godot 4.7.2 under xvfb, `tests/run.gd` passes (7890 checks) and `tools/walker_cells_shot.gd` draws every facing and phase through `WalkerBody`.
+## 2026-11-24: Rain glow and moonlit puddles (Nathan picked mockup C of three)
+- **Look:** in rain, each lamp pool grows 35% wider and 40% brighter (`SkyModel.lamp_bloom`, full rain at 1.0). The flower-field glow grows 50% (`FlowerGlow.RAIN_BLOOM`). Each lamp is mirrored in the wet ground 14 texels below it, dithered by the Bayer matrix so it reads as puddle glints, not a sheen. Night puddles lighten toward a moon grey-teal instead of black.
+- **Where:** `SkyCycle._push_lights` (bloom), `day_night.gdshader` (`reflect_amt`, mirror summed in the same pool loop), `SkyCycle._update_light` (puddle colour, reflect amount), `FlowerGlow._apply_alpha` (flower bloom; alpha now follows rain even with Reduce motion on).
+- **Rejected:** a stronger bloom (about twice the first) floods the flower fields in blue, so it is not the look.
+- **Pure:** `SkyModel.lamp_bloom` is tested in `tests/test_weather.gd` (dry unchanged, wet brighter, monotone, capped).
+- **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests 7787 checks, 0 failed. Night and dusk, clear and rain, in `tools/weather_mock_shots.tscn`. Frame times in `tools/weather_perf.tscn` are within noise of the old build on software Vulkan, so the cost is not measured on a GPU.
+- **Not verified on the PC:** how strong the mirror reads on a real GPU, and the night look at full quality.
+- **Not in this change yet:** drips off trees and roofs, the sound layers, and the fog and snow pass. These need their own mockups.

@@ -421,6 +421,7 @@ func _update(t: float) -> void:
 		rain = 0.0
 		wind = 0.0
 	_shade_mat.set_shader_parameter("rain", rain)
+	_shade_mat.set_shader_parameter("reflect_amt", clampf(rain / maxf(model.rain_max, 0.001), 0.0, 1.0))
 	MeadowLife.wind = 0.0 if MeadowLife.reduce_motion else wind
 	rain_layer.visible = not MeadowLife.reduce_motion
 	var snow_w: float = _season.weights[3]
@@ -559,6 +560,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 		var rings_mist: bool = GraphicsQuality.rain_rings_and_mist()   # Low drops the rings and the dawn mist; the puddles stay
 		var splash01: float = 0.0 if (calm or not rings_mist) else rain01 * outdoor * (1.0 - snow_w)
 		var puddle_col: Color = Color(0.46, 0.64, 0.64).lerp(fog_col, 0.45 * (1.0 - night_k)) * (0.3 + 0.7 * (1.0 - night_k))   # the sky in the water, lighter by day; at night, dark water
+		puddle_col = puddle_col.lerp(Color(0.42, 0.56, 0.66), 0.5 * night_k)   # at night the water catches the moon, not black
 		var glint: float = clampf(maxf(sun_h, 0.0) * 2.0, 0.0, 1.0) * outdoor
 		# fallen blossom: the petal colour from the season's petal list, else the paper tone
 		var blossom_col: Color = Color(0.95, 0.72, 0.8)
@@ -683,6 +685,7 @@ func _push_lights(t: float, steady: bool) -> void:
 	var focus: Vector2 = _walker.position if _walker != null else area.get_center()
 	var picks: Array[Dictionary] = []
 	var lamp_k: float = lamp_light_k(night01)
+	var bloom: Vector2 = SkyModel.lamp_bloom(MeadowLife.rain)   # rain: lamps swell and warm
 	for L: Dictionary in _lights:
 		var is_walker: bool = L.kind == &"walker"
 		var pos: Vector2 = L.pos
@@ -694,7 +697,9 @@ func _push_lights(t: float, steady: bool) -> void:
 		var strength: float = float(L.strength) * (lamp_k if L.kind == &"lantern" else 1.0)
 		if strength <= 0.0:
 			continue   # a lamp by day takes no slot in the shader
-		picks.append({"pos": pos, "radius": float(L.radius), "strength": strength, "tint": L.tint as Color,
+		strength *= bloom.y   # the shader caps the pool at 1.0
+		var radius: float = float(L.radius) * bloom.x
+		picks.append({"pos": pos, "radius": radius, "strength": strength, "tint": L.tint as Color,
 				"walker": is_walker, "d": Vector2(q.x, q.y * 2.0).length_squared()})
 	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if a.walker != b.walker:
