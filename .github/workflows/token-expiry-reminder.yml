@@ -1,0 +1,56 @@
+name: Token expiry reminder
+
+# RELEASE_TOKEN (the fine-grained PAT that the Release workflow pushes with) expires on EXPIRES below. GitHub does not
+# tell a workflow when a secret expires, so this reminds on a date: from 21 days before expiry it opens ONE issue
+# assigned to the repo owner. If that issue exists in any state (open or closed), nothing new is opened, so closing it
+# after renewal stops the reminder. Renewing with a new expiry date: change EXPIRES here, and docs/ci.md.
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPIRES: "2026-12-23"
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open the renewal issue when the token is close to expiry
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const expires = Date.parse(`${process.env.EXPIRES}T00:00:00Z`);
+            const remindFrom = expires - 21 * 24 * 60 * 60 * 1000;
+            if (Date.now() < remindFrom) {
+              core.info(`RELEASE_TOKEN expires ${process.env.EXPIRES}. Reminder starts ${new Date(remindFrom).toISOString().slice(0, 10)}.`);
+              return;
+            }
+            const title = `Renew RELEASE_TOKEN before ${process.env.EXPIRES}`;
+            const all = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'all', per_page: 100 });
+            if (all.some((i) => i.title === title)) {
+              core.info('Renewal reminder already exists.');
+              return;
+            }
+            const body = [
+              `The \`RELEASE_TOKEN\` secret expires on **${process.env.EXPIRES}**. After that the Release workflow cannot push its version commit to \`main\`, its run goes red, and changelog fragments pile up until it is renewed.`,
+              '',
+              'To renew (never paste the token anywhere):',
+              '1. GitHub > Settings > Developer settings > Fine-grained tokens. Regenerate the Plinky token, or create one with Contents: read and write on this repository only, and set the expiry.',
+              '2. Repo Settings > Secrets and variables > Actions > update `RELEASE_TOKEN`.',
+              '3. Actions > Release > Run workflow, and check the run is green.',
+              '4. Close this issue. Once the new expiry is set, change `EXPIRES` in `.github/workflows/token-expiry-reminder.yml`.',
+              '',
+              'Details: docs/ci.md, section Release.',
+              '',
+              '_Opened by `.github/workflows/token-expiry-reminder.yml`._',
+            ].join('\n');
+            await github.rest.issues.create({ owner, repo, title, body, assignees: [owner] });
+            core.notice(`Opened: ${title}`);
