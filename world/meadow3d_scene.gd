@@ -6,6 +6,7 @@ const DIR: String = "res://assets/art/zone1/meadow3d/"
 const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1/meadow3d/backdrop_far.png")
 const GROUND_FG: Texture2D = preload("res://assets/art/zone1/meadow3d/ground_fg.png")
 const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
+const CLEARING_GARDEN_PATH: String = "res://world/clearing_gardens.json"
 @export_file("*.json") var placements_path: String = DIR + "placements3d.json"
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd). Rocks and crystals stay put.
@@ -63,7 +64,21 @@ func _ready() -> void:
 		anchors.add_child(m)
 	_ground = ground
 	_add_life(ground)
+	_add_gardens()
 	_add_sky()
+
+
+## The Starting Clearing's flower fields: the Sprout and Clover rows each sit in a field of their own statistic's flower.
+## One node draws them all (world/garden_layer.gd); tools/art/gen_clearing_gardens.py writes the flowers.
+func _add_gardens() -> void:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(CLEARING_GARDEN_PATH))
+	if not parsed is Dictionary:
+		return
+	var layer := GardenLayer.new()
+	layer.name = "Gardens"
+	add_child(layer)
+	layer.setup((parsed as Dictionary).get("flowers", []) as Array)
+	layer.pusher_group = &"walker"
 
 
 ## World life (world/meadow_life.gd): grass sway on the ground, fireflies and friends over everything.
