@@ -47,6 +47,8 @@ const CHICKEN_MAX: int = 6
 const RABBIT_COUNT_MIN: int = 2
 const RABBIT_COUNT_MAX: int = 8
 const RABBIT_SPACING: float = 30.0   # texels between burrow spots
+const START_RABBITS: int = 2         # rabbits that sit at the grass edge near the arrival point
+const START_REACH: float = 260.0     # iso texels: how far from the arrival point those burrows may be
 const RABBIT_GRAZE_REACH: float = 16.0  # the longest grazing hop, texels
 
 ## Palette roles used by the sprites below (art-bible section 3): k ink, d shadow, g deep, b base, l light, y accent,
@@ -85,6 +87,7 @@ var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _sprites: Dictionary = {}             # name -> {runs: Array[PackedInt32Array], w, h}
 var _pads: Array[Vector2] = []            # every pad centre, ready or not
 var _water: Array[Dictionary] = []        # water ellipses from the data
+var _start: Vector2 = Vector2.INF        # the arrival point (life data "start"), where the start view gets rabbits
 var _graze: Array[Vector2] = []           # grass tips off the pads and out of the water
 var _shore: Array[Vector2] = []           # grass tips just outside a water edge
 var _rabbits: Array[Dictionary] = []
@@ -126,6 +129,7 @@ func setup(life: Dictionary) -> void:
 			if k >= WATER_KEEP and k <= SHORE_OUT:
 				_shore.append(at)
 				break
+	_start = _start_point(life)
 	_spawn_rabbits()
 	_spawn_water_critters()
 	_farms.clear()
@@ -146,21 +150,48 @@ func _spawn_rabbits() -> void:
 	if _graze.is_empty():
 		return
 	var n: int = clampi(roundi(sqrt(float(_graze.size())) * 0.3), RABBIT_COUNT_MIN, RABBIT_COUNT_MAX)
+	# The arrival point (life data "start") gets its first rabbits at the grass tips nearest to it, so the start view is not empty.
+	var near_start: Array[Vector2] = []
+	if _start.is_finite():
+		var by_start: Array[Vector2] = []
+		by_start.append_array(_graze)
+		by_start.sort_custom(func(a: Vector2, b: Vector2) -> bool: return MeadowLife.iso_distance(a, _start) < MeadowLife.iso_distance(b, _start))
+		for g: Vector2 in by_start:
+			if near_start.size() >= START_RABBITS or MeadowLife.iso_distance(g, _start) > START_REACH:
+				break
+			var apart: bool = true
+			for h: Vector2 in near_start:
+				if h.distance_to(g) < RABBIT_SPACING:
+					apart = false
+					break
+			if apart:
+				near_start.append(g)
 	for i: int in n:
 		var home: Vector2 = _graze[0]
-		for tries: int in 12:
-			home = _hash_pick(_graze, i * 17 + tries * 5 + 5)
-			var spaced: bool = true
-			for r: Dictionary in _rabbits:
-				if (r.home as Vector2).distance_to(home) < RABBIT_SPACING:
-					spaced = false
+		if i < near_start.size():
+			home = near_start[i]
+		else:
+			for tries: int in 12:
+				home = _hash_pick(_graze, i * 17 + tries * 5 + 5)
+				var spaced: bool = true
+				for r: Dictionary in _rabbits:
+					if (r.home as Vector2).distance_to(home) < RABBIT_SPACING:
+						spaced = false
+						break
+				if spaced:
 					break
-			if spaced:
-				break
 		_rabbits.append({"home": home, "pos": home, "from": home, "to": home, "lift": 0.0,
 			"hop_t": 0.0, "hop_dur": 0.0, "fleeing": false, "route": home,
 			"timer": 1.0 + MeadowLife.hash01(i * 3 + 2) * 4.0, "watch": 0.0, "fade": 0.0, "cool": 0.0,
 			"face": 1.0, "seed": i * 31 + 3})
+
+
+## The arrival point from the zone data ("start"), or Vector2.INF when the zone has none.
+func _start_point(life: Dictionary) -> Vector2:
+	var s: Array = life.get("start", []) as Array
+	if s.size() < 2:
+		return Vector2.INF
+	return Vector2(float(s[0]), float(s[1]))
 
 
 func _spawn_water_critters() -> void:
