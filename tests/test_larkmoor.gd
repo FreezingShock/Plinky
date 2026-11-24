@@ -63,6 +63,18 @@ func run(t: Object) -> void:
 	var world: Array = data.get("world", []) as Array
 	t.ok(world.size() == 4 and float(world[2]) > 1000.0, "world rect is bigger than the 640x360 frame")
 	t.ok(not WalkMask.walkable(Vector2(5.0, 5.0)), "open water at the corner is not walkable")
+	# the river: one course from Heronmere into the mere. Its water is never walkable on foot, but the mask flags it, so the
+	# walker can jump it. Landing in it sends the walker to the nearest bank. Both bridge decks stand on the river.
+	var river := Vector2(1400.0, 927.0)   # across the river at x 1400: water from y 922 to 932, walkable banks either side
+	t.ok(not WalkMask.walkable(river) and WalkMask.is_water(river), "the river is water: not walkable on foot, flagged for a jump")
+	t.ok(not WalkMask.is_water(Vector2(1400.0, 900.0)) and WalkMask.walkable(Vector2(1400.0, 900.0)), "dry bank beside the river is walkable and not water")
+	t.ok(WalkMask.walkable(Vector2(1400.0, 917.0)) and WalkMask.walkable(Vector2(1400.0, 935.0)), "walkable banks on both sides of the river")
+	var bank: Vector2 = WalkMask.landing(river)
+	t.ok(WalkMask.walkable(bank) and bank.distance_to(river) <= 8.0, "landing in the river sends the walker to the nearest bank (%s)" % str(bank))
+	t.eq(WalkMask.landing(Vector2(1400.0, 900.0)), Vector2(1400.0, 900.0), "a walkable spot is where the walker lands")
+	t.ok(WalkMask.walkable(Vector2(1524.0, 912.0)) and not WalkMask.is_water(Vector2(1524.0, 912.0)), "the main bridge deck is walkable over the river")
+	t.ok(WalkMask.walkable(Vector2(1188.0, 974.0)), "the footbridge deck on the west trail is walkable")
+	t.eq(WalkMask.landing(Vector2(1524.0, 912.0)), Vector2(1524.0, 912.0), "a bridge deck is where the walker lands, not the bank")
 
 	# the scene node itself
 	var scene: Node = (load(z.scene_path) as PackedScene).instantiate()

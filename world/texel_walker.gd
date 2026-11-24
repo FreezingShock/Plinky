@@ -143,6 +143,10 @@ func _process(delta: float) -> void:
 		Audio.footstep(MeadowSites.surface_at(position), 1.0)   # the push-off
 		_air_face = _face if dir != Vector2.ZERO else &"front"
 	if motion.just_landed:
+		# a landing in the river sends the walker to the bank it jumped from or towards (WalkMask.landing)
+		if not WalkMask.walkable(position):
+			position = WalkMask.landing(position)
+			_kick_dust(5, Vector2.ZERO)   # a splash
 		_kick_dust(2 + int(motion.land_impact * 2.0), Vector2.ZERO)
 		Audio.footstep(MeadowSites.surface_at(position), clampf(motion.land_impact * 3.0, 0.0, 5.0))   # a hard landing thumps
 		landed.emit(motion.land_impact)
@@ -152,7 +156,7 @@ func _process(delta: float) -> void:
 		var step := Vector2(dir.x, dir.y * 0.5) * speed * delta
 		if _has_target:
 			step = step.limit_length((_goal() - position).length())
-		var moved: bool = _try_step(step)
+		var moved: bool = _try_step(step, not motion.grounded)
 		if moved:
 			GameState.sim.feed_momentum(step.length())
 			_last_dir = dir
@@ -203,15 +207,16 @@ func _kick_dust(n: int, dir: Vector2) -> void:
 		_body.puff(position + jitter + back * 3.0, back * randf_range(8.0, 20.0) + Vector2(randf_range(-6.0, 6.0), randf_range(-8.0, -2.0)))
 
 
-## Move by step if the new spot is walkable, else slide along x or y. Returns whether the walker moved.
-func _try_step(step: Vector2) -> bool:
+## Move by step if the new spot is walkable, else slide along x or y. In the air (airborne) the walker may also pass
+## over river water, so a jump can clear a narrow channel. Returns whether the walker moved.
+func _try_step(step: Vector2, airborne: bool = false) -> bool:
 	for s: Vector2 in [step, Vector2(step.x, 0.0), Vector2(0.0, step.y)]:
 		if s == Vector2.ZERO:
 			continue
 		var q := Vector2(
 			clampf(position.x + s.x, bounds.position.x, bounds.end.x),
 			clampf(position.y + s.y, bounds.position.y, bounds.end.y))
-		if WalkMask.walkable(q):
+		if WalkMask.walkable(q) or (airborne and WalkMask.is_water(q)):
 			position = q
 			return true
 	return false
