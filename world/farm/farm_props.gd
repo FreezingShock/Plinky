@@ -1,10 +1,10 @@
 class_name FarmProps
 extends RefCounted
-## The Larkmoor farm district (Thistle Rise): irregular fields of wheat on tilled soil that gust and part around the walker, a barn, a
+## The Larkmoor farm district (Foxglove Rise): irregular fields of wheat on tilled soil that gust and part around the walker, a barn, a
 ## shed, a scarecrow, hay bales, a cart and crates. The layout comes from assets/art/zone1b/farm/farm.json
 ## (tools/art/place_farm.py); the props from tools/art/gen_farm.py; the wheat sheets from tools/bake_wheat.gd, drawn by
 ## WheatClump from each clump's seed. Plain props are sprites at their foot with the meadow's rim light and a cast
-## shadow. Wheat clumps are sprites at their foot too, so the walker sorts against them by Y, and FarmWheat animates them.
+## shadow. Wheat clumps are canvas items at their foot, owned by FarmWheat (no node each), so the walker sorts against them by Y.
 
 const MANIFEST: String = "res://assets/art/zone1b/farm/farm.json"
 const DIR: String = "res://assets/art/zone1b/farm/"
@@ -58,6 +58,13 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 		var fa: Array = item.get("foot", []) as Array
 		var foot := Vector2(float(fa[0]), float(fa[1]))
 		var origin := Vector2(float(item.get("x", 0)), float(item.get("y", 0)))
+		if is_field(kind):
+			# Wheat is a canvas item owned by the driver, not a node: it sorts by Y like a sprite and costs no node.
+			var w: int = int(item.get("w", FIELD_FRAME_W))
+			var h: int = int(item.get("h", FIELD_FRAME_W))
+			var clump: Dictionary = WheatClump.generate(int(item.get("seed", 0)), w, h, int(item.get("stage", 1)))
+			wheat.add_clump(parent, origin, foot, tex, clump, int(item.get("phase", 0)))
+			continue
 		var sp := Sprite2D.new()
 		sp.name = "Farm%d_%s" % [n, kind.trim_prefix("farm_")]
 		n += 1
@@ -66,15 +73,6 @@ static func spawn(parent: Node2D, sky: SkyCycle, shadows: SkyShadows, rim: Shade
 		sp.centered = false
 		sp.position = foot
 		sp.offset = origin - foot
-		if is_field(kind):
-			var w: int = int(item.get("w", FIELD_FRAME_W))
-			var h: int = int(item.get("h", FIELD_FRAME_W))
-			sp.region_enabled = true
-			sp.region_rect = Rect2(0.0, 0.0, float(w), float(h))
-			parent.add_child(sp)
-			var clump: Dictionary = WheatClump.generate(int(item.get("seed", 0)), w, h, int(item.get("stage", 1)))
-			wheat.add_clump(sp, clump, int(item.get("phase", 0)))
-			continue
 		if rim != null and not is_soil(kind):
 			sp.material = rim
 		parent.add_child(sp)

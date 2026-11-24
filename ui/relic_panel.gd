@@ -47,11 +47,62 @@ var _grid: GridContainer
 var _hint: Label
 var _slots_shown: Array[StringName] = []
 var _slots_primed: bool = false
+var _outer: VBoxContainer                ## the body: every built node sits under it
+var _built: bool = false             ## the nodes exist (the panel is open or has been opened this visit)
 
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", AsciiBox.panel())
+	visibility_changed.connect(_on_visibility)
+
+
+## The gallery's nodes exist only while it is open (the node budget, docs/perf.md). Opening builds them, closing frees
+## them. The filter and the open tier are kept across a close, so the gallery reopens as the player left it.
+func _on_visibility() -> void:
+	if visible:
+		_ensure()
+		refresh()
+	else:
+		_teardown()
+
+
+func _ensure() -> void:
+	if _built:
+		return
+	_built = true
+	_build()
+	_rebuild_tabs()
+
+
+func _teardown() -> void:
+	if not _built:
+		return
+	_built = false
+	Tip.hide_all()
+	# Only the body is freed. The menu router's animator and the close X are children too, and stay.
+	if _outer != null:
+		remove_child(_outer)
+		_outer.queue_free()
+	_outer = null
+	_head_count = null
+	_show_btn = null
+	_top = null
+	_slots_row = null
+	_bonus = null
+	_tabs = null
+	_tab_buttons.clear()
+	_scroll = null
+	_page = null
+	_grid = null
+	_hint = null
+	_slots_shown.clear()
+	_slots_primed = false
+
+
+func _build() -> void:
 	var outer := VBoxContainer.new()
+	_outer = outer
+	# The rest of this function builds into `outer`, the one node _teardown frees.
 	outer.add_theme_constant_override("separation", GAP)
 	add_child(outer)
 	var head := HBoxContainer.new()
@@ -216,6 +267,15 @@ func bind(inv: RelicInventory) -> void:
 	inventory = inv
 	inv.changed.connect(refresh)
 	_ranks = inv.tier_ranks()
+	if not _ranks.is_empty() and not _ranks.has(_rank):
+		_rank = _ranks[0]
+	if _built:
+		_rebuild_tabs()
+	refresh()
+
+
+## One chip per rarity tab that has relics. Built with the panel, and again on bind (the ranks can change).
+func _rebuild_tabs() -> void:
 	for c in _tabs.get_children():
 		_tabs.remove_child(c)
 		c.queue_free()
@@ -228,13 +288,10 @@ func bind(inv: RelicInventory) -> void:
 			refresh())
 		_tabs.add_child(b)
 		_tab_buttons[r] = b
-	if not _ranks.is_empty() and not _ranks.has(_rank):
-		_rank = _ranks[0]
-	refresh()
 
 
 func refresh() -> void:
-	if inventory == null:
+	if inventory == null or not _built:
 		return
 	var refocus: StringName = &""
 	var owner_ctl: Control = get_viewport().gui_get_focus_owner() if is_inside_tree() else null

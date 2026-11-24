@@ -12,6 +12,9 @@ const OFF: float = 0.003
 const RAIN_LAYER: StringName = &"rain"
 const RAIN_RATE: int = 11025              # rain is low, soft patter: a low rate costs little to make and sounds the same
 const RAIN_SECONDS: float = 6.0
+const THUNDER_RATE: int = 11025
+const THUNDER_SECONDS: float = 4.5       ## a rumble: low-passed noise that rolls and dies away
+const THUNDER_DB: float = -6.0           ## at a full downpour, before the Ambience bus slider
 ## Level of each layer at gain 1, in dB. The Ambience bus slider scales all of them.
 const BASE_DB: Dictionary = {
 	&"wind_day": -9.0, &"wind_night": -10.0, &"wind_winter": -9.0,
@@ -28,6 +31,11 @@ var _clock: float = 0.0
 var _bird: float = 1.0
 var _day: float = 1.0
 var _rain_stream: AudioStreamWAV = null
+var _snow_w: float = 0.0           # winter weight: rain is snow then, so there is no thunder
+var _thunder_player: AudioStreamPlayer
+var _thunder_stream: AudioStreamWAV = null
+var _thunder_due: float = -1.0     # sky time the rumble is due, -1 when none is waiting
+var _storm_window: int = -999999   # the 40 s lightning window the schedule last looked at
 
 
 func _ready() -> void:
@@ -42,6 +50,9 @@ func _ready() -> void:
 		_players[l] = p
 		_gain[l] = 0.0
 		_target[l] = 0.0
+	_thunder_player = AudioStreamPlayer.new()
+	_thunder_player.bus = &"Ambience"
+	add_child(_thunder_player)
 
 
 func set_area(area: StringName) -> void:
@@ -67,6 +78,7 @@ func _process(delta: float) -> void:
 	if _clock <= 0.0:
 		_clock = POLL_S
 		_refresh(false)
+		_storm()
 	for l in _layers:
 		var g: float = move_toward(_gain[l] as float, _target[l] as float, delta * FADE_PER_S)
 		_gain[l] = g
@@ -94,6 +106,7 @@ func _refresh(snap: bool) -> void:
 			_target[l] = mix.get(l, 0.0) as float
 		if snap and not (_players[l] as AudioStreamPlayer).playing:
 			_gain[l] = _target[l]    # first mix after a zone change or load: no slow fade up from silence
+	_snow_w = weights[3] if weights.size() > 3 else 0.0
 	_day = AmbientMix.daylight(day_fraction, daylight_fraction)
 	_bird = AmbientMix.bird_scale(_area, day_fraction, daylight_fraction, weights)
 
@@ -124,6 +137,59 @@ func _load(layer: StringName) -> AudioStream:
 	if s is AudioStreamOggVorbis:
 		(s as AudioStreamOggVorbis).loop = true
 	return s
+
+
+## Thunder: the rumble trails each heavy-rain lightning strike (SkyModel.strike_time) by a hashed delay, so the flash comes
+## first and the sound after. Only where it rains: no thunder in the quarry or in snow. The sky's own clock comes from
+## MeadowLife.sky_time, so the rumble lands on the same strike the screen flashes for.
+func _storm() -> void:
+	var t: float = MeadowLife.sky_time
+	var rain01: float = clampf(MeadowLife.rain, 0.0, 1.0)
+	var w: int = int(floorf(t / 40.0))
+	if w != _storm_window:
+		_storm_window = w
+		var st: float = SkyModel.strike_time(w)
+		if st >= 0.0 and st > t - 0.5 and rain01 >= 0.7 and AmbientMix.rain_gain(rain01, _snow_w, _area) > 0.0:
+			_thunder_due = st + SkyModel.thunder_delay(w)
+	if _thunder_due >= 0.0 and t >= _thunder_due:
+		_thunder_due = -1.0
+		var heavy: float = clampf((rain01 - 0.7) / 0.3, 0.0, 1.0)
+		_thunder_player.stream = _thunder()
+		_thunder_player.volume_db = THUNDER_DB + linear_to_db(maxf(heavy, 0.05))
+		_thunder_player.play()
+
+
+## One rumble, made once on first use: low-passed noise under a fast attack and a slow decay, rolling a little.
+func _thunder() -> AudioStreamWAV:
+	if _thunder_stream != null:
+		return _thunder_stream
+	var n: int = int(THUNDER_RATE * THUNDER_SECONDS)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var lp: float = 0.0
+	var peak: float = 0.0
+	for i in n:
+		var sec: float = float(i) / float(THUNDER_RATE)
+		lp = lp * 0.985 + rng.randf_range(-1.0, 1.0) * 0.015
+		var env: float = minf(sec / 0.06, 1.0) * exp(-sec * 1.1)
+		var roll: float = 0.7 + 0.3 * sin(TAU * 2.3 * sec)
+		buf[i] = lp * env * roll
+		peak = maxf(peak, absf(buf[i]))
+	var gain: float = 0.85 / maxf(peak, 0.0001)
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	for i in n:
+		bytes.encode_s16(i * 2, int(clampf(buf[i] * gain, -1.0, 1.0) * 32767.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = THUNDER_RATE
+	w.stereo = false
+	w.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	w.data = bytes
+	_thunder_stream = w
+	return w
 
 
 ## The rain bed, made once on first use: low-passed noise (the patter, not hiss) with a few soft ticks for drops on

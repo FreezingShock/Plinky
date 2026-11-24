@@ -58,7 +58,7 @@ int code_at(vec2 p) {
 // 1 where the world texel is water or foam, 0 on land and outside the art.
 float water_at(vec2 p) {
 	int code = code_at(p);
-	return (code == 107 || code == 108) ? 1.0 : 0.0;
+	return (code == 107 || code == 108 || code == 110 || code == 111) ? 1.0 : 0.0;
 }
 
 // Share of water on a ring of 8 taps at radius r, shifted by dy (negative reaches up the screen, i.e. above the water).
@@ -93,8 +93,7 @@ void fragment() {
 	if (quality >= 2) {
 		far = ring_water(14.0, -4.0);   // reaches up the bank, so the glow sits above the shore too
 	}
-	float reach = max(near, far * 0.8);
-	float spill = reach * (1.0 - w);
+	float spill = near * (1.0 - w);   // the shore strip only (about 5 texels): the bank behind it stays dark
 
 	float path = exp(-pow(moon_path_dist(wpos) / road_width, 2.0));
 	float wide = exp(-pow(moon_path_dist(wpos) / (road_width * 2.6), 2.0));

@@ -64,6 +64,9 @@ def pl_dist(U, V, pts):
 # ---------------- scene layout (screen px -> uv) ----------------
 PATH_S = [(112, 258), (150, 264), (190, 258), (222, 240), (252, 222), (290, 214), (334, 208), (368, 188), (378, 160), (362, 136), (338, 118), (330, 104)]
 PATH = [s2uv(*p) for p in PATH_S]
+# the spur from the main path up to the pond's south-east shore: painted as path material only (no placement uses it)
+SPUR_S = [(224, 238), (217, 231), (211, 224)]
+SPUR = [s2uv(*p) for p in SPUR_S]
 # Two rows of three pads, 44 texels apart on the 2:1 ground grid: Sprout climbs from the spawn, Clover climbs back
 # towards the gate (pad order = ZoneDef.pad_buttons order).
 SPROUT_ROW = [(204, 248), (248, 226), (292, 204)]
@@ -787,6 +790,8 @@ beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
 pw = 6.6 + 1.2 * (n1 - .5)                       # bolder path: wider than the first pass (5.4) so it reads at 640x360
 mat[(dp < pw) & (rockness < .5)] = T_PATH
+dsp = pl_dist(FU, FV, SPUR)                      # pond spur: a 3.6-texel half-width path, off the water
+mat[(dsp < 3.6) & (rockness < .5) & (np.hypot(FU - POND['c'][0], FV - POND['c'][1]) > POND['r'] + 1.0)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
 if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
@@ -999,6 +1004,8 @@ def render_scene(keep):
 tall_ids = np.array([t['id'] for t in TALL])
 rgb_full, id_full = render_scene(np.ones(len(u_), bool))
 AUX_FULL = LAST_AUX
+# the glowing sea (tools/art/water_sea_mask.py): flat deep and shallow sea colours, so the relight leaves them as painted
+RAMP.update({110: [1], 111: [2]})
 depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP, PAL)
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
@@ -1013,7 +1020,7 @@ _fg[FAR_CUT, 3] = 0
 Image.fromarray(_fg).save(os.path.join(HERE, 'ground_fg.png'))
 
 # ground G-buffer, same size as the ground art: normal + material + baked light (relight data) and world height.
-# Terrain materials are codes 100..109, so write_relight_data accepts mat < 110 (the ramp include is sized to match).
+# Terrain materials are codes 100..111, so write_relight_data accepts mat < 112 (the ramp include is sized to match).
 depth_pass.write_relight_data(os.path.join(HERE, 'meadow3d-ground-1x_n.png'), AUX_GND, 0, H - 1, 0, W - 1, id_gnd >= 0)
 depth_pass.write_height(os.path.join(HERE, 'meadow3d-ground-1x_h.png'), AUX_GND['z'], id_gnd >= 0)
 os.makedirs(os.path.join(HERE, 'sprites'), exist_ok=True); sprites = []

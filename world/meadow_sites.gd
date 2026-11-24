@@ -22,6 +22,10 @@ const TREE_KINDS: Array[String] = ["oak", "pine"]
 const GRASS: StringName = &"grass"
 const SAND: StringName = &"sand"
 const WOOD: StringName = &"wood"
+const DIRT: StringName = &"dirt"         # the Thistle Rise farm's tilled soil (farm.json farm_soil items)
+const WHEAT: StringName = &"wheat"       # inside a wheat field's frame (farm.json farm_wheat items)
+const FARM_MANIFEST: String = "res://assets/art/zone1b/farm/farm.json"
+const LARKMOOR_DIR: String = "res://assets/art/zone1b/larkmoor/"   # the farm lives in Larkmoor's world space
 const CINDER: StringName = &"cinder"   # the Ember Quarry's loose, crunchy rock; its pale roads are packed dust (sand)
 
 ## The quarry road is one cream colour (assets/art/zone2/quarry/ground.png); the rest of the floor is cinder.
@@ -36,6 +40,8 @@ static var _wood: Array[Vector2] = []
 static var _water: Array[Dictionary] = []     # {c: Vector2, r: Vector2, w: float}
 static var _trees: Array[Vector2] = []
 static var _ground: Image = null
+static var _soil: Array[Rect2] = []           # farm tilled soil, in Larkmoor texel space
+static var _wheat: Array[Rect2] = []          # farm wheat field frames
 
 
 ## Points the lookups at another zone's placements and ground (an empty placements path means the meadow).
@@ -53,6 +59,8 @@ static func use(placements: String, ground: String, offset: Vector2i) -> void:
 	_water.clear()
 	_trees.clear()
 	_ground = null
+	_soil.clear()
+	_wheat.clear()
 
 
 static func _load() -> void:
@@ -80,6 +88,25 @@ static func _load() -> void:
 		var tex: Texture2D = load(_ground_path) as Texture2D
 		if tex != null:
 			_ground = tex.get_image()
+	if _ground_path.begins_with(LARKMOOR_DIR):
+		_load_farm()
+
+
+## The farm's soil and wheat frames. Their x, y, w, h are in the same space as the walker (FarmProps.spawn puts each sprite at its foot).
+static func _load_farm() -> void:
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(FARM_MANIFEST))
+	if not data is Dictionary:
+		return
+	for it: Variant in (data as Dictionary).get("items", []) as Array:
+		var d: Dictionary = it as Dictionary
+		var kind: String = str(d.get("kind", ""))
+		if not (kind.begins_with("farm_soil") or kind.begins_with("farm_wheat")):
+			continue
+		var r := Rect2(float(d.get("x", 0)), float(d.get("y", 0)), float(d.get("w", 0)), float(d.get("h", 0)))
+		if kind.begins_with("farm_soil"):
+			_soil.append(r)
+		else:
+			_wheat.append(r)
 
 
 static func _is_sand(c: Color) -> bool:
@@ -88,7 +115,7 @@ static func _is_sand(c: Color) -> bool:
 	return c.is_equal_approx(SAND_A) or c.is_equal_approx(SAND_B)
 
 
-## Surface under a foot at texel p: &"wood", &"sand", &"grass", or &"cinder" in the quarry.
+## Surface under a foot at texel p: &"wood", &"wheat" or &"dirt" on the Larkmoor farm, &"sand", &"grass", or &"cinder" in the quarry.
 static func surface_at(p: Vector2) -> StringName:
 	_load()
 	for w: Vector2 in _wood:
@@ -96,6 +123,13 @@ static func surface_at(p: Vector2) -> StringName:
 		if (d.x * d.x) / (WOOD_RX * WOOD_RX) + (d.y * d.y) / (WOOD_RY * WOOD_RY) <= 1.0:
 			return WOOD
 	var base: StringName = CINDER if _cinder_zone else GRASS
+	if not _cinder_zone:
+		for r: Rect2 in _wheat:
+			if r.has_point(p):
+				return WHEAT
+		for r: Rect2 in _soil:
+			if r.has_point(p):
+				return DIRT
 	if _ground == null:
 		return base
 	var cx: int = int(floorf(p.x)) + _offset.x
@@ -144,4 +178,4 @@ static func tree_proximity(p: Vector2) -> float:
 ## For tests.
 static func counts() -> Dictionary:
 	_load()
-	return {"wood": _wood.size(), "water": _water.size(), "trees": _trees.size(), "ground": _ground != null}
+	return {"wood": _wood.size(), "water": _water.size(), "trees": _trees.size(), "ground": _ground != null, "soil": _soil.size(), "wheat": _wheat.size()}

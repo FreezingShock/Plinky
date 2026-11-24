@@ -16,7 +16,7 @@ SPAWN = (760, 676)
 HOLLOW_GATE = (760, 716)      # arrival arch (decor + exit back to the onboarding meadow)
 EMBER_GATE = (760, 268)       # the gate that leads on to Zone 2, set into the northern cliff
 
-# Main route: S -> Gatehouse Green -> fork W (Heronmere) / E (Thistle Rise) -> Old Oak Crossing -> N fork -> Emberwatch.
+# Main route: S -> Thistledown Green -> fork W (Heronmere) / E (Foxglove Rise) -> Heather Hollow -> N fork -> Starbloom Terrace.
 PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 520), (770, 486), (762, 454), (752, 420), (756, 386), (770, 350), (766, 310), (760, 268)]
 PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094, 550), (1090, 536), (1060, 520), (990, 500), (900, 490), (770, 486)]   # the tip now ends at the windmill's south door (1090, 520), so the fold leads somewhere
@@ -92,13 +92,13 @@ def curve_row(ctrl, n, gap=PAD_GAP):
 # A district with a row takes its centre from the row (_lay_rows). Lanternwood and Cairnfold (the stones) have no pads, so
 # their entries sit in the list without moving the pad order.
 DISTRICTS = [
-    dict(id='green', name='Gatehouse Green', c=(760, 640), pads=curve_row([(816, 656), (856, 662), (896, 654), (936, 640)], 5),
+    dict(id='green', name='Thistledown Green', c=(760, 640), pads=curve_row([(816, 656), (856, 662), (896, 654), (936, 640)], 5),
          note='Arrival lawn. The Thistle row (Sunlight to Thistle Down), lanterns, a signpost.'),
     dict(id='reedgate', name='Reedgate', c=(670, 624), pads=curve_row([(716, 664), (676, 660), (636, 656), (598, 650)], 5),
          note='Where the west road leaves the main road for the lake, with the first reeds beside it. The Sprout row lines the road.'),
-    dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
+    dict(id='oak', name='Heather Hollow', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
-    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(986, 640), (1026, 648), (1064, 646), (1100, 632)], 5),
+    dict(id='thistle', name='Foxglove Rise', c=(1030, 560), pads=curve_row([(986, 640), (1026, 648), (1064, 646), (1100, 632)], 5),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
     dict(id='heronmere', name='Heronmere', c=(540, 637), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
          note='West lake with reed shores and a little jetty. The Clover row lines the road along the south shore, pad 1 nearest the arrival gate.'),
@@ -106,7 +106,7 @@ DISTRICTS = [
          note='Pine wood strung with lanterns, a mere beyond the trees.'),
     dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=[],
          note='Rocky foothills, glowing crystals, a ring of standing stones. No pads.'),
-    dict(id='emberwatch', name='Emberwatch', c=(760, 310), pads=curve_row([(806, 350), (830, 338), (858, 334)], 3),
+    dict(id='emberwatch', name='Starbloom Terrace', c=(760, 310), pads=curve_row([(806, 350), (830, 338), (858, 334)], 3),
          note='Last plaza before the quarry. The Starbloom row, and the far gate set in the cliff.'),
     dict(id='westmere', name='Westmere', c=(332, 512), pads=curve_row([(296, 494), (326, 508), (352, 514)], 3),
          note='West bank of the lake, reached by the west trail. No gate. Three more Starbloom pads: the Starbloom row runs on here.'),

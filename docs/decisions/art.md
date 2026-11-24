@@ -353,3 +353,45 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **What:** the gatehouse and Emberwatch towers are broken stone arches, and the lighthouse grove tower is a broken curtain wall. Eight more ruins sit in five small groups on flat ground. Generator: `tools/art/gen_larkmoor.py` (`make_ruin`, `RUIN_PLAN`, `EXTRA_GROUPS`). The new `ruin` kind has a shadow entry in `world/sky_shadows.gd`, and gardens avoid ruins as solid (`tools/art/gen_gardens.py`).
 - **Why:** Nathan disliked the tall lighthouse-like towers. Three styles were mocked up. He picked the arch and the curtain wall, mixed, on flat ground, and asked for several versions spread around. The Emberwatch ruin moved off the cliff to flat ground east of its gate.
 - **Not verified in-engine:** how the ruins read at night, the walker's footing around them, and the node count against the 1350 ceiling.
+## 2026-11-24: Larkmoor farm fields, edge groves and fences are re-laid (Nathan picked mockup C)
+- **Decision:** `tools/art/place_farm.py` now lays seven fields (the original four plus three on the open grass south of them, found by a search over free walkable grass), a taller farm box (`BOX` is `(1090, 548, 260, 276)` layout texels, so it runs south of the yard), two tree groves on the south and east edge, and fences that follow the outside of each run.
+- **Paths:** the old placer kept 12 canvas texels from the drawn sand. Wheat and soil now keep `FIELD_SAND_CLEAR` (22 canvas texels, 11 layout), fence chords `FENCE_SAND_CLEAR` (10). The walkable mask counts paths as walkable, so every check reads the drawn sand pixels in `ground.png`, never the mask. Nathan's mockup feedback traced to this.
+- **Continuous fields:** fields may touch (their soil decals overlap, so the bed runs together). `SOIL_REACH` (7 layout texels) takes the soil up to within 5 of the fence at `FENCE_OFFSET` 12. A fence chord inside a neighbouring field's soil is dropped, and a run shorter than `FENCE_MIN_RUN` (3 chords) is dropped, so there are no inner fences and no stubs.
+- **Packing:** `GRID_X` 7.5 and `GRID_Y` 4.5 layout texels, `WHEAT_DX` 15 and `WHEAT_DY` 9 canvas texels, and a clump foot may stand 3 texels outside the outline (`EDGE_INSET`), so the wheat fills out to the soil with only light overlap. 176 clumps, up from 57.
+- **Groves:** the biggest oaks and pines (`TREE_FILES`) are copied into `assets/art/zone1b/farm/trees/` and placed as plain props (`farm_tree_N`). The placer checks only the trunk foot, so a crown may hang past the grass. This avoids editing `gen_larkmoor.py`, which other threads own. Ten trees fit; the free grass south and east is narrow.
+- **Budget:** the bench (low quality, headless) shows Larkmoor at 1178 nodes at peak against the 1350 ceiling. The farm test's node budget goes from 120 to 240.
+- **Checked:** in the cloud with Godot 4.7.2 under xvfb and software Vulkan (shots in `/mnt/project-files/plinky/farm-edge-in-engine/`), tests 7740 checks, 0 failed. Not checked on the PC. `tools/farm_edge_shots.tscn` captures the farm at day and night (`-- zoom=1|2`).
+
+## 2026-11-24: Pad beds drawn from above
+Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mockups/` on the project files, over the stalks and the planter. The beds are baked by `tools/art/gen_pad_beds.py` into a leaf layer, a shade layer and a greyscale bloom layer, so the stat colour and the colour-blind tint still apply at runtime. The side sprouts, the gold crown and the twinkle glints are now in the art or gone; a glint pass can come back on the bloom tops.
+## 2026-11-24: Walker is redrawn from above with 8 facings (Nathan picked mockup B)
+- **Look:** mockup B of the three walker mockups. The walker is drawn from the elevated, looking-down view: a lit shoulder top plane, a domed hood with the face set lower in it, and lit toe caps. The silhouette, cloak colours, scarf and satchel stay.
+- **Facings:** N, NE, E, SE, S, SW, W, NW. Five are drawn (E, SE, S, NE, N) and SW, W and NW are mirrors at runtime, so the art is not duplicated. The mirror keeps light from the upper left, as the other flipped sprites do.
+- **Idle keeps the last facing,** so the walker stays turned the way it last moved. It used to snap to front.
+- **Atlas:** 55 cells in 8 columns (512 x 448). `world/walker_pose.gd` holds the cell numbers and the octant mapping, and `tests/test_walker_pose.gd` checks them.
+- **Not verified in-engine on the PC:** the diagonal three-quarter views and the sprint tails at normal zoom. Checked in the cloud with Godot 4.7.2 under xvfb, `tests/run.gd` passes (7890 checks) and `tools/walker_cells_shot.gd` draws every facing and phase through `WalkerBody`.
+## 2026-11-24: Rain glow and moonlit puddles (Nathan picked mockup C of three)
+- **Look:** in rain, each lamp pool grows 35% wider and 40% brighter (`SkyModel.lamp_bloom`, full rain at 1.0). The flower-field glow grows 50% (`FlowerGlow.RAIN_BLOOM`). Each lamp is mirrored in the wet ground 14 texels below it, dithered by the Bayer matrix so it reads as puddle glints, not a sheen. Night puddles lighten toward a moon grey-teal instead of black.
+- **Where:** `SkyCycle._push_lights` (bloom), `day_night.gdshader` (`reflect_amt`, mirror summed in the same pool loop), `SkyCycle._update_light` (puddle colour, reflect amount), `FlowerGlow._apply_alpha` (flower bloom; alpha now follows rain even with Reduce motion on).
+- **Rejected:** a stronger bloom (about twice the first) floods the flower fields in blue, so it is not the look.
+- **Pure:** `SkyModel.lamp_bloom` is tested in `tests/test_weather.gd` (dry unchanged, wet brighter, monotone, capped).
+- **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests 7787 checks, 0 failed. Night and dusk, clear and rain, in `tools/weather_mock_shots.tscn`. Frame times in `tools/weather_perf.tscn` are within noise of the old build on software Vulkan, so the cost is not measured on a GPU.
+- **Not verified on the PC:** how strong the mirror reads on a real GPU, and the night look at full quality.
+- **Not in this change yet:** drips off trees and roofs, the sound layers, and the fog and snow pass. These need their own mockups.
+
+## 2026-11-24: Pad signs clear of the beds, mounds fuller
+- **Nathan's note (PC QA, batch 103):** the plank sign sat over the pad's centre bed, and the mound was not clearly separable at zoom 1.
+- **How:** `SIGN_X` moves from 17 to 26 texels, which clears the bed's right edge (x 24) and the plate's right corner. The plank keeps its height and width, so the text and the post still fit. `tools/art/gen_pad_beds.py` raises the head radii about 15% (`HEAD_R` 1 to 5: 4.2, 3.4, 3.1, 2.8, 2.6). It regenerates `assets/art/zone1/pads/`.
+- **Check:** the headless suite passes (7941 checks). An in-engine contact sheet (`tools/pad_sheet.tscn -- rich`, xvfb with lavapipe) shows the sign beside the bed and the stage 1 and 2 mounds as separate domes at 1x.
+- **Not checked:** the night and dusk tones, and the walker's footprint against the moved sign. PC QA should look at those.
+## 2026-11-24: Farm wheat clumps are canvas items under one node (Larkmoor was over the node cap)
+- **Decision:** `FarmWheat` creates each clump as a `RenderingServer` canvas item parented to the y-sorted prop parent, at the clump's foot, instead of a `Sprite2D` per clump. One node owns all 176. The items y-sort against the walker, trees and props exactly as the sprites did, because the renderer sorts a parent's child items by their transform origin. Plain props, trees, the fence and soil stay `Sprite2D` (they take the rim material or shadows).
+- **Why:** #434 laid 176 clumps, which put Larkmoor at 1357 against the 1350 ceiling. The bench now shows about 1000 nodes at peak. A single draw node would have lost the per-clump sort with the walker.
+- **Same look:** same sheet frames, same live redraw near the walker, same nearest filter. Day shots at five spots match before and after except for the gust and sun clock. Tests 7941 checks, 0 failed. Not run on the PC.
+
+## 2026-11-24: Lamps spread into mist (Nathan picked "fog halo only" of three)
+- **Look:** at full mist each lamp pool grows 60% wider (`SkyModel.fog_halo`, `FOG_HALO` 0.6). Clear air leaves the lamps as they were. Mist comes from `SkyModel.mist` (dawn, dusk and after rain), and `MeadowLife.fog` carries it to the lights. Outdoor scenes only.
+- **Not changed:** the lamp-head glow sprites do not grow with mist, only the light pools. That keeps this change off the batched lamp glows (#463).
+- **Rejected for now:** tree drips off the crowns. They are small in still frames and need a look in motion on the PC first. The prototype is kept in the project files, not committed.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests pass; the fog halo is tested in `tests/test_weather.gd`.
+- **Not verified on the PC:** how far the spread reads at dawn in a real mist.

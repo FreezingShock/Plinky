@@ -21,6 +21,20 @@ static func set_palette(colors: PackedColorArray) -> void:
 		return
 	ink = colors[0]; edge = colors[3]; dim = colors[3]
 	good = colors[4]; accent = colors[5]; text = colors[7]
+	palette = colors.duplicate()
+
+
+## The 8 palette entries the colours above came from. Meadow until set_palette runs.
+static var palette: PackedColorArray = PackedColorArray([Color("14161c"), Color("1f3b35"), Color("2f6b55"), Color("5fa36a"), Color("b7d978"), Color("f2e6a0"), Color("c2784e"), Color("f6efd9")])
+## Palette roles for tiers 1 to 5 of a tab's rail. Tiers beyond that take their currency's colour.
+const TIER_RAMP: Array[int] = [3, 6, 4, 5, 7]
+
+
+## The colour of tier `i` (0-based) on a zone currency's rail: a palette role, so every zone reads from its own palette.
+static func tier_color(i: int, cur: StringName) -> Color:
+	if i < 0 or i >= TIER_RAMP.size() or palette.size() < 8:
+		return StatStyle.color(cur)
+	return palette[TIER_RAMP[i]]
 
 
 ## Ink frame colour that brightens toward the text colour while `amount` (0..1) is up. Used for flashes.

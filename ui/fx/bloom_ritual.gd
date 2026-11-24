@@ -47,6 +47,7 @@ var _mote_acc: float = 0.0
 var _exit_acc: float = 0.0
 var _seeds_row: RollValue
 var _font: Font
+var _gift: String = ""   ## the gift on offer, shown on the reveal card; "" when none can be bought
 
 
 ## Builds one on the HUD and listens for zone resets.
@@ -137,7 +138,9 @@ func start(reset_id: StringName, gained: int) -> void:
 	_head.text = _reset.display_name
 	_number.text = "+0"
 	_caption.text = d.display_name if d != null else String(_reset.currency).capitalize()
+	_gift = _gift_name()
 	_hint.text = _hint_text()
+	_mat.set_shader_parameter("flash_color", _color.lerp(Color("fff1c8"), 0.35) if _reset.id == &"nucleus" else Color(1.0, 0.86, 0.55))
 	for l: Label in [_head, _number, _caption]:
 		l.add_theme_color_override("font_color", _color if l != _head else StatStyle.PAPER)
 	_hint.add_theme_color_override("font_color", StatStyle.gain())
@@ -167,10 +170,15 @@ func _count_down_rows() -> void:
 
 func _hint_text() -> String:
 	var line: String = "%s %d: every pad pays +%d%% for good" % [_reset.display_name, sim.reset_count(_reset.id), int(roundf(sim.reset_bonus() * 100.0))]
+	return line
+
+
+## The first gift that can be bought now, by name, or "" when none can be.
+func _gift_name() -> String:
 	for a: AttributeDef in sim.attribute_defs.values():
 		if a.currency == _reset.currency and sim.attr_unlocked(a.id) and sim.attr_level(a.id) < a.cap and not sim.attribute_available(a).lt(sim.attribute_cost(a.id)):
-			return line + "\n" + "A gift is ready: open Upgrades [Tab]"
-	return line
+			return a.display_name
+	return ""
 
 
 ## The colours of the burst: the reset's own ladder (Nucleus: Embers to Emberheart), the flowers by default.
@@ -230,7 +238,7 @@ func _set_light(p: Dictionary) -> void:
 func _step_text(p: Dictionary) -> void:
 	var burst: float = float(p["burst"])
 	var shown: int = BloomTimeline.number_at(_gained, _t, p)
-	_number.text = "+%d" % shown
+	_number.text = "+" + NumberFormat.short(float(shown))
 	var steps: int = BloomTimeline.tick_steps(_gained, _t, p)
 	if steps > _ticks:
 		_ticks = steps
@@ -238,7 +246,7 @@ func _step_text(p: Dictionary) -> void:
 	var fade_in: float = clampf((_t - burst) / 0.25, 0.0, 1.0)
 	var alpha: float = fade_in * BloomTimeline.exit_alpha(_t, p)
 	_text.modulate = Color(1.0, 1.0, 1.0, alpha)
-	_hint.modulate.a = clampf((_t - float(p["up_end"])) / 0.3, 0.0, 1.0)
+	_hint.modulate.a = clampf((_t - float(p["up_end"])) / 0.3, 0.0, 1.0) * (0.0 if not _gift.is_empty() else 1.0)
 	_text.position = (_center() + Vector2(0.0, 68.0)).round()
 
 
@@ -259,11 +267,103 @@ func _burst() -> void:
 		var col: Color = _color if i % 3 == 0 else StatStyle.color(ladder[i % ladder.size()])
 		_parts.append({"pos": c + Vector2(cos(a), sin(a)) * 18.0, "vel": Vector2(cos(a), sin(a) * 0.8) * s, "life": _rng.randf_range(0.7, 1.5), "age": 0.0,
 			"size": 2 if i % 4 == 0 else 1, "col": col, "grav": -30.0 if _reset.fx_rise else 40.0, "drag": 1.6})
+	if _reset.id == &"nucleus":
+		_spawn_shards()
+	else:
+		_spawn_petals()
 	for i in GraphicsQuality.particle_count(16):
 		var a2: float = _rng.randf() * TAU
 		var r: float = _rng.randf_range(36.0, 120.0)
 		_sparks.append({"pos": (c + Vector2(cos(a2), sin(a2) * 0.85) * r).round(), "age": -_rng.randf_range(0.0, 0.7), "life": _rng.randf_range(0.5, 0.9),
 			"col": [Color("fff1c8"), _color, Color("ffffff")][i % 3], "big": 1 + (1 if i % 3 == 0 else 0)})
+
+
+## Bloom: petals drift down from above the coin, swaying. Nucleus: shards burst out and fall (see _spawn_shards).
+func _spawn_petals() -> void:
+	var c: Vector2 = _center()
+	var ladder: Array[StringName] = _ladder()
+	for i in GraphicsQuality.particle_count(36):
+		var x: float = _rng.randf_range(-120.0, 120.0)
+		var y: float = _rng.randf_range(-120.0, -40.0)
+		_parts.append({"pos": c + Vector2(x, y), "vel": Vector2(_rng.randf_range(-8.0, 8.0), _rng.randf_range(4.0, 14.0)),
+			"life": _rng.randf_range(1.8, 2.8), "age": -_rng.randf_range(0.0, 0.5), "size": 1,
+			"col": StatStyle.color(ladder[i % ladder.size()]), "grav": 26.0, "drag": 0.6, "sway": _rng.randf_range(0.0, TAU), "petal": true})
+
+
+func _spawn_shards() -> void:
+	var c: Vector2 = _center()
+	var ladder: Array[StringName] = _ladder()
+	for i in GraphicsQuality.particle_count(34):
+		var a: float = _rng.randf() * TAU
+		var s: float = _rng.randf_range(90.0, 230.0)
+		var col: Color = StatStyle.color(ladder[i % ladder.size()]) if i % 4 != 0 else Color("fff1c8")
+		_parts.append({"pos": c + Vector2(cos(a), sin(a)) * 10.0, "vel": Vector2(cos(a), sin(a)) * s,
+			"life": _rng.randf_range(0.9, 1.6), "age": 0.0, "size": 2, "col": col, "grav": 240.0, "drag": 1.4})
+
+
+## The gift reveal: a framed card under the coin with the bonus line, "Gift Ready" and the gift's name. Pixel sparks
+## on its corners. Calm keeps the card still.
+func _draw_gift_card(c: Vector2, p: Dictionary) -> void:
+	if _gift.is_empty() or _font == null:
+		return
+	var u: float = clampf((_t - float(p["up_end"])) / 0.3, 0.0, 1.0)
+	if u <= 0.0:
+		return
+	var alpha: float = u * BloomTimeline.exit_alpha(_t, p)
+	var w: float = 260.0
+	var h: float = 56.0
+	var slide: float = 0.0 if _calm else roundf((1.0 - u) * 14.0)
+	var o: Vector2 = (c + Vector2(-w * 0.5, 140.0 + slide)).round()
+	var edge: Color = StatStyle.gain()
+	edge.a = alpha
+	draw_rect(Rect2(o - Vector2(2.0, 2.0), Vector2(w + 4.0, h + 4.0)), edge)
+	draw_rect(Rect2(o, Vector2(w, h)), Color(0.05, 0.03, 0.08, 0.92 * alpha))
+	var ink: Color = StatStyle.PAPER
+	ink.a = alpha
+	draw_string(_font, o + Vector2(12.0, 15.0), _hint_text(), HORIZONTAL_ALIGNMENT_LEFT, w - 24.0, 12, ink)
+	draw_string(_font, o + Vector2(12.0, 30.0), "Gift Ready", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, edge)
+	draw_string(_font, o + Vector2(12.0, 49.0), _gift, HORIZONTAL_ALIGNMENT_LEFT, w - 24.0, 16, ink)
+	if not _calm:
+		for k in 4:
+			var corner: Vector2 = o + Vector2(float(k % 2) * w, float(k / 2) * h)
+			_draw_spark({"pos": corner.round(), "age": fmod(_t * 1.6 + float(k) * 0.22, 0.9), "life": 0.9, "col": edge, "big": 1})
+
+
+## Bloom: a dithered shaft of light falls onto the coin from above, widening in as the burst opens.
+func _draw_beam(c: Vector2, p: Dictionary) -> void:
+	var u: float = clampf((_t - float(p["burst"])) / 0.5, 0.0, 1.0)
+	var alpha: float = u * BloomTimeline.exit_alpha(_t, p) * 0.5
+	var top: float = c.y - 150.0
+	var y: int = 0
+	while y < 120:
+		var half: int = int(roundf(lerpf(6.0, 20.0, float(y) / 120.0) * u))
+		for x in range(-half, half, 2):
+			if (x + y) % 4 == 0:
+				draw_rect(Rect2(Vector2(c.x + float(x), top + float(y)).round(), Vector2(2.0, 2.0)), Color(1.0, 0.94, 0.78, alpha))
+		y += 3
+
+
+## Nucleus charge: streaks of light are pulled in toward the core while the marks close in.
+func _draw_streaks(c: Vector2, u: float) -> void:
+	var n: int = 14
+	for i in n:
+		var a: float = TAU * float(i) / float(n) + u * 2.2
+		var dir: Vector2 = Vector2(cos(a), sin(a) * 0.85)
+		var r: float = lerpf(170.0, 28.0, u * u)
+		for j in 4:
+			draw_rect(Rect2((c + dir * (r + float(j) * 4.0)).round(), Vector2.ONE), Color("fff1c8") if j == 0 else _color)
+
+
+## Nucleus burst: a hot dithered core that cools from white to the currency colour over `v` (0 to 1).
+func _draw_core(c: Vector2, v: float) -> void:
+	var r: float = lerpf(3.0, 30.0, 1.0 - pow(1.0 - v, 3.0))
+	var fade: float = 1.0 - v
+	var col: Color = _color.lerp(Color("fff1c8"), fade)
+	var ri: int = int(r)
+	for dy in range(-ri, ri + 1, 2):
+		for dx in range(-ri, ri + 1, 2):
+			if dx * dx + dy * dy <= ri * ri and (dx + dy) % 4 == 0:
+				draw_rect(Rect2((c + Vector2(float(dx), float(dy))).round(), Vector2(2.0, 2.0)), Color(col.r, col.g, col.b, fade))
 
 
 func _step_fx(delta: float, p: Dictionary) -> void:
@@ -273,6 +373,8 @@ func _step_fx(delta: float, p: Dictionary) -> void:
 		if bool(q.get("home", false)):   # an exit mote: drifts from the centre into the HUD row
 			q["pos"] = (q["pos"] as Vector2).lerp(home, minf(1.0, 2.5 * delta))
 			continue
+		if q.has("sway"):
+			q["pos"] = (q["pos"] as Vector2) + Vector2(cos(float(q["age"]) * 3.0 + float(q["sway"])) * 14.0 * delta, 0.0)
 		var v: Vector2 = q["vel"] as Vector2
 		v *= maxf(0.0, 1.0 - float(q["drag"]) * delta)
 		v.y += float(q["grav"]) * delta
@@ -337,13 +439,25 @@ func _draw() -> void:
 		_draw_pixel_ring(c, lerpf(72.0, 4.0, exit), _color)
 	for r: Dictionary in _rings:
 		_draw_ring(c, r)
+	if not _calm:
+		if _reset.id == &"nucleus":
+			if _t >= float(p["charge"]) and _t < burst:
+				_draw_streaks(c, clampf((_t - float(p["charge"])) / (burst - float(p["charge"])), 0.0, 1.0))
+			if _t >= burst and _t < burst + 0.4:
+				_draw_core(c, (_t - burst) / 0.4)
+		elif _t >= burst and not FxConfig.reduce_screen_fx:
+			_draw_beam(c, p)
+	_draw_gift_card(c, p)
 	for q: Dictionary in _parts:
 		var age: float = float(q["age"])
 		var life: float = float(q["life"])
 		if age > life * 0.7 and int(age * 40.0) % 2 == 0:
 			continue   # the last part of a particle's life blinks out, pixel-art style
+		if age < 0.0:
+			continue
 		var sz: float = float(q["size"])
-		draw_rect(Rect2((q["pos"] as Vector2).round(), Vector2(sz, sz)), q["col"] as Color)
+		var dims: Vector2 = Vector2(3.0, 2.0) if q.has("petal") else Vector2(sz, sz)
+		draw_rect(Rect2((q["pos"] as Vector2).round(), dims), q["col"] as Color)
 	for s: Dictionary in _sparks:
 		_draw_spark(s)
 	if icon_scale > 0 and _icon != null:

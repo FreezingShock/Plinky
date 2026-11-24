@@ -136,18 +136,38 @@ func _add_lights() -> void:
 ## front of it. Each prop takes its normal map (gen_quarry_normals.py) and the light of the sources near it, and casts a shadow.
 func spawn_occluders(parent: Node2D) -> void:
 	for s: Dictionary in _data.sprites:
-		var sp := Sprite2D.new()
-		sp.name = "Occ_" + String(s.file).get_file().get_basename()
-		sp.texture = load(DIR + String(s.file)) as Texture2D
-		sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		sp.centered = false
-		sp.position = Vector2(s.foot[0], s.foot[1])
-		sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
-		parent.add_child(sp)
-		var nrm: Texture2D = load(DIR + String(s.file).get_basename() + "_n.png") as Texture2D
-		if _light != null and nrm != null:
-			sp.material = _light.prop_material(Vector2(float(s.x), float(s.y)), Vector2(float(s.w), float(s.h)), nrm)
-		elif _sky != null:
-			sp.material = _sky.rim_material
-		if _shadows != null:
-			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
+		_spawn_prop(parent, s)
+
+
+## Same props as spawn_occluders, a slice at a time: yields to the next frame once `budget_ms` of a frame is used up.
+## A zone swap under the transition wipe uses it (main.gd), so the props do not stall the wipe's peak.
+func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
+	var start_us: int = Time.get_ticks_usec()
+	var work_us: int = 0   ## CPU spent on the props themselves, not on the frames in between
+	for s: Dictionary in _data.sprites:
+		var t0: int = Time.get_ticks_usec()
+		_spawn_prop(parent, s)
+		work_us += Time.get_ticks_usec() - t0
+		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= budget_ms:
+			await get_tree().process_frame
+			start_us = Time.get_ticks_usec()
+	if PerfStats.tracing:
+		PerfStats.trace.append("quarry props cpu %.1f ms" % (float(work_us) / 1000.0))
+
+
+func _spawn_prop(parent: Node2D, s: Dictionary) -> void:
+	var sp := Sprite2D.new()
+	sp.name = "Occ_" + String(s.file).get_file().get_basename()
+	sp.texture = ZoneAssets.texture(DIR + String(s.file))
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sp.centered = false
+	sp.position = Vector2(s.foot[0], s.foot[1])
+	sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
+	parent.add_child(sp)
+	var nrm: Texture2D = ZoneAssets.texture(DIR + String(s.file).get_basename() + "_n.png")
+	if _light != null and nrm != null:
+		sp.material = _light.prop_material(Vector2(float(s.x), float(s.y)), Vector2(float(s.w), float(s.h)), nrm)
+	elif _sky != null:
+		sp.material = _sky.rim_material
+	if _shadows != null:
+		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))

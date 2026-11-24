@@ -5,13 +5,13 @@ extends RefCounted
 ## node budget. Pure functions and detached nodes: no autoloads, no scene tree.
 
 const CANVAS: Vector2 = Vector2(3040.0, 1840.0)
-const BOX_CENTRE: Vector2 = Vector2(1090.0, 520.0)     # layout texels, doubled for the canvas
-const BOX_SIZE: Vector2 = Vector2(260.0, 220.0)
+const BOX_CENTRE: Vector2 = Vector2(1090.0, 548.0)     # layout texels, doubled for the canvas
+const BOX_SIZE: Vector2 = Vector2(260.0, 276.0)
 const SCALE: float = 2.0
 const FENCE_PREFIX: String = "farm_fence"                # the fence ring's pieces (see place_farm.py)
 const WHEAT_PREFIX: String = "farm_wheat"                # the wheat clumps, which overlap a little (see place_farm.py)
 const SOIL_PREFIX: String = "farm_soil"                  # the tilled soil decals: ground, drawn behind everything
-const NODE_BUDGET: int = 120                           # the farm's own nodes: one sprite per item, plus the driver
+const NODE_BUDGET: int = 60                           # the farm's own nodes: one sprite per item except the wheat, plus the driver
 
 
 func run(t: Object) -> void:
@@ -41,8 +41,12 @@ func run(t: Object) -> void:
 			rects.append(rect)
 			rect_kinds.append(kind)
 		t.ok(Rect2(Vector2.ZERO, CANVAS).encloses(rect), "%s at %s is inside the Larkmoor canvas" % [kind, rect.position])
-		t.ok(box.encloses(rect), "%s at %s is inside the farm box" % [kind, rect.position])
 		var fa: Array = item.foot as Array
+		if kind.begins_with("farm_tree"):
+			# A tree's crown may hang past the edge of the box. Its trunk foot may not.
+			t.ok(box.has_point(Vector2(float(fa[0]), float(fa[1]))), "%s foot at %s is inside the farm box" % [kind, rect.position])
+		else:
+			t.ok(box.encloses(rect), "%s at %s is inside the farm box" % [kind, rect.position])
 		t.ok(float(fa[1]) <= rect.end.y + 0.01 and float(fa[1]) >= rect.position.y, "%s stands inside its own box" % kind)
 		var tex: Texture2D = load(FarmProps.DIR + str(item.file)) as Texture2D
 		t.ok(tex != null, "%s sprite %s loads" % [kind, str(item.file)])
@@ -82,6 +86,8 @@ func run(t: Object) -> void:
 				continue
 			if rect_kinds[i].begins_with(WHEAT_PREFIX) and rect_kinds[j].begins_with(WHEAT_PREFIX):
 				continue
+			if rect_kinds[i].begins_with("farm_tree") or rect_kinds[j].begins_with("farm_tree"):
+				continue            # crowns hang over the grass round them; the placer keeps the trunk feet apart
 			if rect_kinds[i].begins_with(SOIL_PREFIX) or rect_kinds[j].begins_with(SOIL_PREFIX):
 				continue            # a soil decal lies under the wheat and is masked round the buildings in the sprite itself
 			overlaps += 1
@@ -124,11 +130,11 @@ func run(t: Object) -> void:
 	for y: int in range(40):
 		for x: int in range(48):
 			var px: Color = plain.get_pixel(x, y)
-			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_INK]):
+			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_SHADE]):
 				has_root = true
-			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_ACCENT]):
+			if px.is_equal_approx(WheatClump.PAL[WheatClump.C_GOLD_HI]):
 				has_body = true
-	t.ok(has_root and has_body, "each stalk has a dark root and a golden body")
+	t.ok(has_root and has_body, "each stalk has a dark root and a gold head")
 	# Gust: a field steps through all its frames, and holds still under Reduce Motion.
 	var seen: Dictionary = {}
 	for step in range(0, 64):
@@ -154,20 +160,19 @@ func run(t: Object) -> void:
 	var parent := Node2D.new()
 	FarmProps.spawn(parent, null, null, null, data)
 	var sprites: int = 0
-	var clumps_animated: int = 0
+	var clumps_driven: int = 0
 	var driver: int = 0
 	var channel_nodes: int = 0
 	for n: Node in parent.get_children():
 		if n is Sprite2D:
 			sprites += 1
-			if (n as Sprite2D).region_enabled:
-				clumps_animated += 1
 		elif n is FarmWheat:
 			driver += 1
+			clumps_driven = (n as FarmWheat).clump_count()
 		elif n is CozyBrook:
 			channel_nodes += 1
-	t.eq(sprites, items.size(), "the farm spawns one sprite per item")
-	t.eq(clumps_animated, wheat, "every wheat clump is an animated sheet")
+	t.eq(sprites, items.size() - wheat, "the farm spawns one sprite per item, except the wheat")
+	t.eq(clumps_driven, wheat, "every wheat clump is a canvas item owned by the one driver, not a node")
 	t.eq(driver, 1, "one wheat driver drives the clumps")
 	t.eq(channel_nodes, 1, "the channel spawns as one node")
 	t.ok(parent.get_child_count() <= NODE_BUDGET, "the farm adds at most %d nodes (%d)" % [NODE_BUDGET, parent.get_child_count()])
