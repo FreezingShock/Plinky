@@ -400,3 +400,8 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Rejected for now:** tree drips off the crowns. They are small in still frames and need a look in motion on the PC first. The prototype is kept in the project files, not committed.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb with software Vulkan. Tests pass; the fog halo is tested in `tests/test_weather.gd`.
 - **Not verified on the PC:** how far the spread reads at dawn in a real mist.
+
+## Farm wheat density restored to mockup carpet (2026-11-24)
+- In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
+- Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
+- FarmWheat caches each clump's global centre once instead of recomputing it per frame.
