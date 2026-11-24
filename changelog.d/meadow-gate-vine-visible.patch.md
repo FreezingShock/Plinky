@@ -1,1 +1,0 @@
-The meadow gate's vine and petals are bolder, so they read at normal size: the vine is a bright leaf ribbon with cream blooms at its tips, and the petals are three texels across. Gate hover covers the whole arch, from its keystone to its feet.
