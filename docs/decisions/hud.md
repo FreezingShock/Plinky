@@ -424,6 +424,7 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Scenery is graded, not repainted.** The scenery is baked once in meadow indices; the mood's tint multiplies it and a Bayer dither adds the night shade (`boot/title_scenery.gdshader`), the same way `day_night.gdshader` shades the meadow. Fireflies come out at night, birds fly by day.
 - **Smooth transitions, one clock.** The title and loading screens share one `TitleBackground` clock. The chip in the bottom left names the time and runs the sky forward to the next stop over 1.6 s. Reason: nothing snaps.
 - **Reduce Motion (call made):** the clock holds on golden hour, the parallax stays still, the chip jumps instantly, and the screen change cross-fades instead of sweeping. Reason: the sweep is motion, and the fade keeps the same ink colour.
+- **Superseded 2026-11-24:** the ink wipe below was removed. See "Seamless scene handoff" at the bottom of this file.
 - **Scene change is a themed wipe** (`boot/title_wipe.gdshader`): a slanted, dithered sweep in the mood's ink with a sun-coloured lead line, used for Continue, New Game, Saves slots and the loading screen's hand-off. Reason: replaces the plain ink dissolve.
 - **Tagline (call made):** "+ Press. Walk. Bloom. +" from the README banner replaces "Press. Tally. Rebirth.", on both screens. Revert if the old line was intended.
 - **Icon:** the 1024 master is drawn by `tools/art/gen_app_icon.py` on a 64 texel grid from the golden keyframe, with the existing walker sprite pasted unchanged. Reason: it matches the title and reads at 16 px.
@@ -457,6 +458,12 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Sunlight bonuses** have their own key, so they fold only with each other and not with a pad's Sunlight number. Say so if that splits a Sunlight number you wanted combined.
 - Not run in-engine from the cloud: PC QA should check a neighbouring pad's gain and a standing press on one pad.
 
+## 2026-11-24: Seamless scene handoff
+- **Why:** Play, Quit to title and the loading screen's hand-off went through an ink wipe that filled the screen, then a plain `change_scene`. The game's first frames showed the default grey, and the zone art loaded on the main thread, so the screen went black or grey and cut.
+- **Rule:** `SceneSwap` (`boot/scene_swap.gd`) captures the frame being left and covers the window with it. The next scene is swapped in underneath, draws four warm frames there, then the cover sweeps away to reveal it (`boot/scene_reveal.gdshader`, a dithered edge with a sun-coloured lead line). Under Reduce Motion the cover cross-fades. Nothing is drawn in a flat colour.
+- **Loading:** Play goes to the loading screen in handoff mode. It opens at the title's time of day, loads the slot's zone art on a worker thread (`Loading Larkmoor art... 62%`) and keeps the scene alive until the game has used it. It waits while a swap is still revealing, so no leave is dropped.
+- **Label:** ASCII dots, because Spleen has no ellipsis glyph.
+- Verified headless under Xvfb with lavapipe: boot, title, Play, loading, game, and the Reduce Motion path. No frame is near-black or flat, and the largest frame-to-frame jump is a sweep, not a cut (`tools/transition_frames.tscn`). Not run on the PC: the zone-art label for Larkmoor and Ember Quarry (a cold zone load), the Quit to title path, and the feel of the sweep at full speed.
 ## 2026-11-24: Zone currencies open their gifts and show a full card
 - **Why:** Seeds and Core Shards only said "You have X". Nathan wanted the card to say what the currency is and how it is earned, and a click to take you to the gifts it buys.
 - **Rule:** a zone currency's HUD row and its Upgrades badge use `TipText.currency` (copy in `ZoneResetDef.currency_body`, the page line in `gift_blurb`). The row is clickable, and its card ends on "Click to open!". A click opens Upgrades on that zone's tab, and a click while the menu is open only moves to the tab. The badge's card has no call to action, since the menu is already open.
