@@ -39,6 +39,11 @@ static func attach(host: Control, on_close: Callable) -> CloseX:
 	return x
 
 
+## True when this X belongs to the given panel.
+func follows(panel: Control) -> bool:
+	return _host == panel
+
+
 ## Pure: where the X sits, relative to the host's own top left.
 static func anchor(host_size: Vector2) -> Vector2:
 	return Vector2(host_size.x - SIZE - INSET.x, INSET.y)
