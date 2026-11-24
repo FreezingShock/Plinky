@@ -128,7 +128,7 @@ func _add_lights() -> void:
 			"gate", "arch":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"pad":
-				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, 0.45)
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_pad_radius, PAD_STRENGTH)
 				_shadows.add_pad(Vector2(a.sx, a.sy).round())   # before the casters, so their shadows get a copy above the plate
 				_shadows.add_blob(Vector2(a.sx, a.sy), PAD_SHADOW.x, PAD_SHADOW.y)
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
@@ -181,6 +181,9 @@ var _occ_parent: Node2D = null
 var _prop_index: Dictionary = {}     # Vector2i chunk -> Array of prop dictionaries (placements3d.json sprites)
 var _loaded: Dictionary = {}         # Vector2i chunk -> Array of the Sprite2D props spawned for it
 var _center: Vector2i = Vector2i(-99999, -99999)
+var _lanterns_lit: bool = false       # lantern pools are added once per scene, not once per spawn
+const LANTERN_STRENGTH: float = 0.9   # pool strength of a lantern (radius: the shrine radius times 0.7)
+const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
 
 
 ## Index the props by chunk and light the lanterns. Nothing is spawned yet; the caller loads the chunks around the start.
@@ -189,14 +192,17 @@ func _begin(parent: Node2D) -> void:
 	_prop_index.clear()
 	_loaded.clear()
 	_center = Vector2i(-99999, -99999)
+	# Lanterns are light data, not chunk data: every lantern gets its pool here, once, whether its chunk is loaded or not.
+	var light_lanterns: bool = not _lanterns_lit and _sky != null
+	_lanterns_lit = true
 	for s: Dictionary in _data.sprites:
 		var key: Vector2i = _chunk_of(Vector2(float(s.foot[0]), float(s.foot[1])))
 		if not _prop_index.has(key):
 			_prop_index[key] = []
 		(_prop_index[key] as Array).append(s)
-		if String(s.kind) == "lantern" and _sky != null:
+		if light_lanterns and String(s.kind) == "lantern":
 			_sky.add_light(Vector2(float(s.x) + float(s.w) * 0.5, float(s.y) + float(s.h) * 0.3),
-					_sky.light_config().pool_shrine_radius * 0.7, 0.9)
+					_sky.light_config().pool_shrine_radius * 0.7, LANTERN_STRENGTH)
 
 
 func spawn_occluders(parent: Node2D) -> void:

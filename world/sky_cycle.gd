@@ -17,7 +17,11 @@ const GROUND_SHADER: Shader = preload("res://render/shaders/ground_light.gdshade
 const FOG_SHADER: Shader = preload("res://render/shaders/ground_fog.gdshader")
 const PAD_SHADER: Shader = preload("res://render/shaders/pad_shadow.gdshader")
 const LIGHT_SHADER: Shader = preload("res://render/shaders/light_grade.gdshader")
-const MAX_LIGHTS: int = 24
+## Light pools the shader can take per frame (render/shaders/day_night.gdshader, lights[MAX_LIGHTS]). When more pools exist,
+## the walker's pool always goes in and the rest go in nearest the walker, so the ones on screen are the ones that light.
+const MAX_LIGHTS: int = 48
+## Pools kept in memory. Larkmoor has about 50 (21 pads, gate, arch, 26 lanterns, walker); this is a generous ceiling.
+const MAX_LIGHT_SOURCES: int = 256
 const AREA: Rect2 = Rect2(-110.0, -70.0, 860.0, 500.0)   # covers the 840x480 bleed at (-100, -60) plus margin
 const SWAY_PAD: int = 4                                    # transparent texels added each side of a swaying sprite
 const SWAY_STEP: float = 1.0 / 8.0
@@ -51,6 +55,7 @@ var _rays_rect: ColorRect
 var _warm: int = 4                  # frames the rays stay drawn after the scene loads, so their shader compiles at load, not at the first sunset
 var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
+var _pushed: int = 0                    # pools packed for the shader on the last frame
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
 var _fog_mat: ShaderMaterial          # drifting ground fog (ground_fog.gdshader)
@@ -201,9 +206,14 @@ func _pond_array() -> Array:
 
 ## Add a light pool. `follow` (optional) is a node the pool tracks each frame.
 func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = &"fixed") -> void:
-	if _lights.size() >= MAX_LIGHTS:
+	if _lights.size() >= MAX_LIGHT_SOURCES:
 		return
 	_lights.append({"pos": pos, "radius": radius, "strength": strength, "kind": kind})
+
+
+## Light pools sent to the shader on the last frame (tests read this).
+func pushed_light_count() -> int:
+	return _pushed
 
 
 func light_config() -> SkyConfig:
@@ -539,18 +549,34 @@ static func light_flicker(t: float, key: int, steady: bool) -> float:
 	return (MeadowLife.hash01(int(t * 6.0) * 7 + key) - 0.5) * 2.0
 
 
+## Packs the light pools for the shader. Walker pools always go first; the others are sorted by distance to the walker
+## (the view centre when there is no walker) on the 2:1 ground ellipse, and only the first MAX_LIGHTS are sent.
 func _push_lights(t: float, steady: bool) -> void:
-	var arr: Array = []
+	if _walker == null or not is_instance_valid(_walker):
+		_walker = _find_walker()
+	var focus: Vector2 = _walker.position if _walker != null else area.get_center()
+	var picks: Array[Dictionary] = []
 	for L: Dictionary in _lights:
+		var is_walker: bool = L.kind == &"walker"
 		var pos: Vector2 = L.pos
-		if L.kind == &"walker":
-			if _walker == null or not is_instance_valid(_walker):
-				_walker = _find_walker()
+		if is_walker:
 			if _walker == null:
 				continue
 			pos = _walker.position
-		var flick: float = light_flicker(t, int(pos.x), steady)
-		arr.append(Vector4(pos.x, pos.y - 4.0, float(L.radius) + flick, float(L.strength)))
+		var q: Vector2 = pos - focus
+		picks.append({"pos": pos, "radius": float(L.radius), "strength": float(L.strength),
+				"walker": is_walker, "d": Vector2(q.x, q.y * 2.0).length_squared()})
+	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if a.walker != b.walker:
+			return a.walker
+		return float(a.d) < float(b.d))
+	var arr := PackedVector4Array()
+	_pushed = mini(picks.size(), MAX_LIGHTS)
+	for i in _pushed:
+		var P: Dictionary = picks[i]
+		var ppos: Vector2 = P.pos
+		var flick: float = light_flicker(t, int(ppos.x), steady)
+		arr.append(Vector4(ppos.x, ppos.y - 4.0, float(P.radius) + flick, float(P.strength)))
 	while arr.size() < MAX_LIGHTS:
-		arr.append(Vector4(0.0, 0.0, 0.0, 0.0))
+		arr.append(Vector4.ZERO)
 	_shade_mat.set_shader_parameter("lights", arr)
