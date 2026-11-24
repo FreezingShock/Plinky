@@ -1,0 +1,1 @@
+Ember Quarry lighting: lava pools, seams, vents, braziers and lamps now cast warm glow that flickers and spills onto the ground and props, drifting haze with light shafts and heat shimmer over the lava, and the quarry follows the day and night cycle with cast shadows. Reduce Motion and Reduce Flashing hold the glow still.

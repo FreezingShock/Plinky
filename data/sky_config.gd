@@ -107,3 +107,30 @@ extends Resource
 @export var ray_strength: float = 0.5
 ## Seconds for mist to drift across the view.
 @export var mist_drift_seconds: float = 90.0
+
+@export_group("Ember Quarry light")
+## Overall lava glow over the quarry (quarry_glow shader). Each source is scaled by its own strength below.
+@export var lava_glow: float = 0.4
+## Extra glow at full night, as a share of lava_glow. The glow rises when the sky goes dark.
+@export var lava_night_boost: float = 1.0
+## Falloff radius in texels: a lava pool (also its light pool in the shade), a lava seam tile, a vent, a brazier, a lamp.
+@export var lava_pool_radius: float = 60.0
+@export var lava_tile_radius: float = 22.0
+@export var vent_radius: float = 26.0
+@export var brazier_radius: float = 30.0
+@export var lamp_radius: float = 22.0
+## Strength per source kind (lava pools are 1.0, seam tiles 0.5).
+@export var vent_glow: float = 0.45
+@export var brazier_glow: float = 0.9
+@export var lamp_glow: float = 0.7
+## How far each kind dips when it flickers, 0..1. All zero under Reduce Motion or Reduce Flashing.
+@export var flicker_lava: float = 0.1
+@export var flicker_vent: float = 0.18
+@export var flicker_brazier: float = 0.35
+@export var flicker_lamp: float = 0.25
+## Quarry haze density, 0..1 (quarry_haze shader).
+@export var quarry_haze: float = 0.3
+## Light shaft strength from the top of the quarry, 0..1.
+@export var shaft_strength: float = 0.12
+## Heat shimmer over the lava, in screen texels at full heat.
+@export var shimmer_amount: float = 1.0
