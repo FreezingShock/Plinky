@@ -894,6 +894,7 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 ## Tap-to-move ignores clicks on the GUI (2026-11-24)
 - **Why:** with the Relics panel open, a click inside it drew the walk ring and dots under the panel. Godot only routes a click to `_unhandled_input` when no Control stopped it, and a panel background with PASS or IGNORE lets it through.
 - **Rule:** `GuiGuard.covers` (ui/gui_guard.gd) checks rectangles of visible Controls at the click point. It counts STOP and PASS controls and any Panel or PanelContainer whatever its filter. It skips IGNORE labels and containers and full-screen layout roots, so floating numbers and the pixel view never block the world.
+- **Pads and critters:** the same check stops a click on the GUI from pressing a pad or catching a critter under it. Clicks in the world are unchanged.
 - **Menus:** no tap-to-move at all while a menu is open, since the walker is frozen then and a late walk after the menu closes would surprise.
 - **Chosen over** `gui_get_hovered_control()`, because the hovered control is only updated on mouse motion and can be stale on a click. The check runs on the click's own position.
 - Not verified in-engine: a click on the Relics panel, the HUD and a tooltip, and a click on empty meadow next to a panel edge. PC QA should check all four.
