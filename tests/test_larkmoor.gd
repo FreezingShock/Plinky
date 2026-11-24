@@ -10,6 +10,12 @@ func run(t: Object) -> void:
 	t.ok(z != null, "larkmoor zone exists")
 	if z == null:
 		return
+	# view streaming: the chunks a view rect covers (pure math, so no scene is needed)
+	var scene_script: Script = load("res://world/larkmoor_scene.gd") as Script
+	t.eq(scene_script.call("chunk_range", Rect2(0.0, 0.0, 0.0, 0.0), 1), Rect2i(), "an empty view rect has no chunks")
+	t.eq(scene_script.call("chunk_range", Rect2(170.0, 10.0, 100.0, 100.0), 0), Rect2i(1, 0, 1, 1), "a view inside one chunk covers that chunk")
+	t.eq(scene_script.call("chunk_range", Rect2(170.0, 10.0, 100.0, 100.0), 1), Rect2i(0, -1, 3, 3), "the view margin adds a chunk on every side")
+	t.eq(scene_script.call("chunk_range", Rect2(150.0, 0.0, 200.0, 10.0), 0), Rect2i(0, 0, 3, 1), "a view that straddles two chunk edges covers both")
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
 	t.eq(z.next_zone, &"zone2", "Larkmoor's far gate leads to the quarry")
 	t.ok((sim.zone_defs.get(&"zone1") as ZoneDef).order < z.order and z.order < (sim.zone_defs.get(&"zone2") as ZoneDef).order, "zone order is meadow, Larkmoor, quarry")
@@ -98,7 +104,8 @@ func run(t: Object) -> void:
 		t.eq(scene.call("prop_total"), sprites.size(), "every prop in the placements is indexed to a chunk")
 		t.ok(int(scene.call("loaded_prop_count")) < sprites.size(), "only the chunks near the start are loaded (%d of %d)" % [scene.call("loaded_prop_count"), sprites.size()])
 		t.eq(shadows._pads.size(), shadow_pads, "Larkmoor tells its shadows where every pad is")
-		t.ok(shadows._overlay != null and shadows._overlay.get_child_count() > 0, "prop shadows get a clipped copy above the pads")
+		t.ok(shadows._overlay != null and shadows._overlay.multimesh != null and shadows._overlay.multimesh.visible_instance_count == shadows._items.size(), "prop shadows get a clipped copy above the pads (one overlay layer, one instance per caster)")
+		t.ok(shadows._caster_mm != null and shadows._caster_mm.multimesh.visible_instance_count == shadows._items.size(), "every cast shadow is one instance in the batched caster layer")
 	var sky: SkyCycle = scene.get_node("Sky") as SkyCycle
 	t.ok(sky.shadows == shadows, "Larkmoor's sky drives its shadows")
 	t.ok(lanterns > 0 and sky._lights.size() >= lanterns, "every lantern gets a light pool, none dropped at the cap (%d lights, %d lanterns)" % [sky._lights.size(), lanterns])

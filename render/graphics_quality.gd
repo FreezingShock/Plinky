@@ -24,6 +24,7 @@ const SHADOW_STEPS: Array[int] = [6, 9, 12]                 # ground relight hei
 const SHADOW_STRIDE: Array[float] = [2.0, 1.34, 1.0]        # march stride multiplier, so fewer taps still reach as far
 const AO_TAPS: Array[int] = [2, 4, 4]                       # ground occlusion taps
 const SCREEN_GRADE: Array[bool] = [false, true, true]      # the full-frame light grade reads the screen texture (a back-buffer copy)
+const RAIN_RINGS_MIST: Array[bool] = [false, true, true]   # splash rings and dawn ground mist (ground_light.gdshader taps); first to go on Low
 const CULL_MARGIN: float = 24.0                             # texels beyond the view still drawn, so edges never pop
 
 static var path: String = "user://graphics.cfg"
@@ -122,6 +123,12 @@ static func ao_taps() -> int:
 static func screen_grade() -> bool:
 	load_settings()
 	return SCREEN_GRADE[level]
+
+
+## False on Low: the splash rings and the dawn ground mist are skipped. The puddles stay.
+static func rain_rings_and_mist() -> bool:
+	load_settings()
+	return RAIN_RINGS_MIST[level]
 
 
 ## `full` scaled by the level's particle share, never below 2 so a burst still reads as a burst.

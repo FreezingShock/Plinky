@@ -228,3 +228,32 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | Flower pads change the slab itself from stage 3: a one texel tier-colour stripe on the side faces (stage 3), a second lighter one (stage 4), gold stripes on rows 1 and 3 (stage 5). The stage 5 crown is now an outlined gold band with five points and a white jewel, one texel above the flower. Stripes and crown are skipped on locked pads. | Stages 3 to 5 differed only by flower count and a one texel crown line, so they blurred together at 1x. Reviewed in `tools/pad_sheet.tscn`. |
 | The Thistle garden reaches 100 uv (was 82) with 100 big flowers per plate (was 66). | The row's field was a thin strip beside the road. |
 | `tools/garden_shots.gd` takes `-- phase=0.95` to shoot a row at night. | Night review of the rows. Software Vulkan hits the shader-instance limit after about six night shots; shoot the later rows by themselves. |
+
+## 2026-11-24: Starting Clearing flower fields
+| Decision | Why |
+|---|---|
+| `tools/art/gen_clearing_gardens.py` writes `world/clearing_gardens.json` (format 2, 163 flowers) for the Sprout row (dewdrop) and the Clover row (clover). `world/meadow3d_scene.gd` draws it with one `GardenLayer` node, the same as Larkmoor. The meadow's ground and placements are read as they are, so no art regen was needed. | The Starting Clearing pads were the only ones without a field. The 3-pad rows keep their count (the tutorial). |
+| Field distances use the ground's own path, water and dirt colours (the Larkmoor palette, which the meadow shares), so no flowers sit on the path. | Nothing new to tune by hand. |
+| Checks: `tests/run.gd` 6429 checks, 0 failed. Screenshots in the cloud (xvfb, lavapipe): `tools/clearing_shots.tscn`. | The fields are in, but the meadow already has many baked flower beds and a gate banner covers part of the view. PC QA should judge the read at 1x and 2x, and night. |
+
+## 2026-11-24: Foxglove and Starbloom fields thicker
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` raises `n` and `small` for the Foxglove row (66/30 to 96/46) and both Starbloom rows (64/28 to 100/46 and 66/28 to 74/33 for Westmere). Result: Foxglove 315 flowers, Starbloom north 291, Westmere 301 (was 267, 252, 292 on the same generator). Clover and Thistle are unchanged. | Nathan's pick from the handoff: the thin rows were about 1.6x thinner than Clover and Thistle. Target was about 300 per row, and Nathan likes the current density, so only the thin rows grow. |
+| Still one `world/larkmoor_gardens.json` format 2 and one garden layer node, so the node count does not change. | Larkmoor sits near the 1350 ceiling. |
+| Not run in-engine: night shots of these rows, and the look on a real GPU. | The cloud renderer stops after about six night shots. |
+
+## 2026-11-24: Less clumped fields
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` draws distances half evenly over the field and half bunched to the plates (was all bunched), thins by gentle drifts (0.5 to 1.0, was 0.3 to 1.2), and spaces flowers 1.4x their footprint with a random 0.75 to 1.6 jitter. Attempts rose so the total stays about the same (2429 flowers, was 2410). | Nathan asked for fields that are less clumped but liked the density, so spacing varies and the heaps go, not the flower count. |
+| `tools/qa_probe.tscn` walks the real main scene from a chosen start to a pad (`-- x=2127 y=1039 pad=lark_clover_1 rich`); `route_probe` also routes every pad from every other pad and a scatter of open spots. | For the lark_clover_1 farm-side report, which does not reproduce here. |
+## 2026-11-24: Meadow lanterns one size, lit after dark
+| Decision | Why |
+|---|---|
+| Every meadow lantern faces the same way (`rot=0`), and the export crops each one to one window around its foot: 8 texels left, 9 right, 27 above, 3 below (18 by 31). The generator asserts that every lantern voxel lands inside it. The sprites are 18 by 31 instead of 11 to 13 by 26 to 28. | The lanterns got a random quarter-turn from their seed, so the bounding boxes came out in four sizes. The PC QA saw four scale groups. Larkmoor's lamps already use the fixed-window method. |
+| The placement stream is unchanged: the seed is still drawn for every candidate, so no other prop moves. Only the five lantern sprites, `rock_038_n` (its normals read the lantern beside it) and the lantern entries of `placements3d.json` changed in `assets/art/zone1/meadow3d/`. | Keeps the diff to the lanterns. |
+| `_add_lights` gives lantern life lights kind `lantern`, the same kind Larkmoor uses, so their pools scale with the night (`SkyCycle.lamp_light_k`). They were kind `fixed` and burned at full strength by day. | The meadow lanterns were lit at noon. Larkmoor's were not. |
+| `tests/test_lighting.gd` checks that each meadow lantern life light is a night pool and that the lantern sprites share one size. `tools/lantern_shots.tscn -- meadow` shoots the meadow lanterns at night, dusk and noon. | Regression guard, and the shot tool for the PC check. |
+| A fresh bake on main matches the committed placements except `bush_027`'s width. Some committed sprite and ground files already differed from a fresh bake before this change (`oak_018_n`, `crystals_039_n`, `bush_027`'s width, the ground images and the preview). They were left alone. | Keeps this PR to the lanterns. |
+| Not verified on the PC. Cloud shots (xvfb, software Vulkan) only. In the four cloud shots the meadow's night is much brighter than Larkmoor's (mean luminance about 84 against 62), so the lamp glow reads less there. | Lighting is for the sky owner to tune, not this change. |

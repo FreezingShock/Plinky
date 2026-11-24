@@ -246,9 +246,9 @@
    "nrm": "sprites/bush_020_n.png",
    "kind": "bush",
    "x": 386,
-   "y": 140,
-   "w": 22,
-   "h": 17,
+   "y": 142,
+   "w": 23,
+   "h": 16,
    "foot": [
     396.1,
     152.9
@@ -273,10 +273,10 @@
    "file": "sprites/rock_022.png",
    "nrm": "sprites/rock_022_n.png",
    "kind": "rock",
-   "x": 488,
-   "y": 212,
-   "w": 21,
-   "h": 17,
+   "x": 481,
+   "y": 214,
+   "w": 27,
+   "h": 16,
    "foot": [
     498.3,
     223.5
@@ -287,10 +287,10 @@
    "file": "sprites/bush_027.png",
    "nrm": "sprites/bush_027_n.png",
    "kind": "bush",
-   "x": 334,
+   "x": 325,
    "y": 277,
-   "w": 19,
-   "h": 14,
+   "w": 34,
+   "h": 15,
    "foot": [
     341.4,
     289.5
@@ -301,10 +301,10 @@
    "file": "sprites/bush_028.png",
    "nrm": "sprites/bush_028_n.png",
    "kind": "bush",
-   "x": 290,
-   "y": 261,
-   "w": 22,
-   "h": 20,
+   "x": 298,
+   "y": 264,
+   "w": 15,
+   "h": 18,
    "foot": [
     301.7,
     276.2
@@ -315,10 +315,10 @@
    "file": "sprites/bush_029.png",
    "nrm": "sprites/bush_029_n.png",
    "kind": "bush",
-   "x": 336,
-   "y": 264,
-   "w": 22,
-   "h": 14,
+   "x": 330,
+   "y": 263,
+   "w": 30,
+   "h": 18,
    "foot": [
     343.2,
     276.1
@@ -329,10 +329,10 @@
    "file": "sprites/rock_030.png",
    "nrm": "sprites/rock_030_n.png",
    "kind": "rock",
-   "x": 310,
-   "y": 285,
-   "w": 20,
-   "h": 15,
+   "x": 305,
+   "y": 287,
+   "w": 25,
+   "h": 13,
    "foot": [
     317.8,
     297.2
@@ -343,10 +343,10 @@
    "file": "sprites/rock_031.png",
    "nrm": "sprites/rock_031_n.png",
    "kind": "rock",
-   "x": 324,
+   "x": 322,
    "y": 245,
-   "w": 16,
-   "h": 18,
+   "w": 24,
+   "h": 21,
    "foot": [
     331.9,
     257.2
@@ -357,10 +357,10 @@
    "file": "sprites/rock_033.png",
    "nrm": "sprites/rock_033_n.png",
    "kind": "rock",
-   "x": 310,
-   "y": 228,
-   "w": 22,
-   "h": 18,
+   "x": 315,
+   "y": 229,
+   "w": 20,
+   "h": 20,
    "foot": [
     321.0,
     239.9
@@ -371,10 +371,10 @@
    "file": "sprites/rock_034.png",
    "nrm": "sprites/rock_034_n.png",
    "kind": "rock",
-   "x": 258,
+   "x": 255,
    "y": 269,
    "w": 30,
-   "h": 19,
+   "h": 17,
    "foot": [
     272.5,
     283.4
@@ -385,10 +385,10 @@
    "file": "sprites/rock_036.png",
    "nrm": "sprites/rock_036_n.png",
    "kind": "rock",
-   "x": 422,
-   "y": 193,
-   "w": 22,
-   "h": 17,
+   "x": 419,
+   "y": 194,
+   "w": 29,
+   "h": 18,
    "foot": [
     431.5,
     204.2
@@ -399,9 +399,9 @@
    "file": "sprites/rock_037.png",
    "nrm": "sprites/rock_037_n.png",
    "kind": "rock",
-   "x": 332,
-   "y": 214,
-   "w": 21,
+   "x": 327,
+   "y": 215,
+   "w": 29,
    "h": 15,
    "foot": [
     340.5,
@@ -413,10 +413,10 @@
    "file": "sprites/rock_038.png",
    "nrm": "sprites/rock_038_n.png",
    "kind": "rock",
-   "x": 351,
-   "y": 191,
-   "w": 24,
-   "h": 23,
+   "x": 341,
+   "y": 192,
+   "w": 43,
+   "h": 25,
    "foot": [
     362.7,
     206.7
@@ -427,38 +427,38 @@
    "file": "sprites/crystals_039.png",
    "nrm": "sprites/crystals_039_n.png",
    "kind": "crystals",
-   "x": 479,
-   "y": 247,
-   "w": 30,
-   "h": 49,
+   "x": 270,
+   "y": 258,
+   "w": 32,
+   "h": 43,
    "foot": [
-    495.1,
-    289.1
+    285.4,
+    294.4
    ],
-   "sort_y": 289.1
+   "sort_y": 294.4
   },
   {
    "file": "sprites/crystals_040.png",
    "nrm": "sprites/crystals_040_n.png",
    "kind": "crystals",
-   "x": 390,
+   "x": 392,
    "y": 94,
-   "w": 25,
-   "h": 42,
+   "w": 21,
+   "h": 39,
    "foot": [
-    400.0,
-    129.3
+    399.4,
+    130.1
    ],
-   "sort_y": 129.3
+   "sort_y": 130.1
   },
   {
    "file": "sprites/lantern_041.png",
    "nrm": "sprites/lantern_041_n.png",
    "kind": "lantern",
-   "x": 212,
-   "y": 227,
-   "w": 11,
-   "h": 27,
+   "x": 208,
+   "y": 224,
+   "w": 18,
+   "h": 31,
    "foot": [
     216.8,
     251.5
@@ -469,10 +469,10 @@
    "file": "sprites/lantern_042.png",
    "nrm": "sprites/lantern_042_n.png",
    "kind": "lantern",
-   "x": 243,
-   "y": 208,
-   "w": 12,
-   "h": 28,
+   "x": 240,
+   "y": 206,
+   "w": 18,
+   "h": 31,
    "foot": [
     248.1,
     233.6
@@ -483,10 +483,10 @@
    "file": "sprites/lantern_043.png",
    "nrm": "sprites/lantern_043_n.png",
    "kind": "lantern",
-   "x": 271,
-   "y": 197,
-   "w": 13,
-   "h": 28,
+   "x": 268,
+   "y": 195,
+   "w": 18,
+   "h": 31,
    "foot": [
     276.6,
     222.7
@@ -497,10 +497,10 @@
    "file": "sprites/lantern_044.png",
    "nrm": "sprites/lantern_044_n.png",
    "kind": "lantern",
-   "x": 323,
-   "y": 171,
-   "w": 13,
-   "h": 28,
+   "x": 321,
+   "y": 169,
+   "w": 18,
+   "h": 31,
    "foot": [
     329.3,
     196.8
@@ -511,10 +511,10 @@
    "file": "sprites/lantern_045.png",
    "nrm": "sprites/lantern_045_n.png",
    "kind": "lantern",
-   "x": 363,
-   "y": 170,
-   "w": 13,
-   "h": 26,
+   "x": 361,
+   "y": 168,
+   "w": 18,
+   "h": 31,
    "foot": [
     369.3,
     195.2

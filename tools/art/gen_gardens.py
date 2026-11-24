@@ -28,6 +28,7 @@ GRASS = {(0x5f, 0xa3, 0x6a), (0xb7, 0xd9, 0x78), (0x2f, 0x6b, 0x55)}   # palette
 BAD = {(0xf2, 0xe6, 0xa0), (0x1f, 0x3b, 0x35), (0xc2, 0x78, 0x4e)}   # path, water and dirt: keep flowers a few texels off them
 PLATE = (24.0, 13.0)    # half extents of the exclusion ellipse around a pad plate (plate 14 x 7, plus its glow ring and a gap)
 SOLID = {'oak', 'pine', 'bush', 'rock', 'crystals', 'menhir', 'tower', 'windmill', 'lighthouse', 'obelisk', 'sign', 'gateway', 'lantern'}
+SPREAD = 1.4   # how much farther apart flowers stand than their bare footprints: open, even spacing, not tight blobs
 PATH_CLEAR, PATH_FULL = 17.0, 36.0   # uv texels from a path centre line: no flower closer than the first, full density beyond the second
 SCALE_PLATE = {1: 1.0, 2: 1.3, 3: 1.9}   # a bigger flower keeps further from a plate, so the plates always read
 
@@ -80,6 +81,18 @@ def uv_to_screen(u, v):
     return LAY._from_uv(u, v)
 
 
+def radius(rng, reach, cap=1.0):
+    """A distance from a plate: half the draws spread evenly over the whole field (so it is not a heap at the plates),
+    half bunch toward the plates, so the middle is a little fuller than the edge without forming blobs."""
+    r = reach * math.sqrt(rng.random()) if rng.random() < 0.55 else abs(rng.gauss(0, reach * 0.6))
+    return r if r <= reach * cap else reach * cap * rng.random()
+
+
+def thick(x, y, seed):
+    """How likely a spot is to take a flower: gentle drifts, never bare patches next to fat ones."""
+    return 0.5 + 0.5 * patch(x, y, seed)
+
+
 def around(p, ang, r):
     """The screen point r ground texels from screen point p, at ground angle ang (a ground circle is a 2:1 ellipse on screen)."""
     u, v = LAY._to_uv(*p)
@@ -93,7 +106,7 @@ def garden(cfg, pads, grass, near_bad, boxes, rng, taken):
     stat = STATS.index(cfg['stat'])
     fb = [v * LAY.S for v in LAY.FARM_BOX]   # the windmill farm keeps its own planting: no field flowers inside its box
 
-    def ok(x, y, k=1.0, shrub=False):
+    def ok(x, y, k=1.0, shrub=False, jitter=1.0):
         xi, yi = int(x), int(y)
         if fb[0] <= x <= fb[2] and fb[1] <= y <= fb[3]:
             return False
@@ -112,7 +125,7 @@ def garden(cfg, pads, grass, near_bad, boxes, rng, taken):
             return False
         cell = (xi // 4, yi // 3)
         r = 6 if (shrub or k >= 3) else 4
-        need_x, need_y = (10.0, 5.0) if shrub else (3.2 * k + 1.0, 1.3 * k + 1.0)
+        need_x, need_y = (14.0, 7.0) if shrub else (SPREAD * (3.2 * k + 1.0) * jitter, SPREAD * (1.3 * k + 1.0) * jitter)
         for dx in range(-r, r + 1):
             for dy in range(-r, r + 1):
                 for q in taken.get((cell[0] + dx, cell[1] + dy), ()):
@@ -149,28 +162,24 @@ def garden(cfg, pads, grass, near_bad, boxes, rng, taken):
     # big flowers: the pad's own flower grown large, densest at the plates and thinning into the grass
     weights = cfg['scales']
     for p in pads:
-        for _ in range(cfg['n'] * 8):
+        for _ in range(cfg['n'] * 14):
             ang = rng.uniform(0, math.tau)
-            r = abs(rng.gauss(0, cfg['reach'] * 0.55))
-            if r > cfg['reach']:
-                continue
+            r = radius(rng, cfg['reach'])
             x, y = around(p, ang, r)
             k = rng.choices((1, 2, 3), weights=weights)[0]
-            if rng.random() > 0.3 + 0.9 * patch(x, y, cfg['seed']):
+            if rng.random() > thick(x, y, cfg['seed']):
                 continue
-            if ok(x, y, k) and path_ok(x, y):
+            if ok(x, y, k, jitter=rng.uniform(0.75, 1.6)) and path_ok(x, y):
                 put(x, y, FIELD_FIRST + (k - 1) * FIELD_TINTS + rng.randrange(FIELD_TINTS), k)
     # small flowers fill the gaps between the big ones
     for p in pads:
-        for _ in range(cfg['small'] * 8):
+        for _ in range(cfg['small'] * 14):
             ang = rng.uniform(0, math.tau)
-            r = abs(rng.gauss(0, cfg['reach'] * 0.55))
-            if r > cfg['reach'] * 1.15:
-                continue
+            r = radius(rng, cfg['reach'], 1.15)
             x, y = around(p, ang, r)
-            if rng.random() > 0.3 + 0.9 * patch(x, y, cfg['seed']):
+            if rng.random() > thick(x, y, cfg['seed']):
                 continue
-            if ok(x, y, 1) and path_ok(x, y):
+            if ok(x, y, 1, jitter=rng.uniform(0.75, 1.6)) and path_ok(x, y):
                 put(x, y, rng.randrange(VARIANTS), 1)
     # strays: a thin, sparse trail of flowers spilling out into the grass, thinner the further out
     for _ in range(cfg['strays'] * 6):
