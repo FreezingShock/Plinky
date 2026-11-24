@@ -14,6 +14,7 @@ const DRAIN_SPEED: float = 2.5     ## fill lost per second let go
 const RING_EVERY: float = 0.16     ## seconds between rings while held (halves as the fill reaches full)
 const RING_LIFE: float = 0.6
 const RING_GROW: float = 70.0      ## how far a ring travels, in px
+const BAYER: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]   ## the 4x4 Bayer order the theme dithers with
 const BADGE: float = 136.0         ## the icon's square; the icon itself is 4x (128 px)
 const WIDTH: float = 250.0
 
@@ -65,7 +66,20 @@ class HoldIcon extends Control:
 	func _draw() -> void:
 		var c: Vector2 = (size * 0.5).round()
 		if fill > 0.0:
-			draw_rect(Rect2((c - Vector2(66.0, 66.0)).round(), Vector2(132.0, 132.0)), Color(colour.r, colour.g, colour.b, 0.12 * fill))
+			# a round glow, dithered on a 4 px grid with the palette's 4x4 Bayer order, so it reads as pixels, not a box
+			var r: float = 70.0
+			var cell: float = 4.0
+			var steps: int = int(r / cell)
+			for iy: int in range(-steps, steps):
+				for ix: int in range(-steps, steps):
+					var p: Vector2 = Vector2(float(ix) + 0.5, float(iy) + 0.5) * cell
+					var d: float = p.length() / r
+					if d >= 1.0:
+						continue
+					var cover: float = fill * (1.0 - d) * (1.0 - d) * 0.5
+					var bayer: float = (float(BAYER[(ix & 3) + (iy & 3) * 4]) + 0.5) / 16.0
+					if cover > bayer:
+						draw_rect(Rect2(c + Vector2(float(ix), float(iy)) * cell, Vector2(cell, cell)), Color(colour.r, colour.g, colour.b, 0.9))
 		if icon != null:
 			var px: float = icon.get_width() * 4.0
 			var tint: Color = Color.WHITE.lerp(colour, 0.15 * fill)
