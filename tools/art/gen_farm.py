@@ -16,62 +16,11 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from gen_cozy import Canvas, INK, SHADE, DEEP, BASE, LIGHT, ACCENT, EARTH, PAPER  # noqa: E402
+from farm_iso import barn, cart, crates, hay_bale, shed  # noqa: E402  (elevated view, see farm_iso.py)
 
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 
-
-
-def barn() -> Canvas:
-    """A gabled barn, 72x56: red-brown walls, plank lines, a loft window, a double door."""
-    c = Canvas(72, 56)
-    c.rect(6, 24, 65, 52, EARTH)                      # walls
-    for x in range(8, 65, 5):                         # plank lines
-        c.seg(x, 25, x, 52, SHADE)
-    for y in range(4, 25):                            # gable roof: a filled triangle
-        half = (y - 4) * (33.0 / 20.0)
-        c.rect(round(36 - half), y, round(36 + half), y, DEEP)
-    c.rect(4, 24, 67, 25, DEEP)                       # eave line
-    c.rect(27, 33, 45, 52, INK)                       # door
-    c.seg(36, 33, 36, 52, SHADE)                      # door split
-    c.rect(31, 14, 41, 20, PAPER)                     # loft window
-    c.seg(36, 14, 36, 20, INK)
-    c.seg(31, 17, 41, 17, INK)
-    c.rect(29, 52, 43, 53, LIGHT)                     # threshold of straw
-    c.outline(INK)
-    return c
-
-
-def shed() -> Canvas:
-    """A lean-to tool shed, 40x34."""
-    c = Canvas(40, 34)
-    c.rect(4, 12, 35, 31, EARTH)
-    for x in range(6, 35, 5):
-        c.seg(x, 13, x, 31, SHADE)
-    for y in range(4, 13):                            # sloping roof
-        span = 1 + (y - 4) * 1.6
-        c.rect(max(0, round(20 - span)), y, min(39, round(20 + span)), y, BASE)
-    c.rect(2, 11, 37, 12, BASE)
-    c.rect(14, 18, 25, 31, INK)                       # doorway
-    c.rect(8, 16, 11, 19, PAPER)                      # small window
-    c.outline(INK)
-    return c
-
-
-def hay_bale(variant: int) -> Canvas:
-    """A round bale on its side, 16x12. variant 1 has a second bale behind it at the top, so stacks read as stacks."""
-    c = Canvas(16, 12)
-    c.ellipse(8, 6, 7.4, 5.2, ACCENT)
-    for y in range(2, 11):                            # straw ridges across the bale
-        if y % 2 == 0:
-            c.seg(2, y, 14, y, LIGHT)
-    c.ellipse(8, 6, 3.2, 2.2, EARTH)                  # the cut face
-    c.seg(6, 4, 10, 8, SHADE)
-    if variant == 1:
-        c.ellipse(9, 1.5, 4.5, 2.6, ACCENT)
-        c.seg(6, 0, 12, 0, LIGHT)
-    c.outline(INK)
-    return c
 
 
 def scarecrow() -> Canvas:
@@ -89,37 +38,6 @@ def scarecrow() -> Canvas:
     c.set(10, 10, INK)
     c.rect(5, 4, 12, 7, DEEP)                         # hat crown
     c.rect(3, 7, 14, 8, DEEP)                         # hat brim
-    c.outline(INK)
-    return c
-
-
-def cart() -> Canvas:
-    """A two-wheeled hay cart, 28x20, with a load of hay and a shaft."""
-    c = Canvas(28, 20)
-    c.rect(4, 8, 23, 12, EARTH)                       # bed
-    for x in range(6, 23, 4):
-        c.seg(x, 8, x, 12, SHADE)
-    c.rect(6, 4, 21, 7, ACCENT)                       # hay load
-    for x in range(7, 21, 3):
-        c.set(x, 5, LIGHT)
-    c.seg(23, 10, 27, 11, EARTH)                      # shaft
-    c.ellipse(8, 15, 4.2, 4.2, INK)                   # wheels
-    c.ellipse(20, 15, 4.2, 4.2, INK)
-    c.ellipse(8, 15, 1.8, 1.8, SHADE)
-    c.ellipse(20, 15, 1.8, 1.8, SHADE)
-    c.outline(INK)
-    return c
-
-
-def crates() -> Canvas:
-    """Two crates, one stacked on the other, 12x12."""
-    c = Canvas(12, 12)
-    c.rect(0, 5, 6, 11, EARTH)
-    c.seg(0, 8, 6, 8, SHADE)
-    c.rect(6, 6, 11, 11, EARTH)
-    c.seg(6, 9, 11, 9, SHADE)
-    c.rect(2, 0, 7, 4, EARTH)                         # top crate
-    c.seg(2, 2, 7, 2, SHADE)
     c.outline(INK)
     return c
 
@@ -147,14 +65,16 @@ def grounded(c: Canvas, lift: int = 2) -> Canvas:
     return out
 
 
+# Buildings, hay, cart and crates come from farm_iso.py already fitted to their ground (row h - 2), so they are not
+# lifted here. The scarecrow is still a front figure and keeps grounded().
 PROPS = [
-    ('farm_barn', lambda: grounded(barn())),
-    ('farm_shed', lambda: grounded(shed())),
-    ('farm_hay_0', lambda: grounded(hay_bale(0))),
-    ('farm_hay_1', lambda: grounded(hay_bale(1))),
+    ('farm_barn', barn),
+    ('farm_shed', shed),
+    ('farm_hay_0', lambda: hay_bale(0)),
+    ('farm_hay_1', lambda: hay_bale(1)),
     ('farm_scarecrow', lambda: grounded(scarecrow())),
-    ('farm_cart', lambda: grounded(cart())),
-    ('farm_crates', lambda: grounded(crates())),
+    ('farm_cart', cart),
+    ('farm_crates', crates),
 ]
 
 
