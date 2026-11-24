@@ -192,6 +192,13 @@ static func lamp_bloom(rain01: float) -> Vector2:
 	return Vector2(1.0 + BLOOM_RADIUS * k, 1.0 + BLOOM_STRENGTH * k)
 
 
+## Mist halo: at full mist each lamp pool spreads by FOG_HALO more, so the light reads through the fog. 1.0 when clear.
+const FOG_HALO: float = 0.6
+
+static func fog_halo(mist01: float) -> float:
+	return 1.0 + FOG_HALO * clampf(mist01, 0.0, 1.0)
+
+
 ## Lightning flash, 0..1, at game time t. Only in heavy rain (rain01 from 0.7 up, full at 1). Each 40 s window has a
 ## strike half the time, at a hashed moment in the window, and each strike flickers twice over about half a second.
 ## Pure: the same time always gives the same flash, so it can be tested.
