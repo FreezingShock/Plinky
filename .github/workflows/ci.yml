@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 3
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      sim: ${{ steps.filter.outputs.sim }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -33,6 +34,14 @@ jobs:
               - '!docs/**'
               - '!changelog.d/**'
               - '!**/*.md'
+            # The balance sim reads only pure logic, data and content (core/ has no nodes, see CLAUDE.md). Art, render,
+            # world and UI PRs skip it. A skipped job counts as passing in `test`.
+            sim:
+              - 'core/**'
+              - 'data/**'
+              - 'content/**'
+              - 'tools/sim.gd'
+              - '.github/**'
       # docs/decisions.md is a pointer to docs/decisions/<topic>.md. A long file means the old monolith came back.
       - name: Decision log stays split
         run: |
@@ -78,7 +87,7 @@ jobs:
 
   sim:
     needs: changes
-    if: needs.changes.outputs.code == 'true' || github.event_name != 'pull_request'
+    if: needs.changes.outputs.sim == 'true' || github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

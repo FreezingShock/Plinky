@@ -17,6 +17,7 @@ const WORST_SPOT: Vector2 = Vector2(1460.0, 800.0)
 const PAD_PATH: String = "res://assets/art/zone1b/larkmoor/placements3d.json"
 
 var frames: int = 240
+var shots_only: bool = false   # --shots: save the view at three sun states with the sway frozen, then stop (A/B the look)
 var label: String = "run"
 var quality: int = -1
 var results: Array[Dictionary] = []
@@ -32,6 +33,8 @@ func _init() -> void:
 			label = a.trim_prefix("--label=")
 		elif a.begins_with("--quality="):
 			quality = GraphicsQuality.parse(a.trim_prefix("--quality="))
+		elif a == "--shots":
+			shots_only = true
 	PerfStats.tracing = true
 	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
 	_main = main
@@ -57,6 +60,10 @@ func _init() -> void:
 	var cam: WorldCamera = main.get("camera") as WorldCamera
 	var walker: Node2D = main.get("walker") as Node2D
 	var spawn: Vector2 = walker.position
+	if shots_only:
+		await _shots(cam)
+		quit(0)
+		return
 	for line: String in PerfStats.trace:
 		if line.begins_with("swap") or line.begins_with("garden atlas") or line.begins_with("chunk"):
 			print("entry ", line)   # the zone swap and anything built on the first frames in Larkmoor
@@ -75,6 +82,22 @@ func _init() -> void:
 
 	_report()
 	quit(0)
+
+
+## The same view at noon, sunset and midnight with the sway frozen, saved as PNGs, so two builds can be compared pixel by pixel.
+func _shots(cam: WorldCamera) -> void:
+	MeadowLife.reduce_motion = true
+	var zone: Node = _main.get("meadow") as Node
+	print("shots: zone scene ", zone.scene_file_path if zone != null else "none", " walker ", (_main.get("walker") as Node2D).position, " props ", zone.call("loaded_prop_count") if zone != null and zone.has_method("loaded_prop_count") else -1)
+	for ph: float in [0.5, 0.75, 0.0]:
+		SkyCycle.debug_phase = ph
+		await _frames(150)   # the sky eases toward each phase over frames: wait for it to settle before the shot
+		var img: Image = get_root().get_texture().get_image()
+		var out_dir: String = ProjectSettings.globalize_path("res://shots")
+		DirAccess.make_dir_recursive_absolute(out_dir)
+		img.save_png(out_dir + "/shot_%s_%03d.png" % [label, int(ph * 100.0)])
+		print("saved shot ", label, " phase ", ph, " size ", img.get_size())
+	SkyCycle.debug_phase = -1.0
 
 
 func _uncap() -> void:

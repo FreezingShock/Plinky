@@ -229,6 +229,11 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 | The Thistle garden reaches 100 uv (was 82) with 100 big flowers per plate (was 66). | The row's field was a thin strip beside the road. |
 | `tools/garden_shots.gd` takes `-- phase=0.95` to shoot a row at night. | Night review of the rows. Software Vulkan hits the shader-instance limit after about six night shots; shoot the later rows by themselves. |
 
+## 2026-11-24: Less clumped fields
+| Decision | Why |
+|---|---|
+| `gen_gardens.py` draws distances half evenly over the field and half bunched to the plates (was all bunched), thins by gentle drifts (0.5 to 1.0, was 0.3 to 1.2), and spaces flowers 1.4x their footprint with a random 0.75 to 1.6 jitter. Attempts rose so the total stays about the same (2429 flowers, was 2410). | Nathan asked for fields that are less clumped but liked the density, so spacing varies and the heaps go, not the flower count. |
+| `tools/qa_probe.tscn` walks the real main scene from a chosen start to a pad (`-- x=2127 y=1039 pad=lark_clover_1 rich`); `route_probe` also routes every pad from every other pad and a scatter of open spots. | For the lark_clover_1 farm-side report, which does not reproduce here. |
 ## 2026-11-24: Meadow lanterns one size, lit after dark
 | Decision | Why |
 |---|---|
