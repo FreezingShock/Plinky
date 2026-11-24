@@ -51,8 +51,8 @@ func run(t: Object) -> void:
 	for n: int in GalleryMenu.GROUPS:
 		grouped += n
 	t.eq(grouped, GalleryMenu.ENTRIES.size(), "every tile is in a row group")
-	t.ok((g.tile(&"settings").size_flags_horizontal & Control.SIZE_EXPAND_FILL) != 0, "the lone Settings tile stretches to the full width")
-	t.ok((g.tile(&"upgrades").size_flags_horizontal & Control.SIZE_EXPAND_FILL) == 0, "the grid tiles keep their own width")
+	t.ok((g.tile(&"settings").size_flags_horizontal & Control.SIZE_EXPAND) != 0, "the lone Settings tile stretches to the full width")
+	t.ok((g.tile(&"upgrades").size_flags_horizontal & Control.SIZE_EXPAND) == 0, "the grid tiles keep their own width")
 	var n8: Dictionary = GalleryMenu.neighbors(9, GalleryMenu.COLUMNS, 8)
 	t.ok(n8["up"] == 4 and n8["down"] == 0, "Settings: up goes to the Info row, down wraps to the first Play tile")
 	g.free()
