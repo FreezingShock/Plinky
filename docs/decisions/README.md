@@ -20,3 +20,4 @@ Before you start a task, find the topic that matches it and read that file. Then
 - Entries are kept in full, including old ones. Nothing is deleted. Superseded entries are marked **Superseded** on the entry, with what replaced them.
 - The topic split was made by section heading on 23 Nov 2026. A few sections mix topics (for example the first Audio section also holds a table of balance and HUD rows). Read the topic file in full for those.
 - Originally one file, `docs/decisions.md`, which now points here. Code comments that still name `docs/decisions.md` resolve through that pointer.
+- The CI `changes` job fails if `docs/decisions.md` grows past 20 lines, so the monolith cannot quietly come back. Every entry goes in a topic file.
