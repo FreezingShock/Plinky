@@ -32,6 +32,7 @@ const PAL: Array[Color] = [
 ]
 const ROOT_BAND: float = 0.28        # the lowest share of a stalk is its dark root
 const HEAD_START: float = 0.80       # the top share of a stalk is its head
+const SIDE_MARGIN: float = 5.0      # stalk bases stay this far in from the sheet edge: sway and lean add about 3 texels more
 const SIDE_LIGHT: float = 3.0        # softens the sideways direction for stalks right beside the walker
 const SILHOUETTE_HALF: float = 9.0   # stalks within this many texels of the walker's column, and in front of him, are cut
 const SILHOUETTE_TOP: float = 14.0   # ... so their tips stop this many texels above his feet and his outline stays clear
@@ -43,10 +44,10 @@ static func generate(seed_value: int, w: int, h: int, stage: int) -> Dictionary:
 	rng.seed = seed_value
 	var cx: float = w * 0.5
 	var band_y: float = h - 5.0
-	var rx: float = w * 0.47
+	var rx: float = w * 0.47 - SIDE_MARGIN
 	var ry: float = maxf(h * 0.16, 2.0)
 	var count: int = int(w * 2.4) if stage != STAGE_SPROUT else int(w * 1.4)
-	var max_h: float = h - 6.0
+	var max_h: float = h - 8.0
 	var stalks: Array = []
 	var tries: int = 0
 	while stalks.size() < count and tries < count * 6:

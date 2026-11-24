@@ -321,6 +321,10 @@ func _find_calendar() -> void:
 ## Mix the four seasons by their weights and push the result to every ground and prop material.
 func _update_season() -> void:
 	var w: Array[float] = [1.0, 0.0, 0.0, 0.0]
+	# A pinned season moves the calendar too. Before this, only the sky changed: the clock still read the real season and
+	# the flowers, which take their season from Calendar.now(), never got frost. Pure check: pin_jump_needed.
+	if pin_jump_needed(debug_season, _cal.season_index() if _cal != null else -1):
+		_cal.jump_to_season(debug_season)
 	if debug_season >= 0:
 		w = [0.0, 0.0, 0.0, 0.0]
 		w[clampi(debug_season, 0, 3)] = 1.0
@@ -357,6 +361,12 @@ func _light_time(t: float) -> float:
 
 
 ## Model time of midday for this model, the moment an underground zone's light holds at.
+## True when a season pin is set and the calendar is in another season, so the calendar must jump to the pin.
+## `current` is the calendar's season, or -1 with no calendar yet (then nothing can jump). Pure, so the rule is tested.
+static func pin_jump_needed(pin: int, current: int) -> bool:
+	return pin >= 0 and current >= 0 and current != clampi(pin, 0, 3)
+
+
 static func underground_time(m: SkyModel) -> float:
 	return (m.clock_of_phase(UNDERGROUND_PHASE) - m.clock_of_phase(m.start_phase)) * m.day_seconds
 

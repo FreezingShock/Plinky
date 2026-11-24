@@ -134,7 +134,7 @@ static func fish_share() -> float:
 
 
 static func deer_share() -> float:
-	return clampf(MeadowLife.low_sun * 1.5, 0.0, 1.0) * (1.0 - MeadowLife.rain) * MeadowLife.season_mix([0.9, 0.9, 1.0, 0.5])
+	return clampf(maxf(MeadowLife.low_sun * 1.5, sin(PI * clampf(MeadowLife.night, 0.0, 1.0)) * 0.9), 0.0, 1.0) * (1.0 - MeadowLife.rain) * MeadowLife.season_mix([0.9, 0.9, 1.0, 0.5])
 
 
 static func owl_share() -> float:

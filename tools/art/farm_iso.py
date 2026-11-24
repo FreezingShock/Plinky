@@ -211,42 +211,42 @@ def _steps(a: float, b: float, s: float):
 
 
 def barn() -> Canvas:
-    """The main barn, 72x56: a gabled hall with a porch on the lit wall, columns, moldings, a loft hatch and a cellar
+    """The main barn, 72x58: a gabled hall with a porch on the lit wall, columns, moldings, a loft hatch and a cellar
     hatch. It is the biggest building in the farm and reads first on the walk."""
-    cv = Canvas(72, 56)
+    cv = Canvas(72, 58)
     gable_building(cv, L=30, W=20, H=16, rise=9, porch=True, loft_hatch=True, door_w=8.0)
     cv.outline(INK)
     return cv
 
 
 def shed() -> Canvas:
-    """A gabled tool shed, 40x34, with a real roof: a ridge, two tiled slopes, a fascia and a plank door."""
-    cv = Canvas(40, 34)
+    """A gabled tool shed, 40x36, with a real roof: a ridge, two tiled slopes, a fascia and a plank door."""
+    cv = Canvas(40, 36)
     gable_building(cv, L=18, W=14, H=10, rise=6, porch=False, loft_hatch=False, door_w=5.0)
     cv.outline(INK)
     return cv
 
 
 def hay_bale(variant: int) -> Canvas:
-    """A round bale on its side, 16x12, seen from above: an ACCENT disc with straw rings, a cut face and a shaded lower
+    """A round bale on its side, 16x14, seen from above: an ACCENT disc with straw rings, a cut face and a shaded lower
     rim. variant 1 has a second bale behind it, so stacks read as stacks."""
-    cv = Canvas(16, 12)
+    cv = Canvas(16, 14)
 
     def disc(cx: float, cy: float, rx: float, ry: float) -> None:
-        for y in range(12):
+        for y in range(14):
             for x in range(16):
                 if ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1.0:
                     rim = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 > 0.6 and y + 0.5 > cy
                     cv.set(x, y, SHADE if rim and bayer(x, y) < 0.5 else ACCENT)
 
     if variant == 1:
-        disc(9, 3, 4.5, 2.6)
-        cv.rect(5, 3, 13, 3, LIGHT)
-    disc(8, 7, 6.8, 4.4)
+        disc(9, 5, 4.5, 2.6)
+        cv.rect(5, 5, 13, 5, LIGHT)
+    disc(8, 9, 6.8, 4.4)
     for k in (-3.5, -1.0, 1.5):                       # straw rings across the top of the bale
-        cv.seg(8 + k, 4, 8 + k + 1.5, 9, LIGHT)
-    cv.ellipse(8, 7, 2.6, 1.8, EARTH)                 # the cut face
-    cv.ellipse(8, 7, 1.2, 0.8, SHADE)
+        cv.seg(8 + k, 6, 8 + k + 1.5, 11, LIGHT)
+    cv.ellipse(8, 9, 2.6, 1.8, EARTH)                 # the cut face
+    cv.ellipse(8, 9, 1.2, 0.8, SHADE)
     cv.outline(INK)
     return cv
 

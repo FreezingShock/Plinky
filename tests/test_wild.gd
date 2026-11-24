@@ -46,6 +46,9 @@ func run(t: Object) -> void:
 	MeadowLife.rain = 0.0
 	t.eq(LifeWild.dragonfly_share(), 1.0, "summer noon: every dragonfly is out")
 	t.eq(LifeWild.deer_share(), 0.0, "summer noon: no deer at the forest edge")
+	MeadowLife.night = 0.5
+	t.ok(LifeWild.deer_share() > 0.5, "dusk in summer: the deer come out at the forest edge (%.2f)" % LifeWild.deer_share())
+	MeadowLife.night = 0.0
 	t.eq(LifeWild.owl_share(), 0.0, "summer noon: no owls")
 	MeadowLife.low_sun = 1.0
 	t.ok(LifeWild.deer_share() > 0.8, "golden hour in summer: the deer comes out (%.2f)" % LifeWild.deer_share())
@@ -194,6 +197,25 @@ func run(t: Object) -> void:
 		calm_edge.update(1.0 / 30.0, edge_wp)
 	t.ok((calm_deer.pos as Vector2).distance_to(deer_start) < 0.001, "reduce motion: the deer stays where it is")
 	t.ok(not jumped, "reduce motion: the fish do not leap")
+
+	# The arrival point (life data "start"): two rabbits sit at the grass edge near it, and two butterflies start over the flowers near it.
+	var sa: Array = lark.get("start", []) as Array
+	var arrival := Vector2(float(sa[0]), float(sa[1]))
+	var arrive := LifeCritters.new()
+	arrive.setup(lark)
+	var near_rabbits: int = 0
+	for r: Variant in arrive.get("_rabbits") as Array:
+		if MeadowLife.iso_distance((r as Dictionary).home as Vector2, arrival) <= LifeCritters.START_REACH:
+			near_rabbits += 1
+	t.ok(near_rabbits >= 2, "two rabbits sit at the grass edge near the arrival point (%d)" % near_rabbits)
+	var fly := LifeButterflies.new()
+	fly.setup(lark)
+	var beds: Array = fly.get("_beds") as Array
+	var near_fly: int = 0
+	for f: Variant in fly.get("_flies") as Array:
+		if MeadowLife.iso_distance(beds[int((f as Dictionary).bed)] as Vector2, arrival) <= LifeButterflies.START_REACH:
+			near_fly += 1
+	t.ok(near_fly >= 2, "two butterflies start over the flowers near the arrival point (%d)" % near_fly)
 
 	# Tidy up the globals the suite changed.
 	MeadowLife.season = keep_season

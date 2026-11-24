@@ -73,3 +73,14 @@ func run(t: Object) -> void:
 			struck = true
 	t.ok(in_range_l, "lightning stays within 0..1")
 	t.ok(struck, "a long heavy downpour has at least one strike")
+
+	# Season pin: a pinned season moves the calendar, so the clock, the flowers and the sky all read the same season.
+	t.ok(SkyCycle.pin_jump_needed(3, 0), "a winter pin jumps a spring calendar to winter")
+	t.ok(not SkyCycle.pin_jump_needed(3, 3), "no jump once the calendar is in the pinned season")
+	t.ok(not SkyCycle.pin_jump_needed(-1, 0), "no pin means no jump")
+	t.ok(not SkyCycle.pin_jump_needed(3, -1), "no calendar yet means no jump")
+	var pin_cal := GameCalendar.new(load("res://content/config/calendar.tres") as CalendarConfig, 300.0)
+	pin_cal.jump_to_season(3)
+	t.eq(pin_cal.season_index(), 3, "the pinned winter reads as winter in the calendar")
+	t.ok(String(pin_cal.now()["month_name"]).begins_with("Early Winter") or String(pin_cal.now()["month_name"]).begins_with("Late Winter"), "the clock names a winter month")
+	t.near(pin_cal.season_weights()[3], 1.0, 0.001, "and the sky weights are all winter")

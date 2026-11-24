@@ -3,28 +3,28 @@
   {
    "kind": "farm_barn",
    "file": "farm_barn.png",
-   "x": 2096,
-   "y": 836,
+   "x": 2100,
+   "y": 835,
    "w": 72,
-   "h": 56,
+   "h": 58,
    "foot": [
-    2132.0,
-    890.0
+    2136.0,
+    891.0
    ],
-   "sort_y": 890.0
+   "sort_y": 891.0
   },
   {
    "kind": "farm_shed",
    "file": "farm_shed.png",
-   "x": 2036,
-   "y": 855,
+   "x": 2040,
+   "y": 854,
    "w": 40,
-   "h": 34,
+   "h": 36,
    "foot": [
-    2056.0,
-    887.0
+    2060.0,
+    888.0
    ],
-   "sort_y": 887.0
+   "sort_y": 888.0
   },
   {
    "kind": "farm_scarecrow",
@@ -43,40 +43,40 @@
    "kind": "farm_hay_0",
    "file": "farm_hay_0.png",
    "x": 2120,
-   "y": 1180,
+   "y": 1179,
    "w": 16,
-   "h": 12,
+   "h": 14,
    "foot": [
     2128.0,
-    1190.0
+    1191.0
    ],
-   "sort_y": 1190.0
+   "sort_y": 1191.0
   },
   {
    "kind": "farm_hay_1",
    "file": "farm_hay_1.png",
    "x": 2284,
-   "y": 1088,
+   "y": 1087,
    "w": 16,
-   "h": 12,
+   "h": 14,
    "foot": [
     2292.0,
-    1098.0
+    1099.0
    ],
-   "sort_y": 1098.0
+   "sort_y": 1099.0
   },
   {
    "kind": "farm_hay_0",
    "file": "farm_hay_0.png",
    "x": 2308,
-   "y": 1180,
+   "y": 1179,
    "w": 16,
-   "h": 12,
+   "h": 14,
    "foot": [
     2316.0,
-    1190.0
+    1191.0
    ],
-   "sort_y": 1190.0
+   "sort_y": 1191.0
   },
   {
    "kind": "farm_cart",
@@ -120,19 +120,95 @@
   {
    "kind": "farm_fence",
    "file": "fence/farm_fence.png",
-   "x": 1922,
-   "y": 867,
-   "w": 316,
-   "h": 384,
+   "x": 1921,
+   "y": 827,
+   "w": 466,
+   "h": 425,
    "foot": [
-    2080.0,
-    867.0
+    2154.0,
+    827.0
    ],
-   "sort_y": 867.0,
+   "sort_y": 827.0,
    "pieces": [
     {
      "kind": "farm_fence_0",
      "file": "fence/farm_fence_0.png",
+     "x": 2126,
+     "y": 1070,
+     "w": 20,
+     "h": 25,
+     "foot": [
+      2136.0,
+      1093.0
+     ],
+     "sort_y": 1093.0,
+     "chord": [
+      17.6,
+      9.0,
+      1.5,
+      23.0
+     ]
+    },
+    {
+     "kind": "farm_fence_1",
+     "file": "fence/farm_fence_1.png",
+     "x": 1995,
+     "y": 1120,
+     "w": 27,
+     "h": 12,
+     "foot": [
+      2008.5,
+      1130.0
+     ],
+     "sort_y": 1130.0,
+     "chord": [
+      24.7,
+      9.4,
+      1.4,
+      8.7
+     ]
+    },
+    {
+     "kind": "farm_fence_2",
+     "file": "fence/farm_fence_2.png",
+     "x": 1974,
+     "y": 1108,
+     "w": 25,
+     "h": 23,
+     "foot": [
+      1986.5,
+      1129.0
+     ],
+     "sort_y": 1129.0,
+     "chord": [
+      22.4,
+      20.7,
+      2.0,
+      8.8
+     ]
+    },
+    {
+     "kind": "farm_fence_3",
+     "file": "fence/farm_fence_3.png",
+     "x": 1953,
+     "y": 1098,
+     "w": 25,
+     "h": 21,
+     "foot": [
+      1965.5,
+      1117.0
+     ],
+     "sort_y": 1117.0,
+     "chord": [
+      23.0,
+      18.8,
+      1.6,
+      8.5
+     ]
+    },
+    {
+     "kind": "farm_fence_4",
+     "file": "fence/farm_fence_4.png",
      "x": 1935,
      "y": 1083,
      "w": 22,
@@ -150,8 +226,8 @@
      ]
     },
     {
-     "kind": "farm_fence_1",
-     "file": "fence/farm_fence_1.png",
+     "kind": "farm_fence_5",
+     "file": "fence/farm_fence_5.png",
      "x": 1922,
      "y": 1071,
      "w": 17,
@@ -169,8 +245,8 @@
      ]
     },
     {
-     "kind": "farm_fence_2",
-     "file": "fence/farm_fence_2.png",
+     "kind": "farm_fence_6",
+     "file": "fence/farm_fence_6.png",
      "x": 2094,
      "y": 932,
      "w": 20,
@@ -188,8 +264,8 @@
      ]
     },
     {
-     "kind": "farm_fence_3",
-     "file": "fence/farm_fence_3.png",
+     "kind": "farm_fence_7",
+     "file": "fence/farm_fence_7.png",
      "x": 2072,
      "y": 948,
      "w": 26,
@@ -207,8 +283,8 @@
      ]
     },
     {
-     "kind": "farm_fence_4",
-     "file": "fence/farm_fence_4.png",
+     "kind": "farm_fence_8",
+     "file": "fence/farm_fence_8.png",
      "x": 2052,
      "y": 956,
      "w": 24,
@@ -226,8 +302,8 @@
      ]
     },
     {
-     "kind": "farm_fence_5",
-     "file": "fence/farm_fence_5.png",
+     "kind": "farm_fence_9",
+     "file": "fence/farm_fence_9.png",
      "x": 1940,
      "y": 899,
      "w": 27,
@@ -245,8 +321,8 @@
      ]
     },
     {
-     "kind": "farm_fence_6",
-     "file": "fence/farm_fence_6.png",
+     "kind": "farm_fence_10",
+     "file": "fence/farm_fence_10.png",
      "x": 1963,
      "y": 887,
      "w": 23,
@@ -264,8 +340,8 @@
      ]
     },
     {
-     "kind": "farm_fence_7",
-     "file": "fence/farm_fence_7.png",
+     "kind": "farm_fence_11",
+     "file": "fence/farm_fence_11.png",
      "x": 1982,
      "y": 882,
      "w": 26,
@@ -283,8 +359,8 @@
      ]
     },
     {
-     "kind": "farm_fence_8",
-     "file": "fence/farm_fence_8.png",
+     "kind": "farm_fence_12",
+     "file": "fence/farm_fence_12.png",
      "x": 2004,
      "y": 877,
      "w": 27,
@@ -302,8 +378,8 @@
      ]
     },
     {
-     "kind": "farm_fence_9",
-     "file": "fence/farm_fence_9.png",
+     "kind": "farm_fence_13",
+     "file": "fence/farm_fence_13.png",
      "x": 2089,
      "y": 904,
      "w": 27,
@@ -321,8 +397,8 @@
      ]
     },
     {
-     "kind": "farm_fence_10",
-     "file": "fence/farm_fence_10.png",
+     "kind": "farm_fence_14",
+     "file": "fence/farm_fence_14.png",
      "x": 2111,
      "y": 909,
      "w": 5,
@@ -340,8 +416,8 @@
      ]
     },
     {
-     "kind": "farm_fence_11",
-     "file": "fence/farm_fence_11.png",
+     "kind": "farm_fence_15",
+     "file": "fence/farm_fence_15.png",
      "x": 2155,
      "y": 1192,
      "w": 23,
@@ -359,8 +435,8 @@
      ]
     },
     {
-     "kind": "farm_fence_12",
-     "file": "fence/farm_fence_12.png",
+     "kind": "farm_fence_16",
+     "file": "fence/farm_fence_16.png",
      "x": 2080,
      "y": 1182,
      "w": 24,
@@ -378,8 +454,8 @@
      ]
     },
     {
-     "kind": "farm_fence_13",
-     "file": "fence/farm_fence_13.png",
+     "kind": "farm_fence_17",
+     "file": "fence/farm_fence_17.png",
      "x": 2062,
      "y": 1173,
      "w": 22,
@@ -397,8 +473,8 @@
      ]
     },
     {
-     "kind": "farm_fence_14",
-     "file": "fence/farm_fence_14.png",
+     "kind": "farm_fence_18",
+     "file": "fence/farm_fence_18.png",
      "x": 2044,
      "y": 1164,
      "w": 22,
@@ -416,8 +492,8 @@
      ]
     },
     {
-     "kind": "farm_fence_15",
-     "file": "fence/farm_fence_15.png",
+     "kind": "farm_fence_19",
+     "file": "fence/farm_fence_19.png",
      "x": 2028,
      "y": 1151,
      "w": 20,
@@ -435,8 +511,8 @@
      ]
     },
     {
-     "kind": "farm_fence_16",
-     "file": "fence/farm_fence_16.png",
+     "kind": "farm_fence_20",
+     "file": "fence/farm_fence_20.png",
      "x": 2162,
      "y": 1122,
      "w": 23,
@@ -454,8 +530,8 @@
      ]
     },
     {
-     "kind": "farm_fence_17",
-     "file": "fence/farm_fence_17.png",
+     "kind": "farm_fence_21",
+     "file": "fence/farm_fence_21.png",
      "x": 2181,
      "y": 1125,
      "w": 22,
@@ -473,8 +549,8 @@
      ]
     },
     {
-     "kind": "farm_fence_18",
-     "file": "fence/farm_fence_18.png",
+     "kind": "farm_fence_22",
+     "file": "fence/farm_fence_22.png",
      "x": 2199,
      "y": 1133,
      "w": 21,
@@ -492,8 +568,8 @@
      ]
     },
     {
-     "kind": "farm_fence_19",
-     "file": "fence/farm_fence_19.png",
+     "kind": "farm_fence_23",
+     "file": "fence/farm_fence_23.png",
      "x": 2216,
      "y": 1144,
      "w": 22,
@@ -511,8 +587,8 @@
      ]
     },
     {
-     "kind": "farm_fence_20",
-     "file": "fence/farm_fence_20.png",
+     "kind": "farm_fence_24",
+     "file": "fence/farm_fence_24.png",
      "x": 2190,
      "y": 949,
      "w": 17,
@@ -530,8 +606,8 @@
      ]
     },
     {
-     "kind": "farm_fence_21",
-     "file": "fence/farm_fence_21.png",
+     "kind": "farm_fence_25",
+     "file": "fence/farm_fence_25.png",
      "x": 2175,
      "y": 960,
      "w": 19,
@@ -549,8 +625,8 @@
      ]
     },
     {
-     "kind": "farm_fence_22",
-     "file": "fence/farm_fence_22.png",
+     "kind": "farm_fence_26",
+     "file": "fence/farm_fence_26.png",
      "x": 2161,
      "y": 967,
      "w": 18,
@@ -568,8 +644,8 @@
      ]
     },
     {
-     "kind": "farm_fence_23",
-     "file": "fence/farm_fence_23.png",
+     "kind": "farm_fence_27",
+     "file": "fence/farm_fence_27.png",
      "x": 2145,
      "y": 975,
      "w": 20,
@@ -587,8 +663,8 @@
      ]
     },
     {
-     "kind": "farm_fence_24",
-     "file": "fence/farm_fence_24.png",
+     "kind": "farm_fence_28",
+     "file": "fence/farm_fence_28.png",
      "x": 2128,
      "y": 975,
      "w": 21,
@@ -606,8 +682,8 @@
      ]
     },
     {
-     "kind": "farm_fence_25",
-     "file": "fence/farm_fence_25.png",
+     "kind": "farm_fence_29",
+     "file": "fence/farm_fence_29.png",
      "x": 2112,
      "y": 971,
      "w": 20,
@@ -625,8 +701,8 @@
      ]
     },
     {
-     "kind": "farm_fence_26",
-     "file": "fence/farm_fence_26.png",
+     "kind": "farm_fence_30",
+     "file": "fence/farm_fence_30.png",
      "x": 2097,
      "y": 965,
      "w": 19,
@@ -644,8 +720,8 @@
      ]
     },
     {
-     "kind": "farm_fence_27",
-     "file": "fence/farm_fence_27.png",
+     "kind": "farm_fence_31",
+     "file": "fence/farm_fence_31.png",
      "x": 2083,
      "y": 957,
      "w": 18,
@@ -663,8 +739,8 @@
      ]
     },
     {
-     "kind": "farm_fence_28",
-     "file": "fence/farm_fence_28.png",
+     "kind": "farm_fence_32",
+     "file": "fence/farm_fence_32.png",
      "x": 2068,
      "y": 948,
      "w": 19,
@@ -682,8 +758,8 @@
      ]
     },
     {
-     "kind": "farm_fence_29",
-     "file": "fence/farm_fence_29.png",
+     "kind": "farm_fence_33",
+     "file": "fence/farm_fence_33.png",
      "x": 2064,
      "y": 934,
      "w": 8,
@@ -701,8 +777,8 @@
      ]
     },
     {
-     "kind": "farm_fence_30",
-     "file": "fence/farm_fence_30.png",
+     "kind": "farm_fence_34",
+     "file": "fence/farm_fence_34.png",
      "x": 2064,
      "y": 925,
      "w": 18,
@@ -720,8 +796,8 @@
      ]
     },
     {
-     "kind": "farm_fence_31",
-     "file": "fence/farm_fence_31.png",
+     "kind": "farm_fence_35",
+     "file": "fence/farm_fence_35.png",
      "x": 2078,
      "y": 917,
      "w": 19,
@@ -739,8 +815,8 @@
      ]
     },
     {
-     "kind": "farm_fence_32",
-     "file": "fence/farm_fence_32.png",
+     "kind": "farm_fence_36",
+     "file": "fence/farm_fence_36.png",
      "x": 2093,
      "y": 908,
      "w": 18,
@@ -758,8 +834,8 @@
      ]
     },
     {
-     "kind": "farm_fence_33",
-     "file": "fence/farm_fence_33.png",
+     "kind": "farm_fence_37",
+     "file": "fence/farm_fence_37.png",
      "x": 2107,
      "y": 900,
      "w": 19,
@@ -777,8 +853,8 @@
      ]
     },
     {
-     "kind": "farm_fence_34",
-     "file": "fence/farm_fence_34.png",
+     "kind": "farm_fence_38",
+     "file": "fence/farm_fence_38.png",
      "x": 2072,
      "y": 1192,
      "w": 19,
@@ -796,8 +872,8 @@
      ]
     },
     {
-     "kind": "farm_fence_35",
-     "file": "fence/farm_fence_35.png",
+     "kind": "farm_fence_39",
+     "file": "fence/farm_fence_39.png",
      "x": 2011,
      "y": 1231,
      "w": 21,
@@ -815,8 +891,8 @@
      ]
     },
     {
-     "kind": "farm_fence_36",
-     "file": "fence/farm_fence_36.png",
+     "kind": "farm_fence_40",
+     "file": "fence/farm_fence_40.png",
      "x": 1993,
      "y": 1237,
      "w": 22,
@@ -834,8 +910,8 @@
      ]
     },
     {
-     "kind": "farm_fence_37",
-     "file": "fence/farm_fence_37.png",
+     "kind": "farm_fence_41",
+     "file": "fence/farm_fence_41.png",
      "x": 1976,
      "y": 1240,
      "w": 21,
@@ -853,8 +929,8 @@
      ]
     },
     {
-     "kind": "farm_fence_38",
-     "file": "fence/farm_fence_38.png",
+     "kind": "farm_fence_42",
+     "file": "fence/farm_fence_42.png",
      "x": 1959,
      "y": 1234,
      "w": 21,
@@ -872,8 +948,8 @@
      ]
     },
     {
-     "kind": "farm_fence_39",
-     "file": "fence/farm_fence_39.png",
+     "kind": "farm_fence_43",
+     "file": "fence/farm_fence_43.png",
      "x": 1925,
      "y": 1177,
      "w": 20,
@@ -891,8 +967,8 @@
      ]
     },
     {
-     "kind": "farm_fence_40",
-     "file": "fence/farm_fence_40.png",
+     "kind": "farm_fence_44",
+     "file": "fence/farm_fence_44.png",
      "x": 2023,
      "y": 1147,
      "w": 21,
@@ -910,8 +986,8 @@
      ]
     },
     {
-     "kind": "farm_fence_41",
-     "file": "fence/farm_fence_41.png",
+     "kind": "farm_fence_45",
+     "file": "fence/farm_fence_45.png",
      "x": 2040,
      "y": 1148,
      "w": 20,
@@ -929,8 +1005,8 @@
      ]
     },
     {
-     "kind": "farm_fence_42",
-     "file": "fence/farm_fence_42.png",
+     "kind": "farm_fence_46",
+     "file": "fence/farm_fence_46.png",
      "x": 2056,
      "y": 1157,
      "w": 20,
@@ -948,8 +1024,8 @@
      ]
     },
     {
-     "kind": "farm_fence_43",
-     "file": "fence/farm_fence_43.png",
+     "kind": "farm_fence_47",
+     "file": "fence/farm_fence_47.png",
      "x": 2072,
      "y": 1165,
      "w": 18,
@@ -967,8 +1043,8 @@
      ]
     },
     {
-     "kind": "farm_fence_44",
-     "file": "fence/farm_fence_44.png",
+     "kind": "farm_fence_48",
+     "file": "fence/farm_fence_48.png",
      "x": 2086,
      "y": 1176,
      "w": 5,
@@ -986,8 +1062,122 @@
      ]
     },
     {
-     "kind": "farm_fence_45",
-     "file": "fence/farm_fence_45.png",
+     "kind": "farm_fence_49",
+     "file": "fence/farm_fence_49.png",
+     "x": 2383,
+     "y": 828,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      2384.5,
+      861.0
+     ],
+     "sort_y": 861.0,
+     "chord": [
+      1.0,
+      9.0,
+      1.0,
+      32.9
+     ]
+    },
+    {
+     "kind": "farm_fence_50",
+     "file": "fence/farm_fence_50.png",
+     "x": 2383,
+     "y": 876,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      2384.5,
+      909.0
+     ],
+     "sort_y": 909.0,
+     "chord": [
+      1.0,
+      8.9,
+      1.0,
+      32.8
+     ]
+    },
+    {
+     "kind": "farm_fence_51",
+     "file": "fence/farm_fence_51.png",
+     "x": 2383,
+     "y": 900,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      2384.5,
+      933.0
+     ],
+     "sort_y": 933.0,
+     "chord": [
+      1.0,
+      8.8,
+      1.0,
+      32.8
+     ]
+    },
+    {
+     "kind": "farm_fence_52",
+     "file": "fence/farm_fence_52.png",
+     "x": 2383,
+     "y": 924,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      2384.5,
+      957.0
+     ],
+     "sort_y": 957.0,
+     "chord": [
+      1.0,
+      8.8,
+      1.0,
+      32.7
+     ]
+    },
+    {
+     "kind": "farm_fence_53",
+     "file": "fence/farm_fence_53.png",
+     "x": 2383,
+     "y": 948,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      2384.5,
+      981.0
+     ],
+     "sort_y": 981.0,
+     "chord": [
+      1.0,
+      8.7,
+      1.0,
+      32.7
+     ]
+    },
+    {
+     "kind": "farm_fence_54",
+     "file": "fence/farm_fence_54.png",
+     "x": 2383,
+     "y": 1116,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      2384.5,
+      1149.0
+     ],
+     "sort_y": 1149.0,
+     "chord": [
+      1.0,
+      8.3,
+      1.0,
+      32.3
+     ]
+    },
+    {
+     "kind": "farm_fence_55",
+     "file": "fence/farm_fence_55.png",
      "x": 1985,
      "y": 1203,
      "w": 3,
@@ -1005,8 +1195,8 @@
      ]
     },
     {
-     "kind": "farm_fence_46",
-     "file": "fence/farm_fence_46.png",
+     "kind": "farm_fence_56",
+     "file": "fence/farm_fence_56.png",
      "x": 1985,
      "y": 1179,
      "w": 3,
@@ -1024,8 +1214,46 @@
      ]
     },
     {
-     "kind": "farm_fence_47",
-     "file": "fence/farm_fence_47.png",
+     "kind": "farm_fence_57",
+     "file": "fence/farm_fence_57.png",
+     "x": 1985,
+     "y": 1155,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      1986.5,
+      1188.0
+     ],
+     "sort_y": 1188.0,
+     "chord": [
+      1.0,
+      32.1,
+      1.0,
+      8.1
+     ]
+    },
+    {
+     "kind": "farm_fence_58",
+     "file": "fence/farm_fence_58.png",
+     "x": 1985,
+     "y": 1083,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      1986.5,
+      1116.0
+     ],
+     "sort_y": 1116.0,
+     "chord": [
+      1.0,
+      32.3,
+      1.0,
+      8.3
+     ]
+    },
+    {
+     "kind": "farm_fence_59",
+     "file": "fence/farm_fence_59.png",
      "x": 1985,
      "y": 1059,
      "w": 3,
@@ -1043,8 +1271,8 @@
      ]
     },
     {
-     "kind": "farm_fence_48",
-     "file": "fence/farm_fence_48.png",
+     "kind": "farm_fence_60",
+     "file": "fence/farm_fence_60.png",
      "x": 1985,
      "y": 1035,
      "w": 3,
@@ -1062,8 +1290,8 @@
      ]
     },
     {
-     "kind": "farm_fence_49",
-     "file": "fence/farm_fence_49.png",
+     "kind": "farm_fence_61",
+     "file": "fence/farm_fence_61.png",
      "x": 1985,
      "y": 1011,
      "w": 3,
@@ -1081,8 +1309,27 @@
      ]
     },
     {
-     "kind": "farm_fence_50",
-     "file": "fence/farm_fence_50.png",
+     "kind": "farm_fence_62",
+     "file": "fence/farm_fence_62.png",
+     "x": 1985,
+     "y": 939,
+     "w": 3,
+     "h": 35,
+     "foot": [
+      1986.5,
+      972.0
+     ],
+     "sort_y": 972.0,
+     "chord": [
+      1.0,
+      32.6,
+      1.0,
+      8.6
+     ]
+    },
+    {
+     "kind": "farm_fence_63",
+     "file": "fence/farm_fence_63.png",
      "x": 1985,
      "y": 915,
      "w": 3,
@@ -1100,8 +1347,8 @@
      ]
     },
     {
-     "kind": "farm_fence_51",
-     "file": "fence/farm_fence_51.png",
+     "kind": "farm_fence_64",
+     "file": "fence/farm_fence_64.png",
      "x": 1985,
      "y": 891,
      "w": 3,
@@ -1119,8 +1366,8 @@
      ]
     },
     {
-     "kind": "farm_fence_52",
-     "file": "fence/farm_fence_52.png",
+     "kind": "farm_fence_65",
+     "file": "fence/farm_fence_65.png",
      "x": 1985,
      "y": 867,
      "w": 3,
@@ -1142,288 +1389,288 @@
   {
    "kind": "farm_wheat_10",
    "file": "wheat/farm_wheat_10.png",
-   "x": 1938,
-   "y": 1015,
-   "w": 28,
-   "h": 26,
+   "x": 1954,
+   "y": 1018,
+   "w": 26,
+   "h": 24,
    "foot": [
-    1952.0,
-    1039.0
+    1967.0,
+    1040.0
    ],
-   "sort_y": 1039.0,
-   "frame_w": 28,
-   "phase": 0,
+   "sort_y": 1040.0,
+   "frame_w": 26,
+   "phase": 3,
    "seed": 5010,
    "stage": 1
   },
   {
    "kind": "farm_wheat_11",
    "file": "wheat/farm_wheat_11.png",
-   "x": 1994,
-   "y": 1019,
+   "x": 1932,
+   "y": 1014,
    "w": 32,
    "h": 28,
    "foot": [
-    2010.0,
-    1045.0
+    1948.0,
+    1040.0
    ],
-   "sort_y": 1045.0,
+   "sort_y": 1040.0,
    "frame_w": 32,
-   "phase": 5,
+   "phase": 6,
    "seed": 5011,
    "stage": 1
   },
   {
    "kind": "farm_wheat_12",
    "file": "wheat/farm_wheat_12.png",
-   "x": 1930,
-   "y": 1035,
-   "w": 24,
-   "h": 22,
+   "x": 1947,
+   "y": 1031,
+   "w": 32,
+   "h": 28,
    "foot": [
-    1942.0,
-    1055.0
+    1963.0,
+    1057.0
    ],
-   "sort_y": 1055.0,
-   "frame_w": 24,
-   "phase": 7,
+   "sort_y": 1057.0,
+   "frame_w": 32,
+   "phase": 1,
    "seed": 5012,
    "stage": 1
   },
   {
    "kind": "farm_wheat_13",
    "file": "wheat/farm_wheat_13.png",
-   "x": 1947,
-   "y": 1028,
-   "w": 30,
+   "x": 1994,
+   "y": 1031,
+   "w": 32,
    "h": 28,
    "foot": [
-    1962.0,
-    1054.0
+    2010.0,
+    1057.0
    ],
-   "sort_y": 1054.0,
-   "frame_w": 30,
-   "phase": 5,
+   "sort_y": 1057.0,
+   "frame_w": 32,
+   "phase": 1,
    "seed": 5013,
    "stage": 1
   },
   {
    "kind": "farm_wheat_14",
    "file": "wheat/farm_wheat_14.png",
-   "x": 2009,
-   "y": 1034,
+   "x": 1920,
+   "y": 1028,
    "w": 26,
    "h": 24,
    "foot": [
-    2022.0,
-    1056.0
+    1933.0,
+    1050.0
    ],
-   "sort_y": 1056.0,
+   "sort_y": 1050.0,
    "frame_w": 26,
    "phase": 2,
    "seed": 5014,
-   "stage": 2
+   "stage": 1
   },
   {
    "kind": "farm_wheat_15",
    "file": "wheat/farm_wheat_15.png",
-   "x": 1955,
-   "y": 1048,
-   "w": 24,
-   "h": 22,
+   "x": 1928,
+   "y": 1039,
+   "w": 32,
+   "h": 28,
    "foot": [
-    1967.0,
-    1068.0
+    1944.0,
+    1065.0
    ],
-   "sort_y": 1068.0,
-   "frame_w": 24,
-   "phase": 6,
+   "sort_y": 1065.0,
+   "frame_w": 32,
+   "phase": 4,
    "seed": 5015,
    "stage": 1
   },
   {
    "kind": "farm_wheat_16",
    "file": "wheat/farm_wheat_16.png",
-   "x": 1995,
+   "x": 1948,
    "y": 1046,
-   "w": 30,
-   "h": 28,
+   "w": 32,
+   "h": 26,
    "foot": [
-    2010.0,
-    1072.0
+    1964.0,
+    1070.0
    ],
-   "sort_y": 1072.0,
-   "frame_w": 30,
-   "phase": 5,
+   "sort_y": 1070.0,
+   "frame_w": 32,
+   "phase": 4,
    "seed": 5016,
    "stage": 1
   },
   {
    "kind": "farm_wheat_17",
    "file": "wheat/farm_wheat_17.png",
-   "x": 2014,
+   "x": 1995,
    "y": 1045,
-   "w": 28,
-   "h": 26,
+   "w": 30,
+   "h": 28,
    "foot": [
-    2028.0,
-    1069.0
+    2010.0,
+    1071.0
    ],
-   "sort_y": 1069.0,
-   "frame_w": 28,
-   "phase": 6,
+   "sort_y": 1071.0,
+   "frame_w": 30,
+   "phase": 2,
    "seed": 5017,
    "stage": 1
   },
   {
    "kind": "farm_wheat_18",
    "file": "wheat/farm_wheat_18.png",
-   "x": 2036,
-   "y": 1045,
+   "x": 2013,
+   "y": 1040,
    "w": 32,
-   "h": 28,
+   "h": 26,
    "foot": [
-    2052.0,
-    1071.0
+    2029.0,
+    1064.0
    ],
-   "sort_y": 1071.0,
+   "sort_y": 1064.0,
    "frame_w": 32,
-   "phase": 1,
+   "phase": 0,
    "seed": 5018,
    "stage": 1
   },
   {
    "kind": "farm_wheat_19",
    "file": "wheat/farm_wheat_19.png",
-   "x": 2059,
-   "y": 1047,
-   "w": 24,
-   "h": 22,
+   "x": 2014,
+   "y": 1055,
+   "w": 32,
+   "h": 26,
    "foot": [
-    2071.0,
-    1067.0
+    2030.0,
+    1079.0
    ],
-   "sort_y": 1067.0,
-   "frame_w": 24,
-   "phase": 1,
+   "sort_y": 1079.0,
+   "frame_w": 32,
+   "phase": 5,
    "seed": 5019,
-   "stage": 1
+   "stage": 2
   },
   {
    "kind": "farm_wheat_20",
    "file": "wheat/farm_wheat_20.png",
-   "x": 1992,
-   "y": 1062,
-   "w": 30,
-   "h": 28,
+   "x": 2046,
+   "y": 1046,
+   "w": 26,
+   "h": 24,
    "foot": [
-    2007.0,
-    1088.0
+    2059.0,
+    1068.0
    ],
-   "sort_y": 1088.0,
-   "frame_w": 30,
-   "phase": 6,
+   "sort_y": 1068.0,
+   "frame_w": 26,
+   "phase": 3,
    "seed": 5020,
-   "stage": 2
+   "stage": 1
   },
   {
    "kind": "farm_wheat_21",
    "file": "wheat/farm_wheat_21.png",
-   "x": 2012,
-   "y": 1062,
-   "w": 28,
-   "h": 26,
+   "x": 1993,
+   "y": 1060,
+   "w": 30,
+   "h": 28,
    "foot": [
-    2026.0,
+    2008.0,
     1086.0
    ],
    "sort_y": 1086.0,
-   "frame_w": 28,
-   "phase": 3,
+   "frame_w": 30,
+   "phase": 2,
    "seed": 5021,
    "stage": 1
   },
   {
    "kind": "farm_wheat_22",
    "file": "wheat/farm_wheat_22.png",
-   "x": 2033,
-   "y": 1065,
-   "w": 28,
-   "h": 26,
+   "x": 2012,
+   "y": 1067,
+   "w": 32,
+   "h": 28,
    "foot": [
-    2047.0,
-    1089.0
+    2028.0,
+    1093.0
    ],
-   "sort_y": 1089.0,
-   "frame_w": 28,
-   "phase": 6,
+   "sort_y": 1093.0,
+   "frame_w": 32,
+   "phase": 3,
    "seed": 5022,
    "stage": 1
   },
   {
    "kind": "farm_wheat_23",
    "file": "wheat/farm_wheat_23.png",
-   "x": 2052,
-   "y": 1065,
-   "w": 28,
+   "x": 2032,
+   "y": 1057,
+   "w": 32,
    "h": 26,
    "foot": [
-    2066.0,
-    1089.0
+    2048.0,
+    1081.0
    ],
-   "sort_y": 1089.0,
-   "frame_w": 28,
-   "phase": 0,
+   "sort_y": 1081.0,
+   "frame_w": 32,
+   "phase": 1,
    "seed": 5023,
    "stage": 1
   },
   {
    "kind": "farm_wheat_24",
    "file": "wheat/farm_wheat_24.png",
-   "x": 2070,
-   "y": 1064,
+   "x": 2053,
+   "y": 1058,
    "w": 32,
-   "h": 26,
+   "h": 28,
    "foot": [
-    2086.0,
-    1088.0
+    2069.0,
+    1084.0
    ],
-   "sort_y": 1088.0,
+   "sort_y": 1084.0,
    "frame_w": 32,
    "phase": 0,
    "seed": 5024,
-   "stage": 2
+   "stage": 1
   },
   {
    "kind": "farm_wheat_25",
    "file": "wheat/farm_wheat_25.png",
-   "x": 1992,
-   "y": 1078,
-   "w": 32,
+   "x": 2072,
+   "y": 1055,
+   "w": 30,
    "h": 28,
    "foot": [
-    2008.0,
-    1104.0
+    2087.0,
+    1081.0
    ],
-   "sort_y": 1104.0,
-   "frame_w": 32,
-   "phase": 6,
+   "sort_y": 1081.0,
+   "frame_w": 30,
+   "phase": 4,
    "seed": 5025,
    "stage": 1
   },
   {
    "kind": "farm_wheat_26",
    "file": "wheat/farm_wheat_26.png",
-   "x": 2014,
-   "y": 1078,
-   "w": 28,
-   "h": 26,
+   "x": 2076,
+   "y": 1070,
+   "w": 24,
+   "h": 22,
    "foot": [
-    2028.0,
-    1102.0
+    2088.0,
+    1090.0
    ],
-   "sort_y": 1102.0,
-   "frame_w": 28,
+   "sort_y": 1090.0,
+   "frame_w": 24,
    "phase": 1,
    "seed": 5026,
    "stage": 1
@@ -1431,168 +1678,168 @@
   {
    "kind": "farm_wheat_27",
    "file": "wheat/farm_wheat_27.png",
-   "x": 2032,
-   "y": 1079,
-   "w": 28,
-   "h": 26,
+   "x": 1992,
+   "y": 1074,
+   "w": 26,
+   "h": 24,
    "foot": [
-    2046.0,
-    1103.0
+    2005.0,
+    1096.0
    ],
-   "sort_y": 1103.0,
-   "frame_w": 28,
-   "phase": 6,
+   "sort_y": 1096.0,
+   "frame_w": 26,
+   "phase": 0,
    "seed": 5027,
-   "stage": 2
+   "stage": 1
   },
   {
    "kind": "farm_wheat_28",
    "file": "wheat/farm_wheat_28.png",
-   "x": 2008,
-   "y": 902,
-   "w": 24,
-   "h": 22,
+   "x": 2004,
+   "y": 1084,
+   "w": 32,
+   "h": 28,
    "foot": [
     2020.0,
-    922.0
+    1110.0
    ],
-   "sort_y": 922.0,
-   "frame_w": 24,
-   "phase": 1,
+   "sort_y": 1110.0,
+   "frame_w": 32,
+   "phase": 7,
    "seed": 5028,
-   "stage": 1
+   "stage": 2
   },
   {
    "kind": "farm_wheat_29",
    "file": "wheat/farm_wheat_29.png",
-   "x": 1957,
-   "y": 918,
-   "w": 24,
-   "h": 22,
+   "x": 2024,
+   "y": 1082,
+   "w": 30,
+   "h": 28,
    "foot": [
-    1969.0,
-    938.0
+    2039.0,
+    1108.0
    ],
-   "sort_y": 938.0,
-   "frame_w": 24,
-   "phase": 0,
+   "sort_y": 1108.0,
+   "frame_w": 30,
+   "phase": 7,
    "seed": 5029,
    "stage": 1
   },
   {
    "kind": "farm_wheat_30",
    "file": "wheat/farm_wheat_30.png",
-   "x": 1992,
-   "y": 912,
-   "w": 32,
+   "x": 2034,
+   "y": 1069,
+   "w": 28,
    "h": 26,
    "foot": [
-    2008.0,
-    936.0
+    2048.0,
+    1093.0
    ],
-   "sort_y": 936.0,
-   "frame_w": 32,
-   "phase": 2,
+   "sort_y": 1093.0,
+   "frame_w": 28,
+   "phase": 4,
    "seed": 5030,
    "stage": 1
   },
   {
    "kind": "farm_wheat_31",
    "file": "wheat/farm_wheat_31.png",
-   "x": 2014,
-   "y": 914,
-   "w": 28,
-   "h": 26,
+   "x": 2050,
+   "y": 1072,
+   "w": 32,
+   "h": 28,
    "foot": [
-    2028.0,
-    938.0
+    2066.0,
+    1098.0
    ],
-   "sort_y": 938.0,
-   "frame_w": 28,
-   "phase": 1,
+   "sort_y": 1098.0,
+   "frame_w": 32,
+   "phase": 4,
    "seed": 5031,
    "stage": 1
   },
   {
    "kind": "farm_wheat_32",
    "file": "wheat/farm_wheat_32.png",
-   "x": 1924,
-   "y": 925,
-   "w": 32,
-   "h": 28,
+   "x": 1994,
+   "y": 905,
+   "w": 24,
+   "h": 22,
    "foot": [
-    1940.0,
-    951.0
+    2006.0,
+    925.0
    ],
-   "sort_y": 951.0,
-   "frame_w": 32,
-   "phase": 2,
+   "sort_y": 925.0,
+   "frame_w": 24,
+   "phase": 0,
    "seed": 5032,
    "stage": 1
   },
   {
    "kind": "farm_wheat_33",
    "file": "wheat/farm_wheat_33.png",
-   "x": 1945,
-   "y": 928,
-   "w": 28,
+   "x": 2008,
+   "y": 904,
+   "w": 32,
    "h": 26,
    "foot": [
-    1959.0,
-    952.0
+    2024.0,
+    928.0
    ],
-   "sort_y": 952.0,
-   "frame_w": 28,
-   "phase": 0,
+   "sort_y": 928.0,
+   "frame_w": 32,
+   "phase": 3,
    "seed": 5033,
    "stage": 1
   },
   {
    "kind": "farm_wheat_34",
    "file": "wheat/farm_wheat_34.png",
-   "x": 1994,
-   "y": 925,
-   "w": 30,
-   "h": 28,
+   "x": 2029,
+   "y": 903,
+   "w": 28,
+   "h": 26,
    "foot": [
-    2009.0,
-    951.0
+    2043.0,
+    927.0
    ],
-   "sort_y": 951.0,
-   "frame_w": 30,
-   "phase": 7,
+   "sort_y": 927.0,
+   "frame_w": 28,
+   "phase": 2,
    "seed": 5034,
    "stage": 1
   },
   {
    "kind": "farm_wheat_35",
    "file": "wheat/farm_wheat_35.png",
-   "x": 2012,
-   "y": 928,
-   "w": 32,
-   "h": 26,
+   "x": 1939,
+   "y": 917,
+   "w": 26,
+   "h": 24,
    "foot": [
-    2028.0,
-    952.0
+    1952.0,
+    939.0
    ],
-   "sort_y": 952.0,
-   "frame_w": 32,
-   "phase": 6,
+   "sort_y": 939.0,
+   "frame_w": 26,
+   "phase": 1,
    "seed": 5035,
    "stage": 1
   },
   {
    "kind": "farm_wheat_36",
    "file": "wheat/farm_wheat_36.png",
-   "x": 1956,
-   "y": 946,
+   "x": 1957,
+   "y": 932,
    "w": 24,
    "h": 22,
    "foot": [
-    1968.0,
-    966.0
+    1969.0,
+    952.0
    ],
-   "sort_y": 966.0,
+   "sort_y": 952.0,
    "frame_w": 24,
    "phase": 0,
    "seed": 5036,
@@ -1601,50 +1848,50 @@
   {
    "kind": "farm_wheat_37",
    "file": "wheat/farm_wheat_37.png",
-   "x": 1987,
-   "y": 955,
-   "w": 24,
-   "h": 22,
+   "x": 1992,
+   "y": 916,
+   "w": 32,
+   "h": 28,
    "foot": [
-    1999.0,
-    975.0
+    2008.0,
+    942.0
    ],
-   "sort_y": 975.0,
-   "frame_w": 24,
-   "phase": 0,
+   "sort_y": 942.0,
+   "frame_w": 32,
+   "phase": 4,
    "seed": 5037,
    "stage": 1
   },
   {
    "kind": "farm_wheat_38",
    "file": "wheat/farm_wheat_38.png",
-   "x": 2086,
-   "y": 1129,
-   "w": 30,
-   "h": 28,
+   "x": 1996,
+   "y": 929,
+   "w": 28,
+   "h": 26,
    "foot": [
-    2101.0,
-    1155.0
+    2010.0,
+    953.0
    ],
-   "sort_y": 1155.0,
-   "frame_w": 30,
-   "phase": 6,
+   "sort_y": 953.0,
+   "frame_w": 28,
+   "phase": 4,
    "seed": 5038,
    "stage": 1
   },
   {
    "kind": "farm_wheat_39",
    "file": "wheat/farm_wheat_39.png",
-   "x": 2107,
-   "y": 1128,
-   "w": 30,
+   "x": 2013,
+   "y": 918,
+   "w": 32,
    "h": 28,
    "foot": [
-    2122.0,
-    1154.0
+    2029.0,
+    944.0
    ],
-   "sort_y": 1154.0,
-   "frame_w": 30,
+   "sort_y": 944.0,
+   "frame_w": 32,
    "phase": 5,
    "seed": 5039,
    "stage": 1
@@ -1652,67 +1899,67 @@
   {
    "kind": "farm_wheat_40",
    "file": "wheat/farm_wheat_40.png",
-   "x": 2127,
-   "y": 1130,
-   "w": 26,
-   "h": 24,
+   "x": 2013,
+   "y": 934,
+   "w": 32,
+   "h": 26,
    "foot": [
-    2140.0,
-    1152.0
+    2029.0,
+    958.0
    ],
-   "sort_y": 1152.0,
-   "frame_w": 26,
-   "phase": 6,
+   "sort_y": 958.0,
+   "frame_w": 32,
+   "phase": 5,
    "seed": 5040,
    "stage": 1
   },
   {
    "kind": "farm_wheat_41",
    "file": "wheat/farm_wheat_41.png",
-   "x": 2096,
-   "y": 1150,
+   "x": 2034,
+   "y": 916,
    "w": 26,
    "h": 24,
    "foot": [
-    2109.0,
-    1172.0
+    2047.0,
+    938.0
    ],
-   "sort_y": 1172.0,
+   "sort_y": 938.0,
    "frame_w": 26,
-   "phase": 6,
+   "phase": 4,
    "seed": 5041,
    "stage": 1
   },
   {
    "kind": "farm_wheat_42",
    "file": "wheat/farm_wheat_42.png",
-   "x": 2117,
-   "y": 1149,
-   "w": 28,
-   "h": 26,
+   "x": 1927,
+   "y": 928,
+   "w": 30,
+   "h": 28,
    "foot": [
-    2131.0,
-    1173.0
+    1942.0,
+    954.0
    ],
-   "sort_y": 1173.0,
-   "frame_w": 28,
-   "phase": 4,
+   "sort_y": 954.0,
+   "frame_w": 30,
+   "phase": 1,
    "seed": 5042,
-   "stage": 2
+   "stage": 1
   },
   {
    "kind": "farm_wheat_43",
    "file": "wheat/farm_wheat_43.png",
-   "x": 2133,
-   "y": 1148,
-   "w": 32,
+   "x": 1946,
+   "y": 944,
+   "w": 28,
    "h": 26,
    "foot": [
-    2149.0,
-    1172.0
+    1960.0,
+    968.0
    ],
-   "sort_y": 1172.0,
-   "frame_w": 32,
+   "sort_y": 968.0,
+   "frame_w": 28,
    "phase": 7,
    "seed": 5043,
    "stage": 1
@@ -1720,67 +1967,67 @@
   {
    "kind": "farm_wheat_44",
    "file": "wheat/farm_wheat_44.png",
-   "x": 2154,
-   "y": 1151,
-   "w": 32,
-   "h": 28,
+   "x": 1928,
+   "y": 943,
+   "w": 24,
+   "h": 22,
    "foot": [
-    2170.0,
-    1177.0
+    1940.0,
+    963.0
    ],
-   "sort_y": 1177.0,
-   "frame_w": 32,
+   "sort_y": 963.0,
+   "frame_w": 24,
    "phase": 5,
    "seed": 5044,
-   "stage": 1
+   "stage": 2
   },
   {
    "kind": "farm_wheat_45",
    "file": "wheat/farm_wheat_45.png",
-   "x": 2144,
-   "y": 908,
-   "w": 32,
-   "h": 28,
+   "x": 1992,
+   "y": 943,
+   "w": 26,
+   "h": 24,
    "foot": [
-    2160.0,
-    934.0
+    2005.0,
+    965.0
    ],
-   "sort_y": 934.0,
-   "frame_w": 32,
-   "phase": 3,
+   "sort_y": 965.0,
+   "frame_w": 26,
+   "phase": 7,
    "seed": 5045,
    "stage": 1
   },
   {
    "kind": "farm_wheat_46",
    "file": "wheat/farm_wheat_46.png",
-   "x": 2167,
-   "y": 912,
-   "w": 30,
-   "h": 28,
+   "x": 2094,
+   "y": 1145,
+   "w": 24,
+   "h": 22,
    "foot": [
-    2182.0,
-    938.0
+    2106.0,
+    1165.0
    ],
-   "sort_y": 938.0,
-   "frame_w": 30,
-   "phase": 3,
+   "sort_y": 1165.0,
+   "frame_w": 24,
+   "phase": 0,
    "seed": 5046,
    "stage": 2
   },
   {
    "kind": "farm_wheat_47",
    "file": "wheat/farm_wheat_47.png",
-   "x": 2120,
-   "y": 927,
-   "w": 32,
-   "h": 28,
+   "x": 2112,
+   "y": 1138,
+   "w": 26,
+   "h": 24,
    "foot": [
-    2136.0,
-    953.0
+    2125.0,
+    1160.0
    ],
-   "sort_y": 953.0,
-   "frame_w": 32,
+   "sort_y": 1160.0,
+   "frame_w": 26,
    "phase": 1,
    "seed": 5047,
    "stage": 1
@@ -1788,108 +2035,329 @@
   {
    "kind": "farm_wheat_48",
    "file": "wheat/farm_wheat_48.png",
-   "x": 2141,
-   "y": 926,
-   "w": 32,
+   "x": 2131,
+   "y": 1143,
+   "w": 30,
    "h": 28,
    "foot": [
-    2157.0,
-    952.0
+    2146.0,
+    1169.0
    ],
-   "sort_y": 952.0,
-   "frame_w": 32,
-   "phase": 6,
+   "sort_y": 1169.0,
+   "frame_w": 30,
+   "phase": 0,
    "seed": 5048,
    "stage": 1
   },
   {
    "kind": "farm_wheat_49",
    "file": "wheat/farm_wheat_49.png",
-   "x": 2127,
-   "y": 943,
-   "w": 24,
-   "h": 22,
+   "x": 2141,
+   "y": 1156,
+   "w": 30,
+   "h": 28,
    "foot": [
-    2139.0,
-    963.0
+    2156.0,
+    1182.0
    ],
-   "sort_y": 963.0,
-   "frame_w": 24,
-   "phase": 4,
+   "sort_y": 1182.0,
+   "frame_w": 30,
+   "phase": 6,
    "seed": 5049,
    "stage": 1
   },
   {
    "kind": "farm_wheat_50",
    "file": "wheat/farm_wheat_50.png",
-   "x": 2005,
-   "y": 1179,
-   "w": 32,
+   "x": 2161,
+   "y": 1151,
+   "w": 30,
    "h": 28,
    "foot": [
-    2021.0,
-    1205.0
+    2176.0,
+    1177.0
    ],
-   "sort_y": 1205.0,
-   "frame_w": 32,
-   "phase": 0,
+   "sort_y": 1177.0,
+   "frame_w": 30,
+   "phase": 5,
    "seed": 5050,
    "stage": 1
   },
   {
    "kind": "farm_wheat_51",
    "file": "wheat/farm_wheat_51.png",
-   "x": 1952,
-   "y": 1191,
+   "x": 2153,
+   "y": 1140,
    "w": 24,
    "h": 22,
    "foot": [
-    1964.0,
-    1211.0
+    2165.0,
+    1160.0
    ],
-   "sort_y": 1211.0,
+   "sort_y": 1160.0,
    "frame_w": 24,
-   "phase": 6,
+   "phase": 5,
    "seed": 5051,
    "stage": 1
   },
   {
    "kind": "farm_wheat_52",
    "file": "wheat/farm_wheat_52.png",
-   "x": 1995,
-   "y": 1193,
-   "w": 30,
-   "h": 28,
+   "x": 2112,
+   "y": 1150,
+   "w": 26,
+   "h": 24,
    "foot": [
-    2010.0,
-    1219.0
+    2125.0,
+    1172.0
    ],
-   "sort_y": 1219.0,
-   "frame_w": 30,
-   "phase": 7,
+   "sort_y": 1172.0,
+   "frame_w": 26,
+   "phase": 4,
    "seed": 5052,
    "stage": 1
   },
   {
    "kind": "farm_wheat_53",
    "file": "wheat/farm_wheat_53.png",
-   "x": 2017,
-   "y": 1194,
-   "w": 26,
-   "h": 24,
+   "x": 2158,
+   "y": 907,
+   "w": 24,
+   "h": 22,
    "foot": [
-    2030.0,
-    1216.0
+    2170.0,
+    927.0
    ],
-   "sort_y": 1216.0,
-   "frame_w": 26,
-   "phase": 3,
+   "sort_y": 927.0,
+   "frame_w": 24,
+   "phase": 4,
    "seed": 5053,
    "stage": 1
   },
   {
-   "kind": "farm_soil_54",
-   "file": "soil/farm_soil_54.png",
+   "kind": "farm_wheat_54",
+   "file": "wheat/farm_wheat_54.png",
+   "x": 2144,
+   "y": 917,
+   "w": 28,
+   "h": 26,
+   "foot": [
+    2158.0,
+    941.0
+   ],
+   "sort_y": 941.0,
+   "frame_w": 28,
+   "phase": 7,
+   "seed": 5054,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_55",
+   "file": "wheat/farm_wheat_55.png",
+   "x": 2169,
+   "y": 921,
+   "w": 24,
+   "h": 22,
+   "foot": [
+    2181.0,
+    941.0
+   ],
+   "sort_y": 941.0,
+   "frame_w": 24,
+   "phase": 6,
+   "seed": 5055,
+   "stage": 2
+  },
+  {
+   "kind": "farm_wheat_56",
+   "file": "wheat/farm_wheat_56.png",
+   "x": 2121,
+   "y": 924,
+   "w": 32,
+   "h": 28,
+   "foot": [
+    2137.0,
+    950.0
+   ],
+   "sort_y": 950.0,
+   "frame_w": 32,
+   "phase": 1,
+   "seed": 5056,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_57",
+   "file": "wheat/farm_wheat_57.png",
+   "x": 2126,
+   "y": 938,
+   "w": 30,
+   "h": 28,
+   "foot": [
+    2141.0,
+    964.0
+   ],
+   "sort_y": 964.0,
+   "frame_w": 30,
+   "phase": 0,
+   "seed": 5057,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_58",
+   "file": "wheat/farm_wheat_58.png",
+   "x": 2147,
+   "y": 940,
+   "w": 24,
+   "h": 22,
+   "foot": [
+    2159.0,
+    960.0
+   ],
+   "sort_y": 960.0,
+   "frame_w": 24,
+   "phase": 6,
+   "seed": 5058,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_59",
+   "file": "wheat/farm_wheat_59.png",
+   "x": 1992,
+   "y": 1166,
+   "w": 26,
+   "h": 24,
+   "foot": [
+    2005.0,
+    1188.0
+   ],
+   "sort_y": 1188.0,
+   "frame_w": 26,
+   "phase": 6,
+   "seed": 5059,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_60",
+   "file": "wheat/farm_wheat_60.png",
+   "x": 1997,
+   "y": 1178,
+   "w": 26,
+   "h": 24,
+   "foot": [
+    2010.0,
+    1200.0
+   ],
+   "sort_y": 1200.0,
+   "frame_w": 26,
+   "phase": 7,
+   "seed": 5060,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_61",
+   "file": "wheat/farm_wheat_61.png",
+   "x": 1994,
+   "y": 1191,
+   "w": 32,
+   "h": 26,
+   "foot": [
+    2010.0,
+    1215.0
+   ],
+   "sort_y": 1215.0,
+   "frame_w": 32,
+   "phase": 7,
+   "seed": 5061,
+   "stage": 2
+  },
+  {
+   "kind": "farm_wheat_62",
+   "file": "wheat/farm_wheat_62.png",
+   "x": 2013,
+   "y": 1189,
+   "w": 30,
+   "h": 28,
+   "foot": [
+    2028.0,
+    1215.0
+   ],
+   "sort_y": 1215.0,
+   "frame_w": 30,
+   "phase": 6,
+   "seed": 5062,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_63",
+   "file": "wheat/farm_wheat_63.png",
+   "x": 1952,
+   "y": 1187,
+   "w": 26,
+   "h": 24,
+   "foot": [
+    1965.0,
+    1209.0
+   ],
+   "sort_y": 1209.0,
+   "frame_w": 26,
+   "phase": 0,
+   "seed": 5063,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_64",
+   "file": "wheat/farm_wheat_64.png",
+   "x": 1951,
+   "y": 1173,
+   "w": 30,
+   "h": 28,
+   "foot": [
+    1966.0,
+    1199.0
+   ],
+   "sort_y": 1199.0,
+   "frame_w": 30,
+   "phase": 1,
+   "seed": 5064,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_65",
+   "file": "wheat/farm_wheat_65.png",
+   "x": 2018,
+   "y": 1203,
+   "w": 26,
+   "h": 24,
+   "foot": [
+    2031.0,
+    1225.0
+   ],
+   "sort_y": 1225.0,
+   "frame_w": 26,
+   "phase": 6,
+   "seed": 5065,
+   "stage": 1
+  },
+  {
+   "kind": "farm_wheat_66",
+   "file": "wheat/farm_wheat_66.png",
+   "x": 1955,
+   "y": 1202,
+   "w": 24,
+   "h": 22,
+   "foot": [
+    1967.0,
+    1222.0
+   ],
+   "sort_y": 1222.0,
+   "frame_w": 24,
+   "phase": 6,
+   "seed": 5066,
+   "stage": 1
+  },
+  {
+   "kind": "farm_soil_67",
+   "file": "soil/farm_soil_67.png",
    "x": 1920,
    "y": 1005,
    "w": 198,
@@ -1901,8 +2369,8 @@
    "sort_y": 1005.0
   },
   {
-   "kind": "farm_soil_55",
-   "file": "soil/farm_soil_55.png",
+   "kind": "farm_soil_68",
+   "file": "soil/farm_soil_68.png",
    "x": 1920,
    "y": 899,
    "w": 171,
@@ -1914,8 +2382,8 @@
    "sort_y": 899.0
   },
   {
-   "kind": "farm_soil_56",
-   "file": "soil/farm_soil_56.png",
+   "kind": "farm_soil_69",
+   "file": "soil/farm_soil_69.png",
    "x": 2058,
    "y": 1128,
    "w": 152,
@@ -1927,8 +2395,8 @@
    "sort_y": 1128.0
   },
   {
-   "kind": "farm_soil_57",
-   "file": "soil/farm_soil_57.png",
+   "kind": "farm_soil_70",
+   "file": "soil/farm_soil_70.png",
    "x": 2096,
    "y": 911,
    "w": 107,
@@ -1940,8 +2408,8 @@
    "sort_y": 911.0
   },
   {
-   "kind": "farm_soil_58",
-   "file": "soil/farm_soil_58.png",
+   "kind": "farm_soil_71",
+   "file": "soil/farm_soil_71.png",
    "x": 1944,
    "y": 1167,
    "w": 119,

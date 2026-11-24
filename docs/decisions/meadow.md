@@ -307,3 +307,12 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 |---|---|
 | Dragonfly sprites go from 9 by 3 to 11 by 5 texels (wings up and down), with a wider gold body. The draw origin moves to match (`-5, -2`). Fish and owls are unchanged. | PC QA said the wildlife reads thin at 1x. At 9 texels the dragonflies were specks over the lake. |
 | Not in this change: ambient creatures near the Larkmoor start position. The nearest water and forest edge are about 650 texels from the start, and rabbits and other ground critters are placed from the anchor data. Adding start-area creatures needs an anchor placement decision. | Kept this PR to what can be checked here. |
+
+## 2026-11-24: Larkmoor start view has rabbits and butterflies; deer at dusk
+| Decision | Why |
+|---|---|
+| `larkmoor_life.json` gets a `start` key, the Larkmoor `player_spawn` anchor from `assets/art/zone1b/larkmoor/placements3d.json` (1520, 1349.5). The generator's `--add-keys` path does not write it, so it survives a regenerate. | The start view had no wildlife within reach. The start is the one place every player sees first. |
+| Two rabbits are placed at the grass tips nearest the start, within 260 iso texels and 30 texels apart (`START_RABBITS`, `START_REACH`). Other rabbits keep their random spots. | Rabbits stay near their burrow (wander 30), so they stay in the start view. |
+| The first two butterflies start on the flower beds within 260 iso texels of the start. Their flits stay local, so they stay in that area. They are out in any season with butterfly share 0.2 or more, so they show in autumn too. | Autumn share is 0.35, and the usual hash gate hid both start butterflies in the probe. |
+| Deer share now also rises in the dusk light (`sin(PI * night)`, at most 0.9), and not at full night. Golden hour (low sun) still brings them out too. | Probe at 19.2 h and 19.6 h (night 0.2 to 0.5): no deer, though owls and dragonflies were out. The deer followed low sun only. |
+| Verified in the real Larkmoor scene (temporary probes, removed): at the start, 2 rabbits and 2 butterflies on screen over three checks. At noon, golden hour, dusk and night, dragonflies, deer and owls appear at the lake, forest edge and perch as their share says. Not verified on PC. | Coordinator asked for the start view and the golden-hour and dusk check. |

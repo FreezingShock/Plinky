@@ -63,3 +63,14 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Bush list:** an unload now rebuilds the rustle list (`_rebuild_bushes`). Before, a view-only unload left freed sprites in `LifeReact`, which cast-errored every frame.
 - **Measured (headless, no renderer, Godot 4.7.2, `tools/larkmoor_view_probe.gd`):** at zoom 1, 2 and 4, five pans each (the walker spot plus 900 and 600 texels away, and a diagonal), every frame checked: 0 frames with an on-screen chunk unloaded. Max node count 1154 at zoom 1 and 1121 at zoom 2, both on the diagonal pan; 1105 at zoom 4. Baseline idle at the spawn was 995 nodes, now 1005.
 - **Not run in-engine:** frame time, pan feel and the edge look. The PC pass should pan at zoom 1 and 2 and watch the edges.
+
+## 2026-11-24: A pinned season moves the calendar (winter pin now reaches the clock and the flowers)
+- **Cause:** `SkyCycle.debug_season` (tools and screenshots) only changed the sky's season weights. The HUD clock, the flower gardens (frost comes from `Calendar.now()`) and the sim's season bonuses all read the real calendar, so a winter pin showed snow on the ground but still read Early Spring and drew no frost.
+- **Fix:** `SkyCycle._update_season` jumps the calendar to the pin (`GameCalendar.jump_to_season`) whenever the calendar is in another season. Pure rule: `SkyCycle.pin_jump_needed(pin, current)`.
+- **Scope:** only when the pin is set, which is tools and tests. Normal play never sets it.
+- **Not verified on the PC:** whether frost reads clearly at zoom 1 and 4 once the flowers switch.
+## 2026-11-24: Walk grid cells are open only when every pixel is walkable
+- **Why:** the Larkmoor path-tier PR (#406) changed trees, and its route test failed on one Westmere route: a waypoint step crossed a 3-cell hole in the walk mask. The hole was on main too. `WalkMask._build_grid` sampled only a cell's corners and centre, so a hole smaller than a cell could sit inside an open cell and a route could cut across it.
+- **What:** `world/walk_mask.gd` checks every pixel of each 4x4 cell and closes the cell on any blocked pixel. The old centre check is gone, since the full check covers it.
+- **Measured:** `tests/run.gd` 6651 checks, 0 failed. `tools/route_probe.tscn` (real walker, Larkmoor pads): main had 5 misses, this change has 3 (pads 5 and 9 now route). The other 3 are the same on main. Time 93 s with the change, 106 s on main, within run noise.
+- Not run in-engine: the play-through of the Westmere and Heronmere routes on a PC.

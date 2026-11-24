@@ -37,7 +37,7 @@ OUT = os.path.join(ROOT, 'assets', 'art', 'zone1b', 'farm')
 S = 2                                   # canvas texels per layout texel
 
 BOX = (1090, 520, 260, 220)             # centre x, centre y, width, height (layout)
-PATH_CLEAR = 19 * S
+SAND_CLEAR = 12                          # canvas texels: wheat and props keep this far from the drawn sand path
 PAD_CLEAR = 30 * S
 WINDMILL_CLEAR = 24 * S
 WHEAT_DX = 18                           # canvas texels: two clumps' centres stay at least this far apart in x ...
@@ -47,7 +47,7 @@ GAP = 4                                 # canvas texels between farm items
 
 # Sprite sizes (canvas texels), from gen_farm.py. Wheat clumps are placed by FIELDS below.
 SIZES = {
-    'farm_barn': (72, 56), 'farm_shed': (40, 34), 'farm_hay_0': (16, 12), 'farm_hay_1': (16, 12),
+    'farm_barn': (72, 58), 'farm_shed': (40, 36), 'farm_hay_0': (16, 14), 'farm_hay_1': (16, 14),
     'farm_scarecrow': (18, 34), 'farm_cart': (28, 20), 'farm_crates': (12, 12),
 }
 FILES = {
@@ -65,22 +65,38 @@ TARGETS = [
 ]
 
 
-def _densify(poly, step=4.0):
-    pts = []
-    for (ax, ay), (bx, by) in zip(poly, poly[1:]):
-        n = max(1, int(math.hypot(bx - ax, by - ay) / step))
-        for i in range(n):
-            t = i / n
-            pts.append((ax + (bx - ax) * t, ay + (by - ay) * t))
-    pts.append(poly[-1])
-    return np.array(pts, dtype=float) * S
-
-
 def _rect_dist(px, py, x0, y0, x1, y1):
     """Distance from points (arrays) to the rectangle [x0,x1] x [y0,y1]."""
     dx = np.maximum(np.maximum(x0 - px, 0), px - x1)
     dy = np.maximum(np.maximum(y0 - py, 0), py - y1)
     return np.hypot(dx, dy)
+
+
+def _box_sum(mask, r: int):
+    """Number of True texels in the (2r+1) square around each texel. Summed-area table, so it is fast on the canvas."""
+    H, W = mask.shape
+    sat = np.zeros((H + 1, W + 1), dtype=np.int64)
+    sat[1:, 1:] = mask.astype(np.int64).cumsum(0).cumsum(1)
+    ys, xs = np.arange(H), np.arange(W)
+    y0 = np.clip(ys - r, 0, H)
+    y1 = np.clip(ys + r + 1, 0, H)
+    x0 = np.clip(xs - r, 0, W)
+    x1 = np.clip(xs + r + 1, 0, W)
+    Y0, X0 = np.meshgrid(y0, x0, indexing='ij')
+    Y1, X1 = np.meshgrid(y1, x1, indexing='ij')
+    return sat[Y1, X1] - sat[Y0, X1] - sat[Y1, X0] + sat[Y0, X0]
+
+
+def _near_mask(mask, r: int):
+    """True where any True texel of mask lies within r of that texel (a (2r+1) square)."""
+    return _box_sum(mask, r) > 0
+
+
+def _open_mask(mask, r: int):
+    """Morphological opening: removes specks thinner than (2r+1) texels, such as dithered light flecks in the grass,
+    and keeps the drawn path band."""
+    eroded = _box_sum(mask, r) == (2 * r + 1) ** 2
+    return _near_mask(eroded, r)
 
 
 class Ground:
@@ -90,16 +106,16 @@ class Ground:
         wrgb = np.array(Image.open(os.path.join(ZONE, 'walkable.png')).convert('RGB')).astype(int)
         self.walk = (wrgb[..., 0] == 255) & (wrgb[..., 1] == 0) & (wrgb[..., 2] == 255)
         self.water = (wrgb[..., 0] == 0) & (wrgb[..., 1] == 255) & (wrgb[..., 2] == 0)
-        # The sand path as drawn: ACCENT (242, 230, 160) and its near-sand texels in ground.png. LAY.PATHS is a different
-        # frame from the drawn ground, so fences are checked against the picture, not against the path points.
-        gr, gg, gb = g_rgb = np.array(Image.open(os.path.join(ZONE, 'ground.png')).convert('RGB')).astype(int)[..., :3].transpose(2, 0, 1)
-        self.sand = (gr >= 225) & (gg >= 210) & (gb <= 180) & (gr - gb >= 50)
+        # The sand path as drawn: ACCENT (242, 230, 160) and its near-sand texels in ground.png. This is the only path
+        # check. LAY.PATHS is a different frame from the drawn ground, so it is not used for clearance.
         g = np.array(Image.open(os.path.join(ZONE, 'ground.png')).convert('RGB')).astype(int)
-        r, gg, b = g[..., 0], g[..., 1], g[..., 2]
-        self.grass = (gg - r >= 15) & (gg >= b + 8) & (r < 200)
+        gr, gg, gb = g[..., 0], g[..., 1], g[..., 2]
+        # Light-sand colour from ground.png, then opened so the dithered light flecks in the grass drop out. What is left
+        # is the drawn path band.
+        self.sand = _open_mask((gr >= 225) & (gg >= 210) & (gb <= 180) & (gr - gb >= 50), 2)
+        self.sand_near = _near_mask(self.sand, SAND_CLEAR)   # texels within SAND_CLEAR of the drawn sand
+        self.grass = (gg - gr >= 15) & (gg >= gb + 8) & (gr < 200)
         self.H, self.W = self.walk.shape
-        paths = [p for pp in LAY.PATHS for p in [_densify(pp)]]
-        self.path_pts = np.vstack(paths)
         pads = [(x, y) for d in LAY.DISTRICTS for (x, y) in d['pads']]
         self.pad_pts = np.array(pads, dtype=float) * S
         self.obstacles = [(lm['at'][0] * S, lm['at'][1] * S) for lm in LAY.LANDMARKS if lm['kind'] in ('windmill', 'great_lantern')]
@@ -128,7 +144,7 @@ class Ground:
             return False
         if self.grass[y0:y1, x0:x1].mean() < 0.9:
             return False
-        if _rect_dist(self.path_pts[:, 0], self.path_pts[:, 1], x0, y0, x1, y1).min() < PATH_CLEAR:
+        if self.sand_near[y0:y1, x0:x1].any():
             return False
         if _rect_dist(self.pad_pts[:, 0], self.pad_pts[:, 1], x0, y0, x1, y1).min() < PAD_CLEAR:
             return False
@@ -215,7 +231,7 @@ def _fence_ok(ground: Ground, placer: Placer, px: float, py: float) -> bool:
         return False
     if not (ground.walk[iy, ix] and ground.grass[iy, ix]):
         return False
-    if _rect_dist(ground.path_pts[:, 0], ground.path_pts[:, 1], ix, iy, ix, iy).min() < PATH_CLEAR:
+    if ground.sand_near[iy, ix]:
         return False
     if _rect_dist(ground.pad_pts[:, 0], ground.pad_pts[:, 1], ix, iy, ix, iy).min() < PAD_CLEAR:
         return False
@@ -242,7 +258,8 @@ EDGE_SIZES = [(24, 22), (26, 24)]       # smaller clumps along a field's edge, s
 EDGE_BAND = 5.0                         # layout texels: clumps whose foot is this close to the edge use EDGE_SIZES
 EDGE_INSET = 2.0                        # layout texels: a clump's foot stays this far inside the field's edge
 GRID_X = 10.0                           # layout texels between clump centres across a row
-GRID_Y = 8.0                            # layout texels between rows (the placer keeps clumps 9 x 6 apart at least)
+GRID_Y = 6.0                            # layout texels between rows; clumps still keep WHEAT_DX or WHEAT_DY apart
+WHEAT_RADIUS = 12                       # layout texels: how far a clump may slide from its grid point to find room
 
 
 def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
@@ -264,7 +281,7 @@ def _wheat_items(placer: Placer, rng: random.Random, start: int, fields: list):
                 sizes = EDGE_SIZES if edge > -EDGE_BAND else CLUMP_SIZES
                 w, h = sizes[rng.randrange(len(sizes))]
                 stage = 2 if f.tone(gx, gy) > 0.38 and rng.random() < 0.7 else 1
-                at = placer.place(w, h, gx, gy, radius=5, tag='wheat')
+                at = placer.place(w, h, gx, gy, radius=WHEAT_RADIUS, tag="wheat")
                 if at is None:
                     continue
                 x, y = at
@@ -364,10 +381,10 @@ def _fence_batch(pieces: list) -> list:
     Each piece keeps its own rect and chord, so the test can still check the pieces against the wheat and buildings."""
     if not pieces:
         return []
-    x0 = min(p['x'] for p in pieces)
-    y0 = min(p['y'] for p in pieces)
-    x1 = max(p['x'] + p['w'] for p in pieces)
-    y1 = max(p['y'] + p['h'] for p in pieces)
+    x0 = min(p['x'] for p in pieces) - 1      # one texel of transparent margin, matching gen_farm.FENCE_PAD
+    y0 = min(p['y'] for p in pieces) - 1
+    x1 = max(p['x'] + p['w'] for p in pieces) + 1
+    y1 = max(p['y'] + p['h'] for p in pieces) + 1
     w, h = x1 - x0, y1 - y0
     return [{'kind': 'farm_fence', 'file': 'fence/farm_fence.png', 'x': x0, 'y': y0, 'w': w, 'h': h,
              'foot': [x0 + w / 2.0, float(y0)], 'sort_y': float(y0), 'pieces': pieces}]
@@ -486,7 +503,7 @@ def _print_map(ground: Ground, placer: Placer, items):
             for it in items:
                 if it['x'] <= x < it['x'] + it['w'] and it['y'] <= y < it['y'] + it['h']:
                     ch = it['kind'][5]
-            if _rect_dist(ground.path_pts[:, 0], ground.path_pts[:, 1], x, y, x, y).min() < PATH_CLEAR:
+            if ground.sand_near[y, x]:
                 ch = ch if ch != '.' else ','
             row.append(ch)
         rows.append(''.join(row))
