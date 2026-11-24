@@ -85,7 +85,7 @@ DISTRICTS = [
          note='West lake with reed shores and a little jetty. The Sprout row runs across the open grass between the main path and the lake, well in from the arrival gate; the Clover row lines the south shore.'),
     dict(id='oak', name='Old Oak Crossing', c=(760, 470), pads=curve_row([(806, 540), (846, 548), (886, 552), (926, 548)], 5),
          note='The hub. A great old oak, the footbridge over the stream, a fork north. The Heather row.'),
-    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(990, 608), (1030, 612), (1066, 604), (1100, 586)], 5),
+    dict(id='thistle', name='Thistle Rise', c=(1030, 560), pads=curve_row([(986, 640), (1026, 648), (1064, 646), (1100, 632)], 5),
          note='East rolling flower fields. Windmill on the rise. The Foxglove row.'),
     dict(id='cairnfold', name='Cairnfold', c=(580, 330), pads=curve_row([(556, 662), (515, 648), (474, 628), (440, 602)], 5),
          note='Rocky foothills, glowing crystals, a ring of standing stones. Its Clover row sits on the Heronmere south shore, pad 1 nearest the road.'),
@@ -118,6 +118,10 @@ GROVES = [
     ('oak', (1150, 620), 45, 3), ('bush', (1110, 720), 40, 4),                  # new bottom-right land
     ('rock', (470, 250), 40, 2), ('pine', (440, 230), 40, 3),                   # new north-west land
 ]
+
+
+# The windmill farm (the cozy thread places its props there): the flower gardens keep out of this box. Authored units.
+FARM_BOX = (960, 410, 1220, 630)
 
 
 def _seg_dist(px, py, ax, ay, bx, by):

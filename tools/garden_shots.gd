@@ -6,7 +6,11 @@ extends Node
 var main: Control
 var root: Window
 
-const ROWS: Array[StringName] = [&"lark_sprout", &"lark_clover", &"thistle", &"heather", &"foxglove", &"starbloom"]
+## Shot name -> [tier row, first pad index, last pad index]. Starbloom is two gardens: Emberwatch (pads 1 to 3) and Westmere (4 to 6).
+const ROWS: Dictionary = {
+	"lark_sprout": [&"lark_sprout", 0, 4], "lark_clover": [&"lark_clover", 0, 4], "thistle": [&"thistle", 0, 4], "heather": [&"heather", 0, 4],
+	"foxglove": [&"foxglove", 0, 4], "starbloom": [&"starbloom", 0, 2], "westmere": [&"starbloom", 3, 5],
+}
 
 
 func _wait(n: int) -> void:
@@ -17,7 +21,7 @@ func _wait(n: int) -> void:
 func _shot(name: String) -> void:
 	await _wait(3)
 	root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/%s.png" % name))
-	print("shot ", name)
+	print("shot ", name, "  nodes ", get_tree().get_node_count())
 
 
 func _goto(p: Vector2, zoom: int) -> void:
@@ -40,11 +44,13 @@ func _ready() -> void:
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await _wait(40)
-	for tier: StringName in ROWS:
+	for shot_name: String in ROWS:
+		var spec: Array = ROWS[shot_name] as Array
+		var tier: StringName = spec[0]
 		var pts: Array[Vector2] = []
 		for id: StringName in main.pads:
 			var b: ButtonDef = sim.button_defs.get(id) as ButtonDef
-			if b != null and b.row == tier:
+			if b != null and b.row == tier and b.row_index >= int(spec[1]) and b.row_index <= int(spec[2]):
 				pts.append((main.pads[id] as Node2D).position)
 		if pts.is_empty():
 			continue
@@ -52,11 +58,8 @@ func _ready() -> void:
 		for p: Vector2 in pts:
 			c += p
 		c /= float(pts.size())
-		var lo: Vector2 = c
-		for p: Vector2 in pts:
-			lo = lo.max(p)
 		await _goto(c + Vector2(0, 46), 2)
-		await _shot("garden_%s" % tier)
+		await _shot("garden_%s" % shot_name)
 		await _goto(c + Vector2(0, 46), 1)
-		await _shot("garden_%s_wide" % tier)
+		await _shot("garden_%s_wide" % shot_name)
 	get_tree().quit(0)
