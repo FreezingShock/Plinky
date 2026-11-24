@@ -280,7 +280,14 @@ const SPAWN_BUDGET_MS: float = 2.0       # chunk spawns per frame: at least one,
 const WARM_BUDGET_MS: float = 1.0        # texture warm-up per frame, only while no chunk is waiting to spawn
 const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
-var _glows: Array = []                # lamp-head glows of the loaded lanterns (Sprite2D); faded in at night by _process
+var _lamp_node: Node2D = null         # one node draws every loaded lamp head's glow (_draw_lamps): one batch, not a child sprite per lamp
+var _lamp_pts: Array[Vector2] = []    # the glow centre of each loaded lamp head, rebuilt when a chunk loads or unloads
+var _lamps_dirty: bool = true
+var _lamp_scale: float = 1.0          # the rain bloom (SkyModel.lamp_bloom): the glow size, the same for every lamp
+var _part_active: bool = false        # the chunk at the head of the spawn queue is spawning its props over several frames
+var _part_key: Vector2i = Vector2i.ZERO
+var _part_index: int = 0
+var _part_list: Array = []
 var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
 var _garden_flowers: Array = []          # the flower list the gardens were drawn from (world/larkmoor_gardens.json)
 var _flower_glow: FlowerGlow             # the night light on each field's flowers (world/flower_glow.gd)
@@ -290,6 +297,16 @@ const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45,
 ## Index the props by chunk and light the lanterns. Nothing is spawned yet; the caller loads the chunks around the start.
 func _begin(parent: Node2D) -> void:
 	_occ_parent = parent
+	if _lamp_node == null and _sky != null:
+		_lamp_node = Node2D.new()
+		_lamp_node.name = "LampGlows"
+		_lamp_node.z_index = 6   # above the night shade (z 5), as the per-lamp glows were
+		var lamp_add := CanvasItemMaterial.new()
+		lamp_add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_lamp_node.material = lamp_add
+		_lamp_node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_lamp_node.draw.connect(_draw_lamps)
+		parent.add_child(_lamp_node)
 	_prop_index.clear()
 	_loaded.clear()
 	_center = Vector2i(-99999, -99999)
@@ -355,17 +372,16 @@ func _process(_delta: float) -> void:
 	_drain_spawns()
 	_shed_over_ceiling()
 	_drain_warm()
-	# lamp heads glow only after dark: fade them with the night, and forget the glows of unloaded lanterns
+	# lamp heads glow only after dark, and swell and brighten in the rain (SkyModel.lamp_bloom, capped at full)
 	var night: float = _sky.night01 if _sky != null else 0.0
-	# rain: the lamp heads swell and brighten with the light pools (SkyModel.lamp_bloom), capped at full
 	var bloom: Vector2 = SkyModel.lamp_bloom(MeadowLife.rain)
-	for i in range(_glows.size() - 1, -1, -1):
-		var g: Variant = _glows[i]
-		if is_instance_valid(g):
-			(g as Sprite2D).modulate.a = clampf(night * bloom.y, 0.0, 1.0)
-			(g as Sprite2D).scale = Vector2.ONE * bloom.x
-		else:
-			_glows.remove_at(i)
+	if _lamp_node != null:
+		_lamp_node.modulate.a = clampf(night * bloom.y, 0.0, 1.0)
+		if not is_equal_approx(bloom.x, _lamp_scale):
+			_lamp_scale = bloom.x
+			_lamp_node.queue_redraw()
+	if _lamps_dirty:
+		_rebuild_lamps()
 	# the flowers follow the season, and shut their heads once it is dark
 	if _gardens != null:
 		var cal: Node = get_node_or_null(^"/root/Calendar")   # an autoload: named by path, since --script tests have no autoloads
@@ -390,7 +406,11 @@ func _exit_tree() -> void:
 	_queued.clear()
 	_warm_queue.clear()
 	_warmed.clear()
-	_glows.clear()
+	_abort_part()
+	_lamp_pts.clear()
+	if _lamp_node != null:
+		_lamp_node.queue_free()
+		_lamp_node = null
 	_tex_cache.clear()
 	_mat_cache.clear()
 
@@ -524,6 +544,8 @@ func _refresh_center(p: Vector2, immediate: bool = false) -> void:
 		if not _wanted_keep(key, c):
 			_unload_chunk(key)
 			unloaded = true
+	if _part_active and not _wanted_load(_part_key, c):
+		_abort_part()
 	# a queued chunk no longer wanted is dropped, so the queue only holds what is still needed
 	var kept: Array[Vector2i] = []
 	for key: Vector2i in _spawn_queue:
@@ -564,26 +586,58 @@ func _shed_over_ceiling() -> void:
 	_rebuild_bushes()
 
 
-## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. At least one, so the queue always moves.
+## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. A chunk spawns its props one at a time, and the frame
+## stops between two props once the budget is spent: one heavy chunk used to take a whole frame (QA: 8 to 18 ms in one
+## chunk load, with the stall at the edge of the walk). At least one prop a frame, so the queue always moves.
 func _drain_spawns() -> void:
-	if _spawn_queue.is_empty():
+	if _spawn_queue.is_empty() and not _part_active:
 		return
 	var start_us: int = Time.get_ticks_usec()
-	var spawned: bool = false
-	while not _spawn_queue.is_empty():
-		var key: Vector2i = _spawn_queue[0]
-		if not _budget_allows(key):
-			break   # the queue is ring first, so every chunk behind this one is a view chunk over the budget too
-		_spawn_queue.pop_front()
-		_queued.erase(key)
-		if _loaded.has(key):
-			continue
-		_load_chunk(key)
-		spawned = true
+	var finished: bool = false
+	while true:
+		if not _part_active:
+			if _spawn_queue.is_empty():
+				break
+			var key: Vector2i = _spawn_queue[0]
+			if not _budget_allows(key):
+				break   # the queue is ring first, so every chunk behind this one is a view chunk over the budget too
+			_spawn_queue.pop_front()
+			_queued.erase(key)
+			if _loaded.has(key):
+				continue
+			_part_active = true
+			_part_key = key
+			_part_index = 0
+			_part_list = []
+		var props: Array = _prop_index.get(_part_key, []) as Array
+		PerfStats.lap_begin()
+		while _part_index < props.size():
+			_part_list.append(_spawn_one(_occ_parent, props[_part_index] as Dictionary))
+			_part_index += 1
+			if float(Time.get_ticks_usec() - start_us) / 1000.0 >= SPAWN_BUDGET_MS:
+				break
+		PerfStats.lap("chunk load")
+		if _part_index < props.size():
+			break   # out of budget mid-chunk: the rest of it spawns next frame
+		_part_active = false
+		_finish_chunk(_part_key, _part_list)
+		_part_list = []
+		finished = true
 		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= SPAWN_BUDGET_MS:
 			break
-	if spawned:
+	if finished:
 		_rebuild_bushes()
+
+
+## Drops a chunk that is still spawning when the walker no longer wants it: its props so far are freed.
+func _abort_part() -> void:
+	for sp in _part_list:
+		if is_instance_valid(sp):
+			if _shadows != null:
+				_shadows.remove_caster(sp as Sprite2D)
+			(sp as Sprite2D).queue_free()
+	_part_list = []
+	_part_active = false
 
 
 ## Makes the textures of the props in the next chunks ready (the sway padding, the normal maps): the first use of a file
@@ -628,8 +682,14 @@ func _load_chunk(key: Vector2i) -> void:
 	if _prop_index.has(key):
 		for s: Dictionary in _prop_index[key]:
 			list.append(_spawn_one(_occ_parent, s))
-	_loaded[key] = list
 	PerfStats.lap("chunk load")
+	_finish_chunk(key, list)
+
+
+## A chunk is loaded: its props are in `list`. Lamps are rebuilt and the chunk listeners are told.
+func _finish_chunk(key: Vector2i, list: Array) -> void:
+	_loaded[key] = list
+	_lamps_dirty = true
 	chunk_loaded.emit(key)
 
 
@@ -641,6 +701,7 @@ func _unload_chunk(key: Vector2i) -> void:
 				_shadows.remove_caster(sp as Sprite2D)
 			(sp as Sprite2D).queue_free()
 	_loaded.erase(key)
+	_lamps_dirty = true
 	PerfStats.lap("chunk unload")
 	chunk_unloaded.emit(key)
 
@@ -657,6 +718,30 @@ func _rebuild_bushes() -> void:
 				bushes.append(sp)
 	react.set_bushes(bushes)
 	PerfStats.lap("bushes")
+
+
+## The lamp head sits this far above a lantern's foot. Its glow is centred there.
+const LAMP_HEAD: Vector2 = Vector2(0.0, -17.0)
+
+
+## The glow centre of each loaded lamp head. Rebuilt when a chunk loads or unloads, not every frame.
+func _rebuild_lamps() -> void:
+	_lamps_dirty = false
+	_lamp_pts.clear()
+	for key: Vector2i in _loaded.keys():
+		for sp in _loaded[key]:
+			if is_instance_valid(sp) and (sp as Sprite2D).has_meta(&"lamp"):
+				_lamp_pts.append((sp as Sprite2D).position + LAMP_HEAD)
+	if _lamp_node != null:
+		_lamp_node.queue_redraw()
+
+
+## Draws every lamp glow in one node, the same size and place as the per-lamp sprites it replaces.
+func _draw_lamps() -> void:
+	var tex: Texture2D = _glow_texture()
+	var size: Vector2 = tex.get_size() * _lamp_scale
+	for p: Vector2 in _lamp_pts:
+		_lamp_node.draw_texture_rect(tex, Rect2(p - size * 0.5, size), false)
 
 
 ## A small dithered bloom for a lamp head: a warm disc with a Bayer-stepped falloff (the meadow's glow style), made once.
@@ -724,17 +809,5 @@ func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
 	if String(s.kind) == "bush":
 		sp.set_meta(&"bush", true)
 	if String(s.kind) == "lantern" and float(s.w) < 20.0 and _sky != null:   # ordinary lamps; the great lantern has its own look
-		# the lamp head sits about 17 texels above the foot; z 6 puts the bloom above the night shade (z 5), so it stays bright
-		var glow := Sprite2D.new()
-		glow.name = "LampGlow"
-		glow.texture = _glow_texture()
-		glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		glow.position = Vector2(0.0, -17.0)
-		var add := CanvasItemMaterial.new()
-		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-		glow.material = add
-		glow.z_index = 6
-		glow.modulate.a = _sky.night01
-		sp.add_child(glow)
-		_glows.append(glow)
+		sp.set_meta(&"lamp", true)   # its glow is drawn by _lamp_node, one batch for every lamp
 	return sp
