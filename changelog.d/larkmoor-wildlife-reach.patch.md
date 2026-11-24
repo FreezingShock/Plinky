@@ -1,1 +1,0 @@
-Larkmoor's wildlife now comes out where you are. Dragonflies, deer and owls show up within a short reach of you, and when you walk off they fade and re-form near where you are next. Nothing shows at the spawn point, because the nearest water is a walk away.
