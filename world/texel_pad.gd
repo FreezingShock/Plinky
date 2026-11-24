@@ -60,6 +60,8 @@ const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per 
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_GAP: int = 2           # texels between the icon and the cost digits
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
+const LOCK_CHIP_Z: int = 11       # the chip's z relative to its pad: one above the air layer (z 10), so nothing draws over it
+var _chip: Node2D = null          # the chip's own node, made for a row's first pad only
 const LOCK_TOP: int = -6          # the chip's top edge, in pad-local texels: centred on the top face (origin)
 const CHIP_CREAM: Color = Color("f6efd9")
 var _lock_cost: String = ""       # the cost text, e.g. "300"; empty when this pad carries no chip
@@ -115,6 +117,11 @@ func _ready() -> void:
 			# A button's cost depends only on its definition, so the chip text is fixed for the pad's life.
 			_lock_cost = Formulas.button_cost(b).format()
 			_lock_icon = IconSet.get_icon(String(b.cost_stat), LOCK_ICON)
+			_chip = Node2D.new()
+			_chip.z_index = LOCK_CHIP_Z   # relative to the pad, which sits at z 0; the air layer is at z 10
+			_chip.visible = false
+			_chip.draw.connect(_draw_lock_chip)
+			add_child(_chip)
 		if tier_row == &"lark_clover":
 			_trim = CLOVER_TRIM
 			stat_color = CLOVER_TRIM   # gems and pip take the Clover gold, not the Clover reward green
@@ -140,6 +147,7 @@ func _physics_process(delta: float) -> void:
 	standing = inside
 	affordable = sim.can_afford(button_id)
 	locked = sim.is_pad_locked(button_id)
+	_sync_lock_chip()
 	_progress_t -= delta
 	if _progress_t <= 0.0:
 		_progress_t = 0.2
@@ -400,24 +408,38 @@ func _draw() -> void:
 	_outline(0.6, top, ink)
 	if standing:
 		_outline(0.38, top, palette[7])
-	# A locked row's first pad shows its cost and stat icon beside the plate, on the right, not under it: the walker
-	# stands on the plate and would cover a chip under its feet. 8 px icon and digits on a cream chip with an ink border.
-	# Whole texels throughout, so the chip stays crisp at 1x.
-	if shows_lock_chip(locked, _lock_cost):
-		var has_icon: bool = _lock_icon != null
-		var box: Rect2 = lock_chip_box(_lock_cost, has_icon)
-		draw_rect(box, ink)                   # ink border
-		draw_rect(box.grow(-1.0), CHIP_CREAM) # cream interior: 10 rows, the 8-row content leaves one cream row above and below
-		var x: float = box.position.x + 3.0   # the content starts 2 cream texels in from the border
-		var base: float = box.position.y + 9.0  # glyph rows are base - 7 .. base, i.e. box.y + 2 .. box.y + 9, the icon's rows too
-		if has_icon:
-			draw_texture(_lock_icon, Vector2(x, box.position.y + 2.0))
-			x += float(LOCK_ICON + LOCK_GAP)
-		# One glyph at a time, one texel apart: the 5 px font has no spacing of its own, so "300" ran together at 1x.
-		for i in _lock_cost.length():
-			var ch: String = _lock_cost.substr(i, 1)
-			draw_string(LOCK_FONT, Vector2(x, base), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
-			x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + float(LOCK_DIGIT_GAP)
+	# The cost chip draws on its own child node, above the air layer: see _draw_lock_chip.
+
+
+## The cost chip, drawn on the child node _chip at z LOCK_CHIP_Z, above the air layer (z 10), so fireflies, glow and the pad
+## shimmer never draw over it. Opaque: cream fill, ink border and ink digits. It sits beside the plate, not under it, so the
+## walker standing on the plate does not cover it. Whole texels throughout, so the chip stays crisp at 1x.
+func _draw_lock_chip() -> void:
+	var ink: Color = palette[0]
+	var has_icon: bool = _lock_icon != null
+	var box: Rect2 = lock_chip_box(_lock_cost, has_icon)
+	_chip.draw_rect(box, ink)                   # ink border
+	_chip.draw_rect(box.grow(-1.0), CHIP_CREAM) # cream interior: 10 rows, the 8-row content leaves one cream row above and below
+	var x: float = box.position.x + 3.0         # the content starts 2 cream texels in from the border
+	var base: float = box.position.y + 9.0      # glyph rows are box.y + 2 .. box.y + 9, the icon's rows too
+	if has_icon:
+		_chip.draw_texture(_lock_icon, Vector2(x, box.position.y + 2.0))
+		x += float(LOCK_ICON + LOCK_GAP)
+	# One glyph at a time, one texel apart: the 5 px font has no spacing of its own, so "300" ran together at 1x.
+	for i in _lock_cost.length():
+		var ch: String = _lock_cost.substr(i, 1)
+		_chip.draw_string(LOCK_FONT, Vector2(x, base), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, ink)
+		x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + float(LOCK_DIGIT_GAP)
+
+
+## Shows or hides the chip node as the row's lock changes, and redraws it when it appears.
+func _sync_lock_chip() -> void:
+	if _chip == null:
+		return
+	var show_chip: bool = shows_lock_chip(locked, _lock_cost)
+	if _chip.visible != show_chip:
+		_chip.visible = show_chip
+		_chip.queue_redraw()
 
 
 ## Whether a pad draws its cost chip: only a locked row's first pad carries a cost, and only when the font loaded.
