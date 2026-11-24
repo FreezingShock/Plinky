@@ -203,6 +203,11 @@ Not run in-engine: the headless test suite passes (5335 checks), but the night l
 - Loose pixels on the tower sprite are dropped (largest connected part only). They were stray sail-edge pixels that the full render had tagged with the tower's id.
 - Not run in-engine (the cloud cannot run Godot). The sprites were checked as images: tower one solid piece, sails four whole blades around the hub.
 
+## 2026-11-24: Larkmoor tree spacing (review slice 1)
+- Trees now keep a real gap between crowns: `TREE_GAP` oak 6 and pine 8 texels in `gen_larkmoor.py` (the old gap was 1.5, so trees stood in walls). The north-east pine groves go from 14 and 8 down to 10 and 6 (the two groves at (1040, 330) and (1120, 330)). Thinner than that dropped the forest-edge count under the test floor (`forest_edge` >= 6, `tests/test_wild.gd`), so the groves stay at 10 and 6.
+- Regen order after the grove change: `gen_larkmoor.py`, then `gen_life_anchors.py` (base run), then `gen_life_anchors.py --add-keys --farm assets/art/zone1b/farm/farm.json` (writes `perches`, `forest_edge` and `farm_items`), then `gen_gardens.py` (its flowers test checks the ground pixels).
+- Read from the zone 1 noon tour: the north-east pine stand reads as a thinner group with gaps. The other clusters are still tight, and the grove by the watchtower is the density to match. Not checked in-engine at zoom 3; the walk test is still to do.
+- Tour: `tools/larkmoor_review.gd` (not committed) pins the sky at noon, hides the HUD, and walks a grid of spots at zoom 1.
 ## 2026-11-24: Larkmoor lanterns by path tier, evenly spaced
 - **Tiers:** `PATH_TIER` in `larkmoor_layout.py` names each path: the main road (`road`), the two forks to the districts (`lane`), the windmill track (`trail`). `gen_larkmoor.py` spaces the lamps by tier: a road about every 110 texels, a lane every 200, a trail two (one at each end of its span). Spacing is even along each path, with the same 70-texel margin at both ends, so no lamp sits on a junction or a gate.
 - **Why:** the old rhythm restarted on every path and dropped a lamp wherever the first side was blocked, so the gaps were uneven. Now a blocked spot slides the lamp along its path (up to a third of a step), and no two lamps are closer than 80 texels.
