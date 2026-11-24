@@ -123,6 +123,9 @@ func _add_sky() -> void:
 			water.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
 	_sky.ponds = water
 	add_child(_sky)
+	var water_glow := WaterNightGlow.new()   # night glow on the pond and lake (world/water_night_glow.gd)
+	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
+	water_glow.setup(_sky, load(DIR + "ground_n.png") as Texture2D, _ground.position)
 	_add_lights()
 
 

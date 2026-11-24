@@ -11,6 +11,9 @@ extends Node
 
 const MIDNIGHT: float = 0.9
 const SPOTS: Array = [["lake", "Water_lake", 2], ["lake_close", "Water_lake", 3], ["pond", "Water_pond", 2], ["shore", "Water_lake", 2]]
+## The starting meadow (zone 1, world/meadow3d_scene.gd): its lake and pond are small, so zoom in closer.
+const MEADOW_SPOTS: Array = [["lake", "Water_lake", 2], ["lake_close", "Water_lake", 3], ["pond", "Water_pond", 3]]
+const MEADOW_OVERVIEW: Vector2 = Vector2(415, 258)
 const GLOW_SHADER: Shader = preload("res://render/shaders/water_night.gdshader")
 ## Per-variant knobs for the shader. Colours stay in the meadow palette (paper, lime, deep green).
 const VARIANTS: Dictionary = {
@@ -80,13 +83,19 @@ func _ready() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.size() > 0:
 		tag = args[0]
-	var base: String = tag.trim_suffix("_low")
-	if tag.ends_with("_low"):
+	# tag = <variant>[_low][_rm][_rf]: _low sets GraphicsQuality LOW, _rm Reduce Motion, _rf Reduce Flashing.
+	# E and game use the in-game node (world/water_night_glow.gd); the other variants are overlays from this tool.
+	var parts: PackedStringArray = tag.split("_")
+	var base: String = parts[0]
+	if "low" in parts:
 		GraphicsQuality.set_level(GraphicsQuality.Level.LOW, false)
+	var reduce_motion: bool = "rm" in parts   # set after the scene loads: the settings registry applies saved flags on boot
+	var reduce_flashing: bool = "rf" in parts
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
 	var sim: Sim = GameState.sim
 	sim.gates_open[&"zone1"] = true
-	sim.zone_id = &"larkmoor"
+	var is_meadow: bool = "meadow" in parts
+	sim.zone_id = &"zone1" if is_meadow else &"larkmoor"
 	SkyCycle.debug_season = 0
 	SkyCycle.debug_phase = MIDNIGHT
 	main = (load("res://main.tscn") as PackedScene).instantiate()
@@ -94,17 +103,29 @@ func _ready() -> void:
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await _wait(40)
 	var sky: Node2D = main.meadow.get_node("Sky") as Node2D
-	if VARIANTS.has(base):
+	if VARIANTS.has(base) and base != "E":
 		_add_glow(sky, VARIANTS[base])
 		await _wait(10)
+	MeadowLife.reduce_motion = reduce_motion
+	FxConfig.reduce_flashing = reduce_flashing
+	await _wait(5)
+	var glow_node: Node = sky.get_node_or_null("WaterNightGlow")
+	if glow_node != null and "none" in parts:
+		(glow_node as ColorRect).visible = false   # a baseline without the glow
+		glow_node.set_process(false)
+	if glow_node != null:
+		var gm: ShaderMaterial = (glow_node as ColorRect).material as ShaderMaterial
+		await _wait(5)
+		print("uniforms ", tag, " amount=", gm.get_shader_parameter("amount"), " sway=", gm.get_shader_parameter("sway"),
+				" twinkle=", gm.get_shader_parameter("twinkle"), " quality=", gm.get_shader_parameter("quality"))
 	var anchors: Node = main.meadow.get_node("Anchors")
-	for spot: Array in SPOTS:
+	for spot: Array in (MEADOW_SPOTS if is_meadow else SPOTS):
 		var m: Marker2D = anchors.get_node(String(spot[1])) as Marker2D
 		var offset: Vector2 = Vector2(-200, 20) if String(spot[0]) == "shore" else Vector2(0, 40)
 		await _goto(m.position + offset, int(spot[2]))
 		await _wait(30)
 		_save(String(spot[0]))
-	await _goto(Vector2(949, 1028), 1)
+	await _goto(MEADOW_OVERVIEW if is_meadow else Vector2(949, 1028), 1)
 	await _wait(30)
 	_save("overview")
 	get_tree().quit(0)

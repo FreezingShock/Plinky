@@ -7,15 +7,15 @@ extends ColorRect
 ## rings, and Reduce Motion and Reduce Flashing freeze the glints.
 
 const GLOW_SHADER: Shader = preload("res://render/shaders/water_night.gdshader")
-const GROUND_NRM: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_n.png")
 ## Clock steps per second for the glints (stepped, so they blink on a beat rather than flicker).
 const GLINT_STEP: float = 1.25
 
 var _sky: SkyCycle
 
 
-## Adds the glow over the world area of `sky` and reads its night level every frame.
-func setup(sky: SkyCycle) -> void:
+## Adds the glow over the world area of `sky`, for the water in the ground G-buffer `nrm` (its material codes), drawn with
+## the texture's top-left at world texel `origin` (the ground's position). Reads the night level every frame.
+func setup(sky: SkyCycle, nrm: Texture2D, origin: Vector2) -> void:
 	_sky = sky
 	name = "WaterNightGlow"
 	position = sky.area.position
@@ -23,8 +23,9 @@ func setup(sky: SkyCycle) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var m := ShaderMaterial.new()
 	m.shader = GLOW_SHADER
-	m.set_shader_parameter("nrm_tex", GROUND_NRM)
-	m.set_shader_parameter("tex_size", Vector2(GROUND_NRM.get_width(), GROUND_NRM.get_height()))
+	m.set_shader_parameter("nrm_tex", nrm)
+	m.set_shader_parameter("tex_size", Vector2(nrm.get_width(), nrm.get_height()))
+	m.set_shader_parameter("tex_origin", origin)
 	# variant E: a single moon light, a stronger road and a shore glow, no shafts
 	m.set_shader_parameter("shimmer", 1.0)
 	m.set_shader_parameter("beams", 0.0)
