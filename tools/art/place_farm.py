@@ -1,4 +1,4 @@
-"""Places the Larkmoor farm district (Thistle Rise, east of the windmill) and writes assets/art/zone1b/farm/farm.json.
+"""Places the Larkmoor farm district (Foxglove Rise, east of the windmill) and writes assets/art/zone1b/farm/farm.json.
 
 Layout comes from larkmoor_layout.py (layout texels). The Larkmoor canvas is 2x the layout (the windmill foot is at
 layout (1090, 518) and canvas (2180, 1037)), so every layout value is doubled here.
