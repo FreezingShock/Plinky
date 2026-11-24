@@ -525,7 +525,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			gm.set_shader_parameter("relight", _config.ground_relight * (0.4 + 0.6 * low_sun_k) * (1.0 - 0.5 * night_k))   # eased at high sun so noon grass keeps its detail
 			gm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			gm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
-			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k) * GraphicsQuality.shadow_stride())
+			gm.set_shader_parameter("shadow_reach", lerpf(1.6, 2.5, low_sun_k) * GraphicsQuality.shadow_stride())
 			gm.set_shader_parameter("shadow_soft", _config.shadow_softness)
 			gm.set_shader_parameter("march_steps", GraphicsQuality.shadow_steps())
 			gm.set_shader_parameter("ao_taps", GraphicsQuality.ao_taps())
@@ -544,7 +544,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 			pm.set_shader_parameter("sun_px", sun_px)
 			pm.set_shader_parameter("shadow_amt", shadow_k * (0.5 + 0.5 * low_sun_k))
 			pm.set_shader_parameter("shadow_slope", lerpf(2.4, 1.0, clampf(low_sun_k + 0.35, 0.0, 1.0)))
-			pm.set_shader_parameter("shadow_reach", lerpf(1.6, 3.4, low_sun_k))
+			pm.set_shader_parameter("shadow_reach", lerpf(1.6, 2.5, low_sun_k))
 			pm.set_shader_parameter("shadow_soft", _config.shadow_softness)
 	var rim_key: Array = [rim_dir, snappedf(rim_amt, 0.02), rim_col]
 	if rim_key != _rim_key:
@@ -578,7 +578,7 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	var lit_k: float = (1.0 - clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * 0.75) * (1.0 - 0.7 * rain01)
 	_light_mat.set_shader_parameter("sun_dir", Vector2(az, -1.0))
 	_light_mat.set_shader_parameter("light_col", rim_col)
-	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.74, 0.52, 0.78), model.low_sun(mt)))
+	_light_mat.set_shader_parameter("shade_col", Color(0.62, 0.68, 0.88).lerp(Color(0.66, 0.6, 0.8), model.low_sun(mt)))
 	_light_mat.set_shader_parameter("side_amount", _config.light_side * lit_k * (0.75 + 0.5 * low_sun_k))
 	_light_mat.set_shader_parameter("split_amount", _config.light_split * (0.4 + 0.6 * lit_k) * (0.9 + 0.5 * low_sun_k))
 	var night01: float = clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0)
