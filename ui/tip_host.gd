@@ -15,6 +15,7 @@ const ICON_DIR: String = "res://assets/icons/"
 const MAX_WIDTH: int = 150
 const CURSOR_OFFSET: Vector2 = Vector2(10.0, 12.0)
 const AVOID_GROUP: StringName = &"tip_avoid"
+const ROOMY_GAP: int = 5   ## section gap for a spec with "roomy": true (the Stats and Attributes cards)
 
 var target: Control = null
 ## Tests set this to stand in for the viewport's hovered control.
@@ -31,8 +32,14 @@ var _free_exact: bool = false
 var _free_at: Vector2 = Vector2.ZERO
 var _free_spec: Variant = null
 var _anchor: Rect2 = Rect2()
+var _root: VBoxContainer
 var _head: HBoxContainer
 var _icon: TextureRect
+## Pooled nodes. A show reuses the rows, labels and icons it already built; parked ones wait under _pool_box, hidden.
+var _pool_box: Node
+var _row_pool: Array = []
+var _label_pool: Array = []
+var _icon_pool: Array = []
 var _title: Label
 var _body: Label
 var _lines: VBoxContainer
@@ -53,7 +60,10 @@ func _init() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root = v
 	add_child(v)
+	_pool_box = Node.new()
+	add_child(_pool_box)
 	_head = HBoxContainer.new()
 	_head.add_theme_constant_override("separation", 4)
 	_head.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -73,9 +83,21 @@ func _init() -> void:
 
 
 func _label(parent: Node, title: bool) -> Label:
+	var l := _make_label()
+	_style_label(l, title)
+	parent.add_child(l)
+	return l
+
+
+func _make_label() -> Label:
 	var l := Label.new()
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return l
+
+
+## Fonts and colours of a label. Run every time a pooled label is handed out, so a reused one is never left stale.
+func _style_label(l: Label, title: bool) -> void:
 	if title:
 		l.theme_type_variation = &"TitleLabel"
 		l.add_theme_font_override(&"font", _title_font)
@@ -85,8 +107,47 @@ func _label(parent: Node, title: bool) -> Label:
 		l.add_theme_font_size_override(&"font_size", AccessOptions.body_size())
 	l.add_theme_color_override("font_color", RelicStyle.text)
 	l.add_theme_color_override("font_outline_color", RelicStyle.ink)
-	parent.add_child(l)
-	return l
+
+
+## A node from the pool, or a new one from `make`. Taken out of the pool and shown.
+func _take(pool: Array, make: Callable) -> Node:
+	var n: Node = (pool.pop_back() as Node) if not pool.is_empty() else (make.call() as Node)
+	if n.get_parent() != null:
+		n.get_parent().remove_child(n)
+	n.visible = true
+	return n
+
+
+## Hide a node and park it in the pool. It stays under _pool_box, so the host frees it with itself.
+func _release(pool: Array, n: Node) -> void:
+	if n.get_parent() != null:
+		n.get_parent().remove_child(n)
+	_pool_box.add_child(n)
+	n.visible = false
+	pool.append(n)
+
+
+## Park every row of the last spec (and their segments) so the next spec can reuse them.
+func _release_lines() -> void:
+	for row: Node in _lines.get_children():
+		for seg: Node in row.get_children():
+			_release(_icon_pool if seg is TextureRect else _label_pool, seg)
+		_release(_row_pool, row)
+
+
+func _make_row() -> Node:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 0)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return row
+
+
+func _make_icon() -> Node:
+	var r := TextureRect.new()
+	r.custom_minimum_size = Vector2(16, 16)
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
 
 
 ## Body face: Spleen normally, Pixelify Sans at 16 when Large text is on (Settings > Access).
@@ -264,9 +325,10 @@ func _fill(spec: Variant) -> bool:
 	_prose(_body, str(d["body"]), RelicStyle.text)
 	var hc: Color = d["hint_color"] as Color
 	_prose(_hint, str(d["hint"]), hc if hc.a > 0.0 else RelicStyle.dim)
-	for ch: Node in _lines.get_children():
-		_lines.remove_child(ch)
-		ch.queue_free()
+	_release_lines()
+	var roomy: bool = bool(d.get("roomy", false))
+	_root.add_theme_constant_override("separation", ROOMY_GAP if roomy else 2)
+	_lines.add_theme_constant_override("separation", 3 if roomy else 1)
 	for line: Variant in (d["lines"] as Array):
 		_lines.add_child(_rich_line(line as Array))
 	_lines.visible = _lines.get_child_count() > 0
@@ -291,30 +353,27 @@ func _prose(l: Label, text: String, c: Color) -> void:
 		l.custom_minimum_size.x = 0
 
 
-## One row of coloured text and inline 16 px icons.
+## One row of coloured text and inline 16 px icons, built from pooled nodes.
 func _rich_line(segs: Array) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 0)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := _take(_row_pool, Callable(self, &"_make_row")) as HBoxContainer
 	for sg: Variant in segs:
 		var d: Dictionary = {"t": str(sg)} if not (sg is Dictionary) else (sg as Dictionary)
 		if d.has("icon"):
 			var path: String = ICON_DIR + str(d["icon"]) + ".png"
 			if ResourceLoader.exists(path):
-				var icon_rect := TextureRect.new()
+				var icon_rect := _take(_icon_pool, Callable(self, &"_make_icon")) as TextureRect
 				icon_rect.texture = load(path) as Texture2D
-				icon_rect.custom_minimum_size = Vector2(16, 16)
-				icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-				icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				row.add_child(icon_rect)
 			continue
-		var l := _label(row, false)
+		var l := _take(_label_pool, Callable(self, &"_make_label")) as Label
+		_style_label(l, false)
 		if bool(d.get("tag", false)):
 			l.add_theme_font_override(&"font", StatStyle.tag_font())
 			l.add_theme_font_size_override(&"font_size", StatStyle.TAG_SIZE)
 		l.text = str(d.get("t", ""))
 		var c: Color = d.get("c", Color(0, 0, 0, 0)) as Color
 		l.add_theme_color_override("font_color", c if c.a > 0.0 else RelicStyle.text)
+		row.add_child(l)
 	return row
 
 

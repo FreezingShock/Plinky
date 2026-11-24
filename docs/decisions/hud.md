@@ -307,6 +307,12 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Fix:** a tab that gains focus selects its page, the same as a press. Mouse, Enter and pad all still work. Focus and selection now always agree.
 - Not verified in-engine. PC QA should check Left and Right across both zones' tabs.
 
+## 2026-11-24: Shared tooltips for the Stats and Attributes index
+- The index's hover strip is gone, so the grid is taller (`IndexPanel.SCROLL_H` 150 to 200). Each card binds `Tip` to `TipText.index_row`: header with icon, name and stat colour; level or amount; effect now and next; cost; description; then a yellow "Click to open!". Buy says "Click to buy!" when affordable.
+- Reason: one shared, pooled tooltip for every menu, instead of a per-menu strip. `TipHost` reuses its rows, labels and icons between shows.
+- The stale "Prestige and RP" header is removed (both went in #209). Display settings drop their hover-to-hint lines; rows with a hint use the shared tooltip.
+- Yellow is `TipText.CLICK` (#ffd93d). Not run in-engine: `tests/test_tooltips.gd` passed on CI's unit job after one fix (the "now" field). PC QA should hover each card, check spacing at 640x360 and a large UI scale, and buy one attribute.
+
 ## 2026-11-24: Popup text is crisp, and popups blink out instead of fading
 - Popups drew with the popup face at import defaults (grey AA, light hinting), so the 640x360 base upscaled to soft edges. `CrispFont.theme_font` now applies the crisp settings to `PopupLabel` (`PressPopups`, `PopupNumber`, fx_bus).
 - Taste call: no alpha fades. The last 30% of a popup blinks in 8 Hz steps (`PopupStyle.shows_now`); Reduce Flashing holds it solid, then cuts it. Outline stays 2 px. Pixelify has no single pixel unit, so no "native size" applies.

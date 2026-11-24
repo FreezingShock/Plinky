@@ -3,6 +3,7 @@ extends RefCounted
 
 func run(t: Object) -> void:
 	test_live_gain(t)
+	test_index_tips(t)
 	var d: Dictionary = Tip.normalize("hello")
 	t.eq(d["body"], "hello", "a String spec becomes the body")
 	t.eq(d["title"], "", "a String spec has no title")
@@ -144,3 +145,64 @@ func test_live_gain(t: Object) -> void:
 		t.eq(sim.get_stat(b.reward_stat).sub(before).format(), shown.format(), "the tooltip gain equals what an actual press pays")
 	sim.attr_levels[&"pad_yield"] = 3
 	t.ok(sim.press_gain_preview(id).format() != shown.format() or sim.pad_yield_mult() == 1.0, "the tooltip gain follows attribute changes")
+
+
+func test_index_tips(t: Object) -> void:
+	var sim: Sim = t.make_sim()
+	var rows: Array = StatIndex.stats(sim) + StatIndex.attributes(sim)
+	var all_click: bool = not rows.is_empty()
+	var all_named: bool = true
+	for r: Variant in rows:
+		var spec: Dictionary = TipText.index_row(r as Dictionary)
+		all_named = all_named and str(spec["title"]) == str((r as Dictionary)["name"]) and str(spec["body"]) != ""
+		all_click = all_click and str(spec["hint"]) == "Click to open!" and spec["hint_color"] == TipText.click_color()
+	t.ok(all_click, "every index card ends with a yellow Click to open! line")
+	t.ok(all_named, "every index card is titled with its name and has a description")
+	t.ok(TipText.CLICK.r > 0.9 and TipText.CLICK.g > 0.8 and TipText.CLICK.b < 0.4, "the call to action is yellow")
+	var attrs: Array = StatIndex.attributes(sim)
+	if not attrs.is_empty():
+		t.ok(attrs[0].has("can") and attrs[0].has("currency_name") and attrs[0].has("now"), "attribute rows carry their level, effect and cost")
+	var b_can: Dictionary = TipText.buy("rp", "Rebirth Points", "3", true, false)
+	t.eq(b_can["hint"], "Click to buy!", "a Buy button you can afford says Click to buy!")
+	t.eq(b_can["hint_color"], TipText.click_color(), "Click to buy! is yellow")
+	t.ok(str(TipText.buy("rp", "Rebirth Points", "3", false, false)["hint"]).begins_with("Need"), "an unaffordable Buy says what is needed, with no yellow line")
+	t.eq(TipText.buy("rp", "Rebirth Points", "3", false, true)["title"], "Max Level", "a maxed attribute's Buy says so")
+
+	# The shared host reuses its nodes: the same spec shown again, or another spec, builds nothing new once warm.
+	var h := TipHost.new()
+	t.root.add_child(h)
+	var spec_a: Dictionary = TipText.index_row(rows[0] as Dictionary)
+	h._fill(spec_a)
+	var warm: int = _nodes(h)
+	h._fill(spec_a)
+	t.eq(_nodes(h), warm, "showing the same tip again builds no new nodes")
+	h._fill({"title": "Short", "body": "One line.", "lines": [["Now ", Tip.seg("1", StatStyle.gain())]]})
+	h._fill(spec_a)
+	t.eq(_nodes(h), warm, "switching tips reuses the pooled nodes")
+	t.eq(h._root.get_theme_constant("separation"), TipHost.ROOMY_GAP, "a roomy tip spaces its sections out")
+	h._fill({"title": "Plain", "body": "Tight."})
+	t.eq(h._root.get_theme_constant("separation"), 2, "a plain tip keeps the tight spacing")
+	h.free()
+
+	# The Stats and Attributes gallery: no bottom info strip, no Prestige and RP header, and every card carries the tip.
+	var host := Control.new()
+	host.size = Vector2(640, 360)
+	t.root.add_child(host)
+	var panel := IndexPanel.new()
+	host.add_child(panel)
+	panel.bind(sim)
+	panel.open_tab(IndexPanel.Tab.ATTRIBUTES)
+	t.ok(panel.get("_strip") == null and panel.get("_sub") == null, "the info strip and the stale header are gone")
+	var tipped: bool = not panel._cards.is_empty()
+	for c: Variant in panel._cards.values():
+		tipped = tipped and (c as Control).has_meta(Tip.META)
+	t.ok(tipped, "every card on the gallery is bound to the shared tooltip")
+	host.free()
+
+
+## Count every node under `n`, itself included.
+func _nodes(n: Node) -> int:
+	var c: int = 1
+	for ch: Node in n.get_children():
+		c += _nodes(ch)
+	return c
