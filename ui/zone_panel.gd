@@ -10,7 +10,9 @@ const WIDTH: float = 152.0
 const PAD_X: float = 5.0
 const PAD_Y: float = 3.0
 const INNER: float = WIDTH - PAD_X * 2.0
-const DESC_LINES: int = 3   ## the description shows this many lines; whole sentences only, and the full text is in its tooltip
+const DESC_LINES: int = 3   ## the description shows this many lines when it can; whole sentences only
+const DESC_MAX: int = 5     ## a single long sentence grows the card up to this many lines before it is trimmed
+
 const PEEK: float = 3.5   ## seconds the area card stays open after you walk into an area
 const PADS_SHOWN: int = 3      ## pads listed when an area has more than PADS_FOLD of them; the rest fold behind "N more..."
 const PADS_FOLD: int = 4
@@ -36,6 +38,7 @@ var _card: RevealBox
 var _card_title: Label
 var _card_desc: Label
 var _full_desc: String = ""   ## the untrimmed description: the card shows whole sentences of it, the tooltip the lot
+var _desc_cap: int = DESC_LINES   ## lines the description may take for the current area
 var _card_pads: VBoxContainer
 var _pads_scroll: ScrollContainer
 var _pads_more: Label
@@ -204,15 +207,31 @@ func _desc_px() -> float:
 	var h: float = line
 	if font != null:
 		h = maxf(h, font.get_multiline_string_size(_card_desc.text, HORIZONTAL_ALIGNMENT_LEFT, INNER, fs).y)
-	return minf(h, line * DESC_LINES)
+	return minf(h, line * _desc_cap)
 
 
-## Sets the card's description to the longest run of whole sentences that fits DESC_LINES; the tooltip keeps the rest.
+## Sets the card's description: the whole text when it fits the card, else the longest run of whole sentences that does.
 ## A single sentence too long for the card falls back to the ellipsis trim, so text is never cut mid-word or mid-sentence
 ## without the tooltip.
 func _set_desc(full: String) -> void:
 	_full_desc = full
+	_desc_cap = _lines_for(full)
+	_card_desc.max_lines_visible = _desc_cap
 	_card_desc.text = _fit_sentences(full)
+
+
+## The fewest lines (DESC_LINES at least, DESC_MAX at most) that hold the whole text.
+func _lines_for(text: String) -> int:
+	var font: Font = _card_desc.get_theme_font("font")
+	if font == null:
+		return DESC_LINES
+	var fs: int = _card_desc.get_theme_font_size("font_size")
+	var h: float = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, INNER, fs).y
+	var line: float = _card_desc.get_line_height()
+	for n in range(DESC_LINES, DESC_MAX + 1):
+		if h <= line * n + 0.5:
+			return n
+	return DESC_MAX
 
 
 func _fit_sentences(full: String) -> String:
@@ -235,7 +254,7 @@ func _desc_fits(text: String) -> bool:
 		return true
 	var fs: int = _card_desc.get_theme_font_size("font_size")
 	var h: float = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, INNER, fs).y
-	return h <= _card_desc.get_line_height() * DESC_LINES + 0.5
+	return h <= _card_desc.get_line_height() * _desc_cap + 0.5
 
 
 func _fit_desc() -> void:
@@ -347,7 +366,7 @@ func _build_card(card: VBoxContainer) -> void:
 	_card_desc.custom_minimum_size.x = INNER
 	_card_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_card_desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_card_desc.max_lines_visible = DESC_LINES
+	_card_desc.max_lines_visible = _desc_cap
 	_card_desc.mouse_filter = Control.MOUSE_FILTER_STOP
 	_bind(_card_desc, func() -> Array: return [_card_title.text, _full_desc])
 	_card_desc.add_theme_color_override("font_color", RelicStyle.text)
