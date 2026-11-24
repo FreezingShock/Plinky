@@ -191,4 +191,13 @@ func run(t: SceneTree) -> void:
 	rebirth_only.rarity = load("res://content/rarities/divine.tres")
 	gal.defs[&"r_rebirth_only"] = rebirth_only
 	t.ok(gal.acquire_text(&"r_rebirth_only").contains("rebirths"), "zero-weight tiers say they come from rebirths or achievements")
+	# Walker aura: the highest equipped rarity sets the pool colour and whether Epic and up sparkle
+	var aura := RelicInventory.new(cfg, defs)
+	t.eq(aura.top_equipped_rank(), -1, "no equipped relics means no aura rank")
+	aura.add_relic(&"r_cash")
+	aura.add_relic(&"r_crit")
+	aura.equip(&"r_cash")
+	t.eq(aura.top_equipped_rank(), 0, "common only: rank 0")
+	aura.equip(&"r_crit")
+	t.eq(aura.top_equipped_rank(), 3, "Epic equipped: rank 3")
 

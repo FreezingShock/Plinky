@@ -26,3 +26,8 @@ static func button_cost(def: ButtonDef) -> BigNum:
 ## attribute cost = base_cost * growth ^ level (level = levels already bought)
 static func attribute_cost(def: AttributeDef, level: int) -> BigNum:
 	return BigNum.from_float(def.base_cost * pow(def.cost_growth, float(level)))
+
+
+## Multiplier one press pays: `mult` when the roll lands under the chance, else 1. The roll is passed in (0 to 1) so this stays pure.
+static func proc_mult(roll: float, chance: float, mult: float) -> float:
+	return mult if roll < chance else 1.0

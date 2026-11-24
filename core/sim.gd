@@ -431,6 +431,8 @@ func effect_total(effect: StringName) -> float:
 	for a: AttributeDef in attribute_defs.values():
 		if a.effect == effect:
 			total += a.per_level * float(attr_level(a.id))
+		if a.effect2 != &"" and a.effect2 == effect:
+			total += a.per_level2 * float(attr_level(a.id))
 	return total
 
 
@@ -541,6 +543,9 @@ func _press(button_id: StringName, world_pos: Vector3, allow_pulse: bool, free: 
 	# Echo Stone and Echo Ring: pressing the same pad as the last real press pays more. Pulses don't count.
 	var echo: float = 1.0 + _relic_total(RelicDef.Effect.REPEAT_GAIN) if allow_pulse and button_id == _last_pad else 1.0
 	var gain: BigNum = press_gain(button_id, crit_mult, presses).mul(BigNum.from_float(surge * echo))
+	var proc: float = effect_total(&"press_proc")
+	if proc > 0.0:   # a proc: this press may pay out several times over (Twin Petals, Twin Strike)
+		gain = gain.mul(BigNum.from_float(Formulas.proc_mult(rng.randf(), proc, config.press_proc_mult)))
 	_set_stat(b.reward_stat, get_stat(b.reward_stat).add(gain))
 	press_count += 1
 	_open_next_tier(b)

@@ -1,34 +1,32 @@
 class_name UpgradeCard
 extends PanelContainer
-## One upgrade in the Upgrades gallery: a framed card with a transparent fill, so the panel shows through it.
-## The outline says whether you can buy it right now: green when the next level is affordable, red when it is not,
-## dim while it is locked and gold once it is maxed. Inside: the icon (or padlock), name, level pips, "now -> next"
-## and an animated Buy button whose cost is green when you can pay it and red when you can't.
+## One upgrade in the Upgrades gallery, stacked to three lines so the card is narrow:
+##   1. icon (or padlock), name, level
+##   2. "now -> next" (or what it takes to unlock)
+##   3. pips and the cost (or MAX / Locked)
+## The whole card is the buy target. A click on it buys; hold to keep buying (see HoldRepeat). Keyboard and pad use focus:
+## Enter or Space buys while the card has focus. The outline and dimming say what you can do: green and bright when you
+## can pay for the next level, red and dimmed when you cannot, gold when maxed, dim while locked.
 ## Layout and text come from an UpgradeText.state() dictionary, so this node holds no game rules.
 ##
-## Hold the Buy button (mouse, Enter/Space or the pad's confirm button) to keep buying, faster the longer you hold
-## (see HoldRepeat). Repeats stop the moment the next level cannot be paid for, and play a light version of the animation.
-##
-## The whole card is a buy target: a click anywhere on it buys (hold to keep buying), the Buy button still takes focus and keys.
-## Hovering a card you can afford adds a faint wash.
-##
-## Buying plays: the card pops, a few pixel sparks leave its centre, the button squashes, the cost flies off toward the
-## currency's balance, the numbers tick up in steps, the newest level pip pops, and a rising click. Reduce motion / reduce
-## flashing skip the motion and keep the sound.
+## Buying plays: the card pops, a few pixel sparks leave its centre, the cost flies off toward the currency's balance, the
+## numbers tick up in steps, the newest pip pops, and a rising click. Reduce motion / reduce flashing skip the motion and
+## keep the sound.
 
 signal buy_pressed(attr_id: StringName)
 
 const RED: Color = Color("#d9604c")   ## no red in the palette roles; fixed like the rarity colours
 const TICK_STEPS: int = 8
 const FLY_SECONDS: float = 0.55
-## Card size at 640x360: two across fit the gallery's list. Inside a card the icon, delta (136) and Buy (80) share one line.
-const CARD_SIZE: Vector2 = Vector2(268.0, 56.0)
+## Two across fit the menu at 640x360 with room to spare. Three lines inside: the name row, the values, the cost row.
+const CARD_SIZE: Vector2 = Vector2(150.0, 52.0)
+const BORDER: int = 2
+const PAD: float = 5.0
+const DIM_BODY: float = 0.55   ## how much the contents fade when you cannot pay (the frame stays bright)
 const SPARKS: int = 7
 const SPARK_LIFE: float = 0.5
 const SPARK_GRAVITY: float = 150.0
 const PAPER_SPARK: Color = Color("fff1c8")
-const BORDER: int = 2
-const PAD: float = 5.0
 
 var attr_id: StringName
 var fly_target: Callable = Callable()   ## returns the global point the cost flies toward
@@ -36,44 +34,63 @@ var fly_target: Callable = Callable()   ## returns the global point the cost fli
 var _def: AttributeDef
 var _state: Dictionary = {}
 var _frame: StyleBoxFlat
+var _body: VBoxContainer
 var _icon: TextureRect
 var _lock: LockIcon
 var _name: Label
 var _level: Label
-var _pips: PipBar
 var _delta: RichTextLabel
-var _buy: PixelButton
+var _pips: PipBar
+var _cost: Label
 var _hold: HoldRepeat = HoldRepeat.new()
-var _skip_pressed: bool = false   ## the press already bought on button_down, so the matching `pressed` must not buy again
 var _ticking: bool = false
 var _delta_text: String = ""
 var _sparks: Array[Dictionary] = []
+
+
+## The outline colour for a card in this state: dim locked, gold maxed, green affordable, red out of reach.
+static func edge_color(unlocked: bool, maxed: bool, can_afford: bool) -> Color:
+	if not unlocked:
+		return RelicStyle.dim
+	if maxed:
+		return RelicStyle.accent
+	return RelicStyle.good if can_afford else AccessOptions.tint(RED)
 
 
 func setup(a: AttributeDef) -> void:
 	_def = a
 	attr_id = a.id
 	custom_minimum_size = CARD_SIZE
-	mouse_filter = Control.MOUSE_FILTER_STOP   # the whole card takes clicks; the Buy button is a child and takes its own
+	focus_mode = Control.FOCUS_ALL
+	mouse_filter = Control.MOUSE_FILTER_STOP   # the whole card takes clicks
 	gui_input.connect(_on_card_input)
+	focus_exited.connect(_hold.end)
 	mouse_entered.connect(_hover.bind(true))
 	mouse_exited.connect(_hover.bind(false))
+	visibility_changed.connect(func() -> void:
+		if not is_visible_in_tree():
+			_hold.end())
 	_frame = StyleBoxFlat.new()
-	_frame.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	_frame.bg_color = Color(0.0, 0.0, 0.0, 0.0)   # transparent, so the panel shows through
 	_frame.set_border_width_all(BORDER)
 	_frame.set_corner_radius_all(0)
 	_frame.set_content_margin_all(PAD)
 	_frame.border_color = RelicStyle.dim
 	add_theme_stylebox_override("panel", _frame)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(row)
+	_body = VBoxContainer.new()
+	_body.add_theme_constant_override("separation", 1)
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_body)
+	# Line 1: icon or padlock, name, level.
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 4)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.add_child(top)
 	var slot := Control.new()
 	slot.custom_minimum_size = Vector2(16, 16)
 	slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(slot)
+	top.add_child(slot)
 	_icon = TextureRect.new()
 	_icon.texture = load("res://assets/icons/%s.png" % StatIndex.attr_icon(a)) as Texture2D
 	_icon.custom_minimum_size = Vector2(16, 16)
@@ -84,64 +101,87 @@ func setup(a: AttributeDef) -> void:
 	_lock.visible = false
 	_lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(_lock)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(col)
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 6)
-	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(top)
 	_name = Label.new()
 	_name.text = a.display_name
+	_name.clip_text = true
+	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(_name)
 	_level = Label.new()
 	_level.add_theme_color_override("font_color", RelicStyle.soft())
+	_level.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(_level)
-	_pips = PipBar.new()
-	_pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(_pips)
+	# Line 2: now -> next, or the unlock count while locked.
 	_delta = RichTextLabel.new()
 	_delta.bbcode_enabled = true
 	_delta.fit_content = true
 	_delta.scroll_active = false
+	_delta.clip_contents = true
 	_delta.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_delta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_delta.custom_minimum_size = Vector2(136, 0)
 	_delta.add_theme_color_override("default_color", RelicStyle.text)
-	col.add_child(_delta)
-	_buy = PixelButton.new()
-	_buy.custom_minimum_size = Vector2(80, 0)
-	_buy.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_buy.pressed.connect(_on_pressed)
-	_buy.button_down.connect(_on_down)
-	_buy.button_up.connect(_hold.end)
-	_buy.focus_exited.connect(_hold.end)
-	visibility_changed.connect(func() -> void:
-		if not is_visible_in_tree():
-			_hold.end())
-	row.add_child(_buy)
+	_body.add_child(_delta)
+	# Line 3: pips, then the cost on the right.
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 6)
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.add_child(bottom)
+	_pips = PipBar.new()
+	_pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom.add_child(_pips)
+	_cost = Label.new()
+	_cost.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_cost.clip_text = true
+	_cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom.add_child(_cost)
 	set_process(false)
 
 
-## True while a held Buy is repeating (the repeats after the first purchase).
+## True while a held buy is repeating (the repeats after the first purchase).
 func is_repeating() -> bool:
 	return _hold.held and _hold.repeats > 0
 
 
-func _on_down() -> void:
-	_skip_pressed = true
+func state() -> Dictionary:
+	return _state
+
+
+func _draw() -> void:
+	for s: Dictionary in _sparks:
+		var age: float = float(s["age"])
+		var u: float = age / float(s["life"])
+		if u > 0.7 and int(age * 40.0) % 2 == 0:
+			continue   # the last part of a spark blinks out, pixel-art style
+		var sz: float = 2.0 if u < 0.3 else 1.0
+		draw_rect(Rect2((s["pos"] as Vector2).round(), Vector2(sz, sz)), s["col"] as Color)
+	if has_focus():
+		PadInput.draw_focus_ring(self, Rect2(Vector2.ZERO, size).grow(1), RelicStyle.accent)
+
+
+## A click on the card starts a buy and a hold; release ends the hold. Enter or Space does the same while focused.
+func _on_card_input(event: InputEvent) -> void:
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb != null:
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			_press()
+		else:
+			_hold.end()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed(&"ui_accept"):
+		_press()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_released(&"ui_accept"):
+		_hold.end()
+
+
+func _press() -> void:
 	_hold.begin()
 	set_process(true)
-	_on_buy()
-
-
-func _on_pressed() -> void:
-	if _skip_pressed:
-		_skip_pressed = false
-		return
 	_on_buy()
 
 
@@ -171,73 +211,56 @@ func _on_buy() -> void:
 		_deny()
 
 
-## A click on the card outside the Buy button: press starts the buy and hold, release ends the hold.
-## It does not set _skip_pressed, which belongs to the Buy button's own press.
-func _on_card_input(event: InputEvent) -> void:
-	var mb: InputEventMouseButton = event as InputEventMouseButton
-	if mb == null or mb.button_index != MOUSE_BUTTON_LEFT:
-		return
-	if mb.pressed:
-		_hold.begin()
-		set_process(true)
-		_on_buy()
-	else:
-		_hold.end()
-
-
 func _hover(on: bool) -> void:
 	var wash: bool = on and bool(_state.get("can_afford", false))
 	_frame.bg_color = Color(RelicStyle.text, 0.06) if wash else Color(0.0, 0.0, 0.0, 0.0)
 
 
-func state() -> Dictionary:
-	return _state
-
-
-## The outline colour for a card in this state: dim locked, gold maxed, green affordable, red out of reach.
-static func edge_color(unlocked: bool, maxed: bool, can_afford: bool) -> Color:
-	if not unlocked:
-		return RelicStyle.dim
-	if maxed:
-		return RelicStyle.accent
-	return RelicStyle.good if can_afford else AccessOptions.tint(RED)
-
-
-## Bring the card in line with the sim. Cheap to call every frame: nothing is rewritten unless it changed.
+## Bring the card in line with the sim. Cheap to call every refresh: nothing is rewritten unless it changed.
 func refresh(s: Dictionary) -> void:
 	_state = s
 	var unlocked: bool = bool(s["unlocked"])
 	var maxed: bool = bool(s["maxed"])
 	var can: bool = bool(s["can_afford"])
 	_frame.border_color = edge_color(unlocked, maxed, can)
+	_body.modulate = Color(1.0, 1.0, 1.0, DIM_BODY) if (not unlocked or (not maxed and not can)) else Color.WHITE
 	_icon.visible = unlocked
 	_lock.visible = not unlocked
 	_name.add_theme_color_override("font_color", RelicStyle.text if unlocked else RelicStyle.dim)
 	_level.visible = unlocked
 	_pips.visible = unlocked
-	_buy.visible = unlocked
 	if unlocked:
 		_level.text = "%d/%d" % [s["level"], s["cap"]]
 		_pips.set_level(int(s["level"]), int(s["cap"]), maxed)
-		_buy.disabled = maxed
 		if maxed:
-			_buy.text = "MAX"
+			_cost.text = "MAX"
+			_cost.add_theme_color_override("font_color", RelicStyle.accent)
 		else:
-			_buy.text = "Buy %s" % s["cost_text"]
-			var c: Color = RelicStyle.good if can else AccessOptions.tint(RED)
-			for n: String in ["font_color", "font_hover_color", "font_focus_color"]:
-				_buy.add_theme_color_override(n, c)
+			_cost.text = "Cost %s" % s["cost_text"]
+			_cost.add_theme_color_override("font_color", RelicStyle.good if can else AccessOptions.tint(RED))
+	else:
+		_cost.text = "Locked"
+		_cost.add_theme_color_override("font_color", RelicStyle.dim)
 	if not _ticking:
 		_set_delta_text(_build_delta(s, String(s["now"]), String(s["next"])))
 
 
 func _build_delta(s: Dictionary, now: String, nxt: String) -> String:
+	var text: String = _primary_delta(s, now, nxt)
+	# A gift's second effect sits after the first on the same line (no extra height): "+12% -> +14%  +10%/Bloom".
+	var extra: String = String(s.get("second_short", ""))
+	if bool(s["unlocked"]) and extra != "":
+		text += "  [color=#%s]%s[/color]" % [RelicStyle.good.to_html(false), extra]
+	return text
+
+
+func _primary_delta(s: Dictionary, now: String, nxt: String) -> String:
 	var dim: String = RelicStyle.soft().to_html(false)
 	if not bool(s["unlocked"]):
-		return "[color=#%s]%s (%d/%d)[/color]" % [dim, s["lock"], s["rebirths"], s["need"]]
+		return "[color=#%s]%d / %d to unlock[/color]" % [dim, s["rebirths"], s["need"]]
 	if bool(s["maxed"]):
-		return "[color=#%s]%s[/color] [color=#%s]MAX[/color] [color=#%s]%s[/color]" % [dim, now, RelicStyle.good.to_html(false), dim, s["unit"]]
-	return "[color=#%s]%s ->[/color] [color=#%s]%s[/color] [color=#%s]%s[/color]" % [dim, now, RelicStyle.accent.to_html(false), nxt, dim, s["unit"]]
+		return "[color=#%s]%s[/color] [color=#%s]MAX[/color]" % [dim, now, RelicStyle.good.to_html(false)]
+	return "[color=#%s]%s ->[/color] [color=#%s]%s[/color]" % [dim, now, RelicStyle.accent.to_html(false), nxt]
 
 
 func _set_delta_text(t: String) -> void:
@@ -253,7 +276,7 @@ func _calm() -> bool:
 ## Called by the menu right after a successful buy, with the state from after it.
 func play_buy(after: Dictionary) -> void:
 	var before: Dictionary = _state
-	var light: bool = is_repeating()   # held repeats: pip pop and a quiet click only, no squash, flying cost or tick
+	var light: bool = is_repeating()   # held repeats: pip pop and a quiet click only, no pop, sparks, flying cost or tick
 	_sfx(&"ui_click", 0.9 + 0.5 * float(after["level"]) / maxf(float(after["cap"]), 1.0), -9.0 if light else 0.0)
 	if not light:
 		_sfx(&"popup_tick", 1.0 + 0.04 * float(int(after["level"]) % 12), -4.0)
@@ -266,14 +289,13 @@ func play_buy(after: Dictionary) -> void:
 		return
 	if _calm():
 		return
-	_squash()
-	_pop_card()
+	_pop()
 	_burst_sparks()
 	_fly_cost(String(before.get("cost_text", "")))
 	_tick(before, after)
 
 
-## Take the new state (pips, button) but leave the delta text to the tick tween.
+## Take the new state (pips, cost) but leave the delta text to the tick tween.
 func refresh_keep(after: Dictionary) -> void:
 	var was: bool = _ticking
 	_ticking = true
@@ -283,15 +305,8 @@ func refresh_keep(after: Dictionary) -> void:
 		_set_delta_text(_build_delta(after, String(after["now"]), String(after["next"])))
 
 
-func _squash() -> void:
-	_buy.pivot_offset = _buy.size / 2.0
-	_buy.scale = Vector2(1.14, 0.82)
-	var t := create_tween()
-	t.tween_property(_buy, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-
 ## The whole card pops a little when a buy lands.
-func _pop_card() -> void:
+func _pop() -> void:
 	pivot_offset = size * 0.5
 	scale = Vector2(1.04, 1.04)
 	var t := create_tween()
@@ -325,27 +340,17 @@ func _step_sparks(delta: float) -> void:
 	queue_redraw()
 
 
-func _draw() -> void:
-	for s: Dictionary in _sparks:
-		var age: float = float(s["age"])
-		var u: float = age / float(s["life"])
-		if u > 0.7 and int(age * 40.0) % 2 == 0:
-			continue   # the last part of a spark blinks out, pixel-art style
-		var sz: float = 2.0 if u < 0.3 else 1.0
-		draw_rect(Rect2((s["pos"] as Vector2).round(), Vector2(sz, sz)), s["col"] as Color)
-
-
 func _deny() -> void:
 	_sfx(&"ui_back", 0.8, -2.0)
 	if _calm():
 		return
-	_buy.pivot_offset = _buy.size / 2.0
-	_buy.scale = Vector2(0.9, 0.9)
+	pivot_offset = size * 0.5
+	scale = Vector2(0.95, 0.95)
 	var t := create_tween()
-	t.tween_property(_buy, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(self, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-## "-170" in the cost colour leaves the button and flies to the currency's balance in whole-texel steps.
+## "-170" in the cost colour leaves the card and flies to the currency's balance in whole-texel steps.
 func _fly_cost(cost_text: String) -> void:
 	if cost_text == "" or not fly_target.is_valid():
 		return
@@ -356,7 +361,7 @@ func _fly_cost(cost_text: String) -> void:
 	l.add_theme_color_override("font_color", AccessOptions.tint(RED))
 	l.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(l)
-	var from: Vector2 = _buy.global_position + Vector2(_buy.size.x * 0.5 - 12.0, 0.0)
+	var from: Vector2 = _cost.global_position + Vector2(_cost.size.x * 0.5, 0.0)
 	var to: Vector2 = fly_target.call() as Vector2
 	l.global_position = from
 	var t := create_tween()
@@ -373,7 +378,7 @@ func _fly_step(k: float, l: Label, from: Vector2, to: Vector2) -> void:
 	l.modulate.a = 1.0 if stepped < 0.75 else 0.5
 
 
-## The "now" and "next" numbers count up from their old values to the new ones in steps.
+## The "now" and "next" values count up from their old values to the new ones in steps.
 func _tick(before: Dictionary, after: Dictionary) -> void:
 	if _def == null or before.is_empty():
 		return

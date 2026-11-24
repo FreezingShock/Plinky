@@ -49,6 +49,7 @@ func _ready() -> void:
 	_body.name = "Body"
 	add_child(_body)
 	_body.colors = palette
+	add_child(WalkerRelics.new())   # equipped relics: motes, pool and sparks (world/walker_relics.gd)
 
 
 ## True while the walker is off the ground. Pads only count a walker that is standing on them.
