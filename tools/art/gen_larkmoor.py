@@ -12,6 +12,8 @@ def log(*a): print('[%5.1fs]' % (time.time() - T0), *a, flush=True)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import larkmoor_layout as LAY
+_DEAD = LAY.dead_ends()
+assert not _DEAD, 'paths lead nowhere (path index, end): %r' % (_DEAD,)   # every path must reach a gate, pad, landmark or path
 import depth_pass, grass_tex
 GRASS = os.environ.get('GRASS', 'a')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
@@ -373,14 +375,24 @@ def make_windmill(rng):
         hub = sdf_sphere(x, y, z, (0, 10.4, 35), 1.8); sel = hub < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, hub)
         return d, m
     return f, (26, 24), 58, 11
-def make_gateway(rng):
+def make_gateway(rng, style='timber'):
+    """The two Larkmoor gateways. 'timber': the arrival arch from the meadow, timber posts with a flower-garlanded lintel.
+    'stone': the Ember gate, rough stone posts and lintel with ember bloom in the seams, leading on to the quarry."""
+    stone = style == 'stone'
+    post_m, cap_m, lint_m = (M_ROCK, M_ROCK, M_ROCK) if stone else (M_BARKT, M_PAPER, M_BARK)
     def f(x, y, z):
-        d = np.full(x.shape, 1e3); m = np.full(x.shape, M_ROCK, np.int16)
+        d = np.full(x.shape, 1e3); m = np.full(x.shape, post_m, np.int16)
         for px in (-9.5, 9.5):
-            dp = sdf_box(x, y, z, (px, 0, 9.5), (2.7, 2.4, 9.5), .7) + (vn3(x * .5, y * .5, z * .5, 4) - .5) * 1.0; sel = dp < d; d = np.minimum(d, dp)
-            dc = sdf_box(x, y, z, (px, 0, 19.6), (3.4, 3.1, .9), .4); sel = dc < d; m = np.where(sel, M_BARKT, m); d = np.minimum(d, dc)
+            dp = sdf_box(x, y, z, (px, 0, 9.5), (2.7, 2.4, 9.5), .7) + (vn3(x * .5, y * .5, z * .5, 4) - .5) * 1.0; sel = dp < d; m = np.where(sel, post_m, m); d = np.minimum(d, dp)
+            dc = sdf_box(x, y, z, (px, 0, 19.6), (3.4, 3.1, .9), .4); sel = dc < d; m = np.where(sel, cap_m, m); d = np.minimum(d, dc)
             dl = sdf_box(x, y, z, (px, 0, 22.3), (1.2, 1.2, 1.6), .4); sel = dl < d; m = np.where(sel, M_PAPER + 20, m); d = np.minimum(d, dl)
-        db = sdf_box(x, y, z, (0, 0, 17.8), (11.5, 1.8, 1.5), .5); sel = db < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, db)
+        db = sdf_box(x, y, z, (0, 0, 17.8), (11.5, 1.8, 1.5), .5); sel = db < d; m = np.where(sel, lint_m, m); d = np.minimum(d, db)
+        if stone:
+            for ex in np.linspace(-9.0, 9.0, 5):                  # ember bloom sitting in the lintel seams
+                de = sdf_sphere(x, y, z, (ex, 0, 19.4), 1.1); sel = de < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, de)
+        else:
+            for ex in np.linspace(-9.0, 9.0, 7):                  # flower garland along the lintel
+                dfl = sdf_sphere(x, y, z, (ex, 0, 19.6), 1.0); sel = dfl < d; m = np.where(sel, M_PETA if int(ex) % 2 else M_PETB, m); d = np.minimum(d, dfl)
         return d, m
     return f, (16, 6), 26, 3
 def make_tower(rng, banded=False, h=44.0):
@@ -401,27 +413,28 @@ def make_obelisk(rng):
         cr = sdf_ell(x, y, z, (0, 0, 46), (3.2, 3.2, 8)); sel = cr < d; m = np.where(sel, M_CRYS, m); d = np.minimum(d, cr)
         return d, m
     return f, (9, 9), 56, 6
-def make_menhir(rng):
-    h = rng.uniform(9, 14); tilt = rng.uniform(-.12, .12)
+def make_menhir(rng, fixed=False):
+    """A standing stone. fixed=True gives the ring's stones one height and no tilt, so the ring reads as built, not scattered."""
+    h = 11.0 if fixed else rng.uniform(9, 14); tilt = 0.0 if fixed else rng.uniform(-.12, .12)
     def f(x, y, z):
         d = sdf_box(x + tilt * z, y, z, (0, 0, h / 2), (2.1, 1.7, h / 2), .9); d = d + (vn3(x * .5, y * .5, z * .5, 3) - .5) * 1.2
         return d, np.full(x.shape, M_ROCK, np.int16)
     return f, (5, 5), h + 3, 2.6
 def make_jetty(rng):
     def f(x, y, z):
-        d = sdf_box(x, y, z, (0, 0, .5), (15, 2.4, .45), .15); m = np.full(x.shape, M_WOOD, np.int16)
+        d = sdf_box(x, y, z, (0, 0, .5), (15, 4.0, .45), .15); m = np.full(x.shape, M_WOOD, np.int16)
         for px in (-12, -4, 4, 12):
-            for py in (-2.4, 2.4):
+            for py in (-3.6, 3.6):
                 dp = sdf_capsule(x, y, z, (px, py, -1), (px, py, 3), .55); sel = dp < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dp)
         m = np.where(((np.floor(x / 1.6) % 2) == 0) & (d < .4), M_BARKT2, m)
         return d, m
     return f, (17, 5), 4, 2
 def make_bridge(rng):
     def f(x, y, z):
-        d = sdf_box(x, y, z, (0, 0, -.6), (14, 4.6, 1.3), .4); m = np.full(x.shape, M_WOOD, np.int16)
-        for sy_ in (-4.0, 4.0):
-            dr = sdf_box(x, y, z, (0, sy_, 3.0), (14, .7, .7), .25); sel = dr < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dr)
-            for px in (-13, -6.5, 0, 6.5, 13):
+        d = sdf_box(x, y, z, (0, 0, -.6), (16, 6.6, 1.3), .4); m = np.full(x.shape, M_WOOD, np.int16)     # wide deck: 13 texels across
+        for sy_ in (-6.2, 6.2):
+            dr = sdf_box(x, y, z, (0, sy_, 3.0), (16, .7, .7), .25); sel = dr < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dr)
+            for px in (-15, -7.5, 0, 7.5, 15):
                 dp = sdf_capsule(x, y, z, (px, sy_, -3.0), (px, sy_, 3.4), .8); sel = dp < d; m = np.where(sel, M_BARK, m); d = np.minimum(d, dp)
         m = np.where(((np.floor(x / 1.5) % 2) == 0) & (z > .3) & (d < .5), M_WOOD + 0, m)
         return d, m
@@ -452,7 +465,7 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, **k
     big = kw.get('big', True)
     if sid == 'new': inst_id[0] += 1; sid = inst_id[0]
     mk = dict(oak=make_oak, pine=make_pine, bush=make_bush, rock=lambda r: make_rock(r, big), crystals=make_crystals, stump=make_stump,
-              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=make_gateway, menhir=make_menhir, jetty=make_jetty, bridge=make_bridge)[kind](rng)
+              mush=make_mush, flower=make_flower, tuft=make_tuft, reed=make_reed, sign=make_sign, lantern=make_lantern, windmill=make_windmill, tower=lambda r: make_tower(r), lighthouse=lambda r: make_tower(r, True, 56.0), obelisk=make_obelisk, gateway=lambda r: make_gateway(r, kw.get('style', 'timber')), menhir=lambda r: make_menhir(r, kw.get('fixed', False)), jetty=make_jetty, bridge=make_bridge)[kind](rng)
     f, half, top, rad = mk
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid)
@@ -489,7 +502,7 @@ for d_ in LAY.DISTRICTS:
         for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
             placed.append((*s2uv(sx + ox_, sy + oy_), 9))
 # the two gateways (onboarding arch in the south, Emberwatch gate in the north), framing the walk-through
-for _g in (GATE, GATE2): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False)
+for _g, _st in ((GATE, 'stone'), (GATE2, 'timber')): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False, style=_st)
 # landmarks first so groves flow around them
 for lm in LAY.LANDMARKS:
     u, v = s2uv(*lm['at'])
@@ -499,14 +512,14 @@ for lm in LAY.LANDMARKS:
     elif lm['kind'] == 'windmill': put('windmill', u, v, 1.0, rot=-.785)
     elif lm['kind'] == 'stones':
         for k in range(7):
-            a_ = k / 7 * 6.283 + .3; put('menhir', u + math.cos(a_) * 15, v + math.sin(a_) * 15, prng.uniform(.9, 1.2), rot=a_)
+            a_ = k / 7 * 6.283 + .3; put('menhir', u + math.cos(a_) * 15, v + math.sin(a_) * 15, 1.0, rot=a_, count=False, fixed=True)
     elif lm['kind'] == 'jetty':
         ju, jv = LAKE['c']
         for k in range(120):
             ju += .7; jv += .7
             if float(samp(WD, ju, jv)) < -.5 and LAKE_S[int(min(max(ju, 0), N - 1)), int(min(max(jv, 0), N - 1))] > 1.0: break
         put('jetty', ju - 7, jv - 7, 1.0, rot=.785, z_extra=-.3)
-        JETTY_AT = (ju, jv)
+        JETTY_AT = (ju, jv); JETTY_C = (ju - 7, jv - 7)
     elif lm['kind'] == 'sign': put('sign', u, v, 1.0)
 # bridge where the main road crosses the stream
 bu, bv = s2uv(*LAY.BRIDGE); put('bridge', bu, bv, 1.0, rot=.785, z_extra=3.0, count=False)
@@ -546,11 +559,11 @@ def shore_spots(n, lo, hi):
             out.append((u, v))
         if len(out) >= n: break
     return out
-for (u, v) in shore_spots(150 if not FAST else 8, 1.3, 3.2):
+for (u, v) in shore_spots(240 if not FAST else 8, 1.3, 3.2):
     if prng.random() < .8: put('reed', u, v, prng.uniform(.9, 1.2), count=False, sid=1)
 for (u, v) in shore_spots(110 if not FAST else 6, .8, 4.0):
     f_, half, top, rad = make_rock(random.Random(prng.randint(0, 1 << 30)), False); voxelize(f_, half, top, u, v, float(terrain_h(u, v)) - .4, prng.uniform(.5, .9), prng.uniform(0, 6.28), 1)
-for B, nl, rmin in ((LAKE, 90, 2.2), (POND, 30, 2.0)):
+for B, nl, rmin in ((LAKE, 130, 2.2), (POND, 40, 2.0)):
     got = 0
     for _ in range(nl * 30):
         u = B['c'][0] + prng.uniform(-B['r'] * 1.5, B['r'] * 1.5); v = B['c'][1] + prng.uniform(-B['r'] * 1.5, B['r'] * 1.5)
@@ -561,6 +574,22 @@ for B, nl, rmin in ((LAKE, 90, 2.2), (POND, 30, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
+# flower verges: a dense low row just outside the rim, both sides of every path. Placed last, after the lilies, so nothing earlier moves.
+for pp in PATHS_UV:
+    for (ax, ay), (bx, by) in zip(pp, pp[1:]):
+        seg = math.hypot(bx - ax, by - ay)
+        if seg < 1: continue
+        tx, ty = (bx - ax) / seg, (by - ay) / seg; nx_, ny_ = -ty, tx
+        n = max(1, int(seg / 2.6))
+        for k in range(n):
+            f = (k + prng.random()) / n
+            for side in (1.0, -1.0):
+                if prng.random() > .6: continue
+                off = 6.6 + prng.uniform(1.2, 2.4)
+                u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
+                if 7.6 <= float(samp(dpath, u, v)) <= 11.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                    put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1)
+log('path verges placed')
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
@@ -585,7 +614,7 @@ mat[(h > 54) & (slope < 2.6) & (n2 > .3) & (rockness > .3)] = T_FROST
 dwt = samp(DW, FU, FV) + (n2 - .5) * 2.2
 beach = (dwt < 5.5) & (slope < 1.1) & (h < 6)
 mat[beach] = T_SAND; mat[(dwt < 2.0) & beach] = T_WET
-pw = 5.4 + 1.6 * (n1 - .5)
+pw = 6.6 + 1.2 * (n1 - .5)                       # bolder path, as on the meadow: wider than the first pass
 mat[(dp < pw) & (rockness < .5)] = T_PATH
 L = LDIR
 diff = np.clip(nrm @ L, 0, 1)
@@ -595,6 +624,9 @@ strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
 lt -= .07 * strata * (mat == T_ROCK)
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
 lt -= .22 * ((dp > pw - 1.4) & (dp < pw + .2) & (mat == T_PATH)) * (n2 > .45)        # ruts / worn edge
+# defined edges: a dark rim on the grass just outside the path, and light pebbles scattered across the path surface
+lt -= .2 * ((dp >= pw) & (dp < pw + 1.0) & (mat == T_GRASS) & (wd <= .04))
+lt += .13 * ((mat == T_PATH) & (vn2(FU / 1.3, FV / 1.3, 31) > .62))
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -823,8 +855,13 @@ wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int)
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)
     wk &= np.hypot(FU - t['u'], FV - t['v']) > r_
-_dn = ((FU - bu) + (FV - bv)) / 1.414; _dc = ((FU - bu) - (FV - bv)) / 1.414
-wk |= (np.abs(_dn) < 15) & (np.abs(_dc) < 3.2)      # the footbridge is walkable over the stream
+def _deck_strip(cu_, cv_, ang, half_len, half_w, flare):
+    # walkable along a deck: a strip on its axis, flared at both ends so the walker finds the entry easily
+    dn_ = (FU - cu_) * math.cos(ang) + (FV - cv_) * math.sin(ang); dc_ = -(FU - cu_) * math.sin(ang) + (FV - cv_) * math.cos(ang)
+    ends = np.clip((np.abs(dn_) - (half_len - 5)) / 5, 0, 1)
+    return (np.abs(dn_) < half_len + 2) & (np.abs(dc_) < half_w + flare * ends)
+wk |= _deck_strip(bu, bv, .785, 16.0, 6.6, 4.0)      # the bridge over the stream, 13 texels wide
+if 'JETTY_C' in globals(): wk |= _deck_strip(JETTY_C[0], JETTY_C[1], .785, 15.0, 4.6, 3.0)   # the lake jetty, walkable out onto the water
 keep_t = np.zeros(len(u_), bool); keep_t[:nT] = True
 render_scene(keep_t)
 _win, _px, _py = LAST_WIN
