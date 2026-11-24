@@ -37,6 +37,17 @@ func run(t: Object) -> void:
 	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER, true).get_image().get_data(), "a closed head is smaller than an open one")
 	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SPRING).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_AUTUMN).get_image().get_data(), "spring buds and autumn seed heads differ")
 	t.eq(GardenArt.frame(&"heather", 4, 1).get_size(), GardenArt.frame(&"heather", 4, 0).get_size(), "a shrub does not lean but keeps its size")
+	# a shrub's ground shadow is the same oval: each row under the mound is narrower than the one above
+	for v in [4, 5]:
+		var shrub: Image = GardenArt.frame(&"heather", v, 0).get_image()
+		var counts: Array[int] = []
+		for row in [shrub.get_height() - 1, shrub.get_height() - 2, shrub.get_height() - 3]:
+			var filled: int = 0
+			for x in shrub.get_width():
+				if shrub.get_pixel(x, row).a > 0.0:
+					filled += 1
+			counts.append(filled)
+		t.ok(counts[0] < counts[1] and counts[1] < counts[2], "shrub %d shadow narrows as it drops: %s" % [v, str(counts)])
 	# the lean: the walker pushes a flower away from itself, a calm spell leaves it upright, wind tips it
 	t.eq(GardenLayer.lean(110, 100, 0.0, 0.2, Vector2(100, 100)), 1, "a flower right of the walker leans right")
 	t.eq(GardenLayer.lean(90, 100, 0.0, 0.2, Vector2(100, 100)), -1, "a flower left of the walker leans left")
