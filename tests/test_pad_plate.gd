@@ -27,17 +27,21 @@ func run(t: Object) -> void:
 		t.ok(ResourceLoader.exists("res://content/rarities/%s.tres" % r), "%s has a real rarity (%s)" % [id, r])
 	t.eq(sim.pad_rarity(&"sprout_1"), &"common", "the first pad is Common")
 	t.eq(sim.pad_rarity(&"foxglove_2"), &"legendary", "a Foxglove pad is Legendary")
-	# The locked-row cost chip: drawn on a locked first pad, at the font's native size, inside a box that holds its text.
-	var hint: String = "Needs Dewdrops"
-	t.ok(TexelPad.shows_lock_chip(true, hint), "a locked first pad draws its cost chip")
-	t.ok(not TexelPad.shows_lock_chip(false, hint), "an open pad draws no cost chip")
-	t.ok(not TexelPad.shows_lock_chip(true, ""), "no hint, no chip")
+	# The locked-row cost chip: the pad's real cost and its stat icon, at the font's native size, in a box that holds both.
+	var cost_def: ButtonDef = sim.button_defs.get(&"lark_clover_1") as ButtonDef
+	t.ok(cost_def != null, "the Clover row's first pad exists")
+	var cost: String = Formulas.button_cost(cost_def).format()
+	t.ok(TexelPad.shows_lock_chip(true, cost), "a locked first pad draws its cost chip")
+	t.ok(not TexelPad.shows_lock_chip(false, cost), "an open pad draws no cost chip")
+	t.ok(not TexelPad.shows_lock_chip(true, ""), "no cost, no chip")
 	t.eq(TexelPad.LOCK_SIZE, 8, "the chip text uses the font's native 8 px size")
-	var text_w: float = TexelPad.LOCK_FONT.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TexelPad.LOCK_SIZE).x
-	var box: Rect2 = TexelPad.lock_chip_box(hint)
-	t.ok(text_w > 0.0, "the cost hint has a measurable width at the native size")
-	t.ok(box.size.x >= text_w + 6.0, "the chip box is wider than its text")
+	var icon: Texture2D = IconSet.get_icon(String(cost_def.cost_stat), TexelPad.LOCK_ICON)
+	t.ok(icon != null, "the Clover cost stat has an 8 px icon")
+	var text_w: float = TexelPad.LOCK_FONT.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TexelPad.LOCK_SIZE).x
+	var box: Rect2 = TexelPad.lock_chip_box(cost, icon != null)
+	t.ok(text_w > 0.0, "the cost has a measurable width at the native size")
+	t.eq(box.size.x, text_w + float(TexelPad.LOCK_ICON + TexelPad.LOCK_GAP) + 6.0, "the box holds the icon, the gap and the digits")
 	t.eq(box.size.y, 12.0, "the chip is 12 rows tall")
 	t.ok(box.position.y >= float(TexelPad.THICK), "the chip sits under the plate")
-	for i in hint.length():
-		t.ok(TexelPad.LOCK_FONT.has_char(hint.unicode_at(i)), "the font has a glyph for '%s'" % hint.substr(i, 1))
+	for i in cost.length():
+		t.ok(TexelPad.LOCK_FONT.has_char(cost.unicode_at(i)), "the font has a glyph for '%s'" % cost.substr(i, 1))

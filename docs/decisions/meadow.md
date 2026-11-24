@@ -83,3 +83,9 @@ Zone 1 and Larkmoor: the meadow map, the flower ladder, its Bloom reset, and its
 - **Why:** PC QA on v0.58.5: after the native-size change no chip showed on any Clover pad, at 1x or in a 4x crop.
 - **What:** The chip's box and text placement are in `TexelPad.lock_chip_box` and `shows_lock_chip`, which `_draw` calls. The text is drawn with the same call shape as the 16 px version that drew, at the font's native size 8. `tests/test_pad_plate.gd` asserts the draw decision, the box size and the glyph coverage.
 - **Not proven:** the headless suite can't see pixels, so the chip is still checked on a PC capture. The cause of the vanish has not been pinned down from code.
+
+## 2026-11-24: Cost chip shows the cost and its icon
+- **Why:** PC QA on v0.58.6: the chip read "Needs Dewdrops" with no number, and Nathan asked for a cost chip.
+- **What:** The chip on a locked row's first pad shows the pad's cost (`Formulas.button_cost(...).format()`) and the cost stat's 8 px icon, in the same 8 px text on the cream chip. A pad's cost depends only on its definition, so the text is set once in `_ready`. The icon is an 8 px staged icon from `IconSet`, drawn as a texture on the chip, which is a UI label on the grass and not world geometry.
+- The chip is only on each row's first pad, as before. Other pads in a locked row show no chip.
+- Not run in-engine. The layout test checks the box and the glyph coverage with the real Clover cost.
