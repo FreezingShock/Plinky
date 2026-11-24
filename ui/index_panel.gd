@@ -24,6 +24,7 @@ const KIND_ICONS: Dictionary = {
 }
 const DTABS: Array[String] = ["About", "Sources", "Level"]
 const DETAIL_H: float = 240.0
+const CARDS_PER_FRAME: int = 8   ## grid cards built per frame after the first batch (about 4 ms)
 
 ## Debug: F7 slows the open, close and page wipes 5x so they can be checked by eye.
 static var slow_mo: bool = false
@@ -54,6 +55,8 @@ var _d_sources: HFlowContainer
 var _back: PixelButton
 var _anim: MenuAnim
 var _cards: Dictionary = {}              # row id -> IndexCard
+var _gen: int = 0                        ## bumped to cancel a grid build that is still spreading over frames
+var _building: bool = false
 var _key: String = ""
 var _clock: float = 0.0
 var _busy: bool = false                  ## a page wipe is running
@@ -373,6 +376,8 @@ func _teardown() -> void:
 	_clock = 0.0
 	detail_id = &""
 	_key = ""
+	_gen += 1
+	_building = false
 	if _body != null:
 		remove_child(_body)
 		_body.queue_free()
@@ -467,21 +472,32 @@ func _refresh(force: bool = false) -> void:
 		key += "|%s%s" % [r["id"], "p" if r["pending"] else ""]
 	if force or key != _key:
 		_rebuild(rows, key)
-	else:
+	elif not _building:
 		for r: Dictionary in rows:
-			(_cards[r["id"]] as IndexCard).set_data(r)
+			if _cards.has(r["id"]):
+				(_cards[r["id"]] as IndexCard).set_data(r)
 	if detail_open() and _cards.has(detail_id):
 		_fill_detail((_cards[detail_id] as IndexCard).data)
 
 
 func _rebuild(rows: Array[Dictionary], key: String) -> void:
 	_key = key
+	_gen += 1
+	_building = true
 	_cards.clear()
 	for c in _grid_box.get_children():
 		_grid_box.remove_child(c)
 		c.queue_free()
+	_fill_cards(_gen, rows)
+
+
+## Builds the group heads, the flows and the cards, CARDS_PER_FRAME cards at a time while the panel is in the tree, so
+## the open never waits on the whole grid. Off the tree it builds in one pass. A rebuild or a teardown bumps _gen, and
+## the older build stops at its next check.
+func _fill_cards(gen: int, rows: Array[Dictionary]) -> void:
 	var group: String = ""
 	var flow: HFlowContainer = null
+	var added: int = 0
 	for r: Dictionary in rows:
 		if r["group"] != group:
 			group = r["group"]
@@ -499,9 +515,17 @@ func _rebuild(rows: Array[Dictionary], key: String) -> void:
 		card.pressed.connect(open_detail.bind(r["id"]))
 		flow.add_child(card)
 		_cards[r["id"]] = card
+		added += 1
+		if added % CARDS_PER_FRAME == 0 and is_inside_tree():
+			await get_tree().process_frame
+			if gen != _gen:
+				return
+	if gen != _gen:
+		return
 	var tail := Control.new()   # keeps the last card clear of the scroll edge
 	tail.custom_minimum_size = Vector2(1, 4)
 	_grid_box.add_child(tail)
+	_building = false
 	_wire_focus()
 
 

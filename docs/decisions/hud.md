@@ -618,3 +618,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** the log built one `Label` per heading and note, about 1150 nodes. The menu probe measured 91 to 146 ms per open, and the nodes stayed after close. One text block cuts the node count by about 1150 and the open cost to a few milliseconds.
 - **Checked:** `tests/run.gd` passes. A new check covers the escaping and the colour tags.
 - **Not run in-engine:** how the log scrolls and wraps on a PC at zoom 1 and 3.
+
+## 2026-11-24: Stats and Attributes grid builds over a few frames
+- **Decision:** `IndexPanel._rebuild` builds the group heads, flows and cards through `_fill_cards`, `CARDS_PER_FRAME` (8) cards per frame after the first batch while the panel is in the tree. A rebuild or a teardown bumps `_gen`, which cancels the older build. While a build runs, `_refresh` skips the per-card `set_data` pass, and focus is wired once the grid is complete. Off the tree it builds in one pass.
+- **Why:** the probe showed the Stats open at 18–49 ms and Attributes at 9–20 ms, all synchronous. Headless after this change: Stats open sync 9.9–15 ms with worst frame 8–12 ms, Attributes 8.3–13 ms with worst frame about 8 ms.
+- **Checked:** `tests/run.gd` passes (11738 checks, 0 failed), including a check that the grid builds in one pass off the tree.
+- **Not run in-engine:** the spread grid on a PC. PC QA should open Stats and Attributes and check the cards fill in without a visible pop, then press Tab and the arrows while cards are still arriving, and that Back and a buy still work.
