@@ -1,1 +1,0 @@
-The Larkmoor start has wildlife now. Two rabbits sit at the grass edge and two butterflies flit over the flowers, so the arrival view is not empty. Deer also come out at dusk, not only at golden hour.
