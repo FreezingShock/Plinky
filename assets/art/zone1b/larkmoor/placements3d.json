@@ -451,7 +451,7 @@
    "x": 2167,
    "y": 997,
    "w": 27,
-   "h": 44,
+   "h": 47,
    "foot": [
     2180.0,
     1037.0
@@ -1358,9 +1358,9 @@
    "file": "sprites/pine_081.png",
    "nrm": "sprites/pine_081_n.png",
    "kind": "pine",
-   "x": 1970,
+   "x": 1966,
    "y": 576,
-   "w": 21,
+   "w": 25,
    "h": 41,
    "foot": [
     1980.7,
@@ -1540,9 +1540,9 @@
    "file": "sprites/pine_094.png",
    "nrm": "sprites/pine_094_n.png",
    "kind": "pine",
-   "x": 1982,
+   "x": 1975,
    "y": 595,
-   "w": 27,
+   "w": 34,
    "h": 51,
    "foot": [
     1992.2,
@@ -1612,7 +1612,7 @@
    "kind": "pine",
    "x": 2005,
    "y": 533,
-   "w": 38,
+   "w": 35,
    "h": 60,
    "foot": [
     2023.8,
@@ -1668,7 +1668,7 @@
    "kind": "pine",
    "x": 2281,
    "y": 667,
-   "w": 32,
+   "w": 30,
    "h": 45,
    "foot": [
     2296.5,
@@ -2004,7 +2004,7 @@
    "kind": "pine",
    "x": 1849,
    "y": 489,
-   "w": 39,
+   "w": 37,
    "h": 60,
    "foot": [
     1867.7,
@@ -2114,9 +2114,9 @@
    "file": "sprites/bush_136.png",
    "nrm": "sprites/bush_136_n.png",
    "kind": "bush",
-   "x": 1373,
+   "x": 1377,
    "y": 1037,
-   "w": 24,
+   "w": 20,
    "h": 15,
    "foot": [
     1383.6,
@@ -2243,7 +2243,7 @@
    "x": 1443,
    "y": 1114,
    "w": 24,
-   "h": 20,
+   "h": 19,
    "foot": [
     1453.2,
     1128.1
@@ -2298,7 +2298,7 @@
    "kind": "bush",
    "x": 1480,
    "y": 1066,
-   "w": 26,
+   "w": 27,
    "h": 18,
    "foot": [
     1489.9,
@@ -2380,9 +2380,9 @@
    "file": "sprites/bush_155.png",
    "nrm": "sprites/bush_155_n.png",
    "kind": "bush",
-   "x": 1727,
+   "x": 1728,
    "y": 1171,
-   "w": 18,
+   "w": 17,
    "h": 15,
    "foot": [
     1736.2,
@@ -2436,9 +2436,9 @@
    "file": "sprites/bush_159.png",
    "nrm": "sprites/bush_159_n.png",
    "kind": "bush",
-   "x": 1755,
+   "x": 1754,
    "y": 1177,
-   "w": 21,
+   "w": 22,
    "h": 16,
    "foot": [
     1765.0,
@@ -2520,9 +2520,9 @@
    "file": "sprites/bush_165.png",
    "nrm": "sprites/bush_165_n.png",
    "kind": "bush",
-   "x": 1687,
+   "x": 1688,
    "y": 1182,
-   "w": 24,
+   "w": 23,
    "h": 19,
    "foot": [
     1701.9,
@@ -2787,9 +2787,9 @@
    "nrm": "sprites/bush_184_n.png",
    "kind": "bush",
    "x": 1337,
-   "y": 776,
+   "y": 775,
    "w": 21,
-   "h": 16,
+   "h": 17,
    "foot": [
     1346.7,
     788.6
@@ -3304,9 +3304,9 @@
    "file": "sprites/rock_221.png",
    "nrm": "sprites/rock_221_n.png",
    "kind": "rock",
-   "x": 1175,
+   "x": 1176,
    "y": 556,
-   "w": 23,
+   "w": 22,
    "h": 20,
    "foot": [
     1187.4,
@@ -3335,7 +3335,7 @@
    "x": 1196,
    "y": 607,
    "w": 23,
-   "h": 19,
+   "h": 18,
    "foot": [
     1207.9,
     620.5
@@ -3388,9 +3388,9 @@
    "file": "sprites/rock_227.png",
    "nrm": "sprites/rock_227_n.png",
    "kind": "rock",
-   "x": 1110,
+   "x": 1108,
    "y": 617,
-   "w": 20,
+   "w": 22,
    "h": 17,
    "foot": [
     1119.4,
@@ -3418,8 +3418,8 @@
    "kind": "rock",
    "x": 1154,
    "y": 593,
-   "w": 29,
-   "h": 20,
+   "w": 31,
+   "h": 22,
    "foot": [
     1168.0,
     608.8
@@ -3432,7 +3432,7 @@
    "kind": "rock",
    "x": 1245,
    "y": 618,
-   "w": 29,
+   "w": 26,
    "h": 16,
    "foot": [
     1258.3,
@@ -3444,10 +3444,10 @@
    "file": "sprites/rock_231.png",
    "nrm": "sprites/rock_231_n.png",
    "kind": "rock",
-   "x": 1138,
+   "x": 1137,
    "y": 575,
-   "w": 24,
-   "h": 17,
+   "w": 25,
+   "h": 18,
    "foot": [
     1149.3,
     585.5
@@ -3458,9 +3458,9 @@
    "file": "sprites/rock_232.png",
    "nrm": "sprites/rock_232_n.png",
    "kind": "rock",
-   "x": 1153,
+   "x": 1152,
    "y": 562,
-   "w": 17,
+   "w": 18,
    "h": 15,
    "foot": [
     1159.3,
@@ -3502,7 +3502,7 @@
    "kind": "rock",
    "x": 1229,
    "y": 550,
-   "w": 25,
+   "w": 34,
    "h": 20,
    "foot": [
     1245.3,
@@ -3528,9 +3528,9 @@
    "file": "sprites/rock_237.png",
    "nrm": "sprites/rock_237_n.png",
    "kind": "rock",
-   "x": 2333,
+   "x": 2335,
    "y": 776,
-   "w": 22,
+   "w": 20,
    "h": 20,
    "foot": [
     2344.2,
@@ -3600,8 +3600,8 @@
    "kind": "rock",
    "x": 1456,
    "y": 731,
-   "w": 30,
-   "h": 21,
+   "w": 29,
+   "h": 19,
    "foot": [
     1470.5,
     745.4
@@ -3614,7 +3614,7 @@
    "kind": "rock",
    "x": 1477,
    "y": 664,
-   "w": 21,
+   "w": 22,
    "h": 18,
    "foot": [
     1487.4,
@@ -3628,7 +3628,7 @@
    "kind": "rock",
    "x": 1480,
    "y": 681,
-   "w": 38,
+   "w": 39,
    "h": 20,
    "foot": [
     1499.6,
@@ -3654,9 +3654,9 @@
    "file": "sprites/rock_246.png",
    "nrm": "sprites/rock_246_n.png",
    "kind": "rock",
-   "x": 1597,
+   "x": 1599,
    "y": 687,
-   "w": 29,
+   "w": 25,
    "h": 17,
    "foot": [
     1610.8,
@@ -3755,7 +3755,7 @@
    "x": 1557,
    "y": 696,
    "w": 29,
-   "h": 17,
+   "h": 16,
    "foot": [
     1571.0,
     708.6
@@ -3895,7 +3895,7 @@
    "x": 1284,
    "y": 582,
    "w": 20,
-   "h": 43,
+   "h": 38,
    "foot": [
     1293.3,
     619.0
@@ -3908,7 +3908,7 @@
    "kind": "crystals",
    "x": 1252,
    "y": 554,
-   "w": 27,
+   "w": 28,
    "h": 35,
    "foot": [
     1265.5,
@@ -3922,8 +3922,8 @@
    "kind": "crystals",
    "x": 1333,
    "y": 564,
-   "w": 34,
-   "h": 35,
+   "w": 32,
+   "h": 33,
    "foot": [
     1349.5,
     593.4
@@ -3951,7 +3951,7 @@
    "x": 1287,
    "y": 554,
    "w": 23,
-   "h": 35,
+   "h": 36,
    "foot": [
     1296.4,
     583.0
@@ -3979,7 +3979,7 @@
    "x": 1260,
    "y": 530,
    "w": 35,
-   "h": 43,
+   "h": 47,
    "foot": [
     1279.5,
     569.1
@@ -4113,92 +4113,148 @@
    "sort_y": 1243.8
   },
   {
-   "file": "sprites/rock_279.png",
-   "nrm": "sprites/rock_279_n.png",
-   "kind": "rock",
-   "x": 1257,
-   "y": 724,
-   "w": 24,
-   "h": 15,
+   "file": "sprites/pine_279.png",
+   "nrm": "sprites/pine_279_n.png",
+   "kind": "pine",
+   "x": 2301,
+   "y": 676,
+   "w": 42,
+   "h": 60,
    "foot": [
-    1267.8,
-    734.0
+    2321.2,
+    731.1
    ],
-   "sort_y": 734.0
+   "sort_y": 731.1
   },
   {
-   "file": "sprites/rock_280.png",
-   "nrm": "sprites/rock_280_n.png",
-   "kind": "rock",
-   "x": 1852,
-   "y": 560,
+   "file": "sprites/bush_280.png",
+   "nrm": "sprites/bush_280_n.png",
+   "kind": "bush",
+   "x": 2211,
+   "y": 923,
    "w": 21,
-   "h": 16,
+   "h": 12,
    "foot": [
-    1860.9,
-    569.8
+    2220.6,
+    930.6
    ],
-   "sort_y": 569.8
+   "sort_y": 930.6
   },
   {
-   "file": "sprites/rock_283.png",
-   "nrm": "sprites/rock_283_n.png",
-   "kind": "rock",
-   "x": 1287,
-   "y": 721,
-   "w": 25,
-   "h": 19,
+   "file": "sprites/bush_281.png",
+   "nrm": "sprites/bush_281_n.png",
+   "kind": "bush",
+   "x": 2284,
+   "y": 958,
+   "w": 7,
+   "h": 11,
    "foot": [
-    1297.7,
-    734.4
+    2280.2,
+    970.3
    ],
-   "sort_y": 734.4
+   "sort_y": 970.3
+  },
+  {
+   "file": "sprites/bush_282.png",
+   "nrm": "sprites/bush_282_n.png",
+   "kind": "bush",
+   "x": 2278,
+   "y": 944,
+   "w": 24,
+   "h": 21,
+   "foot": [
+    2288.1,
+    958.5
+   ],
+   "sort_y": 958.5
+  },
+  {
+   "file": "sprites/rock_284.png",
+   "nrm": "sprites/rock_284_n.png",
+   "kind": "rock",
+   "x": 1611,
+   "y": 755,
+   "w": 26,
+   "h": 17,
+   "foot": [
+    1622.4,
+    766.2
+   ],
+   "sort_y": 766.2
   },
   {
    "file": "sprites/rock_285.png",
    "nrm": "sprites/rock_285_n.png",
    "kind": "rock",
-   "x": 1973,
-   "y": 589,
-   "w": 17,
-   "h": 7,
+   "x": 1388,
+   "y": 594,
+   "w": 27,
+   "h": 17,
    "foot": [
-    1980.2,
-    600.3
+    1399.3,
+    606.9
    ],
-   "sort_y": 600.3
+   "sort_y": 606.9
   },
   {
-   "file": "sprites/rock_286.png",
-   "nrm": "sprites/rock_286_n.png",
+   "file": "sprites/rock_288.png",
+   "nrm": "sprites/rock_288_n.png",
    "kind": "rock",
-   "x": 1273,
-   "y": 529,
-   "w": 19,
+   "x": 1702,
+   "y": 525,
+   "w": 18,
+   "h": 16,
+   "foot": [
+    1709.9,
+    536.2
+   ],
+   "sort_y": 536.2
+  },
+  {
+   "file": "sprites/rock_289.png",
+   "nrm": "sprites/rock_289_n.png",
+   "kind": "rock",
+   "x": 1649,
+   "y": 760,
+   "w": 24,
    "h": 15,
    "foot": [
-    1282.2,
-    539.8
+    1660.4,
+    770.8
    ],
-   "sort_y": 539.8
+   "sort_y": 770.8
   },
   {
-   "file": "sprites/rock_287.png",
-   "nrm": "sprites/rock_287_n.png",
+   "file": "sprites/rock_290.png",
+   "nrm": "sprites/rock_290_n.png",
    "kind": "rock",
-   "x": 1309,
-   "y": 624,
-   "w": 29,
-   "h": 18,
+   "x": 1111,
+   "y": 670,
+   "w": 25,
+   "h": 15,
    "foot": [
-    1323.4,
-    637.9
+    1122.8,
+    680.3
    ],
-   "sort_y": 637.9
+   "sort_y": 680.3
   },
   {
-   "file": "sprites/lantern_289.png",
-   "nrm": "sprites/lantern_289_n.png",
+   "file": "sprites/rock_292.png",
+   "nrm": "sprites/rock_292_n.png",
+   "kind": "rock",
+   "x": 1633,
+   "y": 661,
+   "w": 25,
+   "h": 21,
+   "foot": [
+    1645.2,
+    675.1
+   ],
+   "sort_y": 675.1
+  },
+  {
+   "file": "sprites/lantern_293.png",
+   "nrm": "sprites/lantern_293_n.png",
    "kind": "lantern",
    "x": 1530,
    "y": 1334,
@@ -4211,8 +4267,8 @@
    "sort_y": 1360.1
   },
   {
-   "file": "sprites/lantern_290.png",
-   "nrm": "sprites/lantern_290_n.png",
+   "file": "sprites/lantern_294.png",
+   "nrm": "sprites/lantern_294_n.png",
    "kind": "lantern",
    "x": 1468,
    "y": 1226,
@@ -4225,8 +4281,8 @@
    "sort_y": 1252.9
   },
   {
-   "file": "sprites/lantern_291.png",
-   "nrm": "sprites/lantern_291_n.png",
+   "file": "sprites/lantern_295.png",
+   "nrm": "sprites/lantern_295_n.png",
    "kind": "lantern",
    "x": 1477,
    "y": 1111,
@@ -4239,8 +4295,8 @@
    "sort_y": 1137.2
   },
   {
-   "file": "sprites/lantern_292.png",
-   "nrm": "sprites/lantern_292_n.png",
+   "file": "sprites/lantern_296.png",
+   "nrm": "sprites/lantern_296_n.png",
    "kind": "lantern",
    "x": 1517,
    "y": 1004,
@@ -4253,8 +4309,8 @@
    "sort_y": 1030.7
   },
   {
-   "file": "sprites/lantern_293.png",
-   "nrm": "sprites/lantern_293_n.png",
+   "file": "sprites/lantern_297.png",
+   "nrm": "sprites/lantern_297_n.png",
    "kind": "lantern",
    "x": 1539,
    "y": 897,
@@ -4267,8 +4323,8 @@
    "sort_y": 923.4
   },
   {
-   "file": "sprites/lantern_294.png",
-   "nrm": "sprites/lantern_294_n.png",
+   "file": "sprites/lantern_298.png",
+   "nrm": "sprites/lantern_298_n.png",
    "kind": "lantern",
    "x": 1478,
    "y": 791,
@@ -4281,8 +4337,8 @@
    "sort_y": 817.7
   },
   {
-   "file": "sprites/lantern_295.png",
-   "nrm": "sprites/lantern_295_n.png",
+   "file": "sprites/lantern_299.png",
+   "nrm": "sprites/lantern_299_n.png",
    "kind": "lantern",
    "x": 1542,
    "y": 693,
@@ -4295,8 +4351,8 @@
    "sort_y": 719.1
   },
   {
-   "file": "sprites/lantern_296.png",
-   "nrm": "sprites/lantern_296_n.png",
+   "file": "sprites/lantern_300.png",
+   "nrm": "sprites/lantern_300_n.png",
    "kind": "lantern",
    "x": 1502,
    "y": 578,
@@ -4309,8 +4365,8 @@
    "sort_y": 604.7
   },
   {
-   "file": "sprites/lantern_297.png",
-   "nrm": "sprites/lantern_297_n.png",
+   "file": "sprites/lantern_301.png",
+   "nrm": "sprites/lantern_301_n.png",
    "kind": "lantern",
    "x": 1397,
    "y": 1270,
@@ -4323,8 +4379,8 @@
    "sort_y": 1296.8
   },
   {
-   "file": "sprites/lantern_298.png",
-   "nrm": "sprites/lantern_298_n.png",
+   "file": "sprites/lantern_302.png",
+   "nrm": "sprites/lantern_302_n.png",
    "kind": "lantern",
    "x": 1231,
    "y": 1250,
@@ -4337,8 +4393,8 @@
    "sort_y": 1276.7
   },
   {
-   "file": "sprites/lantern_299.png",
-   "nrm": "sprites/lantern_299_n.png",
+   "file": "sprites/lantern_303.png",
+   "nrm": "sprites/lantern_303_n.png",
    "kind": "lantern",
    "x": 1048,
    "y": 1194,
@@ -4351,8 +4407,8 @@
    "sort_y": 1220.3
   },
   {
-   "file": "sprites/lantern_300.png",
-   "nrm": "sprites/lantern_300_n.png",
+   "file": "sprites/lantern_304.png",
+   "nrm": "sprites/lantern_304_n.png",
    "kind": "lantern",
    "x": 1124,
    "y": 1054,
@@ -4365,8 +4421,8 @@
    "sort_y": 1080.6
   },
   {
-   "file": "sprites/lantern_301.png",
-   "nrm": "sprites/lantern_301_n.png",
+   "file": "sprites/lantern_305.png",
+   "nrm": "sprites/lantern_305_n.png",
    "kind": "lantern",
    "x": 1277,
    "y": 1044,
@@ -4379,8 +4435,8 @@
    "sort_y": 1070.7
   },
   {
-   "file": "sprites/lantern_302.png",
-   "nrm": "sprites/lantern_302_n.png",
+   "file": "sprites/lantern_306.png",
+   "nrm": "sprites/lantern_306_n.png",
    "kind": "lantern",
    "x": 1433,
    "y": 988,
@@ -4393,8 +4449,8 @@
    "sort_y": 1014.2
   },
   {
-   "file": "sprites/lantern_303.png",
-   "nrm": "sprites/lantern_303_n.png",
+   "file": "sprites/lantern_307.png",
+   "nrm": "sprites/lantern_307_n.png",
    "kind": "lantern",
    "x": 1545,
    "y": 1199,
@@ -4407,8 +4463,8 @@
    "sort_y": 1225.5
   },
   {
-   "file": "sprites/lantern_304.png",
-   "nrm": "sprites/lantern_304_n.png",
+   "file": "sprites/lantern_308.png",
+   "nrm": "sprites/lantern_308_n.png",
    "kind": "lantern",
    "x": 1768,
    "y": 1157,
@@ -4421,8 +4477,8 @@
    "sort_y": 1183.4
   },
   {
-   "file": "sprites/lantern_305.png",
-   "nrm": "sprites/lantern_305_n.png",
+   "file": "sprites/lantern_309.png",
+   "nrm": "sprites/lantern_309_n.png",
    "kind": "lantern",
    "x": 1961,
    "y": 1139,
@@ -4435,8 +4491,8 @@
    "sort_y": 1166.0
   },
   {
-   "file": "sprites/lantern_306.png",
-   "nrm": "sprites/lantern_306_n.png",
+   "file": "sprites/lantern_310.png",
+   "nrm": "sprites/lantern_310_n.png",
    "kind": "lantern",
    "x": 2158,
    "y": 1056,
@@ -4449,8 +4505,8 @@
    "sort_y": 1082.7
   },
   {
-   "file": "sprites/lantern_307.png",
-   "nrm": "sprites/lantern_307_n.png",
+   "file": "sprites/lantern_311.png",
+   "nrm": "sprites/lantern_311_n.png",
    "kind": "lantern",
    "x": 2023,
    "y": 965,
@@ -4463,8 +4519,8 @@
    "sort_y": 991.5
   },
   {
-   "file": "sprites/lantern_308.png",
-   "nrm": "sprites/lantern_308_n.png",
+   "file": "sprites/lantern_312.png",
+   "nrm": "sprites/lantern_312_n.png",
    "kind": "lantern",
    "x": 1812,
    "y": 935,
@@ -4477,8 +4533,8 @@
    "sort_y": 961.6
   },
   {
-   "file": "sprites/lantern_309.png",
-   "nrm": "sprites/lantern_309_n.png",
+   "file": "sprites/lantern_313.png",
+   "nrm": "sprites/lantern_313_n.png",
    "kind": "lantern",
    "x": 1600,
    "y": 964,
@@ -4491,8 +4547,8 @@
    "sort_y": 990.6
   },
   {
-   "file": "sprites/lantern_310.png",
-   "nrm": "sprites/lantern_310_n.png",
+   "file": "sprites/lantern_314.png",
+   "nrm": "sprites/lantern_314_n.png",
    "kind": "lantern",
    "x": 1199,
    "y": 979,
@@ -4505,8 +4561,8 @@
    "sort_y": 1005.4
   },
   {
-   "file": "sprites/lantern_311.png",
-   "nrm": "sprites/lantern_311_n.png",
+   "file": "sprites/lantern_315.png",
+   "nrm": "sprites/lantern_315_n.png",
    "kind": "lantern",
    "x": 731,
    "y": 920,

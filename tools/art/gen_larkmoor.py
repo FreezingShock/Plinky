@@ -665,23 +665,27 @@ for B, nl, rmin in ((LAKE, 130, 2.2), (POND, 40, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
-# flower verges: a dense low row just outside the rim, both sides of every path. Placed last, after the lilies, so nothing earlier moves.
+# flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
+# texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
+# drifts are (about half the ground), so the flowers gather in patches with bare grass between them. Placed last, after
+# the lilies, so nothing earlier moves.
+VERGE_BAND = (9.0, 30.0)
 for pp in PATHS_UV:
     for (ax, ay), (bx, by) in zip(pp, pp[1:]):
         seg = math.hypot(bx - ax, by - ay)
         if seg < 1: continue
         tx, ty = (bx - ax) / seg, (by - ay) / seg; nx_, ny_ = -ty, tx
-        n = max(1, int(seg / 2.6))
+        n = max(1, int(seg / 1.6))
         for k in range(n):
             f = (k + prng.random()) / n
             for side in (1.0, -1.0):
-                if prng.random() > .6: continue
-                off = 13.0 + prng.uniform(0.0, 9.0)   # outside the wider path, and jittered: no rigid line of flowers
+                if prng.random() > .5: continue
+                off = prng.uniform(VERGE_BAND[0], VERGE_BAND[1] + 12.0)   # centre-line offset: the widest path's half-width (12) is added to the band; dedge filters the rest
                 u, v = ax + (bx - ax) * f + nx_ * side * off, ay + (by - ay) * f + ny_ * side * off
-                if vn2(u / 8.0, v / 8.0, 53) < .42: continue   # patches, not a verge
-                if 13.5 <= float(samp(dpath, u, v)) <= 24.0 and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
+                if vn2(u / 9.0, v / 9.0, 53) < .5: continue   # drifts, not a ring
+                if VERGE_BAND[0] <= float(samp(dedge, u, v)) <= VERGE_BAND[1] and ok_spot(u, v, .9, slope_max=.9, path=False, gap=-1.0, hmax=14.0):
                     put('flower', u, v, prng.uniform(1.05, 1.3), count=False, sid=1)
-log('path verges placed')
+log('path drifts placed')
 
 # ---------------- gather prop points & shadow height field ----------------
 P = {k: (np.concatenate(v) if v else np.zeros(0)) for k, v in PT.items()}
@@ -769,7 +773,7 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 5, 5, 1],T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
