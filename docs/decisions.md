@@ -809,6 +809,31 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Timeline:** `BloomTimeline.fly_progress` is replaced by `exit_progress` and `exit_alpha`. The plan keys (`fly_end` and so on) keep their names so the existing timing tests still apply.
 - Not run in-engine from the cloud: the tab and card layout at 640x360, the card text width at 150 px for the delta line, and the exit motion. `tools/bloom_shot.tscn` now samples the exit densely (`bloom_full_*` frames) for a PC capture.
 
+## 2026-11-24 Bigger Bloom and Nucleus gifts (minor)
+- **Why:** most gifts were small nudges (+6% pad reward per level, +50 starting Sunlight). Nathan asked for gifts that matter more, and for existing ones to be improved before new ones are added.
+- **Chosen:** keep the gift list and the tiers (unlock by Blooms or Nucleus count). Raise the per-level value of the gifts that already move the game most, in data only (`content/attributes/bloom_*.tres`, `nucleus_*.tres`). No script change, so the Upgrades layout (#232) is untouched and the menu text reads the new numbers itself.
+- **Changed (per level, cap 10 unless noted):**
+
+| Gift | Before | After | At cap |
+|---|---|---|---|
+| Head Start (starting Sunlight) | 50 | 120 | 510 to 1,210 start; sprout 3 (1,000) now affordable at once |
+| Deep Soil (Sunlight income) | 10% | 15% | +100% to +150% |
+| Wide Bloom (pad reward) | 6% | 12% | +60% to +120% |
+| Seed Pods (Seeds per Bloom) | 15% | 30% | +150% to +300% |
+| Twin Petals (double press) | 4% | 6% | +40% to +60% |
+| Bramble (crit chance) | 2% | 3% | +20% to +30% |
+| Rooted Study (pad XP) | 15% | 25% | +75% to +125% |
+| Anvil Plates (pad reward) | 6% | 12% | +60% to +120% |
+| Shard Veins (Core Shards per Nucleus) | 15% | 30% | +150% to +300% |
+| Stoked Fire (Embers income) | 10% | 15% | +100% to +150% |
+| Flint Edge (crit chance) | 2% | 3% | +20% to +30% |
+| Anvil Study (pad XP) | 15% | 25% | +75% to +125% |
+| Twin Strike (double press) | 4% | 6% | +40% to +60% |
+
+- **Left alone, on purpose:** Warm Start already opens cinder 3 (600 Embers) at its cap of 1,010, so it does not need more. Wildflower, Dew Sprites, Forge Hands and Heart Strike already press or pay for free at up to 1 to 1.6 a second, and raising them would push idle past the 2x target. Bloom Echo and Core Echo already add 0.25 per Bloom before their own bonus. Roots and Banked Rows keep flowers and rows, which is already the strongest effect in each list. Long Dusk and Slow Burn stay at +4 hours of offline cap, since offline is already 0.5x.
+- **Pacing:** not checked. `tools/sim.gd` (the CI sim gate) plays without attributes, so it cannot see these changes. `tools/sim_bloom.gd` plays with the meadow gifts, but Godot does not run in the cloud. Before this ships, the PC QA run should run `tools/sim_bloom.gd` and report minutes per Bloom and the idle:active ratio. Head Start is the one most likely to shift the first cycle.
+- **Tests:** `tests/test_nucleus.gd` had the old values (0.10 and 0.15) written in. It now reads them from the gift, so the test follows the data.
+- Not run in the engine: the tests and both sims. The menu text and the gift cards are data-driven, so they read the new numbers without a screenshot change, but PC QA should still check a Bloom and a Nucleus card for text width.
 ## Upgrades card feedback (2026-11-24)
 - **Base:** built on #230's gallery (tabs, tiers, two-across `UpgradeCard`, centred exit). The gallery layout was not redone.
 - **Whole card buys:** a click anywhere on the card buys (press starts the hold, release ends it). The Buy button still takes its own press and keyboard focus, so a click on it never buys twice. The card's press does not touch `_skip_pressed`.

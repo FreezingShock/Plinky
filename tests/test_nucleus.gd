@@ -68,12 +68,14 @@ func run(t: Object) -> void:
 	t.near(sim.get_stat(&"shards").to_float(), 500.0 - cost, 1e-9, "Core Shards drop by the cost")
 	t.near(sim.reset_start_value(rid, &"embers").to_float(), (sim.stat_defs[&"embers"] as StatDef).start + hearth.per_level, 1e-9, "Warm Start adds starting Embers")
 	var base_income: float = sim.income_per_second(&"embers").to_float()
+	var furnace: AttributeDef = sim.attribute_defs[&"nucleus_furnace"]
 	sim.attr_levels[&"nucleus_furnace"] = 10
-	t.near(sim.income_per_second(&"embers").to_float(), base_income * (1.0 + 10.0 * 0.10), 1e-6, "Stoked Fire raises Embers income")
+	t.near(sim.income_per_second(&"embers").to_float(), base_income * (1.0 + 10.0 * furnace.per_level), 1e-6, "Stoked Fire raises Embers income")
 	sim.attr_levels.clear()
 	sim.stats[&"emberheart"] = BigNum.from_float(sim.reset_ref(rid) * 4.0)
+	var veins: AttributeDef = sim.attribute_defs[&"nucleus_veins"]
 	sim.attr_levels[&"nucleus_veins"] = 10
-	t.eq(sim.reset_gain(rid), int(floorf(4.0 * (1.0 + 10.0 * 0.15))), "Shard Veins raise the payout")
+	t.eq(sim.reset_gain(rid), int(floorf(4.0 * (1.0 + 10.0 * veins.per_level))), "Shard Veins raise the payout")
 	sim.attr_levels.clear()
 	sim.attr_levels[&"nucleus_banked"] = 2
 	sim.stats[&"cinder"] = BigNum.from_float(9.0)
