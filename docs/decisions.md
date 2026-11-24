@@ -1,4 +1,4 @@
-# Plinky decisions log
+# Decision log has moved
 
 Format: date, decision, one line of reasoning. Newest at the bottom. The build agent appends here. Project-side decisions made in the Claude Project go here too (SPEC section 8).
 
@@ -904,3 +904,4 @@ Nathan wanted the hamburger menu words visible, not only on the focused tile. Ti
 - **Kept:** outline stays 2 px (the 2026-11-23 popup font entry depends on it). I found no single pixel unit in the Pixelify Sans outlines (checked with fontTools), so there is no clear "native" size. Sizes stay on the existing integer list.
 - Test: `tests/test_press_popups.gd` checks the popup face is non-AA and sits on whole pixels, and that the blink covers the tail without fading.
 - Not verified in-engine: no Godot in the cloud. PC QA should check "+418K" and "Iron Ore" at 1x and 3x in the meadow and the quarry, with Reduce Flashing on and off.
+The log is now split by topic. Start at [docs/decisions/README.md](decisions/README.md) and open only the topic file you need.

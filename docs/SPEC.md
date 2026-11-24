@@ -6,7 +6,7 @@ Nov 21, 2026 · @nate
 
 This is a single-player incremental game in Godot 4 where a small character walks onto 3D buttons to grow a chain of stats, unlocks new zones, and stacks buffs. It is seen from one fixed isometric camera and drawn as living pixel and dither art.
 
-"Plinky" is the chosen name. Trademark and Steam checks are still open (see docs/decisions.md).
+"Plinky" is the chosen name. Trademark and Steam checks are still open (see docs/decisions/README.md).
 
 **Pillars, in priority order**
 
@@ -49,7 +49,7 @@ Nathan locked the first four rows. The rest are calls made for him and can be ch
 | Save | One local JSON save, autosave every 30 seconds | Assumed |
 | Multiplayer, leaderboards, monetization | Out of scope | Assumed |
 
-The build agent records every new decision in `docs/decisions.md` with a date and one line of reasoning.
+The build agent records every new decision in `docs/decisions/README.md` with a date and one line of reasoning.
 
 ## 3. Game design
 
@@ -202,7 +202,7 @@ The simulation is plain GDScript with no scene-tree or rendering dependencies, s
 ```
 project.godot
 CLAUDE.md
-docs/        SPEC.md  interfaces.md  decisions.md  art-bible.md  theme.md  balance.md  ...
+docs/        SPEC.md  interfaces.md  decisions/  art-bible.md  theme.md  balance.md  ...
 core/        bignum.gd  formulas.gd  sim.gd  tick.gd  save_codec.gd  mastery.gd ...  (pure logic)
              event_bus.gd  game_state.gd  save.gd  calendar_service.gd  (autoload shells)
 data/        stat_def.gd  button_def.gd  zone_def.gd  relic_def.gd  attribute_def.gd  tier_def.gd ...
@@ -360,7 +360,7 @@ The build runs in Claude Code on the Windows PC, opened in the repo folder. That
 | Claude Code in the repo | Writing code, shaders, scenes, and content; running tests and Godot; parallel agents | Yes, inside the repo folder |
 | Claude Project | Design decisions, balance ideas, art direction, reviewing screenshots | No |
 
-Decisions made in the Project go into `docs/decisions.md`, so the build agent sees them.
+Decisions made in the Project go into `docs/decisions/README.md`, so the build agent sees them.
 
 ### The agent's own loop
 
@@ -402,7 +402,7 @@ Two blocks to copy: the `CLAUDE.md` file for the repo root, and the kickoff prom
 
 Incremental button-presser in Godot 4.7, GDScript, Forward+. Fixed isometric
 camera, 3D rendered at 640x360 with dither, palette, and outline post-process.
-Full spec: docs/SPEC.md. Interfaces: docs/interfaces.md. Log: docs/decisions.md.
+Full spec: docs/SPEC.md. Interfaces: docs/interfaces.md. Log: docs/decisions/README.md.
 
 ## Rules
 - Read docs/SPEC.md before starting any milestone.
@@ -427,7 +427,7 @@ Full spec: docs/SPEC.md. Interfaces: docs/interfaces.md. Log: docs/decisions.md.
 
 ## Working with Nathan
 - Lead with the result, then the reasoning.
-- Make reasonable calls and log them in docs/decisions.md.
+- Make reasonable calls and log them in docs/decisions/README.md.
 - Stop and ask only at the M1 and M3 gates, or before anything hard to undo.
 - Finished-product quality: no placeholders or stubs left in a merged milestone.
 ```
@@ -452,7 +452,7 @@ Godot 4.7 project.
    and wait for my approval of the look.
 5. After approval, run streams C and D in parallel for M3.
 
-Log every decision you make in docs/decisions.md. If Godot is not on PATH or
+Log every decision you make in docs/decisions/README.md. If Godot is not on PATH or
 anything in the spec turns out wrong for Godot 4.7, tell me before working
 around it.
 ```

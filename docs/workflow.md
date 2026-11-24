@@ -12,7 +12,7 @@ How work moves from idea to a tested change on Nathan's PC. Every thread, human 
    - Post one batched report per pull, with screenshots.
 3. **The coordinator routes every QA finding** to the thread that owns the area. That thread fixes it in a follow-up PR (same rules as step 1).
 4. **A thread is resolved only when its PR is merged, pulled to the PC and passed by QA.** Merged alone is not done.
-5. **Taste questions go to the coordinator with a recommended pick.** Threads make a reasonable call, log it in `docs/decisions.md`, and keep working. They never sit idle waiting on Nathan. Stop and ask only before anything hard to undo.
+5. **Taste questions go to the coordinator with a recommended pick.** Threads make a reasonable call, log it in `docs/decisions/README.md`, and keep working. They never sit idle waiting on Nathan. Stop and ask only before anything hard to undo.
 
 ## Reports
 Lead with the result, then the reasoning. Include screenshots or previews. Say plainly what has not been run in-engine (cloud sessions cannot run Godot, but CI runs it headless).
