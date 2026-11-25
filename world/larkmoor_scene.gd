@@ -419,6 +419,7 @@ func _process(_delta: float) -> void:
 		_gardens.closed = night > 0.6
 		if _flower_glow != null:
 			_flower_glow.set_night(night)
+			_flower_glow.set_winter(_gardens.season == GardenArt.SEASON_WINTER)
 		_gardens.dew = not _gardens.closed and hour >= 5 and hour < 9   # the first morning hours: drops on the open heads
 
 

@@ -15,4 +15,11 @@ func run(t: Object) -> void:
 	glow.set_night(1.0)
 	t.ok(glow.modulate.a > 0.0, "the glow is on at night")
 	t.ok(glow.modulate.a <= 1.0, "the glow never passes full strength")
+	# Winter nights are calmer: at full night the winter glow stays under NIGHT_ALPHA x WINTER_SCALE, while other seasons
+	# keep the full NIGHT_ALPHA (the breath only dims, so these bounds hold at any moment).
+	glow.set_winter(true)
+	glow.set_night(1.0)
+	t.ok(glow.modulate.a <= FlowerGlow.NIGHT_ALPHA * FlowerGlow.WINTER_SCALE + 0.001, "a winter night is calmer than the other seasons")
+	glow.set_winter(false)
+	t.ok(glow.modulate.a > FlowerGlow.NIGHT_ALPHA * FlowerGlow.WINTER_SCALE + 0.001, "a summer night keeps the full glow")
 	glow.free()

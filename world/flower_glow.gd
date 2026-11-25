@@ -20,6 +20,9 @@ static var HEAD_RADIUS: float = 11.0    # texels: how far one head's light reach
 static var SATURATE: float = 2.2        # summed head light that reads as full strength (lower = the fields fill in sooner)
 static var DAY_ALPHA: float = 0.0       # the glow by day (0 keeps the open daytime meadow as it was)
 static var NIGHT_ALPHA: float = 0.6     # the glow at full night
+## Winter nights: the glow is scaled by this. The bare winter stalks sit under a blue halo at full strength, which reads as
+## dither, so in winter the halo is calmer (0.6 x 0.42 = 0.25 at full night). Other seasons keep NIGHT_ALPHA.
+static var WINTER_SCALE: float = 0.42
 ## The colour: the flower's own bright "neon" petal hue at full saturation and brightness (NEON), so each field glows in
 ## its flower's colour. TINT_MIX pulls it toward TINT_TOWARD if ever wanted (0 = off).
 static var NEON: bool = true
@@ -114,6 +117,7 @@ func set_night(night01: float) -> void:
 
 
 var _rain_seen: float = -1.0
+var _winter: bool = false   # the zone's season is winter: the glow uses WINTER_SCALE
 
 func _process(_delta: float) -> void:
 	if _job != null:
@@ -145,8 +149,16 @@ func _draw() -> void:
 ## Rain: the flower light swells by RAIN_BLOOM at full rain (the lamps' bloom is SkyModel.lamp_bloom).
 const RAIN_BLOOM: float = 0.5
 
+## Winter or not. Only the alpha changes, so the season costs no redraw.
+func set_winter(on: bool) -> void:
+	if on != _winter:
+		_winter = on
+		_apply_alpha()
+
+
 func _apply_alpha() -> void:
-	var a: float = lerpf(DAY_ALPHA, NIGHT_ALPHA, _night) * (1.0 + RAIN_BLOOM * clampf(MeadowLife.rain, 0.0, 1.0))
+	var season_k: float = WINTER_SCALE if _winter else 1.0
+	var a: float = lerpf(DAY_ALPHA, NIGHT_ALPHA, _night) * season_k * (1.0 + RAIN_BLOOM * clampf(MeadowLife.rain, 0.0, 1.0))
 	if not (FxConfig.reduce_motion or FxConfig.reduce_flashing):
 		var phase: float = fposmod(float(Time.get_ticks_msec()) / 1000.0 / BREATH_TIME, 1.0)
 		a *= 1.0 - BREATH_DEPTH * (0.5 - 0.5 * cos(TAU * phase))

@@ -426,3 +426,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Check:** `tests/test_pad_signs.gd` checks a synthetic neighbour that used to sit under the sign, and every row-first pad in the Larkmoor, meadow and quarry layouts. The suite passes. In-engine, the quarry rows and the hub shot show each sign beside its pad with no overlap.
 - **Note:** the left-hand spots are mirrors of the right-hand ones, so a sign there sits off the right edge of a tight zoom-3 crop. That is not a missing sign.
 - Follow-up (same day): finer wheat. Clumps 20-26 texels wide with 4.2 stalks per texel of width (was 3.2), spacing 7x4, grid 4.3x2.5. 661 clumps, still one driver node; Larkmoor stays at 818 nodes and frame p95 is unchanged in the bench, so no zoom LOD was added.
+
+## 2026-11-25: Calmer winter night glow on the flower fields
+- **Nathan's note:** the winter flowers at night have a "weird texture", most visibly on the Thistle row. Nathan then picked the calmer glow from the mockups (`/mnt/project-files/pad-signs-flowers/looks_night_winter_thistle.png`).
+- **Cause:** the per-field night glow (`world/flower_glow.gd`) runs at full strength on the bare winter stalks, so each stalk gets a blue halo that reads as dither. The stalks themselves, and the old-vs-main captures, are unchanged, so this is not a regression from the flower atlas or lighting commits.
+- **Decision:** `FlowerGlow.WINTER_SCALE` (0.42) scales the glow in winter only, via `set_winter`, pushed from `LarkmoorScene` with the garden season. At full night the core goes from 0.6 to about 0.25. The spill follows the same scale at runtime. Other seasons keep `NIGHT_ALPHA`.
+- **Not changed:** noon (the glow is 0 by day), the stalk sprites, and the summer and autumn glow.
+- **Not verified in-engine on PC:** the shipped change. The mockups were rendered in the cloud with the same values as a global glow change (v0.99.44 code, not the winter-only scale), so the PC check should confirm winter nights and that summer nights are unchanged.
