@@ -27,7 +27,8 @@ const CALM_STIFFNESS: float = 34.0
 ## The lift toward the pointer while held, and how far above or below the arc the body may go (texels).
 const LIFT_MAX: float = 36.0
 const LIFT_STIFFNESS: float = 60.0
-const LIFT_DAMPING: float = 6.0
+## Damping ratio 0.7 (critical is 15.5): the body lands on its arc with about 5% overshoot, not 27%.
+const LIFT_DAMPING: float = 10.8
 ## Release flick: the drag's speed in phase per second, capped, and how many seconds the flick takes to die away.
 const FLING_LIMIT: float = 0.8
 const FLING_DECAY: float = 0.45
@@ -253,7 +254,12 @@ func _begin_grab() -> void:
 func _end_grab() -> void:
 	_grabbing = false
 	# A quick flick keeps some of its speed and fades into the natural cycle. Reduce Motion drops it.
-	_fling = 0.0 if still() else clampf(_u_vel, -FLING_LIMIT, FLING_LIMIT)
+	var fling: float = 0.0 if still() else clampf(_u_vel, -FLING_LIMIT, FLING_LIMIT)
+	# The flick carries the body fling * FLING_DECAY phase in total. It stops at the end of the grabbed half: crossing
+	# it would hand the body to the other body's far horizon, a jump the length of the whole arc.
+	var lo: float = TitleMood.arc_start(_grab_sun)
+	fling = clampf(fling, -(_u - lo) / FLING_DECAY, (lo + 0.5 - _u) / FLING_DECAY)
+	_fling = fling
 	_u_vel = 0.0
 
 
