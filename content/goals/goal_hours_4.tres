@@ -9,5 +9,5 @@ display_name = "Long Afternoon"
 description = "Play for four hours."
 counter = &"play_hours"
 target = 4.0
-order = 9
+order = 12
 reward = 0.02

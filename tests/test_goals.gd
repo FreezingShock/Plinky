@@ -114,9 +114,9 @@ func run(t: Object) -> void:
 	t.eq(v["detail"], "500 / 1K  +2%", "its detail reads progress and the bonus")
 	t.eq(bool(v["done"]), false, "not done while goals remain")
 	fresh.check({&"presses": 1000.0, &"play_hours": 1.0, &"crits": 250.0, &"mastery_best": 5.0, &"zone_resets": 1.0,
-		&"gates_open": 2.0, &"attributes_bought": 10.0, &"relic_kinds": 6.0})
+		&"gates_open": 2.0, &"attributes_bought": 10.0, &"relic_kinds": 10.0})
 	fresh.check({&"presses": 1.0e9, &"play_hours": 99.0, &"crits": 1.0e6, &"mastery_best": 99.0, &"zone_resets": 99.0,
-		&"gates_open": 9.0, &"attributes_bought": 99.0, &"relic_kinds": 9.0})
+		&"gates_open": 9.0, &"attributes_bought": 99.0, &"relic_kinds": 10.0})
 	var done_v: Dictionary = NextGoalCard.view_for(fresh, {})
 	t.eq(bool(done_v["done"]), true, "the card reads done once the chain is finished")
 	t.near(float(done_v["bonus"]), fresh.mult() - 1.0, 1e-9, "and shows the total bonus")

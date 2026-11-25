@@ -9,5 +9,5 @@ display_name = "Seasoned"
 description = "Reset a zone three times."
 counter = &"zone_resets"
 target = 3.0
-order = 11
+order = 6
 reward = 0.03

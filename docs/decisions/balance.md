@@ -169,3 +169,9 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Why small:** Nathan wants fast progress, so the bonus is a steady nudge and not a power spike. Relics, resets and gates still carry the curve.
 - **Open:** the targets (1K presses up to 10K, 1 to 4 play hours, Mastery 5 and 15, 1 and 3 zone resets) are not yet checked against the pacing sim. The pacing thread owns the check. A goal is cheap to retune in its `.tres`.
 - **Saves:** the reached list lives under `goals` in the save. A save without it credits what it has already earned, silently, the same as achievements. No version bump.
+
+## 2026-11-25: Goal order follows the pace, and Curio Shelf asks for 10 kinds
+- **Why:** the first pacing run (docs/balance.md section 15, PR #522) showed "An Hour In" sat second in the chain and was not reached until about 60 min. The Next Goal card held it for the whole first hour and hid five goals that land in the first 15 min. Chain order now follows the expected pace: Steady Hands 5.5, Known Ground 8.9, Curio Shelf 9.5, Round Again and Open Doors 15.1, Seasoned 34, Practised Hands 43, An Hour In 60, Lucky Strikes 68.
+- **Curio Shelf:** 6 relic kinds at 9.5 min was nearly free, so the target is now 10 kinds (the pacing thread's suggestion). Not run in the sim past 81 min, so it is unverified that 10 kinds is reached in play.
+- **Ids unchanged:** `goal_relics_6` keeps its id so saves that already logged it still load. Only its target and order changed.
+- **Not checked:** the sim buys no attributes and equips no relics, so Tuned Up and Second Nature are unverified by the run.

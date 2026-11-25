@@ -9,5 +9,5 @@ display_name = "Open Doors"
 description = "Open two gates."
 counter = &"gates_open"
 target = 2.0
-order = 6
+order = 5
 reward = 0.02

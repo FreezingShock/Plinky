@@ -9,5 +9,5 @@ display_name = "An Hour In"
 description = "Play for one hour."
 counter = &"play_hours"
 target = 1.0
-order = 2
+order = 8
 reward = 0.02
