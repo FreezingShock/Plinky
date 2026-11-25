@@ -139,3 +139,8 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **What:** `TexelWalker` checks every 0.1 s whether the straight line from its position to the next waypoint is still clear (`WalkMask.line_clear`). If not, it calls `WalkMask.route` again from its position, capped at 8 per tap (`_drift_replans`). The per-tap replan cap for blocked steps is unchanged.
 - **Measured:** `tools/route_probe.tscn` 0 misses (was 5), 78 s (was 75 s with 5 misses; I have not measured where the rest of the time goes). `tests/run.gd` 11701 checks, 0 failed.
 - **Not run in-engine:** a tap-walk in Larkmoor at zoom 3 near the lighthouse grove and the Reedgate corners is still the PC check.
+
+## 2026-11-25: The life generator writes the arrival point (`start`)
+- **Why:** `start` in `world/larkmoor_life.json` was hand-added in #413, and no generator wrote it. A regen dropped it, and `tests/test_wild.gd` then hit a script error, which CI treats as a failure.
+- **What:** `tools/art/gen_life_anchors.py` reads the `player_spawn` anchor and writes `start` as the last key, in both the full and `--add-keys` modes. A `--add-keys` rerun reproduces the committed file except that key.
+- **Not run in-engine:** nothing visual changed. The arrival point is the same coordinate as before.
