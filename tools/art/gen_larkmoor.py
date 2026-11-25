@@ -1076,6 +1076,10 @@ for _t, _f in FEATHER.items():
     _chance = 1 - (dtr[_t] - _inner) / (_outer - _inner)
     _keep = _chance > vn2(FU / 1.6, FV / 1.6, 75 if _t == 'lane' else 76)
     mat[_band & ~_keep & (mat == FEATHER_MAT[_t])] = T_GRASS
+# grass tufts reach into the trodden edge: a ragged band of grass fingers overlaps the dirt, so the verge is not a clean line
+for _t in ('lane', 'trail'):
+    _fing = (dtr[_t] > HALF[_t] * .80) & (dtr[_t] < HALF[_t] * edge_noise * 1.05)
+    mat[_fing & (mat == FEATHER_MAT[_t]) & (vn2(FU / 1.1, FV / 1.1, 93 if _t == 'lane' else 94) > .58)] = T_GRASS
 # the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
 mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
@@ -1091,6 +1095,17 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# Nathan's reference: sparse flat pebbles on the trodden ground (dark dashes, in two sizes), worn wheel ruts along the road
+# and lane, and lighter dusty patches. All of it is lit ground, so the palette is unchanged.
+_peb_s = (vn2(FU / 1.6, FV / .8, 95) > .9) & (vn2(FU / 9, FV / 9, 96) > .3)
+_peb_l = (vn2(FU / 2.8, FV / 1.2, 97) > .95) & (vn2(FU / 9, FV / 9, 96) > .3)
+lt -= .20 * ((_peb_s | _peb_l) & on_trod)
+_rut = np.zeros(len(FU), bool)
+for _t in ('road', 'lane'):
+    _wob = (vn2(FU / 6, FV / 6, 98) - .5) * 1.4
+    _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.1) & on_path[_t]
+lt -= .10 * (_rut & (mat == T_PATH))
+lt += .07 * (on_trod & (vn2(FU / 9, FV / 9, 99) > .72))
 # value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
 # under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
 # ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
@@ -1164,7 +1179,7 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 6], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 6],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 6, 6, 7], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: DARKF_RAMP}
@@ -1277,6 +1292,17 @@ def render_scene(keep):
             hi_, lo_ = np.percentile(WC_FIELD[sel_], [80, 20])
             for ramp_v, pick in ((GRASS_WARM, sel_ & (WC_FIELD > hi_)), (GRASS_COOL, sel_ & (WC_FIELD < lo_))):
                 if pick.any(): out[pick] = dith(ramp_v, img_l, pick)[pick]
+    # sparse verge details (Nathan's reference): a few berries and fallen leaves (earth step), and mushroom caps (cream step),
+    # on the grass just outside the trodden ground. Baked into the ground, so they cost no nodes.
+    from PIL import ImageFilter as _IFd
+    _trod_g = ((img_mat == T_PATH) | (img_mat == T_TRAIL)).astype(np.uint8) * 255
+    _tg = Image.fromarray(_trod_g)
+    _ring = np.asarray(_tg.filter(_IFd.MaxFilter(7))) > 0
+    _inner = np.asarray(_tg.filter(_IFd.MaxFilter(3))) > 0
+    _verge = _ring & ~_inner & (img_mat == T_GRASS)
+    _hh = ((XX * 92821 + YY * 68917) % 1009) / 1009.0
+    out[_verge & (_hh > .988)] = 6
+    out[_verge & (_hh < .006)] = 7
     # water: depth bands, stepped glints, foam, white water on slopes
     wsel = img_mat == T_WATER
     if wsel.any():

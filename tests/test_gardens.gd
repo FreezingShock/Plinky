@@ -111,7 +111,7 @@ func run(t: Object) -> void:
 	t.ok(ground != null, "ground loads for the placement checks")
 	if ground == null:
 		return
-	var grass: Array[Color] = [Color("5fa36a"), Color("b7d978"), Color("2f6b55"), Color("7a7f45"), Color("9ea35f"), Color("aab061"), Color("457b7f"), Color("5f9ea3"), Color("61aab0")]
+	var grass: Array[Color] = [Color("5fa36a"), Color("b7d978"), Color("2f6b55"), Color("7a7f45"), Color("919654"), Color("9ea35f"), Color("aab061"), Color("457b7f"), Color("549196"), Color("5f9ea3"), Color("61aab0")]
 	var per_stat: Dictionary = {}
 	var bad_stat: int = 0
 	var bad_ground: int = 0
