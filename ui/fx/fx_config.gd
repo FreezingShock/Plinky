@@ -40,6 +40,11 @@ static var reduce_motion := false
 ## Turns off the screen-wide light passes (edge shade, full-frame light grade).
 static var reduce_screen_fx := false
 
+
+## The gentle version of the zone ascension FX (rings, flight, flash): Reduce flashing, Still meadow or Calm camera.
+static func ascension_calm() -> bool:
+	return reduce_flashing or MeadowLife.reduce_motion or WorldCamera.calm
+
 ## Snap a position to whole texels so FX never sit between world pixels.
 static func snap(v: Vector2) -> Vector2:
 	return v.round()

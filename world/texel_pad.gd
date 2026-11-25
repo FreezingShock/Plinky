@@ -61,7 +61,11 @@ var flower_row: StringName = &""
 var locked: bool = false
 ## Cost sign on each row's first pad only (button _1, from its first price, open or locked): a wooden plank on a post, the cost (currency icon and amount)
 ## over the reward (stat icon and gain). The plank is one child node, redrawn only when the cost is held or lost.
-const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
+static var _lock_font: Font = null   ## loaded on first use, not preloaded: a preload in a script compiled during a fresh first import fails ("no resource loaders")
+static func lock_font() -> Font:
+	if _lock_font == null:
+		_lock_font = load("res://fonts/spleen-5x8.fnt") as Font
+	return _lock_font
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
@@ -120,6 +124,7 @@ var _lock_icon: Texture2D = null  # the cost stat's 8 px icon, or null when the 
 var _reward_icon: Texture2D = null  # the reward stat's 8 px icon
 var _reward_text: String = ""      # the reward, e.g. "+1"
 var _sign_affordable: bool = false  # the state the sign was last drawn in: the band is green when the cost is held
+var _sign_locked: bool = false      # the lock state the sign was last drawn in: a locked pad's top slot shows a padlock
 ## Clover pads get a gold rim (not the grass green Sprout and Clover share), so the two rows read apart on the lake shore.
 const CLOVER_TRIM: Color = Color("f2c14e")
 var _trim: Color = Color(0.0, 0.0, 0.0, 0.0)
@@ -437,6 +442,10 @@ func _draw() -> void:
 	# Top face.
 	var face: Color = palette[6]
 	var face_r: Color = palette[6]
+	if FLOWERS.has(flower_row) and not locked and st != PadState.FAR:
+		# T4 (M1 Remap): the plate takes its statistic's hue, deep, so each pad's plate matches its own field.
+		face = palette[6].lerp(stat_color.darkened(0.5), 0.55)
+		face_r = palette[6].lerp(stat_color.darkened(0.65), 0.55)
 	if st == PadState.FAR or locked:
 		face = ink.lerp(palette[1], 0.45) if locked else palette[2]
 		face_r = face
@@ -553,7 +562,9 @@ func _draw_cost_sign() -> void:
 	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 1.0, iw, 2.0), band)
 	_chip.draw_rect(Rect2(x0 + 2.0, y0 + 4.0, 11.0, 10.0), wood_dk)
 	_chip.draw_rect(Rect2(x0 + 2.0, y0 + 14.0, 11.0, 10.0), wood_dk)
-	if _lock_icon != null:
+	if sign_top_slot(locked) == &"padlock":
+		_draw_padlock(_chip, Vector2(x0 + 3.0, y0 + 4.0), CHIP_CREAM.darkened(0.3))
+	elif _lock_icon != null:
 		_chip.draw_texture(_lock_icon, Vector2(x0 + 4.0, y0 + 5.0))
 	if _reward_icon != null:
 		_chip.draw_texture(_reward_icon, Vector2(x0 + 4.0, y0 + 15.0))
@@ -571,8 +582,8 @@ func _draw_run(pos: Vector2, text: String, col: Color) -> void:
 	var x: float = pos.x
 	for i in text.length():
 		var ch: String = text.substr(i, 1)
-		_chip.draw_string(LOCK_FONT, Vector2(x, pos.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, col)
-		x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + gap
+		_chip.draw_string(lock_font(), Vector2(x, pos.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, col)
+		x += lock_font().get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + gap
 
 
 ## Shows or hides the sign node, and redraws it when it appears or when the cost is newly held or lost.
@@ -583,9 +594,23 @@ func _sync_lock_chip() -> void:
 	if _chip.visible != show_sign:
 		_chip.visible = show_sign
 		_chip.queue_redraw()
-	if show_sign and affordable != _sign_affordable:
+	if show_sign and (affordable != _sign_affordable or locked != _sign_locked):
 		_sign_affordable = affordable
+		_sign_locked = locked
 		_chip.queue_redraw()
+
+
+## What the sign's top slot shows: a padlock on a locked pad (the same convention as an upgrade row's padlock), else the cost icon.
+static func sign_top_slot(is_locked: bool) -> StringName:
+	return &"padlock" if is_locked else &"icon"
+
+
+## A 9x9 padlock drawn rect by rect from LockIcon's shapes, offset to `at` on the sign's texel grid.
+static func _draw_padlock(canvas: CanvasItem, at: Vector2, col: Color) -> void:
+	for r: Rect2 in LockIcon.SHACKLE:
+		canvas.draw_rect(Rect2(at + r.position, r.size), col)
+	canvas.draw_rect(Rect2(at + LockIcon.BODY.position, LockIcon.BODY.size), col)
+	canvas.draw_rect(Rect2(at + LockIcon.KEYHOLE.position, LockIcon.KEYHOLE.size), CHIP_CREAM.darkened(0.6))
 
 
 ## Whether a button gets a cost sign at all: only a row's first pad (button _1) does. The other pads show their price in the tooltip.
@@ -595,7 +620,7 @@ static func gets_sign(b: ButtonDef) -> bool:
 
 ## Whether a pad draws its cost sign: a row's first pad with a cost does, open or locked, and only when the font loaded.
 static func shows_cost_sign(cost: String) -> bool:
-	return cost != "" and LOCK_FONT != null
+	return cost != "" and lock_font() != null
 
 
 ## Width of the digits with one texel between each glyph (no gap after the last one).
@@ -607,7 +632,7 @@ static func chip_text_width(text: String) -> float:
 static func run_width(text: String, gap: float) -> float:
 	var w: float = 0.0
 	for i in text.length():
-		w += LOCK_FONT.get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
+		w += lock_font().get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
 	return w + gap * float(maxi(text.length() - 1, 0))
 
 
@@ -654,7 +679,7 @@ func set_sign_neighbours(others: Array[Vector2]) -> void:
 ## Fits a cost or reward to the plank's text width. A value that is too wide drops its fraction first ("20.75B" becomes
 ## "20B"), then loses characters from the end. Spleen has no smaller size, so the text stays at its native 8 px.
 static func fit_sign_text(text: String) -> String:
-	if LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x <= SIGN_TEXT_CAP:
+	if lock_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x <= SIGN_TEXT_CAP:
 		return text
 	var dot: int = text.find(".")
 	if dot >= 0:
@@ -662,7 +687,7 @@ static func fit_sign_text(text: String) -> String:
 		while end < text.length() and text[end] >= "0" and text[end] <= "9":
 			end += 1
 		text = text.substr(0, dot) + text.substr(end)
-	while text.length() > 1 and LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x > SIGN_TEXT_CAP:
+	while text.length() > 1 and lock_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x > SIGN_TEXT_CAP:
 		text = text.substr(0, text.length() - 1)
 	return text
 

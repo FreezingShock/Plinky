@@ -119,8 +119,16 @@ static func body(sky: SkyModel, t: float) -> Vector2:
 ## the rest of the day, so the body is the sun by day and the moon by night.
 static func arc_point(p_in: float) -> Vector2:
 	var p: float = fposmod(p_in, 1.0)
-	var sun: bool = p >= 0.25 and p <= 0.75    # by phase, not by sign: sun_of(0.25) is a hair below zero in floats
+	var sun: bool = sun_half(p)
 	return arc_at(p if (sun or p >= 0.75) else p + 1.0, sun)
+
+
+## True when phase p is on the sun's half of the day (sunrise 0.25 to sunset 0.75, both ends included). Decided by phase
+## range, never by the sign of sun_of: at 0.25 and 0.75 sun_of is a float hair either side of zero, so a sign test
+## would put the same body on different halves from one frame to the next.
+static func sun_half(p: float) -> bool:
+	var q: float = fposmod(p, 1.0)
+	return q >= 0.25 and q <= 0.75
 
 
 ## The arc position on one half of the day, for an unwrapped phase u: the sun's half (sun true, sunrise 0.25 to sunset

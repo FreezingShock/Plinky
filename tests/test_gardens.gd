@@ -33,6 +33,18 @@ func run(t: Object) -> void:
 				rows.append(filled)
 			t.ok(rows[0] < rows[1] and rows[1] < rows[2], "%s field flower %d shadow narrows as it drops: %s" % [stat, v, str(rows)])
 			t.ok(GardenArt.frame(stat, v, 1).get_image().get_data() != up.get_data(), "%s field flower %d leans" % [stat, v])
+			# no ink on nature: the rim is the zone's deep leaf green on the shadow side only, so the lit edge is open
+			var inked: int = 0
+			var rim: int = 0
+			for y in up.get_height():
+				for x in up.get_width():
+					var px: Color = up.get_pixel(x, y)
+					if px.a > 0.5 and px.is_equal_approx(Color("14161c")):
+						inked += 1
+					if px.a > 0.5 and px.is_equal_approx(GardenArt.FLOWER_RIM):
+						rim += 1
+			t.eq(inked, 0, "%s field flower %d has no ink outline" % [stat, v])
+			t.ok(rim > 0, "%s field flower %d has a shadow-side rim" % [stat, v])
 	# the season and night states bake distinct frames for a head, and a shrub keeps its shape
 	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER, true).get_image().get_data(), "a closed head is smaller than an open one")
 	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SPRING).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_AUTUMN).get_image().get_data(), "spring buds and autumn seed heads differ")
@@ -99,7 +111,7 @@ func run(t: Object) -> void:
 	t.ok(ground != null, "ground loads for the placement checks")
 	if ground == null:
 		return
-	var grass: Array[Color] = [Color("5fa36a"), Color("b7d978"), Color("2f6b55")]
+	var grass: Array[Color] = [Color("5fa36a"), Color("b7d978"), Color("2f6b55"), Color("7a7f45"), Color("919654"), Color("9ea35f"), Color("aab061"), Color("3c7a6a"), Color("4b8f7a"), Color("5ea88a"), Color("72bf9f")]
 	var per_stat: Dictionary = {}
 	var bad_stat: int = 0
 	var bad_ground: int = 0
@@ -121,6 +133,28 @@ func run(t: Object) -> void:
 		last_y = y
 	t.eq(bad_stat, 0, "every flower names a real statistic and variant")
 	t.eq(bad_ground, 0, "every flower stands on open grass (never a path, water or dirt)")
+	# a bed keeps 4 texels of clear ground from any path, dirt or shore pixel (square window, same rule as gen_gardens.py)
+	var near_bad: int = 0
+	for f2: Variant in flowers:
+		var a2: Array = f2 as Array
+		if _path_near(ground, int(a2[0]), int(a2[1]), 4):
+			near_bad += 1
+	t.eq(near_bad, 0, "no flower bed sits within 4 texels of a path, dirt or shore edge")
 	t.eq(out_of_order, 0, "flowers are sorted by y, so they draw back to front")
 	for s in GardenArt.STATS.size():
 		t.ok(int(per_stat.get(s, 0)) >= 80, "%s has a real garden (%d flowers)" % [GardenArt.STATS[s], int(per_stat.get(s, 0))])
+
+
+## true when any path, dirt or shore pixel lies within r texels (a square window) of (x, y)
+static func _path_near(img: Image, x: int, y: int, r: int) -> bool:
+	var bad_cols: Array[Color] = [Color("f2e6a0"), Color("1f3b35"), Color("c2784e")]
+	for dy: int in range(-r, r + 1):
+		for dx: int in range(-r, r + 1):
+			var px: int = x + dx
+			var py: int = y + dy
+			if px < 0 or py < 0 or px >= img.get_width() or py >= img.get_height():
+				continue
+			if img.get_pixel(px, py) in bad_cols:
+				return true
+	return false
+

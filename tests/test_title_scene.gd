@@ -140,6 +140,67 @@ func run(t: Object) -> void:
 	credits.free()
 	var bg := TitleBackground.new()
 	t.ok(bg.parallax == Vector2.ZERO, "the backdrop starts with no parallax")
+	# The loading screen opens at sunrise (BOOT_PHASE 0.25). A press there must grab the sun the screen draws, not the moon.
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.25)
+	bg._begin_grab()
+	t.ok(bg.grabbing(), "a press on the sun at sunrise starts the grab")
+	t.ok(bg._grab_sun == TitleMood.sun_half(bg.phase()), "the grab takes the same half the sun is drawn on at sunrise")
+	t.ok(bg._grab_sun, "at sunrise the grab takes the sun, not the moon")
+	bg._end_grab()
+	bg.free()
+
+	# A flick released near sunset carries the sun no further than sunset, so its glide never hands the body to the
+	# moon's far end of the arc (a jump the length of the whole arc) while the flick is still moving it.
+	bg = TitleBackground.new()
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.7)
+	bg._begin_grab()
+	bg._u_vel = 1.0
+	bg._end_grab()
+	t.ok(bg._fling * TitleBackground.FLING_DECAY <= 0.75 - bg._u + 1e-6, "a flick near sunset carries no further than sunset")
+	var prev_x: float = bg.body_art().x
+	var worst_jump: float = 0.0
+	var stayed_sun: bool = true
+	for i in 30:
+		bg._step_free(1.0 / 60.0)
+		bg._step_lift(1.0 / 60.0)
+		var x: float = bg.body_art().x
+		worst_jump = maxf(worst_jump, absf(x - prev_x))
+		prev_x = x
+		stayed_sun = stayed_sun and TitleMood.sun_half(bg.phase())
+	t.ok(stayed_sun, "the sun stays on its half after a flick released near sunset")
+	t.ok(worst_jump < 2.5, "the body glides after a release with no jump (worst step %.2f px)" % worst_jump)
+	bg.free()
+
+	# A flick backward from mid-arc never runs the day clock backward: the body stops and then moves on.
+	bg = TitleBackground.new()
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.95)
+	bg._begin_grab()
+	bg._u_vel = -1.0
+	bg._end_grab()
+	var last_clock: float = bg.clock
+	var ran_back: bool = false
+	for i in 150:
+		bg._step_free(1.0 / 60.0)
+		bg._step_lift(1.0 / 60.0)
+		if bg.clock < last_clock - 1e-9:
+			ran_back = true
+		last_clock = bg.clock
+	t.ok(not ran_back, "a flick backward never runs the day clock backward")
+	bg.free()
+
+	# Landing after a release: under 2% overshoot of the lift, so at full reach the bounce stays under half a texel.
+	bg = TitleBackground.new()
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.5)
+	bg._begin_grab()
+	bg._reach = -20.0
+	for i in 60:
+		bg._step_lift(1.0 / 60.0)
+	bg._end_grab()
+	var lowest: float = 1.0
+	for i in 120:
+		bg._step_lift(1.0 / 60.0)
+		lowest = minf(lowest, bg._lift)
+	t.ok(lowest > -0.02, "the lift lands with under 2% overshoot (lowest %.3f)" % lowest)
 	bg.free()
 	var title := TitleScreen.new()
 	t.ok(title.has_method("_begin"), "the title screen compiles")

@@ -8,6 +8,8 @@ const DRIFT_X: float = 46.0
 const DRIFT_Y: float = 22.0
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
+## Lit ramp colours for the sparkle (LifeCritters.shade_palette). Set in _ready.
+var _shade: PackedColorArray = PackedColorArray()
 ## Pad positions in world texels. The critter appears near one of them.
 var anchors: PackedVector2Array = PackedVector2Array()
 
@@ -20,6 +22,7 @@ func _ready() -> void:
 	var bus: Node = get_node("/root/EventBus")
 	bus.critter_spawned.connect(_on_spawned)
 	bus.critter_gone.connect(func() -> void: visible = false)
+	_shade = LifeCritters.shade_palette(Palettes.MEADOW)
 
 
 func _on_spawned() -> void:
@@ -46,8 +49,8 @@ func _draw() -> void:
 	if left < 3.0 and int(left * 6.0) % 2 == 0:
 		return  # blink while it is about to leave
 	var pulse: bool = int(_t * 5.0) % 2 == 0
-	var gold: Color = palette[4]
-	var core: Color = palette[7] if pulse else palette[4]
+	var gold: Color = _shade[LifeCritters.ramp_code(4, 3)]
+	var core: Color = _shade[LifeCritters.ramp_code(7, 3)] if pulse else gold
 	draw_rect(Rect2(-1.0, -4.0, 2.0, 8.0), gold)
 	draw_rect(Rect2(-4.0, -1.0, 8.0, 2.0), gold)
 	draw_rect(Rect2(-2.0, -2.0, 4.0, 4.0), core)

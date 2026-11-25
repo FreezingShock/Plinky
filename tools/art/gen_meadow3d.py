@@ -6,8 +6,8 @@ Run: python3 gen_meadow3d.py [--fast]  ->  meadow3d-1x.png (640x360), meadow3d.p
 import numpy as np, math, random, json, os, sys, time
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import depth_pass, grass_tex
-GRASS = os.environ.get('GRASS', 'f')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
+import depth_pass, grass_tex, gen_palette_ramps as gpr
+GRASS = os.environ.get('GRASS', 'g')    # grass texture style (tools/art/grass_tex.py): g = clump blades on patch shading (M2); 'old' = previous noise patches
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAST = '--fast' in sys.argv
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
@@ -23,6 +23,10 @@ OXS0, OYS0 = 320, 4                       # the 640x360 frame (layout coordinate
 OXS, OYS = OXS0 + BLX, OYS0 + BLY         # render origin, shifted into the bleed canvas
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
+# Prop palette (Gower-style restyle, v3 mockup B): the sprites' albedo and the relit props' ramps. Ink stays put, and the
+# ground keeps PAL, so the backdrop, the flower and sway checks and the UI palette are unchanged.
+PROP_PAL = ['#14161c', '#1c3a2e', '#2f6a42', '#4f8f4a', '#9cc85c', '#e6ec9a', '#8a5a38', '#f2ecd2']
+PROP_COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PROP_PAL], np.uint8)
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
 def s2uv(sx, sy): d = sx - OXS0; s = (sy - OYS0) * 2; return (s + d) / 2.0, (s - d) / 2.0
 
@@ -220,6 +224,10 @@ def voxelize(sdf, half, top, u0, v0, z0, scale=1.0, rot=0.0, sid=1, wl=0.0, bott
 # material codes
 (M_FOL, M_BARK, M_PINE, M_ROCK, M_MOSS, M_CRYS, M_WOOD, M_PADT, M_PETA, M_PETB, M_STEM, M_LILY, M_REED, M_CAT, M_BERRY, M_CAP, M_CSTEM, M_PAPER, M_GRASS, M_BARKT, M_BARKT2, M_PEB, M_FACE, M_INK) = range(10, 34)
 M_DARKF = 34   # dark pocket cut into a bush: the shadowed inside of the leaf shell, darkest ramp step
+# Same as gen_larkmoor.py: bushes take the darkest foliage step (role 1, #1c3a2e) for their edge, not ink, and the pocket
+# shade is role 1 with a few role-2 texels, so no pure-black holes under bushes. Walker, critters and large props keep ink.
+BUSH_EDGE = 1
+DARKF_RAMP = [1, 1, 1, 2]
 
 # ---------------- prop models (local coords: x right, y toward camera, z up) ----------------
 def make_oak(rng):
@@ -274,9 +282,7 @@ def make_bush(rng):
         for pc, pr in pockets:
             cut = -sdf_sphere(x, y, z, pc, pr)
             m = np.where(cut > d, M_DARKF, m); d = np.maximum(d, cut)
-        # contact: a thin, soft-edged dark slab under the bush, a little wider than its skirt, so the foot reads as shade on the ground
-        dc = sdf_ell(x, y, z, (0, 0, 0), (7.4, 6.6, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
-        sel = dc < d; m = np.where(sel, M_DARKF, m); d = np.minimum(d, dc)
+        # no contact slab: a dark disc under the bush read as a hard circle. The runtime cast shadow (world/sky_shadows.gd) gives the soft shade.
         for b in berries:
             db = sdf_sphere(x, y, z, b, 1.0) ; sel = db < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, db)
         return d, m
@@ -847,10 +853,10 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 2, 6, 6, 6, 6, 6, 5], T_MOSS: [1, 2, 2, 3, 3], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 5, 5, 7], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 2, 6, 6, 6, 6, 6, 5], T_MOSS: [1, 2, 2, 3, 3], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 6, 6], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
-        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_DARKF: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7]}
+        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_DARKF: DARKF_RAMP, M_PAPER + 20: [5, 7, 7, 7]}
 mat_ = allp['mat']; nz_ = allp['nz']; lraw = allp['wl'].copy()
 light = np.where(isprop | (np.arange(len(u_)) >= len(T['u'])) & False, 0, 0).astype(float)
 # lighting for props (terrain/plinth carried theirs in 'wl')
@@ -972,7 +978,10 @@ def render_scene(keep):
         ink |= (me >= 10) & (nb != me)
         ink |= (me >= 1) & (nb == -1) & (me < 10)
         ink |= (me >= 10) & (nb == -2)
-    out[ink & (img_id >= 0)] = 0
+    bush_ids = np.array([t['id'] for t in TALL if t['kind'] == 'bush'], np.int64)
+    on_bush = np.isin(img_id, bush_ids) if len(bush_ids) else np.zeros((H, W), bool)
+    out[ink & (img_id >= 0) & ~on_bush] = 0
+    out[ink & (img_id >= 0) & on_bush] = BUSH_EDGE
     # ---- surroundings: layered distant mountains and open water, so wide windows never see the void ----
     emp = out < 0
     if emp.any():
@@ -1006,7 +1015,11 @@ rgb_full, id_full = render_scene(np.ones(len(u_), bool))
 AUX_FULL = LAST_AUX
 # the glowing sea (tools/art/water_sea_mask.py): flat deep and shallow sea colours, so the relight leaves them as painted
 RAMP.update({110: [1], 111: [2]})
-depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP, PAL)
+# the relight quantises through the 32-colour ramps (palette B, gen_palette_ramps.py); the bake above keeps the 8 anchors
+RAMP32 = {m: gpr.prop_ramp_steps(r) for m, r in RAMP.items()}
+RAMP32[70] = [6, 28, 28, 29]   # Larkmoor flagstones (gen_larkmoor T_STONE): grey stone, slate shade and paper steps 0 to 1
+depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP32, PAL,
+                              ramp_pal=gpr.role_steps_32(PROP_PAL))
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(HERE, 'meadow3d-ground-1x.png'))

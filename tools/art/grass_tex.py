@@ -5,6 +5,7 @@ grass ramp [1, 2, 3, 3, 4] (dark teal, mid, mid, light). Offsets: DARK crosses t
 import numpy as np
 
 DARK, LIGHT = -.38, .22
+GRASS_FLOOR = .27   # style G keeps lit grass at or above this light level (dith ramp step 1)
 
 
 def _h(ix, iy, s):
@@ -131,10 +132,43 @@ def style_stalks(XX, YY, nz):
     return D + np.clip(T, DARK, LIGHT)
 
 
-STYLES = {'a': style_clusters, 'b': style_bands, 'c': style_strokes, 'd': style_clumps, 'e': style_blades, 'f': style_stalks}
+def style_clumpblades(XX, YY, nz):
+    """G (Fresh Meadow M2): big organic light patches, warm and cool, with dense blade clumps standing in them and bare
+    lawn between. Patches move a texel along the grass ramp. Each clump's core is two texels wide, so a clump reads as a
+    tuft at game size rather than a single hairline. Chosen from the M2 mockup (Nathan)."""
+    H, W = XX.shape; fbm2 = nz['fbm2']
+    D = (fbm2(XX / 56.0, YY * 2 / 56.0, 3, 101) - .5) * .78 + (fbm2(XX / 90.0, YY * 2 / 90.0, 2, 102) - .5) * .30
+    px, py, r = _anchors(W, H, 3, 3, 35)
+    dens = fbm2(px / 26.0, py * 2 / 26.0, 3, 103)
+    keep = r < np.clip((dens - .30) * 4.2, 0, .97)                     # clumps gather where the field is high
+    px, py, r2 = px[keep], py[keep], r[keep]
+    dd = dens[keep]
+    core = dd > .55                                                    # dense cores get a two-texel tuft
+    tall = (r2 * 7919 % 1.0) < .75
+    T = np.zeros((H, W))
+    for sel, shape in ((tall & ~core, [(0, -4, LIGHT), (0, -3, LIGHT), (0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, 0, DARK * .5)]),
+                       (~tall & ~core, [(0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, 0, DARK * .5)]),
+                       (tall & core, [(0, -4, LIGHT), (0, -3, LIGHT), (0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, 0, DARK * .5),
+                                      (1, -3, LIGHT), (1, -2, LIGHT), (1, -1, LIGHT), (-1, 0, DARK * .5)]),
+                       (~tall & core, [(0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, -2, LIGHT), (1, -1, LIGHT), (1, 0, DARK * .5), (-1, 0, DARK * .5)])):
+        _stamp(T, px[sel], py[sel], shape)
+    # tall tufts (the B option picked for Larkmoor): a tall anchor also fans out two side blades, two texels either side,
+    # so a clump reads as three or more thin blades with light tips at game size
+    fan = [(0, -3, LIGHT), (0, -2, LIGHT), (0, -1, DARK * .5)]
+    for dx in (-2, 2):
+        _stamp(T, px[tall] + dx, py[tall], fan)
+    return D + 1.35 * np.clip(T, DARK, LIGHT)   # style G stamps push 35% harder so tufts read at 1x
+
+
+STYLES = {'a': style_clusters, 'b': style_bands, 'c': style_strokes, 'd': style_clumps, 'e': style_blades, 'f': style_stalks,
+          'g': style_clumpblades}
 
 
 def apply(style, l, mask, XX, YY, nz):
     if style not in STYLES:
         return l
+    if style == 'g':
+        # style G never darkens lit grass into the deepest ramp step (palette 1, the shadow role): dark stalk bases stop
+        # at palette 2, so flowers and sway tips still stand on the three grass colours
+        return np.where(mask, np.maximum(l + STYLES[style](XX, YY, nz), np.minimum(l, GRASS_FLOOR)), l)
     return np.where(mask, l + STYLES[style](XX, YY, nz), l)

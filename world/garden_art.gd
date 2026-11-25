@@ -22,10 +22,12 @@ const SEASON_SPRING: int = 0
 const SEASON_SUMMER: int = 1
 const SEASON_AUTUMN: int = 2
 const SEASON_WINTER: int = 3
-const INK: Color = Color("14161c")
-const LEAF: String = "3d9a45"
-const LEAF_DARK: String = "28683a"
-const LEAF_LIGHT: String = "7ccf6a"
+const FLOWER_RIM: Color = Color("225a4a")   # the zone's deep leaf step (LEAF_DARK): the shadow-side rim of a field flower, not ink
+## Leaf greens from the meadow zone ramp (render/palettes.gd RAMP, role 3 base and role 2 deep, steps 1 to 3), so the
+## stems, shrubs and leaves sit in the zone's own hue family (T4, M1 Remap).
+const LEAF: String = "4a895d"        # meadow base, step 1
+const LEAF_DARK: String = "225a4a"   # meadow deep, step 1 (winter and shadow leaves)
+const LEAF_LIGHT: String = "81b65d"  # meadow light, step 1 (lit leaf tips)
 const SEED: String = "6b4a2a"
 const FROST: String = "eaf6ff"
 const DEW: String = "ffffff"      # the bright drops on an open head at dawn
@@ -480,7 +482,9 @@ static func _shrub(cells: Dictionary, layout: Array, season: int, pal: Array[Col
 	_ground_shadow(cells, rx, ry + 1, SHADOW_ALPHA, Color(SHADOW.r, SHADOW.g, SHADOW.b))
 
 
-## A one texel ink line round the outside of a field flower (empty cells beside it only).
+## A one texel rim on the shadow side of a field flower (empty cells below or right of the plant only), in the zone's deep
+## leaf green. The lit upper-left edge gets no rim, so the petals keep their light edge and the rim reads as a cast shadow.
+## Value separates the flower from the grass, and the ink outline is gone from nature (Gower rule 3).
 static func _outline(cells: Dictionary) -> void:
 	var edge: Array[Vector2i] = []
 	for c: Vector2i in cells:
@@ -489,7 +493,8 @@ static func _outline(cells: Dictionary) -> void:
 			if not cells.has(q) and not edge.has(q):
 				edge.append(q)
 	for q: Vector2i in edge:
-		cells[q] = INK
+		if cells.has(q + Vector2i(-1, 0)) or cells.has(q + Vector2i(0, -1)):
+			cells[q] = FLOWER_RIM
 
 
 ## Cell map to an image: centred on the middle column with room for a lean each side. A lean moves the top half one texel.
