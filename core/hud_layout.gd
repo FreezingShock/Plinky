@@ -38,10 +38,6 @@ func rows(zone: StringName, defaults: Array[StringName]) -> Array[StringName]:
 	return out
 
 
-func has_row(zone: StringName, sid: StringName, defaults: Array[StringName]) -> bool:
-	return rows(zone, defaults).has(sid)
-
-
 ## Stats that could be added: the zone's own hidden stats first (ladder order), then `pool` (other stats the player has
 ## met), skipping anything already shown.
 func suggestions(zone: StringName, defaults: Array[StringName], pool: Array[StringName]) -> Array[StringName]:

@@ -76,12 +76,12 @@ static func rebirth(can: bool, gain_text: String, rp_text: String = "") -> Dicti
 
 
 ## Tooltip of a zone reset's button (Bloom in the meadow), skinned by its ZoneResetDef.
-static func zone_reset(r: ZoneResetDef, currency_name: String, can: bool, gain: int, need_text: String) -> Dictionary:
+static func zone_reset(r: ZoneResetDef, currency_name: String, can: bool, gain: BigNum, need_text: String) -> Dictionary:
 	var sc: Color = StatStyle.color(r.currency)
 	var icon: String = String(r.currency)
 	if can:
 		return {"title": r.display_name, "title_color": sc, "color": sc, "icon": icon, "body": r.tip_body,
-			"lines": [["Gives ", Tip.icon(icon), Tip.seg("+%d" % gain, StatStyle.gain()), " ", Tip.seg(currency_name, sc)],
+			"lines": [["Gives ", Tip.icon(icon), Tip.seg("+%s" % gain.whole_text(), StatStyle.gain()), " ", Tip.seg(currency_name, sc)],
 				["Every pad pays ", Tip.seg("+%d%%" % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()), " more for good"]],
 			"hint": r.keeps_text, "hint_color": StatStyle.gain()}
 	return {"title": r.display_name, "title_color": sc, "color": sc, "icon": icon,
@@ -95,7 +95,9 @@ static func currency(sid: StringName, display_name: String, have: String, r: Zon
 	var c: Color = StatStyle.color(sid)
 	var lines: Array = [["You have ", Tip.icon(String(sid)), Tip.seg(have, c)]]
 	if bool(facts.get("can", false)):
-		lines.append(["Next %s " % r.display_name, Tip.seg("+%d" % int(facts.get("gain", 0)), StatStyle.gain()), " ", Tip.seg(display_name, c)])
+		var gain: Variant = facts.get("gain", 0)   # a BigNum from the sim; a plain whole number in tests
+		var gain_text: String = (gain as BigNum).whole_text() if gain is BigNum else str(int(gain))
+		lines.append(["Next %s " % r.display_name, Tip.seg("+" + gain_text, StatStyle.gain()), " ", Tip.seg(display_name, c)])
 	else:
 		lines.append([Tip.seg(str(facts.get("need", "")), StatStyle.cant())])
 	var total: int = int(facts.get("total", 0))
@@ -108,10 +110,6 @@ static func currency(sid: StringName, display_name: String, have: String, r: Zon
 		"body": r.currency_body, "lines": lines,
 		"kicker": [Tip.tag("%s currency" % r.display_name, c)],
 		"hint": "Click to open!" if clickable else "", "hint_color": click_color()}
-
-
-static func zone_button(display_name: String) -> Dictionary:
-	return {"title": display_name, "body": "Travel there. Your progress here is kept."}
 
 
 ## Yellow call to action on the last line of a tooltip: "Click to open!" or "Click to buy!".

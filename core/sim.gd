@@ -10,7 +10,7 @@ signal zone_entered(zone_id: StringName)
 signal gate_opened(gate_id: StringName)
 signal rebirth_done(prestige_gained: BigNum)
 ## A zone reset (Bloom, ...) was done: its id and the currency it paid.
-signal reset_done(reset_id: StringName, gained: int)
+signal reset_done(reset_id: StringName, gained: BigNum)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)
 ## Streak or critter payout. kind is &"streak" or &"critter"; gains is StringName -> BigNum.
@@ -1054,22 +1054,25 @@ func reset_ref(reset_id: StringName) -> float:
 	return base * maxf(r.ref_floor, pow(r.ref_shrink_per_use, float(reset_count(reset_id))))
 
 
-## What a reset would pay now (0 until it is available).
-func reset_gain(reset_id: StringName) -> int:
+## What a reset would pay now (zero until it is available): floor(pay_scale * sqrt(source / ref)), multiplied by the
+## reset's effect when it has one, and nothing below min_pay. BigNum throughout, so a source stat past the float range
+## still pays instead of overflowing.
+func reset_gain(reset_id: StringName) -> BigNum:
 	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
 	if r == null or not reset_unlocked(reset_id):
-		return 0
-	var v: float = maxf(0.0, get_stat(r.source_stat).to_float())
-	var n: int = int(floorf(r.pay_scale * sqrt(v / reset_ref(reset_id))))
-	if float(n) < r.min_pay:
-		return 0
+		return BigNum.zero()
+	var base: BigNum = get_stat(r.source_stat).max_zero().div(BigNum.from_float(reset_ref(reset_id))).sqrt_big() \
+			.mul(BigNum.from_float(r.pay_scale))
+	var n: BigNum = base.floor_big()
+	if n.lt(BigNum.from_float(r.min_pay)):
+		return BigNum.zero()
 	if r.pay_effect != &"":
-		n = int(floorf(float(r.pay_scale * sqrt(v / reset_ref(reset_id))) * (1.0 + effect_total(r.pay_effect))))
+		n = base.mul(BigNum.from_float(1.0 + effect_total(r.pay_effect))).floor_big()
 	return n
 
 
 func can_reset(reset_id: StringName) -> bool:
-	return reset_gain(reset_id) > 0
+	return reset_gain(reset_id).sign_of() > 0
 
 
 ## What a stat restarts at after a reset: its start, plus the reset's gift total for its start stat.
@@ -1086,7 +1089,7 @@ func try_reset(reset_id: StringName) -> bool:
 	if not can_reset(reset_id):
 		return false
 	var r: ZoneResetDef = reset_defs[reset_id] as ZoneResetDef
-	var gained: int = reset_gain(reset_id)
+	var gained: BigNum = reset_gain(reset_id)
 	bloom_before = stats.duplicate()   # what the reset animation counts down from (BloomRitual)
 	var keep: int = int(floorf(effect_total(r.keep_effect))) if r.keep_effect != &"" else 0
 	for sid: String in r.resets:
@@ -1094,7 +1097,7 @@ func try_reset(reset_id: StringName) -> bool:
 			keep -= 1   # a kept flower: the gift saves the lowest ones listed
 			continue
 		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
-	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
+	_set_stat(r.currency, get_stat(r.currency).add(gained))
 	reset_counts[reset_id] = reset_count(reset_id) + 1
 	sealed.on_reset(reset_id)   # this reset's caches start cheap again
 	rebirth_count += 1   # every zone reset counts toward the relic slots (5 and 20)
@@ -1155,12 +1158,13 @@ func prestige_gain_preview() -> BigNum:
 func _prestige_gain() -> BigNum:
 	var v: BigNum = get_stat(prestige_source()).copy()
 	var th: float = config.prestige_push_threshold
-	var f: float = v.to_float()
-	if th > 0.0 and f > th:
-		v = v.mul(BigNum.from_float(pow(f / th, config.prestige_push_exponent)))
+	if th > 0.0 and v.gt(BigNum.from_float(th)):
+		var ratio: BigNum = v.div(BigNum.from_float(th))
+		var push: BigNum = ratio.sqrt_big() if config.prestige_push_exponent == 0.5 else ratio.pow_f(config.prestige_push_exponent)
+		v = v.mul(push)
 	var z: ZoneDef = current_zone()
 	if z != null and z.prestige_per_rebirth_bonus > 0.0:   # the zone's own rebirth count (reb: quarry rebirths, not reset)
-		v = v.mul(BigNum.from_float(1.0 + z.prestige_per_rebirth_bonus * get_stat(&"reb").to_float()))
+		v = v.mul(BigNum.from_float(z.prestige_per_rebirth_bonus).mul(get_stat(&"reb")).add(BigNum.one()))
 	return v
 
 

@@ -6,7 +6,6 @@ extends Node2D
 ## QuarryLight adds the lava and brazier glow, the haze with light shafts and the heat shimmer (world/quarry_light.gd).
 ## main.gd reads world_rect, mask_offset and the two paths to frame the zone.
 const DIR: String = "res://assets/art/zone2/quarry/"
-const GROUND: Texture2D = preload("res://assets/art/zone2/quarry/ground.png")
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   ## the pad slab is 3 texels thick and 28 wide, as in Larkmoor
 
@@ -33,7 +32,7 @@ func _ready() -> void:
 	var bleed: Dictionary = _data.bleed
 	var ground := Sprite2D.new()
 	ground.name = "Ground"
-	ground.texture = GROUND
+	ground.texture = ZoneAssets.texture(DIR + "ground.png")
 	ground.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ground.centered = false
 	ground.position = Vector2(bleed.ground_offset[0], bleed.ground_offset[1])
@@ -99,7 +98,7 @@ func _add_sky(ground_size: Array) -> void:
 	_sky.name = "Sky"
 	_sky.area = Rect2(0.0, 0.0, float(ground_size[0]), float(ground_size[1]))
 	_sky.shadows = _shadows
-	_sky.ground_texture = GROUND
+	_sky.ground_texture = ZoneAssets.texture(DIR + "ground.png")
 	_sky.atmosphere = false   # QuarryLight draws the haze instead
 	_sky.seasonal = false     # a themed zone: no season tint or season particles
 	_sky.underground = true   # the light holds at midday, whatever the clock says

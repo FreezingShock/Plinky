@@ -6,7 +6,7 @@ func run(t: Object) -> void:
 	t.ok(not data.is_empty(), "meadow_life.json loads")
 	var sway: Array = data.get("sway", []) as Array
 	t.ok(sway.size() >= 60, "at least 60 sway tips (got %d)" % sway.size())
-	var img: Image = Image.load_from_file("res://assets/art/zone1/meadow3d/ground.png")
+	var img: Image = (load("res://assets/art/zone1/meadow3d/ground.png") as Texture2D).get_image()
 	t.ok(img != null, "backdrop loads for checks")
 	if img == null:
 		return
@@ -92,7 +92,7 @@ func _check_tips(t: Object, json_path: String, ground_path: String, label: Strin
 	if file == null:
 		return
 	var data: Dictionary = JSON.parse_string(file.get_as_text()) as Dictionary
-	var img: Image = Image.load_from_file(ground_path)
+	var img: Image = (load(ground_path) as Texture2D).get_image()
 	t.ok(img != null, "%s backdrop loads" % label)
 	if img == null:
 		return

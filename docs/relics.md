@@ -39,7 +39,7 @@ Frames: `assets/ui/rarity/` (from art/icons/rarity, 20x20, 16x16 icon at offset 
   `rarity_of()` returns the lowercase id PadGlow expects. PadGlow already ignores Common to Rare.
 
 ## UI
-`RelicPanel` (collection + slots + hints), `RelicBar` (HUD strip), `RelicSlot`, `RelicTooltip`, `RelicToast`. Colours from `RelicStyle`, which the theme calls `set_palette()` on at zone change. Fonts come from the theme. Demo: `godot --path . res://tools/relic_demo.tscn`.
+`RelicPanel` (collection + slots + bonuses), `RelicBar` (HUD strip), `RelicSlot`, `RelicCard`, `SealedPullStrip` (the caches), `RelicTooltip`, `RelicToast`. Layout (2026-11-24, Window): the header has the count and an All | Owned view control. Under it, equip slots on the left and the active buffs in a three-column grid on the right. Then six rarity tabs, each with a strip of how much of that tier you have found. Then the tier's cards: 40 px, icon 20 px, no letter (the tab names the tier). The two caches sit side by side. There is no footer; the slot row already shows the count. Colours from `RelicStyle`, which the theme calls `set_palette()` on at zone change. Fonts come from the theme. Demo: `godot --path . res://tools/relic_demo.tscn`.
 
 ## Test
 `godot --headless --path . --script tests/run.gd`

@@ -101,7 +101,7 @@ func _build() -> void:
 	for i in 2:
 		var b := PixelButton.new()
 		b.text = TITLES[i]
-		b.icon = load("res://assets/icons/%s.png" % SHEETS[i]) as Texture2D
+		b.icon = IconCache.texture("res://assets/icons/%s.png" % SHEETS[i])
 		b.toggle_mode = true
 		b.pressed.connect(set_tab.bind(i))
 		Tip.bind(b, {"title": TITLES[i], "body": "Switch to the %s gallery." % TITLES[i].to_lower()})
@@ -125,7 +125,7 @@ func _build() -> void:
 	_build_detail()
 	_scroll.add_child(_detail_box)
 	_detail_box.visible = false
-	_icon_sheet = load("res://assets/icons/%s_sheet.png" % SHEETS[tab]) as Texture2D
+	_icon_sheet = IconCache.texture("res://assets/icons/%s_sheet.png" % SHEETS[tab])
 	_set_frame(0)
 
 
@@ -263,12 +263,6 @@ func is_open() -> bool:
 
 func detail_open() -> bool:
 	return detail_id != &""
-
-
-## True while the wipe overlay is on screen, sized to the panel, and drawn above it.
-func wipe_showing() -> bool:
-	var r: DitherReveal = _anim.reveal
-	return r.visible and r.size.x > 0.0 and r.size.y > 0.0 and r.z_index > z_index
 
 
 func open_tab(t: int) -> void:
@@ -419,7 +413,7 @@ func _page(swap: Callable) -> void:
 
 
 func _play_icon() -> void:
-	_icon_sheet = load("res://assets/icons/%s_sheet.png" % SHEETS[tab]) as Texture2D
+	_icon_sheet = IconCache.texture("res://assets/icons/%s_sheet.png" % SHEETS[tab])
 	_set_frame(0)
 	if FxConfig.reduce_flashing:
 		return
