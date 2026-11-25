@@ -448,6 +448,13 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
+## 2026-11-25: Walker and critters on the ramp steps (T9)
+- **Nathan's pick:** look A, Terracotta (mockups in `/mnt/project-files/gower-style/t9-walker-critters/`, generator `t9_mock_walker_critters.py`).
+- **Walker:** `tools/art/gen_walker.py` now reads the meadow ramp from `render/palettes.gd`. The cloak, hood, scarf and boots each use four steps (earth for the cloak and hood, green for the scarf). The outline stays the ink anchor, and the face, satchel and details keep their anchor colours. Codes: a plain role number is the anchor, and `8 + role * 4 + step` is the same role at another step.
+- **Critters:** `world/life_critters.gd` draws its sprites with `_make_shaded`. A texel takes step 3 when its top or left neighbour is empty or ink (lit rim), step 1 when its bottom or right neighbour is (underside), and step 2 otherwise. Ink stays on the anchor. `LifeCritters.shade_palette` holds the 40 colours these codes index. Butterflies (lit upper wing and spots) and the golden sparkle (lit gold and core) use the same palette.
+- **Not changed:** the walker's shape, the animation, the sprites of wild life (`world/life_wild.gd` still uses the anchor `_make_sprite`), ripples and the dust puffs.
+- **Checked in the cloud:** Godot 4.7.2 headless suite (11,822 checks, 0 failed, nine new shading checks in `tests/test_critters.gd`). An in-engine walker capture under xvfb shows the terracotta walker on the Starting Clearing.
+- **Not verified in-engine:** the critters. Their look is checked by the Python mock and the tests only. Check the rabbit, duck, frog, chicken, butterflies and the golden critter on the PC before calling it done.
 
 ## Flower fields and pads, T4 (25 Nov)
 | Date | Decision | Why |
@@ -474,3 +481,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Bug:** the grab picked the sun or moon by `sun_of(phase) >= 0`. At sunrise and sunset (phase 0.25 and 0.75, the loading screen's boot phase among them) `sun_of` is a float hair either side of zero, so the same body could grab on the wrong half of the arc. The body was drawn and hit-tested by phase range, so it jumped to the far end of the other arc, or the grab missed.
 - **Fix:** `TitleMood.sun_half(p)` decides the half by phase range (sunrise to sunset, both ends included), and both `arc_point` and the grab use it. Tests cover both boundary phases and their float neighbours.
 - **Found by:** PC QA batch 165 (sun grab fails on the loading screen in both Reduce Motion states).
+## 2026-11-25: Separate Cinder from Embers, and Rebirth from Ingot (T11 follow-up)
+- **Why:** PC QA on #532 (batch 166) found two pairs too close. Embers and Cinder were both orange-red, and Rebirth and Ingot were both purple.
+- **Change:** Cinder moves to the meadow family (green stone with the orange seam), so it is no longer warm. Rebirth points, Rebirth and Prestige move to the tidewater family (teal and gold), so they are no longer purple. The bloom crown joins them. Clock, rest and offline stay on tidewater.
+- **Why not shift the iris accent:** Ingot's purple is a literal material colour (`staged/ingot.txt` has literal lines), so the iris ramp can't change it. Moving the Rebirth icons off iris separates them without touching the material.
+- **Supersedes:** the family lists in the 2026-11-25 T11 entry above. The families in `tools/art/icon_ramps.py` are the source of truth.
+- **Checked:** `gen_icons_staged.py` changed exactly the 20 files for Cinder, Rebirth points, Rebirth and Prestige, and nothing else. The four icons were rendered side by side before the change (Pillow, not in-engine).
+- **Not verified in-engine:** the PC QA thread should check the HUD and the gallery after pulling.

@@ -3,10 +3,10 @@
 Every icon is drawn with the 8 role indices of tools/art/staged_kit.py. This module turns a role into one of the
 4-step hue-shifted ramps from render/palettes.gd (the same RAMP the world uses), so icon colour comes from the same
 ramps as the world and nothing is a one-off colour. Each icon belongs to one family:
-  meadow    stats, Sunlight, Seeds, Cash, Mult, nature and the meadow materials
-  quarry    Embers, Cinder, Slag, Ore, Ingot, Alloy, Emberheart and the quarry relics
-  iris      Rebirth, prestige, Rebirth points and crowns
-  tidewater time, rest and offline
+  meadow    stats, Sunlight, Seeds, Cash, Mult, nature, Cinder (green stone with an orange seam) and the meadow materials
+  quarry    Embers, Slag, Ore, Alloy, Emberheart, Shards, Heat and the quarry relics
+  iris      the rebirth relics (crowns, pearl, lens, lantern)
+  tidewater Rebirth points, Rebirth, prestige and bloom crown (teal and gold, so they stay apart from purple Ingot), time, rest and offline
 
 shade() picks the ramp step per texel from the grid itself: texels on the lit upper-left edge take step 3, texels on
 the shaded lower-right edge take step 1, everything else takes step 2 (the anchor). Ink (role 0) stays ink.
@@ -26,12 +26,11 @@ for _n in ("cash", "mult", "seeds", "sunlight", "crit", "crit_dmg", "rate", "luc
            "stats_menu", "attrs_menu", "menu_stats", "menu_attributes", "menu_upgrades", "menu_log", "menu_travel",
            "menu_history", "menu_settings", "menu_ledger", "menu_relics", "menu_hamburger"):
     FAMILY_OF[_n] = "meadow"
-for _n in ("embers", "cinder", "slag", "ironore", "ingot", "alloy", "emberheart", "shards", "heat", "nucleus_crown"):
+FAMILY_OF["cinder"] = "meadow"  # green stone with an orange seam: not warm, so it stays apart from Embers
+for _n in ("embers", "slag", "ironore", "ingot", "alloy", "emberheart", "shards", "heat", "nucleus_crown"):
     FAMILY_OF[_n] = "quarry"
-for _n in ("rp", "reb", "prestige", "bloom_crown"):
-    FAMILY_OF[_n] = "iris"
-for _n in ("clock", "rest", "offline"):
-    FAMILY_OF[_n] = "tidewater"
+for _n in ("rp", "reb", "prestige", "bloom_crown", "clock", "rest", "offline"):
+    FAMILY_OF[_n] = "tidewater"  # teal and gold: Rebirth stays apart from purple Ingot
 # relics: object colour is literal, the family only shades the texels that use a role index
 for _n in ("r_quarry_coal", "r_warm_ember", "r_obsidian_spur"):
     FAMILY_OF[_n] = "quarry"
