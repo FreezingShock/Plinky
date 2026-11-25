@@ -681,3 +681,8 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Cloud repro did not match:** real `InputEventMouseButton` events through `Input.parse_input_event` on the bar and the icon, with and without a motion event first, after a chip click, with a tooltip up, and after a gliding move onto the bar, all started the hold on the old and the new code alike. So this is a defence, not a proven fix. The PC logs (`C:\dev\_plinky\logs\batch174\`) are needed to confirm the cause.
 - **Not covered by a committed test:** `tests/run.gd` suites run from `SceneTree._init`, before the tree is live. There a card has no layout (its bar is 0 by 0) and `Viewport.push_input` is refused, so no suite can press the bar through the viewport.
 - **Checked:** `tests/run.gd` passes. Not run in-engine on the PC.
+## 2026-11-25: Goals card hides once every goal is reached
+- **Decision:** `NextGoalCard.shown_for(goals)` is true only while a goal is open. `Hud._sync_goal_card` shows the card from the Dewdrops unlock and while that holds, and runs on each refresh and each goal reached.
+- **Why:** the card was anchored at (4, 4), the same corner as the stat strip, so once every goal was reached its "All Goals Reached" box covered the strip's top rows (Nathan's screenshot). The card is no longer a `gate()` node, so the gate cannot show it again.
+- **Not yet fixed:** while a goal is open the card still sits over the strip's top rows. The layout pick (one panel, ribbon or ring, see `tools/goals_shot.tscn` and `/mnt/project-files/plinky/goals-stats-overhaul/`) fixes that.
+- **Checked:** `tests/run.gd` passes (11841 checks, 0 failed). In engine, `tools/goals_shot.tscn -- done` shows the strip unobstructed and no card.

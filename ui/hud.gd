@@ -355,17 +355,28 @@ func _on_goal_reached(id: StringName) -> void:
 	if _goal_card == null:
 		return
 	var spec: Dictionary = _goal_card.goal_reached(id)
+	_sync_goal_card()
 	if not spec.is_empty():
 		Banner.announce(spec)
 
 
-## The Next Goal card, top left: the first mid-game goal not yet reached (ui/next_goal_card.gd). Gated like the stat strip.
+## The goals card shows only while a goal is still open, and only from the Dewdrops unlock (the stat strip's gate).
+## Once every goal is reached it hides for good, so it never sits over the stat strip.
+func _sync_goal_card() -> void:
+	if _goal_card == null:
+		return
+	var want: bool = GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP) and NextGoalCard.shown_for(sim.goals)
+	if _goal_card.visible != want:
+		_goal_card.visible = want
+
+
+## The Next Goal card, top left: the first mid-game goal not yet reached (ui/next_goal_card.gd). Shown by _sync_goal_card.
 func _build_goal_card() -> void:
 	_goal_card = NextGoalCard.new()
 	_goal_card.position = Vector2(4.0, 4.0)
 	add_child(_goal_card)
 	_goal_card.bind(sim)
-	gate(_goal_card, Onboarding.F_DEWDROP)
+	_goal_card.visible = false
 
 
 func _build_clock() -> void:
@@ -1144,6 +1155,7 @@ func _refresh() -> void:
 	if rp_box != null:   # Rebirth Points show once you have rebirthed (or hold some)
 		_set_row_shown(rp_box, _layout_rows().has(&"rp") and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (_edit_mode or sim.rebirth_count > 0 or not sim.rp_available().is_zero()), _gates_ready)
 	_apply_gates(_gates_ready)
+	_sync_goal_card()
 	_gates_ready = true
 	_poll_tips()
 	for sid: StringName in _rows:

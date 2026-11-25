@@ -76,6 +76,11 @@ func _tip() -> Variant:
 		"hint": "Reached goals add +%d%% to every press so far." % roundi(float(v["bonus"]) * 100.0)}
 
 
+## Pure: whether the card has a goal to show. False once every goal is reached, and then Hud hides the card for good.
+static func shown_for(goals: Goals) -> bool:
+	return goals.next_goal() != null
+
+
 ## Pure: what the card shows. Keys: done, name, description, progress 0..1, detail, bonus (sum of reached rewards),
 ## and reward (this goal's own bonus). `detail` reads "3 / 10" style progress plus the reward it pays.
 static func view_for(goals: Goals, counters: Dictionary) -> Dictionary:
