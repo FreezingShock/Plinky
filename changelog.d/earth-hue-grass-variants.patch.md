@@ -1,1 +1,0 @@
-- Larkmoor dirt keeps its brown at noon instead of going olive-khaki.
