@@ -163,6 +163,12 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Not checked:** Nucleus cadence (the probe covers the meadow's Bloom only), and how the gifts change the cadence. PC QA or a playtest should time the 7 and 10 gates.
 - **Alternative if the 10 gate feels late:** top the spread at 9. On this floor the 9 gate would fall at about 56 min, two minutes earlier.
 
+## 2026-11-25: Full-run pacing chart (tools/sim_run.gd), no balance change
+- **What:** `tools/sim_run.gd` plays Meadow, Larkmoor and the Ember Quarry under each profile, in two modes: push (no resets) and loop (take Bloom or Nucleus after each gate, to 10 uses). It reports gate times, every reset tier, goal times and the longest stretch with nothing to buy. Chart and findings: `docs/balance.md` section 14.
+- **Result (active, 4 presses/s, loop):** Bloom 10 at 59.3 min (target about 60), Quarry gate at 64.7, Nucleus 10 at 94.5. Idle takes about 1.9x as long (target about 2x).
+- **Result (push):** the Quarry gate takes 116 min without resets, so the Bloom loop is the way through.
+- **Decided (Nathan, 25 Nov, decision card):** keep current pacing. The 60-minute target is the 10th Bloom (59 min active), not the Larkmoor gate (15 min). No numbers changed.
+- **Not checked yet:** walking, gifts, attributes and relic equips, so these are floors.
 ## 2026-11-25: Mid-game goals are a chain with a small permanent bonus
 - **Why:** between Bloom and Nucleus resets a player had nothing new to aim for once the gates were open. Nathan picked a milestone track with rewards (decision card, 2026-11-25).
 - **What:** 12 goals in `content/goals/`, one chain by `order`, each reached once and kept through resets. Each adds 2% (3% for the four bigger ones) to every pad's press reward, so the full chain is +28%. Counters are the Sim's achievement counters, plus a new `zone_resets` (total zone reset uses).
