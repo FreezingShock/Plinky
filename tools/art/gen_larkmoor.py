@@ -977,6 +977,17 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# main road = flagstones: lit sand stones in staggered rows, with worn earth mortar between them. Lanes stay plain packed
+# sand and trails stay dark earth, so the three tiers read apart at 1x without a new material. The mortar is a light
+# drop only, so the palette and the ramp stay the same as the path's.
+road_m = on_path['road'] & ~on_path['lane'] & (mat == T_PATH)
+row_ = np.floor(FV / 4.0)
+cu_ = (FU + 2.5 * (row_ % 2)) % 5.0
+cv_ = FV % 4.0
+joint_v = (cu_ < 1.0) & (vn2(FU / 3.0, FV / 3.0, 47) > .45)  # vertical joints: about half of them, so the road is not a grid
+joint_h = cv_ < 1.0                                          # horizontal joints: every row
+mortar = (joint_v | joint_h) & road_m
+lt -= .30 * mortar                                           # a soft drop to the earth step, not a hard grid
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
