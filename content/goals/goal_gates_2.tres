@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GoalDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/goal_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"goal_gates_2"
+display_name = "Open Doors"
+description = "Open two gates."
+counter = &"gates_open"
+target = 2.0
+order = 6
+reward = 0.02

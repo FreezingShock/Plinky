@@ -27,6 +27,8 @@ signal mastery_leveled(button_id: StringName, level: int)
 signal tier_opened(tier_id: StringName)
 ## An achievement just unlocked (core/achievements.gd). Never fires for ones a loaded save already had.
 signal achievement_unlocked(achievement_id: StringName)
+## A mid-game goal was just reached (core/goals.gd). Never fires for ones a loaded save already had.
+signal goal_reached(goal_id: StringName)
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -45,6 +47,8 @@ var mastery: Mastery = Mastery.new()
 var run_stats: RunStats = RunStats.new()
 ## Which achievements are unlocked (the Ledger). Replaced by ContentLoader with the content's list.
 var achievements: Achievements = Achievements.new()
+## Mid-game goals between resets (core/goals.gd): a chain of milestones, each a small permanent press bonus. Replaced by ContentLoader.
+var goals: Goals = Goals.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
 ## The current season's light event (core/seasonal_events.gd). Set up by ContentLoader; no config means no events.
@@ -181,6 +185,14 @@ func validate() -> PackedStringArray:
 			errs.append("achievement %s: unknown counter %s" % [a.id, a.counter])
 		if a.target <= 0.0:
 			errs.append("achievement %s: target must be above zero" % a.id)
+	for g: GoalDef in goals.sorted:
+		var goal_peak_ok: bool = String(g.counter).begins_with("peak_") and stat_defs.has(StringName(String(g.counter).trim_prefix("peak_")))
+		if not known.has(g.counter) and not goal_peak_ok:
+			errs.append("goal %s: unknown counter %s" % [g.id, g.counter])
+		if g.target <= 0.0:
+			errs.append("goal %s: target must be above zero" % g.id)
+		if g.reward < 0.0:
+			errs.append("goal %s: reward must not be negative" % g.id)
 	for z: ZoneDef in zone_defs.values():
 		if z.prestige_source_stat != &"" and not stat_defs.has(z.prestige_source_stat):
 			errs.append("zone %s: unknown prestige_source_stat %s" % [z.id, z.prestige_source_stat])
@@ -208,6 +220,7 @@ func new_game() -> void:
 	mastery.clear()
 	run_stats.clear()
 	achievements.clear()
+	goals.clear()
 	_ach_clock = 0.0
 	calendar.reset()
 	ui_flags = {}
@@ -381,6 +394,7 @@ func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1)
 		return BigNum.zero()
 	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
 	gain = gain.mul(BigNum.from_float(zone_pad_mult(b.zone)))
+	gain = gain.mul(BigNum.from_float(goals.mult()))   # mid-game goals: a permanent bonus on every pad, kept through resets
 	if relics != null:
 		gain = gain.mul(BigNum.from_float(relics.zone_mult(b.zone)))
 	if is_hot():
@@ -902,6 +916,9 @@ func achievement_counters() -> Dictionary:
 	for lv: Variant in attr_levels.values():
 		attrs += int(lv)
 	var top_mastery: int = 0
+	var resets_done: int = 0
+	for n: Variant in reset_counts.values():
+		resets_done += int(n)
 	for bid: Variant in button_defs:
 		top_mastery = maxi(top_mastery, mastery.level(bid))
 	var c: Dictionary = {
@@ -910,6 +927,7 @@ func achievement_counters() -> Dictionary:
 		&"rebirths": float(rebirth_count), &"relic_drops": float(relic_drops), &"relic_kinds": float(kinds),
 		&"best_relic_rank": float(best_rank), &"attributes_bought": float(attrs), &"mastery_best": float(top_mastery),
 		&"play_hours": play_seconds / 3600.0, &"gates_open": float(gates_open.size()),
+		&"zone_resets": float(resets_done),
 	}
 	for tid: Variant in tier_defs:
 		var zid: StringName = (tier_defs[tid] as TierDef).zone
@@ -930,6 +948,8 @@ func _evaluate_achievements() -> Array[StringName]:
 func check_achievements() -> void:
 	for id: StringName in _evaluate_achievements():
 		achievement_unlocked.emit(id)
+	for gid: StringName in goals.check(achievement_counters()):
+		goal_reached.emit(gid)
 
 
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
@@ -1472,6 +1492,7 @@ func to_dict() -> Dictionary:
 		"calendar": calendar.to_dict(),
 		"run_stats": run_stats.to_dict(),
 		"achievements": achievements.to_dict(),
+		"goals": goals.to_dict(),
 	}
 
 
@@ -1558,6 +1579,8 @@ func from_dict(d_in: Dictionary) -> bool:
 		achievements.from_dict(d["achievements"])
 	else:
 		_evaluate_achievements()   # a save from before the Ledger: what is already earned counts, with no pop-ups
+	goals.from_dict(d.get("goals", {}))
+	goals.check(achievement_counters())   # goals earned before this save (or before goals existed) count, with no pop-ups
 	if old_quarry:
 		_migrate_to_quarry_ladder()
 	if save_ladder < 4:
