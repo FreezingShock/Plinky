@@ -67,6 +67,16 @@ func run(t: Object) -> void:
 	m.start_phase = 0.73
 	t.ok(m.rays(0.0) > 0.7, "god rays at dusk")
 
+	# Canopy light shafts (Larkmoor): full at golden hour, faint at noon, off at midnight and in rain.
+	m.start_phase = 0.69
+	t.ok(m.shafts(0.0) > 0.8, "canopy shafts at golden hour")
+	m.start_phase = 0.5
+	t.ok(m.shafts(0.0) > 0.0 and m.shafts(0.0) < 0.2, "canopy shafts faint at noon")
+	m.start_phase = 0.0
+	t.near(m.shafts(0.0), 0.0, 1e-6, "no canopy shafts at midnight")
+	m.start_phase = 0.69
+	t.near(m.shafts(0.0, 1.0), 0.0, 1e-6, "no canopy shafts in rain")
+
 	# Mist 0..1, thickest around dawn.
 	var mist_ok: bool = true
 	m.start_phase = 0.0
