@@ -3,7 +3,7 @@ extends SceneTree
 ## For each zoom and pan offset it reports the frames until the screen is fully covered (pop-in window), the chunks on
 ## screen that are still missing once it settles (must be 0), the loaded prop count and the node count.
 ##
-## godot --headless --path . --script tools/larkmoor_view_probe.gd
+## godot --headless --path . --script tools/larkmoor_view_probe.gd   (windowed runs are the ones to compare: no --headless)
 ## Headless: node counts and chunk coverage are real, frame times are not (see larkmoor_stream_bench.gd).
 
 const SETTLE_FRAMES: int = 90
@@ -41,6 +41,10 @@ func _init() -> void:
 		printerr("view probe: no Larkmoor scene under world")
 		quit(1)
 		return
+	# The texture warm pass is off in headless (world/larkmoor_scene.gd _drain_warm), so pan pop-in here runs higher than a
+	# windowed run: the windowed PC run of this pan showed 3 pop-in frames where headless shows about 10.
+	if DisplayServer.get_name() == "headless":
+		print("NOTE headless: the texture warm pass is off, so pop-in counts run high. Windowed PC runs of the zoom 1 (700,-500) pan show about 3 frames.")
 	print("zoom  pan              popin_frames  worst_missing  loaded_props  max_nodes")
 	for zoom: int in ZOOMS:
 		cam.zoom_step(zoom - cam.zoom_level, cam.frame * 0.5)

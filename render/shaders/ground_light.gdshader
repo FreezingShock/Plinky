@@ -81,9 +81,9 @@ vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
 // Fallen petals: a patch mask gathers them in drifts, and a per-texel hash scatters a sparse few inside each drift.
 vec3 fallen_blossom(vec3 c, vec2 wp, float thr) {
 	vec2 iso = vec2(wp.x, wp.y * 2.0);
-	float patch = season_vnoise(iso / 9.0 + 5.0) * 0.7 + season_vnoise(iso / 3.0 + 11.0) * 0.3;
-	float dens = smoothstep(0.45, 0.75, patch) * blossom;
-	if (dens > thr && season_hash(floor(iso) + 0.5) < 0.25) {
+	float patch = season_vnoise(iso / 12.0 + 5.0) * 0.8 + season_vnoise(iso / 4.0 + 11.0) * 0.2;
+	float dens = smoothstep(0.55, 0.8, patch) * blossom;
+	if (dens > thr && season_hash(floor(iso) + 0.5) < 0.08) {
 		c = mix(c, blossom_col, 0.9);
 	}
 	return c;
