@@ -448,3 +448,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
+
+## 2026-11-25: Shadows on every asset (T5, Gower restyle part P10)
+- **Nathan's pick:** mockup C (sheet at /mnt/project-files/gower-style/shadows-t5/sheet_v2_thistle.png): flower shadows, longer noon shadows and a mauve shade.
+- **Decision:** each garden flower (world/larkmoor_gardens.json, about 2,000 in Larkmoor) gets one small dithered oval in its own `FlowerShadows` layer (`SkyShadows.set_flowers`), at strength 0.75 and laid with the sun. Flowers are not casters, so they take no pad copy and cost one draw. Noon cast shadows are longer (`shadow_len_noon` 0.22 to 0.6 in sky config; the golden-hour and dusk lengths are unchanged). The high-sun shade is mauve `#4e4470` (`SkyShadows.SHADE`) and still deepens to blue at low sun.
+- **Not shadowed on purpose:** wheat (ground cover), the farm fence ring and soil (flat), and critters and butterflies (moving, too small to read). Grass blades rely on the ground height march.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb, Larkmoor at noon and golden hour (`tools/shadow_audit_shots.tscn` renders HUD-free frames). The unit suite passes with 4 new flower checks in test_lighting.gd.
+- **Not verified on the PC:** the mauve on a real monitor, and the flower dots at night and in winter.
