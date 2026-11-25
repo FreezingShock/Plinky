@@ -924,9 +924,11 @@ if ROAD_ROCKS or BANK_ROCKS or BANK_RING:
     # keeps a candidate only if no stone is within BANK_SPACING of it, so the ring spaces itself evenly. A path crossing the
     # shore leaves its gap (dedge), and the trees and pads keep their footprints (placed). Baked, so no node cost.
     _ring_n = 0
+    _ring_rec = []
     if BANK_RING:
         _rg = random.Random(778)
-        _bm = (DW > .8) & (DW < 2.6) & (WD <= -.3) & INSIDE & (H0 <= 9.0) & (np.hypot(GU, GV) <= .6) & (dedge >= 2.5) & (dgrove >= GROVE_CLEAR)
+        # adjacent to the water: DW is the distance in texels to open water, so 1 is the texel touching it. Land only (WD <= -.3).
+        _bm = (DW > .8) & (DW < 1.7) & (WD <= -.3) & INSIDE & (H0 <= 9.0) & (np.hypot(GU, GV) <= .6) & (dedge >= 2.5) & (dgrove >= GROVE_CLEAR)
         _cand = np.argwhere(_bm).astype(float)
         _order = list(range(len(_cand))); _rg.shuffle(_order)
         for _k in _order:
@@ -936,6 +938,9 @@ if ROAD_ROCKS or BANK_ROCKS or BANK_RING:
             _f, _half, _top, _rad = make_rock(random.Random(_rg.randint(0, 1 << 30)), _rg.random() < .45)
             voxelize(_f, _half, _top, _u, _v, float(terrain_h(_u, _v)) - .4, _rg.uniform(.7, 1.05), _rg.uniform(0, 6.28), 1)
             _stones.append((_u, _v)); _ring_n += 1
+            _ring_rec.append([_u, _v, round(float(WD[int(_u), int(_v)]), 3), round(float(DW[int(_u), int(_v)]), 3)])
+        # the test reads these: every ring stone is on land and touches the water (wd <= -0.3 land, dw 0.8 to 1.7)
+        with open(os.path.join(OUT, 'bank_stones.json'), 'w') as _bf: json.dump({'stones': _ring_rec}, _bf)
     log('extra stones placed %d (road %d, bank %d, ring %d)' % (len(_stones), ROAD_ROCKS, BANK_ROCKS, _ring_n))
 # flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
 # texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
