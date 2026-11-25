@@ -55,6 +55,9 @@ func _ready() -> void:
 	if sh != null:
 		sh.flower_strength = float(_arg(args, "flower", str(SkyShadows.FLOWER_STRENGTH)))
 		sh.shade_tint = Color.html(_arg(args, "shade", "#" + SkyShadows.SHADE.to_html(false)))
+		sh.mover_strength = float(_arg(args, "mover", str(SkyShadows.MOVER_STRENGTH)))
+		sh.mover_size = Vector2(float(_arg(args, "mw", "4.0")), float(_arg(args, "mh", "2.5")))
+		sh.mover_len = float(_arg(args, "mlen", str(SkyShadows.MOVER_LEN)))
 		sh.set_flowers(main.meadow.get("_garden_flowers") as Array)
 	if sky != null and sky.get("_config") != null:
 		var cfg: Resource = sky.get("_config") as Resource
@@ -63,12 +66,29 @@ func _ready() -> void:
 	for ph: String in phases:
 		SkyCycle.debug_phase = float(ph)
 		for pl: String in places:
-			var m: Marker2D = anchors.get_node_or_null("District_" + pl) as Marker2D
-			if pl == "gate":
-				m = anchors.get_node_or_null("Gate") as Marker2D
-			if m == null:
-				continue
-			await _goto(m.position + Vector2(0, 10), zoom)
+			var at: Vector2 = Vector2.ZERO
+			if pl == "lake":   # the lake's south shore (ducks, frogs)
+				at = Vector2(949.0, 1010.0)
+			elif pl == "farm":   # the chicken yard (chickens, rabbits)
+				at = Vector2(1920.0, 820.0)
+			elif pl.begins_with("critter"):   # the Nth ground critter's foot (LifeAir.ground_pushers), N from the name
+				var air: Node = main.meadow.get_node_or_null("LifeAir")
+				var pts: PackedVector2Array = air.ground_pushers() if air != null else PackedVector2Array()
+				var k: int = int(pl.substr(7)) if pl.length() > 7 else 0
+				if k < pts.size():
+					at = pts[k]   # the walker is hidden for these shots, so nothing covers the critter
+					print("critter ", k, " of ", pts.size(), " at ", at)
+				else:
+					continue
+			else:
+				var m: Marker2D = anchors.get_node_or_null("District_" + pl) as Marker2D
+				if pl == "gate":
+					m = anchors.get_node_or_null("Gate") as Marker2D
+				if m == null:
+					continue
+				at = m.position + Vector2(0, 10)
+			main.walker.visible = not pl.begins_with("critter")
+			await _goto(at, zoom)
 			await _wait(30)
 			get_viewport().warp_mouse(Vector2(-200.0, -200.0))   # the pointer over a pad would summon its tooltip
 			await _wait(10)

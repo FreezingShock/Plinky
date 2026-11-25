@@ -147,6 +147,13 @@ func run(t: Object) -> void:
 	t.ok(fl_tip.x > 100.0 and fl_tip.x - 100.0 < 10.0, "a flower's shadow is small and falls with the sun (tip x %.1f)" % fl_tip.x)
 	sh.set_flowers([])
 	t.eq(sh._flowers_mm.multimesh.instance_count, 0, "an empty garden list clears the flower shadows")
+	# Ground critters: one oval per critter, moved every frame from the source; none when there is no source.
+	sh.mover_source = func() -> PackedVector2Array: return PackedVector2Array([Vector2(50.0, 50.0), Vector2(60.0, 52.0)])
+	sh._process(0.0)
+	t.eq(sh._movers_mm.multimesh.visible_instance_count, 2, "every ground critter gets one shadow oval")
+	sh.mover_source = func() -> PackedVector2Array: return PackedVector2Array([Vector2(70.0, 70.0)])
+	sh._process(0.0)
+	t.eq(sh._movers_mm.multimesh.visible_instance_count, 1, "the critter shadows follow the critters (one left)")
 	tree.free()
 	bush.free()
 	sh.free()
