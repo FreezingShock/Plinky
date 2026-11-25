@@ -47,6 +47,13 @@ STREAM_CTRL = [(500, 512), (534, 506), (566, 500), (594, 488), (630, 476), (680,
 STREAM = []                   # filled from STREAM_CTRL once _catmull() exists (below)
 BRIDGE = (762, 456)           # where the main path crosses the river
 FOOT_CROSSING = (594, 487)    # where the west trail crosses the river
+# Feeder brooks (T6 layout B): each leaves the river (or the mere) and runs into a small pond in a clearing, so every pond
+# is fed and none is an orphan puddle. No brook crosses a path, so no bridge is needed. The third pond sits in the pine
+# clearing south-west of the mere, clear of the mountain edge.
+FEEDERS = [[(640, 476), (646, 440), (652, 410), (650, 380)],
+           [(884, 452), (882, 420), (880, 390), (880, 362)],
+           [(1070, 380), (1046, 360), (1024, 342), (1010, 330)]]
+PONDS = [dict(c=(650, 380), rx=30, ry=16), dict(c=(880, 360), rx=30, ry=16), dict(c=(1010, 330), rx=30, ry=16)]
 
 # Pad rows: a tier is a row of pads laid on a smooth curve (a Catmull-Rom spline through a few control points) that follows the
 # ground beside a path. `curve_row(ctrl, n)` lists n pads from the first to the last, PAD_GAP apart along the curve (authored
@@ -234,7 +241,7 @@ for _d in DISTRICTS:
 # keep their texel size, so grove counts scale by S squared to keep the same density. The scene loads props by chunk around
 # the walker (world/larkmoor_scene.gd), which keeps the live node count under the 1350 ceiling.
 def _apply_scale():
-    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, FOOT_CROSSING, PAD_CLEAR, GROVES
+    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, FOOT_CROSSING, PAD_CLEAR, GROVES, FEEDERS, PONDS
     def sc(p): return (p[0] * S, p[1] * S)
     W, H = round(W * S), round(H * S)
     OX, OY = OX * S, OY * S
@@ -248,6 +255,8 @@ def _apply_scale():
     MERE['rx'], MERE['ry'] = MERE['rx'] * S, MERE['ry'] * S
     STREAM[:] = [sc(q) for q in STREAM]
     FOOT_CROSSING = sc(FOOT_CROSSING)
+    FEEDERS[:] = [[sc(q) for q in f] for f in FEEDERS]
+    for pd in PONDS: pd['c'] = sc(pd['c']); pd['rx'] *= S; pd['ry'] *= S
     for d in DISTRICTS:
         d['c'] = sc(d['c']); d['pads'] = [sc(q) for q in d['pads']]
     for lm in LANDMARKS: lm['at'] = sc(lm['at'])
