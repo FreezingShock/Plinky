@@ -32,6 +32,10 @@ OXS0, OYS0 = LAY.OX, LAY.OY
 OXS, OYS = OXS0, OYS0
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
+# Prop palette (Gower-style restyle, v3 mockup B): the sprites' albedo and the relit props' ramps. Ink stays put, and the
+# ground keeps PAL, so the backdrop, the flower and sway checks and the UI palette are unchanged.
+PROP_PAL = ['#14161c', '#1c3a2e', '#2f6a42', '#4f8f4a', '#9cc85c', '#e6ec9a', '#8a5a38', '#f2ecd2']
+PROP_COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PROP_PAL], np.uint8)
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
 def s2uv(sx, sy): d = sx - OXS0; s = (sy - OYS0) * 2; return (s + d) / 2.0, (s - d) / 2.0
 
@@ -1274,7 +1278,8 @@ for t in TALL:
     spr = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
     m_ = IDM[y0:y1 + 1, x0:x1 + 1] == t['id']
     if t['kind'] == 'windmill': m_ = _largest_part(m_)   # the mill is one solid tower; loose pixels up top are sail edge, not tower
-    spr[m_, :3] = RGBM[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
+    # sprite albedo takes the prop palette (PROP_PAL); the ground and backdrop keep PAL/COLS
+    spr[m_, :3] = PROP_COLS[np.clip(AUXM['out'][y0:y1 + 1, x0:x1 + 1][m_], 0, None)]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(OUT, fn))
     depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUXM, y0, y1, x0, x1, m_)
     # a bridge sorts 40 texels north of its centre, so the walker on the deck always draws over it (the picture stays put: offset = box - foot)

@@ -23,6 +23,10 @@ OXS0, OYS0 = 320, 4                       # the 640x360 frame (layout coordinate
 OXS, OYS = OXS0 + BLX, OYS0 + BLY         # render origin, shifted into the bleed canvas
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
+# Prop palette (Gower-style restyle, v3 mockup B): the sprites' albedo and the relit props' ramps. Ink stays put, and the
+# ground keeps PAL, so the backdrop, the flower and sway checks and the UI palette are unchanged.
+PROP_PAL = ['#14161c', '#1c3a2e', '#2f6a42', '#4f8f4a', '#9cc85c', '#e6ec9a', '#8a5a38', '#f2ecd2']
+PROP_COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PROP_PAL], np.uint8)
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
 def s2uv(sx, sy): d = sx - OXS0; s = (sy - OYS0) * 2; return (s + d) / 2.0, (s - d) / 2.0
 
@@ -1009,7 +1013,7 @@ RAMP.update({110: [1], 111: [2]})
 # the relight quantises through the 32-colour ramps (palette B, gen_palette_ramps.py); the bake above keeps the 8 anchors
 RAMP32 = {m: gpr.prop_ramp_steps(r) for m, r in RAMP.items()}
 depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP32, PAL,
-                              ramp_pal=gpr.role_steps_32(PAL))
+                              ramp_pal=gpr.role_steps_32(PROP_PAL))
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(HERE, 'meadow3d-ground-1x.png'))
