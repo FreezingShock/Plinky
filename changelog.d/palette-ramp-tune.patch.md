@@ -1,1 +1,0 @@
-- Ramp shading is tuned so Larkmoor's golden hour and noon keep their warm, bright look. Shadows are less dark and less cool, which also cuts the grass dither.
