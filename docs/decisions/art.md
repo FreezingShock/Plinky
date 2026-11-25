@@ -458,3 +458,8 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Ledger categories kept literal:** the nine ledger category icons keep their own colours. They match `LedgerPanel.CATEGORY_COLORS`, so changing them needs a code change, which is out of scope here.
 - **Not yet done:** `docs/img/icons_staged.png` still shows the unshaded set.
 - **Not verified in-engine:** the cloud has no Godot run for this change. Icon paths are unchanged, so no code path moves.
+
+## Pad plates, T4 (25 Nov)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
