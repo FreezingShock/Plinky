@@ -54,8 +54,7 @@ func _init() -> void:
 			var worst_missing: int = 0
 			var max_nodes: int = 0
 			for i: int in SETTLE_FRAMES:
-				cam.set("_free", true)
-				cam.pan = pan
+				cam.hold_pan(pan)
 				await process_frame
 				var missing: int = _missing_on_screen(scene)
 				if missing > 0:

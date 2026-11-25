@@ -126,6 +126,11 @@ func _free_zoom(t: Object) -> void:
 	# Recentre glides back onto the walker and leaves free mode.
 	cam.recenter()
 	t.ok(not cam.is_free(), "recentre leaves free mode")
+	# a held pan (the QA probes drive the view this way) stays free and at its offset, and resets the idle return
+	cam.hold_pan(Vector2(300.0, -200.0))
+	t.ok(cam.is_free(), "a held pan is free mode")
+	t.eq(cam.pan, Vector2(300.0, -200.0), "a held pan keeps its offset")
+	t.near(float(cam.get("_idle")), 0.0, 0.0001, "a held pan resets the idle return, so the view stays where a tool put it")
 	_steps(cam, 240)
 	t.ok(cam._center.distance_to(walker.position + WorldCamera.FOCUS_LIFT) < 5.0, "recentre glides the view back onto the walker (within the idle drift)")
 	_drop(cam, walker)
