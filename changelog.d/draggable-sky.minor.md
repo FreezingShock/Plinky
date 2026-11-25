@@ -1,1 +1,0 @@
-On the loading and title screens, press the sun or the moon and drag it. It glides onto the pointer, lifts while held, and flicks on release. Sideways position sets the time of day (sun) or night (moon), and the sky and light follow it.

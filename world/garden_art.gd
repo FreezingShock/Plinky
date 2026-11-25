@@ -23,9 +23,11 @@ const SEASON_SUMMER: int = 1
 const SEASON_AUTUMN: int = 2
 const SEASON_WINTER: int = 3
 const INK: Color = Color("14161c")
-const LEAF: String = "3d9a45"
-const LEAF_DARK: String = "28683a"
-const LEAF_LIGHT: String = "7ccf6a"
+## Leaf greens from the meadow zone ramp (render/palettes.gd RAMP, role 3 base and role 2 deep, steps 1 to 3), so the
+## stems, shrubs and leaves sit in the zone's own hue family (T4, M1 Remap).
+const LEAF: String = "4a895d"        # meadow base, step 1
+const LEAF_DARK: String = "225a4a"   # meadow deep, step 1 (winter and shadow leaves)
+const LEAF_LIGHT: String = "81b65d"  # meadow light, step 1 (lit leaf tips)
 const SEED: String = "6b4a2a"
 const FROST: String = "eaf6ff"
 const DEW: String = "ffffff"      # the bright drops on an open head at dawn

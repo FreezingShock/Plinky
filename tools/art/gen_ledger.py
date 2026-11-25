@@ -5,6 +5,7 @@ assets/icons/ledger/locked_<size>.png and assets/icons/big/menu_ledger.png."""
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pixel_kit as K
+import icon_ramps as ir
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets', 'icons')
 OUT = os.path.join(ROOT, 'ledger')
@@ -137,7 +138,8 @@ def main():
     s = K.Sk(32)
     menu_tile(s)
     s.outline()
-    s.image().save(os.path.join(ROOT, 'big', 'menu_ledger.png'))
+    grid = [[s.px.get((x, y)) for x in range(32)] for y in range(32)]     # role indices, meadow anchors
+    ir.to_image(ir.shade(grid, 32, 'meadow'), 32).save(os.path.join(ROOT, 'big', 'menu_ledger.png'))
     print('wrote', len(ICONS), 'category icons x 5 sizes and menu_ledger')
 
 

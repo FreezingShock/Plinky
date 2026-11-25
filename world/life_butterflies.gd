@@ -36,6 +36,8 @@ const IDX_INK: int = 0
 const IDX_PAPER: int = 7
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
+## Ramp colours (LifeCritters.shade_palette): the upper wing and the spots are lit, the lower wing is the anchor.
+var shade: PackedColorArray = LifeCritters.shade_palette(Palettes.MEADOW)
 var _beds: Array[Vector2] = []
 var _flies: Array[Dictionary] = []   # {bed, pos, from, to, t, dur, hover, angle, fade, seed}
 var _ci: CanvasItem
@@ -167,8 +169,14 @@ func draw(ci: CanvasItem, tb: float) -> void:
 				if ch == ".":
 					continue
 				var col: int = rx - 5 if not flip else 5 - rx
-				var idx: int = IDX_INK if ch == "k" else (IDX_PAPER if ch == "w" else (int(wing[0]) if ch == "a" else int(wing[1])))
+				var idx: int = IDX_INK
+				if ch == "w":
+					idx = LifeCritters.ramp_code(IDX_PAPER, 3)
+				elif ch == "a":
+					idx = LifeCritters.ramp_code(int(wing[0]), 3)
+				elif ch == "e":
+					idx = int(wing[1])
 				var x: int = origin.x + col
 				var y: int = origin.y + ry - top
 				if MeadowLife.dissolved(fade, x, y):
-					_ci.draw_rect(Rect2(x, y, 1, 1), palette[idx])
+					_ci.draw_rect(Rect2(x, y, 1, 1), shade[idx])
