@@ -81,9 +81,9 @@ vec3 snow_drifts(vec3 c, vec2 uv, vec2 px, float thr, float h0) {
 // Fallen petals: a patch mask gathers them in drifts, and a per-texel hash scatters a sparse few inside each drift.
 vec3 fallen_blossom(vec3 c, vec2 wp, float thr) {
 	vec2 iso = vec2(wp.x, wp.y * 2.0);
-	float patch = season_vnoise(iso / 9.0 + 5.0) * 0.7 + season_vnoise(iso / 3.0 + 11.0) * 0.3;
-	float dens = smoothstep(0.45, 0.75, patch) * blossom;
-	if (dens > thr && season_hash(floor(iso) + 0.5) < 0.25) {
+	float patch = season_vnoise(iso / 12.0 + 5.0) * 0.8 + season_vnoise(iso / 4.0 + 11.0) * 0.2;
+	float dens = smoothstep(0.55, 0.8, patch) * blossom;
+	if (dens > thr && season_hash(floor(iso) + 0.5) < 0.08) {
 		c = mix(c, blossom_col, 0.9);
 	}
 	return c;
@@ -178,13 +178,29 @@ void fragment() {
 					occ += clamp((hn - h0 - 4.0) / 24.0, 0.0, 1.0) / float(ao_taps);
 				}
 			}
+			// Edge-only dither: the Bayer threshold softens a ramp step only where a neighbour falls in another
+			// step (unshadowed light). Flat grass and path take their step with no checker.
+			float l0 = l;
+			int cnt_g = RAMP_LEN[code] - 1;
+			float lo_g = floor(clamp(l0, 0.0, 0.9999) * float(cnt_g));
+			bool flat_g = true;
+			vec2 offs_g[4] = vec2[4](vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0));
+			for (int j = 0; j < 4; j++) {
+				vec4 dn = texture(nrm_tex, UV + offs_g[j] * px);
+				vec3 nn = vec3(dn.rg * 2.0 - 1.0, 0.0);
+				nn.z = sqrt(max(1.0 - dot(nn.xy, nn.xy), 0.0));
+				float ln = dn.a * 1.8 - 0.4 + 1.05 * (max(dot(nn, normalize(sun_dir)), 0.0) - max(dot(nn, BASE_DIR), 0.0)) * relight;
+				if (floor(clamp(ln, 0.0, 0.9999) * float(cnt_g)) != lo_g) {
+					flat_g = false;
+				}
+			}
 			l -= sh * shadow_amt * relight + occ * ao_amt;
 			if (abs(l - lb) > 0.03) {
 				int cnt = RAMP_LEN[code] - 1;
 				float v = clamp(l, 0.0, 0.9999) * float(cnt);
 				float lo = floor(v);
 				float f = clamp((v - lo - 0.44) / 0.12, 0.0, 1.0);   // a narrow blend band: steps are solid, the dither only softens the seam
-				int step_i = int(lo) + ((f > thr && int(lo) < cnt) ? 1 : 0);
+				int step_i = int(lo) + ((f > (flat_g ? 0.5 : thr) && int(lo) < cnt) ? 1 : 0);
 				c.rgb = RAMP_PAL[RAMP_IDX[RAMP_START[code] + step_i]];
 			}
 			c.rgb *= mix(vec3(1.0), shadow_tint, min(shadow_amt, 1.0) * sh);

@@ -23,9 +23,11 @@ static var NIGHT_ALPHA: float = 0.6     # the glow at full night
 ## Winter nights: the glow is scaled by this. The bare winter stalks sit under a blue halo at full strength, which reads as
 ## dither, so in winter the halo is calmer (0.6 x 0.42 = 0.25 at full night). Other seasons keep NIGHT_ALPHA.
 static var WINTER_SCALE: float = 0.42
-## The colour: the flower's own bright "neon" petal hue at full saturation and brightness (NEON), so each field glows in
+## The colour: the flower's own petal hue at 75% saturation and full brightness (NEON, NEON_SAT), so each field glows in
 ## its flower's colour. TINT_MIX pulls it toward TINT_TOWARD if ever wanted (0 = off).
 static var NEON: bool = true
+static var NEON_SAT: float = 0.75      # saturation of the glow hue: 1 is full neon, 0.75 keeps each field's colour without the glare
+static var NEON_VAL: float = 1.0       # brightness of the neon hue (1 = full)
 static var TINT_TOWARD: Color = Color("ffe9a8")
 static var TINT_MIX: float = 0.0
 ## A wider, fainter spill from each head that reaches onto the path and the grass around a field. 0 turns it off.
@@ -183,7 +185,7 @@ static func _tint(stat_index: int) -> Color:
 	var stat: StringName = GardenArt.STATS[clampi(stat_index, 0, GardenArt.STATS.size() - 1)]
 	var petal: Color = Color(String((GardenArt.COLORS[stat] as Array)[0]))
 	if NEON:
-		petal = Color.from_hsv(petal.h, 1.0, 1.0)
+		petal = Color.from_hsv(petal.h, NEON_SAT, NEON_VAL)
 	return petal.lerp(TINT_TOWARD, TINT_MIX)
 
 

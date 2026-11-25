@@ -14,8 +14,18 @@ extends CanvasLayer
 signal banner_started(key: String)
 signal banner_finished(key: String)
 
-const TITLE_FONT: Font = preload("res://fonts/PixelifySans.ttf")
-const BODY_FONT: Font = preload("res://fonts/spleen-6x12.fnt")
+## Loaded on first use, not preloaded: a preload in a script compiled during a fresh first import fails ("no resource loaders"),
+## which then fails this autoload too.
+static var _title_font: Font = null
+static var _body_font: Font = null
+static func title_font() -> Font:
+	if _title_font == null:
+		_title_font = load("res://fonts/PixelifySans.ttf") as Font
+	return _title_font
+static func body_font() -> Font:
+	if _body_font == null:
+		_body_font = load("res://fonts/spleen-6x12.fnt") as Font
+	return _body_font
 const TITLE_SIZE: int = 16
 const BODY_SIZE: int = 12
 const BOTTOM_MARGIN: float = 34.0
@@ -212,11 +222,11 @@ func _begin(spec: Dictionary) -> void:
 	var longest: int = title.length()
 	_count = body.size() + 1
 	_title = _Line.new()
-	_title.set_text(title, TITLE_FONT, TITLE_SIZE, title_col)
+	_title.set_text(title, title_font(), TITLE_SIZE, title_col)
 	_box.add_child(_title)
 	for l: Variant in body:
 		var ln := _Line.new()
-		ln.set_text(str(l), BODY_FONT, BODY_SIZE, RelicStyle.text)
+		ln.set_text(str(l), body_font(), BODY_SIZE, RelicStyle.text)
 		_box.add_child(ln)
 		_lines.append(ln)
 		longest = maxi(longest, str(l).length())
