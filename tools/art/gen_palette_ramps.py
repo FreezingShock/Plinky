@@ -15,11 +15,11 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 TARGET = ROOT / "render" / "palettes.gd"
 
 # Recipe B ("warm lit, cool shade") from the palette mockup the art thread picked (Nathan, 2026-11-25).
-STEP_VALUE = [0.62, 0.84, 1.0, 1.12]      # value multiplier per step, clamped to 1.0
+STEP_VALUE = [0.78, 0.92, 1.0, 1.08]      # value multiplier per step, clamped to 1.0
 # Hue moves toward a target along the short way round the wheel: shade toward teal-blue, light toward yellow.
 STEP_HUE_TARGET = [0.56, 0.56, None, 0.12]
-STEP_HUE_AMOUNT = [0.22, 0.12, 0.0, 0.12]  # fraction of that arc travelled per step
-STEP_SAT = [0.20, 0.10, 0.0, 0.10]        # saturation lift per step; the anchor keeps its own saturation
+STEP_HUE_AMOUNT = [0.12, 0.06, 0.0, 0.16]  # fraction of that arc travelled per step
+STEP_SAT = [0.10, 0.05, 0.0, 0.08]        # saturation lift per step; the anchor keeps its own saturation
 
 BEGIN = "# BEGIN RAMPS"
 END = "# END RAMPS"

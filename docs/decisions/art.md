@@ -448,6 +448,8 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
+- **Tune after PC QA (2026-11-25):** the first ramps were too dark and too cool. Larkmoor golden hour read grey-green, and the grass dither was heavy, because the shade steps stacked on the role drop. The shade steps are now 0.78 and 0.92 of the anchor value (were 0.62 and 0.84), with less teal drift, and the lit step is 1.08 (was 1.12). Compare: `/mnt/project-files/palette-grade/qa531_larkmoor_v2.png`.
+
 ## 2026-11-25: Walker and critters on the ramp steps (T9)
 - **Nathan's pick:** look A, Terracotta (mockups in `/mnt/project-files/gower-style/t9-walker-critters/`, generator `t9_mock_walker_critters.py`).
 - **Walker:** `tools/art/gen_walker.py` now reads the meadow ramp from `render/palettes.gd`. The cloak, hood, scarf and boots each use four steps (earth for the cloak and hood, green for the scarf). The outline stays the ink anchor, and the face, satchel and details keep their anchor colours. Codes: a plain role number is the anchor, and `8 + role * 4 + step` is the same role at another step.
