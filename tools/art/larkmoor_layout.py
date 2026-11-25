@@ -142,6 +142,19 @@ GROVES = [
 
 # The windmill farm (the cozy thread places its props there): the flower gardens keep out of this box. Authored units.
 FARM_BOX = (960, 410, 1220, 630)
+# The farm's wheat, soil and fences reach past FARM_BOX (its items run to about y 686): the farm box as placed by
+# place_farm.py is (1090, 548, 260, 276) in layout texels. Ruins keep out of that box plus a margin, so no ruin lands on the
+# fields, the soil or the fences (Nathan, 2026-11-25: ruins stood between the fences and inside a wheat plot).
+FARM_KEEPOUT_BOX = (1090 - 130, 548 - 138, 1090 + 130, 548 + 138)
+FARM_KEEPOUT_MARGIN = 26     # layout texels: a ruin sprite rises about 23 texels above its foot, so 26 keeps its whole sprite clear
+
+
+def in_farm_keepout(sx, sy):
+    """True when the ground point (sx, sy) in the scaled canvas frame (what _from_uv returns) is inside the farm keep-out box.
+    gen_larkmoor.py uses it for the extra ruins; tests/test_farm.gd checks the sprites that result."""
+    x0, y0, x1, y1 = FARM_KEEPOUT_BOX
+    m = FARM_KEEPOUT_MARGIN
+    return (x0 - m) * S <= sx <= (x1 + m) * S and (y0 - m) * S <= sy <= (y1 + m) * S
 
 
 def _seg_dist(px, py, ax, ay, bx, by):
