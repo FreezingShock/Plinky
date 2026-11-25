@@ -162,3 +162,10 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Pacing check (`tools/sim.gd`, probe in a scratch copy, not committed):** the sim plays greedily with no gifts and no attributes, and resets Bloom whenever it can. Blooms land at about 15 min (when Larkmoor opens), then at each count the gates need: 2 at 29 min, 3 at 37, 5 at 48, 7 at 52, 10 at 58 (seeds 1 to 3 agree within 2 min). So the 10 gate falls at the 60-minute Larkmoor target. This is a floor: real play with Bloom gifts will be faster.
 - **Not checked:** Nucleus cadence (the probe covers the meadow's Bloom only), and how the gifts change the cadence. PC QA or a playtest should time the 7 and 10 gates.
 - **Alternative if the 10 gate feels late:** top the spread at 9. On this floor the 9 gate would fall at about 56 min, two minutes earlier.
+
+## 2026-11-25: Mid-game goals are a chain with a small permanent bonus
+- **Why:** between Bloom and Nucleus resets a player had nothing new to aim for once the gates were open. Nathan picked a milestone track with rewards (decision card, 2026-11-25).
+- **What:** 12 goals in `content/goals/`, one chain by `order`, each reached once and kept through resets. Each adds 2% (3% for the four bigger ones) to every pad's press reward, so the full chain is +28%. Counters are the Sim's achievement counters, plus a new `zone_resets` (total zone reset uses).
+- **Why small:** Nathan wants fast progress, so the bonus is a steady nudge and not a power spike. Relics, resets and gates still carry the curve.
+- **Open:** the targets (1K presses up to 10K, 1 to 4 play hours, Mastery 5 and 15, 1 and 3 zone resets) are not yet checked against the pacing sim. The pacing thread owns the check. A goal is cheap to retune in its `.tres`.
+- **Saves:** the reached list lives under `goals` in the save. A save without it credits what it has already earned, silently, the same as achievements. No version bump.
