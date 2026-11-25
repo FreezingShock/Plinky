@@ -533,3 +533,9 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Regen:** `gen_larkmoor.py`, `place_farm.py`, `bake_wheat.gd` (737 sheets, the stale 661 removed), then `gen_life_anchors.py --add-keys --farm` for the farm keys only. The sway tips and the garden were fixed in place instead of a full regen (two tips nudged onto light grass, one flower on a new sand rubble patch dropped), so the rest of the life and garden data is unchanged.
 - **Tests:** `tests/test_farm.gd` checks that no ruin sprite intersects the farm box, a fence piece, soil or wheat, and that every small prop standing in a field has wheat within 20 texels. The tree foot check skips farm trees, because a pine's trunk foot can sit below its cropped sprite (as it does in Larkmoor).
 - **Not verified in-engine on the PC:** the cloud run is headless with software Vulkan. The before and after farm captures are in the PR.
+## 2026-11-25: Earth hue held on the meadow ramps, and grass variants (T1)
+- **Why:** PR #586 (ground thread) reported Larkmoor dirt reads olive-khaki at noon. The earth role's lit steps drifted toward yellow, and the noon grade pushed that to olive.
+- **Decision:** meadow role 6 (earth) keeps its hue in every step (`HUE_HOLD` in `tools/art/gen_palette_ramps.py`). Other roles and zones are unchanged.
+- **Grass variants:** `Palettes.grass_variant(&"warm")` and `&"cool"` are 4-step ramps for warm and cool grass patches, from the meadow grass anchor. The ground thread wires them into the Larkmoor bake, which needs its own palette index.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb, Larkmoor noon and golden hour, before and after: `/mnt/project-files/palette-grade/larkmoor_dirt_noon_before_after.png`. The saves had advanced a day between runs, so the frames are approximate. Swatch: `/mnt/project-files/palette-grade/grass_variants_swatch.png`.
+
