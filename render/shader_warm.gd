@@ -7,6 +7,7 @@ extends RefCounted
 
 const SHADERS: Array[String] = [
 	"res://render/shaders/god_rays.gdshader",
+	"res://render/shaders/light_shafts.gdshader",   # Larkmoor's canopy shafts: first draw at a sunset compiled mid-frame
 	"res://render/shaders/sky_haze.gdshader",
 	"res://render/shaders/day_night.gdshader",
 	"res://render/shaders/wind_sway.gdshader",

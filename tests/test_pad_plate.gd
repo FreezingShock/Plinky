@@ -100,6 +100,18 @@ func run(t: Object) -> void:
 	t.ok(not TexelPad.shows_cost_sign(""), "no cost, no sign")
 	t.eq(TexelPad.LOCK_SIZE, 8, "the sign text uses the font's native 8 px size")
 	t.ok(TexelPad.LOCK_CHIP_Z > 0 and TexelPad.LOCK_CHIP_Z < 5, "the sign draws above the plate and under the night shade at z 5, so it darkens with the night")
+	# a locked pad's sign shows a padlock in its top slot; an open pad keeps the cost icon there
+	t.eq(TexelPad.sign_top_slot(true), &"padlock", "a locked pad's sign shows a padlock")
+	t.eq(TexelPad.sign_top_slot(false), &"icon", "an open pad's sign keeps its cost icon")
+	t.ok(LockIcon.BODY.size.x > 0.0 and LockIcon.SHACKLE.size() == 3, "the padlock shapes come from LockIcon")
+	var lock_pad := TexelPad.new()
+	lock_pad.build_sign(sim, cost_def)
+	lock_pad.locked = true
+	lock_pad._sync_lock_chip()
+	t.ok(lock_pad._sign_locked, "the sign redraws when its pad locks")
+	lock_pad.locked = false
+	lock_pad._sync_lock_chip()
+	t.ok(not lock_pad._sign_locked, "the sign redraws back to the cost icon when its pad opens")
 	var icon: Texture2D = IconSet.get_icon(String(cost_def.cost_stat), TexelPad.LOCK_ICON)
 	t.ok(icon != null, "the Clover cost stat has an 8 px icon")
 	var reward_icon: Texture2D = IconSet.get_icon(String(cost_def.reward_stat), TexelPad.LOCK_ICON)

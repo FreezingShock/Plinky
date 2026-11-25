@@ -696,4 +696,5 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** Nathan asked for less blank space between the gain and the icon, and for the values to match their icons. The "+x/s" rate and the "+123" gain still sit outside the panel's right edge, as before.
 - **Checked:** `tests/run.gd` passes. In engine, `tools/hud_shot.tscn -- late` shows the header, rules and icon-matched values.
 - **Not run on a PC:** the strip at zoom 1 and 3, and the colour-safe modes with `ICON_TINT` (the tint applies through AccessOptions). PC QA should check both.
+- **Colour-safe modes (QA batch 204):** the numbers now take the icon's own colour untouched in every mode. The icon art is not recoloured, so the number matches the icon in all three modes. `AccessOptions.tint` is no longer applied to strip numbers, because its swap table only knows the game's named colours, not the icon colours.
 

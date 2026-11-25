@@ -31,6 +31,10 @@ CU, CV, R = LAY.CU, LAY.CV, LAY.R         # island centre / radius (uv)
 OXS0, OYS0 = LAY.OX, LAY.OY
 OXS, OYS = OXS0, OYS0
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
+# warm (8-11) and cool (12-15) grass variants, 4 steps dark to light, the same hexes as Palettes.grass_variant(&"warm"/&"cool")
+PAL += ['#7a7f45', '#919654', '#9ea35f', '#aab061', '#3c7a6a', '#4b8f7a', '#5ea88a', '#72bf9f']   # cool: blue-green grass, not teal
+GRASS_WARM = [8, 9, 10, 10, 11]
+GRASS_COOL = [12, 13, 14, 14, 15]
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
 # Prop palette (Gower-style restyle, v3 mockup B): the sprites' albedo and the relit props' ramps. Ink stays put, and the
 # ground keeps PAL, so the backdrop, the flower and sway checks and the UI palette are unchanged.
@@ -138,34 +142,44 @@ def bowl(H0, B, depth):
     return H0 * (1 - w) + hb * w * 1.0 + 0 * w, s
 H0, sl_ = bowl(H0, LAKE, 8.0); H0, sp_ = bowl(H0, POND, 5.0)
 LAKE_S, POND_S = sl_, sp_
+# feeder ponds (T6 layout B): a bowl like the mere, at the end of each feeder brook
+PONDS_S_LIST = []
+for _pd in LAY.PONDS:
+    _B = dict(c=s2uv(*_pd['c']), r=_pd['rx'] / 1.414 * .9)
+    H0, _s = bowl(H0, _B, 4.0); PONDS_S_LIST.append(_s)
 Hpre = H0.copy()
 GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
-dstr = pl_dist(gu, gv, STREAM)
 RIVER_DEPTH = 3.0                              # the river bed sits this far below its surface: deep enough to read as water, not a dither strip
 sw = 7.0 + 1.0 * np.sin(gu * .13 + gv * .09)   # half-width: about 14 texels across, still an easy jump
-D = []
-for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
-    n = int(math.hypot(x1 - x0, y1 - y0)); D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
-D = np.array(D); hD = samp(Hpre, D[:, 0], D[:, 1])
-k = 7; hD = np.convolve(np.pad(hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
-hL = np.maximum(np.minimum.accumulate(hD) - .8, LEVEL + .15)
-HLF = np.full((N, N), 99.0)                     # water height of the nearest stream point, around the channel
-_bu, _bv = np.nonzero(dstr < sw + 3)
-for c0 in range(0, len(_bu), 20000):
-    uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
-    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); HLF[_bu[c0:c0 + 20000], _bv[c0:c0 + 20000]] = hL[dd.argmin(1)]
+# the river and each feeder brook are carved the same way; a texel takes the water height of its nearest channel
+CHANNELS = [STREAM] + [[s2uv(*p) for p in f] for f in LAY.FEEDERS]
+dstr = np.full((N, N), 1e9); HLF = np.full((N, N), 99.0)
+for _poly in CHANNELS:
+    _dc = pl_dist(gu, gv, _poly)
+    _D = []
+    for (x0, y0), (x1, y1) in zip(_poly, _poly[1:]):
+        n = int(math.hypot(x1 - x0, y1 - y0)); _D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
+    _D = np.array(_D); _hD = samp(Hpre, _D[:, 0], _D[:, 1])
+    k = 7; _hD = np.convolve(np.pad(_hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
+    _hL = np.maximum(np.minimum.accumulate(_hD) - .8, LEVEL + .15)
+    _bu, _bv = np.nonzero(_dc < sw + 3)
+    for c0 in range(0, len(_bu), 20000):
+        uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
+        dd = np.hypot(uu[:, None] - _D[None, :, 0], vv[:, None] - _D[None, :, 1]); am = dd.argmin(1)
+        ii, jj = _bu[c0:c0 + 20000], _bv[c0:c0 + 20000]
+        win = _dc[ii, jj] < dstr[ii, jj]
+        dstr[ii[win], jj[win]] = _dc[ii, jj][win]; HLF[ii[win], jj[win]] = _hL[am[win]]
 # the channel is carved all the way to the lake: inside the lake the bowl is already deeper, so nothing changes there, and the rim
 # gets a notch where the river leaves it (the old lake-rim exclusion left a dry gap between the lake and the river)
 wch = (1 - smooth(sw - 2.0, sw + 4.5, dstr))
 H0 = H0 * (1 - wch) + np.minimum(H0, HLF - RIVER_DEPTH) * wch       # bed always sits below the water ribbon
 WH = np.full((N, N), -99.0)
 mask_s = dstr < sw + 1
-iu, iv = np.nonzero(mask_s)
-for c0 in range(0, len(iu), 20000):
-    uu, vv = iu[c0:c0 + 20000].astype(float), iv[c0:c0 + 20000].astype(float)
-    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); WH[iu[c0:c0 + 20000], iv[c0:c0 + 20000]] = hL[dd.argmin(1)]
-inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25))
+WH[mask_s] = HLF[mask_s]
+_pond_in = np.zeros((N, N), bool)
+for _s in PONDS_S_LIST: _pond_in |= (_s < 1.25)
+inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25) | _pond_in)
 WH[inlake] = LEVEL
 smask = mask_s & (dstr < sw - .3) & (WH > H0 + .02) & ~inlake
 WH[~(smask | inlake)] = -99
@@ -244,11 +258,13 @@ def make_oak(rng):
     balls = [(0, 0, 27, 9.5)] + [(rng.uniform(-10, 10), rng.uniform(-10, 10), rng.uniform(21, 33), rng.uniform(6.0, 8.5)) for _ in range(8)]
     roots = [(rng.uniform(0, 6.28)) for _ in range(3)]
     seed = rng.randint(0, 99)
+    # round 5: the crown is squashed or stretched a little per tree (k < 1 flatter, k > 1 taller), so no two oaks match
+    k_ = rng.uniform(.8, 1.22)
     def f(x, y, z):
         tr = sdf_capsule(x, y, z, (0, 0, -1), (lx, ly, 18), 3.0, 1.8)
         for a_ in roots: tr = np.minimum(tr, sdf_capsule(x, y, z, (0, 0, 2.5), (math.cos(a_) * 5, math.sin(a_) * 5, -.5), 1.3, .5))
         cd = np.full(x.shape, 99.0, np.float32)
-        for b in balls: cd = np.minimum(cd, sdf_sphere(x, y, z, b[:3], b[3]))
+        for b in balls: cd = np.minimum(cd, sdf_sphere(x, y, b[2] + (z - b[2]) / k_, b[:3], b[3]))   # stretched about each lobe's centre
         cd = cd + 2.2 * (vn3(x * .38, y * .38, z * .38, seed) - .5) + 1.0 * (vn3(x * .9, y * .9, z * .9, seed + 3) - .5)
         return np.minimum(tr, cd), np.where(tr < cd, M_BARK, M_FOL)
     return f, (24, 24), 44, 12.0
@@ -690,6 +706,17 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, pa
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
     return True
+# round 5: a colour tint per broadleaf and conifer, applied by the scene as a sprite multiplier (no node cost). Neighbours
+# shift a little warm or cool (TINT_SHIFT), and a few oaks (ACCENT_RATE) take a rust accent. The multiplier sits on the
+# season's base colour, so the palette still comes from the season and the rust only tints the accent crowns.
+ACCENT_RATE = float(os.environ.get('ACCENT_RATE', '0.11'))
+TINT_SHIFT = float(os.environ.get('TINT_SHIFT', '0.10'))
+def tint_for(kind, sid):
+    if kind not in ('oak', 'pine'): return None
+    h_ = random.Random(sid * 9973 + 5)
+    if kind == 'oak' and h_.random() < ACCENT_RATE: return [1.10, 0.86, 0.70]
+    s_ = h_.uniform(-TINT_SHIFT, TINT_SHIFT)
+    return [round(1 + s_, 3), round(1 + .5 * s_, 3), round(1 - .5 * s_, 3)]
 def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, seed=None, **kw):
     rng = random.Random(prng.randint(0, 1 << 30) if seed is None else seed)   # seed: no draw from the shared stream
     rot = rng.uniform(0, 6.283) if rot is None else rot
@@ -701,15 +728,17 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, see
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid, bottom=kw.get('bottom', -1.0))
     if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'ruin', 'gateway', 'menhir', 'lantern', 'sign', 'bridge', 'footbridge') or (kind == 'rock' and big)):
-        TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
+        TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale, tint=tint_for(kind, sid)))
     if count: placed.append((u, v, rad * scale))
     return z0
-def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
+def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, clump=.5, **kw):
+    # clump: the radius draw is r ** clump * rad. .5 is the even area spread; above .5 the draws gather toward the grove
+    # centre, so the groves read as clumps with open clearings at their edges. Same number of draws either way.
     got = 0
     r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, tower=11, lighthouse=11, obelisk=6, gateway=10, menhir=3, jetty=3, bridge=3, footbridge=3)[kind]
     for _ in range(n):
         for t in range(tries):
-            a_, rd = prng.uniform(0, 6.283), math.sqrt(prng.random()) * rad
+            a_, rd = prng.uniform(0, 6.283), (prng.random() ** clump) * rad
             u, v = cu_ + math.cos(a_) * rd, cv_ + math.sin(a_) * rd
             sc = prng.uniform(*scale_rng)
             if ok_spot(u, v, r_fp * sc, **{k: w for k, w in kw.items() if k in ('slope_max', 'shore', 'path', 'hmax', 'gap', 'path_clear')}):
@@ -732,6 +761,19 @@ for d_ in LAY.DISTRICTS:
     for (sx, sy) in d_['pads']:
         for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
             placed.append((*s2uv(sx + ox_, sy + oy_), 9))
+# sunny clearings: each pad row keeps an open band of PAD_CLEAR texels either side, so the groves thicken around the rows
+# and the pads read in sun. Footprints every 12 texels along the row, and one at each pad, so no tree crowds a plate.
+PAD_CLEAR = float(os.environ.get('PAD_CLEAR', '34'))
+for d_ in LAY.DISTRICTS:
+    _pts = d_['pads']
+    for (x0, y0), (x1, y1) in zip(_pts, _pts[1:]):
+        _uu0, _vv0 = s2uv(x0, y0); _uu1, _vv1 = s2uv(x1, y1)
+        _n_ = max(1, int(math.hypot(_uu1 - _uu0, _vv1 - _vv0) // 12))
+        for _k_ in range(_n_ + 1):
+            _t_ = _k_ / _n_
+            placed.append((_uu0 + (_uu1 - _uu0) * _t_, _vv0 + (_vv1 - _vv0) * _t_, PAD_CLEAR))
+    for (sx, sy) in _pts:
+        placed.append((*s2uv(sx, sy), PAD_CLEAR))
 # the two gateways (onboarding arch in the south, Emberwatch gate in the north), framing the walk-through
 for _g, _st in ((GATE, 'stone'), (GATE2, 'timber')): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False, style=_st)
 # landmarks first so groves flow around them
@@ -786,16 +828,30 @@ put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=
 TREE_GAP = dict(oak=6.0, pine=8.0)
 # round 3 of the v3 remodel: oaks and pines grow toward the v3 size (about two walkers tall, ~60 texels). Scales the grove draw range.
 TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
+# round 4: groves clump toward their centre and open out at the edge (try_region's clump), like the v3 groves
+TREE_CLUMP = dict(oak=float(os.environ.get('OAK_CLUMP', '.75')), pine=float(os.environ.get('PINE_CLUMP', '.7')))
+TREE_MUL = dict(oak=float(os.environ.get('OAK_MUL', '1.3')), pine=float(os.environ.get('PINE_MUL', '1.3')))   # extra tree attempts per grove, for centre density
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
+# variety (round 5): broadleaf groves take conifers in among them (PINE_MIX of their trees), oaks spread wider in size, and
+# every grove gets understory bushes on its rim (EDGE_BUSH of its trees, clumped to the outer ring by clump .3)
+PINE_MIX = float(os.environ.get('PINE_MIX', '0.5'))
+EDGE_BUSH = float(os.environ.get('EDGE_BUSH', '0.9'))
 for kind, c_, rad, n in LAY.GROVES:
-    kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
+    kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.8, 1.28)) if kind == 'oak' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
+    if kind in TREE_CLUMP: kw['clump'] = TREE_CLUMP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
-    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL)
+    # round 4b: oaks and pines get extra attempts, so the clumped centres fill in (TREE_MUL); bushes keep GROVE_MUL alone
+    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL * TREE_MUL.get(kind, 1.0))
     try_region(kind, *SC(c_), rad * .72, n_ if not FAST else max(1, n_ // 3), **kw)
+    if kind == 'oak':
+        pkw = dict(scale_rng=tuple(s_ * TREE_SIZE['pine'] for s_ in (.75, 1.4)), gap=TREE_GAP['pine'], clump=TREE_CLUMP['pine'])
+        try_region('pine', *SC(c_), rad * .72, max(1, round(n_ * PINE_MIX)) if not FAST else 1, **pkw)
+    if kind in ('oak', 'pine'):
+        try_region('bush', *SC(c_), rad * .72, max(1, round(n_ * EDGE_BUSH)) if not FAST else 1, clump=.3, scale_rng=(.9, 1.2))
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
 # lanterns: one size, one rhythm per path tier. A road gets a lamp about every LANTERN_STEP['road'] texels of its length
@@ -993,6 +1049,7 @@ dp = samp(dpath, FU, FV)
 tone = fbm2(FU / 14, FV / 14, 2, 11); n1 = vn2(FU / 5, FV / 5, 3); n2 = vn2(FU / 2.2, FV / 2.2, 8)
 # materials: 0 grass 1 rock 2 sand 3 wet 4 path 5 frost
 T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM, T_TRAIL = 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
+T_STONE = 70   # Larkmoor flagstones: their own grey-stone code, so the engine relight does not brown them with the dirt (gen_meadow3d.py RAMP32)
 mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
 mat[rockness > .5] = T_ROCK
@@ -1020,6 +1077,10 @@ for _t, _f in FEATHER.items():
     _chance = 1 - (dtr[_t] - _inner) / (_outer - _inner)
     _keep = _chance > vn2(FU / 1.6, FV / 1.6, 75 if _t == 'lane' else 76)
     mat[_band & ~_keep & (mat == FEATHER_MAT[_t])] = T_GRASS
+# grass tufts reach into the trodden edge: a ragged band of grass fingers overlaps the dirt, so the verge is not a clean line
+for _t in ('lane', 'trail'):
+    _fing = (dtr[_t] > HALF[_t] * .80) & (dtr[_t] < HALF[_t] * edge_noise * 1.05)
+    mat[_fing & (mat == FEATHER_MAT[_t]) & (vn2(FU / 1.1, FV / 1.1, 93 if _t == 'lane' else 94) > .58)] = T_GRASS
 # the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
 mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
@@ -1035,6 +1096,17 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# Nathan's reference: sparse flat pebbles on the trodden ground (dark dashes, in two sizes), worn wheel ruts along the road
+# and lane, and lighter dusty patches. All of it is lit ground, so the palette is unchanged.
+_peb_s = (vn2(FU / 1.6, FV / .8, 95) > .9) & (vn2(FU / 9, FV / 9, 96) > .3)
+_peb_l = (vn2(FU / 2.8, FV / 1.2, 97) > .95) & (vn2(FU / 9, FV / 9, 96) > .3)
+lt -= .30 * ((_peb_s | _peb_l) & on_trod)
+_rut = np.zeros(len(FU), bool)
+for _t in ('road', 'lane'):
+    _wob = (vn2(FU / 6, FV / 6, 98) - .5) * 1.4
+    _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.4) & on_path[_t]
+lt -= .24 * (_rut & (mat == T_PATH))
+lt += .07 * (on_trod & (vn2(FU / 9, FV / 9, 99) > .72))
 # value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
 # under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
 # ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
@@ -1054,8 +1126,31 @@ cu_ = (FU + 2.5 * (row_ % 2)) % 5.0
 cv_ = FV % 4.0
 joint_v = (cu_ < 1.0) & (vn2(FU / 3.0, FV / 3.0, 47) > .45)  # vertical joints: about half of them, so the road is not a grid
 joint_h = cv_ < 1.0                                          # horizontal joints: every row
-mortar = (joint_v | joint_h) & road_m
+# flagstones only near the windmill and the two bridges (Nathan's call): elsewhere the road is plain dirt with no joints
+_wm = [lm for lm in LAY.LANDMARKS if lm['kind'] == 'windmill'][0]
+_fl_pts = [(s2uv(*_wm['at']), 60.0), (s2uv(*LAY.BRIDGE), 36.0), (s2uv(*LAY.FOOT_CROSSING), 36.0)]
+fl_zone = np.zeros(FU.shape, bool)
+for (_pu, _pv), _rad in _fl_pts:
+    fl_zone |= np.hypot(FU - _pu, FV - _pv) < _rad
+mortar = (joint_v | joint_h) & road_m & fl_zone
 lt -= .30 * mortar                                           # a soft drop to the earth step, not a hard grid
+# v4 road (Nathan's pick): dirt first, with the flagstones inset. The whole road drops to the earth step, so the lit
+# stones stand out as cream tiles in a brown dirt road, instead of a pale sand road with dirt joints.
+lt -= .62 * (mat == T_PATH)     # road and lanes alike drop to the dirt (earth) step; sand alone sits well above it
+lt += .62 * (road_m & fl_zone & ~mortar)   # the flagstones near the windmill and bridges lift back to the lit sand stones
+mat[road_m & fl_zone & ~mortar] = T_STONE   # the stones are grey stone; the joints stay dirt (T_PATH)
+# road slabs (Nathan's reference): sparse flat grey stones about 6 by 4 texels on the dirt road, one per 11-texel cell in
+# some cells. The slab is stone code 70 and its joint ring stays dirt code 104 (T_PATH), so the engine relights the stone
+# grey and the joints brown. Cell offsets and picks are integer hashes, so the layout is the same every bake.
+_cs = 22   # FU samples run at about half the bake's texel scale, so the slab is 12 by 8 FU (about 6 by 4 bake texels)
+_cu = np.floor(FU / _cs).astype(np.int64); _cv = np.floor(FV / _cs).astype(np.int64)
+_sx = _cu * _cs + ((_cu * 31337 + _cv * 7919) % 12)
+_sy = _cv * _cs + ((_cu * 104729 + _cv * 1299709) % 12)
+_pick = ((_cu * 92821 + _cv * 68917 + 17) % 1009) / 1009.0 < .55
+_uu = np.floor(FU).astype(np.int64); _vv = np.floor(FV).astype(np.int64)
+_slab = _pick & (_uu >= _sx) & (_uu < _sx + 12) & (_vv >= _sy) & (_vv < _sy + 8)
+_joint = _slab & ((_uu == _sx) | (_uu == _sx + 11) | (_vv == _sy) | (_vv == _sy + 7))
+mat[_slab & ~_joint & (mat == T_PATH)] = T_STONE
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -1098,11 +1193,12 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [6, 6, 6, 6, 6], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [6, 6, 6, 6, 6], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 6], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 6],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 6, 6, 7], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: DARKF_RAMP}
 RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
+RAMP[T_STONE] = [1, 7, 7, 7]   # grey stone (bake colours are anchors; the engine relight uses the grey ramp in gen_meadow3d RAMP32)
 # canopy shading (round 2 of the v3 remodel): leaves and pine boughs step through their shades with crisp edges
 CANOPY_MATS = (M_FOL, M_PINE)
 CANOPY_DBAND = (.44, .14)     # the dither spreads over the middle 14% of each step, so the Bayer edge stays but the steps read
@@ -1199,10 +1295,35 @@ def render_scene(keep):
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
     img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
+    # warm and cool grass patches (palette 8-11 and 12-15, the GRASS block in render/palettes.gd): two broad noise fields,
+    # thresholded, so the patches are big and soft-edged like the Gower mockup. Same grass_tex strength as the meadow grass.
+    WC_FIELD = vn2(XX / 40.0, YY / 40.0, 83) * .75 + vn2(XX / 13.0, YY / 13.0, 84) * .25
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
         # canopy and pine: a narrow dither band, so each shade step has a clear edge and the Bayer texture stays on the edges
         if sel_.any(): out[sel_] = dith(ramp, img_l, sel_, CANOPY_DBAND if m_ in CANOPY_MATS else (.30, .40))[sel_]
+        if m_ == T_GRASS and sel_.any():
+            # percentile cut-offs over the grass texels: the top fifth goes warm, the bottom fifth cool, the rest stays meadow
+            hi_, lo_ = np.percentile(WC_FIELD[sel_], [80, 20])
+            for ramp_v, pick in ((GRASS_WARM, sel_ & (WC_FIELD > hi_)), (GRASS_COOL, sel_ & (WC_FIELD < lo_))):
+                if pick.any(): out[pick] = dith(ramp_v, img_l, pick)[pick]
+    # sparse verge details (Nathan's reference): a few berries and fallen leaves (earth step), and mushroom caps (cream step),
+    # on the grass just outside the trodden ground. Baked into the ground, so they cost no nodes.
+    from PIL import ImageFilter as _IFd
+    _trod_g = ((img_mat == T_PATH) | (img_mat == T_TRAIL) | (img_mat == T_STONE)).astype(np.uint8) * 255
+    _tg = Image.fromarray(_trod_g)
+    _ring = np.asarray(_tg.filter(_IFd.MaxFilter(7))) > 0
+    _inner = np.asarray(_tg.filter(_IFd.MaxFilter(3))) > 0
+    _verge = _ring & ~_inner & (img_mat == T_GRASS)
+    _hh = ((XX * 92821 + YY * 68917) % 1009) / 1009.0
+    out[_verge & (_hh > .988)] = 6
+    out[_verge & (_hh < .006)] = 7
+    # stone interiors are solid (Nathan's reference, and Bayer on edges only): a stone texel whose whole 3x3 is stone takes the
+    # solid light step, and its outer ring keeps the dithered edge from RAMP[T_STONE]. Joints are dirt (T_PATH), so they stay brown.
+    from PIL import ImageFilter as _IFs
+    _stone = Image.fromarray(((img_mat == T_STONE) * 255).astype(np.uint8))
+    _stone_in = np.asarray(_stone.filter(_IFs.MinFilter(3))) > 0
+    out[_stone_in] = 7
     # water: depth bands, stepped glints, foam, white water on slopes
     wsel = img_mat == T_WATER
     if wsel.any():
@@ -1324,7 +1445,9 @@ for t in TALL:
     depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUXM, y0, y1, x0, x1, m_)
     # a bridge sorts 40 texels north of its centre, so the walker on the deck always draws over it (the picture stays put: offset = box - foot)
     _fy_sort = fy - 40.0 if t['kind'] in ('bridge', 'footbridge') else fy
-    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1)))
+    _rec = dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1))
+    if t.get('tint'): _rec['tint'] = t['tint']   # read by world/larkmoor_scene.gd as the sprite's modulate
+    sprites.append(_rec)
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
 nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, ruin=12.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
