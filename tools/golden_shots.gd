@@ -15,10 +15,6 @@ var main: Control
 var tag: String = ""
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
@@ -44,13 +40,13 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	for ph: Array in PHASES:
 		if not only.is_empty() and not any_match(String(ph[0]), only):
 			continue
 		# The pin is a sun phase. SkyCycle moves the calendar clock to match it, so the HUD label agrees with the sky.
 		SkyCycle.debug_phase = float(ph[1])
-		await _wait(45)
+		await ShotHelpers.wait(45)
 		get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/%sgolden_%s.png" % [tag, String(ph[0])]))
 		print("shot ", ph[0], " clock ", Calendar.now().get("clock_text", "?"))
 	get_tree().quit(0)

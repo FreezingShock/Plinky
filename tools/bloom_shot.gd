@@ -10,10 +10,6 @@ extends Node
 const MOMENTS: Array[float] = [0.0, 0.5, 1.0, 1.3, 1.52, 1.62, 1.75, 1.95, 2.3, 3.0, 3.9, 4.05, 4.2, 4.35, 4.5, 4.7]
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _ritual(hud: Control) -> BloomRitual:
 	for c: Node in hud.get_children():
@@ -45,7 +41,7 @@ func _ready() -> void:
 	var main: Control = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	if mode == "calm":
 		FxConfig.reduce_flashing = true   # again, in case loading the game reset it
 	GameState.onboarding.tips_enabled = false
@@ -58,7 +54,7 @@ func _ready() -> void:
 			sim.stats[sid] = BigNum.from_float(12345.0 * 7.0)
 		sim.stats[&"starbloom"] = BigNum.from_float(reward * 9.0)
 		sim.stats[&"sunlight"] = BigNum.from_float(98765.0)
-	await _wait(60)   # rows appear and settle
+	await ShotHelpers.wait(60)   # rows appear and settle
 	var hud: Hud = main.get("hud") as Hud
 	var ritual: BloomRitual = _ritual(hud)
 	var shots: Array[Image] = []

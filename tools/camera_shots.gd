@@ -8,10 +8,6 @@ var root: Window
 var cam: WorldCamera
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _shot(name: String) -> void:
 	await get_tree().process_frame
@@ -41,28 +37,28 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(60)
+	await ShotHelpers.wait(60)
 	cam = main.camera
 	await _shot("0_start")
 	# 1. Wheel zoom in with the cursor far from the walker (a top-right corner of the view).
 	cam.zoom_step(1, Vector2(600.0, 40.0))
-	await _wait(2)
+	await ShotHelpers.wait(2)
 	await _shot("1_zoom_far_cursor")
-	await _wait(120)
+	await ShotHelpers.wait(120)
 	await _shot("2_after_2s")
 	# 2. The pointer rests on the left edge of the view for three seconds.
 	cam.set_pointer_for_test(Vector2(2.0, 180.0))
-	await _wait(180)
+	await ShotHelpers.wait(180)
 	await _shot("3_pointer_rests_at_edge")
 	# 3. Right-drag pan away from the walker, then recentre.
 	_btn(MOUSE_BUTTON_RIGHT, true, Vector2(320.0, 180.0))
 	for i in 20:
 		_motion(Vector2(-6.0, 2.0), Vector2(320.0, 180.0))
-		await _wait(1)
+		await ShotHelpers.wait(1)
 	_btn(MOUSE_BUTTON_RIGHT, false, Vector2(320.0, 180.0))
 	await _shot("4_after_drag_pan")
 	cam.recenter()
-	await _wait(150)
+	await ShotHelpers.wait(150)
 	await _shot("5_recentred")
 	print("done")
 	get_tree().quit(0)

@@ -31,10 +31,6 @@ var tag: String = "before"
 var _glow: ShaderMaterial
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _goto(p: Vector2, zoom: int) -> void:
 	main.walker.position = p
@@ -42,7 +38,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(20)
+	await ShotHelpers.wait(20)
 
 
 ## Full-frame overlay inside the Sky node (z 5, after the shade and the light grade), so the glow adds on top of the night.
@@ -101,21 +97,21 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var sky: Node2D = main.meadow.get_node("Sky") as Node2D
 	if VARIANTS.has(base) and base != "E":
 		_add_glow(sky, VARIANTS[base])
-		await _wait(10)
+		await ShotHelpers.wait(10)
 	MeadowLife.reduce_motion = reduce_motion
 	FxConfig.reduce_flashing = reduce_flashing
-	await _wait(5)
+	await ShotHelpers.wait(5)
 	var glow_node: Node = sky.get_node_or_null("WaterNightGlow")
 	if glow_node != null and "none" in parts:
 		(glow_node as ColorRect).visible = false   # a baseline without the glow
 		glow_node.set_process(false)
 	if glow_node != null:
 		var gm: ShaderMaterial = (glow_node as ColorRect).material as ShaderMaterial
-		await _wait(5)
+		await ShotHelpers.wait(5)
 		print("uniforms ", tag, " amount=", gm.get_shader_parameter("amount"), " sway=", gm.get_shader_parameter("sway"),
 				" twinkle=", gm.get_shader_parameter("twinkle"), " quality=", gm.get_shader_parameter("quality"))
 	var anchors: Node = main.meadow.get_node("Anchors")
@@ -123,9 +119,9 @@ func _ready() -> void:
 		var m: Marker2D = anchors.get_node(String(spot[1])) as Marker2D
 		var offset: Vector2 = Vector2(-200, 20) if String(spot[0]) == "shore" else (Vector2(0, 70) if String(spot[0]) == "sea" else Vector2(0, 40))
 		await _goto(m.position + offset, int(spot[2]))
-		await _wait(30)
+		await ShotHelpers.wait(30)
 		_save(String(spot[0]))
 	await _goto(MEADOW_OVERVIEW if is_meadow else Vector2(949, 1028), 1)
-	await _wait(30)
+	await ShotHelpers.wait(30)
 	_save("overview")
 	get_tree().quit(0)

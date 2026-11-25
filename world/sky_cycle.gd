@@ -69,6 +69,8 @@ var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _pool_index: Dictionary = {}        # pad pool position -> its entry in _lights (rebuilt after add_light)
 var _pool_index_built: bool = false
 var _pushed: int = 0                    # pools packed for the shader on the last frame
+var _lights_rev: int = 0                # bumped whenever a pool's colour, strength or the light list changes
+var _pushed_key: Array = []             # what the last pack was built from; an unchanged key skips the pack (perf.md rule 5)
 var _walker: Node2D
 var _shade_mat: ShaderMaterial
 var _fog_mat: ShaderMaterial          # drifting ground fog (ground_fog.gdshader)
@@ -238,6 +240,7 @@ func add_light(pos: Vector2, radius: float, strength: float, kind: StringName = 
 	_lights.append({"pos": pos, "radius": radius, "strength": strength, "base": strength, "kind": kind, "tint": tint})
 	_pool_index.clear()
 	_pool_index_built = false
+	_lights_rev += 1
 
 
 ## The pad pool nearest `pos` within 1.5 texels, or an empty dictionary. Pads are added with kind &"pad".
@@ -266,15 +269,17 @@ func _pad_pool_at(pos: Vector2) -> Dictionary:
 ## Tints the pad pool at `pos` with `col` (a buy colour). Alpha 0 keeps the warm default.
 func set_pool_tint_at(pos: Vector2, col: Color) -> void:
 	var best: Dictionary = _pad_pool_at(pos)
-	if not best.is_empty():
+	if not best.is_empty() and best.tint != col:
 		best.tint = col
+		_lights_rev += 1
 
 
 ## Scales the pad pool at `pos` to `share` of its own strength (1 = full). Used so a crowd of pads does not stack into one blow-out.
 func set_pool_strength_at(pos: Vector2, share: float) -> void:
 	var best: Dictionary = _pad_pool_at(pos)
-	if not best.is_empty():
+	if not best.is_empty() and float(best.strength) != float(best.base) * share:
 		best.strength = float(best.base) * share
+		_lights_rev += 1
 
 
 ## Light pools sent to the shader on the last frame (tests read this).
@@ -745,6 +750,13 @@ func _push_lights(t: float, steady: bool) -> void:
 	var lamp_k: float = lamp_light_k(night01)
 	var bloom: Vector2 = SkyModel.lamp_bloom(MeadowLife.rain)   # rain: lamps swell and warm
 	var halo: float = SkyModel.fog_halo(MeadowLife.fog)         # mist: the same lamps spread into the fog
+	# Everything the pack reads. The flicker only moves at 6 steps a second, so it is keyed on that step; a still walker,
+	# steady night and unchanged pools send nothing new, and the shader keeps the values it was given.
+	var flick_step: int = 0 if steady else int(t * 6.0)
+	var key: Array = [focus, _lights_rev, lamp_k, bloom, halo, steady, flick_step]
+	if key == _pushed_key:
+		return
+	_pushed_key = key
 	for L: Dictionary in _lights:
 		var is_walker: bool = L.kind == &"walker"
 		var pos: Vector2 = L.pos
