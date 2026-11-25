@@ -50,6 +50,11 @@ const FLOWER_SIZE: Vector2 = Vector2(3.0, 2.0)      # width and height-stretch o
 const FLOWER_LEN: float = 0.6                       # times the sun's length, as the props
 const FLOWER_STRENGTH: float = 0.75              # a bush is 0.35, a tree 1.0: a field reads as dots of shade
 const FLOWER_SOFT: float = 0.6
+## Moving critters on the ground (rabbits, chickens, frogs, ducks; world/life_critters.gd): a small oval under each one,
+## re-laid every frame from `mover_source`. Butterflies fly, so they cast nothing.
+const MOVER_SIZE: Vector2 = Vector2(6.0, 3.5)       # Nathan's option B (chosen 2026-11-25): reads under a rabbit at noon
+const MOVER_LEN: float = 0.7
+const MOVER_STRENGTH: float = 0.8
 const QUANT: float = 24.0                          # sun values are rounded to 1/QUANT so the shadows move in steps
 
 var mat: ShaderMaterial              # the main layer: every caster and pad slab
@@ -61,6 +66,11 @@ var _flowers_mm: MultiMeshInstance2D # one faint oval per garden flower, laid wi
 var _flower_feet: PackedVector2Array = PackedVector2Array()
 var flower_strength: float = FLOWER_STRENGTH   # per-scene knob (the flower shadow's strength, 0..1)
 var shade_tint: Color = SHADE                  # the shadow colour at high sun; SHADE_DEEP takes over as the sun drops
+var mover_source: Callable = Callable()        # the ground points of the moving critters this frame (LifeAir.ground_pushers)
+var mover_strength: float = MOVER_STRENGTH     # per-scene knob, as flower_strength
+var mover_size: Vector2 = MOVER_SIZE           # per-scene knob: the critter oval's width and height-stretch
+var mover_len: float = MOVER_LEN               # per-scene knob: how far it stretches, times the sun's length
+var _movers_mm: MultiMeshInstance2D            # one oval per ground critter, moved each frame (see _update_movers)
 var _pads: Array[Vector2] = []
 const PAD_REACH: float = 220.0       # a caster farther than this from every pad cannot shade one
 var pad_reach: float = PAD_REACH     # per scene: a smaller reach means fewer casters get a pad copy (the quarry sets it lower)
@@ -101,6 +111,7 @@ func _ensure_layers() -> void:
 	_walker_mm.multimesh.set_instance_custom_data(0, Color(0.25, 1.0, 0.0, 0.0))   # the walker's shadow is a little softer than a tree's
 	_walker_mm.visible = false
 	_flowers_mm = _make_layer("FlowerShadows", mat, 0)
+	_movers_mm = _make_layer("CritterShadows", mat, 0)
 
 
 func _make_layer(nm: String, m: ShaderMaterial, z: int) -> MultiMeshInstance2D:
@@ -155,6 +166,21 @@ func set_flowers(list: Array) -> void:
 		_flower_feet[i] = Vector2(float(f[0]), float(f[1]))
 		mm.set_instance_custom_data(i, data)
 	_lay_flowers()
+
+
+## Moves one oval under each ground critter. Runs every frame: the critters walk, hop and swim, and the list is short.
+func _update_movers() -> void:
+	if not mover_source.is_valid() or not _layers_ready:
+		return
+	var pts: PackedVector2Array = mover_source.call() as PackedVector2Array
+	var mm: MultiMesh = _movers_mm.multimesh
+	if pts.size() > mm.instance_count:
+		mm.instance_count = maxi(pts.size() * 2, 16)
+	var data := Color(FLOWER_SOFT, mover_strength, 0.0, 0.0)
+	for i: int in pts.size():
+		mm.set_instance_transform_2d(i, _xf(pts[i], mover_size.x, mover_size.y, mover_len))
+		mm.set_instance_custom_data(i, data)
+	mm.visible_instance_count = pts.size()
 
 
 ## Lays every flower's shadow for the current sun.
@@ -297,6 +323,7 @@ func _xf(foot: Vector2, w: float, h: float, len_k: float) -> Transform2D:
 
 
 func _process(_delta: float) -> void:
+	_update_movers()
 	if _walker == null or not is_instance_valid(_walker):
 		_walker = _find_walker()
 		_walker_mm.visible = _walker != null
