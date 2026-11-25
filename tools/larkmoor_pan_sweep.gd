@@ -96,8 +96,7 @@ func _sweep(cam: WorldCamera, scene: Node, zoom: int, speed: float) -> Dictionar
 	PerfStats.trace.clear()
 	for i: int in frames:
 		var t: float = float(i) * STEP
-		cam.set("_free", true)
-		cam.pan = Vector2(AMP.x * sin(w * t), AMP.y * sin(w * t * 0.6 + 1.0))
+		cam.hold_pan(Vector2(AMP.x * sin(w * t), AMP.y * sin(w * t * 0.6 + 1.0)))
 		await process_frame
 		var now: int = Time.get_ticks_usec()
 		stats.push(float(now - last) / 1000.0)
