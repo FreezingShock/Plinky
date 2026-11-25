@@ -93,6 +93,7 @@ func _add_sky(ground_size: Array) -> void:
 	_shadows = SkyShadows.new()
 	_shadows.name = "Shadows"
 	_shadows.pad_reach = SHADOW_PAD_REACH   # set before any caster: the quarry's pads sit far enough apart for a tighter reach
+	_shadows.set_palette(Palettes.QUARRY)   # the shadow is the quarry ground's own dark step, not a fixed hue
 	add_child(_shadows)   # z 0, after the ground and lava: above them, below every prop and the walker
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"

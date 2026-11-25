@@ -105,6 +105,7 @@ func _add_sky() -> void:
 	_shadows.name = "Shadows"
 	add_child(_shadows)   # z 0, after the ground and grass: above them, below every prop and the walker
 	_shadows.set_flowers(_garden_flowers)   # one faint shadow per garden flower (world/sky_shadows.gd)
+	_shadows.set_palette(Palettes.MEADOW)   # the shadow is the ground's own dark step, not a fixed hue
 	_shadows.mover_source = _critter_source
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
