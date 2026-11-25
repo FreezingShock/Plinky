@@ -62,7 +62,7 @@ func _ready() -> void:
 	var hud: Hud = main.get("hud") as Hud
 	var ritual: BloomRitual = _ritual(hud)
 	var shots: Array[Image] = []
-	print(String(reset_id), " pays ", sim.reset_gain(reset_id), ", mode ", mode)
+	print(String(reset_id), " pays ", sim.reset_gain(reset_id).format(), ", mode ", mode)
 	GameState.try_reset(reset_id)
 	var i: int = 0
 	var guard: int = 0

@@ -35,9 +35,14 @@ static func prefetch(mask_path: String) -> void:
 static func image() -> Image:
 	if not _tried:
 		_tried = true
-		var tex: Texture2D = ZoneAssets.texture(path)   # prefetched on a worker when the zone was entered, else loaded here
+		# Prefetched on a worker when the zone was entered, else loaded here. Taken, not cached: the mask is only read for
+		# its pixels, so the GPU copy (28 MB for Larkmoor's 3040x1840 map) goes when this function returns.
+		var tex: Texture2D = ZoneAssets.take(path)
 		if tex != null:
+			# Only red (walkable) and green (water) are read, and the alpha is always 255 in the map. RG8 keeps both
+			# channels byte for byte and halves the copy in RAM (22 MB to 11 MB for Larkmoor).
 			_img = tex.get_image()
+			_img.convert(Image.FORMAT_RG8)   # in place; returns nothing
 	return _img
 
 

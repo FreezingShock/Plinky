@@ -618,8 +618,19 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** closing Stats or Attributes during the icon's 0.6 s animation left the tween calling into a freed icon, which logged 9 script errors per open in the headless menu probe. The tween could also reach an icon that a later open had replaced.
 - **Checked:** `tests/run.gd` passes. The menu probe logs no script errors across open and close cycles.
 - **Not run in-engine:** a close during the icon animation on a PC.
+## 2026-11-24: Achievements rows build over a few frames, and their icons load once
+- **Decision:** `LedgerPanel.refresh` builds the title and the overall bar at once, then the category heads and achievement rows `ROWS_PER_FRAME` (6) at a time while the panel is in the tree. A newer build or a hide bumps `_gen`, which stops the older build at its next check. Off the tree (tests) it builds in one pass. Closing still frees every row. `LedgerPanel.icon_for` goes through `IconCache.texture`, a static path-keyed cache that loads each icon once (missing files are cached as null).
+- **Why:** the Achievements open built all rows in one call, 30–40 ms on the headless probe, and every open read the same icon PNGs again. Probe with 637 nodes at open and 677 with the History panel (both after close): open sync is now 3.6–6.2 ms and the worst frame 8–10 ms, against 19–24 ms before.
+- **Checked:** `tests/run.gd` passes (9047 checks, 0 failed). The new checks: rows are built in one pass off the tree, a refresh with no change does not rebuild them, and close frees them.
+- **Not run in-engine:** the spread build on a PC with a progressed save. PC QA should open Achievements and watch the rows fill in over a few frames, then switch the tab and scroll while it fills.
 ## 2026-11-24: Update Log is one text block, not a label per line (menu cost)
 - **Decision:** the Update Log puts every version and note in one `RichTextLabel`, coloured per line (headings take the accent, notes the text colour). Brackets in a note are escaped. The rows still come from `rows_from`.
 - **Why:** the log built one `Label` per heading and note, about 1150 nodes. The menu probe measured 91 to 146 ms per open, and the nodes stayed after close. One text block cuts the node count by about 1150 and the open cost to a few milliseconds.
 - **Checked:** `tests/run.gd` passes. A new check covers the escaping and the colour tags.
 - **Not run in-engine:** how the log scrolls and wraps on a PC at zoom 1 and 3.
+
+## 2026-11-24: Gallery, Stats and Attributes icons load through IconCache
+- **Decision:** the Gallery tile icons, the index card icons (`IndexCard.icon_for`, big then small), the Stats and Attributes header and tab icons, and the index sheet textures all go through `IconCache.texture`. Each PNG loads once and is kept for the life of the game. `IconCache` is the same file as on `claude/ledger-lazy` (PR #497), so the two merge cleanly in either order.
+- **Why:** these menus loaded their PNGs again on every open, and a freed node drops its texture, so each open read the same files from disk. The gain is small: the headless probe with this change shows Gallery at 7–15 ms open, against 8–16 ms before, so the bulk of the cost is elsewhere (the card and tile nodes).
+- **Checked:** `tests/run.gd` passes (11737 checks, 0 failed) after `--import`.
+- **Not run in-engine:** the icons on a PC at zoom 1 and 3. PC QA should check that every Gallery tile and Stats card shows its icon.

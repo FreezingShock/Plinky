@@ -9,15 +9,15 @@ func run(t: Object) -> void:
 	t.ok(sim.stat_defs.has(&"seeds"), "seeds stat is loaded")
 	t.ok(ResourceLoader.exists("res://assets/icons/seeds.png") and ResourceLoader.exists("res://assets/icons/big/seeds.png"), "Seeds icons exist")
 	t.ok(not sim.can_reset(rid), "no Bloom at the start")
-	t.eq(sim.reset_gain(rid), 0, "no preview before the gate")
+	t.eq(sim.reset_gain(rid).to_float(), 0, "no preview before the gate")
 
 	# Needs the gate and the first payout of the source stat.
 	sim.stats[&"starbloom"] = BigNum.from_float(sim.reset_ref(rid))
 	t.ok(not sim.can_reset(rid), "Starbloom alone is not enough, the gate must be open")
 	sim.gates_open[&"larkmoor"] = true
-	t.eq(sim.reset_gain(rid), 2, "the gate's worth of Starbloom Petals pays 2 Seeds")
+	t.eq(sim.reset_gain(rid).to_float(), 2, "the gate's worth of Starbloom Petals pays 2 Seeds")
 	sim.stats[&"starbloom"] = BigNum.from_float(sim.reset_ref(rid) * 4.0)
-	t.eq(sim.reset_gain(rid), 4, "four times the petals pay double")
+	t.eq(sim.reset_gain(rid).to_float(), 4, "four times the petals pay double")
 	sim.stats[&"starbloom"] = BigNum.from_float(sim.reset_ref(rid) * 0.5)
 	t.ok(not sim.can_reset(rid), "too few petals pay nothing")
 
@@ -29,9 +29,9 @@ func run(t: Object) -> void:
 	sim.dev_open_tiers()
 	var reward_before: float = sim.pad_yield_mult()
 	var done: Array = []
-	sim.reset_done.connect(func(id: StringName, n: int) -> void: done.append([id, n]))
+	sim.reset_done.connect(func(id: StringName, n: BigNum) -> void: done.append([id, n.to_float()]))
 	t.ok(sim.try_reset(rid), "Bloom")
-	t.eq(done, [[&"bloom", 2]], "bloom_done carries the Seeds paid")
+	t.eq(done, [[&"bloom", 2.0]], "bloom_done carries the Seeds paid")
 	t.near(sim.get_stat(&"seeds").to_float(), 2.0, 1e-9, "Seeds paid")
 	t.ok(sim.get_stat(&"starbloom").is_zero(), "Larkmoor flowers reset")
 	t.ok(not sim.get_stat(&"clover").is_zero(), "Clover Leaves are kept")
@@ -71,7 +71,7 @@ func run(t: Object) -> void:
 	sim.gates_open[&"zone1"] = true
 	sim.stats[gz.gate_stat] = BigNum.from_float(sim.reset_ref(&"forge") * 4.0)
 	sim.stats[&"ironore"] = BigNum.from_float(500.0)
-	t.eq(sim.reset_gain(&"forge"), 4, "the new reset pays by its own formula")
+	t.eq(sim.reset_gain(&"forge").to_float(), 4, "the new reset pays by its own formula")
 	t.ok(sim.try_reset(&"forge"), "the new reset runs")
 	t.near(sim.get_stat(&"ironore").to_float(), (sim.stat_defs[&"ironore"] as StatDef).start, 1e-9, "it resets only what its def lists")
 	t.near(sim.get_stat(&"slag").to_float(), 4.0, 1e-9, "and pays its own currency")

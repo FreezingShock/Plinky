@@ -45,6 +45,38 @@ func _wipe_rect() -> ColorRect:
 		add_child(_wipe)
 	return _wipe
 
+## Reduce flashing: no dither wipe. A solid fill of the palette's darkest ink fades in, the swap runs under it, and it
+## fades out. A smooth fade with no strobe, so the swap is still covered and nothing flashes.
+const CALM_FADE_IN: float = 0.35
+var _calm: ColorRect
+
+func _calm_rect() -> ColorRect:
+	if _calm == null:
+		layer = 60
+		_calm = ColorRect.new()
+		_calm.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_calm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_calm.color = Palettes.colors(Palettes.MEADOW)[0]
+		_calm.visible = false
+		add_child(_calm)
+	return _calm
+
+
+func _calm_cover(swap: Callable, hold: float, clear: float) -> void:
+	var r: ColorRect = _calm_rect()
+	r.modulate.a = 0.0
+	r.visible = true
+	var t := create_tween()
+	t.tween_property(r, "modulate:a", 1.0, CALM_FADE_IN)
+	await t.finished
+	await swap.call()
+	await get_tree().create_timer(hold).timeout
+	var t2 := create_tween()
+	t2.tween_property(r, "modulate:a", 0.0, clear)
+	await t2.finished
+	r.visible = false
+
+
 func _set_wipe(v: float) -> void:
 	var r: ColorRect = _wipe_rect()
 	r.visible = v > 0.0
@@ -52,7 +84,7 @@ func _set_wipe(v: float) -> void:
 
 func cross_zone(swap: Callable, cover := 0.45, hold := 0.12, clear := 0.55) -> void:
 	if FxConfig.reduce_flashing:
-		await swap.call()
+		await _calm_cover(swap, hold, clear)
 		return
 	var t := create_tween()
 	t.tween_method(_set_wipe, 0.0, 1.0, cover)
