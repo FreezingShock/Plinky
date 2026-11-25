@@ -27,10 +27,20 @@ func add(path: String, weight: float, label: String) -> void:
 	_tasks.append(task)
 
 
+## Shaders the boot scenes preload on their worker threads. Each is loaded on the main thread before the requests start,
+## so no worker is the first to load one. Suspected race: a worker preloading water_night.gdshader while another worker
+## needed it logged "Could not preload resource" at world/water_night_glow.gd:9 on PC boots (not reproduced in the cloud).
+const MAIN_THREAD_FIRST: PackedStringArray = [
+	"res://render/shaders/water_night.gdshader",
+]
+
+
 func start() -> void:
 	if _started:
 		return
 	_started = true
+	for path: String in MAIN_THREAD_FIRST:
+		ResourceLoader.load(path)
 	for task: LoadTask in _tasks:
 		var err: Error = ResourceLoader.load_threaded_request(task.path)
 		if err != OK:

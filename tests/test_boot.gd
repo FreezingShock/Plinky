@@ -20,6 +20,11 @@ func run(t: SceneTree) -> void:
 	t.ok(loader.resource_for("res://world/meadow3d_scene.tscn") is PackedScene, "meadow scene is returned")
 	t.eq(loader.current_label(), "Ready", "label reads Ready when finished")
 
+	# The main-thread-first shaders exist and load, so start() never warms a missing file.
+	for path: String in BootLoader.MAIN_THREAD_FIRST:
+		t.ok(FileAccess.file_exists(path), "warm-up shader exists: %s" % path.get_file())
+		t.ok(ResourceLoader.load(path) is Shader, "warm-up shader loads as a Shader: %s" % path.get_file())
+
 	# A missing file is reported as a failure, not hidden behind a full bar.
 	var bad := BootLoader.new()
 	bad.add("res://does_not_exist/missing.tscn", 1.0, "missing")
