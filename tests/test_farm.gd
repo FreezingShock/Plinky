@@ -11,6 +11,8 @@ const SCALE: float = 2.0
 const FENCE_PREFIX: String = "farm_fence"                # the fence ring's pieces (see place_farm.py)
 const WHEAT_PREFIX: String = "farm_wheat"                # the wheat clumps, which overlap a little (see place_farm.py)
 const SOIL_PREFIX: String = "farm_soil"                  # the tilled soil decals: ground, drawn behind everything
+const LARKMOOR_PLACEMENTS: String = "res://assets/art/zone1b/larkmoor/placements3d.json"   # the Larkmoor sprites, ruins among them
+const SMALL_PROP_PREFIXES := ["farm_hay", "farm_crates", "farm_scarecrow", "farm_cart"]   # low props that wheat grows up to
 const NODE_BUDGET: int = 60                           # the farm's own nodes: one sprite per item except the wheat, plus the driver
 
 
@@ -47,7 +49,8 @@ func run(t: Object) -> void:
 			t.ok(box.has_point(Vector2(float(fa[0]), float(fa[1]))), "%s foot at %s is inside the farm box" % [kind, rect.position])
 		else:
 			t.ok(box.encloses(rect), "%s at %s is inside the farm box" % [kind, rect.position])
-		t.ok(float(fa[1]) <= rect.end.y + 0.01 and float(fa[1]) >= rect.position.y, "%s stands inside its own box" % kind)
+		if not kind.begins_with("farm_tree"):      # a tree's trunk foot may sit a few texels below its cropped sprite (as in Larkmoor)
+			t.ok(float(fa[1]) <= rect.end.y + 0.01 and float(fa[1]) >= rect.position.y, "%s stands inside its own box" % kind)
 		var tex: Texture2D = load(FarmProps.DIR + str(item.file)) as Texture2D
 		t.ok(tex != null, "%s sprite %s loads" % [kind, str(item.file)])
 		if tex == null:
@@ -90,8 +93,53 @@ func run(t: Object) -> void:
 				continue            # crowns hang over the grass round them; the placer keeps the trunk feet apart
 			if rect_kinds[i].begins_with(SOIL_PREFIX) or rect_kinds[j].begins_with(SOIL_PREFIX):
 				continue            # a soil decal lies under the wheat and is masked round the buildings in the sprite itself
+			if _wheat_behind_prop(rects[i], rect_kinds[i], rects[j], rect_kinds[j]):
+				continue            # wheat grows up to a hay bale or crate from behind it: the prop draws over the wheat
 			overlaps += 1
-	t.eq(overlaps, 0, "no two farm items overlap, except fence pieces meeting, wheat clumps overlapping, and soil under all")
+	t.eq(overlaps, 0, "no two farm items overlap, except fence pieces meeting, wheat clumps overlapping, soil under all, and wheat behind a prop")
+	# Wheat grows right up to the small props that stand in a field (hay bales, crates): no bare dirt ring round them. A clump
+	# in front of a prop keeps PROP_WHEAT_GAP texels clear, so the prop's own silhouette is never covered. The yard props
+	# stand on the fenced dirt, with no wheat by design, so they are not counted.
+	var field_props: int = 0
+	var fed_props: int = 0
+	for i in range(rects.size()):
+		if not _is_small_prop(rect_kinds[i]):
+			continue
+		var centre: Vector2 = rects[i].get_center()
+		var in_field: bool = false
+		for k in range(rects.size()):
+			if rect_kinds[k].begins_with(SOIL_PREFIX) and rects[k].has_point(centre):
+				in_field = true
+				break
+		if not in_field:
+			continue
+		field_props += 1
+		for j in range(rects.size()):
+			if rect_kinds[j].begins_with(WHEAT_PREFIX) and rects[j].grow(20.0).intersects(rects[i]):
+				fed_props += 1
+				break
+	t.ok(field_props >= 1, "the farm has small props in a field (%d)" % field_props)
+	t.eq(fed_props, field_props, "wheat grows up to every small prop in a field, with no bare ring round it")
+	# The ruins (gen_larkmoor.py) keep out of the farm: no ruin sprite overlaps the farm box, a fence piece, a soil decal or a
+	# wheat clump. Stale placements let two ruins stand in the blob field once, so this check reads the live placements.
+	var ruin_n: int = 0
+	var ruin_hits: int = 0
+	var placed: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(LARKMOOR_PLACEMENTS)) as Dictionary
+	for sv: Variant in placed.get("sprites", []) as Array:
+		var sp: Dictionary = sv as Dictionary
+		if str(sp.get("kind", "")) != "ruin":
+			continue
+		ruin_n += 1
+		var rr := Rect2(float(sp.x), float(sp.y), float(sp.w), float(sp.h))
+		var hit: bool = rr.intersects(box)
+		for i in range(rects.size()):
+			if hit:
+				break
+			hit = rr.intersects(rects[i])
+		if hit:
+			ruin_hits += 1
+	t.ok(ruin_n >= 11, "the eleven Larkmoor ruins are in the placements (%d)" % ruin_n)
+	t.eq(ruin_hits, 0, "no ruin stands in the farm box, on a field, soil or fence")
 	# The water channel: at least a few ripples long, inside the box.
 	var channels: Array = data.get("brooks", []) as Array
 	t.ok(channels.size() == 1, "the farm has one water channel")
@@ -177,3 +225,19 @@ func run(t: Object) -> void:
 	t.eq(channel_nodes, 1, "the channel spawns as one node")
 	t.ok(parent.get_child_count() <= NODE_BUDGET, "the farm adds at most %d nodes (%d)" % [NODE_BUDGET, parent.get_child_count()])
 	parent.free()
+
+
+func _is_small_prop(kind: String) -> bool:
+	for prefix: String in SMALL_PROP_PREFIXES:
+		if kind.begins_with(prefix):
+			return true
+	return false
+
+
+## A wheat clump may overlap a small prop when it stands behind the prop's foot: the prop draws over it (sort by foot).
+func _wheat_behind_prop(a: Rect2, ka: String, b: Rect2, kb: String) -> bool:
+	if ka.begins_with(WHEAT_PREFIX) and _is_small_prop(kb):
+		return a.end.y < b.end.y
+	if kb.begins_with(WHEAT_PREFIX) and _is_small_prop(ka):
+		return b.end.y < a.end.y
+	return false

@@ -681,3 +681,20 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Cloud repro did not match:** real `InputEventMouseButton` events through `Input.parse_input_event` on the bar and the icon, with and without a motion event first, after a chip click, with a tooltip up, and after a gliding move onto the bar, all started the hold on the old and the new code alike. So this is a defence, not a proven fix. The PC logs (`C:\dev\_plinky\logs\batch174\`) are needed to confirm the cause.
 - **Not covered by a committed test:** `tests/run.gd` suites run from `SceneTree._init`, before the tree is live. There a card has no layout (its bar is 0 by 0) and `Viewport.push_input` is refused, so no suite can press the bar through the viewport.
 - **Checked:** `tests/run.gd` passes. Not run in-engine on the PC.
+## 2026-11-25: Goals card hides once every goal is reached
+- **Decision:** `NextGoalCard.shown_for(goals)` is true only while a goal is open. `Hud._sync_goal_card` shows the card from the Dewdrops unlock and while that holds, and runs on each refresh and each goal reached.
+- **Why:** the card was anchored at (4, 4), the same corner as the stat strip, so once every goal was reached its "All Goals Reached" box covered the strip's top rows (Nathan's screenshot). The card is no longer a `gate()` node, so the gate cannot show it again.
+- **Superseded (same day):** the card is now a ribbon at the bottom right, see the next entry. It no longer sits over the stat strip.
+- **Checked:** `tests/run.gd` passes (11841 checks, 0 failed). In engine, `tools/goals_shot.tscn -- done` shows the strip unobstructed and no card.
+## 2026-11-25: Goals ribbon moves to the bottom right, beside the Menu chip
+- **Decision:** Nathan picked a slim ribbon (option B of the mockups in `/mnt/project-files/plinky/goals-stats-overhaul/`) and asked for it bottom right, to the left of the hamburger. `NextGoalCard` is now one line: the goal's name, its reward, and a 2 px progress line. Hover shows the description and the progress. `Hud._place` puts it left of the Menu chip, on the chip's centre line. The save flash moves left of the ribbon while it shows.
+- **Why:** the stat strip keeps the top left alone, so nothing overlaps it. The bottom right row was empty apart from the Menu chip.
+- **Checked:** `tests/run.gd` passes (11841 checks, 0 failed). In engine, `tools/goals_shot.tscn -- fresh` shows the ribbon beside the Menu chip and the strip clear at the top left; `-- done` shows no ribbon.
+- **Not run in-engine on a PC:** the ribbon at zoom 1 and 3 and the save flash beside it. PC QA should check both.
+## 2026-11-25: Stats strip, S1 (tidy list)
+- **Decision:** Nathan picked S1. The edit pencil moves to a "Stats" header above the rows (the footer goes). Dotted rules sit between rows (`StripRule`, placed by `Hud._place_rules`, never under the last row). The value sits right after its icon with a 5 px gap and is left-aligned, so no blank run opens between them. Each number takes its icon's main colour (`StatStyle.ICON_TINT`, from the icon body, lifted to read on the panel), so the number matches the icon beside it.
+- **Why:** Nathan asked for less blank space between the gain and the icon, and for the values to match their icons. The "+x/s" rate and the "+123" gain still sit outside the panel's right edge, as before.
+- **Checked:** `tests/run.gd` passes. In engine, `tools/hud_shot.tscn -- late` shows the header, rules and icon-matched values.
+- **Not run on a PC:** the strip at zoom 1 and 3, and the colour-safe modes with `ICON_TINT` (the tint applies through AccessOptions). PC QA should check both.
+- **Colour-safe modes (QA batch 204):** the numbers now take the icon's own colour untouched in every mode. The icon art is not recoloured, so the number matches the icon in all three modes. `AccessOptions.tint` is no longer applied to strip numbers, because its swap table only knows the game's named colours, not the icon colours.
+

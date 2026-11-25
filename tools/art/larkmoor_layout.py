@@ -18,7 +18,7 @@ EMBER_GATE = (760, 268)       # the gate that leads on to Zone 2, set into the n
 
 # Main route: S -> Thistledown Green -> fork W (Heronmere) / E (Foxglove Rise) -> Heather Hollow -> N fork -> Starbloom Terrace.
 PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 520), (770, 486), (762, 454), (752, 420), (756, 386), (770, 350), (766, 310), (760, 268)]
-PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
+PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (600, 600), (640, 580), (630, 558), (600, 540), (680, 516), (772, 520)]   # round the lake's south-east rim, clear of the water and the Reedgate row
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094, 550), (1090, 536), (1060, 520), (990, 500), (900, 490), (770, 486)]   # the tip now ends at the windmill's south door (1090, 520), so the fold leads somewhere
 # Only the main road runs north: to the Ember gate, top middle. The side trails stop short of the mountainside.
 # West trail: off the east side of the west road, north of the lake and along its north shore, to the Westmere pads on the west bank.
@@ -47,6 +47,13 @@ STREAM_CTRL = [(500, 512), (534, 506), (566, 500), (594, 488), (630, 476), (680,
 STREAM = []                   # filled from STREAM_CTRL once _catmull() exists (below)
 BRIDGE = (762, 456)           # where the main path crosses the river
 FOOT_CROSSING = (594, 487)    # where the west trail crosses the river
+# Feeder brooks (T6 layout B): each leaves the river (or the mere) and runs into a small pond in a clearing, so every pond
+# is fed and none is an orphan puddle. No brook crosses a path, so no bridge is needed. The third pond sits in the pine
+# clearing south-west of the mere, clear of the mountain edge.
+FEEDERS = [[(640, 476), (646, 440), (652, 410), (650, 380)],
+           [(884, 452), (882, 420), (880, 390), (880, 362)],
+           [(1070, 380), (1046, 360), (1024, 342), (1010, 330)]]
+PONDS = [dict(c=(650, 380), rx=30, ry=16), dict(c=(880, 360), rx=30, ry=16), dict(c=(1010, 330), rx=30, ry=16)]
 
 # Pad rows: a tier is a row of pads laid on a smooth curve (a Catmull-Rom spline through a few control points) that follows the
 # ground beside a path. `curve_row(ctrl, n)` lists n pads from the first to the last, PAD_GAP apart along the curve (authored
@@ -142,6 +149,19 @@ GROVES = [
 
 # The windmill farm (the cozy thread places its props there): the flower gardens keep out of this box. Authored units.
 FARM_BOX = (960, 410, 1220, 630)
+# The farm's wheat, soil and fences reach past FARM_BOX (its items run to about y 686): the farm box as placed by
+# place_farm.py is (1090, 548, 260, 276) in layout texels. Ruins keep out of that box plus a margin, so no ruin lands on the
+# fields, the soil or the fences (Nathan, 2026-11-25: ruins stood between the fences and inside a wheat plot).
+FARM_KEEPOUT_BOX = (1090 - 130, 548 - 138, 1090 + 130, 548 + 138)
+FARM_KEEPOUT_MARGIN = 26     # layout texels: a ruin sprite rises about 23 texels above its foot, so 26 keeps its whole sprite clear
+
+
+def in_farm_keepout(sx, sy):
+    """True when the ground point (sx, sy) in the scaled canvas frame (what _from_uv returns) is inside the farm keep-out box.
+    gen_larkmoor.py uses it for the extra ruins; tests/test_farm.gd checks the sprites that result."""
+    x0, y0, x1, y1 = FARM_KEEPOUT_BOX
+    m = FARM_KEEPOUT_MARGIN
+    return (x0 - m) * S <= sx <= (x1 + m) * S and (y0 - m) * S <= sy <= (y1 + m) * S
 
 
 def _seg_dist(px, py, ax, ay, bx, by):
@@ -221,7 +241,7 @@ for _d in DISTRICTS:
 # keep their texel size, so grove counts scale by S squared to keep the same density. The scene loads props by chunk around
 # the walker (world/larkmoor_scene.gd), which keeps the live node count under the 1350 ceiling.
 def _apply_scale():
-    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, FOOT_CROSSING, PAD_CLEAR, GROVES
+    global W, H, OX, OY, N, CU, CV, R, PLAY, SPAWN, HOLLOW_GATE, EMBER_GATE, BRIDGE, FOOT_CROSSING, PAD_CLEAR, GROVES, FEEDERS, PONDS
     def sc(p): return (p[0] * S, p[1] * S)
     W, H = round(W * S), round(H * S)
     OX, OY = OX * S, OY * S
@@ -235,6 +255,8 @@ def _apply_scale():
     MERE['rx'], MERE['ry'] = MERE['rx'] * S, MERE['ry'] * S
     STREAM[:] = [sc(q) for q in STREAM]
     FOOT_CROSSING = sc(FOOT_CROSSING)
+    FEEDERS[:] = [[sc(q) for q in f] for f in FEEDERS]
+    for pd in PONDS: pd['c'] = sc(pd['c']); pd['rx'] *= S; pd['ry'] *= S
     for d in DISTRICTS:
         d['c'] = sc(d['c']); d['pads'] = [sc(q) for q in d['pads']]
     for lm in LANDMARKS: lm['at'] = sc(lm['at'])
