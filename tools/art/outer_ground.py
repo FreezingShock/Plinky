@@ -96,7 +96,11 @@ def main(folder):
 
 
 LIGHT_RGB = (0xb7, 0xd9, 0x78)                # palette 4, the sway tips' colour (render/palettes.gd, Meadow)
-GRASS_RGB = ((0x5f, 0xa3, 0x6a), (0xb7, 0xd9, 0x78), (0x2f, 0x6b, 0x55))
+# sway tips stay on palette 4 only (the life test and the runtime sway colour); tips on the warm and cool patches are moved or dropped
+LIGHTS_RGB = (LIGHT_RGB,)
+GRASS_RGB = ((0x5f, 0xa3, 0x6a), (0xb7, 0xd9, 0x78), (0x2f, 0x6b, 0x55),
+             (0x7a, 0x7f, 0x45), (0x91, 0x96, 0x54), (0x9e, 0xa3, 0x5f), (0xaa, 0xb0, 0x61),
+             (0x45, 0x7b, 0x7f), (0x54, 0x91, 0x96), (0x5f, 0x9e, 0xa3), (0x61, 0xaa, 0xb0))
 SWAY_SPACING = 9                              # same spacing gen_life_anchors.py keeps between tips
 PAD_CLEARANCE = 22                            # same clearance from pad rings
 SNAP_RADIUS = 8                               # texels a tip may move to find palette 4 again
@@ -114,14 +118,14 @@ def snap_sway_tips(life_path, ground_rgb):
     data = json.loads(raw)
     org = data.get('backdrop_origin', [0, 0])
     h, w = ground_rgb.shape[:2]
-    light = np.array(LIGHT_RGB, np.uint8)
+    lights = [np.array(c, np.uint8) for c in LIGHTS_RGB]
     grass = np.array(GRASS_RGB, np.uint8)
 
     def texel(x, y):
         return ground_rgb[y, x]
 
     def on_light(x, y):
-        return 0 < x < w - 1 and 0 < y < h - 1 and np.array_equal(texel(x, y), light)
+        return 0 < x < w - 1 and 0 < y < h - 1 and any(np.array_equal(texel(x, y), l) for l in lights)
 
     def grass_below(x, y):
         return any(np.array_equal(texel(x, y + 1), g) for g in grass)
