@@ -455,3 +455,17 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 | 2026-11-25 | Flower fields keep today's flower shapes, sizes and density (mockup M1, Nathan's pick). Only the greens move, onto the meadow zone ramp: stems, shrubs and leaves use meadow base, deep and light steps 1 | Nathan likes the current density. Recolouring the leaves keeps the zone's hue family without redrawing a sprite. |
 | 2026-11-25 | Each field sits on one soft ground patch, drawn once by GardenLayer from the flower positions (blurred cells, four Bayer levels, meadow deep ramp at low alpha) | Gower rule 5: big organic ground patches. One texture for the layer, no per-field node, so the 1350 node ceiling is unaffected. |
 | 2026-11-25 | Each pad's field is checked against its row: every flower within 40 texels of a pad is that row's statistic (tools/art/gen_gardens.py GARDENS and the district names) | The mismatch check passed on the data. Nothing in the field generator changes. |
+## 2026-11-25: Icon colour families on the ramps (T11)
+- **Nathan's pick:** Option A, colour families (mockups in `/mnt/project-files/icon-restyle/`). Option B (one meadow ramp) and C (rebirth on the quarry ramp) were rejected.
+- **Decision:** every staged icon (`tools/art/staged/*.txt`, 48 icons at 8, 12, 16, 24 and 32 px) takes its role colours from one hue family's RAMP in `render/palettes.gd`. Families live in `tools/art/icon_ramps.py`: meadow for stats and nature, quarry for embers, cinder, slag, ore, ingot, alloy and emberheart, iris for rebirth, prestige and crowns, tidewater for clock, rest and offline.
+- **Shading:** texels on the upper-left lit edge take ramp step 3, texels on the lower-right shaded edge take step 1, and the rest take step 2 (the anchor). Ink stays ink.
+- **Kept:** the ink outline, the 8 role names, and literal material and relic colours (object identity). Rarity frames stay fixed hex, per CLAUDE.md.
+- **Menu follow-up (same pick):** the `menu_*` gallery tiles were already in the staged set and shipped shaded. The hamburger (`menu_hamburger`, 16 px) was the only flat menu icon. `gen_menu_icons.py` and `gen_ledger.py` now run their drawings through `icon_ramps.remodel_image` and `shade`, so a rerun gives the same files.
+- **Ledger categories kept literal:** the nine ledger category icons keep their own colours. They match `LedgerPanel.CATEGORY_COLORS`, so changing them needs a code change, which is out of scope here.
+- **Not yet done:** `docs/img/icons_staged.png` still shows the unshaded set.
+- **Not verified in-engine:** the cloud has no Godot run for this change. Icon paths are unchanged, so no code path moves.
+
+## Pad plates, T4 (25 Nov)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
