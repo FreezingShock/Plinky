@@ -1,1 +1,0 @@
-- The first tip no longer waits while the pointer rests on a pad, and the Clover tip now says what the first Clover pad costs.
