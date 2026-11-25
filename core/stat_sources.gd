@@ -31,14 +31,14 @@ static func of(sim: Sim, id: StringName, is_attribute: bool = false) -> Array[Di
 			_attr_row(sim, &"crit_chance", "Crit chance attribute", rows)
 			rows.append(_r("Pad mastery", "+%s%% on your best pad" % StatIndex._trim(_best(sim, true) * 100.0), "Press a pad often to raise its mastery. Each level adds crit chance on that pad.", "mastery"))
 		&"crit_damage":
-			rows.append(_r("Base crit", "x%.2f" % sim.config.crit_multiplier, "Every critical press starts here.", "base"))
-			rows.append(_r("Pad mastery", "+%.2f on your best pad" % _best(sim, false), "Pad mastery levels add crit damage on that pad.", "mastery"))
-			rows.append(_r("Equipped relics", "x%.2f" % _relic(sim, RelicDef.Effect.CRIT_DAMAGE), "Equip a relic that boosts crit damage.", "relic"))
+			rows.append(_r("Base crit", NumberFormat.mult_f(sim.config.crit_multiplier), "Every critical press starts here.", "base"))
+			rows.append(_r("Pad mastery", "%s on your best pad" % NumberFormat.bonus_mult(_best(sim, false)), "Pad mastery levels add crit damage on that pad.", "mastery"))
+			rows.append(_r("Equipped relics", NumberFormat.mult_f(_relic(sim, RelicDef.Effect.CRIT_DAMAGE)), "Equip a relic that boosts crit damage.", "relic"))
 		&"press_rate":
 			var z: ZoneDef = sim.current_zone()
-			rows.append(_r("This zone", "%.2f/s" % (z.press_rate if z != null else 1.0), "Each zone sets its own base press rate.", "zone"))
+			rows.append(_r("This zone", NumberFormat.rate(z.press_rate if z != null else 1.0), "Each zone sets its own base press rate.", "zone"))
 			_attr_row(sim, &"press_rate", "Press rate attribute", rows)
-			rows.append(_r("Equipped relics", "x%.2f" % _relic(sim, RelicDef.Effect.PRESS_RATE), "Equip a relic that boosts press rate.", "relic"))
+			rows.append(_r("Equipped relics", NumberFormat.mult_f(_relic(sim, RelicDef.Effect.PRESS_RATE)), "Equip a relic that boosts press rate.", "relic"))
 		&"luck":
 			_attr_row(sim, &"luck", "Luck attribute", rows)
 		&"walk_speed":

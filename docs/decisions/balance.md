@@ -169,3 +169,15 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Result (push):** the Quarry gate takes 116 min without resets, so the Bloom loop is the way through.
 - **Decided (Nathan, 25 Nov, decision card):** keep current pacing. The 60-minute target is the 10th Bloom (59 min active), not the Larkmoor gate (15 min). No numbers changed.
 - **Not checked yet:** walking, gifts, attributes and relic equips, so these are floors.
+## 2026-11-25: Mid-game goals are a chain with a small permanent bonus
+- **Why:** between Bloom and Nucleus resets a player had nothing new to aim for once the gates were open. Nathan picked a milestone track with rewards (decision card, 2026-11-25).
+- **What:** 12 goals in `content/goals/`, one chain by `order`, each reached once and kept through resets. Each adds 2% (3% for the four bigger ones) to every pad's press reward, so the full chain is +28%. Counters are the Sim's achievement counters, plus a new `zone_resets` (total zone reset uses).
+- **Why small:** Nathan wants fast progress, so the bonus is a steady nudge and not a power spike. Relics, resets and gates still carry the curve.
+- **Open:** the targets (1K presses up to 10K, 1 to 4 play hours, Mastery 5 and 15, 1 and 3 zone resets) are not yet checked against the pacing sim. The pacing thread owns the check. A goal is cheap to retune in its `.tres`.
+- **Saves:** the reached list lives under `goals` in the save. A save without it credits what it has already earned, silently, the same as achievements. No version bump.
+
+## 2026-11-25: Goal order follows the pace, and Curio Shelf asks for 10 kinds
+- **Why:** the first pacing run (docs/balance.md section 15, PR #522) showed "An Hour In" sat second in the chain and was not reached until about 60 min. The Next Goal card held it for the whole first hour and hid five goals that land in the first 15 min. Chain order now follows the expected pace: Steady Hands 5.5, Known Ground 8.9, Curio Shelf 9.5, Round Again and Open Doors 15.1, Seasoned 34, Practised Hands 43, An Hour In 60, Lucky Strikes 68.
+- **Curio Shelf:** 6 relic kinds at 9.5 min was nearly free, so the target is now 10 kinds (the pacing thread's suggestion). Not run in the sim past 81 min, so it is unverified that 10 kinds is reached in play.
+- **Ids unchanged:** `goal_relics_6` keeps its id so saves that already logged it still load. Only its target and order changed.
+- **Not checked:** the sim buys no attributes and equips no relics, so Tuned Up and Second Nature are unverified by the run.

@@ -30,3 +30,37 @@ func run(t: Object) -> void:
 	t.eq(NumberFormat.short(1500.0), "1.5K", "float entry point for ui/fx")
 	t.eq(NumberFormat.short(1.5e15), "1.5Qd", "popup entry point reads 1.5e15 as 1.5Qd")
 	t.eq(NumberFormat.short(1.0e80), "100QnVg", "popup entry point reads 1e80 as 100QnVg")
+	# Three significant figures from 1 up to the next suffix: 1.23K, 12.3K, 123K. Carries at 999.5.
+	t.eq(BigNum.from_float(123400.0).format(), "123K", "123K, not 123.4K")
+	t.eq(BigNum.from_float(1234567.0).format(), "1.23M", "1.23M")
+	t.eq(BigNum.from_float(12345678.0).format(), "12.3M", "12.3M")
+	t.eq(BigNum.from_float(123456789.0).format(), "123M", "123M")
+	t.eq(BigNum.from_float(999400.0).format(), "999K", "999.4K stays K")
+	t.eq(BigNum.from_float(999600.0).format(), "1M", "999.6K rounds up to 1M")
+	t.eq(BigNum.from_float(0.5).format(), "0.5", "fractions keep their digits")
+	# Whole payouts group thousands so a long run of digits can be counted.
+	t.eq(BigNum.from_float(1234.0).whole_text(), "1,234", "whole text groups thousands")
+	t.eq(BigNum.make(8.581, 14).whole_text(), "858,100,000,000,000", "whole text keeps every digit below 1e15")
+	# Rates and added multipliers use the one formatter.
+	t.eq(NumberFormat.rate(4.0), "4/s", "a whole rate")
+	t.eq(NumberFormat.rate(3.3333), "3.33/s", "a fractional rate keeps two places")
+	t.eq(NumberFormat.rate(1234.0), "1.23K/s", "a big rate takes a suffix")
+	# The Multiplier display setting covers the Stats index, not only the HUD.
+	var was: int = NumberFormat.mult_style
+	NumberFormat.mult_style = NumberFormat.MultStyle.FACTOR
+	t.eq(NumberFormat.bonus_mult(0.35), "+0.35x", "factor bonus")
+	t.eq(NumberFormat.mult_f(5.0), "x5", "factor multiplier")
+	var sim: Sim = t.make_sim()
+	t.eq(_row_value(sim, &"crit_damage"), "x5", "Stats index crit damage in factor style")
+	NumberFormat.mult_style = NumberFormat.MultStyle.PERCENT
+	t.eq(NumberFormat.bonus_mult(0.35), "+35%", "percent bonus")
+	t.eq(NumberFormat.mult_f(5.0), "500%", "percent multiplier")
+	t.eq(_row_value(sim, &"crit_damage"), "500%", "Stats index crit damage in percent style")
+	NumberFormat.mult_style = was
+
+
+func _row_value(sim: Sim, id: StringName) -> String:
+	for r: Dictionary in StatIndex.stats(sim):
+		if r["id"] == id:
+			return String(r["value"])
+	return "missing"

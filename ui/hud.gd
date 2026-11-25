@@ -22,6 +22,7 @@ var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
+var _goal_card: NextGoalCard   # top left: the next mid-game goal
 var _reset_chips: Dictionary = {}   # zone reset id -> its bottom-bar chip (generated from content/resets)
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
@@ -84,6 +85,7 @@ func setup(p_sim: Sim) -> void:
 	_build_stats()
 	_build_gate()
 	_build_clock()
+	_build_goal_card()
 	move_child(_clock_widget, _zone_panel.get_index())   # the zone list drops over the clock, never under it
 	_build_bottom()
 	_build_upgrades()
@@ -102,6 +104,7 @@ func setup(p_sim: Sim) -> void:
 	var bus: Node = get_node("/root/EventBus")
 	_save_note.connect_bus(bus)
 	bus.offline_gained.connect(_on_offline)
+	bus.goal_reached.connect(_on_goal_reached)
 	bus.button_pressed.connect(_on_gain_pressed)   # every pad press, auto and relic pulses included; bonuses stay out (see decisions/hud.md)
 	var report: Dictionary = get_node("/root/Save").take_offline_report()
 	if not report.is_empty():
@@ -343,6 +346,24 @@ func set_district(id: StringName) -> void:
 
 
 ## The clock sits left of the zone card and hugs it as the frame widens (see _layout below).
+## A mid-game goal was reached: the card updates and the banner shows it (ui/next_goal_card.gd).
+func _on_goal_reached(id: StringName) -> void:
+	if _goal_card == null:
+		return
+	var spec: Dictionary = _goal_card.goal_reached(id)
+	if not spec.is_empty():
+		Banner.announce(spec)
+
+
+## The Next Goal card, top left: the first mid-game goal not yet reached (ui/next_goal_card.gd). Gated like the stat strip.
+func _build_goal_card() -> void:
+	_goal_card = NextGoalCard.new()
+	_goal_card.position = Vector2(4.0, 4.0)
+	add_child(_goal_card)
+	_goal_card.bind(sim)
+	gate(_goal_card, Onboarding.F_DEWDROP)
+
+
 func _build_clock() -> void:
 	_clock_widget = ClockWidget.new()
 	_clock_widget.position = Vector2(318, 4)
@@ -1771,7 +1792,7 @@ func _build_tip_card() -> void:
 
 func _poll_tips() -> void:
 	var toast: bool = toast_showing.is_valid() and bool(toast_showing.call())
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card, a banner or an achievement toast
+	_tip_card.held = PadInput.menu_open or Tip.hud_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a HUD tooltip, a confirm card, a banner or an achievement toast. A world pad tooltip does not hold them (see Tip.hud_showing).
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

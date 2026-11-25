@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GoalDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/goal_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"goal_relics_6"
+display_name = "Curio Shelf"
+description = "Own relics of 10 kinds."
+counter = &"relic_kinds"
+target = 10.0
+order = 3
+reward = 0.03

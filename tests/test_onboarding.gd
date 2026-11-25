@@ -89,6 +89,8 @@ func _stages(t: Object, cfg: OnboardingConfig) -> void:
 	sim.step(cfg.urgent_gap_seconds + 0.1)
 	t.eq(ob.next_tip(), &"gate_open", "gate tip appears once the gate opens")
 	t.ok(ob.tip_text(&"gate_open").contains("Larkmoor"), "gate tip names the next zone")
+	t.ok(ob.tip_text(&"clover_row").contains("first costs") and ob.tip_text(&"clover_row").contains("Dewdrops"), "clover tip gives the first pad's price in Dewdrops")
+	t.ok(not Tip.hud_showing(), "no HUD tooltip is up in a headless run, so tip cards are not held by one")
 	for id: StringName in [&"rebirth_button", &"upgrades", &"relic", &"first_press", &"clover_row", &"walk", &"streak", &"critter", &"welcome", &"gate_open"]:
 		t.ok(ob.tip_text(id) != "" and ob.tip_title(id) != "", "tip %s has a title and text" % id)
 		t.ok(not ob.tip_text(id).contains("Plinko"), "tip %s avoids the banned word" % id)

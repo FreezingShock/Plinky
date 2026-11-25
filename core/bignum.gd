@@ -200,13 +200,10 @@ func floor_big() -> BigNum:
 	return BigNum.from_float(floorf(x))
 
 
-## Whole-number text for a payout: the exact digits below 1e15, the usual short format above that.
+## Whole-number text for a payout: the exact digits below 1e15 with thousands commas ("858,100,000,000,000"),
+## the usual short format above that.
 func whole_text() -> String:
-	if m == 0.0:
-		return "0"
-	if e >= 0 and e < 15:
-		return "%d" % int(roundf(m * pow(10.0, float(e))))
-	return format()
+	return NumberFormat.exact(self)
 
 
 func to_array() -> Array:

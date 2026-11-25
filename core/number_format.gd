@@ -30,6 +30,19 @@ static func mult_f(m: float) -> String:
 	return mult(BigNum.from_float(m))
 
 
+## An added multiplier, in the chosen style: 0.35 -> "+0.35x" or "+35%". Used for bonuses that add to a
+## multiplier (crit damage from pad mastery), so the number matches the "x1.5" or "150%" shown beside it.
+static func bonus_mult(delta: float) -> String:
+	if mult_style == MultStyle.PERCENT:
+		return "+%s%%" % _trim(delta * 100.0, 1)
+	return "+%sx" % _trim(delta, 2)
+
+
+## A per-second rate as text: 4 -> "4/s", 3.33 -> "3.33/s", 1234 -> "1.23K/s".
+static func rate(per_second: float) -> String:
+	return format(BigNum.from_float(per_second)) + "/s"
+
+
 ## Highest group with a name: n = 999, i.e. 10^3003. Past that, e-notation.
 const MAX_GROUP: int = 1000
 
@@ -92,21 +105,26 @@ static func _fmt_abs(am: float, ex: int) -> String:
 		var v: float = am * pow(10.0, float(ex))
 		if v >= 999.5:
 			return _fmt_abs(v / 1000.0, 3)
-		if v >= 100.0:
-			return str(roundi(v))
-		if v >= 10.0:
-			return _trim(v, 1)
-		return _trim(v, 2)
+		return _sig3(v)
 	if style == Style.SCIENTIFIC:
 		return _sci(am, ex)
 	if style == Style.ENGINEERING:
 		return _trim(am * pow(10.0, float(ex % 3)), 2) + "e" + str(ex - ex % 3)
 	var idx: int = ex / 3  # 1 = first suffix
 	var scaled: float = am * pow(10.0, float(ex % 3))
-	if snappedf(scaled, 0.01) >= 1000.0:
+	if roundf(scaled) >= 1000.0:  # 999.6K would round to 1000K, so it carries to 1M
 		scaled /= 1000.0
 		idx += 1
 	if idx > MAX_GROUP:
 		return _sci(am, ex)
-	var digits: String = _trim(scaled, 2) if scaled < 100.0 else _trim(scaled, 1)
-	return digits + suffix_for(idx)
+	return _sig3(scaled) + suffix_for(idx)
+
+
+## Three significant figures for a mantissa between 1 and 999.5: "1.23", "12.3", "123". The same rule
+## for plain numbers and suffixed ones, so 1234, 12340 and 123400 read as 1.23K, 12.3K and 123K.
+static func _sig3(v: float) -> String:
+	if v < 10.0:
+		return _trim(v, 2)
+	if v < 100.0:
+		return _trim(v, 1)
+	return str(roundi(v))
