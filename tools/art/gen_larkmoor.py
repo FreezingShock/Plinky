@@ -959,6 +959,7 @@ for _gn in EXTRA_GROUPS:
         _a, _rd = _xr.uniform(0, 6.283), math.sqrt(_xr.random()) * 0.7 * R
         _cu, _cv = CU + math.cos(_a) * _rd, CV + math.sin(_a) * _rd
         if any(math.hypot(_cu - pu, _cv - pv) < 190 for (pu, pv) in _xr_spots): continue
+        if LAY.in_farm_keepout(*LAY._from_uv(_cu, _cv)): continue          # no ruin on the farm fields, soil or fences
         if not ok_spot(_cu, _cv, 12.0, slope_max=0.8, hmax=200.0, path_clear=8.0): continue
         _gc = (_cu, _cv); break
     if _gc is None: continue
@@ -968,6 +969,7 @@ for _gn in EXTRA_GROUPS:
             _b, _dd = _xr.uniform(0, 6.283), _xr.uniform(26.0, 44.0)
             _u, _v = _gc[0] + math.cos(_b) * _dd, _gc[1] + math.sin(_b) * _dd
             if any(math.hypot(_u - pu, _v - pv) < 30 for (pu, pv) in _members): continue
+            if LAY.in_farm_keepout(*LAY._from_uv(_u, _v)): continue        # the farm box and its margin stay clear of ruins
             if not ok_spot(_u, _v, 12.0, slope_max=0.8, hmax=200.0, path_clear=8.0): continue
             _style, _xh = EXTRA_RUINS[_xr_k % len(EXTRA_RUINS)]; _xr_k += 1
             put('ruin', _u, _v, 1.0, style=_style, h=_xh, seed=_xr.randint(0, 1 << 30))
