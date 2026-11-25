@@ -648,6 +648,20 @@ def place_props(T, rng, GL):
     scatter('timber', 3, lambda w, d: 30 < w < 130 and d < -200, road=20)
     scatter('cart', 3, lambda w, d: 30 < w < 130 and d < -190, road=16)
     scatter('iron_lamp', 6, lambda w, d: w < -150 or w > 160, road=8)
+    # denser rocks: QUARRY_DENSE = off | boulders | ring | both (default both: 40 boulders plus 30 lava-ring rocks, placed where they fit)
+    DENSE = os.environ.get('QUARRY_DENSE', 'both')
+    def lava_ring(w, d, lo=3, hi=9):
+        for ang in range(0, 360, 30):
+            ca, sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+            for rr in range(lo, hi + 1, 2):
+                iu, iv = (int(round(x)) for x in uv(w + rr * ca, d + rr * sa))
+                if 0 <= iu < N and 0 <= iv < N and lava[iu, iv]:
+                    return True
+        return False
+    if DENSE in ('boulders', 'both'):
+        log('dense boulders +', scatter('boulder', 40, lambda w, d: abs(d) > 40, road=12))
+    if DENSE in ('ring', 'both'):
+        log('lava ring rocks +', scatter('boulder', 30, lava_ring, lava_gap=0, road=6))
     # braziers beside the road, a pair at every ramp and one by each row
     for r in range(5):
         for side in (-1, 1):
