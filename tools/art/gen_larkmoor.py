@@ -32,7 +32,7 @@ OXS0, OYS0 = LAY.OX, LAY.OY
 OXS, OYS = OXS0, OYS0
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
 # warm (8-11) and cool (12-15) grass variants, 4 steps dark to light, the same hexes as Palettes.grass_variant(&"warm"/&"cool")
-PAL += ['#7a7f45', '#919654', '#9ea35f', '#aab061', '#457b7f', '#549196', '#5f9ea3', '#61aab0']
+PAL += ['#7a7f45', '#919654', '#9ea35f', '#aab061', '#3c7a6a', '#4b8f7a', '#5ea88a', '#72bf9f']   # cool: blue-green grass, not teal
 GRASS_WARM = [8, 9, 10, 10, 11]
 GRASS_COOL = [12, 13, 14, 14, 15]
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
@@ -1099,12 +1099,12 @@ lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
 # and lane, and lighter dusty patches. All of it is lit ground, so the palette is unchanged.
 _peb_s = (vn2(FU / 1.6, FV / .8, 95) > .9) & (vn2(FU / 9, FV / 9, 96) > .3)
 _peb_l = (vn2(FU / 2.8, FV / 1.2, 97) > .95) & (vn2(FU / 9, FV / 9, 96) > .3)
-lt -= .20 * ((_peb_s | _peb_l) & on_trod)
+lt -= .30 * ((_peb_s | _peb_l) & on_trod)
 _rut = np.zeros(len(FU), bool)
 for _t in ('road', 'lane'):
     _wob = (vn2(FU / 6, FV / 6, 98) - .5) * 1.4
-    _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.1) & on_path[_t]
-lt -= .10 * (_rut & (mat == T_PATH))
+    _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.4) & on_path[_t]
+lt -= .16 * (_rut & (mat == T_PATH))
 lt += .07 * (on_trod & (vn2(FU / 9, FV / 9, 99) > .72))
 # value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
 # under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
