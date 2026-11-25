@@ -574,7 +574,7 @@ func _sparkle(p: Pop, n: int) -> void:
 
 # ------------------------------------------------------------------ frame
 func _calm() -> bool:
-	return FxConfig.reduce_flashing or MeadowLife.reduce_motion or WorldCamera.calm
+	return FxConfig.reduce_flashing or FxConfig.still() or WorldCamera.calm
 
 
 func _process(delta: float) -> void:
@@ -792,8 +792,8 @@ func _draw_particles() -> void:
 		var life: float = _p_life[i]
 		if age >= life:
 			continue
-		if age > life * 0.7 and int(age * 40.0) % 2 == 0:
-			continue   # the last 30% blinks out, a pixel-art fade
+		if not FxConfig.reduce_flashing and age > life * 0.7 and int(age * 40.0) % 2 == 0:
+			continue   # the last 30% blinks out, a pixel-art fade (held solid under Reduce flashing)
 		var c: Vector2 = _p_pos[i].round()
 		var col: Color = _p_col[i]
 		var s: int = _p_size[i]

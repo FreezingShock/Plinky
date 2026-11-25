@@ -41,14 +41,15 @@ const FOLD_SPRING: float = 0.74   # spring heads are half open buds
 
 const STATS: Array[StringName] = [&"dewdrop", &"clover", &"thistle", &"heather", &"foxglove", &"starbloom"]
 
-## Petal colour, shade, light, heart per statistic (the stat colours of TexelPad.STAT_COLORS, shaded by hand).
+## Petal colour, shade, light, heart per statistic (the stat colours of TexelPad.STAT_COLORS, shaded by hand). Pulled 12 to 15%
+## toward the meadow's role 4 and 5 anchors (audit pick): hue and silhouette kept, so the six fields read as one scene.
 const COLORS: Dictionary = {
-	&"dewdrop": ["e4f1ff", "93bfe6", "ffffff", "6fa8dc"],
-	&"clover": ["6be86b", "36a846", "c4f7b0", "f6efd9"],
-	&"thistle": ["7f9bff", "4a62c8", "c9d6ff", "ff9bd8"],
-	&"heather": ["c27cff", "8447c4", "ecc6ff", "fff0ff"],
-	&"foxglove": ["ffb62e", "d27a14", "ffe28a", "7a3416"],
-	&"starbloom": ["ff7bff", "c248c2", "ffc9ff", "ffffff"],
+	&"dewdrop": ["dfeeef", "97c2d9", "fdfbf1", "83b1d3"],
+	&"clover": ["74e66d", "45ae4c", "cbf4ae", "f5eed0"],
+	&"thistle": ["86a2ef", "5770be", "cfd8f1", "fda6d0"],
+	&"heather": ["c187ef", "8a59bb", "edcbf1", "fdeef1"],
+	&"foxglove": ["f6ba37", "cf8520", "fde38d", "8c4f2b"],
+	&"starbloom": ["f686ef", "c159b9", "fdcdf1", "fdfbf1"],
 }
 
 ## Petal count and edge sharpness per statistic: dewdrop a six-bell daisy, clover a trefoil, thistle a spiky crown,

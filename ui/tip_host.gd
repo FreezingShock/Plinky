@@ -237,6 +237,12 @@ func dismiss() -> void:
 
 ## The first navigation input after a quiet menu-open focus lets focus tooltips show again.
 func _input(event: InputEvent) -> void:
+	# WCAG 1.4.13: a tip that opened on hover or focus can be dismissed with Esc without moving the pointer or focus.
+	# It stays shut on that control until the pointer leaves it. The key is not consumed, so the menu still closes too.
+	if visible and not _free_mode and target != null and event.is_action_pressed(&"ui_cancel"):
+		_suppressed = target
+		dismiss()
+		return
 	if not Tip.focus_muted or not event.is_pressed():
 		return
 	for a: StringName in [&"ui_up", &"ui_down", &"ui_left", &"ui_right", &"ui_focus_next", &"ui_focus_prev"]:

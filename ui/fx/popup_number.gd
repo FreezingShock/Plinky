@@ -56,6 +56,8 @@ func _run(big: bool) -> void:
 
 ## Fades are stepped, never alpha: the label blinks off, on, off over the span, so no glyph is half-transparent.
 func _blink_out(t: Tween, after: float, span: float) -> void:
+	if FxConfig.reduce_flashing:
+		return   # Reduce flashing: the number stays solid, then frees itself
 	for i in 3:
 		t.tween_callback(_set_shown.bind(i % 2 == 1)).set_delay(after + span * float(i) / 3.0)
 

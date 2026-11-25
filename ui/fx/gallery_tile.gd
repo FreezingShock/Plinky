@@ -60,7 +60,7 @@ func _process(delta: float) -> void:
 	super._process(delta)
 	var active: bool = is_hovered() or has_focus()
 	var want: float = 1.0 if (active and not locked) else 0.0
-	var calm: bool = FxConfig.reduce_flashing or MeadowLife.reduce_motion
+	var calm: bool = FxConfig.reduce_flashing or FxConfig.still()
 	var n: float = want if calm else move_toward(lift_t, want, LIFT_SPEED * delta)
 	var animating: bool = false
 	if active and not locked and not calm:
@@ -83,7 +83,7 @@ func _process(delta: float) -> void:
 
 ## Icon bob: one texel up on the second half of each period while hovered, and never when calm or locked.
 func bob_px() -> int:
-	if locked or lift_t < 1.0 or FxConfig.reduce_flashing or MeadowLife.reduce_motion:
+	if locked or lift_t < 1.0 or FxConfig.reduce_flashing or FxConfig.still():
 		return 0
 	return 1 if fmod(_bob_clock, BOB_PERIOD) >= BOB_PERIOD * 0.5 else 0
 

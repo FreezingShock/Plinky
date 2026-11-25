@@ -129,13 +129,22 @@ func run(t: Object) -> void:
 	t.ok(strikes > 50, "about half the windows have a strike (%d of 200)" % strikes)
 	t.ok(agree, "every strike flashes at its time and its thunder trails by 1.5 to 4.5 s")
 
-	# The rumble is a made stream of the set length, not a file: it must build with no audio driver and stop at its end
+	# Thunder is baked: every variant is a file of about 4.5 s that plays once, and the picker never repeats a rumble
 	var scape := AmbientScape.new()
-	var rumble: AudioStreamWAV = scape._thunder()
-	var want: int = int(AmbientScape.THUNDER_RATE * AmbientScape.THUNDER_SECONDS) * 2
-	t.ok(rumble != null and rumble.data.size() == want, "the thunder rumble is made at its set length")
-	t.ok(rumble.loop_mode == AudioStreamWAV.LOOP_DISABLED, "the rumble plays once, not on a loop")
+	t.eq(AmbientScape.THUNDER_VARIANTS, 4, "four thunder variants are baked")
+	var got: int = 0
+	for k in AmbientScape.THUNDER_VARIANTS:
+		var path: String = "res://assets/audio/amb/thunder_%d.ogg" % k
+		if ResourceLoader.exists(path):
+			var s: AudioStreamOggVorbis = load(path) as AudioStreamOggVorbis
+			if s != null and absf(s.get_length() - 4.5) < 0.1:
+				got += 1
+	t.eq(got, AmbientScape.THUNDER_VARIANTS, "every thunder variant loads and is about 4.5 s long")
+	var rumble: AudioStream = scape._thunder()
+	t.ok(rumble != null, "a rumble is picked with no audio driver")
+	t.ok(rumble is AudioStreamOggVorbis and not (rumble as AudioStreamOggVorbis).loop, "the picked rumble plays once, not on a loop")
 	scape.free()
+	t.ok(absf(AmbientScape.DUCK_DB - 3.0) < 0.01 and AmbientScape.DUCK_HOLD_S <= 0.5 + 0.001, "the ducking dip is about 3 dB for about half a second")
 
 	# Mist halo: clear air leaves the lamps alone, full mist spreads them, and the value is capped
 	t.ok(SkyModel.fog_halo(0.0) == 1.0, "lamps are unchanged in clear air")

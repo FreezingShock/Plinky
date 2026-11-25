@@ -35,15 +35,23 @@ static var reduce_flashing := false
 ## True while the Bloom sequence plays (set by BloomRitual). Toasts wait on it so they never cover the number and icon.
 static var bloom_running := false
 static var reduce_shake := false
-## Banners and other typed text show whole, with no typing or collapse.
+## "Still banners": banners and other typed text show whole, with no typing or collapse.
 static var reduce_motion := false
 ## Turns off the screen-wide light passes (edge shade, full-frame light grade).
 static var reduce_screen_fx := false
 
 
-## The gentle version of the zone ascension FX (rings, flight, flash): Reduce flashing, Still meadow or Calm camera.
+## The one Reduce Motion check for every UI, title, boot and FX motion. True when either Reduce Motion option is on:
+## "Still banners" (reduce_motion here) or "Still meadow" (MeadowLife.reduce_motion). The master "Reduce motion" row
+## sets both. Reduce flashing is a separate switch and is checked on its own where it matters.
+## The world's life layers keep reading MeadowLife.reduce_motion alone, so Still banners leaves the meadow moving.
+static func still() -> bool:
+	return reduce_motion or MeadowLife.reduce_motion
+
+
+## The gentle version of the zone ascension FX (rings, flight, flash): Reduce flashing, Reduce Motion or Calm camera.
 static func ascension_calm() -> bool:
-	return reduce_flashing or MeadowLife.reduce_motion or WorldCamera.calm
+	return reduce_flashing or still() or WorldCamera.calm
 
 ## Snap a position to whole texels so FX never sit between world pixels.
 static func snap(v: Vector2) -> Vector2:

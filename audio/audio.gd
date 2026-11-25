@@ -27,6 +27,7 @@ const POOL_SIZE: int = 14
 const MAX_SAME_VOICES: int = 4              # rapid spam of one sound steals the oldest instead of stacking
 const SETTINGS_VERSION: int = 2             # older saved volumes (pre level fix) are ignored
 const PITCH_JITTER: float = 0.03            # +-3% on every one-shot, so repeats never sound machine-gunned
+const CHIME_JITTER: float = 0.02            # +-2% on relic and tier chimes, so a run of the same chime never sounds identical
 const COMBO_WINDOW_MS: int = 650            # presses closer than this build the combo
 const COMBO_STEPS: Array[int] = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]   # semitones, C major pentatonic, 2 octaves
 const FADE_S: float = 2.0
@@ -311,7 +312,19 @@ func is_quiet() -> bool:
 ## A press streak just reached `tier` (1 to 5): a rising flourish, richer each tier. Rare, so it ignores the click limit.
 func tier_up(tier: int) -> void:
 	var name: StringName = StringName("tier_up_%d" % clampi(tier, 1, 5))
-	play(name, 1.0, -1.0, BUS_SFX, false)
+	play(name, _chime_pitch(), -1.0, BUS_SFX, false)
+	_duck_ambience()
+
+
+## A chime's pitch with its small random step (CHIME_JITTER), so the same chime never sounds exactly the same twice.
+func _chime_pitch(base: float = 1.0) -> float:
+	return base * (1.0 + randf_range(-CHIME_JITTER, CHIME_JITTER))
+
+
+## Chimes and thunder dip the ambience loops for a moment (AmbientScape.duck), so the sharp sound reads over the bed.
+func _duck_ambience() -> void:
+	if _scape != null:
+		_scape.duck()
 
 
 ## A relic pulse hit its order-th neighbour: a soft double ping, a step higher for each one so the chain rises.
@@ -350,8 +363,9 @@ func bloom_tick(step: int) -> void:
 
 
 func bloom_land() -> void:
-	play(&"tier_up_5", 1.0, -1.0, BUS_SFX, false)
-	play(&"tier_up_3", 0.75, -4.0, BUS_SFX, false)
+	play(&"tier_up_5", _chime_pitch(), -1.0, BUS_SFX, false)
+	play(&"tier_up_3", _chime_pitch(0.75), -4.0, BUS_SFX, false)
+	_duck_ambience()
 	cue.emit("[Bloom chime]")
 
 
@@ -372,7 +386,8 @@ func relic(rarity: StringName) -> void:
 	var name: StringName = StringName("relic_" + String(rarity))
 	if _stream(String(name)) == null:
 		name = &"relic_common"
-	play(name, 1.0, RARITY_VOL.get(rarity, 0.0) as float, BUS_SFX, false)
+	play(name, _chime_pitch(), RARITY_VOL.get(rarity, 0.0) as float, BUS_SFX, false)
+	_duck_ambience()
 
 
 var _step_i: int = 0

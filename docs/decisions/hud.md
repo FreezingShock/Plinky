@@ -698,3 +698,27 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Not run on a PC:** the strip at zoom 1 and 3, and the colour-safe modes with `ICON_TINT` (the tint applies through AccessOptions). PC QA should check both.
 - **Colour-safe modes (QA batch 204):** the numbers now take the icon's own colour untouched in every mode. The icon art is not recoloured, so the number matches the icon in all three modes. `AccessOptions.tint` is no longer applied to strip numbers, because its swap table only knows the game's named colours, not the icon colours.
 
+
+## 2026-11-25: One Reduce Motion check, FxConfig.still()
+- **Decision:** `FxConfig.still()` is on when either Reduce Motion option is on: "Still banners" (`FxConfig.reduce_motion`) or "Still meadow" (`MeadowLife.reduce_motion`). Every UI, title, boot and FX motion check reads it. Access has a master "Reduce motion" row that reads `still()` and sets both options, with "Still banners" and "Still meadow" indented under it (`"sub": true` in the registry). The world's life layers keep reading `MeadowLife.reduce_motion` alone, so Still banners does not stop the meadow.
+- **Why:** the two toggles covered different parts of the UI, so one being on left the other's parts moving, and the loading screen ignored both. The audit's recommended pick (UI and accessibility, item 1).
+- **Checked:** `tests/run.gd` passes (12661 checks, 0 failed, including the new `tests/test_reduce_motion.gd`). `boot/boot.tscn` runs 400 headless frames with no script errors. In engine, a headless capture of the Access tab (xvfb, 1280x800) shows the master row and the two indented options, with the controls lined up.
+- **Not run in-engine on a PC:** the loading screen under each option, and the press feel with Reduce Motion on. PC QA should check both.
+
+## 2026-11-25: Boot applies the stored Access settings first
+- **Decision:** `BootScreen._ready` calls `SettingsRegistry.apply_all()` before the backdrop, motes and walker are built. Under Reduce Motion the motes hang still, the walker holds its first frame, and under Reduce flashing a new loading tip swaps in without the blank frame.
+- **Why:** the stored options were only applied once the game or title started, so the first frames of the loading screen used the defaults. Title and main still apply them again, which is harmless.
+
+## 2026-11-25: Reduce Motion and Reduce flashing on the menus and presses
+- **Decision:** the menu open and close keeps its stepped 4x4 dither wipe under Reduce flashing (it never flashes) and under Reduce Motion. The 14 px slide is dropped under either. Under Reduce Motion, a press skips the hitstop, the walker squash and the pad sink and ring; the colour, popup and burst still show. Under Reduce flashing, particle bursts, the popups' last 30%, the upgrade spark tail and the sun pulse and season flash hold solid instead of blinking. Particles still blink for everyone else; the pixel look stays.
+- **Why:** the audit found the slide playing under Reduce Motion and blinks and hitstop with no check. Keeping the wipe under Reduce flashing matches the audit's "keep only the wipe" pick.
+- **Not run in-engine on a PC:** the press feel with each option on. PC QA should check the menu slide is gone under Reduce Motion and the wipe still shows under Reduce flashing.
+
+## 2026-11-25: Tips: the card's timer waits while attended, and Esc dismisses a hover tip
+- **Decision:** the timed tip card (`TipCard`) pauses its drain while the pointer is over it or focus is on one of its buttons. A hover or focus `Tip` closes on Esc and stays shut on that control until the pointer leaves it. The Esc key is not consumed, so an open menu still closes.
+- **Why:** the 20 s tip closed whether or not someone was reading it. Dismissal on Esc is the WCAG 1.4.13 case for hover content.
+
+## 2026-11-25: Copy sweep: no "Button" in player text, colour-safe table gets four stats
+- **Decision:** the relic text "presses the buttons next to it" now says pads (Pulse, Chipped Bead). The settings hints say icon, not button. The pad rarity tag reads "UNCOMMON PAD" instead of "UNCOMMON BUTTON" (`TipText.rarity_tag` takes "pad"). Clover, Iron Ore, Embers and Sunlight join the red-green swap table, and Clover and Iron Ore join blue-yellow.
+- **Open question:** Nathan's memory notes say he asked for "EPIC BUTTON" wording. CLAUDE.md says no literal "Button" in player text. This change follows CLAUDE.md. One line in `ui/pad_tooltip.gd` reverts it if he wants the word back.
+- **Deferred:** Large text beyond tooltips (audit item, effort L) waits for the Settings refresh, so it is not in this change.

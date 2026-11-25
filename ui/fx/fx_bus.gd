@@ -110,7 +110,7 @@ func press(pad: CanvasItem, pos: Vector2, amount: float, big := false, held := f
 		Audio.pad_press(big, held, tier)
 	if rose:
 		_tier_up(field, anchor, tier)
-	if big and not pulse and pad is TexelPad:
+	if big and not pulse and pad is TexelPad and not FxConfig.still():
 		var hs := PressSquash.new()
 		pad.add_child(hs)
 		await hs.hitstop(FxConfig.HITSTOP_MS * 2)  # the node must outlive the freeze or time_scale never resets
@@ -152,14 +152,16 @@ func _pad_feedback(pad: CanvasItem, pos: Vector2, tier: int, tint: Color, big: b
 		if tier == 0:
 			cols = Array([(pad as TexelPad).palette[5], (pad as TexelPad).palette[6]], TYPE_COLOR, "", null)
 	else:
-		var sq := PressSquash.new()
-		pad.add_child(sq)
-		sq.play(pad)
-		sq.finished.connect(sq.queue_free)
+		# Reduce Motion skips the squash and the hitstop; the colour and the burst still show.
+		if not FxConfig.still():
+			var sq := PressSquash.new()
+			pad.add_child(sq)
+			sq.play(pad)
+			sq.finished.connect(sq.queue_free)
+			if big:
+				sq.hitstop(FxConfig.HITSTOP_MS * 2)
 		if cols.is_empty():
 			cols = PARTICLE_COLORS
-		if big:
-			sq.hitstop(FxConfig.HITSTOP_MS * 2)
 	var n: int = (randi_range(10, 14) if big else -1)
 	if pulse:
 		n = 5

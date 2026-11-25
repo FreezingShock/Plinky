@@ -291,6 +291,8 @@ func hit(p: Vector2, slack: float = 1.3) -> bool:
 ## tint (alpha above 0) recolours the ripple with the press streak tier's colour.
 ## power (0 to 2) is how hard the press lands: 1 sinks one texel deeper, and any power shakes the pad itself.
 func punch(tint: Color = Color(0.0, 0.0, 0.0, 0.0), power: int = 0) -> void:
+	if FxConfig.still():
+		return   # Reduce Motion: no sink and no ring on a press. The popup and the burst still show it.
 	_punch_t = 1.0
 	_ring_t = 0.0
 	_ring_tint = tint
@@ -989,7 +991,7 @@ static func additive_material() -> CanvasItemMaterial:
 
 ## The gentle breath: the halo dims by up to GLOW_PULSE_DEPTH over GLOW_PULSE_TIME seconds. Still under Reduce Motion or Reduce Flashing.
 static func glow_pulse_alpha() -> float:
-	if FxConfig.reduce_flashing or FxConfig.reduce_motion:
+	if FxConfig.reduce_flashing or FxConfig.still():
 		return 1.0
 	var phase: float = fposmod(float(Time.get_ticks_msec()) / 1000.0 / GLOW_PULSE_TIME, 1.0)
 	return 1.0 - GLOW_PULSE_DEPTH * (0.5 - 0.5 * cos(TAU * phase))

@@ -14,4 +14,4 @@ effect = 5
 stacking = 1
 per_stack = 0.06
 max_stacks = 12
-description = "{value} chance a press also presses the buttons next to it."
+description = "{value} chance a press also presses the pads next to it."

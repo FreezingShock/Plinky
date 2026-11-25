@@ -21,11 +21,14 @@ const SWAPS: Dictionary = {
 		"55ff55": "2fd4a0", "5555ff": "3a86ff", "aa00aa": "cc79a7",             # uncommon, rare, epic
 		"ff55ff": "f0e442", "55ffff": "bdf4ff", "ff5555": "d55e00",             # mythic, divine, special
 		"7be08a": "40d0b0", "a3d96a": "c8d96a", "ff6b5a": "d55e00",             # luck, walk speed, crit chance
+		"6be86b": "009e73", "5fb26a": "0072b2", "ffd95a": "f0e442",             # clover, iron ore, sunlight
+		"ff8a3d": "d55e00",                                                     # embers
 	},
 	"by": {
 		"55aaff": "3d7bff", "ffaa00": "ff8030", "ffae42": "ff8030",             # mult, legendary / slag, crit damage
 		"ff55ff": "ff4d6d", "55ffff": "7dffb0", "f2c94c": "ffb000",             # mythic, divine, cash
 		"f08fb0": "ff6fa0", "6fd6e8": "7fe8c8",                                 # prestige, press rate
+		"6be86b": "e69f00", "5fb26a": "d55e00",                                 # clover, iron ore: green gone to warm
 	},
 }
 

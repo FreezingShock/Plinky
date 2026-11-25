@@ -147,7 +147,7 @@ func _blocked() -> bool:
 
 ## Reduce motion: no unfurl, particles or shake. The banner shows whole for its hold, then goes.
 func _calm() -> bool:
-	return FxConfig.reduce_motion or MeadowLife.reduce_motion
+	return FxConfig.still()
 
 
 func _process(delta: float) -> void:
