@@ -12,7 +12,11 @@ class LoadTask:
 	var progress: float = 0.0
 	var done: bool = false
 	var resource: Resource = null
+	## Threaded retries already made for this path (see MAX_RETRIES).
+	var retries: int = 0
 
+
+const MAX_RETRIES: int = 2
 
 var _tasks: Array[LoadTask] = []
 var _started: bool = false
@@ -27,20 +31,10 @@ func add(path: String, weight: float, label: String) -> void:
 	_tasks.append(task)
 
 
-## Shaders the boot scenes preload on their worker threads. Each is loaded on the main thread before the requests start,
-## so no worker is the first to load one. Suspected race: a worker preloading water_night.gdshader while another worker
-## needed it logged "Could not preload resource" at world/water_night_glow.gd:9 on PC boots (not reproduced in the cloud).
-const MAIN_THREAD_FIRST: PackedStringArray = [
-	"res://render/shaders/water_night.gdshader",
-]
-
-
 func start() -> void:
 	if _started:
 		return
 	_started = true
-	for path: String in MAIN_THREAD_FIRST:
-		ResourceLoader.load(path)
 	for task: LoadTask in _tasks:
 		var err: Error = ResourceLoader.load_threaded_request(task.path)
 		if err != OK:
@@ -64,7 +58,7 @@ func poll() -> float:
 					task.progress = 1.0
 					task.done = true
 				ResourceLoader.THREAD_LOAD_FAILED, ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
-					_mark_failed(task)
+					_retry_or_fail(task)
 		total += task.weight * task.progress
 	if weight_sum <= 0.0:
 		return 1.0
@@ -99,6 +93,20 @@ func resource_for(path: String) -> Resource:
 		if task.path == path:
 			return task.resource
 	return null
+
+
+## A worker load can fail on a race with another worker's compile of a shared script (PC boot logged a Parse Error for
+## main.tscn's script, and the scene loaded later on the main thread). Re-request the path a bounded number of times, so
+## a transient failure costs one more worker load, not a failed boot. A missing or corrupt file still fails, after the retries.
+func _retry_or_fail(task: LoadTask) -> void:
+	if task.retries >= MAX_RETRIES:
+		_mark_failed(task)
+		return
+	task.retries += 1
+	push_warning("Boot: retrying %s (attempt %d of %d)" % [task.path, task.retries + 1, MAX_RETRIES + 1])
+	ResourceLoader.load_threaded_get(task.path)   # clears the failed entry so the request starts again
+	if ResourceLoader.load_threaded_request(task.path) != OK:
+		_mark_failed(task)
 
 
 func _mark_failed(task: LoadTask) -> void:
