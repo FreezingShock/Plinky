@@ -636,6 +636,12 @@ func _drain_spawns() -> void:
 func _drain_warm() -> void:
 	if _sky == null or not _spawn_queue.is_empty() or _warm_queue.is_empty():
 		return
+	# Headless runs (CI playtest, dummy renderer) hit a texture-creation error in this warm pass ("uninitialized RID", from
+	# SkyCycle.padded's ImageTexture). The warm is only a prefetch, so skipping it there changes no picture: each prop is
+	# still padded when it spawns. A windowed GPU run went through Larkmoor without the error.
+	if DisplayServer.get_name() == "headless":
+		_warm_queue.clear()
+		return
 	var start_us: int = Time.get_ticks_usec()
 	while not _warm_queue.is_empty():
 		var key: Vector2i = _warm_queue.pop_front()
