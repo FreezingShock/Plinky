@@ -132,6 +132,7 @@ func _add_sky() -> void:
 		if String(a.kind) == "water":
 			water.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
 	_sky.ponds = water
+	_sky.shafts_on = true   # golden-hour canopy shafts, as Larkmoor (render/shaders/light_shafts.gdshader)
 	add_child(_sky)
 	_add_flower_glow()
 	var water_glow := WaterNightGlow.new()   # night glow on the pond and lake (world/water_night_glow.gd)
