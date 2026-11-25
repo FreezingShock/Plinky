@@ -14,10 +14,6 @@ var main: Control
 var root: Window
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _goto(p: Vector2, zoom: int) -> void:
 	main.walker.position = p
@@ -25,7 +21,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(20)
+	await ShotHelpers.wait(20)
 
 
 ## Ordinary lamps (the great lantern is taller and has its own look), sorted by their foot, every k-th one picked.
@@ -53,14 +49,14 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var feet: Array = _lamp_feet(MANIFESTS[which])
 	for ph: Array in PHASES:
 		SkyCycle.debug_phase = float(ph[1])
 		for i in feet.size():
 			var f: Vector2 = feet[i]
 			await _goto(f + Vector2(10.0, 12.0), 3)
-			await _wait(30)
+			await ShotHelpers.wait(30)
 			root.get_viewport().get_texture().get_image().save_png(
 					ProjectSettings.globalize_path("res://shots/lantern_%s_%s_%d.png" % [which, String(ph[0]), i]))
 			print("shot ", ph[0], " ", i, " ", f)

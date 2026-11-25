@@ -6,13 +6,9 @@ var main: Control
 var root: Window
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _shot(name: String) -> void:
-	await _wait(3)
+	await ShotHelpers.wait(3)
 	root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/weather_%s.png" % name))
 	print("shot ", name)
 
@@ -23,7 +19,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(20)
+	await ShotHelpers.wait(20)
 
 
 func _ready() -> void:
@@ -35,7 +31,7 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var anchors: Node = main.meadow.get_node("Anchors")
 	var m: Marker2D = anchors.get_node("District_green") as Marker2D
 	await _goto(m.position + Vector2(0, 10), 2)
@@ -44,10 +40,10 @@ func _ready() -> void:
 		SkyCycle.debug_season = 0
 		SkyCycle.debug_rain = 0.6
 		SkyCycle.debug_phase = 0.5
-		await _wait(30)
+		await ShotHelpers.wait(30)
 		await _shot("zoom4_rain")
 		await _goto(m.position + Vector2(0, 10), 1)
-		await _wait(30)
+		await ShotHelpers.wait(30)
 		await _shot("zoom1_rain")
 		get_tree().quit(0)
 		return
@@ -73,7 +69,7 @@ func _ready() -> void:
 		SkyCycle.debug_rain = float(p[2])
 		SkyCycle.debug_phase = float(p[3])
 		MeadowLife.reduce_motion = p.size() > 4 and bool(p[4])
-		await _wait(30)
+		await ShotHelpers.wait(30)
 		await _shot(String(p[0]))
 	MeadowLife.reduce_motion = false
 	SkyCycle.debug_season = -1

@@ -6,10 +6,6 @@ extends Node
 var main: Control
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _goto(p: Vector2, zoom: int) -> void:
 	main.walker.position = p
@@ -17,7 +13,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(20)
+	await ShotHelpers.wait(20)
 
 
 func _arg(args: PackedStringArray, key: String, fallback: String) -> String:
@@ -40,7 +36,7 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	# hide the HUD, tooltips and panels so the frame shows only the world
 	for n: String in ["hud", "tooltip", "relic_bar", "relic_panel", "index_panel", "display_panel", "feedback_panel", "gallery", "update_log", "history_panel", "ledger_panel", "dev_console", "window_frame"]:
 		var node: Variant = main.get(n)
@@ -89,9 +85,9 @@ func _ready() -> void:
 				at = m.position + Vector2(0, 10)
 			main.walker.visible = not pl.begins_with("critter")
 			await _goto(at, zoom)
-			await _wait(30)
+			await ShotHelpers.wait(30)
 			get_viewport().warp_mouse(Vector2(-200.0, -200.0))   # the pointer over a pad would summon its tooltip
-			await _wait(10)
+			await ShotHelpers.wait(10)
 			var name: String = "audit_%s%s_%s_z%d" % [_arg(args, "tag", ""), ph.replace(".", ""), pl, zoom]
 			get_tree().root.get_viewport().get_texture().get_image().save_png(
 					ProjectSettings.globalize_path("res://shots/%s.png" % name))

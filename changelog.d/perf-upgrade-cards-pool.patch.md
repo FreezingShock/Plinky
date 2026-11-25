@@ -1,0 +1,1 @@
+Faster Upgrades panel and pad ticks: the panel builds gifts for the tab on show (about 200 fewer nodes open), pads read buy and lock state ten times a second, light packing and gain labels redraw only on change, and particle bursts are pooled.

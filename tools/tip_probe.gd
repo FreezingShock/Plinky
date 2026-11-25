@@ -4,10 +4,6 @@ var main: Control
 var root: Window
 var sc: float = 1.0
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 var real: bool = false
 func _move(pos: Vector2, flush: bool) -> void:
 	var mv := InputEventMouseMotion.new()
@@ -25,7 +21,7 @@ func _vis(kind: String) -> bool:
 ## Moves onto `on`, then counts frames until visible; moves to `off`, counts frames until hidden.
 func _trace(label: String, kind: String, on: Vector2, off: Vector2, flush: bool) -> void:
 	_move(off, flush)
-	await _wait(8)
+	await ShotHelpers.wait(8)
 	var f0: int = Engine.get_process_frames()
 	_move(on, flush)
 	var show_f: int = -1
@@ -49,7 +45,7 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(60)
+	await ShotHelpers.wait(60)
 	sc = root.get_final_transform().x.x
 	print("scale ", sc, " user ", ProjectSettings.globalize_path("user://"))
 	var chip: Control = main.hud.get("_menu_chip") as Control
@@ -59,10 +55,10 @@ func _ready() -> void:
 	var away: Vector2 = Vector2(320, 120)
 	print("DBG ft ", root.get_final_transform(), " win ", DisplayServer.window_get_size(), " size ", root.size, " cs ", root.content_scale_size)
 	_move(chip_c, true)
-	await _wait(2)
+	await ShotHelpers.wait(2)
 	print("DBG chip_c ", chip_c, " mouse ", main.get_viewport().get_mouse_position())
 	_move(pad_c, true)
-	await _wait(3)
+	await ShotHelpers.wait(3)
 	var wl: Vector2 = main.world.get_local_mouse_position()
 	print("DBG pad_c ", pad_c, " mouse ", main.get_viewport().get_mouse_position(), " hit ", pad.hit(wl), " hovered ", pad.hovered, " over ", main.get_viewport().gui_get_hovered_control(), " pos ", pad.position, " wl ", wl)
 	for fl in [false, true]:
@@ -77,12 +73,12 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("TRACE focus visible_after_1_frame=", Tip.host(get_tree()).visible)
 	chip2.release_focus()
-	await _wait(3)
+	await ShotHelpers.wait(3)
 	# menu open: no tooltip
 	_move(away, true)
-	await _wait(5)
+	await ShotHelpers.wait(5)
 	main.menus.call("toggle", &"gallery") if main.menus.has_method("toggle") else null
-	await _wait(20)
+	await ShotHelpers.wait(20)
 	print("TRACE menu_open tip_visible=", Tip.host(get_tree()).visible, " menus_methods_toggle=", main.menus.has_method("toggle"))
 	root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/tip_menu_open.png"))
 	get_tree().quit(0)

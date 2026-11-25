@@ -8,10 +8,6 @@ extends Node
 ## goals_<fixture>_bottom_right_4x.png (the Menu chip row, 4x).
 ## out_dir defaults to res://captures. Point APPDATA/user:// at a scratch folder so the real save is never touched.
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _ready() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
@@ -21,7 +17,7 @@ func _ready() -> void:
 	var main: Control = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	GameState.onboarding.tips_enabled = false   # unlock every row and gate
 	var sim: Sim = GameState.sim
 	if fixture == "late" or fixture == "done":
@@ -35,9 +31,9 @@ func _ready() -> void:
 		for d: GoalDef in sim.goals.sorted:
 			counters[d.counter] = 1.0e18
 		sim.goals.check(counters)
-	await _wait(60)   # rolling counters and the card's refresh settle
+	await ShotHelpers.wait(60)   # rolling counters and the card's refresh settle
 	var hud: Hud = main.get("hud") as Hud
-	await _wait(10)
+	await ShotHelpers.wait(10)
 	var img: Image = get_tree().root.get_viewport().get_texture().get_image()
 	print("save ", out_dir.path_join("goals_%s.png" % fixture), " err=", img.save_png(out_dir.path_join("goals_%s.png" % fixture)))
 	var scale: float = float(img.get_width()) / 640.0

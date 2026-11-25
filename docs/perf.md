@@ -72,7 +72,7 @@ machine is available.
 | One new visual system (a layer, a shader pass) | at most 0.1 ms avg | there are about 8 such systems in flight |
 | Whole frame on Low | at least 25% under High | Low exists for slow GPUs |
 | Draw calls | under 250 (CI-enforced; the headless bench reads 0, so it bites on real-window runs) | High peaks near 160 on the CPU rasteriser |
-| Nodes in the active zone | under 1350 (CI-enforced) | Larkmoor is about 1205 headless now: the Upgrades menu builds a row per gift, and the Bloom gifts added 10 rows (1065 before) |
+| Nodes in the active zone | under 1350 (CI-enforced; Larkmoor's working target is about 1200) | The Upgrades panel builds only the tab on show: with the panel open the meadow goes from 1131 nodes (every tab built) to 935 (first tab), and a second tab adds its own cards when picked. Measured headless on the meadow with the panel open, not the old 1205 figure, which was an earlier pass. |
 
 A PR that adds a visual system pastes the `tools/bench.gd` table (Low and High) and states the delta against these.
 
@@ -96,7 +96,7 @@ each stage. After the fix the swap is a 99 ms first rendered frame plus 22 ms of
 ## Open
 - No GPU numbers yet. A real-hardware run of tools/bench.gd is needed to find the actual hot spot; the CPU
   side is cheap enough that the post shader and window fill rate at 4K may matter more.
-- Popups and particle bursts are still one node each. Fine at hold-press rates; pool them if the bench shows spikes in `presses`.
+- Popups are pooled (ui/fx/press_popups.gd). Particle bursts are pooled too (see "Pooled effects and caches" below).
 
 ## Weak-hardware stand-in (2026-11-23)
 No integrated GPU was available, so `tools/bench_weak.sh` runs the real-window bench on **Mesa lavapipe** (software
@@ -196,3 +196,29 @@ batching. The first rendered frame after a swap is GPU work (texture upload, fir
 - **Dev console:** built on its first open, not on the entry frame (about 36 ms of CPU). Lavapipe could not show it, since the run-to-run spread is larger than the change.
 - **Lavapipe, one run, after the change (software renderer):** the entry frame is about 267 ms. Labelled: meadow load 29 ms, HUD 23 ms, audio and camera start 26 ms, menus 11 ms, occluders and zone frame 12 ms, pixel view 5 ms. About 150 ms is unlabelled: draw and the end-of-frame flush, plus the frame before `main._ready`.
 - **Not done:** the entry frame still has about 115 ms of labelled CPU work. Getting every frame under 33 ms needs the game's build spread across frames under the swap cover, which waits on a ready signal. That is a separate change.
+
+## Pooled effects and caches (2026-11-25, the audit's performance picks)
+- **Upgrade cards, per tab.** The panel builds the tab on show, a few cards a frame during the open wipe. Picking another
+  tab builds that tab's cards at once (`_build_tab_now` in ui/hud.gd), so it shows its gifts on the same frame. A card that
+  is not built yet is simply missing from the focus ring until it exists. The node figures are in the Budgets table.
+- **Pad tick.** `Sim.tiers_in_zone` is cached per zone (the tier data is fixed at boot; a replaced `tier_defs` drops the
+  cache). Every pad asked for it, sorted, twice a frame through `is_pad_locked`. A pad reads `affordable` and `locked` ten
+  times a second (`STATE_REFRESH_S`, world/texel_pad.gd), not every frame. Progress stays on its 5 Hz timer, and the walker,
+  press clock and redraw signature stay per frame. The GameState node is looked up once.
+- **Light packing.** world/sky_cycle.gd packs the light pools only when something it reads changed: the walker, the
+  pool colours and strengths (the setters bump a revision only on a real change), the lamp, rain and fog terms, or the
+  6 Hz flicker step. A still walker at a steady time of day sends nothing.
+- **Gain labels** (ui/hud_gain_label.gd) redraw only when alpha, rise or calm changes, not on every HUD tick.
+- **ParticleBurst pool** (ui/fx/particle_burst.gd). A finished burst is hidden and reused by the next spawn with its
+  particle arrays, so a press stream allocates nothing. At most 10 are live, so the pool holds at most 10 nodes after
+  the first bursts. Covered by tests/test_perf_pools.gd.
+
+## Bench trend (2026-11-25)
+- CI's play smoke writes `shots/bench.json` (tools/bench.gd). After the frame-budget check, `tools/bench_trend.py`
+  appends one row per phase to `shots/bench_trend.csv` and writes the run's table to the Actions summary. Both are
+  uploaded as the `bench-<run id>` artifact (30 days).
+- **Limit:** each run starts a new CSV, so a trend across runs means opening the artifacts in order. Carrying the file
+  from run to run (an Actions cache, or a branch) is the next step if a trend view is wanted.
+- Tool scripts share one frame wait, `ShotHelpers.wait` (tools/shot_helpers.gd). `_shot` and `_goto` differ per tool, so
+  they stay in each file.
+

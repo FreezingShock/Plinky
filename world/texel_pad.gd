@@ -151,13 +151,18 @@ var _shake_t: float = 0.0   # 1 -> 0: the pad itself shakes sideways one texel (
 var _ring_tint: Color = Color(0.0, 0.0, 0.0, 0.0)   # streak tier colour for the ripple; alpha 0 = the plain palette ripple
 var _progress_t: float = 0.0
 var _sign_t: float = 0.0             # counts down to the next cost and reward text read (SIGN_REFRESH_S)
+var _state_t: float = 0.0            # counts down to the next affordable and locked read (STATE_REFRESH_S)
+const STATE_REFRESH_S: float = 0.1   # buy and unlock state is read ten times a second, not every frame: a pad's colour can trail by a tenth of a second
+var _gs_node: Node = null            # the GameState node, looked up once and kept (see _gs)
 const SIGN_REFRESH_S: float = 1.0    # the sign's text follows the live values once a second: a cost or gain change shows within that
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
 ## The GameState autoload, looked up by path so this script also compiles under --script (tests have no autoloads).
 func _gs() -> Node:
-	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameState")
+	if _gs_node == null or not is_instance_valid(_gs_node):
+		_gs_node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameState")
+	return _gs_node
 
 
 func _sim() -> Sim:
@@ -211,9 +216,12 @@ func _physics_process(delta: float) -> void:
 	if standing and not inside:
 		left.emit()
 	standing = inside
-	affordable = sim.can_afford(button_id)
-	locked = sim.is_pad_locked(button_id)
-	_sync_lock_chip()
+	_state_t -= delta
+	if _state_t <= 0.0:
+		_state_t = STATE_REFRESH_S
+		affordable = sim.can_afford(button_id)
+		locked = sim.is_pad_locked(button_id)
+		_sync_lock_chip()
 	_progress_t -= delta
 	if _progress_t <= 0.0:
 		_progress_t = 0.2

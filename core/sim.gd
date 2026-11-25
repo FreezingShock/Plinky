@@ -59,6 +59,9 @@ var stats: Dictionary = {}           # StringName -> BigNum
 var prestige_spent: BigNum = BigNum.zero()
 var zone_id: StringName = &""
 var gates_open: Dictionary = {}      # zone id -> true (latched; survives rebirth)
+var _tiers_by_zone: Dictionary = {}   # zone id -> Array[TierDef] from tiers_in_zone (see there)
+var _tiers_src: Dictionary = {}       # the tier_defs the cache was built from
+var _tiers_src_size: int = -1
 var tiers_open: Dictionary = {}      # tier id -> true (latched; survives rebirth). A zone's first tier needs no entry.
 var zones_entered: Dictionary = {}   # zone id -> true once its entry grants were paid (latched)
 var attr_levels: Dictionary = {}     # StringName -> int
@@ -304,13 +307,21 @@ func pad_rarity(button_id: StringName) -> StringName:
 	return b.rarity if b != null else &"common"
 
 
-## The tiers of a zone, lowest order first.
+## The tiers of a zone, lowest order first. Built once per zone and reused: the pad tick asks for it several times a frame
+## per pad. The array is shared, so callers read it and never change it.
 func tiers_in_zone(z_id: StringName) -> Array[TierDef]:
+	if not is_same(_tiers_src, tier_defs) or _tiers_src_size != tier_defs.size():
+		_tiers_by_zone.clear()   # tier_defs was replaced (content load, tests): the cached lists are stale
+		_tiers_src = tier_defs
+		_tiers_src_size = tier_defs.size()
+	if _tiers_by_zone.has(z_id):
+		return _tiers_by_zone[z_id] as Array[TierDef]
 	var out: Array[TierDef] = []
 	for t: TierDef in tier_defs.values():
 		if t.zone == z_id:
 			out.append(t)
 	out.sort_custom(func(a: TierDef, b: TierDef) -> bool: return a.order < b.order)
+	_tiers_by_zone[z_id] = out
 	return out
 
 
