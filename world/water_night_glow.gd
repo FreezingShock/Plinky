@@ -6,7 +6,8 @@ extends ColorRect
 ## Strength follows SkyCycle.night01, so it is off by day and the rect is hidden then. GraphicsQuality LOW drops the
 ## rings, and Reduce Motion and Reduce Flashing freeze the glints.
 
-const GLOW_SHADER: Shader = preload("res://render/shaders/water_night.gdshader")
+## Loaded in setup(), not preloaded: a preload here raced the boot compile and failed with "Could not preload resource".
+const GLOW_SHADER_PATH: String = "res://render/shaders/water_night.gdshader"
 ## Clock steps per second for the glints (stepped, so they blink on a beat rather than flicker).
 const GLINT_STEP: float = 1.25
 
@@ -22,7 +23,7 @@ func setup(sky: SkyCycle, nrm: Texture2D, origin: Vector2) -> void:
 	size = sky.area.size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var m := ShaderMaterial.new()
-	m.shader = GLOW_SHADER
+	m.shader = load(GLOW_SHADER_PATH) as Shader
 	m.set_shader_parameter("nrm_tex", nrm)
 	m.set_shader_parameter("tex_size", Vector2(nrm.get_width(), nrm.get_height()))
 	m.set_shader_parameter("tex_origin", origin)
