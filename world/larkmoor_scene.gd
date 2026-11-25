@@ -107,6 +107,7 @@ func _add_sky() -> void:
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
 	_sky.area = world_rect.grow(10.0)
+	_sky.shafts_on = true   # canopy light shafts at golden hour (render/shaders/light_shafts.gdshader)
 	_sky.noon_boost = 1.7   # Larkmoor's ground is brighter and greener than the meadow's, so its noon needs more exposure drop and a warmer cast
 	_sky.shadows = _shadows
 	_sky.ground_texture = ZoneAssets.texture(DIR + "ground.png")   # haze and mist read the full picture, not the cut-out

@@ -13,6 +13,7 @@ const SHADE_SHADER: Shader = preload("res://render/shaders/day_night.gdshader")
 const SWAY_SHADER: Shader = preload("res://render/shaders/wind_sway.gdshader")
 const HAZE_SHADER: Shader = preload("res://render/shaders/sky_haze.gdshader")
 const RAYS_SHADER: Shader = preload("res://render/shaders/god_rays.gdshader")
+const SHAFTS_SHADER: Shader = preload("res://render/shaders/light_shafts.gdshader")
 const GROUND_SHADER: Shader = preload("res://render/shaders/ground_light.gdshader")
 const FOG_SHADER: Shader = preload("res://render/shaders/ground_fog.gdshader")
 const PAD_SHADER: Shader = preload("res://render/shaders/pad_shadow.gdshader")
@@ -41,6 +42,8 @@ var shadows: SkyShadows                 # set by MeadowScene before this node en
 var rim_material: ShaderMaterial        # for rocks and crystals: same shader as sway, with sway off
 ## Scales the high-sun exposure, contrast and saturation fix. Scenes with brighter, greener ground (Larkmoor) set it above 1.
 var noon_boost: float = 1.0
+## Canopy light shafts at golden hour (light_shafts.gdshader). Larkmoor turns them on; the meadow keeps its radial rays only.
+var shafts_on: bool = false
 var seasonal: bool = true              ## false: no calendar seasons (the Ember Quarry): spring look, no season particles
 ## true: the light does not follow the clock (the Ember Quarry is underground). The shade, grade, sun, rim, haze and
 ## light pass hold at midday, and weather stays off. The HUD clock still runs on the real time (clock_phase).
@@ -58,6 +61,9 @@ var _haze_mat: ShaderMaterial
 var _rays_mat: ShaderMaterial
 var _rays_rect: ColorRect
 var _warm: int = 4                  # frames the rays stay drawn after the scene loads, so their shader compiles at load, not at the first sunset
+var _shafts_mat: ShaderMaterial
+var _shafts_rect: ColorRect
+var _shafts_warm: int = 4          # same warm-up for the canopy shafts
 var _screen: ScreenLight
 var _lights: Array[Dictionary] = []     # {pos, radius, strength, kind}
 var _pool_index: Dictionary = {}        # pad pool position -> its entry in _lights (rebuilt after add_light)
@@ -89,6 +95,9 @@ var _season_key: Vector4 = Vector4(-99.0, 0.0, 0.0, 0.0)
 var particles: SeasonParticles
 ## Debug and screenshot override: -1 off, else 0..3 pins the season (tools/screenshot).
 static var debug_season: int = -1
+## Debug and screenshot override for the canopy shafts (tools/golden_shots.gd shafts=...): Vector2(beam, ray) 0..1, or
+## (-1, -1) for the config values.
+static var debug_shafts: Vector2 = Vector2(-1.0, -1.0)
 
 
 func _init() -> void:
@@ -130,6 +139,17 @@ func _ready() -> void:
 	rays.material = _rays_mat
 	_rays_rect = rays
 	add_child(rays)
+	if shafts_on:
+		var shafts := ColorRect.new()
+		shafts.name = "Shafts"
+		shafts.position = area.position
+		shafts.size = area.size
+		shafts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_shafts_mat = ShaderMaterial.new()
+		_shafts_mat.shader = SHAFTS_SHADER
+		shafts.material = _shafts_mat
+		_shafts_rect = shafts
+		add_child(shafts)
 	var fog := ColorRect.new()
 	fog.name = "GroundFog"
 	fog.position = area.position
@@ -644,6 +664,17 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_rays_mat.set_shader_parameter("sun", Vector2(area.get_center().x + az * area.size.x * 0.465, area.position.y - 50.0))
 	_rays_mat.set_shader_parameter("ray_col", rim_col)
 	_rays_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
+	# canopy light shafts: golden hour only (SkyModel.shafts), falling the way the sun's light travels: from the sun side, down the frame
+	if _shafts_rect != null:
+		var shaft_k: float = _config.canopy_strength * model.shafts(mt, rain01)
+		var mix: Vector2 = Vector2(_config.canopy_beam, _config.canopy_ray) if debug_shafts.x < 0.0 else debug_shafts
+		_shafts_rect.visible = shaft_k > 0.002 or _shafts_warm > 0
+		_shafts_warm = maxi(_shafts_warm - 1, 0)
+		_shafts_mat.set_shader_parameter("amount_beam", shaft_k * mix.x)
+		_shafts_mat.set_shader_parameter("amount_ray", shaft_k * mix.y)
+		_shafts_mat.set_shader_parameter("travel", Vector2(-az * 0.55, 1.0))
+		_shafts_mat.set_shader_parameter("ray_col", rim_col)
+		_shafts_mat.set_shader_parameter("sway", 0.0 if steady else floorf(mt * 0.5) * 0.25)
 	# full-frame light pass: sun side lifts and warms, away side shades cool (magenta at dusk), highlights and shadows split
 	var lit_k: float = (1.0 - clampf(model.night(mt) / maxf(model.night_strength, 0.001), 0.0, 1.0) * 0.75) * (1.0 - 0.7 * rain01)
 	_light_mat.set_shader_parameter("sun_dir", Vector2(az, -1.0))

@@ -115,6 +115,12 @@ extends Resource
 @export var ray_strength: float = 0.5
 ## Seconds for mist to drift across the view.
 @export var mist_drift_seconds: float = 90.0
+## Light shafts through the canopy at golden hour, 0..1 (Larkmoor only; render/shaders/light_shafts.gdshader).
+## Scaled by SkyModel.shafts, so they are faint at noon and off at night.
+@export var canopy_strength: float = 0.6
+## Share of the canopy strength given to the wide beams and to the thin rays (each 0..1).
+@export var canopy_beam: float = 1.0
+@export var canopy_ray: float = 0.6
 
 @export_group("Ember Quarry light")
 ## Overall lava glow over the quarry (quarry_glow shader). Each source is scaled by its own strength below.

@@ -31,5 +31,16 @@ func run(t: Object) -> void:
 					mismatch += 1
 		t.eq(mismatch, 0, "%s: texel (role, step) matches the ramp" % id)
 
+	# Grass variants for warm and cool patches: 4 steps each, lit side brighter than the shade.
+	for name: StringName in [&"warm", &"cool"]:
+		var g: PackedColorArray = Palettes.grass_variant(name)
+		t.eq(g.size(), 4, "grass variant %s has 4 steps" % name)
+		t.ok(luma(g[3]) > luma(g[0]), "grass variant %s: lit step brighter than shade" % name)
+	# Earth (role 6) keeps its hue on the meadow ramps: no yellow drift, so dirt does not go olive at noon.
+	var earth: PackedColorArray = (Palettes.ramp_colors(Palettes.MEADOW)[0] as PackedColorArray)
+	var anchor_hue: float = Palettes.colors(Palettes.MEADOW)[6].h
+	var deep_hue: float = (Palettes.ramp_colors(Palettes.MEADOW)[0] as PackedColorArray)[6].h
+	t.ok(absf(deep_hue - anchor_hue) < 0.03, "meadow earth shade keeps its hue (within 0.03 of the anchor)")
+
 static func luma(c: Color) -> float:
 	return c.r * 0.299 + c.g * 0.587 + c.b * 0.114

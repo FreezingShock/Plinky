@@ -479,6 +479,7 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 | Date | Decision | Why |
 |---|---|---|
 | 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
+| 2026-11-25 | Larkmoor canopy light shafts (`light_shafts.gdshader`): parallel dithered lanes of sun along the travel direction, hashed per lane, broken up by canopy-gap noise. Two layers in one pass (wide beams, fine rays). Driven by `SkyModel.shafts` = golden^2 x (1 - rain), so faint at noon, off at night. Tuned in `content/config/sky.tres` (`canopy_strength`, `canopy_beam`, `canopy_ray`) | The reference (Nathan, 2026-11-25) has light falling through gaps in the canopy onto the path. The existing radial god rays are a fan from above the frame and do not read as beams; they stay on in the meadow. Not run on the PC yet. |
 
 ## 2026-11-25: The sun or moon grab uses phase range, not the sign of sun_of
 - **Bug:** the grab picked the sun or moon by `sun_of(phase) >= 0`. At sunrise and sunset (phase 0.25 and 0.75, the loading screen's boot phase among them) `sun_of` is a float hair either side of zero, so the same body could grab on the wrong half of the arc. The body was drawn and hit-tested by phase range, so it jumped to the far end of the other arc, or the grab missed.
@@ -533,3 +534,9 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Regen:** `gen_larkmoor.py`, `place_farm.py`, `bake_wheat.gd` (737 sheets, the stale 661 removed), then `gen_life_anchors.py --add-keys --farm` for the farm keys only. The sway tips and the garden were fixed in place instead of a full regen (two tips nudged onto light grass, one flower on a new sand rubble patch dropped), so the rest of the life and garden data is unchanged.
 - **Tests:** `tests/test_farm.gd` checks that no ruin sprite intersects the farm box, a fence piece, soil or wheat, and that every small prop standing in a field has wheat within 20 texels. The tree foot check skips farm trees, because a pine's trunk foot can sit below its cropped sprite (as it does in Larkmoor).
 - **Not verified in-engine on the PC:** the cloud run is headless with software Vulkan. The before and after farm captures are in the PR.
+## 2026-11-25: Earth hue held on the meadow ramps, and grass variants (T1)
+- **Why:** PR #586 (ground thread) reported Larkmoor dirt reads olive-khaki at noon. The earth role's lit steps drifted toward yellow, and the noon grade pushed that to olive.
+- **Decision:** meadow role 6 (earth) keeps its hue in every step (`HUE_HOLD` in `tools/art/gen_palette_ramps.py`). Other roles and zones are unchanged.
+- **Grass variants:** `Palettes.grass_variant(&"warm")` and `&"cool"` are 4-step ramps for warm and cool grass patches, from the meadow grass anchor. The ground thread wires them into the Larkmoor bake, which needs its own palette index.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb, Larkmoor noon and golden hour, before and after: `/mnt/project-files/palette-grade/larkmoor_dirt_noon_before_after.png`. The saves had advanced a day between runs, so the frames are approximate. Swatch: `/mnt/project-files/palette-grade/grass_variants_swatch.png`.
+

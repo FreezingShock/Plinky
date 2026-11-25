@@ -21,8 +21,18 @@ STEP_HUE_TARGET = [0.56, 0.56, None, 0.12]
 STEP_HUE_AMOUNT = [0.12, 0.06, 0.0, 0.16]  # fraction of that arc travelled per step
 STEP_SAT = [0.10, 0.05, 0.0, 0.08]        # saturation lift per step; the anchor keeps its own saturation
 
+# Earth (role 6) keeps its own hue on the meadow palette: a hue drift toward yellow reads olive-khaki under the noon grade.
+HUE_HOLD = {("meadow", 6)}
+
+# Grass variants for warm and cool patches (Larkmoor, T2 ground thread wires them into the bake). Each is a target hue and
+# how far to move toward it, applied to the meadow grass anchor (role 3) in every step.
+GRASS_ANCHOR_ROLE = 3
+GRASS_VARIANTS = {"warm": (0.12, 0.75), "cool": (0.55, 0.8)}
+
 BEGIN = "# BEGIN RAMPS"
 END = "# END RAMPS"
+GBEGIN = "# BEGIN GRASS"
+GEND = "# END GRASS"
 
 
 def hex_to_rgb(h: str) -> tuple[float, float, float]:
@@ -34,7 +44,7 @@ def rgb_to_hex(rgb: tuple[float, float, float]) -> str:
     return "".join("%02x" % round(max(0.0, min(1.0, c)) * 255) for c in rgb)
 
 
-def ramp(anchor: str) -> list[str]:
+def ramp(anchor: str, hold: bool = False) -> list[str]:
     h, s, v = colorsys.rgb_to_hsv(*hex_to_rgb(anchor))
     out = []
     for k in range(4):
@@ -42,8 +52,22 @@ def ramp(anchor: str) -> list[str]:
             out.append(anchor.lstrip("#"))  # the anchor is exact
             continue
         target = STEP_HUE_TARGET[k]
-        arc = ((target - h + 0.5) % 1.0) - 0.5 if target is not None else 0.0
+        arc = ((target - h + 0.5) % 1.0) - 0.5 if (target is not None and not hold) else 0.0
         hh = (h + arc * STEP_HUE_AMOUNT[k]) % 1.0
+        ss = min(1.0, s * (1.0 + STEP_SAT[k]))
+        vv = min(1.0, v * STEP_VALUE[k])
+        out.append(rgb_to_hex(colorsys.hsv_to_rgb(hh, ss, vv)))
+    return out
+
+
+def grass_variant(anchor: str, target: float, amount: float) -> list[str]:
+    """Four steps of a grass variant: the anchor's hue moved toward `target` by `amount` of the short arc, then the same
+    value and saturation steps as the ramps."""
+    h, s, v = colorsys.rgb_to_hsv(*hex_to_rgb(anchor))
+    arc = ((target - h + 0.5) % 1.0) - 0.5
+    out = []
+    for k in range(4):
+        hh = (h + arc * amount) % 1.0
         ss = min(1.0, s * (1.0 + STEP_SAT[k]))
         vv = min(1.0, v * STEP_VALUE[k])
         out.append(rgb_to_hex(colorsys.hsv_to_rgb(hh, ss, vv)))
@@ -83,7 +107,7 @@ def main() -> None:
     zones = [z for z in data if len(data[z]) == 8]
     lines = [BEGIN, "const RAMP: Dictionary = {"]
     for z in zones:
-        steps = [ramp(a) for a in data[z]]          # per role: 4 steps
+        steps = [ramp(a, hold=(z, r) in HUE_HOLD) for r, a in enumerate(data[z])]          # per role: 4 steps
         lines.append("\t&\"%s\": [" % z)
         for k in range(4):
             row = ", ".join('"%s"' % steps[r][k] for r in range(8))
@@ -91,8 +115,16 @@ def main() -> None:
         lines.append("\t],")
     lines += ["}", END]
     block = "\n".join(lines)
-    new = re.sub(re.escape(BEGIN) + r".*?" + re.escape(END), block, src, flags=re.S)
-    if new == src and BEGIN not in src:
+    glines = [GBEGIN, "const GRASS: Dictionary = {"]
+    anchor = data["meadow"][GRASS_ANCHOR_ROLE]
+    for name, (target, amount) in GRASS_VARIANTS.items():
+        row = ", ".join('"%s"' % h for h in grass_variant(anchor, target, amount))
+        glines.append('\t&"%s": [%s],' % (name, row))
+    glines += ["}", GEND]
+    gblock = "\n".join(glines)
+    new = re.sub(re.escape(BEGIN) + r".*?" + re.escape(END), lambda _m: block, src, flags=re.S)
+    new = re.sub(re.escape(GBEGIN) + r".*?" + re.escape(GEND), lambda _m: gblock, new, flags=re.S)
+    if BEGIN not in src or GBEGIN not in src:
         raise SystemExit("markers missing in %s" % TARGET)
     TARGET.write_text(new, encoding="utf-8")
     print("wrote %d zone ramps to %s" % (len(zones), TARGET))
