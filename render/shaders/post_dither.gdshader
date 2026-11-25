@@ -59,10 +59,21 @@ ivec2 shade_index(ivec2 t) {
 		return ivec2(0, 0);
 	}
 	int lit = int(floor(c.r * 8.0));
-	// 2. three light bands with dithered edges, plus shimmer
+	// 2. three light bands. Flat areas (all 3x3 neighbours in the same band) get no dither, so grass and path read as
+	// solid patches. Band seams keep a softer Bayer edge (0.2 amplitude) and the shimmer.
 	float thr = bayer4(t + dither_origin);
 	float shim = (hash(t, shimmer_step) - 0.5) * shimmer_amount * 2.0;
-	float s = c.g * 3.0 + (thr - 0.5) * 0.5 + shim;
+	float band_value = c.g * 3.0;
+	float band_lo = floor(band_value);
+	bool is_flat = true;
+	for (int dy = -1; dy <= 1; dy++) {
+		for (int dx = -1; dx <= 1; dx++) {
+			if (floor(fetch(t + ivec2(dx, dy)).g * 3.0) != band_lo) {
+				is_flat = false;
+			}
+		}
+	}
+	float s = is_flat ? band_value : band_value + (thr - 0.5) * 0.2 + shim;
 	int level = clamp(int(floor(s)), 0, 2);
 	// 3. press ripples: two rings on the ground plane (iso ellipse, 2:1) lighten one band
 	if (id == ground_id && thr > 0.4) {
