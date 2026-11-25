@@ -449,6 +449,12 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
 
+## 2026-11-25: Shadows on every asset (T5, Gower restyle part P10)
+- **Nathan's pick:** mockup C (sheet at /mnt/project-files/gower-style/shadows-t5/sheet_v2_thistle.png): flower shadows, longer noon shadows and a mauve shade.
+- **Decision:** each garden flower (world/larkmoor_gardens.json, about 2,000 in Larkmoor) gets one small dithered oval in its own `FlowerShadows` layer (`SkyShadows.set_flowers`), at strength 0.75 and laid with the sun. Flowers are not casters, so they take no pad copy and cost one draw. Noon cast shadows are longer (`shadow_len_noon` 0.22 to 0.6 in sky config; the golden-hour and dusk lengths are unchanged). The high-sun shade is mauve `#4e4470` (`SkyShadows.SHADE`) and still deepens to blue at low sun.
+- **Not shadowed on purpose:** wheat (ground cover), the farm fence ring and soil (flat), and critters and butterflies (moving, too small to read). Grass blades rely on the ground height march.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb, Larkmoor at noon and golden hour (`tools/shadow_audit_shots.tscn` renders HUD-free frames). The unit suite passes with 4 new flower checks in test_lighting.gd.
+- **Not verified on the PC:** the mauve on a real monitor, and the flower dots at night and in winter.
 ## 2026-11-25: Ember Quarry sprites take the quarry ramps by role (T10)
 - **Nathan's pick:** B Medium (mockups in `/mnt/project-files/gower-style/ember-quarry/`, sheets `sheet_hub_noon.png`, `sheet_hub_night.png`, `sheet_gate_noon.png`).
 - **Decision:** `tools/art/qs.py` `finish()` now maps each sprite texel to its role's ramp in `render/palettes.gd` `RAMP["quarry"]` (read from the file, so there is one palette source). Role is the same as before (the 8 anchors); the step is 2 (anchor) plus +1 on rims that face the upper-left light and -1 on rims facing away. Medium also drops the darkest band interior one step. Mode is set by `QUARRY_REMAP` (`off`, `subtle`, `medium`, `strong`), default `medium`.
