@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GoalDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/goal_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"goal_hours_1"
+display_name = "An Hour In"
+description = "Play for one hour."
+counter = &"play_hours"
+target = 1.0
+order = 2
+reward = 0.02

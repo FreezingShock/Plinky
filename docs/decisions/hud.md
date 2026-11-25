@@ -645,3 +645,8 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** these menus loaded their PNGs again on every open, and a freed node drops its texture, so each open read the same files from disk. The gain is small: the headless probe with this change shows Gallery at 7–15 ms open, against 8–16 ms before, so the bulk of the cost is elsewhere (the card and tile nodes).
 - **Checked:** `tests/run.gd` passes (11737 checks, 0 failed) after `--import`.
 - **Not run in-engine:** the icons on a PC at zoom 1 and 3. PC QA should check that every Gallery tile and Stats card shows its icon.
+
+## 2026-11-25: Next Goal card, top left
+- **What:** `ui/next_goal_card.gd` shows the first unreached goal, its name, a progress bar and `value / target  +x%`. Hover shows the goal's description and the total bonus. When the chain is done it reads "All Goals Reached".
+- **Why top left:** the zone panel holds the top right and the bottom bar holds the bottom, so the top left was the free corner. Gated on Dewdrops like the stat strip, so the tutorial is not crowded.
+- **Reached:** a banner, "Goal Reached", shows the goal and its bonus. Hud owns the `Banner` call, because the card cannot name the autoload and stay testable in `--script` mode.

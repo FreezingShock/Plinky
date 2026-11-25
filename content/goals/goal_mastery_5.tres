@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GoalDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/goal_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"goal_mastery_5"
+display_name = "Known Ground"
+description = "Reach Mastery 5 on one pad."
+counter = &"mastery_best"
+target = 5.0
+order = 4
+reward = 0.02

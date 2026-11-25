@@ -12,6 +12,7 @@ The contract between core, world, render and ui. Replaces the "write this before
 | `Fx` | `render/fx_driver.gd` | Turns gameplay events into global shader uniforms |
 | `Juice` | `ui/fx/fx_bus.gd` | UI effects: popups, counters, banners |
 | `Audio` | `audio/audio.gd` | Music, SFX, subtitles |
+| `Banner` | `ui/banner.gd` | Centred popup banners (type in, hold, collapse) |
 
 ## Rules
 - Gameplay emits EventBus signals. World and ui listen to them; they do not call each other across folders.
@@ -30,6 +31,7 @@ signal gate_opened(gate_id: StringName)
 signal relic_gained(relic_id: StringName, stacks: int)
 signal buff_started(buff_id: StringName, seconds: float)
 signal rebirth_done(prestige_gained: BigNum)
+signal reset_done(reset_id: StringName, gained: BigNum)
 signal relic_equipped(relic_id: StringName)
 signal relic_unequipped(relic_id: StringName)
 signal attribute_bought(attribute_id: StringName, level: int)
@@ -41,6 +43,7 @@ signal heat_hot_changed(hot: bool)
 signal momentum_tier_changed(tier: int, rising: bool)
 signal mastery_changed(button_id: StringName, level: int, xp: float)  # every press; level and xp are the pad's after it
 signal mastery_leveled(button_id: StringName, level: int)
+signal achievement_unlocked(achievement_id: StringName)  # a Ledger entry just unlocked (core/achievements.gd)
 signal game_loaded()
 signal game_saved()
 signal save_failed()  # a save could not be written (full disk, locked file)
