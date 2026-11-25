@@ -14,12 +14,30 @@ const COLORS: Dictionary = {
 	&"offline_cap": Color("8aa6ff"), &"mastery": Color("ffd166"),
 }
 const PAPER: Color = Color("f6efd9")
+## The main colour of each stat's icon (its body colour, lifted to read on the dark panel). The Stats strip's values use
+## these, so a number matches the icon beside it. Generated from assets/icons/<id>.png. Not passed through AccessOptions.tint.
+const ICON_TINT: Dictionary = {
+	&"alloy": Color("e8b43a"), &"cinder": Color("5cd1a6"), &"clover": Color("35d15b"), &"dewdrop": Color("95afd1"),
+	&"emberheart": Color("ffd0e8"), &"embers": Color("d15846"), &"foxglove": Color("ffe68a"), &"heather": Color("efa8f6"),
+	&"ingot": Color("a07ee0"), &"ironore": Color("b8f0a0"), &"prestige": Color("f7d37a"), &"reb": Color("acedba"),
+	&"rp": Color("5ad1cd"), &"seeds": Color("f2a35e"), &"shards": Color("3fc9d6"), &"slag": Color("427cd1"),
+	&"starbloom": Color("ffd0fa"), &"sunlight": Color("ffd340"), &"thistle": Color("b4c8ff"),
+}
 ## Attribute effect id -> the stat id whose colour it uses.
 const EFFECT_STAT: Dictionary = {&"offline_hours": &"offline_cap", &"mastery_xp": &"mastery", &"pad_yield": &"sunlight", &"head_start": &"seeds", &"sun_rate": &"seeds", &"auto_press": &"seeds", &"wild_bloom": &"seeds", &"double_chance": &"seeds", &"seed_pay": &"seeds", &"bloom_bonus": &"seeds", &"keep_flowers": &"seeds", &"ember_start": &"shards", &"ember_rate": &"shards", &"shard_pay": &"shards", &"nucleus_bonus": &"shards", &"keep_rows": &"shards", &"petal_burst": &"seeds", &"bloom_crown": &"seeds", &"nucleus_crown": &"shards"}
 
 
 static func color(id: StringName) -> Color:
 	return AccessOptions.tint(COLORS.get(EFFECT_STAT.get(id, id), PAPER) as Color)
+
+
+## The colour of a stat's own number on the Stats strip: its icon's main colour, else the stat colour. The icon art is
+## not recoloured in the colour-safe modes, so the number takes the icon's colour untouched in every mode. Number and
+## icon always match, and the swap table never has to know every icon colour.
+static func value_color(id: StringName) -> Color:
+	if ICON_TINT.has(id):
+		return ICON_TINT[id] as Color
+	return color(id)
 
 
 ## The affordable / gain colour and the can't-afford colour, swapped for colour-safe ones when that option is on.

@@ -479,6 +479,7 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 | Date | Decision | Why |
 |---|---|---|
 | 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
+| 2026-11-25 | Larkmoor canopy light shafts (`light_shafts.gdshader`): parallel dithered lanes of sun along the travel direction, hashed per lane, broken up by canopy-gap noise. Two layers in one pass (wide beams, fine rays). Driven by `SkyModel.shafts` = golden^2 x (1 - rain), so faint at noon, off at night. Tuned in `content/config/sky.tres` (`canopy_strength`, `canopy_beam`, `canopy_ray`) | The reference (Nathan, 2026-11-25) has light falling through gaps in the canopy onto the path. The existing radial god rays are a fan from above the frame and do not read as beams; they stay on in the meadow. Not run on the PC yet. |
 
 ## 2026-11-25: The sun or moon grab uses phase range, not the sign of sun_of
 - **Bug:** the grab picked the sun or moon by `sun_of(phase) >= 0`. At sunrise and sunset (phase 0.25 and 0.75, the loading screen's boot phase among them) `sun_of` is a float hair either side of zero, so the same body could grab on the wrong half of the arc. The body was drawn and hit-tested by phase range, so it jumped to the far end of the other arc, or the grab missed.
@@ -512,6 +513,7 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept:** the forward carry, capped to the room left in the grabbed half. The lift drop onto the arc is unchanged: the sun dropping about 33 texels from a high release is that drop, not a fault.
 - **Pass metric for QA:** after release, the body's offset below its arc point at its current phase (`-lift * reach`, drawn straight down, in art texels) must stay at or under 0.37 texels. Travel along the arc is not the metric: it includes the flick carry and the natural clock.
 - **Not verified in-engine:** how a stop after a backward flick feels on the PC.
+- **2026-11-25 Larkmoor water layout B (T6):** three feeder brooks from the river and the mere into three small ponds in clearings (`FEEDERS` and `PONDS` in `tools/art/larkmoor_layout.py`). The river carve now runs per channel, and each texel takes the height of its nearest channel. No brook crosses a path, so no new bridge. The third pond moved to the pine clearing south-west of the mere, clear of the mountain rim. Bank stones are left to the Restyle trees thread (`BANK_ROCKS`). Why: Nathan picked B on the decision card. Checked in the cloud: the generator runs, the walkable fraction is 0.192 (was 0.197, the new water), and the suite passes. Not verified on the PC. Sprites churn because prop placement follows the random order, so most sprite files change.
 
 ## 2026-11-25: Field flowers drop the ink outline for a shadow-side rim (Nathan picked C)
 - **Change:** `GardenArt._outline` (world/garden_art.gd) now paints a one-texel rim only on the shadow side of a field flower (empty cells below or right of the plant), in the zone's deep leaf green `FLOWER_RIM` (#225a4a). The lit upper-left edge gets no rim. Small flowers and shrubs were never inked and are unchanged.
@@ -519,3 +521,22 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Picked from:** three in-engine mockups on the real Larkmoor frame (Reedgate): A, a ring in each flower's own darkest step on every side (muddy); B, no ring with a shade rim on the lower right (lowest contrast on pale grass); C, the shadow-side rim.
 - **Not changed:** the walker, critters and props keep their ink. Small bushes come from the bush generators and belong to the bush thread.
 - **Not verified in-engine:** Heather, Thistle, Clover, Foxglove and Starbloom fields, and the winter and autumn states, beyond the summer tests.
+
+## 2026-11-25: Night flower glow at 75% saturation, not full neon (Nathan picked S1)
+- **Change:** `FlowerGlow.NEON_SAT` is 0.75 (was 1.0). Each field's glow keeps its own petal hue and the alpha stays at `NIGHT_ALPHA` 0.6. Day is unchanged (`DAY_ALPHA` 0).
+- **Why:** full neon made the Sprout field an electric blue-green patch, louder than the rest of the art. Nathan rejected the warm and muted variants because they drained the colour, so only the saturation came down.
+- **Picked from:** the shipped neon, then S1 (75%), S2 (60%), S3 (85% with a warm lift) at night in Reedgate. The warm, ochre and muted tints from the earlier round were rejected.
+- **Tooling:** `tools/flower_glow_shots.gd` has the mockup variants (`NEON_SAT`, `NEON_VAL`, `TINT_MIX`) for future looks.
+## 2026-11-25: Ruins stay out of the farm, and wheat grows up to the small props
+- **Bug (Nathan's screenshot):** two extra ruins (ids 389 and 390) stood in the farm's blob field, one on the soil between the fences and one inside a wheat plot. The farm was stale: `farm.json` had last been placed against an older `placements3d.json`, before the extra ruins existed.
+- **Fix, ruins:** `larkmoor_layout.FARM_KEEPOUT_BOX` is the farm box (1090, 548, 260, 276, layout texels) and `in_farm_keepout()` adds a 26-texel margin, enough for a ruin's sprite rising about 23 texels above its foot. `gen_larkmoor.py` refuses extra-ruin groups and spots inside it. Non-ruin sprites are unchanged, and the 11 ruins move (the ruin stream is its own, so the later ones shift).
+- **Fix, wheat:** `place_farm.py` lets a wheat clump overlap a small prop (hay bale, crate, cart, scarecrow) when the clump stands behind the prop's foot, since the prop draws over it. A clump in front keeps `PROP_WHEAT_GAP` (1 canvas texel) clear. Before, GAP was 4 texels, so wheat stopped well short of the bales.
+- **Regen:** `gen_larkmoor.py`, `place_farm.py`, `bake_wheat.gd` (737 sheets, the stale 661 removed), then `gen_life_anchors.py --add-keys --farm` for the farm keys only. The sway tips and the garden were fixed in place instead of a full regen (two tips nudged onto light grass, one flower on a new sand rubble patch dropped), so the rest of the life and garden data is unchanged.
+- **Tests:** `tests/test_farm.gd` checks that no ruin sprite intersects the farm box, a fence piece, soil or wheat, and that every small prop standing in a field has wheat within 20 texels. The tree foot check skips farm trees, because a pine's trunk foot can sit below its cropped sprite (as it does in Larkmoor).
+- **Not verified in-engine on the PC:** the cloud run is headless with software Vulkan. The before and after farm captures are in the PR.
+## 2026-11-25: Earth hue held on the meadow ramps, and grass variants (T1)
+- **Why:** PR #586 (ground thread) reported Larkmoor dirt reads olive-khaki at noon. The earth role's lit steps drifted toward yellow, and the noon grade pushed that to olive.
+- **Decision:** meadow role 6 (earth) keeps its hue in every step (`HUE_HOLD` in `tools/art/gen_palette_ramps.py`). Other roles and zones are unchanged.
+- **Grass variants:** `Palettes.grass_variant(&"warm")` and `&"cool"` are 4-step ramps for warm and cool grass patches, from the meadow grass anchor. The ground thread wires them into the Larkmoor bake, which needs its own palette index.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb, Larkmoor noon and golden hour, before and after: `/mnt/project-files/palette-grade/larkmoor_dirt_noon_before_after.png`. The saves had advanced a day between runs, so the frames are approximate. Swatch: `/mnt/project-files/palette-grade/grass_variants_swatch.png`.
+
