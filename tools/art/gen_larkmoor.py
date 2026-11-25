@@ -138,34 +138,44 @@ def bowl(H0, B, depth):
     return H0 * (1 - w) + hb * w * 1.0 + 0 * w, s
 H0, sl_ = bowl(H0, LAKE, 8.0); H0, sp_ = bowl(H0, POND, 5.0)
 LAKE_S, POND_S = sl_, sp_
+# feeder ponds (T6 layout B): a bowl like the mere, at the end of each feeder brook
+PONDS_S_LIST = []
+for _pd in LAY.PONDS:
+    _B = dict(c=s2uv(*_pd['c']), r=_pd['rx'] / 1.414 * .9)
+    H0, _s = bowl(H0, _B, 4.0); PONDS_S_LIST.append(_s)
 Hpre = H0.copy()
 GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
-dstr = pl_dist(gu, gv, STREAM)
 RIVER_DEPTH = 3.0                              # the river bed sits this far below its surface: deep enough to read as water, not a dither strip
 sw = 7.0 + 1.0 * np.sin(gu * .13 + gv * .09)   # half-width: about 14 texels across, still an easy jump
-D = []
-for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
-    n = int(math.hypot(x1 - x0, y1 - y0)); D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
-D = np.array(D); hD = samp(Hpre, D[:, 0], D[:, 1])
-k = 7; hD = np.convolve(np.pad(hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
-hL = np.maximum(np.minimum.accumulate(hD) - .8, LEVEL + .15)
-HLF = np.full((N, N), 99.0)                     # water height of the nearest stream point, around the channel
-_bu, _bv = np.nonzero(dstr < sw + 3)
-for c0 in range(0, len(_bu), 20000):
-    uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
-    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); HLF[_bu[c0:c0 + 20000], _bv[c0:c0 + 20000]] = hL[dd.argmin(1)]
+# the river and each feeder brook are carved the same way; a texel takes the water height of its nearest channel
+CHANNELS = [STREAM] + [[s2uv(*p) for p in f] for f in LAY.FEEDERS]
+dstr = np.full((N, N), 1e9); HLF = np.full((N, N), 99.0)
+for _poly in CHANNELS:
+    _dc = pl_dist(gu, gv, _poly)
+    _D = []
+    for (x0, y0), (x1, y1) in zip(_poly, _poly[1:]):
+        n = int(math.hypot(x1 - x0, y1 - y0)); _D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
+    _D = np.array(_D); _hD = samp(Hpre, _D[:, 0], _D[:, 1])
+    k = 7; _hD = np.convolve(np.pad(_hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
+    _hL = np.maximum(np.minimum.accumulate(_hD) - .8, LEVEL + .15)
+    _bu, _bv = np.nonzero(_dc < sw + 3)
+    for c0 in range(0, len(_bu), 20000):
+        uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
+        dd = np.hypot(uu[:, None] - _D[None, :, 0], vv[:, None] - _D[None, :, 1]); am = dd.argmin(1)
+        ii, jj = _bu[c0:c0 + 20000], _bv[c0:c0 + 20000]
+        win = _dc[ii, jj] < dstr[ii, jj]
+        dstr[ii[win], jj[win]] = _dc[ii, jj][win]; HLF[ii[win], jj[win]] = _hL[am[win]]
 # the channel is carved all the way to the lake: inside the lake the bowl is already deeper, so nothing changes there, and the rim
 # gets a notch where the river leaves it (the old lake-rim exclusion left a dry gap between the lake and the river)
 wch = (1 - smooth(sw - 2.0, sw + 4.5, dstr))
 H0 = H0 * (1 - wch) + np.minimum(H0, HLF - RIVER_DEPTH) * wch       # bed always sits below the water ribbon
 WH = np.full((N, N), -99.0)
 mask_s = dstr < sw + 1
-iu, iv = np.nonzero(mask_s)
-for c0 in range(0, len(iu), 20000):
-    uu, vv = iu[c0:c0 + 20000].astype(float), iv[c0:c0 + 20000].astype(float)
-    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); WH[iu[c0:c0 + 20000], iv[c0:c0 + 20000]] = hL[dd.argmin(1)]
-inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25))
+WH[mask_s] = HLF[mask_s]
+_pond_in = np.zeros((N, N), bool)
+for _s in PONDS_S_LIST: _pond_in |= (_s < 1.25)
+inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25) | _pond_in)
 WH[inlake] = LEVEL
 smask = mask_s & (dstr < sw - .3) & (WH > H0 + .02) & ~inlake
 WH[~(smask | inlake)] = -99
