@@ -624,6 +624,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** `tests/run.gd` passes. A new check covers the escaping and the colour tags.
 - **Not run in-engine:** how the log scrolls and wraps on a PC at zoom 1 and 3.
 
+## 2026-11-24: Stats and Attributes grid builds over a few frames
+- **Decision:** `IndexPanel._rebuild` builds the group heads, flows and cards through `_fill_cards`, `CARDS_PER_FRAME` (8) cards per frame after the first batch while the panel is in the tree. A rebuild or a teardown bumps `_gen`, which cancels the older build. While a build runs, `_refresh` skips the per-card `set_data` pass, and focus is wired once the grid is complete. Off the tree it builds in one pass.
+- **Why:** the probe showed the Stats open at 18–49 ms and Attributes at 9–20 ms, all synchronous. Headless after this change: Stats open sync 9.9–15 ms with worst frame 8–12 ms, Attributes 8.3–13 ms with worst frame about 8 ms.
+- **Checked:** `tests/run.gd` passes (11738 checks, 0 failed), including a check that the grid builds in one pass off the tree.
+- **Not run in-engine:** the spread grid on a PC. PC QA should open Stats and Attributes and check the cards fill in without a visible pop, then press Tab and the arrows while cards are still arriving, and that Back and a buy still work.
 ## 2026-11-24: Gallery, Stats and Attributes icons load through IconCache
 - **Decision:** the Gallery tile icons, the index card icons (`IndexCard.icon_for`, big then small), the Stats and Attributes header and tab icons, and the index sheet textures all go through `IconCache.texture`. Each PNG loads once and is kept for the life of the game. `IconCache` is the same file as on `claude/ledger-lazy` (PR #497), so the two merge cleanly in either order.
 - **Why:** these menus loaded their PNGs again on every open, and a freed node drops its texture, so each open read the same files from disk. The gain is small: the headless probe with this change shows Gallery at 7–15 ms open, against 8–16 ms before, so the bulk of the cost is elsewhere (the card and tile nodes).
