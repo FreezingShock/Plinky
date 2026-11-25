@@ -613,6 +613,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** Nathan asked for the loading and title screens to fill the display like the game. Measured headless, the game and the title both letterboxed on non-16:9 windows. Nathan then chose to fill the pre-game screens only (the decision card in the project thread), because the title art is procedural and the meadow art is baked. The game keeps the KEEP letterbox.
 - **Not verified in-engine:** the scene-swap cover when the game hands off to the title (the captured frame is at the old aspect). Headless captures at 800x600, 1024x768, 1600x1000, 2560x1080 and the loading screen were checked by eye. PC QA should check windowed and fullscreen at several sizes, and the title-to-game and game-to-title swaps.
 
+## 2026-11-24: Stats and Attributes header icon stops with its body (close error)
+- **Decision:** the header icon's frame tween is kept and killed when the body is freed. The frame setter does nothing when the icon is gone.
+- **Why:** closing Stats or Attributes during the icon's 0.6 s animation left the tween calling into a freed icon, which logged 9 script errors per open in the headless menu probe. The tween could also reach an icon that a later open had replaced.
+- **Checked:** `tests/run.gd` passes. The menu probe logs no script errors across open and close cycles.
+- **Not run in-engine:** a close during the icon animation on a PC.
 ## 2026-11-24: Achievements rows build over a few frames, and their icons load once
 - **Decision:** `LedgerPanel.refresh` builds the title and the overall bar at once, then the category heads and achievement rows `ROWS_PER_FRAME` (6) at a time while the panel is in the tree. A newer build or a hide bumps `_gen`, which stops the older build at its next check. Off the tree (tests) it builds in one pass. Closing still frees every row. `LedgerPanel.icon_for` goes through `IconCache.texture`, a static path-keyed cache that loads each icon once (missing files are cached as null).
 - **Why:** the Achievements open built all rows in one call, 30–40 ms on the headless probe, and every open read the same icon PNGs again. Probe with 637 nodes at open and 677 with the History panel (both after close): open sync is now 3.6–6.2 ms and the worst frame 8–10 ms, against 19–24 ms before.
