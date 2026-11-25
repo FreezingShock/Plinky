@@ -242,11 +242,16 @@ def voxelize(sdf, half, top, u0, v0, z0, scale=1.0, rot=0.0, sid=1, wl=0.0, bott
 # material codes
 (M_FOL, M_BARK, M_PINE, M_ROCK, M_MOSS, M_CRYS, M_WOOD, M_PADT, M_PETA, M_PETB, M_STEM, M_LILY, M_REED, M_CAT, M_BERRY, M_CAP, M_CSTEM, M_PAPER, M_GRASS, M_BARKT, M_BARKT2, M_PEB, M_FACE, M_INK) = range(10, 34)
 M_DARKF = 34   # dark pocket cut into a bush: the shadowed inside of the leaf shell, darkest ramp step (same code as gen_meadow3d.py)
+# Palette role 1 (#1c3a2e, dark blue-green) is the darkest step of the foliage ramp. Role 0 is ink and must not hold bush
+# shadow: at runtime the shadow multiplies it toward pure black, which reads as a hole under the bush.
+BUSH_EDGE = 1
+DARKF_RAMP = [1, 1, 1, 2]   # the pocket, contact and rock-foot shade: role 1 with a few role-2 texels where the light lifts
 
 # ---------------- prop models (local coords: x right, y toward camera, z up) ----------------
 def make_oak(rng):
     lx, ly = rng.uniform(-1.5, 1.5), rng.uniform(-1.5, 1.5)
-    balls = [(0, 0, 27, 9.5)] + [(rng.uniform(-9.5, 9.5), rng.uniform(-9.5, 9.5), rng.uniform(21, 33), rng.uniform(6.5, 9)) for _ in range(6)]
+    # round 3: eight lobes instead of six, so the crown has more clumps and a rounder, bumpier outline (v3 canopy shape)
+    balls = [(0, 0, 27, 9.5)] + [(rng.uniform(-10, 10), rng.uniform(-10, 10), rng.uniform(21, 33), rng.uniform(6.0, 8.5)) for _ in range(8)]
     roots = [(rng.uniform(0, 6.28)) for _ in range(3)]
     seed = rng.randint(0, 99)
     def f(x, y, z):
@@ -296,9 +301,7 @@ def make_bush(rng):
         for pc, pr in pockets:
             cut = -sdf_sphere(x, y, z, pc, pr)
             m = np.where(cut > d, M_DARKF, m); d = np.maximum(d, cut)
-        # contact: a thin, soft-edged dark slab under the bush, a little wider than its skirt, so the foot reads as shade on the ground
-        dc = sdf_ell(x, y, z, (0, 0, 0), (7.4, 6.6, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
-        sel = dc < d; m = np.where(sel, M_DARKF, m); d = np.minimum(d, dc)
+        # no contact slab: a dark disc under the bush read as a hard circle. The runtime cast shadow (world/sky_shadows.gd) gives the soft shade.
         for b in berries:
             db = sdf_sphere(x, y, z, b, 1.0) ; sel = db < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, db)
         return d, m
@@ -791,11 +794,14 @@ put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
 # trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
 TREE_GAP = dict(oak=6.0, pine=8.0)
-GROVE_MUL = float(os.environ.get('GROVE_MUL', '1.8'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
+# round 3 of the v3 remodel: oaks and pines grow toward the v3 size (about two walkers tall, ~60 texels). Scales the grove draw range.
+TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
+GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
+    if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL)
@@ -963,6 +969,7 @@ for _gn in EXTRA_GROUPS:
         _a, _rd = _xr.uniform(0, 6.283), math.sqrt(_xr.random()) * 0.7 * R
         _cu, _cv = CU + math.cos(_a) * _rd, CV + math.sin(_a) * _rd
         if any(math.hypot(_cu - pu, _cv - pv) < 190 for (pu, pv) in _xr_spots): continue
+        if LAY.in_farm_keepout(*LAY._from_uv(_cu, _cv)): continue          # no ruin on the farm fields, soil or fences
         if not ok_spot(_cu, _cv, 12.0, slope_max=0.8, hmax=200.0, path_clear=8.0): continue
         _gc = (_cu, _cv); break
     if _gc is None: continue
@@ -972,6 +979,7 @@ for _gn in EXTRA_GROUPS:
             _b, _dd = _xr.uniform(0, 6.283), _xr.uniform(26.0, 44.0)
             _u, _v = _gc[0] + math.cos(_b) * _dd, _gc[1] + math.sin(_b) * _dd
             if any(math.hypot(_u - pu, _v - pv) < 30 for (pu, pv) in _members): continue
+            if LAY.in_farm_keepout(*LAY._from_uv(_u, _v)): continue        # the farm box and its margin stay clear of ruins
             if not ok_spot(_u, _v, 12.0, slope_max=0.8, hmax=200.0, path_clear=8.0): continue
             _style, _xh = EXTRA_RUINS[_xr_k % len(EXTRA_RUINS)]; _xr_k += 1
             put('ruin', _u, _v, 1.0, style=_style, h=_xh, seed=_xr.randint(0, 1 << 30))
@@ -1010,6 +1018,18 @@ dtr = {t: samp(dtier[t], FU, FV) for t in HALF}
 on_path = {t: (dtr[t] < HALF[t] * edge_noise) & (rockness < .85) for t in HALF}
 mat[on_path['road'] | on_path['lane']] = T_PATH
 mat[on_path['trail'] & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
+# footpath pass: lanes and trails feather out. Near the edge a texel keeps its path material only with a chance that falls
+# to zero at the outer edge (smooth noise, so the fringe is ragged and dithered), so a lane thins into the grass and a trail
+# fades to a faint track instead of a ruled edge. The road keeps its hard flagstone edge.
+FEATHER = {'lane': .35, 'trail': .6}   # share of the half-width that feathers out
+FEATHER_MAT = {'lane': T_PATH, 'trail': T_TRAIL}
+for _t, _f in FEATHER.items():
+    _inner = HALF[_t] * (1 - _f)
+    _outer = HALF[_t] * edge_noise
+    _band = (dtr[_t] > _inner) & (dtr[_t] < _outer) & ~on_path['road']
+    _chance = 1 - (dtr[_t] - _inner) / (_outer - _inner)
+    _keep = _chance > vn2(FU / 1.6, FV / 1.6, 75 if _t == 'lane' else 76)
+    mat[_band & ~_keep & (mat == FEATHER_MAT[_t])] = T_GRASS
 # the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
 mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
@@ -1025,6 +1045,16 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
+# under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
+# ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
+vb = .6 * vn2(FU / 26, FV / 26, 61) + .4 * vn2(FU / 11, FV / 11, 62)
+lt += np.where(vb < .36, -.13, np.where(vb > .64, .13, 0.)) * (mat == T_GRASS)
+lt += .10 * (mat == T_PATH)
+from PIL import ImageFilter as _IF
+_tall = ((HS - H0) > 2.5).astype(np.uint8) * 255
+_under = np.asarray(Image.fromarray(_tall).filter(_IF.MaxFilter(9)).filter(_IF.GaussianBlur(2.5))).astype(np.float32) / 255.0
+lt -= .16 * np.clip(samp(_under, FU, FV), 0, 1) * (mat == T_GRASS)
 # main road = flagstones: lit sand stones in staggered rows, with worn earth mortar between them. Lanes stay plain packed
 # sand and trails stay dark earth, so the three tiers read apart at 1x without a new material. The mortar is a light
 # drop only, so the palette and the ramp stay the same as the path's.
@@ -1079,10 +1109,13 @@ for c0 in range(0, len(u_), 1500000):
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
 RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
-        M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
+        M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 6, 6, 7], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
-        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: [0, 0, 1, 1]}
+        M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: DARKF_RAMP}
 RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
+# canopy shading (round 2 of the v3 remodel): leaves and pine boughs step through their shades with crisp edges
+CANOPY_MATS = (M_FOL, M_PINE)
+CANOPY_DBAND = (.44, .14)     # the dither spreads over the middle 14% of each step, so the Bayer edge stays but the steps read
 mat_ = allp['mat']; nz_ = allp['nz']; lraw = allp['wl'].copy()
 light = np.where(isprop | (np.arange(len(u_)) >= len(T['u'])) & False, 0, 0).astype(float)
 # lighting for props (terrain/plinth carried theirs in 'wl')
@@ -1170,14 +1203,16 @@ def render_scene(keep):
         img_l = img_l + np.where(own, -DEPTH[0] + DEPTH[1] + DEPTH[2], 0)
     YY, XX = np.mgrid[0:H, 0:W]
     bay = (BAYER[YY & 3, XX & 3] + .5) / 16
-    def dith(ramp, l, mask):
-        r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
+    def dith(ramp, l, mask, dband=(.30, .40)):
+        # dband: where the Bayer dither spreads between two ramp steps (start, width of the band inside each step)
+        r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - dband[0]) / dband[1], 0, 1)
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
     img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
-        if sel_.any(): out[sel_] = dith(ramp, img_l, sel_)[sel_]
+        # canopy and pine: a narrow dither band, so each shade step has a clear edge and the Bayer texture stays on the edges
+        if sel_.any(): out[sel_] = dith(ramp, img_l, sel_, CANOPY_DBAND if m_ in CANOPY_MATS else (.30, .40))[sel_]
     # water: depth bands, stepped glints, foam, white water on slopes
     wsel = img_mat == T_WATER
     if wsel.any():
@@ -1203,7 +1238,12 @@ def render_scene(keep):
         ink |= (me >= 10) & (nb != me)
         ink |= (me >= 1) & (nb == -1) & (me < 10)
         ink |= (me >= 10) & (nb == -2)
-    out[ink & (img_id >= 0)] = 0
+    # bushes take no ink: their edge and pockets use the darkest foliage step (BUSH_EDGE), so no near-black holes form.
+    # Walker, critters and large props keep their ink outline.
+    bush_ids = np.array([t['id'] for t in TALL if t['kind'] == 'bush'], np.int64)
+    on_bush = np.isin(img_id, bush_ids) if len(bush_ids) else np.zeros((H, W), bool)
+    out[ink & (img_id >= 0) & ~on_bush] = 0
+    out[ink & (img_id >= 0) & on_bush] = BUSH_EDGE
     # ---- surroundings: layered distant mountains and open water, so wide windows never see the void ----
     emp = out < 0
     if emp.any():

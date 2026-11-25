@@ -18,7 +18,7 @@ EMBER_GATE = (760, 268)       # the gate that leads on to Zone 2, set into the n
 
 # Main route: S -> Thistledown Green -> fork W (Heronmere) / E (Foxglove Rise) -> Heather Hollow -> N fork -> Starbloom Terrace.
 PATH_MAIN = [(760, 716), (760, 676), (750, 640), (744, 600), (756, 560), (772, 520), (770, 486), (762, 454), (752, 420), (756, 386), (770, 350), (766, 310), (760, 268)]
-PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (500, 588), (540, 560), (600, 540), (680, 516), (772, 520)]
+PATH_WEST = [(750, 640), (700, 640), (630, 628), (570, 640), (520, 618), (600, 600), (640, 580), (630, 558), (600, 540), (680, 516), (772, 520)]   # round the lake's south-east rim, clear of the water and the Reedgate row
 PATH_EAST = [(744, 600), (830, 612), (900, 600), (960, 580), (1030, 566), (1094, 550), (1090, 536), (1060, 520), (990, 500), (900, 490), (770, 486)]   # the tip now ends at the windmill's south door (1090, 520), so the fold leads somewhere
 # Only the main road runs north: to the Ember gate, top middle. The side trails stop short of the mountainside.
 # West trail: off the east side of the west road, north of the lake and along its north shore, to the Westmere pads on the west bank.
@@ -149,6 +149,19 @@ GROVES = [
 
 # The windmill farm (the cozy thread places its props there): the flower gardens keep out of this box. Authored units.
 FARM_BOX = (960, 410, 1220, 630)
+# The farm's wheat, soil and fences reach past FARM_BOX (its items run to about y 686): the farm box as placed by
+# place_farm.py is (1090, 548, 260, 276) in layout texels. Ruins keep out of that box plus a margin, so no ruin lands on the
+# fields, the soil or the fences (Nathan, 2026-11-25: ruins stood between the fences and inside a wheat plot).
+FARM_KEEPOUT_BOX = (1090 - 130, 548 - 138, 1090 + 130, 548 + 138)
+FARM_KEEPOUT_MARGIN = 26     # layout texels: a ruin sprite rises about 23 texels above its foot, so 26 keeps its whole sprite clear
+
+
+def in_farm_keepout(sx, sy):
+    """True when the ground point (sx, sy) in the scaled canvas frame (what _from_uv returns) is inside the farm keep-out box.
+    gen_larkmoor.py uses it for the extra ruins; tests/test_farm.gd checks the sprites that result."""
+    x0, y0, x1, y1 = FARM_KEEPOUT_BOX
+    m = FARM_KEEPOUT_MARGIN
+    return (x0 - m) * S <= sx <= (x1 + m) * S and (y0 - m) * S <= sy <= (y1 + m) * S
 
 
 def _seg_dist(px, py, ax, ay, bx, by):
