@@ -246,3 +246,46 @@ Brief from Nathan: fast and satisfying progression, short gaps between unlocks, 
 - **Gaps (active, after):** Heather to Foxglove 11.1 min, Foxglove to Starbloom 11.4 min, Starbloom 3 bought at 46.5 min, 12.5 min after Starbloom 2. Before, the Foxglove and Starbloom gaps were 16.0 and 13.3 min.
 - **Not met:** the far gate at 51.6 is about 5 min short of 57 to 61. The gate barely responds to its own levers: threshold 5000 gave +3 min, Starbloom 3 costs from 3000 to 12000 gave the same 51 to 52 min. The next lever is Foxglove income. Decision for Nathan.
 - **Thistle:** unchanged. Heather still opens about 1 min after arrival, because the Sunlight carried in buys Thistle quickly.
+
+## 14. Full-run pacing chart (25 Nov 2026, `tools/sim_run.gd`)
+Run `godot --headless --path . --script tools/sim_run.gd -- loop 2 <profile>` (and `push`). One profile per process. Greedy buyer (top affordable pad first), no walking, no gifts, no attributes, no relic equip. Resets fire when the payout is at least 2 Seeds or Shards (the probe's "reset whenever it can"). Medians over 8 seeds, minutes from the start of the game. Raw logs: `/mnt/project-files/pacing-full-run/`.
+
+Profiles (`content/config/sim_profiles.tres`): idle 2.0 presses/s, active 4.0, hold 4.0. Sections 9 to 13 used 0.5/s for active, so earlier Larkmoor figures are not comparable.
+
+| Milestone | Active (loop) | Idle (loop) | Active (push, no resets) | Idle (push, no resets) |
+|---|---|---|---|---|
+| Meadow gate (Clover 9) | 10.3 | 15.2 | 10.3 | 15.2 |
+| Larkmoor gate (Starbloom 500, opens the Ember Quarry) | 15.3 | 25.4 | 15.3 | 25.4 |
+| Bloom 1 | 15.3 | 25.4 | none | none |
+| Bloom 2 | 28.7 | 52.5 | none | none |
+| Bloom 3 | 37.4 | 69.6 | none | none |
+| Bloom 5 | 48.1 | 91.0 | none | none |
+| Bloom 7 | 54.0 | 103.9 | none | none |
+| Bloom 10 (crown) | 59.3 | 113.9 | none | none |
+| Ember Quarry arrives | 59.3 | 113.9 | 15.3 | 25.4 |
+| Quarry gate (Emberheart 600) | 64.7 | 123.3 | 115.8 (72.2 to 134.3) | 196.4 (108.8 to 331.0) |
+| Nucleus 1 / 5 / 10 | 64.7 / 82.9 / 94.5 | 123.3 / 158.9 / 180.9 | none | none |
+
+Ranges across seeds are within about 2 min on the loop rows, except push, which spreads wide.
+
+**Findings**
+1. **The Bloom loop carries the run.** Taking 10 Blooms before the Quarry brings the Quarry gate to 65 min (active). Pushing straight to the Quarry without resets leaves it at 116 min, with a range of 72 to 134 min. The Quarry is a wall only for a player who skips the reset.
+2. **Bloom cadence matches the 23 Nov probe** (`docs/decisions/balance.md`, Bloom pacing check). The probe gave 2 at 29, 3 at 37, 5 at 48, 7 at 52, 10 at 58. This chart gives 28.7, 37.4, 48.1, 54.0, 59.3. It is the same sim logic, so the check agrees.
+3. **Idle is about 1.9x active** on every loop milestone (Bloom 10: 113.9 vs 59.3; Quarry gate: 123.3 vs 64.7; Nucleus 10: 180.9 vs 94.5). The target is about 2x. The Larkmoor gate itself is 1.65x.
+4. **Dead time is small.** The longest stretch with nothing affordable is 2 min in the Meadow and under 0.2 min elsewhere on active. Nothing sits idle for long. The Quarry push wall is slow buying, not idle time.
+5. **Open question: the Larkmoor target.** Memory's target of about 60 min for Larkmoor is met by Bloom 10 (59 min), not by the Larkmoor gate (15 min). Which one is the target needs Nathan's call.
+
+**Ember Quarry income (checked 25 Nov).** Embers are the quarry's passive trickle: 0.25 per second, boosted by Cinder (`content/stats/embers.tres`). A headless check on main shows Embers rising in the Quarry with no Cinder. The income is small next to press gains, so a player may not see it on the HUD. The HUD rate row is not checked in-engine.
+
+**Not in this run.** Walking (slows presses), Bloom gifts and attributes (both speed the loop), relic equips, Nucleus gifts. Each is a reason to read these numbers as a floor.
+
+**Tuning proposals (not applied; a decision card is with Nathan).**
+- A. Keep the numbers (recommended): Bloom 10 at 59 min active, Quarry at 65, idle 1.9x.
+- B. Move the Larkmoor gate later (threshold 500 to a higher value). The Bloom reference follows the gate, so the whole loop slides. Not yet run; numbers follow if chosen.
+
+## 15. Mid-game goals in the pacing run (PR #521, 25 Nov 2026)
+Run on branch `claude/mid-game-goals` (0bc18d1), loop, 2 Seeds.
+- Goals with the PR: Bloom 10 at 53.1 min (was 59.3), Quarry gate at 56.9 (was 64.7), Nucleus 10 at 81.5 (was 94.5), active. Idle: Bloom 10 100.4 (was 113.9), Nucleus 10 155.5 (was 180.9).
+- Goal times, active: Steady Hands 5.5, Known Ground 8.9, Curio Shelf 9.5, Round Again 15.1, Open Doors 15.1, Seasoned 34.4, Practised Hands 43.0, Lucky Strikes 68.0, An Hour In 60.0. Not reached in the 81-minute run: Long Afternoon (4 h), Tuned Up (attributes 10, the sim buys none), Second Nature (Mastery 15).
+- Total bonus reached in the run: +21% of the chain's +28%.
+- **Tuning notes for PR #521.** Five goals land in the first 15 minutes, so the start is quick. Curio Shelf (6 relic kinds) at 9.5 min is nearly free and could move to 10 kinds. An Hour In is time-gated, so it holds the Next Goal card for the first hour. Tuned Up and Second Nature sit beyond this run, which is fine for late goals.

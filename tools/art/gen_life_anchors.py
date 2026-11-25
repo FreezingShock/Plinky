@@ -56,7 +56,7 @@ def nearest_index(rgb):
 
 def load_placements(path):
     d = json.load(open(path))
-    out = {"pads": [], "pad_sites": [], "lights": [], "water": [], "origin": (0, 0), "format": "flat"}
+    out = {"pads": [], "pad_sites": [], "lights": [], "water": [], "origin": (0, 0), "format": "flat", "start": None}
     if "anchors" in d:
         out["format"] = "3d"
         bleed = d.get("bleed", {})
@@ -66,6 +66,8 @@ def load_placements(path):
             if a["kind"] == "pad":
                 out["pads"].append((a["sx"], a["sy"], a["state"]))
                 out["pad_sites"].append((a["sx"], a["sy"]))
+            elif a["kind"] == "player_spawn":
+                out["start"] = [a["sx"], a["sy"]]   # the arrival point: the walker starts here, and the life critters gather round it
             elif a["kind"] == "shrine":
                 out["lights"].append({"x": a["sx"], "y": a["sy"] - 18, "r": 10, "kind": "shrine"})
             elif a["kind"] == "water":
@@ -376,6 +378,8 @@ def main() -> None:
         data["perches"] = perch_points(pines)
         data["forest_edge"] = (forest_edge_points(trees, data["sway"], data["pad_sites"])
                                + oak_ring_points(data["sway"], data["pad_sites"]))
+    if pl["start"] is not None:
+        data["start"] = pl["start"]   # last key, as it sits in the committed file
     with open(args.out, "w") as f:
         json.dump(data, f, indent=1)
         f.write("\n")

@@ -8,6 +8,8 @@ extends RefCounted
 
 var _menus: Dictionary = {}   # kind -> {"is_open": Callable, "open": Callable, "close": Callable, "group": StringName}
 var _order: Array[StringName] = []
+## While this returns true, open() does nothing (a zone reset confirm is up). Set by main.gd.
+var blocked: Callable = Callable()
 
 
 func register(kind: StringName, is_open: Callable, open: Callable, close: Callable, group: StringName = &"") -> void:
@@ -36,6 +38,8 @@ func toggle(kind: StringName) -> void:
 
 func open(kind: StringName) -> void:
 	if not _menus.has(kind):
+		return
+	if blocked.is_valid() and bool(blocked.call()):
 		return
 	close_others(kind)
 	if not is_open(kind):

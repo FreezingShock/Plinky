@@ -27,7 +27,7 @@ func _ready() -> void:
 	sim.zone_entered.connect(func(id: StringName) -> void: bus.zone_entered.emit(id))
 	sim.gate_opened.connect(func(id: StringName) -> void: bus.gate_opened.emit(id))
 	sim.rebirth_done.connect(func(p: BigNum) -> void: bus.rebirth_done.emit(p))
-	sim.reset_done.connect(func(id: StringName, n: int) -> void: bus.reset_done.emit(id, n))
+	sim.reset_done.connect(func(id: StringName, n: BigNum) -> void: bus.reset_done.emit(id, n))
 	sim.attribute_bought.connect(func(id: StringName, lv: int) -> void: bus.attribute_bought.emit(id, lv))
 	relics.relic_gained.connect(func(id: StringName, n: int) -> void: bus.relic_gained.emit(id, n))
 	relics.relic_equipped.connect(func(id: StringName) -> void: bus.relic_equipped.emit(id))
@@ -42,6 +42,7 @@ func _ready() -> void:
 	sim.calendar.season_changed.connect(func(s: int) -> void: bus.season_changed.emit(s))
 	sim.calendar.year_changed.connect(func(y: int) -> void: bus.year_changed.emit(y))
 	sim.achievement_unlocked.connect(func(id: StringName) -> void: bus.achievement_unlocked.emit(id))
+	sim.goal_reached.connect(func(id: StringName) -> void: bus.goal_reached.emit(id))
 	sim.offline_gained.connect(func(s: float, g: Dictionary) -> void: bus.offline_gained.emit(s, g))
 
 

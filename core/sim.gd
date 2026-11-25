@@ -10,7 +10,7 @@ signal zone_entered(zone_id: StringName)
 signal gate_opened(gate_id: StringName)
 signal rebirth_done(prestige_gained: BigNum)
 ## A zone reset (Bloom, ...) was done: its id and the currency it paid.
-signal reset_done(reset_id: StringName, gained: int)
+signal reset_done(reset_id: StringName, gained: BigNum)
 signal attribute_bought(attribute_id: StringName, level: int)
 signal offline_gained(seconds: float, gains: Dictionary)
 ## Streak or critter payout. kind is &"streak" or &"critter"; gains is StringName -> BigNum.
@@ -27,6 +27,8 @@ signal mastery_leveled(button_id: StringName, level: int)
 signal tier_opened(tier_id: StringName)
 ## An achievement just unlocked (core/achievements.gd). Never fires for ones a loaded save already had.
 signal achievement_unlocked(achievement_id: StringName)
+## A mid-game goal was just reached (core/goals.gd). Never fires for ones a loaded save already had.
+signal goal_reached(goal_id: StringName)
 
 # Content (filled by ContentLoader)
 var config: GameConfig
@@ -45,6 +47,8 @@ var mastery: Mastery = Mastery.new()
 var run_stats: RunStats = RunStats.new()
 ## Which achievements are unlocked (the Ledger). Replaced by ContentLoader with the content's list.
 var achievements: Achievements = Achievements.new()
+## Mid-game goals between resets (core/goals.gd): a chain of milestones, each a small permanent press bonus. Replaced by ContentLoader.
+var goals: Goals = Goals.new()
 ## The in-game calendar (core/game_calendar.gd). Ticks with the sim, saved with it, set up by ContentLoader.
 var calendar: GameCalendar = GameCalendar.new()
 ## The current season's light event (core/seasonal_events.gd). Set up by ContentLoader; no config means no events.
@@ -181,6 +185,14 @@ func validate() -> PackedStringArray:
 			errs.append("achievement %s: unknown counter %s" % [a.id, a.counter])
 		if a.target <= 0.0:
 			errs.append("achievement %s: target must be above zero" % a.id)
+	for g: GoalDef in goals.sorted:
+		var goal_peak_ok: bool = String(g.counter).begins_with("peak_") and stat_defs.has(StringName(String(g.counter).trim_prefix("peak_")))
+		if not known.has(g.counter) and not goal_peak_ok:
+			errs.append("goal %s: unknown counter %s" % [g.id, g.counter])
+		if g.target <= 0.0:
+			errs.append("goal %s: target must be above zero" % g.id)
+		if g.reward < 0.0:
+			errs.append("goal %s: reward must not be negative" % g.id)
 	for z: ZoneDef in zone_defs.values():
 		if z.prestige_source_stat != &"" and not stat_defs.has(z.prestige_source_stat):
 			errs.append("zone %s: unknown prestige_source_stat %s" % [z.id, z.prestige_source_stat])
@@ -208,6 +220,7 @@ func new_game() -> void:
 	mastery.clear()
 	run_stats.clear()
 	achievements.clear()
+	goals.clear()
 	_ach_clock = 0.0
 	calendar.reset()
 	ui_flags = {}
@@ -381,6 +394,7 @@ func press_gain(button_id: StringName, crit_mult: float = 1.0, presses: int = 1)
 		return BigNum.zero()
 	var gain: BigNum = Formulas.button_gain(b, _gain_boost(b.reward_stat), _relic_gain_mult(b), crit_mult).mul(BigNum.from_float(float(presses) * mastery.yield_mult(button_id) * pad_yield_mult()))
 	gain = gain.mul(BigNum.from_float(zone_pad_mult(b.zone)))
+	gain = gain.mul(BigNum.from_float(goals.mult()))   # mid-game goals: a permanent bonus on every pad, kept through resets
 	if relics != null:
 		gain = gain.mul(BigNum.from_float(relics.zone_mult(b.zone)))
 	if is_hot():
@@ -902,6 +916,9 @@ func achievement_counters() -> Dictionary:
 	for lv: Variant in attr_levels.values():
 		attrs += int(lv)
 	var top_mastery: int = 0
+	var resets_done: int = 0
+	for n: Variant in reset_counts.values():
+		resets_done += int(n)
 	for bid: Variant in button_defs:
 		top_mastery = maxi(top_mastery, mastery.level(bid))
 	var c: Dictionary = {
@@ -910,6 +927,7 @@ func achievement_counters() -> Dictionary:
 		&"rebirths": float(rebirth_count), &"relic_drops": float(relic_drops), &"relic_kinds": float(kinds),
 		&"best_relic_rank": float(best_rank), &"attributes_bought": float(attrs), &"mastery_best": float(top_mastery),
 		&"play_hours": play_seconds / 3600.0, &"gates_open": float(gates_open.size()),
+		&"zone_resets": float(resets_done),
 	}
 	for tid: Variant in tier_defs:
 		var zid: StringName = (tier_defs[tid] as TierDef).zone
@@ -930,6 +948,8 @@ func _evaluate_achievements() -> Array[StringName]:
 func check_achievements() -> void:
 	for id: StringName in _evaluate_achievements():
 		achievement_unlocked.emit(id)
+	for gid: StringName in goals.check(achievement_counters()):
+		goal_reached.emit(gid)
 
 
 ## Advance the simulation by dt seconds of passive income. Presses are separate (try_press).
@@ -1054,22 +1074,25 @@ func reset_ref(reset_id: StringName) -> float:
 	return base * maxf(r.ref_floor, pow(r.ref_shrink_per_use, float(reset_count(reset_id))))
 
 
-## What a reset would pay now (0 until it is available).
-func reset_gain(reset_id: StringName) -> int:
+## What a reset would pay now (zero until it is available): floor(pay_scale * sqrt(source / ref)), multiplied by the
+## reset's effect when it has one, and nothing below min_pay. BigNum throughout, so a source stat past the float range
+## still pays instead of overflowing.
+func reset_gain(reset_id: StringName) -> BigNum:
 	var r: ZoneResetDef = reset_defs.get(reset_id) as ZoneResetDef
 	if r == null or not reset_unlocked(reset_id):
-		return 0
-	var v: float = maxf(0.0, get_stat(r.source_stat).to_float())
-	var n: int = int(floorf(r.pay_scale * sqrt(v / reset_ref(reset_id))))
-	if float(n) < r.min_pay:
-		return 0
+		return BigNum.zero()
+	var base: BigNum = get_stat(r.source_stat).max_zero().div(BigNum.from_float(reset_ref(reset_id))).sqrt_big() \
+			.mul(BigNum.from_float(r.pay_scale))
+	var n: BigNum = base.floor_big()
+	if n.lt(BigNum.from_float(r.min_pay)):
+		return BigNum.zero()
 	if r.pay_effect != &"":
-		n = int(floorf(float(r.pay_scale * sqrt(v / reset_ref(reset_id))) * (1.0 + effect_total(r.pay_effect))))
+		n = base.mul(BigNum.from_float(1.0 + effect_total(r.pay_effect))).floor_big()
 	return n
 
 
 func can_reset(reset_id: StringName) -> bool:
-	return reset_gain(reset_id) > 0
+	return reset_gain(reset_id).sign_of() > 0
 
 
 ## What a stat restarts at after a reset: its start, plus the reset's gift total for its start stat.
@@ -1086,7 +1109,7 @@ func try_reset(reset_id: StringName) -> bool:
 	if not can_reset(reset_id):
 		return false
 	var r: ZoneResetDef = reset_defs[reset_id] as ZoneResetDef
-	var gained: int = reset_gain(reset_id)
+	var gained: BigNum = reset_gain(reset_id)
 	bloom_before = stats.duplicate()   # what the reset animation counts down from (BloomRitual)
 	var keep: int = int(floorf(effect_total(r.keep_effect))) if r.keep_effect != &"" else 0
 	for sid: String in r.resets:
@@ -1094,7 +1117,7 @@ func try_reset(reset_id: StringName) -> bool:
 			keep -= 1   # a kept flower: the gift saves the lowest ones listed
 			continue
 		_set_stat(StringName(sid), reset_start_value(reset_id, StringName(sid)))
-	_set_stat(r.currency, get_stat(r.currency).add(BigNum.from_float(float(gained))))
+	_set_stat(r.currency, get_stat(r.currency).add(gained))
 	reset_counts[reset_id] = reset_count(reset_id) + 1
 	sealed.on_reset(reset_id)   # this reset's caches start cheap again
 	rebirth_count += 1   # every zone reset counts toward the relic slots (5 and 20)
@@ -1155,12 +1178,13 @@ func prestige_gain_preview() -> BigNum:
 func _prestige_gain() -> BigNum:
 	var v: BigNum = get_stat(prestige_source()).copy()
 	var th: float = config.prestige_push_threshold
-	var f: float = v.to_float()
-	if th > 0.0 and f > th:
-		v = v.mul(BigNum.from_float(pow(f / th, config.prestige_push_exponent)))
+	if th > 0.0 and v.gt(BigNum.from_float(th)):
+		var ratio: BigNum = v.div(BigNum.from_float(th))
+		var push: BigNum = ratio.sqrt_big() if config.prestige_push_exponent == 0.5 else ratio.pow_f(config.prestige_push_exponent)
+		v = v.mul(push)
 	var z: ZoneDef = current_zone()
 	if z != null and z.prestige_per_rebirth_bonus > 0.0:   # the zone's own rebirth count (reb: quarry rebirths, not reset)
-		v = v.mul(BigNum.from_float(1.0 + z.prestige_per_rebirth_bonus * get_stat(&"reb").to_float()))
+		v = v.mul(BigNum.from_float(z.prestige_per_rebirth_bonus).mul(get_stat(&"reb")).add(BigNum.one()))
 	return v
 
 
@@ -1468,6 +1492,7 @@ func to_dict() -> Dictionary:
 		"calendar": calendar.to_dict(),
 		"run_stats": run_stats.to_dict(),
 		"achievements": achievements.to_dict(),
+		"goals": goals.to_dict(),
 	}
 
 
@@ -1554,6 +1579,8 @@ func from_dict(d_in: Dictionary) -> bool:
 		achievements.from_dict(d["achievements"])
 	else:
 		_evaluate_achievements()   # a save from before the Ledger: what is already earned counts, with no pop-ups
+	goals.from_dict(d.get("goals", {}))
+	goals.check(achievement_counters())   # goals earned before this save (or before goals existed) count, with no pop-ups
 	if old_quarry:
 		_migrate_to_quarry_ladder()
 	if save_ladder < 4:

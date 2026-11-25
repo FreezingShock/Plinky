@@ -36,6 +36,7 @@ static func load_into(sim: Sim, root: String = "res://content") -> bool:
 	sim.relics = RelicInventory.new(rcfg, rdefs)
 	sim.sealed.set_defs(_collect(root.path_join("sealed"), "SealedPullDef").values())
 	sim.achievements = Achievements.new(_collect(root.path_join("achievements"), "AchievementDef").values())
+	sim.goals = Goals.new(_collect(root.path_join("goals"), "GoalDef").values())
 	var errors: PackedStringArray = sim.validate()
 	for err in errors:
 		push_error("ContentLoader: " + err)

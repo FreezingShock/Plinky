@@ -162,3 +162,22 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Pacing check (`tools/sim.gd`, probe in a scratch copy, not committed):** the sim plays greedily with no gifts and no attributes, and resets Bloom whenever it can. Blooms land at about 15 min (when Larkmoor opens), then at each count the gates need: 2 at 29 min, 3 at 37, 5 at 48, 7 at 52, 10 at 58 (seeds 1 to 3 agree within 2 min). So the 10 gate falls at the 60-minute Larkmoor target. This is a floor: real play with Bloom gifts will be faster.
 - **Not checked:** Nucleus cadence (the probe covers the meadow's Bloom only), and how the gifts change the cadence. PC QA or a playtest should time the 7 and 10 gates.
 - **Alternative if the 10 gate feels late:** top the spread at 9. On this floor the 9 gate would fall at about 56 min, two minutes earlier.
+
+## 2026-11-25: Full-run pacing chart (tools/sim_run.gd), no balance change
+- **What:** `tools/sim_run.gd` plays Meadow, Larkmoor and the Ember Quarry under each profile, in two modes: push (no resets) and loop (take Bloom or Nucleus after each gate, to 10 uses). It reports gate times, every reset tier, goal times and the longest stretch with nothing to buy. Chart and findings: `docs/balance.md` section 14.
+- **Result (active, 4 presses/s, loop):** Bloom 10 at 59.3 min (target about 60), Quarry gate at 64.7, Nucleus 10 at 94.5. Idle takes about 1.9x as long (target about 2x).
+- **Result (push):** the Quarry gate takes 116 min without resets, so the Bloom loop is the way through.
+- **Decided (Nathan, 25 Nov, decision card):** keep current pacing. The 60-minute target is the 10th Bloom (59 min active), not the Larkmoor gate (15 min). No numbers changed.
+- **Not checked yet:** walking, gifts, attributes and relic equips, so these are floors.
+## 2026-11-25: Mid-game goals are a chain with a small permanent bonus
+- **Why:** between Bloom and Nucleus resets a player had nothing new to aim for once the gates were open. Nathan picked a milestone track with rewards (decision card, 2026-11-25).
+- **What:** 12 goals in `content/goals/`, one chain by `order`, each reached once and kept through resets. Each adds 2% (3% for the four bigger ones) to every pad's press reward, so the full chain is +28%. Counters are the Sim's achievement counters, plus a new `zone_resets` (total zone reset uses).
+- **Why small:** Nathan wants fast progress, so the bonus is a steady nudge and not a power spike. Relics, resets and gates still carry the curve.
+- **Open:** the targets (1K presses up to 10K, 1 to 4 play hours, Mastery 5 and 15, 1 and 3 zone resets) are not yet checked against the pacing sim. The pacing thread owns the check. A goal is cheap to retune in its `.tres`.
+- **Saves:** the reached list lives under `goals` in the save. A save without it credits what it has already earned, silently, the same as achievements. No version bump.
+
+## 2026-11-25: Goal order follows the pace, and Curio Shelf asks for 10 kinds
+- **Why:** the first pacing run (docs/balance.md section 15, PR #522) showed "An Hour In" sat second in the chain and was not reached until about 60 min. The Next Goal card held it for the whole first hour and hid five goals that land in the first 15 min. Chain order now follows the expected pace: Steady Hands 5.5, Known Ground 8.9, Curio Shelf 9.5, Round Again and Open Doors 15.1, Seasoned 34, Practised Hands 43, An Hour In 60, Lucky Strikes 68.
+- **Curio Shelf:** 6 relic kinds at 9.5 min was nearly free, so the target is now 10 kinds (the pacing thread's suggestion). Not run in the sim past 81 min, so it is unverified that 10 kinds is reached in play.
+- **Ids unchanged:** `goal_relics_6` keeps its id so saves that already logged it still load. Only its target and order changed.
+- **Not checked:** the sim buys no attributes and equips no relics, so Tuned Up and Second Nature are unverified by the run.

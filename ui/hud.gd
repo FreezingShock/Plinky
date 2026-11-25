@@ -7,6 +7,7 @@ signal relic_panel_toggled(open: bool)
 signal settings_toggled(open: bool)
 ## The Upgrades chip or key was used. Main routes it through MenuRouter, so one menu is open at a time.
 signal menu_toggled(kind: StringName)
+signal reset_confirm_opening   ## a zone reset confirm is about to open: other menus close first
 signal index_requested(tab: int)   ## IndexPanel.Tab: the Stats or Attributes button or key
 
 ## The frame the HUD lays out in (Main size). The gate panel and bottom bar hug its right and bottom edges.
@@ -22,11 +23,13 @@ var sim: Sim
 var _rows: Dictionary = {}        # stat id -> [value Label, rate Label (left of the value)]
 var _row_boxes: Dictionary = {}   # stat id -> HBoxContainer (Slag only shows once you are past zone 1)
 var _zone_panel: ZonePanel
+var _goal_card: NextGoalCard   # top left: the next mid-game goal
 var _reset_chips: Dictionary = {}   # zone reset id -> its bottom-bar chip (generated from content/resets)
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
-var _modal: ModalCard            # rebirth confirm, centred
+var _modal: ModalCard            # offline-earnings summary, centred
+var _reset_confirm: ResetConfirm  # the Bloom and Nucleus confirm: a hold to strike, centred
 var _welcome: WelcomeCard        # the offline Welcome Back gallery, centred
 var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
@@ -84,6 +87,7 @@ func setup(p_sim: Sim) -> void:
 	_build_stats()
 	_build_gate()
 	_build_clock()
+	_build_goal_card()
 	move_child(_clock_widget, _zone_panel.get_index())   # the zone list drops over the clock, never under it
 	_build_bottom()
 	_build_upgrades()
@@ -94,6 +98,8 @@ func setup(p_sim: Sim) -> void:
 	Banner.avoid = _momentum   # a banner lifts clear of the meter rather than cover it
 	_modal = ModalCard.new()
 	add_child(_modal)
+	_reset_confirm = ResetConfirm.new()
+	add_child(_reset_confirm)
 	_welcome = WelcomeCard.new()
 	add_child(_welcome)
 	CloseX.attach(_welcome, _welcome.dismiss)   # the X sits beside the card, like the other menus
@@ -102,15 +108,12 @@ func setup(p_sim: Sim) -> void:
 	var bus: Node = get_node("/root/EventBus")
 	_save_note.connect_bus(bus)
 	bus.offline_gained.connect(_on_offline)
+	bus.goal_reached.connect(_on_goal_reached)
 	bus.button_pressed.connect(_on_gain_pressed)   # every pad press, auto and relic pulses included; bonuses stay out (see decisions/hud.md)
 	var report: Dictionary = get_node("/root/Save").take_offline_report()
 	if not report.is_empty():
 		_on_offline(report["seconds"], report["gains"])
 	_refresh()
-
-
-func upgrades_open() -> bool:
-	return _upgrades_panel.visible
 
 
 func upgrades_panel() -> Control:
@@ -185,10 +188,6 @@ func point_under_menu(pt: Vector2) -> bool:
 ## Keep `p` centred in the free area above the bottom bar (clamped to stay on screen).
 func keep_centered(p: Control) -> void:
 	_centered.append(p)
-
-
-func close_panels() -> void:
-	_upgrades_panel.visible = false
 
 
 func _panel(pos: Vector2) -> VBoxContainer:
@@ -351,6 +350,24 @@ func set_district(id: StringName) -> void:
 
 
 ## The clock sits left of the zone card and hugs it as the frame widens (see _layout below).
+## A mid-game goal was reached: the card updates and the banner shows it (ui/next_goal_card.gd).
+func _on_goal_reached(id: StringName) -> void:
+	if _goal_card == null:
+		return
+	var spec: Dictionary = _goal_card.goal_reached(id)
+	if not spec.is_empty():
+		Banner.announce(spec)
+
+
+## The Next Goal card, top left: the first mid-game goal not yet reached (ui/next_goal_card.gd). Gated like the stat strip.
+func _build_goal_card() -> void:
+	_goal_card = NextGoalCard.new()
+	_goal_card.position = Vector2(4.0, 4.0)
+	add_child(_goal_card)
+	_goal_card.bind(sim)
+	gate(_goal_card, Onboarding.F_DEWDROP)
+
+
 func _build_clock() -> void:
 	_clock_widget = ClockWidget.new()
 	_clock_widget.position = Vector2(318, 4)
@@ -369,12 +386,23 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 		GameState.try_reset(rid)
 		return
 	var cname: String = (sim.stat_defs[r.currency] as StatDef).display_name
+	var gain: BigNum = sim.reset_gain(rid)
 	var lines: Array = [
 		[r.resets_text, StatStyle.PAPER],
-		["+%d %s" % [sim.reset_gain(rid), cname], StatStyle.color(r.currency)],
 		["Every pad pays %d%% more, for good." % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()],
 	]
-	_modal.open("%s?" % r.display_name, lines, r.display_name, "Not yet", func() -> void: GameState.try_reset(rid))
+	var icon: Texture2D = load("res://assets/icons/big/%s.png" % String(r.currency)) as Texture2D
+	reset_confirm_opening.emit()
+	# The hold strikes the reset; the ritual flies out of the icon, so the origin goes to BloomRitual first.
+	_reset_confirm.open("%s?" % r.display_name, StatStyle.color(r.currency), icon, "+" + NumberFormat.exact(gain),
+		cname, lines, "Hold to Strike", func(origin: Vector2) -> void:
+			BloomRitual.launch_global = origin
+			GameState.try_reset(rid))
+
+
+## True while a zone reset confirm is up. MenuRouter refuses to open other menus meanwhile.
+func reset_confirm_open() -> bool:
+	return _reset_confirm != null and _reset_confirm.visible
 
 
 func _build_bottom() -> void:
@@ -849,7 +877,6 @@ func _apply_upgrade_tab() -> void:
 	_wire_upgrade_focus()
 
 
-
 ## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
 func _sync_upgrade_tabs() -> void:
 	for cur: StringName in _upg_tab_btns:
@@ -1055,6 +1082,10 @@ func _place() -> void:
 		mp0.y = minf(mp0.y, roundf(frame.y * 0.3))
 		if _modal.position != mp0:
 			_modal.position = mp0
+	if _reset_confirm != null and _reset_confirm.visible:
+		var rp: Vector2 = ((frame - _reset_confirm.size) * 0.5).floor()
+		if _reset_confirm.position != rp:
+			_reset_confirm.position = rp
 	if _welcome != null and _welcome.visible:
 		_welcome.place(frame)
 	if _save_note != null and _menu_chip != null:
@@ -1123,7 +1154,7 @@ func _refresh() -> void:
 		rc.visible = mine and (sim.can_reset(rid) or sim.reset_count(rid) > 0)
 		rc.disabled = not sim.can_reset(rid)
 		var cn: String = (sim.stat_defs[rd.currency] as StatDef).display_name
-		rc.full_text = "%s (+%d %s)" % [rd.display_name, sim.reset_gain(rid), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
+		rc.full_text = "%s (+%s %s)" % [rd.display_name, sim.reset_gain(rid).whole_text(), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:
@@ -1488,10 +1519,6 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	bar.add_child(done)
 
 
-func edit_mode() -> bool:
-	return _edit_mode
-
-
 ## Edit mode: every row of the layout shows with a grip and a hide mark, and the add chips open under the strip.
 func set_edit_mode(on: bool) -> void:
 	if on == _edit_mode:
@@ -1784,7 +1811,7 @@ func _build_tip_card() -> void:
 
 func _poll_tips() -> void:
 	var toast: bool = toast_showing.is_valid() and bool(toast_showing.call())
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card, a banner or an achievement toast
+	_tip_card.held = PadInput.menu_open or Tip.hud_showing() or _modal.visible or reset_confirm_open() or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a HUD tooltip, a confirm card, a banner or an achievement toast. A world pad tooltip does not hold them (see Tip.hud_showing).
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

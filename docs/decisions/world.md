@@ -108,8 +108,39 @@ The shade shader has 48 light slots now (was 24). Larkmoor has about 50 pools (2
 - **Checked in the cloud:** `tests/run.gd` 6841 checks, 0 failed. Midnight and noon captures of the real `main.tscn`.
 - **Not verified on the PC:** the night look. In the cloud capture a sign inside a pad's glow still reads brighter than the dark ground, as the pad and the ground beside it do. The PC night shot is the check.
 
+## 2026-11-24: Only button _1 of each row shows a cost sign (supersedes the every-pad rule)
+- **Nathan's note (PC QA thread, 2026-11-24 22:15 UTC):** "why is there a sign for each tier, it should just be for button 1".
+- **Fix:** `TexelPad.gets_sign(b)` is true only for `row_index == 0` (the `_1` button of each row). `_ready` calls `build_sign` for those pads alone, so the other pads of a row make no sign node and no text timer. The sign's cost and gain still show in the pad tooltip.
+- **Reverses:** the every-pad entry directly above. Pads 2 to 6 of a row (including Westmere's Starbloom pads 4 to 6) show a bare plate again. Nathan's note replaces the earlier standing rule, so this is the new rule until he says otherwise.
+- **Kept:** the wider `SIGN_SPOTS` list and the once-a-second text refresh. Both still help the first pads, and the refresh now runs only where a sign exists.
+- **Checked:** `tests/test_pad_signs.gd` checks that every row's first pad has a clear sign and that later pads have no sign node. Not run in-engine: the cloud cannot run Godot, so the look is for PC QA.
+
+## 2026-11-24: Every pad shows its cost sign, not just each row's first
+- **Cause:** the sign node was made only for a row's first pad (`row_index == 0`). Pads 2 to 6 of each row, including the Westmere Starbloom pads 4 to 6 (5K, 25K, 125K), drew a bare plate with no price. Nathan's standing rule is a sign on every pad from its first price.
+- **Fix:** `TexelPad.build_sign` makes the sign node on every pad with a cost, and `_ready` calls it for all of them. Each pad re-reads its sign text once a second (`SIGN_REFRESH_S`), from the same live values as the tooltip, so a change shows within a second and the cost of reading stays low.
+- **Spots:** the spot list grows from 8 to 26 (`TexelPad.SIGN_SPOTS`). The first 4 right-side spots are unchanged, so row heads keep their look. Dense pads had no clear spot in the old list (19 pads across the three layouts). Every pad now has one (checked with a script over the real placements, and by `tests/test_pad_signs.gd`). Some pads now sign up to 61 texels above the plate, so the plank sits above its own pad rather than on a neighbour's bed.
+- **Node cost:** one child node per pad that has a cost, so about 25 more in Larkmoor, 12 more in the quarry and a few in the meadow. The zone node ceiling in CI (1350) is the check; the earlier "no new nodes" note in the entry above no longer holds.
+- **Not run:** the cloud cannot run Godot, so the test run, the bench node count and the in-engine look are for CI and PC QA. The Westmere row and the night tones are the PC checks.
+
 ## 2026-11-24: Quarry scene prefetch warms its script (gate walk parse error)
 - **QA finding:** walking onto the Larkmoor Ember gate logged `Parse Error: Failed` at `res://world/quarry_scene.tscn:7` (the script line) on every head tested, including before the entrance art. Direct zone-2 boots, which load on the main thread, were clean.
 - **Likely cause:** `main.gd` `_prefetch_scene` loads the scene on a worker thread, and the quarry script uses several game classes. The threaded load failed and `_take_prefetched` fell back to a plain synchronous `load`, so the quarry still opened (log error and a small stall).
 - **Changed:** `_prefetch_scene` first loads the scene's script on the main thread for scenes in `WARM_SCRIPTS` (the quarry only; Larkmoor's script preloads large textures, so warming it would bring the stall back). The threaded request then reuses the compiled script.
 - **Not run in-engine:** this is a read-the-code fix. PC QA should walk onto the gate and confirm the error is gone.
+
+## 2026-11-24: Larkmoor's farm builds over the wipe, its wheat generates on workers
+- **Why:** the CI frame budget failed on Larkmoor entry (a 424 to 467 ms frame). #478 and #482 took the farm from 176 wheat clumps to 661, and `FarmProps.spawn` generated every clump (about 280 ms) and loaded every sheet (about 96 ms) on the swap frame.
+- **What:** `FarmProps.prepare()` reads the manifest and generates the clumps on a two-worker group task, started by `ZoneAssets.prefetch_scene` during the wipe's cover. `spawn_sliced` builds the farm over 8 ms slices from `spawn_occluders_sliced`, and waits without blocking for the clumps and the sprites' threaded loads (`ZoneAssets.ready`). The backdrop decode is queued before the clumps so `_ready` never waits behind them. Sync `spawn` and the tests are unchanged.
+- **Measured (lavapipe, `tools/bench.gd --frames=20 --quality=low`, four runs):** the worst frame after entering Larkmoor fell from 429 ms to 138 to 210 ms, and the quarry entry from 232 ms to 172 to 197 ms. No other frame passes 150 ms. Test suite 11339 checks, 0 failed.
+- **Not run in-engine:** the PC should enter Larkmoor at each quality and watch the wheat build under the wipe, with no pop-in after the wipe clears.
+
+## 2026-11-25: Walker replans from where it stands when it drifts off its route line
+- **Why:** `route_probe` had 5 misses on Larkmoor. The walker takes a waypoint within one texel and keeps the leftover offset, so it can end up a few thousandths of a texel off the line it was routed on. There the next step into a corner was blocked on both axes, the y-only step "moved" without changing position (float resolution), so no replan ran and it spun until the 30000-frame cap. Pad 30 stalled 457 texels short from three starts.
+- **What:** `TexelWalker` checks every 0.1 s whether the straight line from its position to the next waypoint is still clear (`WalkMask.line_clear`). If not, it calls `WalkMask.route` again from its position, capped at 8 per tap (`_drift_replans`). The per-tap replan cap for blocked steps is unchanged.
+- **Measured:** `tools/route_probe.tscn` 0 misses (was 5), 78 s (was 75 s with 5 misses; I have not measured where the rest of the time goes). `tests/run.gd` 11701 checks, 0 failed.
+- **Not run in-engine:** a tap-walk in Larkmoor at zoom 3 near the lighthouse grove and the Reedgate corners is still the PC check.
+
+## 2026-11-25: The life generator writes the arrival point (`start`)
+- **Why:** `start` in `world/larkmoor_life.json` was hand-added in #413, and no generator wrote it. A regen dropped it, and `tests/test_wild.gd` then hit a script error, which CI treats as a failure.
+- **What:** `tools/art/gen_life_anchors.py` reads the `player_spawn` anchor and writes `start` as the last key, in both the full and `--add-keys` modes. A `--add-keys` rerun reproduces the committed file except that key.
+- **Not run in-engine:** nothing visual changed. The arrival point is the same coordinate as before.

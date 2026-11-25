@@ -95,7 +95,7 @@ func run(t: Object) -> void:
 	var data: Dictionary = parsed as Dictionary
 	var flowers: Array = data.get("flowers", []) as Array
 	t.ok(flowers.size() >= 600 and flowers.size() <= 4000, "lots of flowers, not too many (%d)" % flowers.size())
-	var ground: Image = Image.load_from_file(DIR + "ground.png")
+	var ground: Image = (load(DIR + "ground.png") as Texture2D).get_image()
 	t.ok(ground != null, "ground loads for the placement checks")
 	if ground == null:
 		return

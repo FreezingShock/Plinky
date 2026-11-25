@@ -9,7 +9,6 @@ const IDX_ACCENT: int = 5
 const IDX_PAPER: int = 7
 const TOTAL: int = 36                 # the most swarm fireflies out at full dark
 const SWARM_RADIUS: float = 7.0       # how far a firefly strays from its swarm's centre
-const STEP_MAX: float = 1.0 / 12.0
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _centres: PackedVector2Array = PackedVector2Array()

@@ -366,6 +366,9 @@ func _fly_cost(cost_text: String) -> void:
 	var l := Label.new()
 	l.text = "-%s" % cost_text
 	l.top_level = true
+	# A top_level label leaves the card's z chain and would fall under the world's light grade. Pin it to the HUD layer (Hud z 100).
+	l.z_as_relative = false
+	l.z_index = 100
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.add_theme_color_override("font_color", AccessOptions.tint(RED))
 	l.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

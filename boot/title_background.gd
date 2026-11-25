@@ -222,10 +222,6 @@ func skip_to_next() -> void:
 	_seek_t = 0.0
 
 
-## 0 shows the scene, 1 covers it with ink.
-func set_dissolve(amount: float) -> void:
-	_mat.set_shader_parameter("dissolve", clampf(amount, 0.0, 1.0))
-
 
 ## The pointer in art texels (the 640x360 art is centred in the canvas, so this is the pointer minus that offset).
 func _cursor_art() -> Vector2:

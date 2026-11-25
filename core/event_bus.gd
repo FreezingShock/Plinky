@@ -1,5 +1,5 @@
 extends Node
-## Signals only, no state. The contract is in docs/interfaces.md and godot/README.md.
+## Signals only, no state. The contract is in docs/interfaces.md.
 ## Gameplay emits here. Fx and UI listen here.
 
 signal stat_changed(stat_id: StringName, value: BigNum)
@@ -10,7 +10,7 @@ signal gate_opened(gate_id: StringName)
 signal relic_gained(relic_id: StringName, stacks: int)
 signal buff_started(buff_id: StringName, seconds: float)
 signal rebirth_done(prestige_gained: BigNum)
-signal reset_done(reset_id: StringName, gained: int)
+signal reset_done(reset_id: StringName, gained: BigNum)
 # Additions to the SPEC contract (logged in docs/decisions.md):
 signal relic_equipped(relic_id: StringName)
 signal relic_unequipped(relic_id: StringName)
@@ -24,6 +24,7 @@ signal momentum_tier_changed(tier: int, rising: bool)
 signal mastery_changed(button_id: StringName, level: int, xp: float)  # every press; level and xp are the pad's after it
 signal mastery_leveled(button_id: StringName, level: int)
 signal achievement_unlocked(achievement_id: StringName)  # a Ledger entry just unlocked (core/achievements.gd)
+signal goal_reached(goal_id: StringName)  # a mid-game goal was just reached (core/goals.gd)
 signal game_loaded()
 signal game_saved()
 signal save_failed()  # a save could not be written (full disk, locked file)

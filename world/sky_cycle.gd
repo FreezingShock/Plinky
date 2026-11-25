@@ -499,7 +499,25 @@ func _each_prop_material(param: StringName, value: Variant) -> void:
 
 ## Copy of `tex` with SWAY_PAD transparent texels each side, so a leaning crown is not clipped by the sprite edge.
 static func padded(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
+	# The playtest bot still hit a renderer error ("Parameter t is null", texture_storage.h) about 1 run in 10 after #525,
+	# which only checked the size of the texture it was handed. A res:// texture is therefore always resolved through
+	# load() first: that waits for any threaded load of the path to finish and returns the finished resource, and only
+	# that resource is read. A fresh, unloaded CompressedTexture2D reports size 0 and is never read.
+	if tex.resource_path.begins_with("res://"):
+		tex = load(tex.resource_path) as Texture2D
+		if tex == null:
+			return null
+	if tex.get_width() <= 0 or tex.get_height() <= 0:
+		push_warning("SkyCycle.padded: texture has no size, sprite left unpadded")
+		return tex
 	var img: Image = tex.get_image()
+	if (img == null or img.is_empty()) and tex.resource_path.begins_with("res://"):
+		img = Image.load_from_file(tex.resource_path)
+	if img == null or img.is_empty():
+		push_warning("SkyCycle.padded: no pixels for %s, sprite left unpadded" % tex.resource_path)
+		return tex
 	if img.is_compressed():
 		img.decompress()
 	img.convert(Image.FORMAT_RGBA8)

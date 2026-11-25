@@ -109,3 +109,13 @@ func run(t: Object) -> void:
 	var pi: Image = padded.get_image()
 	t.near(pi.get_pixel(0, 0).a, 0.0, 1e-6, "pad columns are transparent")
 	t.near(pi.get_pixel(SkyCycle.SWAY_PAD, 0).a, 1.0, 1e-6, "sprite pixels sit after the pad")
+	# A missing texture must not crash the sky (the 'texture has no image data' race): it comes back as it was.
+	t.ok(SkyCycle.padded(null) == null, "padding nothing gives nothing")
+	# A texture that has not loaded yet (no size, no pixels) must not be read: it comes back without a crash.
+	var unloaded := CompressedTexture2D.new()
+	t.eq(unloaded.get_width(), 0, "a fresh texture reports no size (the case padded() must not read)")
+	t.ok(SkyCycle.padded(unloaded) != null, "an unloaded texture is returned, not read")
+	# A res:// sprite goes through load() first and still comes back padded by exactly the pad on both sides.
+	var sprite: Texture2D = load("res://assets/art/zone2/quarry/lava/lava_03_04.png") as Texture2D
+	var sprite_pad: Texture2D = SkyCycle.padded(sprite)
+	t.eq(sprite_pad.get_width(), sprite.get_width() + SkyCycle.SWAY_PAD * 2, "a res:// sprite is padded after the load() gate")

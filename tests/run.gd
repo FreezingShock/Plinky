@@ -27,6 +27,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_walk.gd",
 	"res://tests/test_pad_input.gd",
 	"res://tests/test_pad_plate.gd",
+	"res://tests/test_pad_signs.gd",
 	"res://tests/test_flower_glow.gd",
 	"res://tests/test_focus_rows.gd",
 	"res://tests/test_zone2.gd",
@@ -46,6 +47,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_bloom.gd",
 	"res://tests/test_bloom_gifts.gd",
 	"res://tests/test_nucleus.gd",
+	"res://tests/test_reset_gain.gd",
 	"res://tests/test_icon_set.gd",
 	"res://tests/test_script_loads.gd",
 	"res://tests/test_window.gd",
@@ -76,6 +78,7 @@ const SUITES: Array[String] = [
 	"res://tests/test_gallery.gd",
 	"res://tests/test_history.gd",
 	"res://tests/test_achievements.gd",
+	"res://tests/test_goals.gd",
 	"res://tests/test_close_x_order.gd",
 	"res://tests/test_title.gd",
 	"res://tests/test_title_scene.gd",
@@ -92,6 +95,8 @@ const SUITES: Array[String] = [
 	"res://tests/test_welcome_back.gd",
 	"res://tests/test_cozy.gd",
 	"res://tests/test_farm.gd",
+	"res://tests/test_reset_confirm.gd",
+	"res://tests/test_windmill_sails.gd",
 ]
 
 

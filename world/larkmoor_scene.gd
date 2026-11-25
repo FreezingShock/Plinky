@@ -5,9 +5,6 @@ extends Node2D
 ## coordinates are canvas pixels. Extra anchors: Arch (the way back to the onboarding meadow) and District_<id>
 ## markers that carry the district name for the banner.
 const DIR: String = "res://assets/art/zone1b/larkmoor/"
-const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1b/larkmoor/backdrop_far.png")
-const GROUND_FG: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground_fg.png")
-const GROUND: Texture2D = preload("res://assets/art/zone1b/larkmoor/ground.png")
 const LIFE_PATH: String = "res://world/larkmoor_life.json"
 const GARDEN_PATH: String = "res://world/larkmoor_gardens.json"
 const ENTRANCE_PATH: String = "res://assets/art/zone1b/larkmoor/entrance/entrance.json"   # the Ember Quarry cave entrance props (world/ember_entrance.gd)
@@ -50,10 +47,10 @@ func _ready() -> void:
 	var ground := Sprite2D.new()
 	ground.name = "Ground"
 	var far := FarLayer.new()
-	far.texture = FAR_BACKDROP
+	far.texture = ZoneAssets.texture(DIR + "backdrop_far.png")
 	far.base = Vector2(float(bleed.ground_offset[0]) - 64.0, float(bleed.ground_offset[1]))
 	add_child(far)
-	ground.texture = GROUND_FG
+	ground.texture = ZoneAssets.texture(DIR + "ground_fg.png")
 	ground.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ground.centered = false
 	ground.position = Vector2(bleed.ground_offset[0], bleed.ground_offset[1])
@@ -112,7 +109,7 @@ func _add_sky() -> void:
 	_sky.area = world_rect.grow(10.0)
 	_sky.noon_boost = 1.7   # Larkmoor's ground is brighter and greener than the meadow's, so its noon needs more exposure drop and a warmer cast
 	_sky.shadows = _shadows
-	_sky.ground_texture = GROUND   # haze and mist read the full picture, not the cut-out
+	_sky.ground_texture = ZoneAssets.texture(DIR + "ground.png")   # haze and mist read the full picture, not the cut-out
 	_ground.material = _sky.ground_material(ZoneAssets.texture(DIR + "ground_n.png"), ZoneAssets.texture(DIR + "ground_h.png"))
 	pad_material = _sky.pad_material(ZoneAssets.texture(DIR + "ground_h.png"), _ground.position)
 	_place_atmosphere()
@@ -277,6 +274,7 @@ var _occ_parent: Node2D = null
 var _prop_index: Dictionary = {}     # Vector2i chunk -> Array of prop dictionaries (placements3d.json sprites)
 var _loaded: Dictionary = {}         # Vector2i chunk -> Array of the Sprite2D props spawned for it
 var _center: Vector2i = Vector2i(-99999, -99999)
+var _sail_manifest: Dictionary = {}   # the windmill sails' turning sheet (world/windmill_sails.gd), loaded once
 var _lanterns_lit: bool = false       # lantern pools are added once per scene, not once per spawn
 var _spawn_queue: Array[Vector2i] = []   # chunks the walker needs but that are not spawned yet, nearest first
 var _queued: Dictionary = {}             # Vector2i chunk -> true, for the queue above
@@ -346,9 +344,11 @@ func spawn_occluders(parent: Node2D) -> void:
 ## under the transition wipe uses it, so the first load does not stall the wipe's peak.
 func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 	_begin(parent)
-	_add_farm(parent)
 	_center = _chunk_of(_start_point())
 	_set_view()
+	# the farm first, over frames (its wheat clumps were prepared on workers while the wipe was starting), so the chunk
+	# streaming can run beside it with the centre already set
+	await FarmProps.spawn_sliced(parent, _sky, _shadows, _sky.rim_material if _sky != null else null, budget_ms)
 	var start_us: int = Time.get_ticks_usec()
 	for key: Vector2i in _load_candidates(_center):
 		if not _loaded.has(key) and _wanted_load(key, _center) and _budget_allows(key):
@@ -362,6 +362,30 @@ func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
 ## The Foxglove Rise farm (world/farm/): always loaded, about two dozen nodes, so it is not chunked.
 func _add_farm(parent: Node2D) -> void:
 	FarmProps.spawn(parent, _sky, _shadows, _sky.rim_material if _sky != null else null)
+
+
+## The windmill sails (kind windmill_sails) turn on their hub: their sprite shows the pre-rendered frames and a
+## WindmillSails node steps them. Without the sheet in the build, the sails fall back to the plain sprite.
+func _spawn_sails(parent: Node2D, s: Dictionary) -> Sprite2D:
+	if _sail_manifest.is_empty():
+		_sail_manifest = WindmillSails.load_manifest()
+	if _sail_manifest.is_empty():
+		return null
+	var sp := Sprite2D.new()
+	sp.name = "Occ_windmill_sails"
+	sp.texture = load(WindmillSails.DIR + String(_sail_manifest.file)) as Texture2D
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sp.centered = false
+	sp.position = Vector2(s.foot[0], s.foot[1])
+	var off: Array = _sail_manifest.offset as Array
+	sp.offset = Vector2(float(off[0]), float(off[1]))
+	if _sky != null:
+		sp.material = _sky.rim_material
+	parent.add_child(sp)
+	WindmillSails.attach(sp, _sail_manifest)
+	if _shadows != null:
+		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
+	return sp
 
 
 ## Keep the loaded chunks in step with the walker. Runs every frame, but only does work when the walker changes chunk.
@@ -395,6 +419,7 @@ func _process(_delta: float) -> void:
 		_gardens.closed = night > 0.6
 		if _flower_glow != null:
 			_flower_glow.set_night(night)
+			_flower_glow.set_winter(_gardens.season == GardenArt.SEASON_WINTER)
 		_gardens.dew = not _gardens.closed and hour >= 5 and hour < 9   # the first morning hours: drops on the open heads
 
 
@@ -612,6 +637,12 @@ func _drain_spawns() -> void:
 func _drain_warm() -> void:
 	if _sky == null or not _spawn_queue.is_empty() or _warm_queue.is_empty():
 		return
+	# Headless runs (CI playtest, dummy renderer) hit a texture-creation error in this warm pass ("uninitialized RID", from
+	# SkyCycle.padded's ImageTexture). The warm is only a prefetch, so skipping it there changes no picture: each prop is
+	# still padded when it spawns. A windowed GPU run went through Larkmoor without the error.
+	if DisplayServer.get_name() == "headless":
+		_warm_queue.clear()
+		return
 	var start_us: int = Time.get_ticks_usec()
 	while not _warm_queue.is_empty():
 		var key: Vector2i = _warm_queue.pop_front()
@@ -747,6 +778,10 @@ func _prop_mat(sways: bool, nrm_file: String) -> ShaderMaterial:
 	return m
 
 func _spawn_one(parent: Node2D, s: Dictionary) -> Sprite2D:
+	if String(s.kind) == WindmillSails.KIND:
+		var sails: Sprite2D = _spawn_sails(parent, s)
+		if sails != null:
+			return sails
 	var sp := Sprite2D.new()
 	sp.name = "Occ_" + String(s.file).get_file().get_basename()
 	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

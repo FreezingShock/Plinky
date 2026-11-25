@@ -12,6 +12,7 @@ const BUS_AMB: StringName = &"Ambience"
 const BUSES: Array[StringName] = [BUS_MUSIC, BUS_SFX, BUS_UI, BUS_AMB]
 const SETTINGS_PATH: String = "user://audio.cfg"
 const DIR: String = "res://assets/audio/"
+const PRELOAD_PER_FRAME: int = 6   ## sound files loaded a frame by preload_all (see there)
 
 ## Fired for sounds worth a caption (Settings > Access > Sound subtitles). ui/subtitle_bar.gd listens.
 signal cue(text: String)
@@ -118,17 +119,29 @@ func start(zone_id: StringName) -> void:
 	preload_all()
 
 
-## Loads every sound effect and ambience into the cache now (about 1 MB), so the first bird chirp, footstep or relic
+## Loads every sound effect and ambience into the cache (about 1 MB), so the first bird chirp, footstep or relic
 ## sound never loads from disk mid-play. A one-off 170 ms frame in the bench fell at an unpredictable moment on a
 ## still scene, which is what a random first use looks like. Music loads when its zone starts.
+## The loads run PRELOAD_PER_FRAME files a frame: all at once they held the zone entry frame for about 65 ms on the PC.
 func preload_all() -> void:
+	var pending: PackedStringArray = PackedStringArray()
 	for folder: String in ["sfx", "amb"]:
 		var dir: DirAccess = DirAccess.open(DIR + folder)
 		if dir == null:
 			continue
 		for f: String in dir.get_files():
 			if f.ends_with(".ogg") or f.ends_with(".ogg.import"):
-				_stream(f.trim_suffix(".import").get_basename(), folder)
+				pending.append(folder + "/" + f.trim_suffix(".import").get_basename())
+	_preload_from(pending, 0)
+
+
+func _preload_from(pending: PackedStringArray, from: int) -> void:
+	var end: int = mini(from + PRELOAD_PER_FRAME, pending.size())
+	for i: int in range(from, end):
+		_stream(pending[i].get_slice("/", 1), pending[i].get_slice("/", 0))
+	if end < pending.size():
+		await get_tree().process_frame
+		_preload_from(pending, end)
 
 
 # ---------------------------------------------------------------- buses and settings

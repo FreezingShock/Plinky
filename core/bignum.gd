@@ -173,6 +173,39 @@ func to_float() -> float:
 	return m * pow(10.0, float(e))
 
 
+## Square root of a non-negative value, sqrt(m * 10^e). The exponent is split first so the mantissa stays a float.
+func sqrt_big() -> BigNum:
+	if m <= 0.0:
+		return BigNum.zero()
+	var ex: int = e
+	var mm: float = m
+	if ex % 2 != 0:
+		mm *= 10.0
+		ex -= 1
+	return BigNum.make(sqrt(mm), int(float(ex) / 2.0))
+
+
+## The largest whole number not above this one. From 1e16 up every value is already whole. A value within float rounding
+## of a whole number counts as that whole number: normalising the mantissa leaves a result like 15.999999999999998 where
+## the exact value is 16.
+func floor_big() -> BigNum:
+	if m == 0.0 or e >= 16:
+		return copy()
+	if e < 0:
+		return BigNum.from_float(-1.0) if m < 0.0 else BigNum.zero()
+	var x: float = m * pow(10.0, float(e))
+	var near: float = roundf(x)
+	if absf(x - near) <= 1e-12 * maxf(1.0, absf(x)):
+		return BigNum.from_float(near)
+	return BigNum.from_float(floorf(x))
+
+
+## Whole-number text for a payout: the exact digits below 1e15 with thousands commas ("858,100,000,000,000"),
+## the usual short format above that.
+func whole_text() -> String:
+	return NumberFormat.exact(self)
+
+
 func to_array() -> Array:
 	return [m, e]
 

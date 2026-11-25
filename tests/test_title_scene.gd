@@ -90,6 +90,7 @@ func run(t: Object) -> void:
 	panel.add_child(filler)
 	var ov: PanelOverlay = PanelOverlay.host(parent, panel, Color.BLACK, null)
 	ov._ready()  # the test runner's tree has not started, so nodes get no _ready of their own
+	ov.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)   # a full-rect anchor would override the size set next
 	ov.size = parent.size
 	var seen: Array[String] = []
 	ov.opened.connect(func() -> void: seen.append("open"))

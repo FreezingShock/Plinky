@@ -236,6 +236,12 @@ Lighting, night, day/night, dither, props, pads, grass, shaders, palettes and ic
 - **Verified in the cloud:** Godot 4.7.2 headless under xvfb with lavapipe. Tests 5346 checks, 0 failed. Shaders compile, and the screenshot set (tools/weather_shots.tscn) was checked by eye.
 - **Not verified on the PC:** how puddles and rings look at zoom 1 and 4, the feel of the drop speed, and the night puddles against the moonlit path.
 
+## 2026-11-24: Windmill sails turn (Larkmoor)
+- **Decision:** the sails sprite (`windmill_sails`, split out by PR #335) turns on its hub from eight pre-rendered frames. `tools/art/gen_windmill_sails.py` rotates the sails about the hub in 11.25 degree steps, sampling nearest-neighbour so the pixel art stays crisp. Four arms repeat every 90 degrees, so the sheet loops with no seam. `world/windmill_sails.gd` steps the frames on the life clock.
+- **Pace:** the wind (`MeadowLife.wind`) sets the base speed, about 11 seconds for a full turn in a calm breeze, and a slow two-wave gust term makes it swell and ease. Under Reduce Motion the sails hold frame 0.
+- **Why pre-rendered:** a live rotation of a pixel sprite blurs and shimmers. Frames keep the outline crisp.
+- **Not in this slice:** the sails use the rim light but not the normal map. The old normal map does not rotate with the frames, so it is dropped for the sails.
+- **Verified in-engine (Xvfb):** two captures a few seconds apart show the sails at different angles about the hub. **Not verified:** the gust feel over time, and dusk lighting on the sails.
 ## 2026-11-24: Lantern art, lamp glow and lamps by night only
 - **Art:** `make_lantern` is a garden lantern in the same 19 by 29 window: a stone foot (kept within 1.9 texels, so its front corner stays inside the window), a thin timber post, a lit window (the paper colour lifted in the shade) framed by four dark corner posts, a hipped timber cap that overhangs the window, and a dark finial.
 - **Glow sprite:** `LampGlow` (`larkmoor_scene.gd`) is a 32 texel dithered bloom, warm, with six Bayer steps and a bright core. It was 24 texels with four steps and a squared falloff, which read dim.
@@ -409,6 +415,16 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - In-game wheat read as sparse chunky tufts with soil showing between them, unlike mockup D (v15 H). Cause was the placement, not the sprite: clump spacing was 15x9 texels with mostly 24-32 px clumps.
 - Placer now uses spacing 9x5, grid 5.5x3.0, clump sizes 28-34 wide and 26-32 tall, edge band 3.0. Clumps go from 176 to 333, all canvas items under the one driver, so node count is unchanged.
 - FarmWheat caches each clump's global centre once instead of recomputing it per frame.
+
+## 2026-11-24: Ember entrance props are solid on the walk mask
+- The walker could stand inside the Ember Quarry crates, where the prop sorts in front and hides him. The mask now zeroes each solid ember prop's drawn box (entrance/entrance.json, kind ember_prop), since a footprint circle left the walker hidden.
+- Tiny flat decor stays walkable (none in the file today). Tests check every solid prop's centre is blocked and no ruin front stop sits in a prop box.
+- Side effect: the crates shielded ruin 028 from N, E, S and W. Moved crates_2 10 texels east (gen_ember_entrance.py and entrance.json, sort key unchanged), so 028 now has a clear south approach 12.5 texels out.
+## 2026-11-24: Pad signs choose a clear spot
+- **Nathan's note:** a pad's cost sign covered the next pad's bed in a Starbloom row, and it happens on many pads across zones.
+- **How:** `TexelPad.SIGN_SPOTS` lists eight spots relative to the pad (right and left of the plate, lifted in steps). `choose_sign_spot` returns the first one whose plank and post clear every bed and plate on the zone and this pad's press spot. `main.gd` gives every pad the zone's positions once they are placed (`set_sign_neighbours`). The default spot is still the first choice, so a pad with room keeps its look.
+- **Check:** `tests/test_pad_signs.gd` checks a synthetic neighbour that used to sit under the sign, and every row-first pad in the Larkmoor, meadow and quarry layouts. The suite passes. In-engine, the quarry rows and the hub shot show each sign beside its pad with no overlap.
+- **Note:** the left-hand spots are mirrors of the right-hand ones, so a sign there sits off the right edge of a tight zoom-3 crop. That is not a missing sign.
 - Follow-up (same day): finer wheat. Clumps 20-26 texels wide with 4.2 stalks per texel of width (was 3.2), spacing 7x4, grid 4.3x2.5. 661 clumps, still one driver node; Larkmoor stays at 818 nodes and frame p95 is unchanged in the bench, so no zoom LOD was added.
 
 ## 2026-11-24: Draggable sun and moon on the title and loading sky
@@ -419,3 +435,9 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Why the arc is split by half:** `SkyModel.azimuth` puts the sun at phase 0.75 on the right and the moon's start at 0.75 on the left. Using the half-open halves in `TitleMood.arc_at` keeps the dragged moon on the arc's right end at moonset. The game's own sky math is unchanged.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb, with real warped pointer and press events (`tools/sky_drag_shot.gd`). Frames and GIFs are in `/mnt/project-files/plinky/sky-drag/`. Tests: the arc round-trips, the clamps and the spring's overshoot are in `tests/test_title_mood.gd`.
 - **Not verified on the PC:** the feel of the spring and the release, the cursor shapes on Windows, and the hover ring in the real window at other sizes.
+## 2026-11-25: Calmer winter night glow on the flower fields
+- **Nathan's note:** the winter flowers at night have a "weird texture", most visibly on the Thistle row. Nathan then picked the calmer glow from the mockups (`/mnt/project-files/pad-signs-flowers/looks_night_winter_thistle.png`).
+- **Cause:** the per-field night glow (`world/flower_glow.gd`) runs at full strength on the bare winter stalks, so each stalk gets a blue halo that reads as dither. The stalks themselves, and the old-vs-main captures, are unchanged, so this is not a regression from the flower atlas or lighting commits.
+- **Decision:** `FlowerGlow.WINTER_SCALE` (0.42) scales the glow in winter only, via `set_winter`, pushed from `LarkmoorScene` with the garden season. At full night the core goes from 0.6 to about 0.25. The spill follows the same scale at runtime. Other seasons keep `NIGHT_ALPHA`.
+- **Not changed:** noon (the glow is 0 by day), the stalk sprites, and the summer and autumn glow.
+- **Not verified in-engine on PC:** the shipped change. The mockups were rendered in the cloud with the same values as a global glow change (v0.99.44 code, not the winter-only scale), so the PC check should confirm winter nights and that summer nights are unchanged.
