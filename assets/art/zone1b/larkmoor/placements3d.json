@@ -4466,10 +4466,10 @@
    "file": "sprites/rock_312.png",
    "nrm": "sprites/rock_312_n.png",
    "kind": "rock",
-   "x": 2302,
+   "x": 2304,
    "y": 740,
-   "w": 28,
-   "h": 24,
+   "w": 26,
+   "h": 23,
    "foot": [
     2317.7,
     753.1
@@ -4494,10 +4494,10 @@
    "file": "sprites/rock_314.png",
    "nrm": "sprites/rock_314_n.png",
    "kind": "rock",
-   "x": 2330,
+   "x": 2337,
    "y": 837,
-   "w": 23,
-   "h": 11,
+   "w": 16,
+   "h": 10,
    "foot": [
     2342.9,
     844.7
@@ -5040,9 +5040,9 @@
    "file": "sprites/rock_356.png",
    "nrm": "sprites/rock_356_n.png",
    "kind": "rock",
-   "x": 1333,
+   "x": 1341,
    "y": 739,
-   "w": 36,
+   "w": 28,
    "h": 23,
    "foot": [
     1353.4,
