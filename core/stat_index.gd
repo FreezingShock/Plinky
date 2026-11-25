@@ -105,7 +105,7 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 		var note: String = "+%s/s" % inc.format() if not inc.is_zero() else ""
 		var value: String = sim.get_stat(sid).format()
 		if sid == &"rp":   # RP is paid in whole points, so never show a fraction
-			value = BigNum.from_float(floorf(sim.get_stat(sid).to_float() + 0.0001)).format()
+			value = sim.get_stat(sid).floor_big().format()
 		if sid == &"prestige":
 			note = "%s income" % NumberFormat.mult(sim.prestige_mult())
 		elif sid == &"rp" and sim.can_rebirth():
@@ -115,12 +115,12 @@ static func stats(sim: Sim) -> Array[Dictionary]:
 		rows.append(crow)
 	rows.append(_row(&"crit_chance", "Presses", "Crit chance", "crit", _pct(sim.crit_chance()), "",
 		"Chance that a press is a critical hit. Raised by the Crit chance attribute and relics."))
-	rows.append(_row(&"crit_damage", "Presses", "Crit damage", "crit_dmg", "x%.2f" % sim.crit_damage(), "",
+	rows.append(_row(&"crit_damage", "Presses", "Crit damage", "crit_dmg", NumberFormat.mult_f(sim.crit_damage()), "",
 		"What a critical hit multiplies a press by. Raised by pad mastery and relics."))
-	rows.append(_row(&"press_rate", "Presses", "Press rate", "rate", "%.2f/s" % (1.0 / maxf(sim.press_interval(), 0.001)), "",
+	rows.append(_row(&"press_rate", "Presses", "Press rate", "rate", NumberFormat.rate(1.0 / maxf(sim.press_interval(), 0.001)), "",
 		"Presses per second while you stand on a pad."))
 	rows.append(_row(&"luck", "Presses", "Luck", "luck", "Lv %d" % sim.luck_level(), "", "Each level improves the chance of a relic drop."))
-	rows.append(_row(&"walk_speed", "Travel", "Walk speed", "walk", "x%.2f" % sim.walk_speed_mult(), "", "How fast the walker moves."))
+	rows.append(_row(&"walk_speed", "Travel", "Walk speed", "walk", NumberFormat.mult_f(sim.walk_speed_mult()), "", "How fast the walker moves."))
 	rows.append(_row(&"offline_cap", "Travel", "Offline cap", "offline", "%s h" % _trim(sim.offline_cap_seconds() / 3600.0), "",
 		"The most income you can collect while the game is closed."))
 	var lv_total: int = 0

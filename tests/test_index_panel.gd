@@ -35,6 +35,7 @@ func run(t: Object) -> void:
 	t.ok(not panel.visible and panel._body == null and panel._cards.is_empty(), "a closed window frees its body and cards")
 	panel.open_tab(IndexPanel.Tab.STATS)
 	t.ok(panel.is_open() and panel._body != null and not panel._cards.is_empty(), "opening builds the body and its cards again")
+	t.ok(not panel._building, "off the tree the grid builds in one pass")
 	panel.close_panel()
 	t.ok(panel._body == null, "closing again frees the body")
 	panel.open_tab(IndexPanel.Tab.ATTRIBUTES)

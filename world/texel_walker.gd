@@ -21,6 +21,9 @@ var _has_target: bool = false
 var _route: PackedVector2Array = PackedVector2Array()   # waypoints round water and trunks to _target (world/walk_mask.gd route())
 var _route_i: int = 0
 var _replans: int = 0
+var _drift_replans: int = 0   # plans made because the walker drifted off its waypoint line (capped per tap)
+var _drift_clock: float = 0.0
+const DRIFT_CHECK_INTERVAL: float = 0.1   # seconds between checks of the walker's line to its next waypoint
 var _t: float = 0.0
 var _gait: float = 0.0
 var _body: WalkerBody
@@ -77,6 +80,7 @@ func go_to(p: Vector2) -> void:
 	_route = WalkMask.route(position, _target)
 	_route_i = 0
 	_replans = 0
+	_drift_replans = 0
 	_has_target = true
 
 
@@ -114,6 +118,16 @@ func _process(delta: float) -> void:
 		_route = PackedVector2Array()
 		dir = input
 	elif _has_target:
+		# The route was planned from a waypoint, so the walker can drift off that line (a waypoint is taken within a
+		# texel, and the leftover offset is kept). If the straight line from where it stands is no longer clear, plan
+		# again from here, or it keeps walking into the corner it drifted towards.
+		_drift_clock -= delta
+		if _drift_clock <= 0.0:
+			_drift_clock = DRIFT_CHECK_INTERVAL
+			if _drift_replans < 8 and not WalkMask.line_clear(position, _goal()):
+				_drift_replans += 1
+				_route = WalkMask.route(position, _target)
+				_route_i = 0
 		var to: Vector2 = _goal() - position
 		while to.length() < 1.0 and _route_i < _route.size() - 1:
 			_route_i += 1   # reached a waypoint: on to the next

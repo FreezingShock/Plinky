@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GoalDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/goal_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"goal_crits_250"
+display_name = "Lucky Strikes"
+description = "Land 250 crits."
+counter = &"crits"
+target = 250.0
+order = 9
+reward = 0.02
