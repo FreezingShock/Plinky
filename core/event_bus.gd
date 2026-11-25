@@ -1,5 +1,5 @@
 extends Node
-## Signals only, no state. The contract is in docs/interfaces.md and godot/README.md.
+## Signals only, no state. The contract is in docs/interfaces.md.
 ## Gameplay emits here. Fx and UI listen here.
 
 signal stat_changed(stat_id: StringName, value: BigNum)
