@@ -33,19 +33,19 @@ func setup(sky: SkyCycle, nrm: Texture2D, origin: Vector2) -> void:
 	m.set_shader_parameter("body", 0.8)
 	m.set_shader_parameter("road", 0.34)
 	m.set_shader_parameter("glow_col", Color(0.965, 0.937, 0.851))
+	# T6: the sky reflection lift on the water runs at every hour, so the node stays on; the night parts still follow night01
+	m.set_shader_parameter("lift", 0.6)
+	m.set_shader_parameter("lift_col", Color(0.965, 0.937, 0.851))
 	material = m
-	visible = false
+	visible = true
 
 
 func _process(_delta: float) -> void:
 	if _sky == null:
 		return
 	var night: float = _sky.night01
-	visible = night > 0.01
-	if not visible:
-		return
 	var m: ShaderMaterial = material as ShaderMaterial
-	m.set_shader_parameter("amount", night)
+	m.set_shader_parameter("amount", night)   # the night parts; the water lift is independent of this (see setup)
 	m.set_shader_parameter("sway", 0.0 if MeadowLife.reduce_motion else floorf(Time.get_ticks_msec() / 1000.0 * GLINT_STEP))
 	m.set_shader_parameter("twinkle", 0.0 if FxConfig.reduce_flashing else 1.0)
 	m.set_shader_parameter("quality", GraphicsQuality.level)
