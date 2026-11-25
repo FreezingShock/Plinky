@@ -56,7 +56,8 @@ static func attach(p_hud: Hud, p_sim: Sim, bus: Node) -> BloomRitual:
 	r.hud = p_hud
 	r.sim = p_sim
 	p_hud.add_child(r)
-	bus.reset_done.connect(r.start)
+	# Sim.reset_done carries the paid amount as BigNum; start() counts in plain ints.
+	bus.reset_done.connect(func(id: StringName, n: BigNum) -> void: r.start(id, roundi(n.to_float())))
 	return r
 
 

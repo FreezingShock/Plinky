@@ -7,9 +7,10 @@
 | `unit` | Version script tests, `tests/run.gd`, boot smoke test. |
 | `sim` | Balance sim `tools/sim.gd`. |
 | `play` | Play smoke `tools/bench.gd` and the frame budget check. |
+| `playtest` | Playtest bot `tools/playtest.gd` plays the first in-game hour of a fresh save (about 30 s), then `tools/check_playtest.py` judges the run. It fails on a script or script-call error (other engine messages are notes in the JSON), a stall in income, a frame over 150 ms (300 ms under the zone wipe), or a milestone past its deadline (Larkmoor, Bloom, Ember Quarry by minute 30). Thresholds live in `check_playtest.py`. |
 | `changelog-guard` | PRs only. Fails if the PR edits `CHANGELOG.md`, `core/build_info.gd` or `export_presets.cfg`, or changes game folders (core, data, world, render, ui, boot, audio, theme, fonts, content, assets, project.godot) without a `changelog.d/*.patch|minor.md` fragment. Label `no-changelog` waives the fragment rule. |
 | `uid-guard` | Fails if a tracked `.gd` or `.gdshader` has no `.uid` sidecar file in the checkout. Scenes (`.tscn`) are not checked: Godot keeps their uid in the file header, not in a sidecar. |
-| `test` | Aggregate. Passes when every job above passed or was skipped. **This is the only required check.** |
+| `test` | Aggregate over every job above, `playtest` included. Passes when each passed or was skipped. **This is the only required check.** |
 
 Each engine job uses `.github/actions/setup-godot`, which restores the cached Godot binary and `.godot/imported`, then runs the import. Docs-only PRs skip `unit`, `sim` and `play`. `sim` also skips when none of its inputs change (`core/`, `data/`, `content/`, `tools/sim.gd`, `.github/`), so art, render, world and UI PRs skip it too. `test` still reports green. A new push to a PR cancels its older run, and the `test` job then shows as skipped (`if: !cancelled()`), never as a false red; a real job failure still fails it. If a PR shows red, open the newest run on its head commit; runs on `main` are never cancelled. Thresholds (frame budget 150/300/250/1350, sim gates, script-error greps) are unchanged.
 
