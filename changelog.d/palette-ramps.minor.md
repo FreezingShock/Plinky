@@ -1,0 +1,2 @@
+- Zone palettes now have four hue-shifted steps per colour role, so the lit side reads warmer and the shade side cooler. The look keeps its pixelation and dither.
+- Golden hour and dusk get a warmer grade and a little more colour. Noon and night are unchanged.

@@ -98,6 +98,11 @@ extends Resource
 @export var light_split: float = 0.3
 ## How much brighter a lit texel gets, 0..1.
 @export var light_lift: float = 0.06
+## Dusk grade (the palette ramps, picked as "B at dusk" on 2026-11-25): a warm multiply and a saturation lift at the
+## low sun, dawn and dusk alike. dusk_amount 0 turns it off, 1 is the full mockup.
+@export var dusk_tint: Color = Color(1.12, 0.92, 0.80)
+@export var dusk_amount: float = 1.0
+@export var dusk_sat: float = 1.15
 ## Drifting fog over the land (ground_fog.gdshader), 0..1. Scaled by the mist curve: thickest at dawn and dusk and in rain.
 @export var fog_ground: float = 0.4
 ## Share of the camera movement the far backdrop (sky and mountains) follows, 0 = fixed to the ground.

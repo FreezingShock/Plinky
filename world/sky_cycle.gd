@@ -660,7 +660,9 @@ func _update_light(t: float, mt: float, rain: float) -> void:
 	_light_mat.set_shader_parameter("exposure", 1.0 - _config.noon_exposure * nb)
 	# Saturation: the noon boost of a brighter scene (noon_boost) goes into exposure and contrast only. Scaling the
 	# saturation too pushed Larkmoor's autumn ground into the orange and green cast.
-	_light_mat.set_shader_parameter("sat", 1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * noon01)
+	_light_mat.set_shader_parameter("sat", (1.0 + (_config.golden_sat * low_sun_k + _config.night_sat * night01) * (1.0 - 0.7 * rain01) + _config.noon_sat * noon01) * lerpf(1.0, _config.dusk_sat, low_sun_dusk(model, mt, rain01)))
+	# the dusk grade of "B at dusk": a warm multiply on the low sun, dawn and dusk alike, off at noon and by night
+	_light_mat.set_shader_parameter("dusk_mul", Color(1.0, 1.0, 1.0).lerp(_config.dusk_tint, low_sun_dusk(model, mt, rain01) * _config.dusk_amount))
 	# lightning: a brief cool lift in heavy rain; zero under Reduce motion or Reduce flashing (steady)
 	_light_mat.set_shader_parameter("flash", 0.0 if steady else SkyModel.lightning_flash(t, rain01))
 	_light_mat.set_shader_parameter("contrast", 1.0 + (_config.golden_contrast * low_sun_k + 0.5 * _config.golden_contrast * night01) * (1.0 - 0.7 * rain01) + _config.noon_contrast * nb)
@@ -686,6 +688,11 @@ func _find_walker() -> Node2D:
 
 ## How much a lantern's pool is lit: 0 through the day, 1 once it is dark. Dusk and dawn fade it in and out, so a lamp
 ## is never a warm patch on a sunny lawn (the shade shader's warm cast does not depend on the night on its own).
+## Weight of the dusk grade, 0..1: the low sun (dawn and dusk), thinned by rain. Zero at noon and by night.
+static func low_sun_dusk(m: SkyModel, t: float, rain01: float) -> float:
+	return m.low_sun(t) * (1.0 - 0.7 * rain01)
+
+
 static func lamp_light_k(night: float) -> float:
 	return smoothstep(0.1, 0.5, night)
 
