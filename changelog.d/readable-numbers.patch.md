@@ -1,0 +1,1 @@
+Big numbers read more easily: suffixed amounts keep three figures (123K, not 123.4K), payouts in tooltips group thousands (1,234,567), and the Stats index, momentum and gate labels now use the same formatter and Multiplier display setting.

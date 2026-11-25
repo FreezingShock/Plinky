@@ -646,6 +646,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** `tests/run.gd` passes (11737 checks, 0 failed) after `--import`.
 - **Not run in-engine:** the icons on a PC at zoom 1 and 3. PC QA should check that every Gallery tile and Stats card shows its icon.
 
+## 2026-11-25: One number style for the readout (three figures, grouped payouts, one multiplier path)
+- **Decision:** suffixed amounts show three significant figures at every size (1.23K, 12.3K, 123K) instead of 123.4K. A value that rounds to 1000 carries to the next suffix at 999.5. Whole payouts in tooltips and the reset confirm card group thousands ("1,234,567"), through `NumberFormat.exact`. Multipliers in the Stats index, the Stats sources, and the momentum tooltip go through `NumberFormat.mult_f`, so they follow Settings > Multiplier display. An added multiplier (crit damage from pad mastery) reads "+0.35x" or "+35%" through `NumberFormat.bonus_mult`. Rates read "4/s" or "1.23K/s" through `NumberFormat.rate`. The zone gate label reads "1.23K/1.5K Sunlight" through the formatter, not a raw int, so it no longer overflows past 9.2e18.
+- **Why:** the Stats index printed raw floats ("x5.00", "0.35", "3.33/s") that ignored the Multiplier setting, and 15-digit payouts ran together. Three figures keep one rule across the range, and one helper per kind of number stops the copies drifting.
+- **Checked:** `tests/run.gd` passes after `--import` (checks added in `tests/test_format.gd`; the thousands test in `tests/test_reset_gain.gd` now expects "1,234").
+- **Not run in-engine:** how the wider payout lines wrap in the reset confirm card and the tooltips at zoom 1 and 3. PC QA should check the Stats index crit damage and press rate rows, and the gate label on Larkmoor.
 ## 2026-11-25: Next Goal card, top left
 - **What:** `ui/next_goal_card.gd` shows the first unreached goal, its name, a progress bar and `value / target  +x%`. Hover shows the goal's description and the total bonus. When the chain is done it reads "All Goals Reached".
 - **Why top left:** the zone panel holds the top right and the bottom bar holds the bottom, so the top left was the free corner. Gated on Dewdrops like the stat strip, so the tutorial is not crowded.

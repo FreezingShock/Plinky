@@ -513,7 +513,7 @@ func _mastery_of(aid: StringName) -> Array:
 
 func _mastery_tip() -> Array:
 	var ms: Array = _mastery_of(_view_area)
-	return ["Mastery", "Every press trains its pad. Levels add crit chance and crit damage.\nThis area: +%d%% crit chance, +%.2f crit damage in total.\nThe bar is the average progress to each pad's next level." % [roundi(float(ms[3]) * 100.0), float(ms[4])]]
+	return ["Mastery", "Every press trains its pad. Levels add crit chance and crit damage.\nThis area: +%d%% crit chance, %s crit damage in total.\nThe bar is the average progress to each pad's next level." % [roundi(float(ms[3]) * 100.0), NumberFormat.bonus_mult(float(ms[4]))]]
 
 
 func _zone_tip(zid: StringName) -> Array:
@@ -604,4 +604,4 @@ func _gate_text(z: ZoneDef) -> void:
 		return
 	var have: float = minf(sim.get_stat(z.gate_stat).to_float(), z.gate_threshold)
 	_gate_bar.value = have / z.gate_threshold
-	_gate_label.text = "%d/%d %s" % [int(have), int(z.gate_threshold), (sim.stat_defs[z.gate_stat] as StatDef).display_name]
+	_gate_label.text = "%s/%s %s" % [NumberFormat.short(floorf(have)), NumberFormat.short(z.gate_threshold), (sim.stat_defs[z.gate_stat] as StatDef).display_name]
