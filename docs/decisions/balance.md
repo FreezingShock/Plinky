@@ -167,5 +167,5 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **What:** `tools/sim_run.gd` plays Meadow, Larkmoor and the Ember Quarry under each profile, in two modes: push (no resets) and loop (take Bloom or Nucleus after each gate, to 10 uses). It reports gate times, every reset tier, goal times and the longest stretch with nothing to buy. Chart and findings: `docs/balance.md` section 14.
 - **Result (active, 4 presses/s, loop):** Bloom 10 at 59.3 min (target about 60), Quarry gate at 64.7, Nucleus 10 at 94.5. Idle takes about 1.9x as long (target about 2x).
 - **Result (push):** the Quarry gate takes 116 min without resets, so the Bloom loop is the way through.
-- **Open for Nathan:** the Larkmoor gate opens at 15 min, while the 60-minute target is met by the 10th Bloom. Which one is the target? No numbers changed.
+- **Decided (Nathan, 25 Nov, decision card):** keep current pacing. The 60-minute target is the 10th Bloom (59 min active), not the Larkmoor gate (15 min). No numbers changed.
 - **Not checked yet:** walking, gifts, attributes and relic equips, so these are floors.
