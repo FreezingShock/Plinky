@@ -1,8 +1,11 @@
 """Big 32x32 menu icons for the gallery menu (ui/gallery_menu.gd), plus the 16x16 hamburger.
-Meadow palette indices only. Run: python3 tools/art/gen_menu_icons.py  -> assets/icons/big/menu_*.png
+Drawn in the meadow anchors, then remodelled onto the meadow ramp (tools/art/icon_ramps.py, Gower rule 2). Run: python3 tools/art/gen_menu_icons.py  -> assets/icons/big/menu_*.png
 """
 from PIL import Image, ImageDraw
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import icon_ramps as ir
 
 P = ["14161c", "1f3b35", "2f6b55", "5fa36a", "b7d978", "f2e6a0", "c2784e", "f6efd9"]
 C = [tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (255,) for h in P]
@@ -32,7 +35,7 @@ def outline(im):
 
 def save(im, name):
     os.makedirs(OUT, exist_ok=True)
-    outline(im).save(os.path.join(OUT, name))
+    ir.remodel_image(outline(im), "meadow").save(os.path.join(OUT, name))
 
 
 def log():
@@ -130,7 +133,7 @@ def hamburger():
     d.rectangle([3, 5, 12, 5], fill=LIGHT)
     d.rectangle([3, 8, 12, 8], fill=LIGHT)
     d.rectangle([3, 11, 12, 11], fill=LIGHT)
-    outline(im).save(os.path.join(OUT, "menu_hamburger.png"))
+    ir.remodel_image(outline(im), "meadow").save(os.path.join(OUT, "menu_hamburger.png"))
 
 
 for f in (history, log, settings, stats, attributes, upgrades, relics, travel, hamburger):
