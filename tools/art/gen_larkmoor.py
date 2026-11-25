@@ -1004,6 +1004,18 @@ dtr = {t: samp(dtier[t], FU, FV) for t in HALF}
 on_path = {t: (dtr[t] < HALF[t] * edge_noise) & (rockness < .85) for t in HALF}
 mat[on_path['road'] | on_path['lane']] = T_PATH
 mat[on_path['trail'] & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
+# footpath pass: lanes and trails feather out. Near the edge a texel keeps its path material only with a chance that falls
+# to zero at the outer edge (smooth noise, so the fringe is ragged and dithered), so a lane thins into the grass and a trail
+# fades to a faint track instead of a ruled edge. The road keeps its hard flagstone edge.
+FEATHER = {'lane': .35, 'trail': .6}   # share of the half-width that feathers out
+FEATHER_MAT = {'lane': T_PATH, 'trail': T_TRAIL}
+for _t, _f in FEATHER.items():
+    _inner = HALF[_t] * (1 - _f)
+    _outer = HALF[_t] * edge_noise
+    _band = (dtr[_t] > _inner) & (dtr[_t] < _outer) & ~on_path['road']
+    _chance = 1 - (dtr[_t] - _inner) / (_outer - _inner)
+    _keep = _chance > vn2(FU / 1.6, FV / 1.6, 75 if _t == 'lane' else 76)
+    mat[_band & ~_keep & (mat == FEATHER_MAT[_t])] = T_GRASS
 # the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
 mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
