@@ -469,3 +469,8 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 | Date | Decision | Why |
 |---|---|---|
 | 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
+
+## 2026-11-25: The sun or moon grab uses phase range, not the sign of sun_of
+- **Bug:** the grab picked the sun or moon by `sun_of(phase) >= 0`. At sunrise and sunset (phase 0.25 and 0.75, the loading screen's boot phase among them) `sun_of` is a float hair either side of zero, so the same body could grab on the wrong half of the arc. The body was drawn and hit-tested by phase range, so it jumped to the far end of the other arc, or the grab missed.
+- **Fix:** `TitleMood.sun_half(p)` decides the half by phase range (sunrise to sunset, both ends included), and both `arc_point` and the grab use it. Tests cover both boundary phases and their float neighbours.
+- **Found by:** PC QA batch 165 (sun grab fails on the loading screen in both Reduce Motion states).

@@ -243,7 +243,7 @@ func _near_body(cursor: Vector2) -> bool:
 func _begin_grab() -> void:
 	_seek_t = -1.0
 	_fling = 0.0
-	_grab_sun = SkyModel.sun_of(phase()) >= 0.0
+	_grab_sun = TitleMood.sun_half(phase())   # same rule as TitleMood.arc_point, so the grab and the drawn body agree
 	var lo: float = TitleMood.arc_start(_grab_sun)
 	_u = lo + fposmod(phase() - lo, 1.0)
 	_u_vel = 0.0
