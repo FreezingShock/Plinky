@@ -629,3 +629,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** these menus loaded their PNGs again on every open, and a freed node drops its texture, so each open read the same files from disk. The gain is small: the headless probe with this change shows Gallery at 7–15 ms open, against 8–16 ms before, so the bulk of the cost is elsewhere (the card and tile nodes).
 - **Checked:** `tests/run.gd` passes (11737 checks, 0 failed) after `--import`.
 - **Not run in-engine:** the icons on a PC at zoom 1 and 3. PC QA should check that every Gallery tile and Stats card shows its icon.
+
+## 2026-11-25: Tip cards wait for HUD tooltips only, not world pad tooltips
+- **Decision:** `_poll_tips()` holds the tip card for `Tip.hud_showing()` (a tooltip bound to a HUD control), not `Tip.is_showing()`. A pad tooltip shown under the pointer no longer holds it. The Clover tip also states the first Clover pad's price.
+- **Why:** the pad tooltip follows the pointer, and the pointer often rests on the pad the player holds click on. The Welcome and Dewdrops tips explain exactly that, so they were held while the pointer was there. The card is docked bottom right and the tooltip draws above it (TipLayer is CanvasLayer 120), so they can overlap briefly without hiding either.
+- **Checked:** `tests/run.gd` passes (11605 checks, 0 failed, after `--import`). A real-time probe with the game clock running shows the Welcome card up within the first second. The banner holds tips for about 3 s.
+- **Not run in-engine:** the overlap on a PC when the pointer sits near the card, and a real pointer hover over a pad while the card is up (the headless pointer warp did not register a hover). PC QA should check both.

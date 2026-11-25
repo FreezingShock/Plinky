@@ -95,6 +95,12 @@ static func is_showing() -> bool:
 	return _host != null and is_instance_valid(_host) and _host.visible
 
 
+## True while a tooltip bound to a HUD control (or a slot beside one) is on screen. A world tooltip (show_free, a pad
+## under the cursor) does not count: it is drawn above the HUD, and a pointer resting on a pad must not hold the tutorial.
+static func hud_showing() -> bool:
+	return is_showing() and _host.target != null
+
+
 static func hide_all() -> void:
 	if _host != null and is_instance_valid(_host):
 		_host.dismiss()
