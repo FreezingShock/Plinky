@@ -89,3 +89,11 @@ The Audio autoload, footsteps, ambient soundscape, world-life sounds and press s
 - **Silent:** in the quarry (no weather), in snow (rain is snow), and below 70% rain.
 - **Checked in the cloud:** `tests/run.gd` 7911 checks, 0 failed. The schedule and the rumble's length are tested. No audio driver in the cloud, so the sound itself is not heard here.
 - **Not verified on the PC:** how loud the rumble sits against the rain bed.
+
+## 2026-11-25: Thunder variants, baked rain, ducking and chime jitter (audit audio section)
+- **Thunder:** four baked rumbles, `amb/thunder_0..3.ogg` (`gen_audio.py weather`). Each has its own band, roll, decay and crack, and plays with ±5% pitch. `AmbientMix.next_variant` never picks the rumble just played. **Why:** one fixed rumble replayed on every heavy strike was the fatigue case.
+- **Thunder band moved to 36 to 185 Hz.** The old rumble put 59% of its energy below 30 Hz, where the master high-pass removes it, so most of it was never heard. Levels are matched by RMS to about -26 dBFS mean. `THUNDER_DB` is now -4 (was -6) so the rumble sits level with the rain bed.
+- **Rain bed baked** to `amb/rain.ogg` with the same recipe and level as the old in-code bed. **Why:** the first rain synthesised 66k samples on the main thread. `AmbientScape` no longer makes any audio in code.
+- **Ducking:** thunder and relic, tier and Bloom chimes dip the ambience loops by 3 dB for about 0.5 s (0.08 s down, 0.4 s back). The dip is on the loops, not the Ambience bus, so the thunder itself keeps its level and the one-shots are untouched.
+- **Chime jitter:** relic and tier chimes vary ±2% in pitch. Purchase and the other one-shots are unchanged, so their repeats still match.
+- **Not verified by ear:** the cloud has no audio output. The live check (`AmbientScape` in a tree) confirms the dip envelope, the no-repeat picks and the rain file's load. Levels were checked with ffmpeg volumedetect. The PC pass should listen to the rumble against the rain bed.

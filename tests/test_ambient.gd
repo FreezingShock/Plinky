@@ -55,3 +55,20 @@ func run(t: Object) -> void:
 	t.ok(AmbientMix.rain_gain(0.6, 1.0, AmbientMix.AREA_MEADOW) == 0.0, "winter rain is snow, so no rain bed")
 	t.ok(AmbientMix.rain_gain(0.6, 0.0, AmbientMix.AREA_QUARRY) == 0.0, "the quarry has no weather sound")
 	t.ok(AmbientMix.rain_gain(2.0, 0.0, AmbientMix.AREA_LARKMOOR) <= 1.0, "rain gain stays within 0..1")
+	t.ok(ResourceLoader.exists("res://assets/audio/amb/rain.ogg"), "the rain bed is a baked file, not made on the main thread")
+
+	# Thunder picks: a rumble never plays twice in a row, every variant can come up, and the edges stay in range
+	var seen: Dictionary = {}
+	var repeats: int = 0
+	var last_pick: int = -1
+	for i in 400:
+		var pick: int = AmbientMix.next_variant(last_pick, 4, float(i % 97) / 97.0)
+		if pick == last_pick:
+			repeats += 1
+		seen[pick] = true
+		last_pick = pick
+	t.eq(repeats, 0, "a thunder pick never repeats the rumble just played")
+	t.eq(seen.size(), 4, "every thunder variant can come up")
+	t.eq(AmbientMix.next_variant(0, 1, 0.5), 0, "with one variant, it always plays")
+	t.ok(AmbientMix.next_variant(-1, 4, 0.999) == 3 and AmbientMix.next_variant(-1, 4, 0.0) == 0, "the first pick covers the whole range")
+	t.ok(AmbientMix.next_variant(2, 4, 0.0) != 2 and AmbientMix.next_variant(2, 4, 0.999) != 2, "the pick skips the last variant at both ends of the roll")

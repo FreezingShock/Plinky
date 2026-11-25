@@ -499,8 +499,77 @@ def lava():
         place(e, pop * xrng.uniform(0.25, 0.5), at)
     write(f"{ROOT}/amb/lava.ogg", norm(loop_xf(e), 0.2), q=3)
 
+# ---------------------------------------------------------------- WEATHER (rain bed and thunder variants)
+# Baked here, not synthesised in GDScript on first use: the old loops ran 66k rain samples and 50k thunder samples on the
+# main thread, which hitched the first rain and the first strike. Own RNGs again, so nothing above shifts.
+WEATHER_RATE = 11025        # soft patter and rumble need little bandwidth; a low rate keeps the files small
+THUNDER_SECONDS = 4.5
+THUNDER_VARIANTS = 4
+THUNDER_RMS = 0.05          # about -26 dBFS mean, the level the other one-shots are measured at (see docs/decisions/audio.md)
+
+def write_mono(path, x, rate=WEATHER_RATE, q=3):
+    """A mono float buffer at its own rate, no filter or gain applied, to Vorbis via ffmpeg."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    pcm = (np.clip(np.asarray(x, dtype=float), -1, 1) * 32767).astype("<i2")
+    wavp = path[:-4] + ".wav"
+    with wave.open(wavp, "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(pcm.tobytes())
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wavp, "-c:a", "libvorbis", "-q:a", str(q), path], check=True)
+    if not KEEP_WAV: os.remove(wavp)
+
+def band_noise(r, n, rate, lo, hi):
+    """Gaussian noise band-limited in the frequency domain, with the rate passed in (the weather is not at SR)."""
+    X = np.fft.rfft(r.standard_normal(n)); f = np.fft.rfftfreq(n, 1 / rate); g = np.ones_like(f)
+    g *= 1 / (1 + (f / hi) ** 4)
+    g *= 1 - 1 / (1 + (f / lo) ** 4)
+    return np.fft.irfft(X * g, n)
+
+def rain():
+    """The rain bed: the same recipe the game used to make in code (one-pole low-passed noise at 0.9 feedback, 30 soft
+    drop ticks, a quarter-second crossfade at the seam), so it keeps its sound and its level. The loop is the body only."""
+    r = np.random.default_rng(2511)
+    n = int(WEATHER_RATE * 6.0); fade = WEATHER_RATE // 4; body = n - fade
+    noise = r.uniform(-1, 1, n) * 0.1
+    buf = np.empty(n); lp = 0.0
+    for i in range(n):
+        lp = lp * 0.9 + noise[i]
+        buf[i] = lp * 1.6
+    for _ in range(30):
+        at = int(r.integers(0, n))
+        for j in range(30):
+            buf[(at + j) % n] += 0.12 * (1.0 - j / 30) * r.uniform(-1, 1)
+    t = np.arange(fade) / fade
+    buf[:fade] = buf[:fade] * t + buf[body:body + fade] * (1.0 - t)
+    write_mono(f"{ROOT}/amb/rain.ogg", buf[:body], q=3)
+
+def thunder():
+    """Four seeded rumbles, one per variant. Each has its own band, roll, decay and crack, so a long storm never plays
+    the same strike twice. The band sits at 36 to 185 Hz: the old single rumble put 59 percent of its energy below
+    30 Hz, where the master high-pass removes it, so most of it was never heard. Levels are matched by RMS."""
+    n = int(WEATHER_RATE * THUNDER_SECONDS); t = np.arange(n) / WEATHER_RATE
+    specs = [  # band lo, band hi, decay seconds, roll Hz, crack level
+        (38.0, 150.0, 1.05, 2.3, 0.25),
+        (42.0, 175.0, 0.95, 2.0, 0.35),
+        (36.0, 130.0, 1.20, 2.7, 0.15),
+        (45.0, 185.0, 1.00, 3.1, 0.30),
+    ]
+    for k, (lo, hi, tau, roll_hz, crack) in enumerate(specs[:THUNDER_VARIANTS]):
+        r = np.random.default_rng(2600 + k)
+        rumble = band_noise(r, n, WEATHER_RATE, lo, hi)
+        env = np.minimum(t / 0.06, 1.0) * np.exp(-t / tau)
+        roll = 0.7 + 0.3 * np.sin(2 * np.pi * roll_hz * t + r.uniform(0, 6.28))
+        x = rumble * env * roll
+        m = int(0.12 * WEATHER_RATE); tc = np.arange(m) / WEATHER_RATE
+        x[:m] += band_noise(r, m, WEATHER_RATE, 300.0, 2500.0) * np.exp(-tc / 0.02) * crack * float(np.max(np.abs(rumble[:m] * env[:m])) + 1e-9)
+        tail = int(0.05 * WEATHER_RATE)
+        x[-tail:] *= np.linspace(1, 0, tail)
+        x = x / (np.sqrt(np.mean(x * x)) + 1e-12) * THUNDER_RMS
+        write_mono(f"{ROOT}/amb/thunder_{k}.ogg", x, q=3)
+
 if __name__ == "__main__":
-    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world", "scape", "cinder", "press"]
+    what = [a for a in sys.argv[1:] if not a.startswith("--")] or ["sfx", "music", "amb", "world", "scape", "cinder", "press", "weather"]
+    if "weather" in what:
+        rain(); thunder()
     if "dirt" in what: dirt()
     if "wheat" in what: wheat()
     if "purchase" in what: purchase()
