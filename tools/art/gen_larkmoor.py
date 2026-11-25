@@ -1022,6 +1022,11 @@ joint_v = (cu_ < 1.0) & (vn2(FU / 3.0, FV / 3.0, 47) > .45)  # vertical joints: 
 joint_h = cv_ < 1.0                                          # horizontal joints: every row
 mortar = (joint_v | joint_h) & road_m
 lt -= .30 * mortar                                           # a soft drop to the earth step, not a hard grid
+# lanes: packed earth rather than sand. A light drop moves them onto the earth role (T_PATH ramp index 0 and 1), and the
+# post shader's light band then gives the olive earth step in shade and the warm earth step in light (palette rows
+# from render/palettes.gd RAMP). No new palette role. Trails keep their own material.
+lane_m = (mat == T_PATH) & ~road_m
+lt -= .34 * lane_m
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
