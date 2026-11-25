@@ -133,6 +133,28 @@ func run(t: Object) -> void:
 		last_y = y
 	t.eq(bad_stat, 0, "every flower names a real statistic and variant")
 	t.eq(bad_ground, 0, "every flower stands on open grass (never a path, water or dirt)")
+	# a bed keeps 4 texels of clear ground from any path, dirt or shore pixel (square window, same rule as gen_gardens.py)
+	var near_bad: int = 0
+	for f2: Variant in flowers:
+		var a2: Array = f2 as Array
+		if _path_near(ground, int(a2[0]), int(a2[1]), 4):
+			near_bad += 1
+	t.eq(near_bad, 0, "no flower bed sits within 4 texels of a path, dirt or shore edge")
 	t.eq(out_of_order, 0, "flowers are sorted by y, so they draw back to front")
 	for s in GardenArt.STATS.size():
 		t.ok(int(per_stat.get(s, 0)) >= 80, "%s has a real garden (%d flowers)" % [GardenArt.STATS[s], int(per_stat.get(s, 0))])
+
+
+## true when any path, dirt or shore pixel lies within r texels (a square window) of (x, y)
+static func _path_near(img: Image, x: int, y: int, r: int) -> bool:
+	var bad_cols: Array[Color] = [Color("f2e6a0"), Color("1f3b35"), Color("c2784e")]
+	for dy: int in range(-r, r + 1):
+		for dx: int in range(-r, r + 1):
+			var px: int = x + dx
+			var py: int = y + dy
+			if px < 0 or py < 0 or px >= img.get_width() or py >= img.get_height():
+				continue
+			if img.get_pixel(px, py) in bad_cols:
+				return true
+	return false
+

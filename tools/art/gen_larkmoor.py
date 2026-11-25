@@ -1054,8 +1054,18 @@ cu_ = (FU + 2.5 * (row_ % 2)) % 5.0
 cv_ = FV % 4.0
 joint_v = (cu_ < 1.0) & (vn2(FU / 3.0, FV / 3.0, 47) > .45)  # vertical joints: about half of them, so the road is not a grid
 joint_h = cv_ < 1.0                                          # horizontal joints: every row
-mortar = (joint_v | joint_h) & road_m
+# flagstones only near the windmill and the two bridges (Nathan's call): elsewhere the road is plain dirt with no joints
+_wm = [lm for lm in LAY.LANDMARKS if lm['kind'] == 'windmill'][0]
+_fl_pts = [(s2uv(*_wm['at']), 60.0), (s2uv(*LAY.BRIDGE), 36.0), (s2uv(*LAY.FOOT_CROSSING), 36.0)]
+fl_zone = np.zeros(FU.shape, bool)
+for (_pu, _pv), _rad in _fl_pts:
+    fl_zone |= np.hypot(FU - _pu, FV - _pv) < _rad
+mortar = (joint_v | joint_h) & road_m & fl_zone
 lt -= .30 * mortar                                           # a soft drop to the earth step, not a hard grid
+# v4 road (Nathan's pick): dirt first, with the flagstones inset. The whole road drops to the earth step, so the lit
+# stones stand out as cream tiles in a brown dirt road, instead of a pale sand road with dirt joints.
+lt -= .62 * (mat == T_PATH)     # road and lanes alike drop to the dirt (earth) step; sand alone sits well above it
+lt += .62 * (road_m & fl_zone & ~mortar)   # the flagstones near the windmill and bridges lift back to the lit sand stones
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
