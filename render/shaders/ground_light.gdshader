@@ -46,6 +46,24 @@ const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);
 varying vec2 wpos;
 
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
+}
+
+// Smooth value noise on the texel grid: the patch field the ground steps follow.
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = hash21(i);
+	float b = hash21(i + vec2(1.0, 0.0));
+	float c = hash21(i + vec2(0.0, 1.0));
+	float d = hash21(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, f.x), mix(c, d, f.y), f.y);
+}
+
 float bayer4(ivec2 p) {
 	ivec2 q = p & ivec2(3);
 	return (float(BAYER[q.y * 4 + q.x]) + 0.5) / 16.0;
@@ -184,15 +202,23 @@ void fragment() {
 			int cnt_g = RAMP_LEN[code] - 1;
 			float lo_g = floor(clamp(l0, 0.0, 0.9999) * float(cnt_g));
 			bool flat_g = true;
+			float ln_sum = 0.0;
 			vec2 offs_g[4] = vec2[4](vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0));
 			for (int j = 0; j < 4; j++) {
 				vec4 dn = texture(nrm_tex, UV + offs_g[j] * px);
 				vec3 nn = vec3(dn.rg * 2.0 - 1.0, 0.0);
 				nn.z = sqrt(max(1.0 - dot(nn.xy, nn.xy), 0.0));
 				float ln = dn.a * 1.8 - 0.4 + 1.05 * (max(dot(nn, normalize(sun_dir)), 0.0) - max(dot(nn, BASE_DIR), 0.0)) * relight;
+				ln_sum += ln;
 				if (floor(clamp(ln, 0.0, 0.9999) * float(cnt_g)) != lo_g) {
 					flat_g = false;
 				}
+			}
+			// Patches, not texels: ground takes the average of its own light and its four neighbours', plus a slow noise
+			// nudge about 11 texels across, so the step changes wander in soft patches. The Bayer threshold stays for the
+			// seam band only (flat ground takes its step with no checker). Water (107) and foam (108) keep their own look.
+			if (code >= 100 && code <= 109 && code != 107 && code != 108) {
+				l = (l0 + ln_sum) * 0.2 + (vnoise(wpos / 11.0) - 0.5) * 0.12;
 			}
 			l -= sh * shadow_amt * relight + occ * ao_amt;
 			if (abs(l - lb) > 0.03) {
