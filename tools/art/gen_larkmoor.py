@@ -245,6 +245,7 @@ M_DARKF = 34   # dark pocket cut into a bush: the shadowed inside of the leaf sh
 # Palette role 1 (#1c3a2e, dark blue-green) is the darkest step of the foliage ramp. Role 0 is ink and must not hold bush
 # shadow: at runtime the shadow multiplies it toward pure black, which reads as a hole under the bush.
 BUSH_EDGE = 1
+BUSH_BASE = 2   # the bottom rim of a bush, against the ground: one foliage step lighter than BUSH_EDGE
 DARKF_RAMP = [1, 1, 1, 2]   # the pocket, contact and rock-foot shade: role 1 with a few role-2 texels where the light lifts
 
 # ---------------- prop models (local coords: x right, y toward camera, z up) ----------------
@@ -1285,7 +1286,12 @@ def render_scene(keep):
     bush_ids = np.array([t['id'] for t in TALL if t['kind'] == 'bush'], np.int64)
     on_bush = np.isin(img_id, bush_ids) if len(bush_ids) else np.zeros((H, W), bool)
     out[ink & (img_id >= 0) & ~on_bush] = 0
-    out[ink & (img_id >= 0) & on_bush] = BUSH_EDGE
+    # the base of a bush (its bottom-facing rim, where it meets the ground) takes the next foliage step up, so the lit
+    # ground meets the bush softly instead of along a dark line. The sides and top keep BUSH_EDGE.
+    below_id = np.full((H, W), -2, np.int64); below_id[:-1] = img_id[1:]
+    bush_base_rim = ink & (img_id >= 0) & on_bush & (below_id != img_id)
+    out[ink & (img_id >= 0) & on_bush & ~bush_base_rim] = BUSH_EDGE
+    out[bush_base_rim] = BUSH_BASE
     # ---- surroundings: layered distant mountains and open water, so wide windows never see the void ----
     emp = out < 0
     if emp.any():
