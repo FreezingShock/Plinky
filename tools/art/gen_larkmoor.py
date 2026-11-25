@@ -744,6 +744,19 @@ for d_ in LAY.DISTRICTS:
     for (sx, sy) in d_['pads']:
         for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
             placed.append((*s2uv(sx + ox_, sy + oy_), 9))
+# sunny clearings: each pad row keeps an open band of PAD_CLEAR texels either side, so the groves thicken around the rows
+# and the pads read in sun. Footprints every 12 texels along the row, and one at each pad, so no tree crowds a plate.
+PAD_CLEAR = float(os.environ.get('PAD_CLEAR', '34'))
+for d_ in LAY.DISTRICTS:
+    _pts = d_['pads']
+    for (x0, y0), (x1, y1) in zip(_pts, _pts[1:]):
+        _uu0, _vv0 = s2uv(x0, y0); _uu1, _vv1 = s2uv(x1, y1)
+        _n_ = max(1, int(math.hypot(_uu1 - _uu0, _vv1 - _vv0) // 12))
+        for _k_ in range(_n_ + 1):
+            _t_ = _k_ / _n_
+            placed.append((_uu0 + (_uu1 - _uu0) * _t_, _vv0 + (_vv1 - _vv0) * _t_, PAD_CLEAR))
+    for (sx, sy) in _pts:
+        placed.append((*s2uv(sx, sy), PAD_CLEAR))
 # the two gateways (onboarding arch in the south, Emberwatch gate in the north), framing the walk-through
 for _g, _st in ((GATE, 'stone'), (GATE2, 'timber')): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False, style=_st)
 # landmarks first so groves flow around them
