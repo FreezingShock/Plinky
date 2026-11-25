@@ -1,1 +1,0 @@
-The Bloom and Nucleus Crowns now cost 40 instead of 150, so a player who saves for one reaches it in the first hour. Zone reset achievements say "reset a zone" instead of "rebirth". The bloom_wide gift shows the Sunlight icon.
