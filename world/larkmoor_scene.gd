@@ -281,6 +281,10 @@ var _queued: Dictionary = {}             # Vector2i chunk -> true, for the queue
 var _warm_queue: Array[Vector2i] = []    # every prop chunk, nearest the start first: their textures are made ready in the background
 var _warmed: Dictionary = {}             # "sway|file" or "rim|file" -> true once its texture is ready
 const SPAWN_BUDGET_MS: float = 2.0       # chunk spawns per frame: at least one, then more while this much of the frame is left
+## While a chunk on screen is still waiting, the spawns get this much instead. A camera pan brings in chunks faster than
+## 2 ms a frame spawns them (the probe: queue 5 to 19 chunks, 2 to 5 on screen missing for about 10 frames), which is the
+## visible pop-in. It only applies while the view is short of chunks, so a still camera keeps the 2 ms.
+const SPAWN_BUDGET_VIEW_MS: float = 4.0
 const WARM_BUDGET_MS: float = 1.0        # texture warm-up per frame, only while no chunk is waiting to spawn
 const LANTERN_STRENGTH: float = 1.0   # pool strength of a lantern: full, so the warm pool reads at 1x (QA: 0.9 was too faint)
 const LANTERN_RADIUS_K: float = 1.0   # lantern pool radius as a share of the shrine radius (62 texels in content/config/sky.tres)
@@ -611,10 +615,24 @@ func _shed_over_ceiling() -> void:
 
 
 ## Spawns queued chunks until SPAWN_BUDGET_MS of the frame is used. At least one, so the queue always moves.
+## The per-frame spawn time for the current queue: SPAWN_BUDGET_VIEW_MS while a chunk on screen waits, else SPAWN_BUDGET_MS.
+static func spawn_budget_ms(view_waiting: bool) -> float:
+	return SPAWN_BUDGET_VIEW_MS if view_waiting else SPAWN_BUDGET_MS
+
+
+## True when a queued chunk is on screen now (the queue is ring first, so the view's chunks come after the walker's).
+func _view_waiting() -> bool:
+	for key: Vector2i in _spawn_queue:
+		if _view.has_point(key):
+			return true
+	return false
+
+
 func _drain_spawns() -> void:
 	if _spawn_queue.is_empty():
 		return
 	var start_us: int = Time.get_ticks_usec()
+	var budget: float = spawn_budget_ms(_view_waiting())
 	var spawned: bool = false
 	while not _spawn_queue.is_empty():
 		var key: Vector2i = _spawn_queue[0]
@@ -626,7 +644,7 @@ func _drain_spawns() -> void:
 			continue
 		_load_chunk(key)
 		spawned = true
-		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= SPAWN_BUDGET_MS:
+		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= budget:
 			break
 	if spawned:
 		_rebuild_bushes()

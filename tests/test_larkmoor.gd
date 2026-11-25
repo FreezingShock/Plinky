@@ -23,6 +23,10 @@ func run(t: Object) -> void:
 	t.ok(scene_script.call("may_load", 3, 1300) as bool, "the view loads up to 1300 nodes")
 	t.ok(not (scene_script.call("may_load", 3, 1301) as bool), "the view stops above 1300 nodes")
 	# the hard ceiling: over 1340 nodes a chunk off the screen is shed, whatever raised the count
+	# spawn time per frame: the normal 2 ms, and a larger share only while a chunk on screen waits (a fast pan's pop-in)
+	t.near(scene_script.call("spawn_budget_ms", false) as float, 2.0, 0.0001, "a still view spawns within 2 ms a frame")
+	t.ok((scene_script.call("spawn_budget_ms", true) as float) > (scene_script.call("spawn_budget_ms", false) as float), "a waiting view on screen gets a larger spawn budget")
+	t.ok((scene_script.call("spawn_budget_ms", true) as float) <= 4.0001, "the waiting-view budget stays at 4 ms or less")
 	t.ok(not (scene_script.call("may_shed", 1340) as bool), "1340 nodes is still within the hard ceiling")
 	t.ok(scene_script.call("may_shed", 1341) as bool, "1341 nodes sheds a chunk")
 	t.eq((sim.zone_defs.get(&"zone1") as ZoneDef).next_zone, &"larkmoor", "the onboarding gate leads to Larkmoor")
