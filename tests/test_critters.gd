@@ -54,6 +54,44 @@ func run(t: Object) -> void:
 		texels += (run as PackedInt32Array)[2]
 	t.eq(texels, _drawn_texels(LifeCritters.RABBIT_SIT), "runs cover every drawn texel of the rabbit")
 
+	# Ramp shading: the shaded sprites keep every texel, ink stays on the anchor, and a lit rim and an underside exist.
+	var shaded: Dictionary = LifeCritters._make_shaded(LifeCritters.RABBIT_SIT)
+	var shaded_texels: int = 0
+	var lit: int = 0
+	var under: int = 0
+	var ink_ok: bool = true
+	for run: Variant in shaded.runs as Array:
+		var rr: PackedInt32Array = run as PackedInt32Array
+		shaded_texels += rr[2]
+		var code: int = rr[3]
+		var role: int = (code - 8) >> 2 if code >= 8 else code
+		var step: int = (code - 8) & 3 if code >= 8 else 2
+		if role == 0 and code != 0:
+			ink_ok = false
+		if step == 3:
+			lit += rr[2]
+		elif step == 1:
+			under += rr[2]
+	t.eq(shaded_texels, texels, "shaded runs cover every texel of the rabbit")
+	t.ok(ink_ok, "ink texels stay on the anchor (code 0)")
+	t.ok(lit > 0 and under > 0, "the rabbit has a lit rim (%d) and an underside (%d)" % [lit, under])
+	var pal: PackedColorArray = LifeCritters.shade_palette(Palettes.MEADOW)
+	t.eq(pal.size(), 40, "the shade palette has 8 anchors plus 8 roles at 4 steps")
+	var anchors: PackedColorArray = Palettes.colors(Palettes.MEADOW)
+	var anchors_ok: bool = true
+	for role: int in 8:
+		if pal[role] != anchors[role]:
+			anchors_ok = false
+	t.ok(anchors_ok, "codes 0..7 are the zone anchors")
+	t.eq(LifeCritters.ramp_code(6, 2), 6, "the anchor step is the plain role number")
+	t.eq(LifeCritters.ramp_code(6, 3), 8 + 6 * 4 + 3, "a lit step codes as 8 + role * 4 + step")
+	t.ok(pal[LifeCritters.ramp_code(6, 3)] != anchors[6], "the lit step differs from the anchor")
+	var duck: Dictionary = LifeCritters._make_shaded(LifeCritters.DUCK_ART)
+	var duck_texels: int = 0
+	for run: Variant in duck.runs as Array:
+		duck_texels += (run as PackedInt32Array)[2]
+	t.eq(duck_texels, _drawn_texels(LifeCritters.DUCK_ART), "shaded runs cover every texel of the duck")
+
 	# Dither fade: half the texels at half strength, and all of them at full.
 	var kept: int = 0
 	for y: int in 4:
