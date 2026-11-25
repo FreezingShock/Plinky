@@ -1139,6 +1139,18 @@ lt -= .30 * mortar                                           # a soft drop to th
 lt -= .62 * (mat == T_PATH)     # road and lanes alike drop to the dirt (earth) step; sand alone sits well above it
 lt += .62 * (road_m & fl_zone & ~mortar)   # the flagstones near the windmill and bridges lift back to the lit sand stones
 mat[road_m & fl_zone & ~mortar] = T_STONE   # the stones are grey stone; the joints stay dirt (T_PATH)
+# road slabs (Nathan's reference): sparse flat grey stones about 6 by 4 texels on the dirt road, one per 11-texel cell in
+# some cells. The slab is stone code 70 and its joint ring stays dirt code 104 (T_PATH), so the engine relights the stone
+# grey and the joints brown. Cell offsets and picks are integer hashes, so the layout is the same every bake.
+_cs = 22   # FU samples run at about half the bake's texel scale, so the slab is 12 by 8 FU (about 6 by 4 bake texels)
+_cu = np.floor(FU / _cs).astype(np.int64); _cv = np.floor(FV / _cs).astype(np.int64)
+_sx = _cu * _cs + ((_cu * 31337 + _cv * 7919) % 12)
+_sy = _cv * _cs + ((_cu * 104729 + _cv * 1299709) % 12)
+_pick = ((_cu * 92821 + _cv * 68917 + 17) % 1009) / 1009.0 < .55
+_uu = np.floor(FU).astype(np.int64); _vv = np.floor(FV).astype(np.int64)
+_slab = _pick & (_uu >= _sx) & (_uu < _sx + 12) & (_vv >= _sy) & (_vv < _sy + 8)
+_joint = _slab & ((_uu == _sx) | (_uu == _sx + 11) | (_vv == _sy) | (_vv == _sy + 7))
+mat[_slab & ~_joint & (mat == T_PATH)] = T_STONE
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -1306,6 +1318,12 @@ def render_scene(keep):
     _hh = ((XX * 92821 + YY * 68917) % 1009) / 1009.0
     out[_verge & (_hh > .988)] = 6
     out[_verge & (_hh < .006)] = 7
+    # stone interiors are solid (Nathan's reference, and Bayer on edges only): a stone texel whose whole 3x3 is stone takes the
+    # solid light step, and its outer ring keeps the dithered edge from RAMP[T_STONE]. Joints are dirt (T_PATH), so they stay brown.
+    from PIL import ImageFilter as _IFs
+    _stone = Image.fromarray(((img_mat == T_STONE) * 255).astype(np.uint8))
+    _stone_in = np.asarray(_stone.filter(_IFs.MinFilter(3))) > 0
+    out[_stone_in] = 7
     # water: depth bands, stepped glints, foam, white water on slopes
     wsel = img_mat == T_WATER
     if wsel.any():
