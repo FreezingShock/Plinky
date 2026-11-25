@@ -449,6 +449,12 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
 
+## Flower fields and pads, T4 (25 Nov)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-25 | Flower fields keep today's flower shapes, sizes and density (mockup M1, Nathan's pick). Only the greens move, onto the meadow zone ramp: stems, shrubs and leaves use meadow base, deep and light steps 1 | Nathan likes the current density. Recolouring the leaves keeps the zone's hue family without redrawing a sprite. |
+| 2026-11-25 | Each field sits on one soft ground patch, drawn once by GardenLayer from the flower positions (blurred cells, four Bayer levels, meadow deep ramp at low alpha) | Gower rule 5: big organic ground patches. One texture for the layer, no per-field node, so the 1350 node ceiling is unaffected. |
+| 2026-11-25 | Each pad's field is checked against its row: every flower within 40 texels of a pad is that row's statistic (tools/art/gen_gardens.py GARDENS and the district names) | The mismatch check passed on the data. Nothing in the field generator changes. |
 ## 2026-11-25: Icon colour families on the ramps (T11)
 - **Nathan's pick:** Option A, colour families (mockups in `/mnt/project-files/icon-restyle/`). Option B (one meadow ramp) and C (rebirth on the quarry ramp) were rejected.
 - **Decision:** every staged icon (`tools/art/staged/*.txt`, 48 icons at 8, 12, 16, 24 and 32 px) takes its role colours from one hue family's RAMP in `render/palettes.gd`. Families live in `tools/art/icon_ramps.py`: meadow for stats and nature, quarry for embers, cinder, slag, ore, ingot, alloy and emberheart, iris for rebirth, prestige and crowns, tidewater for clock, rest and offline.
