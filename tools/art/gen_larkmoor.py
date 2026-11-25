@@ -788,6 +788,7 @@ TREE_GAP = dict(oak=6.0, pine=8.0)
 TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
 # round 4: groves clump toward their centre and open out at the edge (try_region's clump), like the v3 groves
 TREE_CLUMP = dict(oak=float(os.environ.get('OAK_CLUMP', '.75')), pine=float(os.environ.get('PINE_CLUMP', '.7')))
+TREE_MUL = dict(oak=float(os.environ.get('OAK_MUL', '1.3')), pine=float(os.environ.get('PINE_MUL', '1.3')))   # extra tree attempts per grove, for centre density
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
@@ -797,7 +798,8 @@ for kind, c_, rad, n in LAY.GROVES:
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind in TREE_CLUMP: kw['clump'] = TREE_CLUMP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
-    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL)
+    # round 4b: oaks and pines get extra attempts, so the clumped centres fill in (TREE_MUL); bushes keep GROVE_MUL alone
+    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL * TREE_MUL.get(kind, 1.0))
     try_region(kind, *SC(c_), rad * .72, n_ if not FAST else max(1, n_ // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
