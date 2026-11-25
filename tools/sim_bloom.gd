@@ -4,6 +4,7 @@ extends SceneTree
 ## Run: godot --headless --path . --script tools/sim_bloom.gd [-- seeds_to_wait_for [cycles]]
 ## Exits 1 unless it reaches the Blooms asked for (default 5) and the last cycle is shorter than the first.
 ## seeds_to_wait_for (default 2): Bloom once the payout reaches this many Seeds. Higher = longer, fatter cycles.
+## Also reports the Bloom at which a player who saves Seeds for the Bloom Crown can first afford it (unlocked and paid for).
 
 const DT: float = 0.25
 const MAX_SECONDS: float = 12.0 * 3600.0
@@ -61,6 +62,7 @@ func _init() -> void:
 	var cycle_len: Array[float] = []
 	var gifts: int = 0
 	var seeds_total: int = 0
+	var crown_at: int = 0   ## the Bloom count at which a player who saves Seeds for the Bloom Crown can afford it (0 = not yet)
 	sim.enter_zone(&"zone1")
 	while t < MAX_SECONDS and done < cycles:
 		sim.step(DT)
@@ -80,9 +82,14 @@ func _init() -> void:
 			done += 1
 			seeds_total += paid
 			gifts += _buy_gifts(sim)
+			if crown_at == 0 and sim.attr_unlocked(&"bloom_crown") and float(seeds_total) >= sim.attribute_cost(&"bloom_crown").to_float():
+				crown_at = done
+				print("Bloom Crown affordable by saving at Bloom %d (%.1f min), %d Seeds earned" % [done, t / 60.0, seeds_total])
 			print("Bloom %2d at %6.1f min (cycle %5.1f min): +%d Seeds (total %d), %d gifts, pad reward x%.2f" % [done, t / 60.0, (t - started) / 60.0, paid, seeds_total, gifts, mult])
 			started = t
 	print("%d Blooms in %.1f min%s" % [done, t / 60.0, "" if done >= cycles else " (NOT all reached)"])
+	if crown_at == 0:
+		print("Bloom Crown not affordable by saving in %d Blooms" % done)
 	var faster: bool = cycle_len.size() >= 2 and cycle_len[cycle_len.size() - 1] < cycle_len[0]
 	print("later Blooms come %s (first cycle %.1f min, last %.1f min)" % ["sooner" if faster else "NOT sooner", cycle_len[0] / 60.0 if not cycle_len.is_empty() else 0.0, cycle_len[cycle_len.size() - 1] / 60.0 if not cycle_len.is_empty() else 0.0])
 	quit(0 if done >= cycles and faster else 1)

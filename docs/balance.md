@@ -1,6 +1,6 @@
 # Plinky zone 1 starting balance (v0)
 
-> **Which tables are live?** Sections 1 to 8 are the original v0 numbers (five meadow pads, r2 cost 30000) and are kept as history. Section 9 and 10 describe the v1 tuning. Section 11 (round 3) is the current balance for relics, attributes, Larkmoor pads and mastery. Meadow pads are now the six-tier flower ladder (v0.27.0, see decisions.md 2026-11-23); `content/*.tres` and `tools/sim.gd` are the truth over any table here.
+> **Which tables are live?** Sections 1 to 8 are the original v0 numbers (five meadow pads, r2 cost 30000) and are kept as history; they still name removed Larkmoor pads, Prestige attributes and Rebirth, so do not read them as current. Section 9 and 10 describe the v1 tuning. Section 11 (round 3) describes relics, attributes, Larkmoor pads and mastery, but its Prestige and RP attributes are parked since 25 Nov (see section 16). The current economy is sections 14 and 16. Meadow pads are now the six-tier flower ladder (v0.27.0, see decisions.md 2026-11-23); `content/*.tres` and `tools/sim.gd` are the truth over any table here.
 
 Status: starting values from a quick simulation, 22 Nov 2026. Not tuned by play. `tools/sim.gd` replaces these numbers in M2 and should be the source of truth after that. Every value below belongs in `content/*.tres`, never in a script (SPEC section 5 rules).
 
@@ -288,4 +288,35 @@ Run on branch `claude/mid-game-goals` (0bc18d1), loop, 2 Seeds.
 - Goals with the PR: Bloom 10 at 53.1 min (was 59.3), Quarry gate at 56.9 (was 64.7), Nucleus 10 at 81.5 (was 94.5), active. Idle: Bloom 10 100.4 (was 113.9), Nucleus 10 155.5 (was 180.9).
 - Goal times, active: Steady Hands 5.5, Known Ground 8.9, Curio Shelf 9.5, Round Again 15.1, Open Doors 15.1, Seasoned 34.4, Practised Hands 43.0, Lucky Strikes 68.0, An Hour In 60.0. Not reached in the 81-minute run: Long Afternoon (4 h), Tuned Up (attributes 10, the sim buys none), Second Nature (Mastery 15).
 - Total bonus reached in the run: +21% of the chain's +28%.
-- **Tuning notes for PR #521.** Five goals land in the first 15 minutes, so the start is quick. Curio Shelf (6 relic kinds) at 9.5 min is nearly free and could move to 10 kinds. An Hour In is time-gated, so it holds the Next Goal card for the first hour. Tuned Up and Second Nature sit beyond this run, which is fine for late goals.
+- **Tuning notes for PR #521.** Five goals land in the first 15 minutes, so the start is quick. Curio Shelf (6 relic kinds) at 9.5 min is nearly free, so it now asks for 10 kinds (`goal_relics_6`, id kept; see decisions/balance.md 2026-11-25). An Hour In is time-gated, so it holds the Next Goal card for the first hour. Tuned Up and Second Nature sit beyond this run, which is fine for late goals.
+
+## 16. Economy retune and away play (25 Nov 2026)
+Tools: `tools/sim_away.gd` (new, away against active), `tools/sim_bloom.gd` (now reports when the Bloom Crown is affordable), `tools/sim_run.gd` (unchanged). Pacing numbers below are medians over 8 seeds (`sim_run`) or 3 seeds (`sim_away`), active at 4 presses a second. Greedy buyer, no walking, relics or gifts, except where a row says otherwise. Not run in the engine.
+
+**Current pacing (main, loop, 2 Seeds per Bloom, active).** Meadow gate 10.1 min. Larkmoor gate opens and the Quarry arrival is Bloom 10 at 50.9 min. Quarry gate 54.7. Nucleus 10 at 79.5. Idle takes about 1.9 times as long to reach each gate (time to gate is the rule: Nathan, 25 Nov). These run a few minutes earlier than section 15 because the mid-game goals and the seed spread since then have changed the loop. The 60-minute target is still the 10th Bloom, so it is met with room to spare.
+
+**Bloom Crown (gift retune).** The Crown was 150 Seeds, unlocked at 10 Blooms. The Bloom gift set (every Seed gift at its max) costs about 4,830 Seeds in total, not the 2,250 the sealed-cache note assumed. At 150, a player who saves Seeds has 81 by Bloom 40, so the Crown never comes. Cost set to 40 (the audit's pick). With 40, `tools/sim_bloom.gd` (2 Seeds per Bloom, buying the cheapest gifts first) shows the Crown affordable by saving at Bloom 20, at about 56 min, with 41 Seeds earned. The Nucleus Crown is also 150; it is set to 40 to match, but no Quarry buyer measures it yet, so that number is a guess from the Bloom result, not a run.
+
+**Away play (`tools/sim_away.gd`).** After the checkpoint, the active branch keeps pressing for 2 hours, and the away branch calls `apply_offline(7200)`. Gains are per stat, away divided by active:
+| After | Stat | Active 2 h | Away 2 h | Away / active |
+|---|---|---|---|---|
+| 5 min | Dewdrops | 6.6e5 | 2.3e4 | 0.035 |
+| 15 min | Cinder | 3.2e4 | 2.5e3 | 0.078 |
+| 30 min | Embers | 3.1e8 | 2.3e8 | 0.73 |
+| 30 min | Ironore | 5.2e4 | 8.1e6 | 154 |
+| 30 min | Cinder | 8.0e2 | 2.4e6 | 2995 |
+| 60 min | Embers | 2.8e8 | 1.3e8 | 0.46 |
+| 60 min | Emberheart | 4.3e4 | 2.7e4 | 0.62 |
+| 60 min | Alloy | 2.3e6 | 2.4e8 | 108 |
+| 60 min | Ironore | 9.3e4 | 5.2e7 | 557 |
+| 60 min | Ingot | 6.9e3 | 6.9e7 | 9965 |
+
+Reading: the passive stat a player is in (Embers in the Quarry) comes out at 0.46 to 0.73 of active, which is the 0.5 offline rule working as written. The tending path is not: offline tending presses each tier's top pad about 360 times in 2 hours (`offline_tend_fraction` 0.0125 over the press interval) and pays the full reward per press (the 1/8 press scale is divided back out). An active player spreads 28,800 presses at 1/8 reward across the pads, so no single pad gets anything like that. My reading is that this is a balance hole, not a fair 0.5x. It is not confirmed in the engine. Caveat: the away branch cannot change zones, while the active branch can cross gates, so the zone mix differs between branches. No offline income was changed. Nathan decides the away rule after this measurement (coordinator, 25 Nov).
+
+**Press gate (measured, kept as it was).** Option tried: gate a player press on press cost (press_scale of the pad price) rather than the full price. Current pacing vs the press-cost gate: meadow gate 10.1 vs 36.6 min, Bloom 1 at 15 vs 37 min, Bloom 10 at 50.9 vs 50.3, Quarry gate 54.7 vs 51.7, Nucleus 10 at 79.5 vs 67.5. The greedy buyer spends the shared stock on the top pad's cheap-to-start presses, so the first hour slows. Nathan's locked pacing is the meadow gate near 10 minutes, so the full-price gate stays. Not shipped.
+
+**Attributes parked.** Eleven attributes could never be bought: eight paid in Prestige and three in RP, and Rebirth is off (`rebirth_zones` is empty), so neither currency is ever earned. Moved to `content/parked/attributes/`. Three of their effects have no zone gift at all: press rate, luck and crit damage. Those effects are now only in the parked files. `tests/run.gd` revives the eleven into every test sim so their mechanics stay tested. A save that still holds levels of these attributes keeps them aside on load (`_retired_levels`), so the quarry migration refunds one Core Shard per level as before (covered in `tests/test_nucleus.gd`).
+
+**Doc drift fixed.** Idle wording in SPEC and this file now says time to gate (idle presses at 0.5 of active in config). Sections 1 to 8 are marked as history. Section 15's Curio Shelf line now says 10 kinds. Rebirth achievement text now says "reset a zone", since the counter is every Bloom and Nucleus. `bloom_wide` uses the Sunlight icon, not the parked Cash icon. The 2,250 Seeds figure in the sealed-cache entry is corrected here: the Seed gift set is about 4,830.
+
+**Open for Nathan, not changed.** The away rule (offline income and whether tending pays the full press reward). Whether the Nucleus Crown should be measured before it ships at 40.
