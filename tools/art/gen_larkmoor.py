@@ -291,9 +291,7 @@ def make_bush(rng):
         for pc, pr in pockets:
             cut = -sdf_sphere(x, y, z, pc, pr)
             m = np.where(cut > d, M_DARKF, m); d = np.maximum(d, cut)
-        # contact: a thin, soft-edged dark slab under the bush, a little wider than its skirt, so the foot reads as shade on the ground
-        dc = sdf_ell(x, y, z, (0, 0, 0), (7.4, 6.6, .6)) + .9 * (vn2(x * .7, y * .7, seed + 9) - .5)
-        sel = dc < d; m = np.where(sel, M_DARKF, m); d = np.minimum(d, dc)
+        # no contact slab: a dark disc under the bush read as a hard circle. The runtime cast shadow (world/sky_shadows.gd) gives the soft shade.
         for b in berries:
             db = sdf_sphere(x, y, z, b, 1.0) ; sel = db < d; m = np.where(sel, M_BERRY, m); d = np.minimum(d, db)
         return d, m
@@ -1023,6 +1021,16 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
+# under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
+# ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
+vb = .6 * vn2(FU / 26, FV / 26, 61) + .4 * vn2(FU / 11, FV / 11, 62)
+lt += np.where(vb < .36, -.13, np.where(vb > .64, .13, 0.)) * (mat == T_GRASS)
+lt += .10 * (mat == T_PATH)
+from PIL import ImageFilter as _IF
+_tall = ((HS - H0) > 2.5).astype(np.uint8) * 255
+_under = np.asarray(Image.fromarray(_tall).filter(_IF.MaxFilter(9)).filter(_IF.GaussianBlur(2.5))).astype(np.float32) / 255.0
+lt -= .16 * np.clip(samp(_under, FU, FV), 0, 1) * (mat == T_GRASS)
 # main road = flagstones: lit sand stones in staggered rows, with worn earth mortar between them. Lanes stay plain packed
 # sand and trails stay dark earth, so the three tiers read apart at 1x without a new material. The mortar is a light
 # drop only, so the palette and the ramp stay the same as the path's.

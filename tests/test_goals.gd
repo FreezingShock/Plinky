@@ -119,6 +119,8 @@ func run(t: Object) -> void:
 		&"gates_open": 9.0, &"attributes_bought": 99.0, &"relic_kinds": 10.0})
 	var done_v: Dictionary = NextGoalCard.view_for(fresh, {})
 	t.eq(bool(done_v["done"]), true, "the card reads done once the chain is finished")
+	t.ok(not NextGoalCard.shown_for(fresh), "the goals card is hidden once every goal is reached")
+	t.ok(NextGoalCard.shown_for(Goals.new(sim.goals.sorted)), "and shown while a goal is still open")
 	t.near(float(done_v["bonus"]), fresh.mult() - 1.0, 1e-9, "and shows the total bonus")
 	var ann: Dictionary = NextGoalCard.announcement(sim.goals.sorted[0])
 	t.eq(ann["title"], "Goal Reached", "the banner is titled Goal Reached")

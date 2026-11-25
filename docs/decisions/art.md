@@ -512,3 +512,16 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept:** the forward carry, capped to the room left in the grabbed half. The lift drop onto the arc is unchanged: the sun dropping about 33 texels from a high release is that drop, not a fault.
 - **Pass metric for QA:** after release, the body's offset below its arc point at its current phase (`-lift * reach`, drawn straight down, in art texels) must stay at or under 0.37 texels. Travel along the arc is not the metric: it includes the flick carry and the natural clock.
 - **Not verified in-engine:** how a stop after a backward flick feels on the PC.
+
+## 2026-11-25: Field flowers drop the ink outline for a shadow-side rim (Nathan picked C)
+- **Change:** `GardenArt._outline` (world/garden_art.gd) now paints a one-texel rim only on the shadow side of a field flower (empty cells below or right of the plant), in the zone's deep leaf green `FLOWER_RIM` (#225a4a). The lit upper-left edge gets no rim. Small flowers and shrubs were never inked and are unchanged.
+- **Why:** the black ring made each Sprout daisy read as a sticker on a 4 to 6 texel sprite. A rim in the ground's own hue reads as a cast shadow and keeps the petals bright. Gower rule 3: value edges, not ink, on nature.
+- **Picked from:** three in-engine mockups on the real Larkmoor frame (Reedgate): A, a ring in each flower's own darkest step on every side (muddy); B, no ring with a shade rim on the lower right (lowest contrast on pale grass); C, the shadow-side rim.
+- **Not changed:** the walker, critters and props keep their ink. Small bushes come from the bush generators and belong to the bush thread.
+- **Not verified in-engine:** Heather, Thistle, Clover, Foxglove and Starbloom fields, and the winter and autumn states, beyond the summer tests.
+
+## 2026-11-25: Night flower glow at 75% saturation, not full neon (Nathan picked S1)
+- **Change:** `FlowerGlow.NEON_SAT` is 0.75 (was 1.0). Each field's glow keeps its own petal hue and the alpha stays at `NIGHT_ALPHA` 0.6. Day is unchanged (`DAY_ALPHA` 0).
+- **Why:** full neon made the Sprout field an electric blue-green patch, louder than the rest of the art. Nathan rejected the warm and muted variants because they drained the colour, so only the saturation came down.
+- **Picked from:** the shipped neon, then S1 (75%), S2 (60%), S3 (85% with a warm lift) at night in Reedgate. The warm, ochre and muted tints from the earlier round were rejected.
+- **Tooling:** `tools/flower_glow_shots.gd` has the mockup variants (`NEON_SAT`, `NEON_VAL`, `TINT_MIX`) for future looks.

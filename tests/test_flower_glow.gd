@@ -23,3 +23,7 @@ func run(t: Object) -> void:
 	glow.set_winter(false)
 	t.ok(glow.modulate.a > FlowerGlow.NIGHT_ALPHA * FlowerGlow.WINTER_SCALE + 0.001, "a summer night keeps the full glow")
 	glow.free()
+	# the glow is not neon: every statistic's glow hue sits at or under NEON_SAT saturation, and keeps its own hue
+	for i in GardenArt.STATS.size():
+		var tint: Color = FlowerGlow._tint(i)
+		t.ok(tint.s <= FlowerGlow.NEON_SAT + 0.001, "%s glow is softened to %.2f saturation" % [GardenArt.STATS[i], FlowerGlow.NEON_SAT])
