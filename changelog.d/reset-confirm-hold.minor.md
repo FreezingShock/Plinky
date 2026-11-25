@@ -1,1 +1,0 @@
-Bloom and Nucleus confirm is now a centred card with a big Seeds or Core Shards icon and the count under it. Hold to Strike (press and hold the icon or the bar) fills with rings, and the ritual flies the coin out of the icon. Other menus close while it is up.
