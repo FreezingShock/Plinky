@@ -448,3 +448,11 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
+
+## 2026-11-25: Icon colour families on the ramps (T11)
+- **Nathan's pick:** Option A, colour families (mockups in `/mnt/project-files/icon-restyle/`). Option B (one meadow ramp) and C (rebirth on the quarry ramp) were rejected.
+- **Decision:** every staged icon (`tools/art/staged/*.txt`, 48 icons at 8, 12, 16, 24 and 32 px) takes its role colours from one hue family's RAMP in `render/palettes.gd`. Families live in `tools/art/icon_ramps.py`: meadow for stats and nature, quarry for embers, cinder, slag, ore, ingot, alloy and emberheart, iris for rebirth, prestige and crowns, tidewater for clock, rest and offline.
+- **Shading:** texels on the upper-left lit edge take ramp step 3, texels on the lower-right shaded edge take step 1, and the rest take step 2 (the anchor). Ink stays ink.
+- **Kept:** the ink outline, the 8 role names, and literal material and relic colours (object identity). Rarity frames stay fixed hex, per CLAUDE.md.
+- **Not yet done:** the gallery menu icons (`menu_*`, from `gen_menu_icons.py`) and `gen_ledger.py` art still use the flat meadow anchors. `docs/img/icons_staged.png` still shows the unshaded set.
+- **Not verified in-engine:** the cloud has no Godot run for this change. Icon paths are unchanged, so no code path moves.

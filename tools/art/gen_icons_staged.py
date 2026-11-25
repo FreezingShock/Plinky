@@ -6,6 +6,8 @@ Also writes a contact sheet to docs/img/icons_staged.png. Run: python3 tools/art
 import os, sys, glob
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import staged_kit as k
+import icon_ramps as ir
+from PIL import Image
 
 ROOT = os.path.join(k.HERE, '..', '..')
 OUT = os.path.join(ROOT, 'assets', 'icons')
@@ -29,14 +31,20 @@ def main():
     for n in names:
         grids = k.parse(os.path.join(k.SRC, n + '.txt'))
         assert sorted(grids) == list(k.SIZES), '%s has sizes %s' % (n, sorted(grids))
+        fam = ir.FAMILY_OF.get(n, ir.DEFAULT_FAMILY)
         for s, g in grids.items():
             p = dest(n, s)
             os.makedirs(os.path.dirname(p), exist_ok=True)
-            k.image(g).save(p)
+            shaded = ir.shade(g, s, fam)                  # role -> ramp step of its family (Gower rules 2 and 9)
+            rgba = Image.new('RGBA', (s, s), (0, 0, 0, 0))
+            for y, row in enumerate(shaded):
+                for x, c in enumerate(row):
+                    if c is not None:
+                        rgba.putpixel((x, y), c)
+            rgba.save(p)
         sheets.append((n, grids))
     sheets.sort(key=lambda t: ORDER.index(t[0]) if t[0] in ORDER else 99)
     os.makedirs(os.path.join(ROOT, 'docs', 'img'), exist_ok=True)
-    from PIL import Image
     cols = 4
     per = -(-len(sheets) // cols)
     parts = [k.sheet(sheets[i * per:(i + 1) * per], scale=3, bg=(40, 46, 56, 255)) for i in range(cols) if sheets[i * per:(i + 1) * per]]
