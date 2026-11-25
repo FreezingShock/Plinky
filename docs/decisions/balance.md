@@ -162,3 +162,10 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Pacing check (`tools/sim.gd`, probe in a scratch copy, not committed):** the sim plays greedily with no gifts and no attributes, and resets Bloom whenever it can. Blooms land at about 15 min (when Larkmoor opens), then at each count the gates need: 2 at 29 min, 3 at 37, 5 at 48, 7 at 52, 10 at 58 (seeds 1 to 3 agree within 2 min). So the 10 gate falls at the 60-minute Larkmoor target. This is a floor: real play with Bloom gifts will be faster.
 - **Not checked:** Nucleus cadence (the probe covers the meadow's Bloom only), and how the gifts change the cadence. PC QA or a playtest should time the 7 and 10 gates.
 - **Alternative if the 10 gate feels late:** top the spread at 9. On this floor the 9 gate would fall at about 56 min, two minutes earlier.
+
+## 2026-11-25: Full-run pacing chart (tools/sim_run.gd), no balance change
+- **What:** `tools/sim_run.gd` plays Meadow, Larkmoor and the Ember Quarry under each profile, in two modes: push (no resets) and loop (take Bloom or Nucleus after each gate, to 10 uses). It reports gate times, every reset tier, goal times and the longest stretch with nothing to buy. Chart and findings: `docs/balance.md` section 14.
+- **Result (active, 4 presses/s, loop):** Bloom 10 at 59.3 min (target about 60), Quarry gate at 64.7, Nucleus 10 at 94.5. Idle takes about 1.9x as long (target about 2x).
+- **Result (push):** the Quarry gate takes 116 min without resets, so the Bloom loop is the way through.
+- **Open for Nathan:** the Larkmoor gate opens at 15 min, while the 60-minute target is met by the 10th Bloom. Which one is the target? No numbers changed.
+- **Not checked yet:** walking, gifts, attributes and relic equips, so these are floors.
