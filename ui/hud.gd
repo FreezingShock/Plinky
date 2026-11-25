@@ -398,6 +398,16 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 		cname, lines, "Hold to Strike", func(origin: Vector2) -> void:
 			BloomRitual.launch_global = origin
 			GameState.try_reset(rid))
+	_place_reset_confirm()   # centred now, so the first press in this frame hits the card where it is drawn
+
+
+## Centre the reset confirm on the frame while it is up.
+func _place_reset_confirm() -> void:
+	if _reset_confirm == null or not _reset_confirm.visible:
+		return
+	var rp: Vector2 = ((frame - _reset_confirm.size) * 0.5).floor()
+	if _reset_confirm.position != rp:
+		_reset_confirm.position = rp
 
 
 ## True while a zone reset confirm is up. MenuRouter refuses to open other menus meanwhile.
@@ -1082,10 +1092,7 @@ func _place() -> void:
 		mp0.y = minf(mp0.y, roundf(frame.y * 0.3))
 		if _modal.position != mp0:
 			_modal.position = mp0
-	if _reset_confirm != null and _reset_confirm.visible:
-		var rp: Vector2 = ((frame - _reset_confirm.size) * 0.5).floor()
-		if _reset_confirm.position != rp:
-			_reset_confirm.position = rp
+	_place_reset_confirm()
 	if _welcome != null and _welcome.visible:
 		_welcome.place(frame)
 	if _save_note != null and _menu_chip != null:
