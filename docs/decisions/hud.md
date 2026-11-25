@@ -651,3 +651,7 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** the Stats index printed raw floats ("x5.00", "0.35", "3.33/s") that ignored the Multiplier setting, and 15-digit payouts ran together. Three figures keep one rule across the range, and one helper per kind of number stops the copies drifting.
 - **Checked:** `tests/run.gd` passes after `--import` (checks added in `tests/test_format.gd`; the thousands test in `tests/test_reset_gain.gd` now expects "1,234").
 - **Not run in-engine:** how the wider payout lines wrap in the reset confirm card and the tooltips at zoom 1 and 3. PC QA should check the Stats index crit damage and press rate rows, and the gate label on Larkmoor.
+## 2026-11-25: Next Goal card, top left
+- **What:** `ui/next_goal_card.gd` shows the first unreached goal, its name, a progress bar and `value / target  +x%`. Hover shows the goal's description and the total bonus. When the chain is done it reads "All Goals Reached".
+- **Why top left:** the zone panel holds the top right and the bottom bar holds the bottom, so the top left was the free corner. Gated on Dewdrops like the stat strip, so the tutorial is not crowded.
+- **Reached:** a banner, "Goal Reached", shows the goal and its bonus. Hud owns the `Banner` call, because the card cannot name the autoload and stay testable in `--script` mode.

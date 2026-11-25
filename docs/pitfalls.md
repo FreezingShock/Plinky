@@ -12,6 +12,7 @@ Read this before your first change. Each line is a mistake that has already cost
 - **Shared tooltips are `Tip` and `TipHost`.** Never hand-roll a tooltip.
 - **Toasts, banners and tips wait on `FxConfig.bloom_running`** while the ritual plays. A new popup that ignores it will fight the ritual.
 - **All stat values are `BigNum`**, formatted only through `core/number_format.gd`. A float in a stat path is a bug even when it looks harmless.
+- **`Image.load_from_file` on a `res://` path fails in exported builds.** Use `ZoneAssets.texture` or `ZoneAssets.backdrop_image`. The one remaining call, the fallback in `world/sky_cycle.gd`, only warns when it fails.
 
 ## Process and git
 - **Draft and conflicting PRs never run CI.** Merge `main` in, mark the PR ready, and enable auto-merge (`gh pr merge --auto --squash <PR>` or the GitHub tool).
