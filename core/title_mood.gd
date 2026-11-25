@@ -112,10 +112,42 @@ static func next_phase(p: float) -> float:
 ## Sun or moon position in backdrop texels. By day the sun rides the arc; at night the moon rides the same arc, so
 ## the body is always on screen and sets behind the far land.
 static func body(sky: SkyModel, t: float) -> Vector2:
-	var s: float = SkyModel.sun_of(sky.phase(t))
-	var e: float = clampf(s, 0.0, 1.0) if s >= 0.0 else clampf(-s, 0.0, 1.0)
-	var x: float = ARC_CENTRE_X + sky.azimuth(t) * ARC_HALF_WIDTH
+	return arc_point(sky.phase(t))
+
+
+## The arc position of the sun or moon at phase p (0..1, wraps). The sun rides sunrise to sunset (0.25 to 0.75), the moon
+## the rest of the day, so the body is the sun by day and the moon by night.
+static func arc_point(p_in: float) -> Vector2:
+	var p: float = fposmod(p_in, 1.0)
+	var sun: bool = p >= 0.25 and p <= 0.75    # by phase, not by sign: sun_of(0.25) is a hair below zero in floats
+	return arc_at(p if (sun or p >= 0.75) else p + 1.0, sun)
+
+
+## The arc position on one half of the day, for an unwrapped phase u: the sun's half (sun true, sunrise 0.25 to sunset
+## 0.75) or the moon's (moonrise 0.75 to moonset 1.25). The height is the sun's height, or the moon's depth below the horizon.
+static func arc_at(u: float, sun: bool) -> Vector2:
+	var e: float = clampf(absf(SkyModel.sun_of(u)), 0.0, 1.0)
+	var x: float = ARC_CENTRE_X + arc_azimuth(u, sun) * ARC_HALF_WIDTH
 	return Vector2(x, ARC_HORIZON_Y - e * ARC_HEIGHT)
+
+
+## Left-to-right position on one half of the arc: -1 at its start (sunrise, or moonrise), +1 at its far end. Each half
+## runs half a day, so the sun's x and the moon's x each sweep the full width once.
+static func arc_azimuth(u: float, sun: bool) -> float:
+	var n: float = clampf((u - arc_start(sun)) / 0.5, 0.0, 1.0)
+	return -cos(n * PI)
+
+
+## First phase of the body's half of the arc: 0.25 (sunrise) for the sun, 0.75 (moonrise) for the moon.
+static func arc_start(sun: bool) -> float:
+	return 0.25 if sun else 0.75
+
+
+## The unwrapped phase on the sun's or moon's half that puts the body at backdrop x: the inverse of arc_azimuth. The arc's
+## azimuth is -cos(theta), so theta = acos(-azimuth). An x past either end clamps to that end.
+static func phase_for_x(x: float, sun: bool) -> float:
+	var a: float = clampf((x - ARC_CENTRE_X) / ARC_HALF_WIDTH, -1.0, 1.0)
+	return arc_start(sun) + 0.5 * acos(-a) / PI
 
 
 ## Star visibility 0..1: none by day, full on a clear night.
