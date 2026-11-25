@@ -140,7 +140,7 @@ def style_clumpblades(XX, YY, nz):
     D = (fbm2(XX / 56.0, YY * 2 / 56.0, 3, 101) - .5) * .42 + (fbm2(XX / 90.0, YY * 2 / 90.0, 2, 102) - .5) * .16
     px, py, r = _anchors(W, H, 3, 3, 35)
     dens = fbm2(px / 26.0, py * 2 / 26.0, 3, 103)
-    keep = r < np.clip((dens - .34) * 3.8, 0, .95)                     # clumps gather where the field is high, denser than before
+    keep = r < np.clip((dens - .30) * 4.2, 0, .97)                     # clumps gather where the field is high; denser again for the 1x read (density pass)
     px, py, r2 = px[keep], py[keep], r[keep]
     tall = (r2 * 7919 % 1.0) < .75                                     # most blades are the taller kind, so clumps read at 1x
     T = np.zeros((H, W))
