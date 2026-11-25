@@ -777,7 +777,7 @@ put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
 # trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
 TREE_GAP = dict(oak=6.0, pine=8.0)
-GROVE_MUL = float(os.environ.get('GROVE_MUL', '1.0'))      # density of the tree and bush groves (1.0 = shipped counts)
+GROVE_MUL = float(os.environ.get('GROVE_MUL', '1.8'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
 for kind, c_, rad, n in LAY.GROVES:
