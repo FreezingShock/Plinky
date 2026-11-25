@@ -57,11 +57,12 @@ func setup(p_sim: Sim) -> void:
 	row.add_child(_value)
 	_sprint = _title("", RelicStyle.text)
 	_sprint.add_theme_constant_override("outline_size", 0)   # the frame gives the contrast; an ink outline eats the thin glyph strokes and dims them
-	_sprint.top_level = true   # outside the container's layout, so showing it never resizes the panel
 	# The notched AsciiBox frame the panel and the relic and achievement toasts use, with cream text, so the tag reads as part of the HUD.
 	_sprint.add_theme_stylebox_override("normal", AsciiBox.make(AsciiBox.Kind.PANEL, 6.0, 2.0))
 	_sprint.visible = false
-	add_child(_sprint)
+	# A sibling on the HUD, not a child of this panel. It sits outside the panel's layout, so showing it never resizes the panel.
+	# It must stay in the HUD's z chain: a top_level child drops to z 0, under the world's light grade (night tint) and the rain.
+	get_parent().add_child(_sprint)
 	Tip.bind_all(self, Callable(self, "_spec"))
 	_apply()
 
