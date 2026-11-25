@@ -25,7 +25,7 @@ Godot 4.7 isometric incremental game. GDScript, Forward+, fixed isometric camera
 - Theme: Pixelify Sans titles, Spleen 6x12 body, palette-indexed colours (8 roles, each a 4-step hue-shifted ramp, art-bible s.3), 4x4 Bayer dither, nearest filtering, integer scale, no blur. Title Case for stat names and menu labels.
 - No image textures on world geometry. Colour is vertex colour or palette index.
 - Don't copy assets, names or number tables from other games.
-- Never use "Plinko" in game text, store copy or file names. No literal "Button" in player-facing text.
+- Never use "Plinko" in game text, store copy or file names. "Button" is fine anywhere, in game text too (Nathan, 2026-11-25).
 
 ## Commands
 - Tests: `godot --headless --path . --import` once on a fresh checkout, then `godot --headless --path . --script tests/run.gd`. Exit 0 is a pass.

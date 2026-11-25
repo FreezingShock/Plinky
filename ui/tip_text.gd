@@ -14,7 +14,7 @@ const STATS: Dictionary = {
 	&"starbloom": {"body": "Makes every Foxglove Bell press pay more, and opens the far gate.", "hint": "Press the Starbloom pads."},
 	&"embers": {"body": "The forge's passive glow. Cinder pads cost it, and Cinder makes it flow faster.", "hint": "Resets when you rebirth."},
 	&"cinder": {"body": "Paid by the Cinder pads. Boosts Embers income and every Iron Ore press, and Ore pads cost it.", "hint": "Press the Cinder pads."},
-	&"reb": {"body": "Times you have started over. Each one banks Prestige, which boosts Embers income.", "hint": "Use Rebirth once you can afford it."},
+	&"reb": {"body": "Times you have started over. Each one banks Prestige, which boosts Embers income.", "hint": "Use the Rebirth button once you can afford it."},
 	&"slag": {"body": "Quarry currency, made by the pads there.", "hint": "Spend it on quarry pads."},
 	&"rp": {"body": "Earned on every rebirth. Spend it on Rebirth perks.", "hint": "Open Upgrades to spend it."},
 	&"prestige": {"body": "Earned by rebirthing. Spend it on permanent upgrades.", "hint": "Open Upgrades to spend it."},
