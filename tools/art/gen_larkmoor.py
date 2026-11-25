@@ -1105,7 +1105,7 @@ _rut = np.zeros(len(FU), bool)
 for _t in ('road', 'lane'):
     _wob = (vn2(FU / 6, FV / 6, 98) - .5) * 1.4
     _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.4) & on_path[_t]
-lt -= .16 * (_rut & (mat == T_PATH))
+lt -= .24 * (_rut & (mat == T_PATH))
 lt += .07 * (on_trod & (vn2(FU / 9, FV / 9, 99) > .72))
 # value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
 # under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
