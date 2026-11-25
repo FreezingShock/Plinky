@@ -187,6 +187,9 @@ func request(c: Control, by_focus: bool) -> void:
 
 
 func show_free(spec: Variant, at: Vector2, exact: bool = false) -> void:
+	if FxConfig.bloom_running:   # held while a ritual plays
+		visible = false
+		return
 	_free_exact = exact
 	if not _free_mode:
 		_adopt_theme(get_tree().current_scene if is_inside_tree() else null)
@@ -243,6 +246,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(_delta: float) -> void:
+	if visible and FxConfig.bloom_running:
+		dismiss()
+		return
 	if target != null and (not is_instance_valid(target) or (target.is_inside_tree() and not target.is_visible_in_tree())):
 		dismiss()
 		return
@@ -306,7 +312,7 @@ func _adopt_theme(from: Node) -> void:
 
 
 func _show() -> void:
-	if target == null or not target.has_meta(Tip.META):
+	if target == null or not target.has_meta(Tip.META) or FxConfig.bloom_running:
 		return
 	if _fill(target.get_meta(Tip.META)):
 		visible = true
@@ -389,10 +395,6 @@ func _rich_line(segs: Array) -> HBoxContainer:
 		l.add_theme_color_override("font_color", c if c.a > 0.0 else RelicStyle.text)
 		row.add_child(l)
 	return row
-
-
-func set_extra_avoid(rects: Array[Rect2]) -> void:
-	avoid_extra = rects
 
 
 func _place() -> void:

@@ -7,7 +7,7 @@ const WIDTH: float = 330.0
 const HEIGHT: float = 190.0
 const KEY_SCROLL: float = 160.0   ## texels per second while Up or Down is held
 
-var _list: VBoxContainer
+var _body: RichTextLabel   ## every entry in one text block: one node, not one label per line (node budget)
 var _scroll: ScrollContainer
 var _more: Label
 
@@ -41,10 +41,16 @@ func _init() -> void:
 	scroll.focus_mode = Control.FOCUS_ALL   # Up and Down (arrows, d-pad) scroll it; the wheel works too
 	scroll.custom_minimum_size = Vector2(WIDTH, HEIGHT)
 	v.add_child(scroll)
-	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 2)
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_list)
+	_body = RichTextLabel.new()
+	_body.bbcode_enabled = true
+	_body.fit_content = true
+	_body.scroll_active = false
+	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_body.custom_minimum_size.x = WIDTH - 12.0
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.add_theme_color_override("default_color", RelicStyle.text)
+	scroll.add_child(_body)
 	_more = Label.new()
 	_more.add_theme_color_override("font_color", RelicStyle.accent)
 	_more.custom_minimum_size.y = 14.0
@@ -69,28 +75,25 @@ static func rows_from(entries: Array[Dictionary]) -> Array[Dictionary]:
 
 
 func reload() -> void:
-	for c in _list.get_children():
-		_list.remove_child(c)
-		c.queue_free()
 	var rows: Array[Dictionary] = rows_from(BuildInfo.changelog())
 	if rows.is_empty():
 		rows.append({"kind": "p", "text": "No update log yet."})
-	for r: Dictionary in rows:
-		var l := Label.new()
-		l.text = String(r["text"])
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size.x = WIDTH - 12.0
-		if r["kind"] == "h":
-			l.add_theme_color_override("font_color", RelicStyle.accent)
-		elif r["kind"] == "b":
-			l.add_theme_color_override("font_color", RelicStyle.text)
-		else:
-			l.add_theme_color_override("font_color", RelicStyle.dim)
-		_list.add_child(l)
-	var tail := Control.new()   # keeps the last line clear of the bottom edge
-	tail.custom_minimum_size = Vector2(1.0, 8.0)
-	_list.add_child(tail)
+	_body.text = _bbcode(rows)
 	_scroll.scroll_vertical = 0
+
+
+## Pure: the rows as one bbcode block. Headings take the accent, notes the text colour, and "[" is escaped so a note
+## can never open a tag. A blank line at the end keeps the last line clear of the bottom edge.
+func _bbcode(rows: Array[Dictionary]) -> String:
+	var lines: PackedStringArray = []
+	for r: Dictionary in rows:
+		var col: Color = RelicStyle.dim
+		if r["kind"] == "h":
+			col = RelicStyle.accent
+		elif r["kind"] == "b":
+			col = RelicStyle.text
+		lines.append("[color=#%s]%s[/color]" % [col.to_html(false), String(r["text"]).replace("[", "[lb]")])
+	return "\n".join(lines) + "\n\n"
 
 
 func _process(delta: float) -> void:

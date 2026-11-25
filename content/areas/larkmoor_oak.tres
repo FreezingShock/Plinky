@@ -6,8 +6,8 @@
 script = ExtResource("1")
 id = &"oak"
 zone = &"larkmoor"
-display_name = "Old Oak Crossing"
-order = 3
+display_name = "Heather Hollow"
+order = 4
 icon = "tree"
 theme_role = 5
 blurb = "One big oak where the main road forks. The Heather row grows in its shade."

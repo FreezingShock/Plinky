@@ -2,6 +2,8 @@ extends RefCounted
 ## Upgrades menu: text, rebirth gates and the three Rebirth-unlocked upgrades.
 
 func run(t: Object) -> void:
+	# Icons load once and are shared, so a reopen or the warm-up never reads the same file twice.
+	t.ok(UpgradeCard.icon("alloy") == UpgradeCard.icon("alloy") and UpgradeCard.icon("alloy") != null, "the upgrade icon cache returns the same texture each time")
 	var sim: Sim = t.make_sim()
 	var press: AttributeDef = sim.attribute_defs[&"press_rate"]
 	t.eq(UpgradeText.value(press, 1.2), "+120%", "press rate value reads as a percent")

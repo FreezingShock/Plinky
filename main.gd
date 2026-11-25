@@ -27,6 +27,7 @@ var walker: TexelWalker
 var gate: TexelGate
 var arch_gate: TexelGate   ## drawn at the Arch anchor of zones with gate art: the way back
 var pads: Dictionary = {}  # button id -> TexelPad
+var _crowd_sig: int = -1   # signature of the pads the crowd was last counted for (_update_pad_crowding)
 var critter: TexelCritter
 var pointer: PadPointer
 var pad_glow: PadGlow
@@ -51,11 +52,17 @@ var palette_id: StringName = Palettes.MEADOW
 
 
 func _ready() -> void:
+	PerfStats.lap_begin()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # pads and walker read clicks in _unhandled_input; STOP on the root swallowed them all
+	GardenArt.atlas()   # bakes the flower garden atlas once, at boot, not on the zone swap's frame (world/garden_art.gd)
+	PerfStats.lap("entry: atlas")
 	PadInput.ensure()
+	DisplaySettings.set_pregame_fill(get_window(), false)  # the game letterboxes; the pre-game screens fill
 	DisplaySettings.apply(get_window())
 	DisplaySettings.apply_startup(get_window())  # saved monitor, window size, vsync and frame cap
+	PerfStats.lap("entry: display")
 	SettingsRegistry.apply_all()                 # stored settings (accessibility, number format, audio device, ...)
+	PerfStats.lap("entry: settings")
 	get_window().size_changed.connect(_on_window_resized)
 	sim = GameState.sim
 	theme = (load(THEME_PATH) as Theme).duplicate(true)
@@ -67,6 +74,7 @@ func _ready() -> void:
 	pv = PixelViewport.new()
 	pv.screen_shake = shake
 	add_child(pv)
+	PerfStats.lap("entry: pixel view")
 	Fx.bind(pv)
 	transitions = Transitions.new()
 	transitions.rect = pv.post
@@ -80,8 +88,9 @@ func _ready() -> void:
 	_scene_path = _zone_scene_path(sim.zone_id)
 	meadow = (load(_scene_path) as PackedScene).instantiate()
 	world.add_child(meadow)
-	_spawn_occluders()
+	PerfStats.lap("entry: meadow")
 	_apply_scene_frame(sim.zone_id)
+	PerfStats.lap("entry: occluders and frame")
 	pad_glow = PadGlow.new()
 	add_child(pad_glow)
 	var anchors: Node = meadow.get_node("Anchors")
@@ -100,6 +109,7 @@ func _ready() -> void:
 	arch_gate.visible = false
 	world.add_child(arch_gate)
 	_sync_arch_gate(sim.zone_id)
+	PerfStats.lap("entry: gates")
 
 	# 2b. Camera: follows the walker, wheel zoom, drag or edge pan (render/world_camera.gd).
 	camera = WorldCamera.new()
@@ -108,6 +118,7 @@ func _ready() -> void:
 	camera.shake = shake
 	add_child(camera)
 	ShaderWarm.run(self)  # compile the sky shaders now, not at the first sunset (render/shader_warm.gd)
+	PerfStats.lap("entry: camera and shaders")
 	PerfOverlay.attach(self)  # F3 frame-time overlay (ui/perf_overlay.gd)
 	camera.bounds = _camera_bounds()
 	WalkMarker.attach(self, world, walker)  # click-to-walk ring and marching dots (ui/fx/walk_marker.gd)
@@ -127,6 +138,7 @@ func _ready() -> void:
 	hud.z_index = 100  # world layers use z up to 90 (ParticleBurst) and 10 (LifeAir); z is global, so the HUD must sit above them
 	add_child(hud)
 	hud.setup(sim)
+	PerfStats.lap("entry: hud")
 	camera.keep_clear = hud.clock_chip()
 	_sync_camera_landmarks()
 	_wire_relics()
@@ -134,15 +146,18 @@ func _ready() -> void:
 	_wire_display()
 	hud.keep_centered(relic_panel)
 	_wire_menus()
+	PerfStats.lap("entry: menus")
 	hud.move_child(hud.bottom_bar(), -1)
 	hud.move_child(hud.menu_chip(), -1)   # chips stay above every open menu, so they stay clickable
 	dev_console = DevConsole.attach(hud, sim, {"walker": walker, "gate": gate, "pads": pads, "spawn": walker.position})
+	PerfStats.lap("entry: dev console")
 	window_frame = WindowFrame.new()
 	add_child(window_frame)
 	window_frame.bind(get_window())
 	tooltip = PadTooltip.new()
 	add_child(tooltip)
 	Banner.attach(hud)
+	PerfStats.lap("entry: banner")
 	BloomRitual.attach(hud, sim, get_node("/root/EventBus"))   # the zone reset animation (Bloom, Nucleus)
 
 	var bus: Node = get_node("/root/EventBus")
@@ -151,20 +166,44 @@ func _ready() -> void:
 	bus.gate_opened.connect(func(_id: StringName) -> void: Juice.milestone())
 	bus.rebirth_done.connect(func(_p: BigNum) -> void: Juice.milestone())
 	bus.zone_entered.connect(_on_zone_entered)
+	PerfStats.lap("entry: signals")
 	bus.bonus_gained.connect(_on_bonus_gained)
 	bus.season_changed.connect(_on_season_changed)
 	bus.momentum_tier_changed.connect(func(t: int, up: bool) -> void: Juice.momentum_tier(t, up))
+	PerfStats.lap("entry: pre zone visuals")
+	_warm_pads(sim.zone_id)
 	_enter_zone_visuals(sim.zone_id)
 	get_tree().create_timer(1.2).timeout.connect(_announce_zone_arrival)
 	_clear_spawn()
 	_prev_zone = _previous_zone(sim.zone_id)
 	camera.snap()
 	Audio.start(sim.zone_id)
+	PerfStats.lap("entry: audio")
+	_build_entry_occluders()   # over frames, under the swap cover; SceneSwap holds the reveal until they are in
+
+
+## Lit pads close together share the light: each pad counts the lit pads within TexelPad.CROWD_RANGE, itself included.
+func _update_pad_crowding() -> void:
+	# The crowd only changes when a pad unlocks or the pads are rebuilt: a cheap signature says so, and the O(n^2) count
+	# runs only then, not every frame.
+	var sig: int = pads.size()
+	for p: TexelPad in pads.values():
+		sig = (sig * 31 + p.get_instance_id() + (1 if p.locked else 0)) & 0x3fffffff
+	if sig == _crowd_sig:
+		return
+	_crowd_sig = sig
+	for a: TexelPad in pads.values():
+		var n: int = 0
+		for b: TexelPad in pads.values():
+			if not b.locked and a.position.distance_to(b.position) <= TexelPad.CROWD_RANGE:
+				n += 1
+		a.crowd = maxi(n, 1)
 
 
 func _process(_delta: float) -> void:
 	_layout_frame()
 	_menu_focus()
+	_update_pad_crowding()
 	var boost_id: StringName = sim.current_zone().boost_stat if sim.current_zone() != null else &""
 	var mult: float = (sim.get_stat(boost_id).to_float() if boost_id != &"" else 0.0) + 1.0
 	if mult != pad_glow.multiplier:  # the setter does a log and a palette lookup, so only on change
@@ -175,6 +214,7 @@ func _process(_delta: float) -> void:
 	if _night_sky != null:   # each pad's light pool takes its buy colour (green or red) from the shared shade shader
 		for pad: TexelPad in pads.values():
 			_night_sky.set_pool_tint_at(pad.position, pad.light_tint())
+			_night_sky.set_pool_strength_at(pad.position, pad.light_strength())
 	if sim.zone_id != _shown_zone and not _crossing:
 		# the Sim changed zone without zone_entered (settings import or reset, dev tools): bring the view along
 		_enter_zone_visuals(sim.zone_id)
@@ -190,6 +230,9 @@ func _process(_delta: float) -> void:
 
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
 func _update_tooltip() -> void:
+	if FxConfig.bloom_running:   # nothing hovers over a ritual: no world tip while Bloom or Nucleus plays
+		tooltip.hide_tip()
+		return
 	var over: Control = get_viewport().gui_get_hovered_control()
 	var m: Vector2 = world.get_local_mouse_position()
 	# only a control that takes the click blocks the world tooltip: a PASS control (the clock chip) is hovered too, but lets the
@@ -324,6 +367,12 @@ func _build_pads() -> void:
 			pad.material = pad_mat as ShaderMaterial
 		world.add_child(pad)
 		pads[pad.button_id] = pad
+	# Each pad's cost sign takes a spot clear of every pad on this zone, so no sign covers a bed or a press spot.
+	var spots: Array[Vector2] = []
+	for p: TexelPad in pads.values():
+		spots.append(p.position)
+	for p: TexelPad in pads.values():
+		p.set_sign_neighbours(spots)
 	var first: TexelPad = pads.get(&"sprout_1") as TexelPad
 	if first != null:
 		# A child of the pad, so it always sits on the pad's own position (pads are freed on a zone change).
@@ -341,6 +390,15 @@ func _build_pads() -> void:
 
 ## `sliced` spreads the heavy part (the zone's prop sprites) over several frames; only a swap under the transition
 ## wipe uses it, and awaits the result. Startup and reset keep the one-frame build.
+## Holds a zone's pad resources before its pads are built (TexelPad.warm_zone), so the build does not load them cold.
+func _warm_pads(zone_id: StringName) -> void:
+	var z: ZoneDef = sim.zone_defs.get(zone_id) as ZoneDef
+	if z != null:
+		PerfStats.lap_begin()
+		TexelPad.warm_zone(sim, z)
+		PerfStats.lap("zone: warm pads")
+
+
 func _enter_zone_visuals(zone_id: StringName, sliced: bool = false) -> void:
 	_shown_zone = zone_id
 	palette_id = Palettes.for_zone(zone_id)
@@ -380,6 +438,7 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 	_scene_path = path
 	PerfStats.lap_begin()
 	_free_occluders()
+	ZoneAssets.release()   # the zone being left drops its prop textures; the one being entered is prefetched
 	meadow.queue_free()
 	PerfStats.lap("swap: free old")
 	var packed: PackedScene = _take_prefetched(path)
@@ -415,6 +474,9 @@ func _swap_zone_scene(zone_id: StringName, sliced: bool = false) -> void:
 var _going_back: bool = false
 const OCCLUDER_BUDGET_MS: float = 8.0   ## per frame, while the wipe covers the screen
 var _prefetching: String = ""
+## Zone scenes whose script is loaded on the main thread before the threaded prefetch. Not Larkmoor: its script preloads
+## three large textures, which is the stall the prefetch exists to avoid.
+const WARM_SCRIPTS: Dictionary = {"res://world/quarry_scene.tscn": "res://world/quarry_scene.gd"}
 
 
 ## Starts loading a zone scene and its textures on a worker thread, so the swap under the transition wipe does not
@@ -422,8 +484,14 @@ var _prefetching: String = ""
 func _prefetch_scene(path: String) -> void:
 	if path == _scene_path or path == _prefetching:
 		return
+	if WARM_SCRIPTS.has(path):
+		# Compile the scene's script on the main thread first: loading it on a worker thread logged "Parse Error: Failed"
+		# at the scene's script line (the quarry's script uses several game classes) and fell back to a synchronous load.
+		ResourceLoader.load(WARM_SCRIPTS[path] as String)
+	# the scene first: the loader works through requests in order, and the swap waits on the scene before anything else
 	if ResourceLoader.load_threaded_request(path) == OK:
 		_prefetching = path
+	ZoneAssets.prefetch_scene(path)   # the props' and ground textures, behind the scene
 
 
 ## The prefetched scene when one was requested (waits for it if the worker is not done), else a plain load.
@@ -440,6 +508,15 @@ var _occluders: Array[Node] = []   ## the tall-prop sprites of the current zone 
 ## Spawns the scene's tall props and remembers exactly which nodes it made. Freeing by node, not by name: a new
 ## sprite that shares a name with one still queued for deletion gets a generated "@Sprite2D@n" name, so a name
 ## match left the old zone's trees standing in the next zone (meadow trees in the Ember Quarry).
+## The entry's occluders are built a slice a frame (the scene's sliced build, when it has one) so the game's entry frame
+## does not hold the farm and the first chunks (75 to 116 ms on the PC in batch 153). The group tells SceneSwap to hold
+## the reveal until they are in, so no pop-in shows.
+func _build_entry_occluders() -> void:
+	add_to_group(SceneSwap.ENTRY_BUILDING_GROUP)
+	await _spawn_occluders(true)
+	remove_from_group(SceneSwap.ENTRY_BUILDING_GROUP)
+
+
 func _spawn_occluders(sliced: bool = false) -> void:
 	var before: Dictionary = {}
 	for c: Node in world.get_children():
@@ -560,12 +637,14 @@ func _zone_banner() -> Dictionary:
 	if calendar != null and calendar.has_method("now"):
 		cal = calendar.call("now") as Dictionary
 	var sky: SkyCycle = meadow.find_child("Sky", true, false) as SkyCycle if meadow != null else null
-	var phase: float = sky.clock_phase() if sky != null else 0.5
+	# sky.clock_phase() is the sun phase; the banner's fallback needs the clock fraction, so convert it with the sky's daylight.
+	var clock: float = sky.model.clock_of_phase(sky.clock_phase()) if sky != null else 0.5
+	var daylight: float = sky.model.daylight_fraction if sky != null else 0.6
 	if sky == null or not sky.seasonal:  # themed zones have no seasons: keep the time, drop the date
 		for k: String in ["season", "season_name", "month_name", "day"]:
 			cal.erase(k)
 	var cols: PackedColorArray = Palettes.colors(Palettes.for_zone(zone_id))
-	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, phase, "", cols[clampi(z.theme_role, 0, 7)])
+	var spec: Dictionary = AreaBanner.compose(z.display_name, cal, clock, "", cols[clampi(z.theme_role, 0, 7)], daylight)
 	spec["fill"] = cols[0]
 	spec["duration"] = ZONE_BANNER_HOLD
 	spec["key"] = "zone:" + String(zone_id)
@@ -615,7 +694,9 @@ func _on_zone_entered(zone_id: StringName) -> void:
 	_crossing = true
 	walker.stop()
 	_prefetch_scene(_zone_scene_path(zone_id))   # loads during the wipe's cover phase
+	WalkMask.prefetch(_zone_mask_path(zone_id))   # the walk mask too, so the first walk there does not load it
 	await transitions.cross_zone(func() -> void:
+		_warm_pads(zone_id)
 		await _enter_zone_visuals(zone_id, true)
 		if _clear_spawn_pending:
 			_clear_spawn_pending = false

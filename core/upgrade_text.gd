@@ -131,6 +131,23 @@ static func tab_shown(sim: Sim, currency: StringName) -> bool:
 	return sim.reset_for_currency(currency) != null or group_shown(sim, currency)
 
 
+## How many gifts a zone currency pays for: `total` in its group, `bought` at least one level, `affordable` open and
+## buyable right now. Read by the currency tooltip, so the player can see what the Seeds or Shards would buy.
+static func gift_counts(sim: Sim, currency: StringName) -> Dictionary:
+	var total: int = 0
+	var bought: int = 0
+	var affordable: int = 0
+	for a: AttributeDef in sim.attribute_defs.values():
+		if a.currency != currency:
+			continue
+		total += 1
+		if sim.attr_level(a.id) > 0:
+			bought += 1
+		if sim.attr_unlocked(a.id) and not sim.attr_level(a.id) >= a.cap and not sim.attribute_available(a).lt(sim.attribute_cost(a.id)):
+			affordable += 1
+	return {"total": total, "bought": bought, "affordable": affordable}
+
+
 static func currency_name(a: AttributeDef) -> String:
 	return String(CURRENCY_NAMES.get(a.currency, String(a.currency).capitalize()))
 
@@ -237,9 +254,22 @@ static func tier_head(sim: Sim, a: AttributeDef) -> String:
 	if a.unlock_resets > 0:
 		var r: ZoneResetDef = sim.reset_for_currency(a.currency)
 		var nm: String = r.display_name if r != null else "Reset"
-		return "Unlocks After %d %s" % [a.unlock_resets, nm if a.unlock_resets == 1 else nm + "s"]
+		var plural: String = (r.plural_name if r != null and r.plural_name != "" else nm + "s")
+		return "Unlocks After %d %s" % [a.unlock_resets, nm if a.unlock_resets == 1 else plural]
 	if a.unlock_rebirths > 0:
 		return "Unlocks At %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
+	return "Open"
+
+
+## The gate on a tier's rail row: "Open" for the start, else what it requires, e.g. "Requires 1 Bloom", "Requires 2 Nuclei".
+static func tier_gate(sim: Sim, a: AttributeDef) -> String:
+	if a.unlock_resets > 0:
+		var r: ZoneResetDef = sim.reset_for_currency(a.currency)
+		var nm: String = r.display_name if r != null else "Reset"
+		var plural: String = (r.plural_name if r != null and r.plural_name != "" else nm + "s")
+		return "Requires %d %s" % [a.unlock_resets, nm if a.unlock_resets == 1 else plural]
+	if a.unlock_rebirths > 0:
+		return "Requires %d %s" % [a.unlock_rebirths, "Rebirth" if a.unlock_rebirths == 1 else "Rebirths"]
 	return "Open"
 
 

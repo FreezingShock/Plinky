@@ -19,6 +19,8 @@ static var night: float = 0.0      # 0 day .. 1 deep night
 static var low_sun: float = 0.0    # 1 at golden hour, sunrise and sunset
 static var rain: float = 0.0       # 0..1
 static var wet: float = 0.0        # 0..1 ground wetness (SkyCycle: a lagged rain, 0 under snow)
+static var fog: float = 0.0       # 0..1 mist in the air (SkyCycle): lamp pools spread into it
+static var sky_time: float = 0.0    # the sky's game time in seconds (SkyCycle), so the thunder follows the lightning schedule
 
 ## Season mix (spring, summer, autumn, winter), written by SkyCycle with the same weights SeasonParticles gets, so
 ## butterflies and fireflies can follow the calendar: butterflies are a spring and summer thing, fireflies a summer one.
@@ -95,3 +97,22 @@ static func in_water(p: Vector2, bodies: Array[Dictionary], grow: float) -> bool
 		if water_k(p, w) < grow:
 			return true
 	return false
+
+
+## Draws a sprite (runs of one palette index, from LifeCritters._make_sprite) into `ci`. `fade` below 1 draws only the
+## texels the dither lets through.
+static func blit(ci: CanvasItem, pal: PackedColorArray, spr: Dictionary, origin: Vector2i, flip: bool, fade: float) -> void:
+	var w: int = int(spr.w)
+	for run: Variant in spr.runs as Array:
+		var rr: PackedInt32Array = run as PackedInt32Array
+		var n: int = rr[2]
+		var x0: int = rr[0] if not flip else w - rr[0] - n
+		var y: int = rr[1]
+		var idx: int = rr[3]
+		if fade >= 1.0:
+			ci.draw_rect(Rect2(origin.x + x0, origin.y + y, n, 1), pal[idx])
+			continue
+		for k: int in n:
+			var x: int = origin.x + x0 + k
+			if dissolved(fade, x, origin.y + y):
+				ci.draw_rect(Rect2(x, origin.y + y, 1, 1), pal[idx])

@@ -123,3 +123,76 @@ may respond more to the skipped screen-texture pass and the shader taps than lav
 run `tools/bench.gd` at Low and High on the real machine and update this table.
 Not done and why: rendering the world into a 642x362 target (would cut fill 9x at 1080p) touches every world shader's
 texel maths and the zoom, so it needs its own change and an in-engine look check.
+
+## Zone load, second pass (2026-11-24)
+Measured with `tools/bench_weak.sh` (lavapipe, 1280x720, High, 4 cores) on the swap's `PerfStats` stages. The numbers
+are CPU on the main thread and wall time, and the wall numbers include the software rasteriser, so only the CPU
+rows are comparable to a GPU. Lavapipe shares the 4 cores with the workers, so each run varies by tens of milliseconds.
+
+| Swap stage (main thread) | before | after |
+|---|---|---|
+| Ember Quarry props, built in one frame | 89.7 ms (synchronous `load()` of 366 textures, then the props) | 20 to 28 ms, built over 8 ms slices under the wipe |
+| Ember Quarry `_ready` (add_child) | 13 ms | 17 to 23 ms |
+| Larkmoor `_ready` (add_child), one run | 228 ms | 230 ms in the run without timers; about 25 ms in the run with timers (see note) |
+| Larkmoor: life (`LifeAir.setup` reads the backdrop with `get_image()`) | 96 ms | decoded on a worker, 3 ms on the swap frame |
+| Larkmoor: sky ground maps (`load()` of two 3040x1840 maps) | 163 ms | prefetched, 17 ms |
+| First rendered frame after the swap (lavapipe, includes the render) | 114 to 198 ms | 59 to 150 ms |
+
+What changed: `ZoneAssets` (world/zone_assets.gd) prefetches a zone's textures on the loader, caches each texture once, and
+releases the zone's textures when it is left. `spawn_occluders_sliced` on the Ember Quarry spreads its props over frames.
+The backdrop is decoded from its lossless source PNG on a `WorkerThreadPool` task. The four Ember Quarry shaders are warmed
+at boot. Larkmoor's scene is requested on the loader before its textures.
+
+Note: one run of Larkmoor's `_ready` still measured 230 ms, while a run with stage timers inside `_ready` measured about 25 ms.
+The two runs had the same code apart from the timers, so the gap is probably thread contention on this 4-core software
+renderer. Not settled. Needs a timed swap on the PC (RTX 3060 Ti) before the number is quoted.
+
+Not done: the Ember Quarry still draws 183 props as one node each (one draw call each). Atlasing them is the next step for
+batching. The first rendered frame after a swap is GPU work (texture upload, first draws), which only the PC can measure.
+
+## Camera pan sweep and Larkmoor entry (2026-11-24)
+- **Probe:** `tools/larkmoor_pan_sweep.gd` pans the camera in a sine (free mode, the walker still) at 120, 300 and 600 texels a second, at zooms 1, 2 and 4, 360 frames each. It counts pop-in frames (an on-screen chunk with props not yet loaded), chunk loads and their cost, and the trace labels. `-- --still-sway` holds the flowers (Reduce Motion), so only pan-driven redraws remain.
+- **Result (lavapipe, High, 1280x720):** 0 pop-in frames at every speed and zoom. Node peak 891 against the 1300 budget. Chunk loads cost 0.2 ms mean and 4.4 to 7.2 ms at worst, at zoom 1 and 600 texels a second.
+- **Garden redraw, checked and not changed:** a 32-texel redraw pad (redraw once per pad of pan, not every 16 texels) did not cut redraws in a sway-frozen A/B (127 to 121 at zoom 1, 600 texels a second) and made each redraw about 25% dearer (0.97 to 1.25 ms mean). Dropped. Pan redraws are not the lever; the cost is per flower drawn.
+- **Entry hitch:** see [decisions/world.md](decisions/world.md), "Larkmoor's farm builds over the wipe".
+- **Not run on a real GPU:** every number above is a CPU measurement on a software rasteriser. PC QA should run the pan sweep at zoom 1 and 2 on the RTX 3060 Ti and check the wheat's entry under the wipe.
+
+## Larkmoor and quarry entry: the theme recolour (2026-11-24)
+- **Probe:** `tools/larkmoor_entry_probe.gd` enters a zone the way the CI bench does and prints each frame over `--slow=<ms>`, its PerfStats laps, and a split of the frame: the frame's process pass, then a hook that runs last in the pass, then the gap to the next frame. `--pre=larkmoor --zone=zone2` enters the quarry through Larkmoor.
+- **The gap:** the swap frame spent 120 to 170 ms outside every lap and outside process (the process callbacks took about 6 ms). The lap that measures the swap itself (`add_child`, 30 to 45 ms) was not the cost.
+- **Ruled out, each left the gap in place:** freeing the old zone at once (1.7 ms), not releasing the zone's textures, skipping the occluders or the pads, hiding the new zone's subtree, making the sky's screen add synchronous, and 900 sprites or large textures entering a frame (2 ms in a micro-benchmark).
+- **Cause:** `PlinkyTheme.apply` (theme/theme_apply.gd) wrote about 25 colours and style fields one by one, and each write told every Control that uses the theme to restyle itself. Skipping the call removed the gap, so the cost was in those notifications. The writes now run with the signals held back, and the theme announces one change at the end.
+
+| Swap frame | before | after |
+|---|---|---|
+| Probe, Larkmoor entry (headless, low), 2 runs | 124 to 224 ms | 50 to 62 ms |
+| Bench `first frame after add_child`, Larkmoor | 4 to 7 ms | 4 to 5 ms (unchanged) |
+| Bench `first frame after add_child`, quarry | 238 ms | 114 to 116 ms |
+
+- **Still open:** the quarry swap's gap is still 110 to 160 ms in the probe, so the theme was one cause, not the only one. Not attributed yet. The next suspects are Control layout and HUD work queued by the zone change, which the probe cannot show.
+- **Seen once:** `world/sky_cycle.gd:503` (`padded`) got a null image from `get_image()` in one bench run of 3 with this change, and none in the baseline run. Not investigated. It is not in this change.
+- **Not run on a real GPU:** every number is headless. PC QA should time a zone entry on the RTX 3060 Ti.
+
+## Walk mask on the return paths (2026-11-24)
+- `WalkMask.image()` loaded the zone's walkable map on the main thread on its first use after a zone change. That was a synchronous `load()` of about 34 ms, and it fell on the first walk in the new zone, so the return to the meadow and the return from the Quarry showed it.
+- Fix: `WalkMask.prefetch(path)` queues the map on `ZoneAssets` when the zone is entered, and `image()` takes it from there. Probe: the 34 ms load is gone from the return frames. Headless frame times are noisy, so the total gain on the PC is not measured yet.
+
+## Boot, title to game, and the loading screen (2026-11-24)
+- **Probe:** `tools/loading_probe.gd` runs the boot screen, waits for the title, presses Play (which goes through the loading screen into the game) and prints each slow frame with its phase and laps. It needs a real window: under `--headless` the swap never draws, so run it with `xvfb-run` (this run used OpenGL, not Vulkan, because Xvfb has no VK_KHR_surface).
+- **Found:** `GardenArt.atlas()` baked the flower atlas on the game's first frame, about 750 ms on the software renderer. `GardenArt.prepare()` plans the atlas and `GardenArt.prepare_slice()` bakes it three milliseconds a frame from the boot screen; the sheet is packed and uploaded on the main thread. The game's first frame drops to about 7 ms.
+- **Not on a worker:** a first version composed the atlas on a `WorkerThreadPool` task. Its boot smoke test then failed on parse errors (preloads of walker_atlas.png, PixelifySans.ttf and bloom_veil.gdshader). With the composition run synchronously the errors went away, so the worker is not safe to use here. Do not move script-adjacent work onto the pool without running `tools/bench.gd`/the boot smoke test.
+- **Numbers (xvfb, OpenGL, software renderer; not the PC):** boot to title 1.8 to 2.5 s. Play to game 2.6 to 2.9 s, down from 3.8 to 5.4 s before the atlas change. The worst frame in the loading phase is 340 to 530 ms; it still holds about 300 ms the probe does not label, probably the deferred scene change (freeing the boot screen and instantiating the game).
+- **Not measured:** on the PC GPU. Shader compile on the first frames is driver-side and only the PC can show it.
+
+## Atlas bake on the title, and loading holds for it (2026-11-24)
+- **Found:** the boot screen baked the flower atlas 3 ms a frame, but the loading phase is short (about 1.5 s on the software renderer) and the atlas needs about 750 ms of baking. The rest, about 290 ms, landed on the game's first frame in `GardenArt.atlas()` (called from `main.gd` `_ready`).
+- **Fix:** the title screen bakes a slice a frame while it is idle (`GardenArt.BAKE_SLICE_MS`, 3 ms). Once the loader is done, the boot screen uses a bigger slice (`BAKE_CATCHUP_MS`, 10 ms), and its leave waits for `GardenArt.is_ready()`. The game's first frame no longer bakes anything.
+- **Probe:** `tools/loading_probe.gd --dwell=<frames>` sets how long the title stays up before Play (default 60, about a second). Same dwell, same machine (xvfb, OpenGL, software renderer), single runs: worst loading frame 562 ms before, 294 ms after. Play to game 2135 ms before, 1884 ms after. Headless numbers are noisy, so treat these as direction, not the PC figure.
+- **Still in that frame (labelled with temporary laps):** occluders and the zone frame about 52 ms, `DevConsole.attach` about 36 ms, meadow load about 35 ms, HUD about 25 ms, and the camera snap and audio start about 27 ms. The rest of the 280 ms frame is the swap frame's draw and end-of-frame work, which the software renderer makes slow. Not changed here.
+
+## The game-entry frame, labelled (2026-11-24)
+- **Batch 152 (PC, RTX 3060 Ti):** each boot had one loading hitch of 421 to 436 ms, with laps that did not add up to it. The swap draw was 4 ms at worst, so it was CPU work in the entry frame, not the GPU.
+- **Labels:** `main.gd` `_ready` now puts a `PerfStats.lap` after each step (`entry: ...`), and the boot screen labels its atlas slice. `PerfStats.lap` does nothing unless tracing is on, so this costs nothing in play.
+- **Dev console:** built on its first open, not on the entry frame (about 36 ms of CPU). Lavapipe could not show it, since the run-to-run spread is larger than the change.
+- **Lavapipe, one run, after the change (software renderer):** the entry frame is about 267 ms. Labelled: meadow load 29 ms, HUD 23 ms, audio and camera start 26 ms, menus 11 ms, occluders and zone frame 12 ms, pixel view 5 ms. About 150 ms is unlabelled: draw and the end-of-frame flush, plus the frame before `main._ready`.
+- **Not done:** the entry frame still has about 115 ms of labelled CPU work. Getting every frame under 33 ms needs the game's build spread across frames under the swap cover, which waits on a ready signal. That is a separate change.

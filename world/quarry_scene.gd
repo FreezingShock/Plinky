@@ -6,7 +6,6 @@ extends Node2D
 ## QuarryLight adds the lava and brazier glow, the haze with light shafts and the heat shimmer (world/quarry_light.gd).
 ## main.gd reads world_rect, mask_offset and the two paths to frame the zone.
 const DIR: String = "res://assets/art/zone2/quarry/"
-const GROUND: Texture2D = preload("res://assets/art/zone2/quarry/ground.png")
 
 const PAD_SHADOW: Vector2 = Vector2(22.0, 4.0)   ## the pad slab is 3 texels thick and 28 wide, as in Larkmoor
 
@@ -18,6 +17,9 @@ var mask_offset: Vector2i = Vector2i.ZERO                  ## walkable.png and g
 
 var _data: Dictionary = {}
 var _sky: SkyCycle
+## Reach of a cast shadow toward a pad (SkyShadows.pad_reach). 90 keeps the shadows that fall on pads and drops the
+## overlay quads for casters far from every pad: 132 overlays at the default 220, 48 at 120, 28 at 90 (node ceiling).
+const SHADOW_PAD_REACH: float = 90.0
 var _shadows: SkyShadows
 var _light: QuarryLight
 
@@ -30,7 +32,7 @@ func _ready() -> void:
 	var bleed: Dictionary = _data.bleed
 	var ground := Sprite2D.new()
 	ground.name = "Ground"
-	ground.texture = GROUND
+	ground.texture = ZoneAssets.texture(DIR + "ground.png")
 	ground.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ground.centered = false
 	ground.position = Vector2(bleed.ground_offset[0], bleed.ground_offset[1])
@@ -90,12 +92,13 @@ func _ready() -> void:
 func _add_sky(ground_size: Array) -> void:
 	_shadows = SkyShadows.new()
 	_shadows.name = "Shadows"
+	_shadows.pad_reach = SHADOW_PAD_REACH   # set before any caster: the quarry's pads sit far enough apart for a tighter reach
 	add_child(_shadows)   # z 0, after the ground and lava: above them, below every prop and the walker
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
 	_sky.area = Rect2(0.0, 0.0, float(ground_size[0]), float(ground_size[1]))
 	_sky.shadows = _shadows
-	_sky.ground_texture = GROUND
+	_sky.ground_texture = ZoneAssets.texture(DIR + "ground.png")
 	_sky.atmosphere = false   # QuarryLight draws the haze instead
 	_sky.seasonal = false     # a themed zone: no season tint or season particles
 	_sky.underground = true   # the light holds at midday, whatever the clock says
@@ -110,7 +113,10 @@ func _add_lights() -> void:
 	_sky.add_light(Vector2.ZERO, cfg.pool_walker_radius, 0.7, &"walker")
 	for a: Dictionary in _data.anchors:
 		match String(a.kind):
-			"gate", "arch":
+			"gate":
+				# the forge gate's own light: ember red-orange, so it reads as the portal's glow, not the warm default
+				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8, &"fixed", Color(1.0, 0.42, 0.2, 1.0))
+			"arch":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.pool_gate_radius, 0.8)
 			"lava":
 				_sky.add_light(Vector2(a.sx, a.sy), cfg.lava_pool_radius, 1.0)
@@ -129,18 +135,38 @@ func _add_lights() -> void:
 ## front of it. Each prop takes its normal map (gen_quarry_normals.py) and the light of the sources near it, and casts a shadow.
 func spawn_occluders(parent: Node2D) -> void:
 	for s: Dictionary in _data.sprites:
-		var sp := Sprite2D.new()
-		sp.name = "Occ_" + String(s.file).get_file().get_basename()
-		sp.texture = load(DIR + String(s.file)) as Texture2D
-		sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		sp.centered = false
-		sp.position = Vector2(s.foot[0], s.foot[1])
-		sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
-		parent.add_child(sp)
-		var nrm: Texture2D = load(DIR + String(s.file).get_basename() + "_n.png") as Texture2D
-		if _light != null and nrm != null:
-			sp.material = _light.prop_material(Vector2(float(s.x), float(s.y)), Vector2(float(s.w), float(s.h)), nrm)
-		elif _sky != null:
-			sp.material = _sky.rim_material
-		if _shadows != null:
-			_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))
+		_spawn_prop(parent, s)
+
+
+## Same props as spawn_occluders, a slice at a time: yields to the next frame once `budget_ms` of a frame is used up.
+## A zone swap under the transition wipe uses it (main.gd), so the props do not stall the wipe's peak.
+func spawn_occluders_sliced(parent: Node2D, budget_ms: float) -> void:
+	var start_us: int = Time.get_ticks_usec()
+	var work_us: int = 0   ## CPU spent on the props themselves, not on the frames in between
+	for s: Dictionary in _data.sprites:
+		var t0: int = Time.get_ticks_usec()
+		_spawn_prop(parent, s)
+		work_us += Time.get_ticks_usec() - t0
+		if float(Time.get_ticks_usec() - start_us) / 1000.0 >= budget_ms:
+			await get_tree().process_frame
+			start_us = Time.get_ticks_usec()
+	if PerfStats.tracing:
+		PerfStats.trace.append("quarry props cpu %.1f ms" % (float(work_us) / 1000.0))
+
+
+func _spawn_prop(parent: Node2D, s: Dictionary) -> void:
+	var sp := Sprite2D.new()
+	sp.name = "Occ_" + String(s.file).get_file().get_basename()
+	sp.texture = ZoneAssets.texture(DIR + String(s.file))
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sp.centered = false
+	sp.position = Vector2(s.foot[0], s.foot[1])
+	sp.offset = Vector2(float(s.x) - float(s.foot[0]), float(s.y) - float(s.foot[1]))
+	parent.add_child(sp)
+	var nrm: Texture2D = ZoneAssets.texture(DIR + String(s.file).get_basename() + "_n.png")
+	if _light != null and nrm != null:
+		sp.material = _light.prop_material(Vector2(float(s.x), float(s.y)), Vector2(float(s.w), float(s.h)), nrm)
+	elif _sky != null:
+		sp.material = _sky.rim_material
+	if _shadows != null:
+		_shadows.add_caster(sp, String(s.kind), Vector2(float(s.w), float(s.h)))

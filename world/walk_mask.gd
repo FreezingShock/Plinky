@@ -24,12 +24,25 @@ static func use(mask_path: String, mask_offset: Vector2i = OFFSET) -> void:
 	_tried = false
 
 
+## Starts loading a zone's mask on a worker, so the first walk there does not load it on the main thread (a synchronous
+## load of the walkable map cost about 34 ms on the return to the meadow). An empty path means the meadow's mask.
+static func prefetch(mask_path: String) -> void:
+	var p: String = PATH if mask_path == "" else mask_path
+	if p != path or _img == null:
+		ZoneAssets.prefetch(PackedStringArray([p]))
+
+
 static func image() -> Image:
 	if not _tried:
 		_tried = true
-		var tex: Texture2D = load(path) as Texture2D   # imported resource: works in exports too
+		# Prefetched on a worker when the zone was entered, else loaded here. Taken, not cached: the mask is only read for
+		# its pixels, so the GPU copy (28 MB for Larkmoor's 3040x1840 map) goes when this function returns.
+		var tex: Texture2D = ZoneAssets.take(path)
 		if tex != null:
+			# Only red (walkable) and green (water) are read, and the alpha is always 255 in the map. RG8 keeps both
+			# channels byte for byte and halves the copy in RAM (22 MB to 11 MB for Larkmoor).
 			_img = tex.get_image()
+			_img.convert(Image.FORMAT_RG8)   # in place; returns nothing
 	return _img
 
 
@@ -47,6 +60,27 @@ static func walkable(p: Vector2) -> bool:
 	if x < 0 or y < 0 or x >= im.get_width() or y >= im.get_height():
 		return false
 	return im.get_pixel(x, y).r > 0.5
+
+
+## True when the texel is river water (the mask's green channel). Water is never walkable on the ground, but the
+## walker may be in the air over it: a jump carries it across a narrow river, and landing there sends it to the bank.
+static func is_water(p: Vector2) -> bool:
+	var im: Image = image()
+	if im == null:
+		return false
+	var x: int = int(floorf(p.x)) + offset.x
+	var y: int = int(floorf(p.y)) + offset.y
+	if x < 0 or y < 0 or x >= im.get_width() or y >= im.get_height():
+		return false
+	return im.get_pixel(x, y).g > 0.5
+
+
+## Where a walker that comes down at p ends up: p itself when it may stand there, else the nearest walkable
+## texel, which is the bank it landed beside. Water pushes it back; a cliff or trunk it jumped over does too.
+static func landing(p: Vector2) -> Vector2:
+	if walkable(p):
+		return p
+	return nearest(p, 60)
 
 
 ## Closest walkable texel to p (ring search, vertical distance doubled to match the 2:1 view).
@@ -94,3 +128,120 @@ static func nearest_inset(p: Vector2, inset: int = 6, max_r: int = 80) -> Vector
 					best = q
 					found = true
 	return best
+
+
+## ---- routes ----
+## Tap-to-move walks a straight line, which stops at the first lake or tree. route() plans around them: an A* search over a
+## coarse grid of the mask (a cell is open only when every sample in it is walkable, so a route keeps a little clear of edges),
+## then pulled tight so the walker cuts every corner the exact mask allows. Built once per mask, on the first blocked tap.
+const CELL: int = 4
+
+static var _grid: AStarGrid2D = null
+static var _grid_path: String = ""
+
+
+## True when a straight walk from a to b stays on walkable texels (sampled every texel).
+static func line_clear(a: Vector2, b: Vector2) -> bool:
+	var d: Vector2 = b - a
+	var n: int = maxi(1, ceili(d.length()))
+	for i in range(1, n + 1):
+		if not walkable(a + d * (float(i) / float(n))):
+			return false
+	return true
+
+
+static func _build_grid() -> void:
+	var im: Image = image()
+	if im == null:
+		return
+	if im.is_compressed():
+		im = im.duplicate() as Image
+		im.decompress()
+	_grid_path = path
+	var cols: int = ceili(float(im.get_width()) / float(CELL))
+	var rows: int = ceili(float(im.get_height()) / float(CELL))
+	var grid := AStarGrid2D.new()
+	grid.region = Rect2i(0, 0, cols, rows)
+	grid.cell_size = Vector2(CELL, CELL)
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	grid.update()
+	var w: int = im.get_width()
+	var h: int = im.get_height()
+	var data: PackedByteArray = im.get_data()
+	var bpp: int = data.size() / maxi(w * h, 1)   # bytes per pixel; the first byte is red for every format the mask loads as
+	var solid: Array[Vector2i] = []
+	# a cell is open only when every pixel in it is walkable. Checking the corners alone let a blocked hole smaller than a
+	# cell (a tree footprint, a rock edge) sit inside an open cell, so a route could cut straight across it.
+	for cy in rows:
+		for cx in cols:
+			var open: bool = true
+			for oy in CELL:
+				if not open:
+					break
+				for ox in CELL:
+					var px: int = mini(cx * CELL + ox, w - 1)
+					var py: int = mini(cy * CELL + oy, h - 1)
+					if data[(py * w + px) * bpp] <= 127:
+						open = false
+						break
+			if not open:
+				solid.append(Vector2i(cx, cy))
+	for c: Vector2i in solid:
+		grid.set_point_solid(c, true)
+	_grid = grid
+
+
+static func _cell_of(p: Vector2) -> Vector2i:
+	return Vector2i(floori((p.x + float(offset.x)) / float(CELL)), floori((p.y + float(offset.y)) / float(CELL)))
+
+
+static func _open_cell_near(c: Vector2i, max_r: int = 10) -> Vector2i:
+	if _grid.is_in_boundsv(c) and not _grid.is_point_solid(c):
+		return c
+	var best: Vector2i = Vector2i(-1, -1)
+	var best_d: int = 1 << 30
+	for dy in range(-max_r, max_r + 1):
+		for dx in range(-max_r, max_r + 1):
+			var q := Vector2i(c.x + dx, c.y + dy)
+			if _grid.is_in_boundsv(q) and not _grid.is_point_solid(q):
+				var d: int = dx * dx + dy * dy * 4
+				if d < best_d:
+					best_d = d
+					best = q
+	return best
+
+
+## Waypoints for the walker from `from` to `to`, the last being `to`. A clear straight walk is just [to]. Empty when no route exists
+## (a click on an island the walker cannot reach), and the caller then walks straight and stops at the edge, as it always did.
+static func route(from: Vector2, to: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if line_clear(from, to):
+		out.append(to)
+		return out
+	if _grid == null or _grid_path != path:
+		_build_grid()
+	if _grid == null:
+		return out
+	var a: Vector2i = _open_cell_near(_cell_of(from))
+	var b: Vector2i = _open_cell_near(_cell_of(to))
+	if a.x < 0 or b.x < 0:
+		return out
+	var ids: Array[Vector2i] = _grid.get_id_path(a, b)
+	if ids.is_empty():
+		return out
+	var pts: Array[Vector2] = [from]
+	for id: Vector2i in ids:
+		pts.append(Vector2(float(id.x * CELL + CELL / 2 - offset.x), float(id.y * CELL + CELL / 2 - offset.y)))
+	pts.append(to)
+	# pull it tight: from each kept point jump to the furthest later point that is a clear straight walk
+	var i: int = 0
+	while i < pts.size() - 1:
+		var j: int = i + 1
+		while j + 1 < pts.size() and line_clear(pts[i], pts[j + 1]):
+			j += 1
+		out.append(pts[j])
+		i = j
+	return out
+

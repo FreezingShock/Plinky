@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = &"green"
 zone = &"larkmoor"
-display_name = "Gatehouse Green"
+display_name = "Thistledown Green"
 order = 0
 icon = "grass"
 theme_role = 4

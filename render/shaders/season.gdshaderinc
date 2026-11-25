@@ -47,3 +47,23 @@ vec3 season_recolor(vec3 c, vec2 wp) {
 	}
 	return c;
 }
+
+// Pines (conifers) take snow only on their tier tops. The baked light in the normal map's alpha is highest on the
+// upward-facing ledges (about the top 10 to 15 percent of pine texels), so cover is that light times season_snow, run
+// through the same Bayer and patch threshold as the ground. A dithered scatter that grows with the season.
+vec3 season_pine_snow(vec3 c, vec2 wp, float top_l) {
+	float top = smoothstep(0.7, 0.85, top_l);
+	if (top <= 0.0) {
+		return c;
+	}
+	ivec2 q = ivec2(floor(wp)) & ivec2(3);
+	float b = (float(SEASON_BAYER[q.y * 4 + q.x]) + 0.5) / 16.0;
+	vec2 iso = vec2(wp.x, wp.y * 2.0);
+	float patch = clamp((season_vnoise(iso / 7.0 + 11.0) - 0.25) / 0.5, 0.0, 1.0);
+	float thr = 0.12 * b + 0.88 * patch;
+	if (season_snow * top > thr) {
+		float l = dot(c, vec3(0.299, 0.587, 0.114));
+		c = clamp(vec3(0.86, 0.92, 1.0) * (0.78 + 0.3 * l), 0.0, 1.0);
+	}
+	return c;
+}

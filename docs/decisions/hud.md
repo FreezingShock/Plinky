@@ -424,6 +424,7 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Scenery is graded, not repainted.** The scenery is baked once in meadow indices; the mood's tint multiplies it and a Bayer dither adds the night shade (`boot/title_scenery.gdshader`), the same way `day_night.gdshader` shades the meadow. Fireflies come out at night, birds fly by day.
 - **Smooth transitions, one clock.** The title and loading screens share one `TitleBackground` clock. The chip in the bottom left names the time and runs the sky forward to the next stop over 1.6 s. Reason: nothing snaps.
 - **Reduce Motion (call made):** the clock holds on golden hour, the parallax stays still, the chip jumps instantly, and the screen change cross-fades instead of sweeping. Reason: the sweep is motion, and the fade keeps the same ink colour.
+- **Superseded 2026-11-24:** the ink wipe below was removed. See "Seamless scene handoff" at the bottom of this file.
 - **Scene change is a themed wipe** (`boot/title_wipe.gdshader`): a slanted, dithered sweep in the mood's ink with a sun-coloured lead line, used for Continue, New Game, Saves slots and the loading screen's hand-off. Reason: replaces the plain ink dissolve.
 - **Tagline (call made):** "+ Press. Walk. Bloom. +" from the README banner replaces "Press. Tally. Rebirth.", on both screens. Revert if the old line was intended.
 - **Icon:** the 1024 master is drawn by `tools/art/gen_app_icon.py` on a 64 texel grid from the golden keyframe, with the existing walker sprite pasted unchanged. Reason: it matches the title and reads at 16 px.
@@ -456,3 +457,180 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Kept:** repeat gains from one pad still add up on one number, and the adaptive quiet window still applies. Crowded pads still shift labels sideways or stack them above the button (`PopupLanes`).
 - **Sunlight bonuses** have their own key, so they fold only with each other and not with a pad's Sunlight number. Say so if that splits a Sunlight number you wanted combined.
 - Not run in-engine from the cloud: PC QA should check a neighbouring pad's gain and a standing press on one pad.
+
+## 2026-11-24: Gain numbers and their pad caption stay apart
+- **Why:** on the first-hour playtest, "+6.89" sat right on "Clover Leaves" and the two read as one block. The caption started 2 px under the number's baseline, and the number's 2 px outline and 2 px wave motion pushed into it.
+- **Change:** the caption starts 6 px under the number's baseline (`CAPTION_DROP` 18 px, with the caption 14 px down). The placement box grows to match, so stacked popups still clear the caption.
+- Verified by rendering two neighbouring-pad presses under Xvfb with software Vulkan: the caption now sits clearly under the number. The suite passes, 6141 checks, 0 failed.
+- Not checked: a caption running into the zone panel. The panel clip still shortens "Clover Leaves" there, which is the existing clear-zone behaviour and not part of this change.
+## 2026-11-24: Seamless scene handoff
+- **Why:** Play, Quit to title and the loading screen's hand-off went through an ink wipe that filled the screen, then a plain `change_scene`. The game's first frames showed the default grey, and the zone art loaded on the main thread, so the screen went black or grey and cut.
+- **Rule:** `SceneSwap` (`boot/scene_swap.gd`) captures the frame being left and covers the window with it. The next scene is swapped in underneath, draws four warm frames there, then the cover sweeps away to reveal it (`boot/scene_reveal.gdshader`, a dithered edge with a sun-coloured lead line). Under Reduce Motion the cover cross-fades. Nothing is drawn in a flat colour.
+- **Loading:** Play goes to the loading screen in handoff mode. It opens at the title's time of day, loads the slot's zone art on a worker thread (`Loading Larkmoor art... 62%`) and keeps the scene alive until the game has used it. It waits while a swap is still revealing, so no leave is dropped.
+- **Label:** ASCII dots, because Spleen has no ellipsis glyph.
+- **Same backdrop, no sweep (Nathan, 24 Nov):** when the next screen draws the same backdrop, the swap is a plain foreground change with no cover. Title to loading is the case, since the loading screen opens at the title's time of day on the same backdrop. Real backdrop changes keep the sweep (boot to title, loading to game, pause menu to title).
+- **Warm-up is adaptive:** the cover holds until the arriving scene draws at least four frames and two frames in a row cost about the same, capped at 40. A slow PC warms longer; a fast one reveals sooner.
+- Verified headless under Xvfb with lavapipe: boot, title, Play, loading, game, and the Reduce Motion path. No frame is near-black or flat, and the largest frame-to-frame jump is a sweep, not a cut (`tools/transition_frames.tscn`). Not run on the PC: the zone-art label for Larkmoor and Ember Quarry (a cold zone load), the Quit to title path, and the feel of the sweep at full speed.
+- **Queued swaps (fix, 24 Nov):** a swap requested while another is still revealing now waits for it. It used to return at once, so a Play pressed during the title's fade-in was dropped after the title had already set its starting flag, and the title stayed up for good. Reproduced headless with a save present by pressing Play at 0 s and 0.3 s after the title appears (`TRANSITION_SETTLE=<seconds>` on `tools/transition_frames.tscn`); both now reach the game.
+## 2026-11-24: Zone currencies open their gifts and show a full card
+- **Why:** Seeds and Core Shards only said "You have X". Nathan wanted the card to say what the currency is and how it is earned, and a click to take you to the gifts it buys.
+- **Rule:** a zone currency's HUD row and its Upgrades badge use `TipText.currency` (copy in `ZoneResetDef.currency_body`, the page line in `gift_blurb`). The row is clickable, and its card ends on "Click to open!". A click opens Upgrades on that zone's tab, and a click while the menu is open only moves to the tab. The badge's card has no call to action, since the menu is already open.
+- **Gifts menu:** each page has a centred head in its currency colour, tier heads take the zone colour, and the grid is centred. The list has one height for every tab (the tallest tab, up to the cap), so a tab switch or a buy never resizes the panel. The header balances have a fixed width. `ZoneResetDef.plural_name` fixes "Nucleuss" to "Nuclei".
+- Not run in-engine from the cloud: the Seeds card, the Bloom and Nucleus pages and the one-size panel were rendered headless under xvfb (`tools/gifts_shot.tscn`). The Core Shards card was covered by a world gate tooltip in that harness and is checked by `tests/test_zone_currency.gd`. PC QA should click both rows and both tabs.
+## 2026-11-24: HUD gain label beside each statistic
+- **Why:** Nathan wants the stat strip to show what a stat just earned, without a per-gain number in the world. The new label is a small "+123" right of the stats panel, level with its row, with the income rate ("+x/s") moved just past it.
+- **Source:** `EventBus.button_pressed` (every pad press, auto and relic pulses included). Bonus payouts are not a source; see the 2026-11-24 pad-only entry below. Idle income is not a gain here, so the label stays hidden while a stat only ticks up passively.
+- **Behaviour:** a run starts at the stat's first gain and sums every gain until HOLD (3 s) after the last one, then fades and drifts up over OUT (0.4 s). A gain during the run keeps adding to the same number; a gain after the run starts again from zero. It hides when its row is hidden.
+- **Colour:** the streak tier of the latest pad press (`Juice.last_tier`), using the same `PopupStyle` colours as the world numbers. Tier 0 uses the stat's own colour. A bonus payout uses whatever tier the last press had.
+- **Performance:** one pooled `HudGainLabel` per row, and the sums live in `HudGainTally`. No node is made per gain. Sparkles are a fixed pool of six per label.
+- **Reduce Motion:** the label keeps its fade and drops the rise, the jump and the sparkles.
+- Not run in-engine from the cloud: check the label's position beside a long value, the "+x/s" moving past it, and the sparkles on a crit.
+
+## 2026-11-24: HUD gain labels follow pad presses only
+- **Why:** PC QA on v0.85.2 saw "+X" beside Sunlight after Sprout presses, not Dewdrops. Traced in-engine: finishing a pad row fires the streak bonus (`bonus_gained`), which pays `streak_bonus_seconds` of income to every passive stat. Sunlight is passive, Dewdrops is not, so the label went to Sunlight. The Sunlight gain was real, but the stat strip should show what the pad that was pressed gave.
+- **Decision:** the stat label takes its gains from `EventBus.button_pressed` only (the pad's `reward_stat`). `bonus_gained` is no longer connected to the HUD. Streak and critter payouts keep their gold popup at the walker or critter (`main.gd` `_on_bonus_gained`), which already shows the Sunlight payout.
+- **Not chosen:** showing bonus payouts on the stat labels. A bonus would look like a press on Sunlight, which the player did not make.
+- **Check in-engine:** three `sim.try_press` calls on `sprout_1..3` leave only the `dewdrop` label visible (before the fix, a `sunlight` label appeared too).
+
+## 2026-11-24: Income rate shows only with a recent gain
+- **Why:** PC QA on #358: the "+x/s" income rate beside each row sat on screen while nothing was pressed, and Nathan wants the strip quiet until something is gained.
+- **Decision:** a row's "+x/s" rate shows only while that row's gain label is up (a pad gain in the last 3.4 s). Idle income is no longer shown there. The Strip Gain Rates setting still turns the rate off entirely. The prestige row's multiplier is not a rate and keeps its old rule.
+- **Cause of the flicker:** the stats refresh set the rate's visibility on its own timer, which overrode the per-frame placement. The refresh no longer touches visibility.
+- **Check in-engine:** idle, the Sunlight rate is hidden. A simulated Sunlight gain shows the rate beside the gain label, and both hide after the fade.
+- **Open:** if Nathan wants idle income visible after all, the change is one condition in `_place_rates`.
+
+## 2026-11-24: Income rate stays visible; gain label sits after it (reverses the entry above)
+- **Why:** the coordinator's review of #366: the "+x/s" income rate is long-standing information that Nathan never asked to hide. It only looked like a stray label in QA. Hiding it while idle was the wrong call.
+- **Decision:** the rate shows whenever the row has income, as before. The gain label now sits just past the rate instead of between the panel and the rate. The rate never moves when a gain appears or fades, and the gain label never overlaps it. Only the gain label's own width changes the strip's extent, and only while it is up.
+- **Check in-engine:** Sunlight's rate sat at x=93 idle and while a gain was up, and at x=93 after the fade. The gain label sat at x=133, which is 93 + rate width 37 + 3.
+- **Not done:** no animation on the gain label's position, so nothing glides or jumps.
+
+## 2026-11-24: Banner time-of-day words use the sun, not the raw clock (17:28 was Dusk)
+- **Cause:** `AreaBanner.period_of` sets its word bands on the sun phase (0.25 sunrise, 0.75 sunset), but the banner passed it the clock fraction. A clock of 0.73 (17:28) fell in the Dusk band (below 0.8). The zone banner's fallback also passed the sun phase where the clock fraction was expected.
+- **Fix:** `period_of` takes a clock fraction and converts it with `SkyModel.phase_of_clock` at the sky's daylight, so the bands stay on the sun. `compose` takes the clock fraction and daylight. `main.gd` converts `sky.clock_phase()` to the clock with `clock_of_phase`, and passes the sky's daylight.
+- **Boundaries:** the sun-phase bands are unchanged. Dusk starts at sun phase 0.7, which is 17:46 at daylight 0.6, about 86 minutes before sunset at 19:12. If QA wants Dusk later, change the 0.7 band in `period_of`; that is a taste call.
+- **Tests:** `tests/test_banner.gd` checks the dawn, noon and sunset clock fractions, 17:28 as Afternoon, and the fallback line "17:28 - Afternoon".
+- **Not run in-engine:** the cloud cannot run Godot.
+
+## 2026-11-24: Sprint tag matches the HUD frame and text
+- **Why:** Nathan's screenshot of "SPRINTING ENABLED" above the Momentum panel looked dim, dark green and borderless, unlike the cream text in the panel's green notched frame. Cause in code: the tag used a plain square StyleBoxFlat plate with a 1px dim edge, not the AsciiBox frame, and it took a per-state green (`RelicStyle.good`, or `accent` for HELD) with a 2px ink outline that likely thins the 14px glyph strokes (not confirmed in-engine).
+- **Decision:** the tag uses `AsciiBox.make(PANEL, 6, 2)`, the same frame as the panel and the relic and achievement toasts, with `RelicStyle.text` for both states and no font outline. The state is still shown by the word.
+- **Not chosen:** keeping HELD in the accent yellow. It is a one-line change if Nathan wants the colour back.
+- **Checked:** the other toasts. Relic and achievement toasts already use AsciiBox. The subtitle bar keeps its ink plate with no green frame, on purpose, so captions read over the world.
+- **Check in-engine:** hold Shift and tap Ctrl. The tag should show cream text in the notched green frame, centred over the panel, with no resize of the Momentum panel.
+- **Not run in-engine:** the cloud cannot run Godot.
+
+## 2026-11-24: Upgrades menu uses a tier rail
+- **Decision:** each zone's gift page is a tier rail on the left (one row per tier, its gate in the tier's colour, e.g. "2  Requires 1 Bloom") and the chosen tier's gifts two across on the right. The rail follows the mouse, Up and Down with keyboard and pad, and opens on the frontier tier (the first tier with a gift open and not maxed). Tier colours are palette roles 3, 6, 4, 5, 7, then the currency colour for a sixth tier.
+- **Why:** the old page stacked six tiers in one scrolling list with small cards, which read as cluttered. Nathan picked the rail from three mockups (tier chips, a five-across gallery, the rail), and asked for coloured tiers and "Requires N Bloom(s)" gates.
+- **Not chosen:** the five-across gallery (all 15 gifts at once, too dense) and the tier chips (cramped gate labels at 640 px). A description line under the gifts was dropped at Nathan's request; the shared Tip on each card carries the detail.
+- **Kept:** `UpgradeText.tier_head` keeps its "Unlocks After" wording, which tests read. The rail uses the new `UpgradeText.tier_gate`.
+- **Checked:** `tests/run.gd` passes headless (6839 checks, 0 failed). The gifts capture (`tools/gifts_shot.tscn`) and a tier-switch check ran under Godot 4.7.2 with lavapipe. The panel stays 523 by 262 across tiers and tabs.
+- **Not run in-engine on the PC:** the look on a real GPU, and the feel of the rail hover and focus.
+## 2026-11-24: Bloom and Nucleus ritual, themed moments and a gift card
+- Picked by Nathan from three mockups: themed moments per reset (Bloom petals and a light shaft, Nucleus streaks, core and shards) plus a bigger Gift Ready card. Reduce flashing and Still meadow keep the calm fade; world and hover tips are held while the ritual runs.
+## 2026-11-24: Sprint tag centred over the Momentum panel
+- **Why:** PC QA batch 99 on v0.89.29 saw the tag on the panel's left edge, about 27 px off centre (a 138 px tag on a 192 px panel).
+- **Decision:** the tag centres on the panel's width, floored to a whole pixel, and is re-placed every frame it shows, since its width changes with the state.
+- **Colour:** the tag's font colour is `RelicStyle.text` (palette index 7, paper, cream in every zone). An in-engine capture at Zone 1 shows cream. QA's "green" report matches the pre-#428 tag, so the editor probably still runs the old code. Re-check after a pull and F5.
+- **Check in-engine:** hold Shift, then tap Ctrl. The tag's centre sits over the panel's centre, and the tag is cream.
+- **Not run on the PC:** the capture was a headless Godot 4.7.2 run under xvfb in the cloud, not Nathan's machine.
+
+## 2026-11-24: Upgrades panel builds its contents on open, frees them on close (node budget)
+- **Decision:** the Upgrades shell (the animated panel the menu router holds) is the only part built at boot. Its header, tabs, tier rails and gift cards are built each time it opens and freed when it closes. The tier each tab showed is kept across a close.
+- **Why:** the gifts were about 470 nodes that stayed in the tree after a close (1249 with Upgrades closed after one open, against 780 at boot). Measured headless in the meadow: boot 799 to 780, closed 1249 to 780, reopen back to 1249.
+- **Checked:** the open panel looks the same as before in a capture. `tools/gifts_shot.tscn` runs both zones through open, close and reopen with no script errors, and the tab, keyboard and row-click paths still work. `tests/run.gd` passes.
+- **Cost:** each open builds about 470 nodes again, once per open rather than once per session.
+- **Not run in-engine:** the open hitch on a real PC, and the focus feel with pad.
+## 2026-11-24: Relic gallery builds on open, frees on close (node budget)
+- **Decision:** `RelicPanel` builds its body when it shows and frees that body when it closes. Filter and open tier are kept across a close. `bind()` only keeps the inventory and rebuilds the tab chips if the panel is open.
+- **Why:** the gallery's 79 nodes sat in the boot tree, which counts against the 1350 ceiling on every zone. Measured headless in the meadow: 799 nodes at boot before, 720 after; open and reopen return to 799, close returns to 720.
+- **Kept:** the menu router's animator and the close X are children of the panel, so teardown frees only `_outer`, the body.
+- **Checked:** in a headless capture the open panel looks the same as before (the world behind it differs by time of day). `tests/run.gd` passes (7941 checks, 0 failed).
+- **Next:** Upgrades (about 392 nodes after close) and Stats/Attributes plus Gallery, same pattern, in their own PRs.
+- **Not run in-engine:** the focus feel on a real PC.
+
+## 2026-11-24: Stats and Attributes builds on open, frees on close (node budget)
+- **Decision:** `IndexPanel` keeps only its frame (the wipe, the panel shell and the close X) while shut. The header, tabs, card grid and detail page are built when the window opens and freed when the close wipe ends. The tab is kept across a close, as before.
+- **Why:** the window's body sat in the boot tree. Headless probe in the meadow: 716 nodes at boot before, 677 after. With Stats open it is 787 both before and after. After closing, 825 before (the body stayed, with a detail page open) and 680 after; the 3 left over are the shared tooltip layer, which the first hover creates.
+- **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. Tooltips hide and page tweens stop before the body is freed.
+- **Checked:** the open Stats and Attributes windows and detail page match main pixel for pixel, except the Stats tab's dotted focus ring, which the fresh build does not show on the first open after boot. Focus lands on the same control in both builds (the Stats tab button). `tests/run.gd` passes, and the new checks cover free on close and rebuild on open.
+- **Not run in-engine:** the focus feel on a real PC.
+- **Next:** the Gallery menu, same pattern.
+## 2026-11-24: Gallery menu builds on open, frees on close (node budget)
+- **Decision:** `GalleryMenu` keeps only its frame (the wipe, the panel shell and the close X) while shut. The header, the nine tiles, the footer actions and the arrow-key wiring are built when it opens and freed when it closes.
+- **Why:** the tiles and footer sat in the boot tree. Headless probe in the meadow: 677 nodes at boot before, 651 after. Open is 677 both ways. After closing, 680 before and 654 after; the 3 left over are the shared tooltip layer, which first use creates.
+- **Kept:** `MenuAnim` and the close X are children of the panel, so teardown frees only `_body`. `_wire_focus` runs when the body is built, and skips a menu that is shown off-tree (tests).
+- **Checked:** the open menu matches main pixel for pixel in the tiles and header. The footer labels (Close Menu, Quit To Title, Quit Game) sit 1 px to the right of main's, and that holds after 2.5 s, so it is not the open animation. Not traced yet; likely how MenuTextButton measures its label on its first `_ready`. `tests/run.gd` passes. Two tests now show the menu before reading its tiles.
+- **Not run in-engine:** the focus feel on a real PC.
+
+## 2026-11-24: Gallery Tab order reaches the footer
+- **Decision:** Tab walks the nine tiles in layout order, then Close Menu, Quit To Title and Quit Game, then wraps to the first tile. Shift+Tab reverses it. The footer buttons are kept in `GalleryMenu._footer`.
+- **Why:** each tile's Tab target wrapped straight to the first tile, so the footer was never reached by keyboard (PC keyboard QA on main d52c8521). The arithmetic is in `GalleryMenu.tab_next` and `tab_prev`, tested in `tests/test_gallery.gd`.
+- **Checked:** `tests/run.gd` passes (7960 checks, 0 failed). In a running scene, the Tab walk visits 12 distinct controls and wraps, and Settings' next control is Close Menu.
+- **Not done:** arrow keys from the footer (up and down into the tiles) are not wired. Not run on the PC.
+## 2026-11-24: A menu takes the screen from an achievement banner at once
+- **Decision:** when a menu opens while a banner is on screen, the banner is hidden on that frame, with no close animation. Its sparks are freed too. The unlock goes back to the front of the queue and shows after the menu closes. Ritual holds keep the animated close.
+- **Why:** the boot achievement banner drew over the open Gallery at zoom 3 (PC QA on main 190d09cd). The banner sits at `TOAST_Z`, which beats the menu's tree order, and the old path ran a 0.3 s close during which the banner stayed on top.
+- **Checked:** `tests/run.gd` passes (7955 checks, 0 failed). The menu test now requires the banner to hide on the same frame. Not run in-engine: the visual check on the PC.
+## 2026-11-24: Menu text buttons measure with crisp font settings from the start (footer alignment)
+- **Decision:** `MenuTextButton` applies `CrispFont` in `_init`, not only in `_ready`. The menus set `label` before the button enters the tree, and the setter measures the text right away, so the first measurement used the default font settings.
+- **Why:** the Gallery footer (Close Menu, Quit To Title, Quit Game) sat 1 px right in the lazy build (PR #464) and not in the eager build. A/B probe, footer button widths: before 120 / 128 / 114 eager and 120 / 127 / 113 lazy; after 119 / 127 / 113 in both. Positions are now 136 / 259 / 390 in both builds.
+- **Checked:** the footer crop is pixel-identical between the eager and lazy builds with this change. The footer text is 1 px narrower on `Close Menu` and `Quit To Title` than the old eager build showed, which is the crisp measurement.
+- **Not run in-engine:** the footer on a real PC.
+
+## 2026-11-24: Stats and Attributes wire their own Tab ring (keyboard focus)
+- **Decision:** `IndexPanel` sets `focus_next` and `focus_previous` on its two tabs and its gift cards, as one ring that wraps at both ends. On a detail page the ring is the two tabs and Back. It is rewired when the cards rebuild and when a detail page opens.
+- **Why:** PC QA (batch 118, keyboard only, zoom 1 and 3): Tab walked all 22 Stats controls in order and wrapped, but Shift+Tab from the first control stopped instead of wrapping. Godot's default focus order does not wrap backward on its own.
+- **Checked:** `tests/run.gd` passes (7959 checks, 0 failed), including the ring arithmetic (`IndexPanel.ring_step`). The wiring itself needs a scene in the tree, which the test runner does not have.
+- **Not run in-engine:** Shift+Tab from the first and last control on a PC. Upgrades has the same backward stop and is not changed here.
+## 2026-11-24: Upgrades cards build a few per frame after open (open hitch)
+- **Decision:** on open, the Upgrades header, tabs, tier rails and empty tier grids are built at once, as before. The gift cards are then built `CARDS_PER_FRAME` (12) to a frame, starting with the tab on show, while the open wipe plays. Teardown on close stops a builder left over from the closed panel (a generation counter), clears the queue and frees everything as before.
+- **Why:** building every card in one frame cost a hitch of about 32 to 38 ms per open on the PC. Keeping the lazy build keeps the node ceiling (the cards are still freed on close). A card that is not built yet is not in `_attr_rows`, so `_buy_upgrade` checks for it.
+- **Checked:** `tests/run.gd` passes (7955 checks, 0 failed) on this branch. Headless probes on a fresh boot do not build any upgrade tabs, so they cannot time the open.
+- **Not run in-engine:** the open hitch on a real PC with progress saved. PC QA should measure it before and after.
+
+## 2026-11-24: Upgrades wires its own Tab ring (keyboard focus)
+- **Decision:** the Upgrades panel sets `focus_next` and `focus_previous` on its tabs, the tier rail of the tab on show, and the gifts in the tier on show, as one ring in layout order that wraps at both ends. It is rewired on every tab, tier and card change. The gift card's line-2 text label (`UpgradeCard._delta`) no longer takes focus.
+- **Why:** PC QA on keyboard focus found Tab did not follow the layout (Godot walks the tree, so every tab's page counts), Shift+Tab from the first control stopped instead of wrapping, and the card's text label sat in the focus chain. Same backward stop as Stats and Attributes (see the entry above).
+- **Checked:** `tests/run.gd` passes (7955 checks, 0 failed).
+- **Not run in-engine:** the ring on a PC with a save that has several tabs and tiers. PC QA should walk Tab and Shift+Tab through the Upgrades panel at zoom 1 and 3.
+
+## 2026-11-24: Upgrades icons load once and warm up after setup (first open)
+- **Decision:** `UpgradeCard.icon(name)` keeps each icon texture in a static cache, and every Upgrades icon goes through it (gift cards, the header badges and the tab currency icons). After setup, `HUD._warm_upgrade_icons` loads the icons for every currency and attribute, eight per frame, so the first open does not read them from disk.
+- **Why:** PC batch 119 on a progressed save: the first Upgrades open at zoom 1 still cost about 36 ms more than later opens (the first frame after the call was 45 ms). Texture loads are not held by anything once their nodes are freed, so each open read them again. Headless probe: loading the 50 root icon PNGs cold takes 7.65 ms, and from the cache 0.12 ms.
+- **Checked:** `tests/run.gd` passes (7962 checks, 0 failed), including a check that the icon cache returns the same texture.
+- **Not measured:** the rest of the first-open cost. The probe can't see GPU upload, glyph rasterising or first-use shaders, so the PC has to time the first open before and after this change.
+
+## 2026-11-24: Relics panel uses the Window layout (Nathan picked B from three mockups)
+- **Decision:** the view control is two labelled segments, All and Owned, in place of the eye button. The active segment is filled. Active buffs are a three-column grid of icon-over-value cells, equal width, beside the slots. Rarity tabs carry a strip of how much of the tier is found. Cards drop the rarity letter and use a 20 px icon. Sealed Caches are two side-by-side cards with the price and pulls left on a second line. The footer "N of M slots used" is removed, since the slot row shows it.
+- **Why:** the eye read as a stamp, so its state needed a tooltip. The buffs wrapped raggedly. The cards were mostly empty space around a small icon, and the caches took a full row each. Mockups A, B and C were posted first. Nathan picked B.
+- **Deviation from the mock:** the tier rail in the B mock showed six tiers in one row with shortened names ("Uncomm", "Legend"). It is a 3x2 grid instead, so the full tier names stay. The strip under each tab carries the progress the rail was meant to show.
+- **Checked:** `tests/run.gd` passes (7967 checks, 0 failed). Headless capture with `--path . tools/relic_panel_shots.tscn` under Xvfb renders the panel with the real theme, in All and Owned modes.
+- **Not run in-engine:** the hover and click path on a PC, the keyboard focus order across the new view segments, and a long bonus list (more than six). Those need PC QA with screenshots at zoom 1 and 3.
+## 2026-11-24: Pre-game screens fill any window, the game stays letterboxed
+- **Decision:** `DisplaySettings.pregame_fill` switches the root's content scale to EXPAND while the loading and title screens are up. `main.gd` switches it back to KEEP, so the game keeps its 640x360 (or bleed) letterbox. The art stays centred on its 640x360 grid (`art_origin` in `title_background.gdshader`, `_origin` in `title_scenery.gd`), and the sky, hills, ground, pines, grass and birds are drawn past it, so there is no edge.
+- **Why:** Nathan asked for the loading and title screens to fill the display like the game. Measured headless, the game and the title both letterboxed on non-16:9 windows. Nathan then chose to fill the pre-game screens only (the decision card in the project thread), because the title art is procedural and the meadow art is baked. The game keeps the KEEP letterbox.
+- **Not verified in-engine:** the scene-swap cover when the game hands off to the title (the captured frame is at the old aspect). Headless captures at 800x600, 1024x768, 1600x1000, 2560x1080 and the loading screen were checked by eye. PC QA should check windowed and fullscreen at several sizes, and the title-to-game and game-to-title swaps.
+
+## 2026-11-24: Achievements rows build over a few frames, and their icons load once
+- **Decision:** `LedgerPanel.refresh` builds the title and the overall bar at once, then the category heads and achievement rows `ROWS_PER_FRAME` (6) at a time while the panel is in the tree. A newer build or a hide bumps `_gen`, which stops the older build at its next check. Off the tree (tests) it builds in one pass. Closing still frees every row. `LedgerPanel.icon_for` goes through `IconCache.texture`, a static path-keyed cache that loads each icon once (missing files are cached as null).
+- **Why:** the Achievements open built all rows in one call, 30–40 ms on the headless probe, and every open read the same icon PNGs again. Probe with 637 nodes at open and 677 with the History panel (both after close): open sync is now 3.6–6.2 ms and the worst frame 8–10 ms, against 19–24 ms before.
+- **Checked:** `tests/run.gd` passes (9047 checks, 0 failed). The new checks: rows are built in one pass off the tree, a refresh with no change does not rebuild them, and close frees them.
+- **Not run in-engine:** the spread build on a PC with a progressed save. PC QA should open Achievements and watch the rows fill in over a few frames, then switch the tab and scroll while it fills.
+## 2026-11-24: Update Log is one text block, not a label per line (menu cost)
+- **Decision:** the Update Log puts every version and note in one `RichTextLabel`, coloured per line (headings take the accent, notes the text colour). Brackets in a note are escaped. The rows still come from `rows_from`.
+- **Why:** the log built one `Label` per heading and note, about 1150 nodes. The menu probe measured 91 to 146 ms per open, and the nodes stayed after close. One text block cuts the node count by about 1150 and the open cost to a few milliseconds.
+- **Checked:** `tests/run.gd` passes. A new check covers the escaping and the colour tags.
+- **Not run in-engine:** how the log scrolls and wraps on a PC at zoom 1 and 3.
+
+## 2026-11-24: Stats and Attributes grid builds over a few frames
+- **Decision:** `IndexPanel._rebuild` builds the group heads, flows and cards through `_fill_cards`, `CARDS_PER_FRAME` (8) cards per frame after the first batch while the panel is in the tree. A rebuild or a teardown bumps `_gen`, which cancels the older build. While a build runs, `_refresh` skips the per-card `set_data` pass, and focus is wired once the grid is complete. Off the tree it builds in one pass.
+- **Why:** the probe showed the Stats open at 18–49 ms and Attributes at 9–20 ms, all synchronous. Headless after this change: Stats open sync 9.9–15 ms with worst frame 8–12 ms, Attributes 8.3–13 ms with worst frame about 8 ms.
+- **Checked:** `tests/run.gd` passes (11738 checks, 0 failed), including a check that the grid builds in one pass off the tree.
+- **Not run in-engine:** the spread grid on a PC. PC QA should open Stats and Attributes and check the cards fill in without a visible pop, then press Tab and the arrows while cards are still arriving, and that Back and a buy still work.
+## 2026-11-24: Gallery, Stats and Attributes icons load through IconCache
+- **Decision:** the Gallery tile icons, the index card icons (`IndexCard.icon_for`, big then small), the Stats and Attributes header and tab icons, and the index sheet textures all go through `IconCache.texture`. Each PNG loads once and is kept for the life of the game. `IconCache` is the same file as on `claude/ledger-lazy` (PR #497), so the two merge cleanly in either order.
+- **Why:** these menus loaded their PNGs again on every open, and a freed node drops its texture, so each open read the same files from disk. The gain is small: the headless probe with this change shows Gallery at 7–15 ms open, against 8–16 ms before, so the bulk of the cost is elsewhere (the card and tile nodes).
+- **Checked:** `tests/run.gd` passes (11737 checks, 0 failed) after `--import`.
+- **Not run in-engine:** the icons on a PC at zoom 1 and 3. PC QA should check that every Gallery tile and Stats card shows its icon.

@@ -32,8 +32,7 @@ var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
 var _row_tips: Dictionary = {}    # attribute id -> tooltip spec Callable
 var _attr_rows: Dictionary = {}   # attribute id -> UpgradeCard
-const UPGRADE_LIST_WIDTH: float = 318.0   ## two cards across (UpgradeCard.CARD_SIZE) plus a gap and the scrollbar
-const UPGRADE_LIST_HEIGHT: float = 180.0   ## the most the list takes (about three rows); a shorter tab takes only what it needs, and the rest scrolls
+const UPGRADE_LIST_WIDTH: float = 488.0   ## the tier rail (RAIL_WIDTH), a gap, and two cards across (UpgradeCard.CARD_SIZE)
 var _tip_card: TipCard
 var toast_showing: Callable   ## set by main: true while the achievement toast is up (tips wait for it)
 var _gated: Array = []            # [node, feature] pairs; see gate()
@@ -74,6 +73,7 @@ const CTL_W: float = 28.0   ## width of the grip and hide mark that open at the 
 
 func setup(p_sim: Sim) -> void:
 	sim = p_sim
+	_warm_upgrade_icons.call_deferred()
 	add_to_group(GROUP)
 	PopupNumber.under_menu = point_under_menu
 	PopupNumber.keep_clear = clear_rects
@@ -102,14 +102,11 @@ func setup(p_sim: Sim) -> void:
 	var bus: Node = get_node("/root/EventBus")
 	_save_note.connect_bus(bus)
 	bus.offline_gained.connect(_on_offline)
+	bus.button_pressed.connect(_on_gain_pressed)   # every pad press, auto and relic pulses included; bonuses stay out (see decisions/hud.md)
 	var report: Dictionary = get_node("/root/Save").take_offline_report()
 	if not report.is_empty():
 		_on_offline(report["seconds"], report["gains"])
 	_refresh()
-
-
-func upgrades_open() -> bool:
-	return _upgrades_panel.visible
 
 
 func upgrades_panel() -> Control:
@@ -118,6 +115,27 @@ func upgrades_panel() -> Control:
 
 func toggle_upgrades() -> void:
 	menu_toggled.emit(&"upgrades")
+
+
+## A zone currency's row opens Upgrades on that currency's gifts tab. If the menu is already up, it just moves to the tab.
+func open_gifts(cur: StringName) -> void:
+	Tip.hide_all()
+	if _upgrades_panel.visible:
+		_select_upgrade_tab(cur)
+		return
+	_pending_tab = cur
+	toggle_upgrades()
+
+
+## The tooltip of a zone currency (Seeds, Core Shards): its balance, the next reset's pay, the gift counts, and the
+## yellow "Click to open!" when the row can open the gifts.
+func _currency_spec(sid: StringName, have: String, clickable: bool) -> Dictionary:
+	var r: ZoneResetDef = sim.reset_for_currency(sid)
+	var counts: Dictionary = UpgradeText.gift_counts(sim, sid)
+	var need: String = "Reach %s %s." % [BigNum.from_float(sim.reset_ref(r.id)).format(), (sim.stat_defs[r.source_stat] as StatDef).display_name]
+	var facts: Dictionary = {"can": sim.can_reset(r.id), "gain": sim.reset_gain(r.id), "need": need,
+		"bought": counts["bought"], "total": counts["total"], "affordable": counts["affordable"]}
+	return TipText.currency(sid, (sim.stat_defs[sid] as StatDef).display_name, have, r, facts, clickable)
 
 
 ## The hamburger chip, so Main can keep it above open menus.
@@ -163,10 +181,6 @@ func point_under_menu(pt: Vector2) -> bool:
 ## Keep `p` centred in the free area above the bottom bar (clamped to stay on screen).
 func keep_centered(p: Control) -> void:
 	_centered.append(p)
-
-
-func close_panels() -> void:
-	_upgrades_panel.visible = false
 
 
 func _panel(pos: Vector2) -> VBoxContainer:
@@ -241,7 +255,12 @@ func _build_stats() -> void:
 		val.add_theme_color_override("font_color", StatStyle.color(sid))
 		h.add_child(val)
 		_rows[sid] = [val, rate]
+		var gl := HudGainLabel.new()   # "+123" beside the row, outside the panel: one pooled node per row
+		add_child(gl)
+		_gain_labels[sid] = gl
 		Tip.bind_all(h, func() -> Variant:
+			if sim.reset_for_currency(sid) != null and not _edit_mode:
+				return _currency_spec(sid, sim.get_stat(sid).format(), true)
 			var inc: BigNum = sim.income_per_second(sid)
 			var spec: Dictionary = TipText.stat(sid, def.display_name, sim.get_stat(sid).format(), "" if inc.is_zero() else inc.format())
 			if _edit_mode:
@@ -344,7 +363,7 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 	var cname: String = (sim.stat_defs[r.currency] as StatDef).display_name
 	var lines: Array = [
 		[r.resets_text, StatStyle.PAPER],
-		["+%d %s" % [sim.reset_gain(rid), cname], StatStyle.color(r.currency)],
+		["+%s %s" % [sim.reset_gain(rid).whole_text(), cname], StatStyle.color(r.currency)],
 		["Every pad pays %d%% more, for good." % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()],
 	]
 	_modal.open("%s?" % r.display_name, lines, r.display_name, "Not yet", func() -> void: GameState.try_reset(rid))
@@ -406,12 +425,20 @@ func _chip(parent: Control, icon_name: String, tip_title: String, tip_body: Stri
 	return c
 
 
+## The shell is the only part built at boot: the animated panel the menu router and the close X hold. Its contents are
+## built each time it opens and freed when it closes (node budget, docs/perf.md), see _build_upgrades_body().
 func _build_upgrades() -> void:
 	_upgrades_panel = PanelContainer.new()
 	_upgrades_panel.add_theme_stylebox_override("panel", AsciiBox.panel())
 	_upgrades_panel.visible = false
 	add_child(_upgrades_panel)
 	keep_centered(_upgrades_panel)
+	MenuAnim.front_on_show(_upgrades_panel)   # the menu draws above the meters, relic bar and sprint trail
+	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
+
+
+## The panel's contents: the header with balances, the tab strip, and the page area the tabs fill.
+func _build_upgrades_body() -> void:
 	_upgrades_box = VBoxContainer.new()
 	_upgrades_box.add_theme_constant_override("separation", 3)
 	_upgrades_panel.add_child(_upgrades_box)
@@ -436,40 +463,87 @@ func _build_upgrades() -> void:
 	_upg_tabs = HBoxContainer.new()
 	_upg_tabs.add_theme_constant_override("separation", 12)
 	_upgrades_box.add_child(_upg_tabs)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, 0.0)
-	scroll.follow_focus = true
-	_upgrades_box.add_child(scroll)
-	_upg_scroll = scroll
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 6)
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
-	_upg_list = list
-	MenuAnim.front_on_show(_upgrades_panel)   # the menu draws above the meters, relic bar and sprint trail
-	_upgrades_panel.visibility_changed.connect(_on_upgrades_shown)
+	# Each tab's page is a header, then a tier rail on the left and the chosen tier's gifts on the right. No scroll.
+	_upg_list = VBoxContainer.new()
+	_upg_list.add_theme_constant_override("separation", 6)
+	_upg_list.custom_minimum_size = Vector2(UPGRADE_LIST_WIDTH, 0.0)
+	_upgrades_box.add_child(_upg_list)
+
+
+## Frees the panel's contents on close. The tabs, tiers and cards are rebuilt on the next open. The tier each tab had
+## open is kept in _kept_tier, so a reopen shows the same tier.
+func _teardown_upgrades_body() -> void:
+	if _upgrades_box == null:
+		return
+	Tip.hide_all()
+	_kept_tier = _tier_sel.duplicate()
+	_upgrades_panel.remove_child(_upgrades_box)
+	_upgrades_box.queue_free()
+	_upgrades_box = null
+	_upg_list = null
+	_upg_tabs = null
+	_cur_vals.clear()
+	_cur_badges.clear()
+	_attr_rows.clear()
+	_row_tips.clear()
+	_upg_tab_btns.clear()
+	_upg_pages.clear()
+	_upg_rails.clear()
+	_upg_hosts.clear()
+	_tier_grids.clear()
+	_tier_attrs.clear()
+	_tier_btns.clear()
+	_tier_sel.clear()
+	_upg_order.clear()
+	_upg_built = false
+	_cards_started = false
+	_card_queue.clear()
+	_body_gen += 1
 
 
 var _upg_list: VBoxContainer
-var _upg_scroll: ScrollContainer
+const BADGE_VALUE_WIDTH: float = 44.0   ## the balance in the Upgrades header: wide enough for "999.9K" so buying never shifts it
+const RAIL_WIDTH: float = 168.0         ## the tier rail: "2  Requires 1 Bloom" fits on one row
 var _upg_tabs: HBoxContainer
 var _upg_order: Array[StringName] = []          # the currency of each tab, in menu order
 var _upg_tab_btns: Dictionary = {}              # currency stat id -> its tab (MenuTextButton)
 var _upg_pages: Dictionary = {}                 # currency stat id -> the page of that group's tiers
+var _upg_rails: Dictionary = {}                 # currency stat id -> the VBox holding its tier rail buttons
+var _upg_hosts: Dictionary = {}                 # currency stat id -> the box the tier grids sit in
+var _tier_grids: Dictionary = {}                # currency stat id -> Array of GridContainer, one per tier in unlock order
+var _tier_attrs: Dictionary = {}                # currency stat id -> Array of tiers, each an Array of AttributeDef
+var _tier_btns: Dictionary = {}                 # currency stat id -> Array of MenuTextButton, the rail rows
+var _tier_sel: Dictionary = {}                  # currency stat id -> the tier shown on that tab
+var _kept_tier: Dictionary = {}                 # currency stat id -> the tier it showed when the panel last closed
 var _upg_tab: StringName = &""                  # the tab on show
+var _pending_tab: StringName = &""              # the tab a zone currency's row asked for, taken on show
 var _cur_vals: Dictionary = {}     # currency stat id -> Label with the balance in the Upgrades header
 var _cur_badges: Dictionary = {}   # currency stat id -> the badge box (icon + value)
+## The cards are built a few per frame after the pages exist, so the open does not stall (node budget and hitch).
+const CARDS_PER_FRAME: int = 12
+var _upg_built: bool = false          # the pages, rails and empty grids exist for this open
+var _cards_started: bool = false      # the card builder has been started for this open
+var _body_gen: int = 0                # bumped on teardown, so a builder left over from a closed panel stops
+var _card_queue: Dictionary = {}      # currency stat id -> Array of [AttributeDef, GridContainer] still to build
 
 
 ## Opening the panel builds the cards the first time (the node budget), then opens on the current zone's tab.
 func _on_upgrades_shown() -> void:
 	if not _upgrades_panel.visible:
+		_teardown_upgrades_body()
 		return
+	if _upgrades_box == null:
+		_build_upgrades_body()
 	_fill_upgrades()
 	_upg_tab = _zone_tab()
+	if _pending_tab != &"" and UpgradeText.tab_shown(sim, _pending_tab):
+		_upg_tab = _pending_tab   # a zone currency's row asked for its gifts
+	_pending_tab = &""
 	_order_upgrade_tabs()
 	_sync_upgrade_tabs()
+	for cur: StringName in _tier_grids:   # a tab opens on the tier it last showed, else on its frontier tier
+		_select_tier(cur, int(_kept_tier[cur]) if _kept_tier.has(cur) else _frontier_tier(cur))
+	_start_cards()
 
 
 ## The zone's own gift tab when it shows, else the first tab the player can see.
@@ -488,11 +562,23 @@ func _order_upgrade_tabs() -> void:
 	_upg_tabs.move_child(_upg_tab_btns[here.currency] as Control, 0)
 
 
-## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page of tiers;
-## a tier is a heading and a two-across grid of cards, so a tier of gifts reads as one group.
+## The first tier with a gift that is open and not maxed yet, else the first tier.
+func _frontier_tier(cur: StringName) -> int:
+	var tiers: Array = _tier_attrs.get(cur, [])
+	for i: int in tiers.size():
+		for a: AttributeDef in tiers[i]:
+			if sim.attr_unlocked(a.id) and sim.attr_level(a.id) < a.cap:
+				return i
+	return 0
+
+
+## The cards are built the first time the menu opens, not at boot (node budget). Each currency gets a page: a header,
+## a tier rail (one row per tier, its gate in the tier's colour) and one two-across grid of cards per tier. Only the
+## chosen tier's grid shows.
 func _fill_upgrades() -> void:
-	if not _attr_rows.is_empty():
+	if _upg_built:
 		return
+	_upg_built = true
 	_upg_order = UpgradeText.tab_currencies(sim)
 	for cur: StringName in _upg_order:
 		var page := VBoxContainer.new()
@@ -500,52 +586,240 @@ func _fill_upgrades() -> void:
 		page.visible = false
 		_upg_list.add_child(page)
 		_upg_pages[cur] = page
+		page.add_child(_gift_header(cur))
+		var body := HBoxContainer.new()
+		body.add_theme_constant_override("separation", 12)
+		body.alignment = BoxContainer.ALIGNMENT_CENTER
+		page.add_child(body)
+		var rail := VBoxContainer.new()
+		rail.add_theme_constant_override("separation", 3)
+		rail.custom_minimum_size.x = RAIL_WIDTH
+		body.add_child(rail)
+		_upg_rails[cur] = rail
+		var host := VBoxContainer.new()
+		host.custom_minimum_size.x = UpgradeCard.CARD_SIZE.x * 2.0 + 6.0
+		body.add_child(host)
+		_upg_hosts[cur] = host
+		_tier_grids[cur] = []
+		_tier_attrs[cur] = []
+		_tier_btns[cur] = []
 		var tab := MenuTextButton.new()
 		tab.label = UpgradeText.tab_name(sim, cur)
 		tab.accent_color = StatStyle.color(cur)
 		tab.rest_color = RelicStyle.dim
 		tab.show_focus_ring = false   # the ">" marker and the underline show focus; no dotted box
 		tab.pressed.connect(_select_upgrade_tab.bind(cur))
-		tab.focus_entered.connect(_select_upgrade_tab.bind(cur))   # Left and Right move focus along the strip: the page follows the focus
+		tab.focus_entered.connect(_on_tab_focus.bind(cur))   # Left and Right move focus along the strip: the page follows the focus
 		_upg_tabs.add_child(tab)
 		_upg_tab_btns[cur] = tab
-	var grid: GridContainer = null
 	var last_key: String = ""
-	var last_cur: StringName = &""
-	var tier_no: int = 0   # tiers number from 1 within each currency
 	for a: AttributeDef in UpgradeText.ordered(sim):
 		var cur: StringName = a.currency
-		var page: VBoxContainer = _upg_pages.get(cur) as VBoxContainer
-		if page == null:
+		if not _upg_hosts.has(cur):
 			continue
 		var key: String = "%s %s" % [cur, UpgradeText.tier_key(a)]
 		if key != last_key:
 			last_key = key
-			tier_no = tier_no + 1 if cur == last_cur else 1
-			last_cur = cur
-			var tier := Label.new()
-			tier.text = "Tier %d: %s" % [tier_no, UpgradeText.tier_head(sim, a)]
-			tier.add_theme_color_override("font_color", RelicStyle.soft())
-			page.add_child(tier)
-			grid = GridContainer.new()
-			grid.columns = 2
-			grid.custom_minimum_size = Vector2(UpgradeCard.CARD_SIZE.x * 2.0 + 6.0, 0.0)   # every tier the same width
-			grid.add_theme_constant_override("h_separation", 6)
-			grid.add_theme_constant_override("v_separation", 5)
-			page.add_child(grid)
-		var card := UpgradeCard.new()
-		grid.add_child(card)
-		card.setup(a)
-		card.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
-		card.buy_pressed.connect(_buy_upgrade)
-		card.refresh(UpgradeText.state(sim, a))
-		var eff: StringName = a.effect
-		var spec: Callable = func() -> Variant: return UpgradeText.tip(card.state(), eff)
-		_row_tips[a.id] = spec
-		Tip.bind_all(card, spec)
-		_attr_rows[a.id] = card
+			var made := GridContainer.new()
+			made.columns = 2
+			made.add_theme_constant_override("h_separation", 6)
+			made.add_theme_constant_override("v_separation", 6)
+			made.visible = false
+			(_upg_hosts[cur] as Control).add_child(made)
+			(_tier_grids[cur] as Array).append(made)
+			(_tier_attrs[cur] as Array).append([])
+		var grid: GridContainer = (_tier_grids[cur] as Array).back() as GridContainer
+		((_tier_attrs[cur] as Array).back() as Array).append(a)
+		if not _card_queue.has(cur):
+			_card_queue[cur] = []
+		(_card_queue[cur] as Array).append([a, grid])
+	# The rail: one row per tier, in unlock order. Its colour is the tier's, and its gate reads "Requires N Bloom(s)".
+	for cur: StringName in _upg_order:
+		var rail: VBoxContainer = _upg_rails[cur] as VBoxContainer
+		var tiers: Array = _tier_attrs[cur]
+		for i: int in tiers.size():
+			var head: AttributeDef = (tiers[i] as Array)[0] as AttributeDef
+			var btn := MenuTextButton.new()
+			btn.label = "%d  %s" % [i + 1, UpgradeText.tier_gate(sim, head)]
+			var tc: Color = RelicStyle.tier_color(i, cur)
+			btn.rest_color = tc.lerp(RelicStyle.dim, 0.3)
+			btn.accent_color = tc
+			btn.show_focus_ring = false
+			btn.pad_y = 1.0   # a tight rail: six tiers fit beside the gifts
+			btn.pressed.connect(_select_tier.bind(cur, i))
+			btn.focus_entered.connect(_on_tier_focus.bind(cur, i))
+			rail.add_child(btn)
+			(_tier_btns[cur] as Array).append(btn)
 	_upg_tab = _first_shown_tab()
+	_size_upgrade_list()
 	_apply_upgrade_tab()
+
+
+## Tab walks the tab strip, then the rail and the gifts of the tab on show, and wraps at both ends, forward and back.
+## Godot's own order follows the tree (every tab's page, not the layout) and does not wrap Shift+Tab from the first
+## control, so the ring is wired here. Gifts not built yet are left out; each card built rewires the ring.
+func _wire_upgrade_focus() -> void:
+	if not is_inside_tree() or _upg_tab == &"" or not _tier_btns.has(_upg_tab):
+		return
+	var ring: Array[Control] = []
+	for t: Node in _upg_tabs.get_children():
+		if t is MenuTextButton and (t as Control).visible:
+			ring.append(t as Control)
+	for b: Variant in _tier_btns[_upg_tab]:
+		ring.append(b as Control)
+	var tiers: Array = _tier_attrs.get(_upg_tab, [])
+	var tier: int = int(_tier_sel.get(_upg_tab, 0))
+	if tier < tiers.size():
+		for a: Variant in tiers[tier]:
+			var card: Control = _attr_rows.get((a as AttributeDef).id) as Control
+			if card != null:
+				ring.append(card)
+	var n: int = ring.size()
+	for i in n:
+		var c: Control = ring[i]
+		c.focus_next = c.get_path_to(ring[posmod(i + 1, n)])
+		c.focus_previous = c.get_path_to(ring[posmod(i - 1, n)])
+
+
+## Loads every icon the Upgrades panel can show, a few per frame after setup, so the first open does not read them from disk.
+func _warm_upgrade_icons() -> void:
+	if sim == null:
+		return
+	var names: Array[String] = []
+	for cur: StringName in UpgradeText.tab_currencies(sim):
+		names.append(String(cur))
+	for a: AttributeDef in UpgradeText.ordered(sim):
+		names.append(StatIndex.attr_icon(a))
+	var done: int = 0
+	for nm: String in names:
+		UpgradeCard.icon(nm)
+		done += 1
+		if done % 8 == 0 and is_inside_tree():
+			await get_tree().process_frame
+
+
+## Starts building the queued cards, once per open. The shown tab goes first, so its gifts are there at once.
+func _start_cards() -> void:
+	if _cards_started or _card_queue.is_empty():
+		return
+	_cards_started = true
+	_build_cards(_body_gen)
+
+
+## Builds the queued cards CARDS_PER_FRAME to a frame, while the open wipe plays. Stops if the body is freed meanwhile.
+func _build_cards(gen: int) -> void:
+	var order: Array[StringName] = []
+	if _card_queue.has(_upg_tab):
+		order.append(_upg_tab)
+	for cur: StringName in _upg_order:
+		if cur != _upg_tab and _card_queue.has(cur):
+			order.append(cur)
+	var made: int = 0
+	for cur: StringName in order:
+		for item: Array in (_card_queue[cur] as Array).duplicate():
+			if gen != _body_gen or _upgrades_box == null:
+				return
+			_add_card(item[0] as AttributeDef, item[1] as GridContainer)
+			made += 1
+			if made % CARDS_PER_FRAME == 0:
+				await get_tree().process_frame
+	if gen == _body_gen:
+		_card_queue.clear()
+
+
+## One gift card in its tier's grid, wired to buy and to its tooltip.
+func _add_card(a: AttributeDef, grid: GridContainer) -> void:
+	var cur: StringName = a.currency
+	var card := UpgradeCard.new()
+	grid.add_child(card)
+	card.setup(a)
+	card.fly_target = func() -> Vector2: return (_cur_badges[cur] as Control).global_position + Vector2(18.0, 0.0)
+	card.buy_pressed.connect(_buy_upgrade)
+	card.refresh(UpgradeText.state(sim, a))
+	var eff: StringName = a.effect
+	var spec: Callable = func() -> Variant: return UpgradeText.tip(card.state(), eff)
+	_row_tips[a.id] = spec
+	Tip.bind_all(card, spec)
+	_attr_rows[a.id] = card
+	_wire_upgrade_focus()
+
+
+## One tier of a tab on show: its gifts take the grid and its rail row is lit. Tiers swap in place, so nothing moves.
+func _select_tier(cur: StringName, i: int) -> void:
+	var grids: Array = _tier_grids.get(cur, [])
+	if i < 0 or i >= grids.size():
+		return
+	_tier_sel[cur] = i
+	for j: int in grids.size():
+		(grids[j] as Control).visible = j == i
+	var btns: Array = _tier_btns.get(cur, [])
+	for j: int in btns.size():
+		(btns[j] as MenuTextButton).selected = j == i
+	_wire_upgrade_focus()
+
+
+## Focus landed on a tier row: with the keyboard or pad the rail follows the focus, as the tab strip does.
+func _on_tier_focus(cur: StringName, i: int) -> void:
+	if Tip.focus_muted:
+		return
+	_select_tier(cur, i)
+
+
+## Every tab's gift area is as tall as its tallest tier (two across, so a tier is at most two rows). A tier switch or a
+## buy never resizes the panel.
+func _size_upgrade_list() -> void:
+	var rows: int = 0
+	for cur: StringName in _tier_attrs:   # from the data, so the height is right before any card exists
+		for tier: Variant in _tier_attrs[cur]:
+			rows = maxi(rows, ceili(float((tier as Array).size()) / 2.0))
+	var h: float = float(rows) * (UpgradeCard.CARD_SIZE.y + 6.0) - 6.0 if rows > 0 else 0.0
+	for cur2: StringName in _upg_hosts:
+		(_upg_hosts[cur2] as Control).custom_minimum_size.y = h
+
+
+## The head of a gifts page: the currency's icon and name in its colour, and one line on what earns it. Centred.
+func _gift_header(cur: StringName) -> Control:
+	var r: ZoneResetDef = sim.reset_for_currency(cur)
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 1)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var top := HBoxContainer.new()
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	top.add_theme_constant_override("separation", 4)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(top)
+	var ic := TextureRect.new()
+	ic.texture = UpgradeCard.icon(String(cur))
+	ic.custom_minimum_size = Vector2(16, 16)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(ic)
+	var nm := Label.new()
+	nm.theme_type_variation = &"TitleLabel"
+	nm.text = (sim.stat_defs[cur] as StatDef).display_name
+	nm.add_theme_color_override("font_color", StatStyle.color(cur))
+	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(nm)
+	var blurb := Label.new()
+	blurb.text = r.gift_blurb if r != null else ""
+	blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	blurb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	blurb.add_theme_color_override("font_color", RelicStyle.soft())
+	blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(blurb)
+	return box
+
+
+## Focus landed on a tab. Opening the menu puts focus on its first control quietly (Tip.grab_quiet sets focus_muted), and that
+## first control is the zone's own tab, so the quiet grab must not pick it over the tab the menu opened on. Keyboard and pad
+## moves clear focus_muted (TipHost does that on the first navigation input), and then the page follows the focus.
+func _on_tab_focus(cur: StringName) -> void:
+	if Tip.focus_muted:
+		return
+	_select_upgrade_tab(cur)
 
 
 ## A tab was pressed (mouse, keyboard or pad): the page and the highlight follow it together.
@@ -564,13 +838,7 @@ func _apply_upgrade_tab() -> void:
 		var b: MenuTextButton = _upg_tab_btns[c2] as MenuTextButton
 		b.selected = on
 		b.queue_redraw()
-	_fit_upgrade_list()
-
-
-## The list takes the height its tab needs, up to UPGRADE_LIST_HEIGHT; longer tabs scroll.
-func _fit_upgrade_list() -> void:
-	if _upg_scroll != null and _upg_list != null:
-		_upg_scroll.custom_minimum_size.y = minf(_upg_list.get_combined_minimum_size().y, UPGRADE_LIST_HEIGHT)
+	_wire_upgrade_focus()
 
 
 ## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
@@ -596,7 +864,7 @@ func _currency_badge(parent: Control, sid: StringName) -> HBoxContainer:
 	b.add_theme_constant_override("separation", 3)
 	parent.add_child(b)
 	var ic := TextureRect.new()
-	ic.texture = load("res://assets/icons/%s.png" % String(sid)) as Texture2D
+	ic.texture = UpgradeCard.icon(String(sid))
 	ic.custom_minimum_size = Vector2(16, 16)
 	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -604,10 +872,14 @@ func _currency_badge(parent: Control, sid: StringName) -> HBoxContainer:
 	b.add_child(ic)
 	var v := Label.new()
 	v.add_theme_color_override("font_color", StatStyle.color(sid))
+	v.custom_minimum_size.x = BADGE_VALUE_WIDTH   # the balance can grow: a fixed width keeps the header still while buying
 	b.add_child(v)
 	_cur_vals[sid] = v
 	var nm: String = (sim.stat_defs[sid] as StatDef).display_name
-	Tip.bind_all(b, func() -> Variant: return TipText.stat(sid, nm, _balance(sid).format()))
+	if sim.reset_for_currency(sid) != null:
+		Tip.bind_all(b, func() -> Variant: return _currency_spec(sid, _balance(sid).format(), false))
+	else:
+		Tip.bind_all(b, func() -> Variant: return TipText.stat(sid, nm, _balance(sid).format()))
 	return b
 
 
@@ -621,8 +893,9 @@ func _balance(sid: StringName) -> BigNum:
 ## A row asked to buy. The sim decides; the row plays the animation only if it went through.
 func _buy_upgrade(aid: StringName) -> void:
 	if GameState.buy_attribute(aid):
-		var row: UpgradeCard = _attr_rows[aid]
-		row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
+		var row: UpgradeCard = _attr_rows.get(aid) as UpgradeCard
+		if row != null:
+			row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
 		# The header balance of that currency pops too, so the spend reads at the counter.
 		var badge: Control = _cur_badges.get((sim.attribute_defs[aid] as AttributeDef).currency) as Control
 		if badge != null and not (MeadowLife.reduce_motion or FxConfig.reduce_flashing):
@@ -644,6 +917,8 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 	var typing: Control = get_viewport().gui_get_focus_owner()
 	if typing is LineEdit or typing is TextEdit:
 		return   # letters like R belong to the text box
+	if _upgrades_panel.visible and not _modal.visible and _step_gifts_tab(event):
+		return
 	if event.is_action_pressed(&"plinky_upgrades") or Keybinds.matches(&"upgrades", event):
 		if GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES):
 			toggle_upgrades()
@@ -673,6 +948,29 @@ func _input(event: InputEvent) -> void:   # _input, not unhandled: ui_focus_next
 		get_viewport().set_input_as_handled()
 
 
+## While Upgrades is open, Left and Right and the pad shoulders step through the gifts tabs, whichever card or tab has
+## focus. Read in _input so a card's own arrow handling cannot take the key first. Wraps round, like the Settings tabs.
+func _step_gifts_tab(event: InputEvent) -> bool:
+	var dir: int = 0
+	if event.is_action_pressed(&"plinky_tab_next") or event.is_action_pressed(&"ui_right"):
+		dir = 1
+	elif event.is_action_pressed(&"plinky_tab_prev") or event.is_action_pressed(&"ui_left"):
+		dir = -1
+	if dir == 0:
+		return false
+	var shown: Array[StringName] = []
+	for cur: StringName in _upg_order:
+		if UpgradeText.tab_shown(sim, cur):
+			shown.append(cur)
+	if shown.size() < 2:
+		return false
+	var nxt: StringName = shown[posmod(shown.find(_upg_tab) + dir, shown.size())]
+	_select_upgrade_tab(nxt)
+	(_upg_tab_btns[nxt] as Control).grab_focus()   # the card under focus may hide with its tab, so focus moves to the new tab
+	get_viewport().set_input_as_handled()
+	return true
+
+
 ## The chip a plain 1 to 5 key press maps to (no modifiers), or null: 1 Upgrades, 2 Relics, 3 Stats, 4 Attributes, 5 Menu.
 ## The numbers are fixed (they match the tooltips); a chip that is not in the bar yet simply does nothing.
 func _number_key_chip(e: InputEventKey) -> ExpandChip:
@@ -685,6 +983,7 @@ func _number_key_chip(e: InputEventKey) -> ExpandChip:
 
 
 func _process(delta: float) -> void:
+	_update_gain_labels()
 	_place()
 	_clock += delta
 	if _clock >= REFRESH:
@@ -800,13 +1099,11 @@ func _refresh() -> void:
 	_apply_gates(_gates_ready)
 	_gates_ready = true
 	_poll_tips()
-	var show_rates: bool = _opt(&"strip_rates", true)
 	for sid: StringName in _rows:
 		var pair: Array = _rows[sid]
 		(pair[0] as RollValue).set_target(sim.get_stat(sid))
 		var inc: BigNum = sim.income_per_second(sid)
-		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""
-		(pair[1] as Label).visible = show_rates
+		(pair[1] as Label).text = "+%s/s" % inc.format() if not inc.is_zero() else ""   # shown by _place_rates
 	_fit_columns()
 	if _prestige_label != null:
 		_prestige_label.text = NumberFormat.mult(sim.prestige_mult())
@@ -817,7 +1114,7 @@ func _refresh() -> void:
 		rc.visible = mine and (sim.can_reset(rid) or sim.reset_count(rid) > 0)
 		rc.disabled = not sim.can_reset(rid)
 		var cn: String = (sim.stat_defs[rd.currency] as StatDef).display_name
-		rc.full_text = "%s (+%d %s)" % [rd.display_name, sim.reset_gain(rid), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
+		rc.full_text = "%s (+%s %s)" % [rd.display_name, sim.reset_gain(rid).whole_text(), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:
@@ -943,7 +1240,70 @@ func _fit_columns() -> void:
 		((_rows[sid2] as Array)[0] as RollValue).custom_minimum_size.x = _val_w + COL_PAD
 
 
-## Park each gain label just right of the panel, level with its row (and fading with it).
+const GAIN_POP_TIME: float = 0.15     ## seconds a gain label takes to pop in
+const GAIN_POP_RISE: float = 5.0      ## pixels a gain label rises from as it pops in
+const GAIN_FLOAT_RISE: float = 6.0    ## pixels a gain label drifts up as it fades out after its hold
+
+var _gain_tally: HudGainTally = HudGainTally.new()
+var _gain_labels: Dictionary = {}     ## stat id -> its HudGainLabel: one pooled node per row, never one per gain
+
+
+func _now_s() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
+
+## A pad press paid out (player, auto, relic pulse): its stat's gain label adds it up.
+func _on_gain_pressed(button_id: StringName, _world_pos: Vector3, gain: BigNum, crit: bool) -> void:
+	var def: ButtonDef = sim.button_defs.get(button_id) as ButtonDef
+	if def != null:
+		_note_gain(def.reward_stat, gain, crit)
+
+
+func _note_gain(stat: StringName, gain: BigNum, crit: bool) -> void:
+	if not _gain_labels.has(stat):
+		return
+	_gain_tally.add(stat, gain, _now_s(), crit)
+	var gl: HudGainLabel = _gain_labels[stat] as HudGainLabel
+	gl.bump()
+	gl.sparkle(3, _gain_colours(stat))
+
+
+## The press tier's colour, as the world numbers take it. Tier 0 uses the stat's own colour.
+func _gain_colour(stat: StringName) -> Color:
+	var tier: int = Juice.last_tier
+	return StatStyle.color(stat) if tier <= 0 else PopupStyle.accent_color(tier, _now_s(), PopupStack.zone)
+
+
+func _gain_colours(stat: StringName) -> Array[Color]:
+	var tier: int = Juice.last_tier
+	if tier <= 0:
+		var own: Array[Color] = [StatStyle.color(stat)]
+		return own
+	return PopupStyle.spark_colors(tier, PopupStack.zone)
+
+
+## Each frame: a stat's gain label follows its tally. It pops in from its first gain, holds while gains keep coming,
+## then fades and drifts up. Hidden when the stat has no run or its row is hidden.
+func _update_gain_labels() -> void:
+	var now: float = _now_s()
+	var calm: bool = _calm()
+	for sid: StringName in _gain_labels:
+		var gl: HudGainLabel = _gain_labels[sid] as HudGainLabel
+		var box: Control = _row_boxes.get(sid) as Control
+		var a: float = _gain_tally.alpha(sid, now) if box != null and box.visible else 0.0
+		if a <= 0.0:
+			gl.set_state(0.0, 0.0, calm)
+			continue
+		var pop: float = 1.0 if calm else minf(_gain_tally.age(sid, now) / GAIN_POP_TIME, 1.0)
+		var rise: float = 0.0 if calm else -(1.0 - pop) * GAIN_POP_RISE + (1.0 - a) * GAIN_FLOAT_RISE
+		gl.show_text(_gain_tally.total_text(sid), _gain_colour(sid))
+		gl.set_state(a * pop, rise, calm)
+	_gain_tally.prune(now)
+
+
+## Park each row's income rate just right of the panel, level with its row, always while income is non-zero.
+## The gain label sits just past the rate, so neither moves when a gain label appears or fades. Its width is
+## the only thing that changes the layout, and only while it is up.
 func _place_rates() -> void:
 	var show_rates: bool = _opt(&"strip_rates", true)
 	var right: float = _stats_panel.position.x + _stats_panel.size.x + 3.0
@@ -951,15 +1311,25 @@ func _place_rates() -> void:
 	for sid: StringName in _rows:
 		var rate: Label = (_rows[sid] as Array)[1] as Label
 		var box: Control = _row_boxes[sid] as Control
+		var gl: HudGainLabel = _gain_labels.get(sid) as HudGainLabel
+		var row_y: float = box.global_position.y - global_position.y
 		var show: bool = show_rates and box.visible and rate.text != ""
 		rate.visible = show
-		if not show:
-			continue
-		var at: Vector2 = Vector2(right, box.global_position.y - global_position.y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
-		if rate.position != at:
-			rate.position = at
-		rate.modulate.a = box.modulate.a
-		widest = maxf(widest, rate.size.x + 3.0)
+		var x: float = right
+		var extent: float = 0.0
+		if show:
+			var at: Vector2 = Vector2(right, row_y + floorf((box.size.y - rate.size.y) * 0.5)).floor()
+			if rate.position != at:
+				rate.position = at
+			rate.modulate.a = box.modulate.a
+			x = right + rate.size.x + 3.0
+			extent = x - right
+		if gl != null and gl.visible:
+			var gat: Vector2 = Vector2(x, row_y + floorf((box.size.y - gl.size.y) * 0.5)).floor()
+			if gl.position != gat:
+				gl.position = gat
+			extent += gl.size.x + 3.0
+		widest = maxf(widest, extent)
 	_rates_w = widest
 
 
@@ -1109,10 +1479,6 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	bar.add_child(done)
 
 
-func edit_mode() -> bool:
-	return _edit_mode
-
-
 ## Edit mode: every row of the layout shows with a grip and a hide mark, and the add chips open under the strip.
 func set_edit_mode(on: bool) -> void:
 	if on == _edit_mode:
@@ -1232,6 +1598,9 @@ func _on_row_input(event: InputEvent, sid: StringName) -> void:
 			if not mark.get_global_rect().grow(3.0).has_point(get_global_mouse_position()):
 				(_row_boxes[sid] as Control).accept_event()
 				_start_drag(sid)
+		elif not _edit_mode and sim.reset_for_currency(sid) != null:
+			(_row_boxes[sid] as Control).accept_event()
+			open_gifts(sid)
 		return
 	if mb.button_index == MOUSE_BUTTON_RIGHT and _opt(&"strip_rclick", true):
 		(_row_boxes[sid] as Control).accept_event()

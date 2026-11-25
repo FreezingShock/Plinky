@@ -2,8 +2,11 @@ class_name BootScreen
 extends Control
 ## Boot scene and the project's main scene. Shows the animated backdrop, logo, the walker walking along a
 ## progress bar, and rotating tips. The bar is driven by threaded loading of the game's scenes. When loading
-## has finished and the screen has been up for MIN_SHOW_SECONDS, it dissolves to the title screen (or straight to
-## main.tscn with --skip-title) using the already loaded resource.
+## has finished and the screen has been up for its minimum time, it hands over to the title screen (or straight to
+## main.tscn with --skip-title) with SceneSwap, using the already loaded resource.
+##
+## Handoff mode: the title screen sets `handoff` before it leaves for the game. The same screen then opens at the
+## title's time of day, loads the chosen slot's zone art (the real stall on Play) and labels that step by name.
 
 const GAME_SCENE: String = "res://main.tscn"
 const MEADOW_SCENE: String = "res://world/meadow3d_scene.tscn"
@@ -15,6 +18,9 @@ const WALKER_SHEET: Texture2D = preload("res://assets/brand/walker-press-sheet-1
 
 ## Shortest time the logo stays up, so a fast load does not flash past. Real progress still drives the bar.
 const MIN_SHOW_SECONDS: float = 1.8
+## Handoff from the title: the zone is usually warm already, so the screen stays shorter and the bar catches up faster.
+const HANDOFF_MIN_SHOW_SECONDS: float = 0.5
+const HANDOFF_BAR_SPEED: float = 2.5
 ## Bar catch-up speed, in full-bar units per second.
 const BAR_SPEED: float = 0.9
 const TRACK_WIDTH: float = 240.0
@@ -28,7 +34,6 @@ const WALKER_FPS: float = 8.0
 const WALKER_BASE_Y: float = 56.0
 const TIP_SECONDS: float = 3.4
 const TIP_BLANK_SECONDS: float = 0.15
-const WIPE_SECONDS: float = 0.9
 ## Time of day the loading screen opens at: sunrise.
 const BOOT_PHASE: float = 0.25
 const TIPS: Array[String] = [
@@ -54,8 +59,12 @@ var _walker: TextureRect
 var _walker_tex: AtlasTexture
 var _walk_t: float = 0.0
 var _bar: BootProgressBar
-var _percent: Label
 var _status: Label
+## Set by the title screen before it hands over, then read and cleared on _ready: {zone_path, zone_name, phase}.
+static var handoff: Dictionary = {}
+var _handoff: Dictionary = {}
+var _min_show: float = MIN_SHOW_SECONDS
+var _bar_speed: float = BAR_SPEED
 var _tip_label: Label
 var _tip_index: int = 0
 var _tip_timer: float = 0.0
@@ -68,12 +77,15 @@ var _log: PanelOverlay
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The loading screen fills any window like the title does. Main turns this off again.
+	DisplaySettings.set_pregame_fill(get_window(), true)
+	GardenArt.prepare()   # the flower atlas is planned now and baked a slice a frame while the loading screen runs (_process)
 	_pal = Palettes.colors(Palettes.MEADOW)
 
+	_handoff = handoff
+	handoff = {}
 	_bg = TitleBackground.new()
 	add_child(_bg)
-	# The loading screen opens at sunrise, then runs through the day like the title does.
-	_bg.set_phase_now(BOOT_PHASE)
 	_motes = BootMotes.new()
 	add_child(_motes)
 	_build_column()
@@ -82,12 +94,22 @@ func _ready() -> void:
 
 	# Threaded loads. Weights are rough file sizes. Each task reports its own progress, so the bar is honest.
 	_loader = BootLoader.new()
-	_loader.add(MEADOW_SCENE, 0.40, "Waking the meadow")
-	_loader.add(GAME_SCENE, 0.25, "Gathering the pads")
-	_loader.add(THEME_PATH, 0.10, "Mixing the palette")
-	_loader.add(WALKER_SHEET_PATH, 0.10, "Shaping the walker")
-	_loader.add("res://fonts/PixelifySans.ttf", 0.075, "Setting the type")
-	_loader.add("res://fonts/spleen-6x12.fnt", 0.075, "Setting the type")
+	if _handoff.is_empty():
+		# The loading screen opens at sunrise, then runs through the day like the title does.
+		_bg.set_phase_now(BOOT_PHASE)
+		_loader.add(MEADOW_SCENE, 0.40, "Waking the meadow")
+		_loader.add(GAME_SCENE, 0.25, "Gathering the pads")
+		_loader.add(THEME_PATH, 0.10, "Mixing the palette")
+		_loader.add(WALKER_SHEET_PATH, 0.10, "Shaping the walker")
+		_loader.add("res://fonts/PixelifySans.ttf", 0.075, "Setting the type")
+		_loader.add("res://fonts/spleen-6x12.fnt", 0.075, "Setting the type")
+	else:
+		# Opens at the title's time of day so the swap reads as one continuous picture.
+		_bg.set_phase_now(float(_handoff["phase"]))
+		_min_show = HANDOFF_MIN_SHOW_SECONDS
+		_bar_speed = HANDOFF_BAR_SPEED
+		_loader.add(String(_handoff["zone_path"]), 0.80, zone_task_label(String(_handoff["zone_name"])))
+		_loader.add(GAME_SCENE, 0.20, "Gathering the pads")
 	_loader.start()
 	_audio(&"start_loading")
 
@@ -155,16 +177,6 @@ func _build_column() -> void:
 	_walker.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_walker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_track.add_child(_walker)
-
-	_percent = Label.new()
-	_percent.text = "0%"
-	_percent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_percent.add_theme_font_override("font", BODY_FONT)
-	_percent.add_theme_color_override("font_color", _pal[7])
-	_percent.add_theme_color_override("font_outline_color", _pal[0])
-	_percent.add_theme_constant_override("outline_size", 1)
-	_percent.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(_percent)
 
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -238,6 +250,13 @@ func _process(delta: float) -> void:
 	_animate_tips(delta)
 	if _phase == Phase.LOADING:
 		_update_loading(delta)
+	# The flower atlas bakes a slice a frame until it exists. Once the loader is done, a bigger slice finishes it, and the
+	# leave waits for it (below), so the game never bakes the rest on its first frame.
+	PerfStats.lap_begin()
+	PerfStats.lap_begin()
+	GardenArt.prepare_slice(GardenArt.BAKE_CATCHUP_MS if _loader.is_finished() else GardenArt.BAKE_SLICE_MS)
+	PerfStats.lap("boot: atlas slice")
+	PerfStats.lap("boot: atlas slice")
 
 
 func _update_loading(delta: float) -> void:
@@ -248,19 +267,28 @@ func _update_loading(delta: float) -> void:
 		_status.add_theme_color_override("font_color", _pal[5])
 		return
 	# The bar eases toward the real value so it never jumps, and it never runs ahead of the loader.
-	_shown = move_toward(_shown, real, BAR_SPEED * delta)
+	_shown = move_toward(_shown, real, _bar_speed * delta)
 	_bar.value = _shown
 	_place_walker(_shown)
-	_percent.text = "%d%%" % roundi(_shown * 100.0)
 	if not _loader.is_finished():
-		_status.text = _loader.current_label()
-	elif _shown < 0.999:
-		_status.text = "Opening the gate"
+		_status.text = status_line(_loader.current_label(), _shown)
 	else:
-		_status.text = "Ready"
+		_status.text = status_line("Opening the gate", _shown)
 	# Stays put while the Update Log is open, so reading it is never cut short.
-	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= MIN_SHOW_SECONDS and not _log.is_open():
+	# Also waits while a swap is still revealing this screen, so the leave is never dropped mid-reveal.
+	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= _min_show and not _log.is_open() and not SceneSwap.is_busy() and GardenArt.is_ready():
 		_start_leave()
+
+
+## The loading line: what is loading, then the percent, e.g. "Loading Larkmoor art... 62%". Plain ASCII dots, because the
+## body font (Spleen) has no ellipsis glyph.
+static func status_line(label: String, fraction: float) -> String:
+	return "%s... %d%%" % [label, roundi(clampf(fraction, 0.0, 1.0) * 100.0)]
+
+
+## Loader label for a zone's scene: "Loading Larkmoor art".
+static func zone_task_label(zone_name: String) -> String:
+	return "Loading %s art" % zone_name
 
 
 ## The walker's pad sits on the bar's leading edge.
@@ -277,14 +305,19 @@ func _start_leave() -> void:
 		_phase = Phase.FAILED
 		push_error("Boot: %s did not load as a PackedScene" % GAME_SCENE)
 		return
-	# Dev and test launches (--skip-title) go straight into the game; everyone else lands on the title screen.
-	var skip: bool = TitleScreen.skip_requested()
 	TitleScreen.game_scene = game
-	var next: PackedScene = game if skip else (load(TitleScreen.TITLE_SCENE) as PackedScene)
-	var wipe := TitleWipe.new()
-	add_child(wipe)
-	wipe.setup(_bg.role(0), _bg.role(5))
-	wipe.play(WIPE_SECONDS, TitleBackground.still(), func() -> void: get_tree().change_scene_to_packed(next))
+	var next: PackedScene = game
+	if _handoff.is_empty():
+		# Dev and test launches (--skip-title) go straight into the game; everyone else lands on the title screen.
+		if not TitleScreen.skip_requested():
+			next = load(TitleScreen.TITLE_SCENE) as PackedScene
+	else:
+		# Keep the zone art alive until the game has used it (SceneSwap clears the list after the reveal).
+		var zone: Resource = _loader.resource_for(String(_handoff["zone_path"]))
+		if zone != null:
+			SceneSwap.held.append(zone)
+		SceneSwap.held.append(game)
+	SceneSwap.go(get_tree(), next)
 
 
 func _animate_walker(delta: float) -> void:

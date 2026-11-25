@@ -10,7 +10,7 @@ Before you start a task, find the topic that matches it and read that file. Then
 | [world](world.md) | Calendar, clock, seasons and seasonal events, the walker, zone entry cards, the travel map. | 3 |
 | [meadow](meadow.md) | Zone 1 and Larkmoor: the meadow map, the flower ladder, Bloom, and meadow pacing. | 4 |
 | [quarry](quarry.md) | Ember Quarry (zone 2): blockout, map, forge ladder, Embers, Cinder, Reforge, quarry balance. | 7 |
-| [art](art.md) | Lighting, night, day and weather, dither, props, pads, grass, shaders, palettes, icons. | 26 |
+| [art](art.md) | Lighting, night, day and weather, dither, props, pads, grass, shaders, palettes, icons. | 28 |
 | [audio](audio.md) | Audio autoload, footsteps, ambient soundscape, world-life and press sounds. | 5 |
 | [hud](hud.md) | HUD strip, menus, galleries, tooltips, popups, title and settings, window, History, Ledger. | 47 |
 | [balance](balance.md) | Economy numbers, Mastery, Momentum, Hold-to-buy, Rebirth and zone resets, relic stacks, balance sims. | 14 |

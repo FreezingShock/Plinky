@@ -48,7 +48,7 @@ extends Resource
 @export var golden_reach: float = 0.95
 @export var golden_floor: float = 0.35
 ## Full-frame saturation and contrast added at full golden light (light_grade.gdshader), and the share kept at night.
-@export var golden_sat: float = 0.16
+@export var golden_sat: float = 0.09
 @export var golden_contrast: float = 0.1
 @export var night_sat: float = 0.1
 ## High sun (elevation above about 0.7): exposure drop, extra contrast and saturation, so noon is not bleached.
@@ -66,6 +66,9 @@ extends Resource
 ## Dither density at the foot of a shadow and at its tip (soft edge that thins with distance).
 @export var shadow_density_foot: float = 0.85
 @export var shadow_density_tip: float = 0.25
+## How soft the shadows are, 0..1. 0 is crisp-edged, 1 a wide feathered penumbra. Sets how far a cast shadow's edge
+## fades (the oval quads and the ground height march) and how much the march thins with distance.
+@export var shadow_softness: float = 0.5
 
 @export_group("Light pools and rim")
 ## Pool radius and strength multipliers for each light kind.

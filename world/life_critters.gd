@@ -15,7 +15,8 @@ extends RefCounted
 const RABBIT_NEAR: float = 26.0        # walker distance (texels, y doubled) that starts a flight from a rabbit
 const RABBIT_WATCH: float = 42.0       # walker distance that makes a rabbit sit up and watch
 const RABBIT_WATCH_TIME: float = 2.5   # seconds a rabbit keeps watching after the walker has gone
-const RABBIT_WANDER: float = 30.0      # how far a grazing rabbit strays from its burrow spot
+const RABBIT_WANDER: float = 90.0      # how far a grazing rabbit strays from its burrow spot (iso texels)
+const RABBIT_GRAZE_SPEED: float = 30.0 # texels a second a grazing hop covers, so a long hop takes a few seconds
 const RABBIT_FLEE_HOP: float = 11.0    # texels per flight hop
 const RABBIT_FLEE_TIME: float = 0.18   # seconds per flight hop
 const RABBIT_GRAZE_TIME: float = 0.5   # seconds per grazing hop
@@ -47,7 +48,10 @@ const CHICKEN_MAX: int = 6
 const RABBIT_COUNT_MIN: int = 2
 const RABBIT_COUNT_MAX: int = 8
 const RABBIT_SPACING: float = 30.0   # texels between burrow spots
-const RABBIT_GRAZE_REACH: float = 16.0  # the longest grazing hop, texels
+const START_RABBITS: int = 2         # rabbits that sit at the grass edge near the arrival point
+const START_REACH: float = 260.0     # iso texels: how far from the arrival point those burrows may be
+const RABBIT_GRAZE_REACH: float = 180.0 # the longest grazing hop, iso texels (the pool around the burrow is 2 x RABBIT_WANDER across)
+const START_CLEAR: float = 90.0        # start rabbits sit this far from the arrival point, so the walker does not make them freeze
 
 ## Palette roles used by the sprites below (art-bible section 3): k ink, d shadow, g deep, b base, l light, y accent,
 ## f earth, w paper. The sprite art is kept as text so it can be read and edited by eye.
@@ -85,6 +89,7 @@ var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 var _sprites: Dictionary = {}             # name -> {runs: Array[PackedInt32Array], w, h}
 var _pads: Array[Vector2] = []            # every pad centre, ready or not
 var _water: Array[Dictionary] = []        # water ellipses from the data
+var _start: Vector2 = Vector2.INF        # the arrival point (life data "start"), where the start view gets rabbits
 var _graze: Array[Vector2] = []           # grass tips off the pads and out of the water
 var _shore: Array[Vector2] = []           # grass tips just outside a water edge
 var _rabbits: Array[Dictionary] = []
@@ -99,6 +104,7 @@ var _ci: CanvasItem                       # the node being drawn into this redra
 var _view: Rect2 = Rect2()
 var _t: float = 0.0
 var _fly: LifeButterflies = LifeButterflies.new()
+var _wild: LifeWild = LifeWild.new()        # dragonflies, fish, the forest-edge deer and the owls
 
 
 ## `life` is the parsed life data (MeadowLife.load_data); `sway` is its grass tip list, where the critters graze.
@@ -125,6 +131,7 @@ func setup(life: Dictionary) -> void:
 			if k >= WATER_KEEP and k <= SHORE_OUT:
 				_shore.append(at)
 				break
+	_start = _start_point(life)
 	_spawn_rabbits()
 	_spawn_water_critters()
 	_farms.clear()
@@ -137,6 +144,7 @@ func setup(life: Dictionary) -> void:
 		_farm_items.append(Rect2(float(ia[0]), float(ia[1]), float(ia[2]), float(ia[3])))
 	_spawn_chickens()
 	_fly.setup(life)
+	_wild.setup(life, _water)
 
 
 func _spawn_rabbits() -> void:
@@ -144,21 +152,59 @@ func _spawn_rabbits() -> void:
 	if _graze.is_empty():
 		return
 	var n: int = clampi(roundi(sqrt(float(_graze.size())) * 0.3), RABBIT_COUNT_MIN, RABBIT_COUNT_MAX)
+	# The arrival point (life data "start") gets its first rabbits at the grass tips nearest to it, so the start view is not empty.
+	var near_start: Array[Vector2] = []
+	if _start.is_finite():
+		var by_start: Array[Vector2] = []
+		by_start.append_array(_graze)
+		by_start.sort_custom(func(a: Vector2, b: Vector2) -> bool: return MeadowLife.iso_distance(a, _start) < MeadowLife.iso_distance(b, _start))
+		for g: Vector2 in by_start:
+			if near_start.size() >= START_RABBITS or MeadowLife.iso_distance(g, _start) > START_REACH:
+				break
+			if MeadowLife.iso_distance(g, _start) < START_CLEAR:
+				continue
+			var apart: bool = true
+			for h: Vector2 in near_start:
+				if h.distance_to(g) < RABBIT_SPACING:
+					apart = false
+					break
+			if apart:
+				near_start.append(g)
 	for i: int in n:
 		var home: Vector2 = _graze[0]
-		for tries: int in 12:
-			home = _hash_pick(_graze, i * 17 + tries * 5 + 5)
-			var spaced: bool = true
-			for r: Dictionary in _rabbits:
-				if (r.home as Vector2).distance_to(home) < RABBIT_SPACING:
-					spaced = false
+		if i < near_start.size():
+			home = near_start[i]
+		else:
+			for tries: int in 12:
+				home = _hash_pick(_graze, i * 17 + tries * 5 + 5)
+				var spaced: bool = true
+				for r: Dictionary in _rabbits:
+					if (r.home as Vector2).distance_to(home) < RABBIT_SPACING:
+						spaced = false
+						break
+				if spaced:
 					break
-			if spaced:
-				break
-		_rabbits.append({"home": home, "pos": home, "from": home, "to": home, "lift": 0.0,
+		_rabbits.append({"home": home, "pool": _pool_near(home), "pos": home, "from": home, "to": home, "lift": 0.0,
 			"hop_t": 0.0, "hop_dur": 0.0, "fleeing": false, "route": home,
 			"timer": 1.0 + MeadowLife.hash01(i * 3 + 2) * 4.0, "watch": 0.0, "fade": 0.0, "cool": 0.0,
 			"face": 1.0, "seed": i * 31 + 3})
+
+
+## The grass tips a rabbit grazes among: every tip within RABBIT_WANDER of its burrow spot.
+func _pool_near(home: Vector2) -> Array:
+	var pool: Array = []
+	for g: Vector2 in _graze:
+		if MeadowLife.iso_distance(g, home) <= RABBIT_WANDER:
+			pool.append(g)
+	return pool
+
+
+## The arrival point from the zone data ("start"), or Vector2.INF when the zone has none.
+func _start_point(life: Dictionary) -> Vector2:
+	var s: Array = life.get("start", []) as Array
+	if s.size() < 2:
+		return Vector2.INF
+	return Vector2(float(s[0]), float(s[1]))
 
 
 func _spawn_water_critters() -> void:
@@ -306,15 +352,30 @@ static func frog_share() -> float:
 	return by_season * wet
 
 
+## Ground points the grass bends away from, in frame texels: rabbits, chickens and frogs that are showing (fade > 0),
+## and every duck (ducks on the water push nothing, the blades only draw on grass).
+func ground_pushers() -> PackedVector2Array:
+	var out: PackedVector2Array = PackedVector2Array()
+	for group: Array in [_rabbits, _chickens, _frogs]:
+		for c: Dictionary in group:
+			if float(c.fade) > 0.0:
+				out.append(c.pos as Vector2)
+	for d: Dictionary in _ducks:
+		out.append(d.pos as Vector2)
+	return out
+
+
 ## Moves every critter by delta. `wp` is the walker's position in the frame (far away when there is no walker).
 func update(delta: float, wp: Vector2) -> void:
 	_t += delta
 	_fly.update(delta, wp)
+	_wild.update(delta, wp)
 	var calm: bool = MeadowLife.reduce_motion
 	var budget: int = GraphicsQuality.life_scaled(_rabbits.size())
 	var rshare: float = rabbit_share()
 	for i: int in _rabbits.size():
-		_update_rabbit(_rabbits[i], delta, wp, calm, i < budget and _out(int(_rabbits[i].seed) * 7 + 1, rshare))
+		var start_pair: bool = _start.is_finite() and i < START_RABBITS   # the two by the arrival point are out by day too
+		_update_rabbit(_rabbits[i], delta, wp, calm, i < budget and (start_pair or _out(int(_rabbits[i].seed) * 7 + 1, rshare)))
 	_update_ducks(delta, wp, calm)
 	var fshare: float = frog_share()
 	for f: Dictionary in _frogs:
@@ -438,18 +499,18 @@ func _next_flee_hop(r: Dictionary) -> void:
 
 func _plan_graze(r: Dictionary) -> void:
 	r.timer = 3.0
-	if _graze.is_empty():
+	var pool: Array = r.pool as Array
+	if pool.is_empty():
 		return
 	var here: Vector2 = r.pos as Vector2
-	var home: Vector2 = r.home as Vector2
 	for tries: int in 10:
-		var c: Vector2 = _hash_pick(_graze, int(r.seed) * 19 + tries * 3 + int(_t * 3.0))
+		var c: Vector2 = pool[int(MeadowLife.hash01(int(r.seed) * 19 + tries * 3 + int(_t * 3.0)) * float(pool.size())) % pool.size()]
 		var reach: float = MeadowLife.iso_distance(c, here)
-		if reach < 4.0 or reach > RABBIT_GRAZE_REACH or MeadowLife.iso_distance(c, home) > RABBIT_WANDER:
+		if reach < 4.0 or reach > RABBIT_GRAZE_REACH:
 			continue
 		if not _path_clear(here, c):
 			continue
-		_start_hop(r, c, RABBIT_GRAZE_TIME)
+		_start_hop(r, c, maxf(RABBIT_GRAZE_TIME, reach / RABBIT_GRAZE_SPEED))
 		return
 
 
@@ -533,6 +594,7 @@ func draw(ci: CanvasItem, tb: float) -> void:
 	_ci = ci
 	_view = GraphicsQuality.visible_local_rect(ci)
 	_fly.draw(ci, tb)
+	_wild.draw(ci, tb)
 	for r: Dictionary in _ripples:
 		_draw_ripple(r)
 	for c: Dictionary in _chickens:
@@ -609,20 +671,7 @@ func _draw_ripple(r: Dictionary) -> void:
 
 ## Draws a sprite from its runs of one palette index. `fade` below 1 draws only the texels the dither lets through.
 func _blit(spr: Dictionary, origin: Vector2i, flip: bool, fade: float) -> void:
-	var w: int = int(spr.w)
-	for run: Variant in spr.runs as Array:
-		var rr: PackedInt32Array = run as PackedInt32Array
-		var n: int = rr[2]
-		var x0: int = rr[0] if not flip else w - rr[0] - n
-		var y: int = rr[1]
-		var idx: int = rr[3]
-		if fade >= 1.0:
-			_ci.draw_rect(Rect2(origin.x + x0, origin.y + y, n, 1), palette[idx])
-			continue
-		for k: int in n:
-			var x: int = origin.x + x0 + k
-			if MeadowLife.dissolved(fade, x, origin.y + y):
-				_ci.draw_rect(Rect2(x, origin.y + y, 1, 1), palette[idx])
+	MeadowLife.blit(_ci, palette, spr, origin, flip, fade)
 
 
 func _build_sprites() -> void:

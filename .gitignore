@@ -6,3 +6,11 @@ shots/
 captures/
 __pycache__/
 *.pyc
+
+# Bake outputs from tools/art/gen_meadow3d.py (the committed copies live in assets/)
+tools/art/sprites/
+tools/art/meadow3d*.png
+tools/art/backdrop_far.png
+tools/art/ground_fg.png
+tools/art/walkable.png
+tools/art/placements3d.json

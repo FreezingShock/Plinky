@@ -19,9 +19,13 @@ const TAB_COLUMNS: int = 3
 const PANEL_W: float = COLUMNS * RelicCard.W + (COLUMNS - 1) * GAP
 ## Chips and tabs keep this height or more, so they are easy to hit with a mouse or a pad.
 const CHIP_H: float = 20.0
-## The view-hidden eye is a chip-height button around a 12 by 8 glyph, drawn at 2x so it is 24 by 16 on screen.
-const SHOW_W: float = 30.0
-const SHOW_H: float = CHIP_H
+## The view toggle is two segments, All and Owned, each a chip-height button with a 12 by 8 eye glyph drawn at 2x.
+const SEG_H: float = 18.0
+## Fixed segment widths: the eye glyph, a gap and the word, so the words never sit under the glyph.
+const SEG_W_ALL: float = 50.0
+const SEG_W_OWNED: float = 66.0
+## Active buffs sit in a grid of equal cells this many across.
+const BONUS_COLS: int = 3
 const SHOW_EYE_W: int = 12
 const SHOW_EYE_H: int = 8
 ## The grid scrolls past this height. Shorter content just makes the panel shorter.
@@ -37,21 +41,80 @@ var _swap_from: StringName = &""       ## owned relic waiting for a slot to swap
 var _head_count: Label
 var _top: HBoxContainer
 var _slots_row: HBoxContainer
-var _bonus: HFlowContainer
+var _bonus: GridContainer
 var _tabs: GridContainer
 var _tab_buttons: Dictionary = {}      ## rank -> Button
-var _show_btn: Button
+var _show_all_btn: Button
+var _owned_btn: Button
+var _bonus_box: VBoxContainer
+var _no_bonus: Label
+var _tab_bars: Dictionary = {}         ## rank -> ColorRect progress strip under the tab
 var _scroll: ScrollContainer
 var _page: VBoxContainer
 var _grid: GridContainer
 var _hint: Label
 var _slots_shown: Array[StringName] = []
 var _slots_primed: bool = false
+var _outer: VBoxContainer                ## the body: every built node sits under it
+var _built: bool = false             ## the nodes exist (the panel is open or has been opened this visit)
 
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", AsciiBox.panel())
+	visibility_changed.connect(_on_visibility)
+
+
+## The gallery's nodes exist only while it is open (the node budget, docs/perf.md). Opening builds them, closing frees
+## them. The filter and the open tier are kept across a close, so the gallery reopens as the player left it.
+func _on_visibility() -> void:
+	if visible:
+		_ensure()
+		refresh()
+	else:
+		_teardown()
+
+
+func _ensure() -> void:
+	if _built:
+		return
+	_built = true
+	_build()
+	_rebuild_tabs()
+
+
+func _teardown() -> void:
+	if not _built:
+		return
+	_built = false
+	Tip.hide_all()
+	# Only the body is freed. The menu router's animator and the close X are children too, and stay.
+	if _outer != null:
+		remove_child(_outer)
+		_outer.queue_free()
+	_outer = null
+	_head_count = null
+	_show_all_btn = null
+	_owned_btn = null
+	_bonus_box = null
+	_no_bonus = null
+	_tab_bars.clear()
+	_top = null
+	_slots_row = null
+	_bonus = null
+	_tabs = null
+	_tab_buttons.clear()
+	_scroll = null
+	_page = null
+	_grid = null
+	_hint = null
+	_slots_shown.clear()
+	_slots_primed = false
+
+
+func _build() -> void:
 	var outer := VBoxContainer.new()
+	_outer = outer
+	# The rest of this function builds into `outer`, the one node _teardown frees.
 	outer.add_theme_constant_override("separation", GAP)
 	add_child(outer)
 	var head := HBoxContainer.new()
@@ -66,25 +129,20 @@ func _init() -> void:
 	_head_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_head_count.add_theme_color_override("font_color", RelicStyle.dim)
 	head.add_child(_head_count)
-	# The view-hidden toggle: an eye, not text, so it reads at a glance. Its tooltip says what the state means.
-	_show_btn = _chip_button()
-	_show_btn.clip_text = false
-	_show_btn.expand_icon = false
-	_show_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_show_btn.custom_minimum_size = Vector2(SHOW_W, SHOW_H)
-	_show_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
-	_show_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	Tip.bind(_show_btn, func() -> Variant: return _show_tip())
-	_show_btn.pressed.connect(func() -> void:
-		_owned_only = not _owned_only
-		_swap_from = &""
-		refresh())
-	head.add_child(_show_btn)
+	# The view toggle: two labelled segments, so the state reads without a tooltip. The active one is filled.
+	var seg := HBoxContainer.new()
+	seg.add_theme_constant_override("separation", 2)
+	seg.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_show_all_btn = _seg_button(false)
+	_owned_btn = _seg_button(true)
+	seg.add_child(_show_all_btn)
+	seg.add_child(_owned_btn)
+	head.add_child(seg)
 	# Room for the close X in the corner, so the header text is never under it (same spacer the other menus use).
 	var x_gap := Control.new()
 	x_gap.custom_minimum_size = Vector2(CloseX.HEADER_GAP, 1.0)
 	head.add_child(x_gap)
-	# Equip slots on the left, the active buffs filling the rest of the row as chips.
+	# Equip slots on the left. The active buffs fill the rest of the row as equal cells, so they line up in columns.
 	_top = HBoxContainer.new()
 	_top.add_theme_constant_override("separation", GAP)
 	outer.add_child(_top)
@@ -92,14 +150,22 @@ func _init() -> void:
 	_slots_row.add_theme_constant_override("separation", GAP)
 	_slots_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_top.add_child(_slots_row)
-	_bonus = HFlowContainer.new()
+	_bonus_box = VBoxContainer.new()
+	_bonus_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bonus_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_bonus_box.add_theme_constant_override("separation", GAP)
+	_top.add_child(_bonus_box)
+	_bonus = GridContainer.new()
+	_bonus.columns = BONUS_COLS
 	_bonus.add_theme_constant_override("h_separation", GAP)
 	_bonus.add_theme_constant_override("v_separation", GAP)
 	_bonus.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bonus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# Boost chips pack from the right edge, so the buffs line up against the panel's right side.
-	_bonus.alignment = FlowContainer.ALIGNMENT_END
-	_top.add_child(_bonus)
+	_bonus_box.add_child(_bonus)
+	_no_bonus = Label.new()
+	_no_bonus.text = "No bonuses active."
+	_no_bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_no_bonus.add_theme_color_override("font_color", RelicStyle.dim)
+	_bonus_box.add_child(_no_bonus)
 	# Same room as the header's close-X gap, so the boost chips end on the counter's and the eye's right edge.
 	var top_gap := Control.new()
 	top_gap.custom_minimum_size = Vector2(CloseX.HEADER_GAP, 1.0)
@@ -135,27 +201,52 @@ func _init() -> void:
 	outer.add_child(_hint)
 
 
-## The view-hidden toggle. On (filled, open eye) shows every relic. Off (plain, slashed eye) shows only the ones you own.
+## One view segment. The All segment has the open eye, Owned the slashed one. The active segment is filled.
+func _seg_button(owned: bool) -> Button:
+	var b := _chip_button()
+	b.text = "Owned" if owned else "All"
+	# The label must not clip, or the segment shrinks to its icon and the word disappears.
+	b.clip_text = false
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.custom_minimum_size = Vector2(SEG_W_OWNED if owned else SEG_W_ALL, SEG_H)
+	b.expand_icon = false
+	# Glyph on the left, word on the right, so the two never overlap in the fixed-width segment.
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	b.icon = _eye_texture(not owned, 1)
+	b.pressed.connect(func() -> void:
+		_owned_only = owned
+		_swap_from = &""
+		refresh())
+	Tip.bind(b, func() -> Variant: return _view_tip(owned))
+	return b
+
+
+## The view segments' state, shown by fill and text colour. Colours come from the palette, so they follow the zone.
 func _refresh_show_btn() -> void:
-	var showing_all: bool = not _owned_only
-	_show_btn.icon = _eye_texture(showing_all)
-	var fill: Color = RelicStyle.ink.lerp(RelicStyle.edge, 0.3) if showing_all else RelicStyle.ink
-	_apply_chip(_show_btn, RelicStyle.edge, RelicStyle.text, fill)
+	_style_seg(_show_all_btn, not _owned_only)
+	_style_seg(_owned_btn, _owned_only)
 
 
-func _show_tip() -> Dictionary:
-	if _owned_only:
+func _style_seg(b: Button, on: bool) -> void:
+	var fill: Color = RelicStyle.ink.lerp(RelicStyle.edge, 0.3) if on else RelicStyle.ink
+	var text_c: Color = RelicStyle.text if on else RelicStyle.dim
+	_apply_chip(b, RelicStyle.edge, text_c, fill)
+
+
+func _view_tip(owned: bool) -> Dictionary:
+	if owned:
 		var off: Dictionary = TipText.slot_note("Owned Only", "Only the relics you have found are listed.")
-		off["hint"] = "Click to show every relic, found or not."
+		off["hint"] = "Showing owned relics only." if _owned_only else "Click to list only the relics you own."
 		return off
-	var on: Dictionary = TipText.slot_note("Showing All", "Relics you have not found show as dark silhouettes.")
-	on["hint"] = "Click to show only the relics you own."
+	var on: Dictionary = TipText.slot_note("Show All", "Relics you have not found show as dark silhouettes.")
+	on["hint"] = "Showing every relic." if not _owned_only else "Click to list every relic, found or not."
 	return on
 
 
-## A pixel eye, 12 by 8 and drawn at 2x so it stays crisp. Open when every relic shows. Slashed, in the accent, when
+## A pixel eye, 12 by 8, drawn at `px` times so it stays crisp (1x fits a segment's text height, 2x is the glyph size). Open when every relic shows. Slashed, in the accent, when
 ## only owned relics show. Colours are baked in, so the icon does not depend on the button's hover state.
-func _eye_texture(open: bool) -> Texture2D:
+func _eye_texture(open: bool, px: int = 2) -> Texture2D:
 	var img := Image.create(SHOW_EYE_W, SHOW_EYE_H, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0.0, 0.0, 0.0, 0.0))
 	var ink_c: Color = RelicStyle.text if open else RelicStyle.dim
@@ -176,7 +267,7 @@ func _eye_texture(open: bool) -> Texture2D:
 		for i in SHOW_EYE_W:
 			var sy: int = int(round(float(i) * float(SHOW_EYE_H - 1) / float(SHOW_EYE_W - 1)))
 			img.set_pixel(i, sy, RelicStyle.accent)
-	img.resize(SHOW_EYE_W * 2, SHOW_EYE_H * 2, Image.INTERPOLATE_NEAREST)
+	img.resize(SHOW_EYE_W * px, SHOW_EYE_H * px, Image.INTERPOLATE_NEAREST)
 	return ImageTexture.create_from_image(img)
 
 
@@ -216,25 +307,41 @@ func bind(inv: RelicInventory) -> void:
 	inventory = inv
 	inv.changed.connect(refresh)
 	_ranks = inv.tier_ranks()
+	if not _ranks.is_empty() and not _ranks.has(_rank):
+		_rank = _ranks[0]
+	if _built:
+		_rebuild_tabs()
+	refresh()
+
+
+## One chip per rarity tab that has relics. Built with the panel, and again on bind (the ranks can change).
+func _rebuild_tabs() -> void:
 	for c in _tabs.get_children():
 		_tabs.remove_child(c)
 		c.queue_free()
 	_tab_buttons.clear()
+	_tab_bars.clear()
 	for r: int in _ranks:
 		var b := _chip_button()
 		b.pressed.connect(func() -> void:
 			_rank = r
 			_swap_from = &""
 			refresh())
+		# A strip along the bottom edge fills with the share of this tier you have found.
+		var bar := ColorRect.new()
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.anchor_top = 1.0
+		bar.anchor_bottom = 1.0
+		bar.offset_top = -3.0
+		bar.offset_bottom = 0.0
+		b.add_child(bar)
+		_tab_bars[r] = bar
 		_tabs.add_child(b)
 		_tab_buttons[r] = b
-	if not _ranks.is_empty() and not _ranks.has(_rank):
-		_rank = _ranks[0]
-	refresh()
 
 
 func refresh() -> void:
-	if inventory == null:
+	if inventory == null or not _built:
 		return
 	var refocus: StringName = &""
 	var owner_ctl: Control = get_viewport().gui_get_focus_owner() if is_inside_tree() else null
@@ -276,6 +383,7 @@ func refresh() -> void:
 	_fill_grid(refocus)
 	_head_count.text = "%d of %d found" % [inventory.owned.size(), inventory.defs.size()]
 	_hint.text = _hint_text(inventory.owned.is_empty())
+	_hint.visible = _hint.text != ""
 	call_deferred("_fit_scroll")
 
 
@@ -303,6 +411,9 @@ func _refresh_tabs() -> void:
 		var on: bool = r == _rank
 		var fill: Color = RelicStyle.ink.lerp(tint, 0.3) if on else RelicStyle.ink
 		_apply_chip(b, tint, rarity.readable_color(fill), fill)
+		var bar: ColorRect = _tab_bars[r]
+		bar.color = tint
+		bar.anchor_right = float(have) / float(defs_here.size())
 
 
 func _fill_grid(refocus: StringName) -> void:
@@ -388,8 +499,9 @@ func _fill_bonuses() -> void:
 		_bonus.remove_child(c)
 		c.queue_free()
 	var list: Array[Dictionary] = inventory.active_bonuses()
+	_no_bonus.visible = list.is_empty()
+	_bonus.visible = not list.is_empty()
 	if list.is_empty():
-		_bonus.add_child(_bonus_text("No bonuses active.", RelicStyle.dim))
 		return
 	for b: Dictionary in list:
 		var e: RelicDef.Effect = b["effect"] as RelicDef.Effect
@@ -399,10 +511,13 @@ func _fill_bonuses() -> void:
 func _bonus_chip(e: RelicDef.Effect, total: float) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.add_theme_stylebox_override("panel", _chip_box(AsciiBox.Kind.BUTTON, RelicStyle.edge, RelicStyle.ink))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chip.add_child(row)
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Icon over value, centred in an equal cell.
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 1)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_child(col)
 	var icon := TextureRect.new()
 	icon.texture = IconSet.get_icon(_effect_icon(e), 12)
 	icon.custom_minimum_size = Vector2(12.0, 12.0)
@@ -410,8 +525,11 @@ func _bonus_chip(e: RelicDef.Effect, total: float) -> PanelContainer:
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(icon)
-	row.add_child(_bonus_text(RelicDef.effect_text(e, total), StatStyle.gain()))
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(icon)
+	var value := _bonus_text(RelicDef.effect_text(e, total), StatStyle.gain())
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(value)
 	var name_text: String = RelicDef.effect_name(e)
 	var body: String = "From your equipped relics: %s." % RelicDef.effect_text(e, total)
 	Tip.bind(chip, func() -> Variant: return TipText.slot_note(name_text, body))
@@ -450,7 +568,8 @@ func _hint_text(no_relics: bool) -> String:
 		return "No relics yet. Pads have a small chance to drop one."
 	if _swap_from != &"":
 		return "Click an equipped slot to swap %s in. Esc cancels." % inventory.defs[_swap_from].display_name
-	return "%d of %d slots used." % [inventory.equipped.size(), inventory.slot_count()]
+	# The slot row already shows how many are used, so the default needs no footer line.
+	return ""
 
 
 func _wire(s: RelicSlot, is_equip_slot: bool) -> void:

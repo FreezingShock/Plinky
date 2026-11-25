@@ -11,6 +11,7 @@ extends Control
 
 const GAME_SCENE: String = "res://main.tscn"
 const TITLE_SCENE: String = "res://boot/title_screen.tscn"
+const BOOT_SCENE: String = "res://boot/boot.tscn"
 const THEME_PATH: String = "res://theme/plinky_theme.tres"
 const SKIP_ARG: String = "--skip-title"
 const SKIP_ENV: String = "PLINKY_SKIP_TITLE"
@@ -24,11 +25,9 @@ const WALKER_FPS: float = 8.0
 ## Where the walker's feet stand on the meadow (texels), and how far down its cell they are.
 const WALKER_FEET: Vector2 = Vector2(470.0, 294.0)
 const WALKER_BASE_Y: float = 47.0
-const FADE_SECONDS: float = 0.5
 const MENU_X: float = 26.0
 ## Shared with the loading screen, so both read the same.
 const TAGLINE: String = "+ Press. Walk. Bloom. +"
-const WIPE_SECONDS: float = 0.9
 const CHIP_Y: float = 340.0
 
 ## Set by the boot screen (or loaded on demand) so Play does not wait on disk.
@@ -75,9 +74,9 @@ static func play_label() -> String:
 	return "Continue" if SaveSlots.any_save() else "Play"
 
 
-## Leave the game for the title screen (the pause menu's Quit to title).
+## Leave the game for the title screen (the pause menu's Quit to title), swapped with no flat frame.
 static func go_to_title(tree: SceneTree) -> void:
-	tree.change_scene_to_file(TITLE_SCENE)
+	SceneSwap.go(tree, load(TITLE_SCENE) as PackedScene)
 
 
 ## The Save autoload, looked up by path so this script also compiles in the headless test runner (which has no autoloads).
@@ -90,6 +89,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ui_theme: Theme = load(THEME_PATH) as Theme
 	theme = ui_theme
+	# Pre-game screens fill any window (the game letterboxes). Main turns this off again.
+	DisplaySettings.set_pregame_fill(get_window(), true)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	CrispFont.apply(DISPLAY_FONT)
 	_pal = Palettes.colors(Palettes.MEADOW)
@@ -112,11 +113,7 @@ func _ready() -> void:
 	_build_panels(ui_theme)
 	_refresh_menu()
 	_refresh_theme()
-	# Fade in from ink, the mirror of the boot screen's dissolve.
-	if not (FxConfig.reduce_flashing or MeadowLife.reduce_motion):
-		_bg.set_dissolve(1.0)
-		var tween := create_tween()
-		tween.tween_method(_bg.set_dissolve, 1.0, 0.0, FADE_SECONDS)
+	# Arrivals come through SceneSwap, which reveals this screen from a captured frame, so it opens fully drawn.
 	_play.grab_focus()
 
 
@@ -131,6 +128,11 @@ func _build_walker() -> void:
 	_walker.stretch_mode = TextureRect.STRETCH_KEEP
 	_walker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_walker)
+
+
+## Where the 640x360 art sits in the visible canvas (centred, whole texels). Art positions add this; screen positions don't.
+func _art_origin() -> Vector2:
+	return ((size - Vector2(640.0, 360.0)) * 0.5).round()
 
 
 ## Left column: logo, tagline, then the framed menu.
@@ -187,7 +189,7 @@ func _build_column() -> void:
 ## The time chip: names the time of day on screen, and a click runs the sky forward to the next one.
 func _build_time_chip() -> void:
 	_chip = _button("", "", _pal[5], _on_time_chip)
-	_chip.position = Vector2(MENU_X, CHIP_Y)
+	_chip.position = Vector2(MENU_X, CHIP_Y + _art_origin().y)
 	add_child(_chip)
 
 
@@ -371,10 +373,26 @@ func _begin(n: int, fresh: bool) -> void:
 			save.call("select_slot", n)
 		save.set("paused", false)
 		save.call("save_game")  # a new slot gets its file now, so it shows up in Saves straight away
-	var wipe := TitleWipe.new()
-	add_child(wipe)
-	wipe.setup(_bg.role(0), _bg.role(5))
-	wipe.play(WIPE_SECONDS, TitleBackground.still(), func() -> void: get_tree().change_scene_to_packed(game))
+	# Play goes through the loading screen. It opens at this time of day and loads the slot's zone art with real progress.
+	BootScreen.handoff = _handoff_for()
+	# The loading screen draws the same title backdrop at the same time of day, so the hand-off is a foreground swap only.
+	SceneSwap.go(get_tree(), load(BOOT_SCENE) as PackedScene, true)
+
+
+## What the loading screen needs for the slot just opened: the zone scene it will show, its name, the time of day the
+## title is showing. Falls back to the meadow when no zone is known yet.
+func _handoff_for() -> Dictionary:
+	var zone_path: String = BootScreen.MEADOW_SCENE
+	var zone_name: String = "Meadow"
+	var state: Node = get_node_or_null("/root/GameState")
+	var sim: Sim = state.get("sim") as Sim if state != null else null
+	if sim != null:
+		var zone: ZoneDef = sim.zone_defs.get(sim.zone_id) as ZoneDef
+		if zone != null:
+			zone_name = zone.display_name
+			if zone.scene_path != "":
+				zone_path = zone.scene_path
+	return {"zone_path": zone_path, "zone_name": zone_name, "phase": _bg.phase()}
 
 
 func _on_quit() -> void:
@@ -389,6 +407,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	# Idle time on the title is free: the flower atlas bakes here, so the game's first frame finds it ready.
+	GardenArt.prepare_slice(GardenArt.BAKE_SLICE_MS)
 	_walk_t += delta
 	var frame: int = int(_walk_t * WALKER_FPS) % WALKER_FRAME_COUNT
 	_walker_tex.region = Rect2(frame * WALKER_CELL, 0, WALKER_CELL, WALKER_CELL)
@@ -400,4 +420,6 @@ func _process(delta: float) -> void:
 	_walker.modulate = Color.WHITE.lerp(tint, 0.5)
 	# Both scenes share one smoothed parallax, so the walker and the layers move as a set.
 	_scenery.parallax = _bg.parallax
-	_walker.position = Vector2(WALKER_FEET.x - float(WALKER_CELL) * 0.5, WALKER_FEET.y - WALKER_BASE_Y) + TitleScenery.layer_shift(_bg.parallax, TitleScenery.NEAR_K)
+	var origin: Vector2 = _art_origin()
+	_walker.position = Vector2(WALKER_FEET.x - float(WALKER_CELL) * 0.5, WALKER_FEET.y - WALKER_BASE_Y) + origin + TitleScenery.layer_shift(_bg.parallax, TitleScenery.NEAR_K)
+	_chip.position = Vector2(MENU_X, CHIP_Y + origin.y)

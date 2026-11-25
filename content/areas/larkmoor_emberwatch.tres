@@ -6,8 +6,8 @@
 script = ExtResource("1")
 id = &"emberwatch"
 zone = &"larkmoor"
-display_name = "Emberwatch"
-order = 6
+display_name = "Starbloom Terrace"
+order = 7
 icon = "tower"
 theme_role = 6
 blurb = "The northern tower and the far gate beyond it. The Starbloom row waits at the gate."

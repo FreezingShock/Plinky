@@ -40,6 +40,7 @@ func run(t: Object) -> void:
 	# Gallery: icon tiles stay, text actions are separate, and each fires its signal.
 	var g := GalleryMenu.new()
 	root.add_child(g)
+	g.visible = true   # the tiles and footer are built on open
 	t.ok(g.resume_button() != null, "the menu has a Close menu button")
 	var seen: Array = []
 	g.resume_requested.connect(func() -> void: seen.append("resume"))

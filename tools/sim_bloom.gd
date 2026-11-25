@@ -8,7 +8,6 @@ extends SceneTree
 const DT: float = 0.25
 const MAX_SECONDS: float = 12.0 * 3600.0
 const MIN_CYCLES: int = 5   ## the run must reach at least this many Blooms, each cycle ending sooner than the first
-const GIFT_ORDER: Array[StringName] = [&"bloom_head_start", &"bloom_soil", &"bloom_wide", &"bloom_dusk"]
 
 
 func _order(sim: Sim) -> Array[ButtonDef]:
@@ -73,8 +72,8 @@ func _init() -> void:
 			for b: ButtonDef in buttons:
 				if sim.zone_id == b.zone and sim.try_press(b.id):
 					break
-		if sim.can_reset(&"bloom") and sim.reset_gain(&"bloom") >= want:
-			var paid: int = sim.reset_gain(&"bloom")
+		if sim.can_reset(&"bloom") and sim.reset_gain(&"bloom").to_float() >= want:
+			var paid: int = int(sim.reset_gain(&"bloom").to_float())
 			var mult: float = sim.pad_yield_mult() * sim.zone_pad_mult(&"zone1")
 			sim.try_reset(&"bloom")
 			cycle_len.append(t - started)

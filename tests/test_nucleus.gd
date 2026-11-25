@@ -38,9 +38,9 @@ func run(t: Object) -> void:
 	sim.stats[&"emberheart"] = BigNum.from_float(sim.reset_ref(rid))
 	t.ok(not sim.can_reset(rid), "the gate must be open")
 	sim.gates_open[&"zone2"] = true
-	t.eq(sim.reset_gain(rid), 2, "the gate's worth of Emberhearts pays 2 Core Shards")
+	t.eq(sim.reset_gain(rid).to_float(), 2, "the gate's worth of Emberhearts pays 2 Core Shards")
 	sim.stats[&"emberheart"] = BigNum.from_float(sim.reset_ref(rid) * 4.0)
-	t.eq(sim.reset_gain(rid), 4, "four times pays double")
+	t.eq(sim.reset_gain(rid).to_float(), 4, "four times pays double")
 	for sid: String in rd.resets:
 		sim.stats[StringName(sid)] = BigNum.from_float(77.0)
 	sim.stats[&"emberheart"] = BigNum.from_float(sim.reset_ref(rid) * 4.0)   # the gate stat decides the payout
@@ -49,9 +49,9 @@ func run(t: Object) -> void:
 	var rebirths: int = sim.rebirth_count
 	var before: float = sim.pad_yield_mult()
 	var seen: Array = []
-	sim.reset_done.connect(func(id: StringName, n: int) -> void: seen.append([id, n]))
+	sim.reset_done.connect(func(id: StringName, n: BigNum) -> void: seen.append([id, n.to_float()]))
 	t.ok(sim.try_reset(rid), "strike a Nucleus")
-	t.eq(seen, [[&"nucleus", 4]], "reset_done carries the shards paid")
+	t.eq(seen, [[&"nucleus", 4.0]], "reset_done carries the shards paid")
 	t.near(sim.get_stat(&"shards").to_float(), 4.0, 1e-9, "Core Shards paid")
 	t.ok(sim.get_stat(&"cinder").is_zero() and sim.get_stat(&"emberheart").is_zero(), "the forge stats reset")
 	t.near(sim.get_stat(&"embers").to_float(), (sim.stat_defs[&"embers"] as StatDef).start, 1e-9, "Embers restart at their start")
@@ -80,7 +80,7 @@ func run(t: Object) -> void:
 	sim.attr_levels.clear()
 	var veins: AttributeDef = sim.attribute_defs[&"nucleus_veins"]
 	sim.attr_levels[&"nucleus_veins"] = 10
-	t.eq(sim.reset_gain(rid), int(floorf(4.0 * (1.0 + 10.0 * veins.per_level))), "Shard Veins raise the payout")
+	t.eq(sim.reset_gain(rid).to_float(), int(floorf(4.0 * (1.0 + 10.0 * veins.per_level))), "Shard Veins raise the payout")
 	sim.attr_levels.clear()
 	sim.attr_levels[&"nucleus_banked"] = 2
 	sim.stats[&"cinder"] = BigNum.from_float(9.0)
@@ -117,17 +117,17 @@ func run(t: Object) -> void:
 	meadow.from_dict({"zone": "zone1", "ladder": 3, "stats": {"prestige": 5.0}, "rebirth_count": 2})
 	t.ok(not meadow.get_stat(&"prestige").is_zero() and meadow.get_stat(&"shards").is_zero(), "a save that never reached the quarry is left alone")
 
-	# The Nucleus Crown: after five Nuclei, one Core Shards level doubles every pad in the quarry, and no meadow pad.
+	# The Nucleus Crown: after ten Nuclei, one Core Shards level doubles every pad in the quarry, and no meadow pad.
 	var crown: AttributeDef = sim.attribute_defs[&"nucleus_crown"]
-	t.ok(crown.currency == &"shards" and crown.cap == 1 and crown.unlock_resets == 5, "the Nucleus Crown is a one-level Core Shards gift after five Nuclei")
+	t.ok(crown.currency == &"shards" and crown.cap == 1 and crown.unlock_resets == 10, "the Nucleus Crown is a one-level Core Shards gift after ten Nuclei")
 	sim.attr_levels.clear()
-	sim.reset_counts[&"nucleus"] = 4
+	sim.reset_counts[&"nucleus"] = 9
 	sim.stats[&"shards"] = BigNum.from_float(1000.0)
-	t.ok(not sim.buy_attribute(crown.id), "the crown waits for five Nuclei")
-	sim.reset_counts[&"nucleus"] = 5
+	t.ok(not sim.buy_attribute(crown.id), "the crown waits for ten Nuclei")
+	sim.reset_counts[&"nucleus"] = 10
 	var quarry_before: float = sim.press_gain_preview(&"cinder_1").to_float()
 	var meadow_before: float = sim.press_gain_preview(&"sprout_1").to_float()
-	t.ok(sim.buy_attribute(crown.id), "the crown is bought with Core Shards after five Nuclei")
+	t.ok(sim.buy_attribute(crown.id), "the crown is bought with Core Shards after ten Nuclei")
 	t.near(sim.press_gain_preview(&"cinder_1").to_float(), quarry_before * 2.0, 1e-6, "every quarry pad pays double")
 	t.near(sim.press_gain_preview(&"sprout_1").to_float(), meadow_before, 1e-6, "the meadow's pads do not")
 	t.near(sim.zone_pad_mult(&"zone2"), 2.0, 1e-9, "the quarry's multiplier is the crown's")

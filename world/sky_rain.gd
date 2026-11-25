@@ -1,8 +1,8 @@
 class_name SkyRain
 extends Node2D
 ## Light rain over the outdoor scenes. The drops fall through the part of the field that is on screen (a window that
-## follows the camera), so the rain reads at every zoom and costs the same whatever the size of the map. `drops` is
-## the count for the reference view; a zoomed-out camera gets more (up to MAX_DENSITY), a zoomed-in one fewer.
+## follows the camera). The window is always the whole frame, so `drops` is the count per frame at every zoom (a zoomed-in
+## camera has a smaller window in texels, and each drop is bigger on screen), and the cost does not grow with the map.
 ## Each drop is a pure function of time and its index: no state, no alpha, palette indices only (7 paper for near
 ## streaks, 4 light for far ones). Redrawn at 12 fps. Drops hit the ground and leave a two-frame splash. Wind slants
 ## the fall. Intensity 0..1 decides how many of the drops are active.
@@ -10,8 +10,6 @@ extends Node2D
 const STEP: float = 1.0 / 12.0
 const IDX_FAR: int = 4
 const IDX_NEAR: int = 7
-const REF_VIEW_AREA: float = 332.0 * 192.0   # the view `drops` is tuned for, in texels
-const MAX_DENSITY: float = 2.5
 const NEAR_FALL: float = 0.9                 # seconds for a near drop to fall the window
 const FAR_FALL: float = 1.3
 
@@ -31,7 +29,7 @@ var _cached_drops: int = -1
 ## The hash is a sin() each, and three of them per drop per redraw were the rain's spike frames. Two are constant.
 func _cache() -> void:
 	_cached_drops = drops
-	var cap: int = int(ceilf(float(drops) * MAX_DENSITY))
+	var cap: int = drops
 	_x0.resize(cap)
 	_phase.resize(cap)
 	for i: int in cap:
@@ -63,8 +61,7 @@ func _draw() -> void:
 	var view: Rect2 = GraphicsQuality.visible_local_rect(self)
 	if not view.has_area():
 		view = area
-	var density: float = clampf(view.get_area() / REF_VIEW_AREA, 0.5, MAX_DENSITY)
-	var wanted: int = int(ceilf(float(drops) * intensity * density))
+	var wanted: int = int(ceilf(float(drops) * intensity))
 	var active: int = mini(GraphicsQuality.life_scaled(wanted), _x0.size())
 	var slant: float = 0.15 + 0.5 * wind          # texels sideways per texel fallen
 	var top: float = view.position.y - 4.0
@@ -82,8 +79,10 @@ func _draw() -> void:
 		var py: int = int(floorf(y))
 		if k < 0.92:
 			var streak: int = 3 if near else 2
+			# near streaks are 2 texels wide so they read at zoom 1; far ones stay 1 texel (same draw count either way)
+			var width: int = 2 if near else 1
 			for j in streak:
-				draw_rect(Rect2(px - int(floorf(float(j) * slant + 0.5)), py - j, 1, 1), palette[IDX_NEAR if near else IDX_FAR])
+				draw_rect(Rect2(px - int(floorf(float(j) * slant + 0.5)), py - j, width, 1), palette[IDX_NEAR if near else IDX_FAR])
 		elif k < 0.97:
 			draw_rect(Rect2(px - 1, py, 3, 1), palette[IDX_NEAR if near else IDX_FAR])
 		else:

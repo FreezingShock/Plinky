@@ -6,6 +6,7 @@ const DIR: String = "res://assets/art/zone1/meadow3d/"
 const FAR_BACKDROP: Texture2D = preload("res://assets/art/zone1/meadow3d/backdrop_far.png")
 const GROUND_FG: Texture2D = preload("res://assets/art/zone1/meadow3d/ground_fg.png")
 const GROUND: Texture2D = preload("res://assets/art/zone1/meadow3d/ground.png")
+const CLEARING_GARDEN_PATH: String = "res://world/clearing_gardens.json"
 @export_file("*.json") var placements_path: String = DIR + "placements3d.json"
 
 ## Prop kinds that sway in the wind (world/sky_cycle.gd). Rocks and crystals stay put.
@@ -21,6 +22,8 @@ var _shadows: SkyShadows
 var _ground: Sprite2D
 ## Material for the pad plates (main.gd assigns it): they take the same cast shadows as the ground.
 var pad_material: ShaderMaterial
+var _garden_flowers: Array = []   # the flower list the clearing's gardens were drawn from (world/clearing_gardens.json)
+var _flower_glow: FlowerGlow      # the night light on each field's flowers (world/flower_glow.gd)
 
 
 func _ready() -> void:
@@ -63,7 +66,22 @@ func _ready() -> void:
 		anchors.add_child(m)
 	_ground = ground
 	_add_life(ground)
+	_add_gardens()
 	_add_sky()
+
+
+## The Starting Clearing's flower fields: the Sprout and Clover rows each sit in a field of their own statistic's flower.
+## One node draws them all (world/garden_layer.gd); tools/art/gen_clearing_gardens.py writes the flowers.
+func _add_gardens() -> void:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(CLEARING_GARDEN_PATH))
+	if not parsed is Dictionary:
+		return
+	var layer := GardenLayer.new()
+	layer.name = "Gardens"
+	add_child(layer)
+	_garden_flowers = (parsed as Dictionary).get("flowers", []) as Array
+	layer.setup(_garden_flowers)
+	layer.pusher_group = &"walker"
 
 
 ## World life (world/meadow_life.gd): grass sway on the ground, fireflies and friends over everything.
@@ -72,21 +90,29 @@ func _add_life(ground: Sprite2D) -> void:
 	var life: Dictionary = MeadowLife.load_data()
 	if life.is_empty():
 		return
-	var lg := LifeGround.new()
+	# Interactive blades replace the 120 baked sway tips on this meadow: every blade bends with the wind and the walker.
+	var blades := GrassBlades.new()
+	blades.name = "GrassBlades"
+	add_child(blades)  # after Ground, so the blades draw over the grass
+	blades.setup(ground, life.get("pads", []) as Array, Palettes.colors(Palettes.MEADOW))
+	var lg := LifeGround.new()  # Low quality: the old baked tips, shown only while the blades are off
 	lg.name = "LifeGround"
-	add_child(lg)  # after Ground, so the sway draws over the grass
+	add_child(lg)
 	lg.setup(ground, life.get("sway", []) as Array)
+	lg.pusher_group = &"walker"
+	blades.fallback = lg
 	var air := LifeAir.new()
 	air.name = "LifeAir"
 	air.z_index = 10  # above the walker and pads, which sit at z 0 in World
 	add_child(air)
 	air.setup(life, ground)
+	blades.critter_source = air.ground_pushers
 	react = LifeReact.new()
 	react.name = "LifeReact"
 	react.z_index = 10
 	add_child(react)
 	react.setup(life, life.get("sway", []) as Array)
-	lg.pusher_group = &"walker"
+
 
 
 ## Day/night shade, rain and wind (world/sky_cycle.gd). Added after the life layers; its own z indices place it.
@@ -106,7 +132,29 @@ func _add_sky() -> void:
 			water.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
 	_sky.ponds = water
 	add_child(_sky)
+	_add_flower_glow()
+	var water_glow := WaterNightGlow.new()   # night glow on the pond and lake (world/water_night_glow.gd)
+	_sky.add_child(water_glow)               # after the shade and the light grade, so it adds on top of the night
+	water_glow.setup(_sky, load(DIR + "ground_n.png") as Texture2D, _ground.position)
 	_add_lights()
+
+
+## The night light on the clearing's flower fields (world/flower_glow.gd), built from the same flower list the
+## GardenLayer draws. Sits just above the night shade (z 5 of the sky), as on Larkmoor.
+func _add_flower_glow() -> void:
+	if not FlowerGlow.enabled or _garden_flowers.is_empty():
+		return
+	_flower_glow = FlowerGlow.new()
+	_flower_glow.name = "FlowerGlow"
+	_flower_glow.z_index = 5
+	add_child(_flower_glow)
+	_flower_glow.setup(_garden_flowers, FlowerGlow.pad_centres(_data.anchors))
+
+
+## The night level comes from the sky every frame; the glow only changes its alpha, so nothing is redrawn.
+func _process(_delta: float) -> void:
+	if _flower_glow != null and _sky != null:
+		_flower_glow.set_night(_sky.night01)
 
 
 ## Light pools (radii and strength in content/config/sky.tres): the shrine and any lantern in the life data,
@@ -116,7 +164,9 @@ func _add_lights() -> void:
 	var life: Dictionary = MeadowLife.load_data()
 	for L: Variant in life.get("lights", []) as Array:
 		var d: Dictionary = L as Dictionary
-		_sky.add_light(Vector2(float(d.x), float(d.y)), cfg.pool_shrine_radius, 1.0)
+		# a lantern pool is kind lantern, so it stays off by day and comes up with the night, as on Larkmoor
+		var kind: StringName = &"lantern" if String(d.get("kind", "")) == "lantern" else &"fixed"
+		_sky.add_light(Vector2(float(d.x), float(d.y)), cfg.pool_shrine_radius, 1.0, kind)
 	for a: Dictionary in _data.anchors:
 		match String(a.kind):
 			"gate":

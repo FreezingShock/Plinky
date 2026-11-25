@@ -69,12 +69,62 @@ def columns(seed):
     return s
 
 
+def rock_iso(s, ids, cx, cy, rw, rh, top_ramp, front_ramp, seed, glow_ramp=None, crack_p=0.0):
+    """A boulder seen from above and in front, the camera standard in art-reference/style-guide.md. A flattened top face
+    (an ellipse, facets lit from the top left) sits over a front face that shades down to a dark contact line on the
+    ground. cy is the ground line under the centre. Top and front are separate objects, so finish() draws the crease."""
+    rng = np.random.default_rng(seed)
+    cy_b = cy - 1.0                       # ground contact ellipse centre
+    rx_b, ry_b = rw, rw * 0.22            # ground contact ellipse, squashed for the elevated view
+    cy_t = cy_b - rh * 0.92               # top face centre, lifted above the ground
+    rx_t = rw * (0.80 + 0.08 * rng.random())
+    ry_t = rh * (0.34 + 0.05 * rng.random())
+    # outline: the back of the top face (upper half of its ellipse), then the front of the ground ellipse (lower half)
+    A = np.linspace(np.pi, 2 * np.pi, 26)
+    B = np.linspace(0, np.pi, 22)
+    ja = 1 + (rng.random(len(A)) - .5) * 0.12
+    jb = 1 + (rng.random(len(B)) - .5) * 0.12
+    pts = [(cx + np.cos(a) * rx_t * j, cy_t + np.sin(a) * ry_t * j) for a, j in zip(A, ja)]
+    pts += [(cx + np.cos(b) * rx_b * j, cy_b + np.sin(b) * ry_b * j) for b, j in zip(B, jb)]
+    body = s.poly_mask(pts)
+    top = (((s.xx + .5 - cx) / rx_t) ** 2 + ((s.yy + .5 - cy_t) / ry_t) ** 2 <= 1.0) & body
+    front = body & ~top
+    # top facets: a few cells across the face, each tilted toward or away from the light
+    nf = 5
+    cs = np.array([[cx + (rng.random() * 2 - 1) * rx_t * .72, cy_t + (rng.random() * 2 - 1) * ry_t * .7] for _ in range(nf)])
+    d = (s.xx[..., None] + .5 - cs[:, 0]) ** 2 + ((s.yy[..., None] + .5 - cs[:, 1]) * 2.2) ** 2
+    fid = np.argmin(d, -1)
+    tone = np.zeros(nf)
+    for k in range(nf):
+        lean = -(cs[k, 0] - cx) / rx_t * .5 - (cs[k, 1] - cy_t) / ry_t * .25
+        tone[k] = np.clip(.62 + lean * .16 + (rng.random() - .5) * .12, .4, .84)
+    v_top = tone[fid] + (h2v(s.xx, s.yy, seed) - .5) * .05
+    s.paint(top, top_ramp, v_top)
+    # front face: lit on the left, dark on the right, falling off toward the ground
+    y0 = cy_t + ry_t; span = max(cy_b - y0, 1.0)
+    t = np.clip((s.yy + .5 - y0) / span, 0, 1)
+    fx = np.array([cx + (k / 2 - 1) * rw * .9 for k in range(3)])
+    fidf = np.argmin(np.abs(s.xx[..., None] + .5 - fx[None, None, :] + 0 * s.yy[..., None]), -1)
+    fl = np.array([.66 + (rng.random() - .5) * .08, .52 + (rng.random() - .5) * .08, .36 + (rng.random() - .5) * .06])
+    v_front = fl[fidf] - .22 * t + (h2v(s.xx, s.yy, seed + 3) - .5) * .06
+    v_front = np.where(s.yy > cy_b - 1.5, v_front - .12, v_front)     # contact shadow at the ground line
+    s.paint(front, front_ramp, v_front)
+    if glow_ramp is not None and crack_p > 0:
+        seam = np.zeros_like(front)
+        for dy, dx in ((0, 1), (1, 0)):
+            seam |= (np.roll(fidf, -dx, 1) != fidf) if dx else (np.roll(fidf, -dy, 0) != fidf)
+        seam &= front
+        sel = seam & (h2v(s.xx // 2, s.yy // 2, seed + 5) < crack_p)
+        s.paint(sel, glow_ramp, 0.25 + 0.6 * h2v(s.xx, s.yy, seed + 9), glow=True, obj=False)
+    return body
+
+
 def boulder(seed, big=1.0):
     s, ids = new(seed); rng = np.random.default_rng(seed)
     rw = rng.uniform(12, 18) * big; rh = rng.uniform(11, 17) * big
-    s.rock(48, BASE, rw, rh, ids['basalt'], seed, 6, glow_ramp=ids['hot'], crack_p=0.10)
+    rock_iso(s, ids, 48, BASE, rw, rh, ids['hi'], ids['basalt'], seed, glow_ramp=ids['hot'], crack_p=0.10)
     if rng.random() < .6:
-        s.rock(48 + rw * .9, BASE, rw * .45, rh * .5, ids['hi'], seed + 1, 4)
+        rock_iso(s, ids, 48 + rw * .9, BASE, rw * .45, rh * .5, ids['hi'], ids['basalt'], seed + 1)
     return s
 
 
@@ -200,7 +250,7 @@ def lantern(seed):
 
 def lava_rock(seed):
     s, ids = new(seed); rng = np.random.default_rng(seed)
-    s.rock(48, BASE, rng.uniform(11, 16), rng.uniform(10, 15), ids['basalt'], seed, 6, glow_ramp=ids['hot'], crack_p=0.45)
+    rock_iso(s, ids, 48, BASE, rng.uniform(11, 16), rng.uniform(10, 15), ids['basalt'], ids['basalt'], seed, glow_ramp=ids['hot'], crack_p=0.45)
     return s
 
 

@@ -58,7 +58,7 @@ void fragment() {
 	if (relight > 0.0 && c.a > 0.5) {
 		vec4 d = texture(nrm_tex, uv);
 		int code = int(d.b * 255.0 + 0.5);
-		if (code >= 10 && code < 110 && RAMP_LEN[code] > 0) {
+		if (code >= 10 && code < 112 && RAMP_LEN[code] > 0) {
 			vec3 n = vec3(d.rg * 2.0 - 1.0, 0.0);
 			n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
 			float lb = d.a * 1.8 - 0.4;
@@ -73,8 +73,14 @@ void fragment() {
 			}
 		}
 	}
-	if (c.a > 0.5 && (season_amt > 0.0 || season_snow > 0.0)) {
+	// Conifers (material code 12, M_PINE) keep their green all year: the spring blossom tint and autumn
+	// recolour are for broadleaf foliage, and on pines they read as pink patches.
+	bool conifer = relight > 0.0 && c.a > 0.5 && int(texture(nrm_tex, uv).b * 255.0 + 0.5) == 12;
+	if (c.a > 0.5 && !conifer && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
+	}
+	if (conifer && season_snow > 0.0) {
+		c.rgb = season_pine_snow(c.rgb, wpos, texture(nrm_tex, uv).a);
 	}
 	if (rim_amount > 0.0 && c.a > 0.5 && lum(c.rgb) > 0.2) {
 		vec2 px = TEXTURE_PIXEL_SIZE;
