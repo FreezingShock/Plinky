@@ -1,1 +1,0 @@
-The walker's cloak and hood now shade in four steps of the meadow ramp, and the critters (rabbits, ducks, frogs, chickens, butterflies and the golden critter) get a lit rim and a shaded underside, with their ink outlines kept.
