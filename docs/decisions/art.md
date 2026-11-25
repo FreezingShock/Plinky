@@ -479,6 +479,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 |---|---|---|
 | 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
 
+## 2026-11-25: The sun or moon grab uses phase range, not the sign of sun_of
+- **Bug:** the grab picked the sun or moon by `sun_of(phase) >= 0`. At sunrise and sunset (phase 0.25 and 0.75, the loading screen's boot phase among them) `sun_of` is a float hair either side of zero, so the same body could grab on the wrong half of the arc. The body was drawn and hit-tested by phase range, so it jumped to the far end of the other arc, or the grab missed.
+- **Fix:** `TitleMood.sun_half(p)` decides the half by phase range (sunrise to sunset, both ends included), and both `arc_point` and the grab use it. Tests cover both boundary phases and their float neighbours.
+- **Found by:** PC QA batch 165 (sun grab fails on the loading screen in both Reduce Motion states).
 ## 2026-11-25: Separate Cinder from Embers, and Rebirth from Ingot (T11 follow-up)
 - **Why:** PC QA on #532 (batch 166) found two pairs too close. Embers and Cinder were both orange-red, and Rebirth and Ingot were both purple.
 - **Change:** Cinder moves to the meadow family (green stone with the orange seam), so it is no longer warm. Rebirth points, Rebirth and Prestige move to the tidewater family (teal and gold), so they are no longer purple. The bloom crown joins them. Clock, rest and offline stay on tidewater.

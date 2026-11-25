@@ -140,6 +140,13 @@ func run(t: Object) -> void:
 	credits.free()
 	var bg := TitleBackground.new()
 	t.ok(bg.parallax == Vector2.ZERO, "the backdrop starts with no parallax")
+	# The loading screen opens at sunrise (BOOT_PHASE 0.25). A press there must grab the sun the screen draws, not the moon.
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.25)
+	bg._begin_grab()
+	t.ok(bg.grabbing(), "a press on the sun at sunrise starts the grab")
+	t.ok(bg._grab_sun == TitleMood.sun_half(bg.phase()), "the grab takes the same half the sun is drawn on at sunrise")
+	t.ok(bg._grab_sun, "at sunrise the grab takes the sun, not the moon")
+	bg._end_grab()
 	bg.free()
 	var title := TitleScreen.new()
 	t.ok(title.has_method("_begin"), "the title screen compiles")
