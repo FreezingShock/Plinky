@@ -449,3 +449,66 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
 - **2026-11-25 water band floor and sky lift (T6):** water texels never drop below the mid water tone (`water_floor` in `ground_light.gdshader`, lift only, water texels only). The water glow node stays on at every hour and adds a sky-reflection lift (`lift` 0.6 in `water_night.gdshader`, set in `world/water_night_glow.gd`). Why: at noon and dusk the lake read near-black with green streaks, because water sat on the darkest ramp step. Checked in the cloud: Godot 4.7.2 under xvfb, noon, dusk and night before and after on the Starting Clearing lake (`/mnt/project-files/gower-style/t6-water/t6_water_before_after_lake_close.png`). Not verified on the PC. Cost: the glow overlay now draws all day, so GraphicsQuality LOW still needs a check.
+- **Tune after PC QA (2026-11-25):** the first ramps were too dark and too cool. Larkmoor golden hour read grey-green, and the grass dither was heavy, because the shade steps stacked on the role drop. The shade steps are now 0.78 and 0.92 of the anchor value (were 0.62 and 0.84), with less teal drift, and the lit step is 1.08 (was 1.12). Compare: `/mnt/project-files/palette-grade/qa531_larkmoor_v2.png`.
+
+## 2026-11-25: Walker and critters on the ramp steps (T9)
+- **Nathan's pick:** look A, Terracotta (mockups in `/mnt/project-files/gower-style/t9-walker-critters/`, generator `t9_mock_walker_critters.py`).
+- **Walker:** `tools/art/gen_walker.py` now reads the meadow ramp from `render/palettes.gd`. The cloak, hood, scarf and boots each use four steps (earth for the cloak and hood, green for the scarf). The outline stays the ink anchor, and the face, satchel and details keep their anchor colours. Codes: a plain role number is the anchor, and `8 + role * 4 + step` is the same role at another step.
+- **Critters:** `world/life_critters.gd` draws its sprites with `_make_shaded`. A texel takes step 3 when its top or left neighbour is empty or ink (lit rim), step 1 when its bottom or right neighbour is (underside), and step 2 otherwise. Ink stays on the anchor. `LifeCritters.shade_palette` holds the 40 colours these codes index. Butterflies (lit upper wing and spots) and the golden sparkle (lit gold and core) use the same palette.
+- **Not changed:** the walker's shape, the animation, the sprites of wild life (`world/life_wild.gd` still uses the anchor `_make_sprite`), ripples and the dust puffs.
+- **Checked in the cloud:** Godot 4.7.2 headless suite (11,822 checks, 0 failed, nine new shading checks in `tests/test_critters.gd`). An in-engine walker capture under xvfb shows the terracotta walker on the Starting Clearing.
+- **Not verified in-engine:** the critters. Their look is checked by the Python mock and the tests only. Check the rabbit, duck, frog, chicken, butterflies and the golden critter on the PC before calling it done.
+
+## Flower fields and pads, T4 (25 Nov)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-25 | Flower fields keep today's flower shapes, sizes and density (mockup M1, Nathan's pick). Only the greens move, onto the meadow zone ramp: stems, shrubs and leaves use meadow base, deep and light steps 1 | Nathan likes the current density. Recolouring the leaves keeps the zone's hue family without redrawing a sprite. |
+| 2026-11-25 | Each field sits on one soft ground patch, drawn once by GardenLayer from the flower positions (blurred cells, four Bayer levels, meadow deep ramp at low alpha) | Gower rule 5: big organic ground patches. One texture for the layer, no per-field node, so the 1350 node ceiling is unaffected. |
+| 2026-11-25 | Each pad's field is checked against its row: every flower within 40 texels of a pad is that row's statistic (tools/art/gen_gardens.py GARDENS and the district names) | The mismatch check passed on the data. Nothing in the field generator changes. |
+## 2026-11-25: Icon colour families on the ramps (T11)
+- **Nathan's pick:** Option A, colour families (mockups in `/mnt/project-files/icon-restyle/`). Option B (one meadow ramp) and C (rebirth on the quarry ramp) were rejected.
+- **Decision:** every staged icon (`tools/art/staged/*.txt`, 48 icons at 8, 12, 16, 24 and 32 px) takes its role colours from one hue family's RAMP in `render/palettes.gd`. Families live in `tools/art/icon_ramps.py`: meadow for stats and nature, quarry for embers, cinder, slag, ore, ingot, alloy and emberheart, iris for rebirth, prestige and crowns, tidewater for clock, rest and offline.
+- **Shading:** texels on the upper-left lit edge take ramp step 3, texels on the lower-right shaded edge take step 1, and the rest take step 2 (the anchor). Ink stays ink.
+- **Kept:** the ink outline, the 8 role names, and literal material and relic colours (object identity). Rarity frames stay fixed hex, per CLAUDE.md.
+- **Menu follow-up (same pick):** the `menu_*` gallery tiles were already in the staged set and shipped shaded. The hamburger (`menu_hamburger`, 16 px) was the only flat menu icon. `gen_menu_icons.py` and `gen_ledger.py` now run their drawings through `icon_ramps.remodel_image` and `shade`, so a rerun gives the same files.
+- **Ledger categories kept literal:** the nine ledger category icons keep their own colours. They match `LedgerPanel.CATEGORY_COLORS`, so changing them needs a code change, which is out of scope here.
+- **Not yet done:** `docs/img/icons_staged.png` still shows the unshaded set.
+- **Not verified in-engine:** the cloud has no Godot run for this change. Icon paths are unchanged, so no code path moves.
+
+## Pad plates, T4 (25 Nov)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
+
+## 2026-11-25: The sun or moon grab uses phase range, not the sign of sun_of
+- **Bug:** the grab picked the sun or moon by `sun_of(phase) >= 0`. At sunrise and sunset (phase 0.25 and 0.75, the loading screen's boot phase among them) `sun_of` is a float hair either side of zero, so the same body could grab on the wrong half of the arc. The body was drawn and hit-tested by phase range, so it jumped to the far end of the other arc, or the grab missed.
+- **Fix:** `TitleMood.sun_half(p)` decides the half by phase range (sunrise to sunset, both ends included), and both `arc_point` and the grab use it. Tests cover both boundary phases and their float neighbours.
+- **Found by:** PC QA batch 165 (sun grab fails on the loading screen in both Reduce Motion states).
+## 2026-11-25: Separate Cinder from Embers, and Rebirth from Ingot (T11 follow-up)
+- **Why:** PC QA on #532 (batch 166) found two pairs too close. Embers and Cinder were both orange-red, and Rebirth and Ingot were both purple.
+- **Change:** Cinder moves to the meadow family (green stone with the orange seam), so it is no longer warm. Rebirth points, Rebirth and Prestige move to the tidewater family (teal and gold), so they are no longer purple. The bloom crown joins them. Clock, rest and offline stay on tidewater.
+- **Why not shift the iris accent:** Ingot's purple is a literal material colour (`staged/ingot.txt` has literal lines), so the iris ramp can't change it. Moving the Rebirth icons off iris separates them without touching the material.
+- **Supersedes:** the family lists in the 2026-11-25 T11 entry above. The families in `tools/art/icon_ramps.py` are the source of truth.
+- **Checked:** `gen_icons_staged.py` changed exactly the 20 files for Cinder, Rebirth points, Rebirth and Prestige, and nothing else. The four icons were rendered side by side before the change (Pillow, not in-engine).
+- **Not verified in-engine:** the PC QA thread should check the HUD and the gallery after pulling.
+## 2026-11-25: Prop relight uses the 32-colour ramps (T1)
+- **Why:** the coordinator's note after #544: the prop relight (`render/shaders/prop_ramps.gdshaderinc`) still quantised through the old 8 colours, so trees and rocks did not show the restyle at non-baked sun times.
+- **Decision:** the include keeps `PAL[8]` (the anchors the bake uses) and adds `RAMP_PAL[32]` (role * 4 + step). Each material ramp is mapped to steps 1 to 3 from dark to light, so the relight draws the same bands as the post shader. `ground_light` and `wind_sway` read `RAMP_PAL`.
+- **Regeneration:** `gen_meadow3d.py` writes the include with `gen_palette_ramps.prop_ramp_steps` and `role_steps_32`. The include was regenerated from the existing one (decoded, round-trip checked byte for byte), so the full bake did not run.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb. Before and after at noon and dusk for both zones: `/mnt/project-files/palette-grade/prop_ramps_before_after.png`. The change is subtle at this zoom, and the Welcome Back dialog covers part of each frame. PC QA should re-check at zoom 1 with the dialog dismissed.
+
+
+## 2026-11-25: A release flick stops at the end of its half, and the lift lands with less bounce
+- **Bug (PC QA batch 175):** a sun release at phase 0.45 jumped about 219 px in 10 frames, and a moon release with Reduce Motion off overshot about 1.7 texels where about 0.4 was expected.
+- **Flick:** the release carries the body `fling * FLING_DECAY` phase in total. `_end_grab` now clamps the flick to the room left in the grabbed half, so the glide eases up to sunrise or sunset and never carries the body across to the other body's end of the arc while it is still moving. The natural clock still hands the arc over at sunset and sunrise, as it always has.
+- **Lift:** `LIFT_DAMPING` 6 to 10.8 (damping ratio 0.7, about 5% overshoot instead of about 27%). The lift still drops onto the arc with a small bounce.
+- **Tests:** `tests/test_title_scene.gd` covers a flick released near sunset (carries no further than sunset, glides without a jump) and the lift landing (lowest value above -0.06; the old damping fails it at -0.10).
+- **Not verified in-engine:** the feel of the flick and the landing on the PC.
+- **Follow-up (PC QA batch 177):** the moon release with Reduce Motion off still overshot 1.73 texels. That is 5% of a 35 texel reach, the bounce at damping ratio 0.7. `LIFT_DAMPING` is now 13.2 (ratio 0.85): under 1% overshoot, about 0.2 texel at full reach. The drift after release is not the lift. It is the natural clock (about 0.07 texel per frame at this day length) plus the flick, which decays over about 0.45 s.
+
+## 2026-11-25: Time of day never runs backward after a release
+- **Bug (PC QA batch 182):** a moon flicked backward from mid-arc travelled back along the drag for about 20 frames, then turned back. The release fling was negative and large, so `clock += delta * (1 + fling * day_seconds)` ran the clock backward (up to about 52 times normal speed) for about 111 frames. The moon went from phase 0.93 back to 0.76.
+- **Fix:** a flick backward no longer carries the body. `_end_grab` keeps only the forward part of the flick, so a backward flick stops the body and the natural clock carries on from there. `_step_free` clamps the clock rate at zero as a second guard.
+- **Kept:** the forward carry, capped to the room left in the grabbed half. The lift drop onto the arc is unchanged: the sun dropping about 33 texels from a high release is that drop, not a fault.
+- **Pass metric for QA:** after release, the body's offset below its arc point at its current phase (`-lift * reach`, drawn straight down, in art texels) must stay at or under 0.37 texels. Travel along the arc is not the metric: it includes the flick carry and the natural clock.
+- **Not verified in-engine:** how a stop after a backward flick feels on the PC.

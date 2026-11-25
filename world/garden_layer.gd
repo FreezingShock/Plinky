@@ -9,6 +9,12 @@ const WAVE_SPEED: float = 2.0          # radians per second the wind front trave
 const WAVE_PER_TEXEL: float = 0.04     # radians per texel along x
 const LEAN_AT: float = 0.5             # wave level that tips a flower one texel
 const BEND_RADIUS: float = 14.0        # a flower this close to the walker leans away from it
+const PATCH_CELL: int = 4              # texels per cell of the field ground patch, dithered on this grid
+const PATCH_RGB: Color = Color("164239")   # meadow deep ramp, step 0: the soft ground under a field
+const PATCH_ALPHA: Array[float] = [0.0, 0.16, 0.28, 0.4]   # four Bayer levels, from bare grass to a full patch
+const PATCH_SPREAD: int = 2            # cells of blur either side, so the patch has an organic edge
+const PATCH_FULL: float = 0.45         # blurred flowers per cell at which a patch reaches its darkest level
+const PATCH_BAYER: Array[float] = [0.0, 0.5, 0.125, 0.625, 0.75, 0.25, 0.875, 0.375, 0.1875, 0.6875, 0.0625, 0.5625, 0.9375, 0.4375, 0.8125, 0.3125]
 
 ## Group of the node the flowers bend away from (the walker). Empty = no bending.
 var pusher_group: StringName = &""
@@ -17,6 +23,9 @@ var _flowers: PackedInt32Array = PackedInt32Array()   # x, y, stat index, varian
 var _t: float = 0.0
 var _step: int = -1
 var _view: Rect2 = Rect2()   # the rect the last draw was culled to
+var _patch: Texture2D = null   # the dithered ground under the fields, one texture for the whole layer
+var _patch_origin: Vector2 = Vector2.ZERO
+var _patch_size: Vector2 = Vector2.ZERO
 
 ## The season the flowers show (GardenArt.SEASON_*), and whether their heads are shut (night). Set by the scene each frame;
 ## a change redraws the field.
@@ -44,7 +53,63 @@ func setup(flowers: Array) -> void:
 		var f: Array = flowers[i] as Array
 		for k in 4:
 			_flowers[i * 4 + k] = int(f[k])
+	_build_patch()
 	queue_redraw()
+
+
+## The soft ground under the fields: each flower adds to its cell, the cells are blurred, and each cell picks one of four
+## Bayer levels, so every field gets one dithered, organic patch with no per-field node.
+func _build_patch() -> void:
+	_patch = null
+	var n: int = count()
+	if n == 0:
+		return
+	var min_x: int = _flowers[0]
+	var min_y: int = _flowers[1]
+	var max_x: int = min_x
+	var max_y: int = min_y
+	for i in n:
+		min_x = mini(min_x, _flowers[i * 4])
+		max_x = maxi(max_x, _flowers[i * 4])
+		min_y = mini(min_y, _flowers[i * 4 + 1])
+		max_y = maxi(max_y, _flowers[i * 4 + 1])
+	var margin: int = PATCH_CELL * (PATCH_SPREAD + 2)
+	var origin := Vector2(min_x - margin, min_y - margin)
+	var cols: int = (max_x - min_x + 2 * margin) / PATCH_CELL + 1
+	var rows: int = (max_y - min_y + 2 * margin) / PATCH_CELL + 1
+	var dens := PackedFloat32Array()
+	dens.resize(cols * rows)
+	for i in n:
+		var cx: int = (_flowers[i * 4] - int(origin.x)) / PATCH_CELL
+		var cy: int = (_flowers[i * 4 + 1] - int(origin.y)) / PATCH_CELL
+		dens[cy * cols + cx] += 1.0
+	dens = _blur(_blur(dens, cols, rows, true), cols, rows, false)
+	var img := Image.create(cols, rows, false, Image.FORMAT_RGBA8)
+	for cy in rows:
+		for cx in cols:
+			var lv: float = clampf(dens[cy * cols + cx] / PATCH_FULL, 0.0, 1.0)
+			var level: int = clampi(int(floorf(lv * 4.0 + PATCH_BAYER[(cy & 3) * 4 + (cx & 3)])), 0, 3)
+			img.set_pixel(cx, cy, Color(PATCH_RGB.r, PATCH_RGB.g, PATCH_RGB.b, PATCH_ALPHA[level]))
+	_patch = ImageTexture.create_from_image(img)
+	_patch_origin = origin
+	_patch_size = Vector2(cols * PATCH_CELL, rows * PATCH_CELL)
+
+
+## One box blur pass over the cell grid, along x or along y, PATCH_SPREAD cells either way.
+static func _blur(src: PackedFloat32Array, cols: int, rows: int, along_x: bool) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(cols * rows)
+	var span: float = float(2 * PATCH_SPREAD + 1)
+	for cy in rows:
+		for cx in cols:
+			var sum: float = 0.0
+			for k in range(-PATCH_SPREAD, PATCH_SPREAD + 1):
+				var x: int = cx + k if along_x else cx
+				var y: int = cy if along_x else cy + k
+				if x >= 0 and x < cols and y >= 0 and y < rows:
+					sum += src[y * cols + x]
+			out[cy * cols + cx] = sum / span
+	return out
 
 
 func count() -> int:
@@ -97,6 +162,8 @@ func _draw() -> void:
 	var first: int = _first_row(view.position.y) if culling else 0
 	var last: int = _first_row(view.end.y) if culling else count()
 	var atlas: Texture2D = GardenArt.atlas()
+	if _patch != null:
+		draw_texture_rect(_patch, Rect2(_patch_origin, _patch_size), false)
 	for i in range(first, last):
 		var x: int = _flowers[i * 4]
 		if culling and (x < view.position.x or x >= view.end.x):

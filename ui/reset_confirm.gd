@@ -151,8 +151,13 @@ func open(title: String, colour: Color, icon: Texture2D, count_text: String, cap
 	_ring_acc = 0.0
 	_rings.clear()
 	_refresh_fill()
-	reset_size()
+	# shown first: a container does not sort a hidden child. Nothing draws until this returns, so the card is laid out now.
 	visible = true
+	reset_size()
+	# lay the card and its box out now, outer first, so a press in the frame of the open hits the bar where it is drawn
+	notification(Container.NOTIFICATION_SORT_CHILDREN)
+	(get_child(0) as Container).notification(Container.NOTIFICATION_SORT_CHILDREN)
+	reset_size()
 
 
 ## Pure: how full the hold reads for `held` seconds, 0 to 1.
@@ -193,8 +198,9 @@ func _process(frame_delta: float) -> void:
 		_strike()
 
 
+## The same test as the ritual's, so the rings here and the flight there always agree.
 func _calm() -> bool:
-	return FxConfig.reduce_flashing or FxConfig.reduce_motion
+	return FxConfig.ascension_calm()
 
 
 func _refresh_fill() -> void:
@@ -213,6 +219,13 @@ func _on_hold_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and (_on_target(_bar, mb) or _on_target(_badge, mb)):
+		# A press on the bar or the icon starts the hold from the raw event, before the GUI routes it, so it
+		# does not depend on which control the GUI last found under the pointer.
+		_pressing = true
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseButton and not (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		_pressing = false   # a release anywhere ends the hold, even off the button
 	elif event.is_action_pressed(&"ui_accept") and not (event is InputEventKey and (event as InputEventKey).echo):
@@ -224,6 +237,11 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close_unstruck()
+
+
+## True when a mouse press lands on `c` (its own rect, in its local space).
+func _on_target(c: Control, mb: InputEventMouseButton) -> bool:
+	return c.is_visible_in_tree() and Rect2(Vector2.ZERO, c.size).has_point(c.make_input_local(mb).position)
 
 
 func _strike() -> void:

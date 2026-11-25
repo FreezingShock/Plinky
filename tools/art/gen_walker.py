@@ -6,6 +6,11 @@ Run: python3 tools/art/gen_walker.py   (needs Pillow + numpy; reuses the helpers
 Writes assets/art/walker/walker_atlas.png (RGBA, 8 columns x 7 rows of 64 px cells = 512 x 448) and a preview
 sheet next to this file.
 
+Colours come from the meadow ramps in render/palettes.gd (Palettes.RAMP, 4 steps per role), not the 8 anchors.
+Each value in the drawing code is a ramp code: a plain role number (0..7) is that role at its anchor step (2), and
+ENC(role, step) = 8 + role * 4 + step is the same role at another step. The cloak, hood, scarf and boots use 4
+steps each (Nathan picked look A, Terracotta, 2026-11-25). Everything else keeps its anchor colour.
+
 Five facings are drawn: E (side), SE (three-quarter front), S (front), NE (three-quarter back), N (back).
 The other three are mirrors drawn at runtime with a flip, so they are not in the atlas:
 SW = SE flipped, W = E flipped, NW = NE flipped. Light stays upper left, as in docs/art-bible.md.
@@ -20,7 +25,7 @@ Cell index (row-major, 8 per row). BASE is E, SE, S, NE, N in that order (b = 0.
   51      jump rise front    52 jump fall front   53 jump rise side   54 jump fall side
 The GDScript side (world/walker_pose.gd) uses the same numbers. Change both together.
 """
-import os, sys
+import os, re, sys
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -29,10 +34,18 @@ sys.path.insert(0, HERE)
 from gen_v2 import Cv, PAL, CELL, dith  # noqa: E402
 
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
-CLOAK = [1, 6, 6, 5]        # deep green edge -> terracotta -> cream highlight
-HOOD = [1, 6, 6, 5]
-SCARF = [1, 2, 3]
-BOOT = [1, 2, 6]
+
+
+def enc(role, step):
+    """Ramp code for a role at a step (0 deepest .. 3 lit). Step 2 is the plain role number, the anchor."""
+    return role if step == 2 else 8 + role * 4 + step
+
+
+# Look A, Terracotta (Nathan's pick): a warm rust walker that reads clearly against the greens.
+CLOAK = [enc(6, 0), enc(6, 1), enc(6, 2), enc(6, 3)]     # olive shade -> ochre -> terracotta -> orange lit
+HOOD = [enc(6, 1), enc(6, 2), enc(6, 3), enc(5, 3)]      # one step lighter than the cloak, cream rim
+SCARF = [enc(1, 0), enc(2, 1), 2, 3]                     # green scarf, four steps
+BOOT = [enc(1, 0), 1, 6]
 SKIN = [5, 7, 7]
 BASE = ['E', 'SE', 'S', 'NE', 'N']
 FEET_Y = 46                 # ground row (WalkerBody FEET.y - 1)
@@ -253,20 +266,38 @@ def build_cells():
     return cells
 
 
+def load_ramp(zone='meadow'):
+    """The 4 steps x 8 roles of one zone, read from render/palettes.gd so the atlas matches the game: steps[step][role]."""
+    src = open(os.path.join(REPO, 'render', 'palettes.gd'), encoding='utf-8').read()
+    block = src.split('const RAMP', 1)[1].split('const STEPS', 1)[0]
+    zone_rows = block.split('&"%s": [' % zone, 1)[1].split('\n\t],', 1)[0]
+    steps = [[tuple(int(h[k:k + 2], 16) for k in (0, 2, 4)) for h in re.findall(r'"([0-9a-f]{6})"', row)]
+             for row in re.findall(r'\[([^\]]+)\]', zone_rows)]
+    assert len(steps) == 4 and all(len(row) == 8 for row in steps), 'bad RAMP block in palettes.gd'
+    return steps
+
+
+def colour_of(ramp, code):
+    if code < 8:
+        return ramp[2][code]
+    k = code - 8
+    return ramp[k & 3][k >> 2]
+
+
 def build():
     cells = build_cells()
     assert len(cells) == 55, len(cells)
     atlas = Image.new('RGBA', (COLS * CELL, ROWS * CELL), (0, 0, 0, 0))
-    pal = [tuple(int(h[k:k + 2], 16) for k in (1, 3, 5)) for h in PAL['meadow']]
+    ramp = load_ramp('meadow')
     for n, c in enumerate(cells):
         arr = np.zeros((CELL, CELL, 4), np.uint8)
         ys, xs = np.nonzero(c.i >= 0)
         for y, x in zip(ys, xs):
-            arr[y, x] = (*pal[c.i[y, x]], 255)
+            arr[y, x] = (*colour_of(ramp, int(c.i[y, x])), 255)
         atlas.paste(Image.fromarray(arr, 'RGBA'), ((n % COLS) * CELL, (n // COLS) * CELL))
     out = os.path.join(REPO, 'assets', 'art', 'walker', 'walker_atlas.png')
     atlas.save(out)
-    bg = Image.new('RGBA', atlas.size, (*pal[3], 255))
+    bg = Image.new('RGBA', atlas.size, (*ramp[2][3], 255))
     bg.alpha_composite(atlas)
     bg.resize((atlas.width * 3, atlas.height * 3), Image.NEAREST).convert('RGB').save(os.path.join(HERE, 'walker-sheet-v4.png'))
     print('wrote', out, atlas.size)

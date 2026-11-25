@@ -19,7 +19,7 @@ assert not _ON_PATH, 'pads sit on or against a path (move them in larkmoor_layou
 _OFF = LAY.rows_off()
 assert not _OFF, 'pad rows must hug a path and not overlap (tools/art/plan_rows.py): %r' % (_OFF,)
 import depth_pass, grass_tex
-GRASS = os.environ.get('GRASS', 'f')    # grass texture style (tools/art/grass_tex.py); 'old' = previous noise patches
+GRASS = os.environ.get('GRASS', 'g')    # grass texture style (tools/art/grass_tex.py): g = clump blades on patch shading (M2); 'old' = previous noise patches
 DEPTH_ON = '--no-depth' not in sys.argv     # --no-depth reproduces the old flat render for before/after shots
 DEPTH = None
 OUT = os.environ.get('LARK_OUT') or os.path.join(HERE, '..', '..', 'assets', 'art', 'zone1b', 'larkmoor')
@@ -32,6 +32,10 @@ OXS0, OYS0 = LAY.OX, LAY.OY
 OXS, OYS = OXS0, OYS0
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
+# Prop palette (Gower-style restyle, v3 mockup B): the sprites' albedo and the relit props' ramps. Ink stays put, and the
+# ground keeps PAL, so the backdrop, the flower and sway checks and the UI palette are unchanged.
+PROP_PAL = ['#14161c', '#1c3a2e', '#2f6a42', '#4f8f4a', '#9cc85c', '#e6ec9a', '#8a5a38', '#f2ecd2']
+PROP_COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PROP_PAL], np.uint8)
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
 def s2uv(sx, sy): d = sx - OXS0; s = (sy - OYS0) * 2; return (s + d) / 2.0, (s - d) / 2.0
 
@@ -777,11 +781,15 @@ put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
 # trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
 TREE_GAP = dict(oak=6.0, pine=8.0)
+GROVE_MUL = float(os.environ.get('GROVE_MUL', '1.8'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
+ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
+BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
-    try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
+    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL)
+    try_region(kind, *SC(c_), rad * .72, n_ if not FAST else max(1, n_ // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
 # lanterns: one size, one rhythm per path tier. A road gets a lamp about every LANTERN_STEP['road'] texels of its length
@@ -879,6 +887,36 @@ for B, nl, rmin in ((LAKE, 130, 2.2), (POND, 40, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
+# extra stones: ROAD_ROCKS just off the road and lane edges, BANK_ROCKS a few texels from the water (waits for the water
+# thread's layout). Baked with sid 1, so they add to the ground and its shadows, not to the node count. Own random stream,
+# so every placement above keeps its place.
+if ROAD_ROCKS or BANK_ROCKS:
+    _rr = random.Random(777)
+    _stones = []
+    def _stone_spot(bank):
+        for _ in range(6000):
+            u, v = _rr.uniform(20, N - 20), _rr.uniform(20, N - 20)
+            if not INSIDE[int(u), int(v)] or float(terrain_h(u, v)) > 9.0 or float(slope_at(u, v)) > .6: continue
+            if float(samp(WD, u, v)) > -.3: continue                              # land only
+            if bank:
+                if not (.8 < float(samp(DW, u, v)) < 3.2): continue                # the bank: a few texels from open water
+            else:
+                if not (1.5 < float(samp(dedge, u, v)) < 6.0): continue            # just off a road or lane edge
+                if float(samp(DW, u, v)) < 4.0: continue                           # not a second bank
+            if float(samp(dgrove, u, v)) < GROVE_CLEAR: continue
+            if any(math.hypot(u - pu, v - pv) < pr + 3.0 for (pu, pv, pr) in placed): continue
+            if any(math.hypot(u - su, v - sv) < 5.0 for (su, sv) in _stones): continue
+            return u, v
+        return None
+    _kinds = [False] * ROAD_ROCKS + [True] * BANK_ROCKS
+    for _bank in _kinds:
+        _p = _stone_spot(bank=_bank)
+        if _p is None: continue
+        _u, _v = _p
+        _f, _half, _top, _rad = make_rock(random.Random(_rr.randint(0, 1 << 30)), _rr.random() < .45)
+        voxelize(_f, _half, _top, _u, _v, float(terrain_h(_u, _v)) - .4, _rr.uniform(.7, 1.05), _rr.uniform(0, 6.28), 1)
+        _stones.append((_u, _v))
+    log('extra stones placed %d of %d (road %d, bank %d)' % (len(_stones), len(_kinds), ROAD_ROCKS, BANK_ROCKS))
 # flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
 # texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
 # drifts are (about half the ground), so the flowers gather in patches with bare grass between them. Placed last, after
@@ -977,6 +1015,17 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# main road = flagstones: lit sand stones in staggered rows, with worn earth mortar between them. Lanes stay plain packed
+# sand and trails stay dark earth, so the three tiers read apart at 1x without a new material. The mortar is a light
+# drop only, so the palette and the ramp stay the same as the path's.
+road_m = on_path['road'] & ~on_path['lane'] & (mat == T_PATH)
+row_ = np.floor(FV / 4.0)
+cu_ = (FU + 2.5 * (row_ % 2)) % 5.0
+cv_ = FV % 4.0
+joint_v = (cu_ < 1.0) & (vn2(FU / 3.0, FV / 3.0, 47) > .45)  # vertical joints: about half of them, so the road is not a grid
+joint_h = cv_ < 1.0                                          # horizontal joints: every row
+mortar = (joint_v | joint_h) & road_m
+lt -= .30 * mortar                                           # a soft drop to the earth step, not a hard grid
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -1229,7 +1278,8 @@ for t in TALL:
     spr = np.zeros((y1 - y0 + 1, x1 - x0 + 1, 4), np.uint8)
     m_ = IDM[y0:y1 + 1, x0:x1 + 1] == t['id']
     if t['kind'] == 'windmill': m_ = _largest_part(m_)   # the mill is one solid tower; loose pixels up top are sail edge, not tower
-    spr[m_, :3] = RGBM[y0:y1 + 1, x0:x1 + 1][m_]; spr[m_, 3] = 255
+    # sprite albedo takes the prop palette (PROP_PAL); the ground and backdrop keep PAL/COLS
+    spr[m_, :3] = PROP_COLS[np.clip(AUXM['out'][y0:y1 + 1, x0:x1 + 1][m_], 0, None)]; spr[m_, 3] = 255
     fn = 'sprites/%s_%03d.png' % (t['kind'], t['id']); Image.fromarray(spr).save(os.path.join(OUT, fn))
     depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUXM, y0, y1, x0, x1, m_)
     # a bridge sorts 40 texels north of its centre, so the walker on the deck always draws over it (the picture stays put: offset = box - foot)

@@ -69,7 +69,7 @@ void fragment() {
 				float lo = floor(v);
 				float f = clamp((v - lo - 0.44) / 0.12, 0.0, 1.0);   // a narrow blend band: steps are solid, the dither only softens the seam
 				int step_i = int(lo) + ((f > bayer4(ivec2(floor(wpos))) && int(lo) < cnt) ? 1 : 0);
-				c.rgb = PAL[RAMP_IDX[RAMP_START[code] + step_i]];
+				c.rgb = RAMP_PAL[RAMP_IDX[RAMP_START[code] + step_i]];
 			}
 		}
 	}

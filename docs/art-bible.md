@@ -35,6 +35,8 @@ Roles: 0 ink/outline, 1 shadow, 2 deep, 3 base, 4 light, 5 accent, 6 earth, 7 pa
 
 Palette shift on zone entry: blend the two palette textures over 1.5 seconds (SPEC section 4).
 
+Prop relight: `render/shaders/prop_ramps.gdshaderinc` carries `PAL[8]` (anchors, used by the bake) and `RAMP_PAL[32]` (role * 4 + step). Material ramps index `RAMP_PAL` at steps 1 to 3.
+
 Dusk grade (picked 2026-11-25, "B at dusk"): at the low sun, dawn and dusk alike, a warm multiply (`SkyConfig.dusk_tint`) and a saturation lift (`SkyConfig.dusk_sat`) go into the full-frame light pass. Off at noon and by night.
 
 ## 4. Shader and effect values
