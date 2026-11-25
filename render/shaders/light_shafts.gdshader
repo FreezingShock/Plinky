@@ -16,7 +16,7 @@ uniform float amount_ray = 0.0;      // 0..1 strength of the thin rays
 uniform vec2 travel = vec2(0.5, 1.0);   // direction the light travels, world texels (normalised in the shader)
 uniform vec3 ray_col : source_color = vec3(1.0, 0.82, 0.55);
 uniform float beam_spacing = 96.0;   // lane width across the travel direction, texels
-uniform float beam_density = 0.55;   // share of lanes that carry a beam
+uniform float beam_density = 0.8;   // share of lanes that carry a beam
 uniform float beam_segment = 150.0;  // length of one lit stretch along a beam, texels
 uniform float ray_spacing = 34.0;
 uniform float ray_density = 0.4;
@@ -60,8 +60,8 @@ float shaft_layer(vec2 p, vec2 d, vec2 pp, float spc, float wmin, float wmax, fl
 	float centre = 0.5 + (h_c - 0.5) * (1.0 - w);      // keeps the band inside its lane
 	float across = 1.0 - smoothstep(w * 0.35, w * 0.5, abs(f - centre));
 	float along = dot(p, d) + sway * 9.0 * h_c;
-	float seg = smoothstep(0.25, 0.6, value_noise(vec2(along / seg_len, lane * 3.7 + seed)));
-	float gap = smoothstep(0.3, 0.7, value_noise(p / gap_scale + vec2(lane * 0.37, seed * 1.3)));
+	float seg = smoothstep(0.12, 0.5, value_noise(vec2(along / seg_len, lane * 3.7 + seed)));
+	float gap = smoothstep(0.18, 0.55, value_noise(p / gap_scale + vec2(lane * 0.37, seed * 1.3)));
 	return on * across * seg * gap;
 }
 
@@ -74,9 +74,9 @@ void fragment() {
 	vec2 p = vec2(t) + 0.5;
 	vec2 d = normalize(travel);
 	vec2 pp = vec2(-d.y, d.x);
-	float beam = shaft_layer(p, d, pp, beam_spacing, 0.22, 0.5, beam_density, beam_segment, 1.7) * amount_beam;
+	float beam = shaft_layer(p, d, pp, beam_spacing, 0.34, 0.7, beam_density, beam_segment, 1.7) * amount_beam;
 	float ray = shaft_layer(p, d, pp, ray_spacing, 0.08, 0.2, ray_density, ray_segment, 5.3) * amount_ray;
-	float inten = clamp((beam + ray) * 1.4, 0.0, 1.0);
+	float inten = clamp((beam + ray) * 1.8, 0.0, 1.0);
 	float lit = step(bayer4(t), inten);   // dithered: a texel lights where its intensity beats the matrix
-	COLOR = vec4(ray_col * ray_col * 0.55, lit * 0.5);
+	COLOR = vec4(ray_col * ray_col * 0.7, lit * 0.6);
 }

@@ -173,7 +173,7 @@ func rays(t: float, rain01: float = 0.0) -> float:
 ## (golden is 0.35 there), off at night, and off in rain.
 func shafts(t: float, rain01: float = 0.0) -> float:
 	var g: float = golden(t)
-	return g * g * (1.0 - clampf(rain01, 0.0, 1.0))
+	return sqrt(g) * (1.0 - clampf(rain01, 0.0, 1.0))
 
 
 ## Ground mist 0..1: thickest at dawn, thinner through the day, back up after dusk, and extra after rain.
