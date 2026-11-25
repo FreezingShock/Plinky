@@ -46,6 +46,7 @@ WHEAT_DX = 7 # canvas texels: two clumps' centres stay at least this far apart i
 WHEAT_DY = 4 # ... or in y, so clumps overlap a little, never stack
 MERE_MARGIN = 12                        # layout texels
 GAP = 4                                 # canvas texels between farm items
+PROP_WHEAT_GAP = 1                      # canvas texels between a wheat clump and a small prop it sits in front of (see clear_of_taken)
 
 # Sprite sizes (canvas texels), from gen_farm.py. Wheat clumps are placed by FIELDS below.
 SIZES = {
@@ -192,14 +193,21 @@ class Placer:
         self.tags = [None] * len(self.taken)   # 'wheat' for clumps, None for everything else
 
     def clear_of_taken(self, x0, y0, x1, y1, tag=None):
-        """Wheat clumps may overlap each other a little (thick wheat), but keep their centres apart. Everything else
-        keeps GAP texels clear of every rect already used."""
+        """Wheat clumps may overlap each other a little (thick wheat), but keep their centres apart. Wheat grows right up to
+        a small prop (a hay bale, crate, cart or scarecrow): a clump behind the prop's foot may overlap it, because the prop
+        draws over the wheat, and a clump in front keeps PROP_WHEAT_GAP texels clear. Everything else keeps GAP texels clear
+        of every rect already used."""
         for (a, b, c, d), t in zip(self.taken, self.tags):
             if tag == 'wheat' and t == 'wheat':
                 if abs((x0 + x1) - (a + c)) / 2.0 < WHEAT_DX and abs((y0 + y1) - (b + d)) / 2.0 < WHEAT_DY:
                     return False
                 continue
-            if not (x1 + GAP <= a or x0 >= c + GAP or y1 + GAP <= b or y0 >= d + GAP):
+            gap = GAP
+            if tag == 'wheat' and t == 'prop':
+                if y1 - 2 < d - 2:                  # sort order: the wheat draws behind the prop's foot
+                    continue
+                gap = PROP_WHEAT_GAP
+            if not (x1 + gap <= a or x0 >= c + gap or y1 + gap <= b or y0 >= d + gap):
                 return False
         return True
 

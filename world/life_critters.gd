@@ -86,6 +86,8 @@ const CHICKEN_ART: Array = ["..ff..", ".kwwk.", "kwwwwy", "kwwwwk", ".f..f."]
 const CHICKEN_PECK_ART: Array = ["......", "..ff..", "..kwwy", ".kwwwk", ".f..f."]
 
 var palette: PackedColorArray = Palettes.colors(Palettes.MEADOW)
+## The 40 ramp colours the critter sprites draw with (see ramp_code): anchors at 0..7, every role's steps after that.
+var shade: PackedColorArray = LifeCritters.shade_palette(Palettes.MEADOW)
 var _sprites: Dictionary = {}             # name -> {runs: Array[PackedInt32Array], w, h}
 var _pads: Array[Vector2] = []            # every pad centre, ready or not
 var _water: Array[Dictionary] = []        # water ellipses from the data
@@ -671,22 +673,93 @@ func _draw_ripple(r: Dictionary) -> void:
 
 ## Draws a sprite from its runs of one palette index. `fade` below 1 draws only the texels the dither lets through.
 func _blit(spr: Dictionary, origin: Vector2i, flip: bool, fade: float) -> void:
-	MeadowLife.blit(_ci, palette, spr, origin, flip, fade)
+	MeadowLife.blit(_ci, shade, spr, origin, flip, fade)
 
 
 func _build_sprites() -> void:
 	if not _sprites.is_empty():
 		return
-	_sprites["rabbit_sit"] = _make_sprite(RABBIT_SIT)
-	_sprites["rabbit_alert"] = _make_sprite(RABBIT_ALERT)
-	_sprites["rabbit_nibble"] = _make_sprite(RABBIT_NIBBLE_ART)
-	_sprites["rabbit_hop"] = _make_sprite(RABBIT_HOP_ART)
-	_sprites["duck"] = _make_sprite(DUCK_ART)
-	_sprites["duck_sleep"] = _make_sprite(DUCK_SLEEP_ART)
-	_sprites["frog"] = _make_sprite(FROG_ART)
-	_sprites["frog_tuck"] = _make_sprite(FROG_TUCK_ART)
-	_sprites["chicken"] = _make_sprite(CHICKEN_ART)
-	_sprites["chicken_peck"] = _make_sprite(CHICKEN_PECK_ART)
+	_sprites["rabbit_sit"] = _make_shaded(RABBIT_SIT)
+	_sprites["rabbit_alert"] = _make_shaded(RABBIT_ALERT)
+	_sprites["rabbit_nibble"] = _make_shaded(RABBIT_NIBBLE_ART)
+	_sprites["rabbit_hop"] = _make_shaded(RABBIT_HOP_ART)
+	_sprites["duck"] = _make_shaded(DUCK_ART)
+	_sprites["duck_sleep"] = _make_shaded(DUCK_SLEEP_ART)
+	_sprites["frog"] = _make_shaded(FROG_ART)
+	_sprites["frog_tuck"] = _make_shaded(FROG_TUCK_ART)
+	_sprites["chicken"] = _make_shaded(CHICKEN_ART)
+	_sprites["chicken_peck"] = _make_shaded(CHICKEN_PECK_ART)
+
+
+## Ramp code for a role at a step (0 deepest .. 3 lit). Step 2 is the plain role number, the anchor colour.
+static func ramp_code(role: int, step: int) -> int:
+	return role if step == 2 else 8 + role * 4 + step
+
+
+## The 40 colours the codes index: 0..7 are the anchors (step 2), 8 + role * 4 + step is each role at each step,
+## read from the zone ramp in render/palettes.gd.
+static func shade_palette(id: StringName) -> PackedColorArray:
+	var steps: Array = Palettes.ramp_colors(id)
+	var out := PackedColorArray()
+	out.resize(40)
+	for v: int in 40:
+		if v < 8:
+			out[v] = (steps[2] as PackedColorArray)[v]
+		else:
+			var k: int = v - 8
+			out[v] = (steps[k & 3] as PackedColorArray)[k >> 2]
+	return out
+
+
+## Like _make_sprite, but each texel takes a ramp step from the light rule: a texel with an empty or ink neighbour
+## above or to its left is a lit rim (step 3), one with an empty or ink neighbour below or to its right is the
+## underside (step 1), and the rest keep the anchor (step 2). Ink always stays on the anchor. Light comes from the
+## upper left, as in docs/art-bible.md. Runs hold ramp codes, so they draw through `shade` (see _blit).
+static func _make_shaded(rows: Array) -> Dictionary:
+	var h: int = rows.size()
+	var w: int = 0
+	for r: Variant in rows:
+		w = maxi(w, (r as String).length())
+	var codes := PackedInt32Array()
+	codes.resize(w * h)
+	for y: int in h:
+		for x: int in w:
+			codes[y * w + x] = _shade_code(rows, w, h, x, y)
+	var runs: Array = []
+	for y: int in h:
+		var x: int = 0
+		while x < w:
+			var code: int = codes[y * w + x]
+			if code < 0:
+				x += 1
+				continue
+			var n: int = 1
+			while x + n < w and codes[y * w + x + n] == code:
+				n += 1
+			runs.append(PackedInt32Array([x, y, n, code]))
+			x += n
+	return {"runs": runs, "w": w, "h": h}
+
+
+static func _shade_code(rows: Array, w: int, h: int, x: int, y: int) -> int:
+	var ch: String = _char_at(rows, w, h, x, y)
+	if ch == ".":
+		return -1
+	var role: int = int(CODE[ch])
+	if role == 0:
+		return 0
+	if _char_at(rows, w, h, x, y - 1) in [".", "k"] or _char_at(rows, w, h, x - 1, y) in [".", "k"]:
+		return ramp_code(role, 3)
+	if _char_at(rows, w, h, x, y + 1) in [".", "k"] or _char_at(rows, w, h, x + 1, y) in [".", "k"]:
+		return ramp_code(role, 1)
+	return ramp_code(role, 2)
+
+
+static func _char_at(rows: Array, w: int, h: int, x: int, y: int) -> String:
+	if x < 0 or y < 0 or x >= w or y >= h:
+		return "."
+	var row: String = rows[y]
+	return row[x] if x < row.length() else "."
 
 
 ## Turns sprite text rows into runs of one colour: [x, y, length, palette index]. '.' is empty.

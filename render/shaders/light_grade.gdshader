@@ -24,6 +24,10 @@ uniform vec3 noon_tint = vec3(1.0);              // pulls the green out of a bri
 uniform float exposure = 1.0;                    // below 1 at high noon, where the frame reads bleached
 uniform vec3 dusk_mul = vec3(1.0);               // warm multiply at the low sun (SkyCycle: dusk_tint, 1 = off)
 uniform float lift = 0.22;                       // how much brighter a lit texel gets
+// Deep blue-green floor for the contrast step. Contrast above 1 pivots about 0.42, so a dark texel can be pushed
+// below zero and read as a pure black hole (under the bushes and trees at noon, and at dusk). Shaded ground ends
+// at this colour instead. Plain values in the frame's own space (not source_color), like the rest of this pass.
+uniform vec3 shade_floor = vec3(0.06, 0.16, 0.18);
 
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
 varying vec2 wpos;
@@ -57,7 +61,11 @@ void fragment() {
 	c *= dusk_mul;
 	float l2 = dot(c, vec3(0.299, 0.587, 0.114));
 	c = mix(vec3(l2), c, sat);
+	vec3 pre_contrast = c;
 	c = (c - 0.42) * contrast + 0.42;
+	// Floor: the contrast step may not take a texel below the blue-green floor. A texel that was already darker than
+	// the floor keeps its own value, so the walker's ink and the dark outlines do not get lifted.
+	c = max(c, min(pre_contrast, shade_floor));
 	c = mix(c, c * 1.35 + vec3(0.08, 0.09, 0.12), flash * 0.6);
 	COLOR = vec4(clamp(c, 0.0, 1.0), 1.0);
 }

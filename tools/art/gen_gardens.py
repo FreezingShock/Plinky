@@ -25,10 +25,13 @@ VARIANTS = 4                # small hand-drawn flowers are variants 0 to 3; 4 an
 SHRUBS = (4, 5)
 FIELD_FIRST, FIELD_TINTS = 6, 4   # field flowers: the pad's own flower at scale 1, 2 or 3 in four tints: id = 6 + scale index * 4 + tint
 GRASS = {(0x5f, 0xa3, 0x6a), (0xb7, 0xd9, 0x78), (0x2f, 0x6b, 0x55)}   # palette 3, 4 and 2: grass, light grass and grass in shade. Path sand, dirt and water are not.
+GRASS |= {(0x7a, 0x7f, 0x45), (0x91, 0x96, 0x54), (0x9e, 0xa3, 0x5f), (0xaa, 0xb0, 0x61),      # warm grass variant (palette 8-11)
+          (0x3c, 0x7a, 0x6a), (0x4b, 0x8f, 0x7a), (0x5e, 0xa8, 0x8a), (0x72, 0xbf, 0x9f)}   # cool grass variant (palette 12-15)
 BAD = {(0xf2, 0xe6, 0xa0), (0x1f, 0x3b, 0x35), (0xc2, 0x78, 0x4e)}   # path, water and dirt: keep flowers a few texels off them
 PLATE = (24.0, 13.0)    # half extents of the exclusion ellipse around a pad plate (plate 14 x 7, plus its glow ring and a gap)
 SOLID = {'oak', 'pine', 'bush', 'rock', 'crystals', 'menhir', 'tower', 'windmill', 'lighthouse', 'obelisk', 'ruin', 'sign', 'gateway', 'lantern'}
 SPREAD = 1.4   # how much farther apart flowers stand than their bare footprints: open, even spacing, not tight blobs
+PATH_NEAR = 4   # ground texels of clear space kept from a path, dirt or shore pixel
 PATH_CLEAR, PATH_FULL = 17.0, 36.0   # uv texels from a path centre line: no flower closer than the first, full density beyond the second
 SCALE_PLATE = {1: 1.0, 2: 1.3, 3: 1.9}   # a bigger flower keeps further from a plate, so the plates always read
 
@@ -56,9 +59,10 @@ def load_world():
     for c in BAD:
         bad |= key == (c[0] << 16 | c[1] << 8 | c[2])
     # dilate the bad ground by a few texels so no flower touches a path edge or the shore
-    near_bad = bad.copy()
-    for dy, dx in ((0, 3), (0, -3), (3, 0), (-3, 0), (2, 2), (-2, -2), (2, -2), (-2, 2), (0, 6), (0, -6), (4, 0), (-4, 0)):
-        near_bad |= np.roll(np.roll(bad, dy, 0), dx, 1)
+    # a flower bed keeps PATH_NEAR texels of clear ground from any path, dirt or shore pixel (a square window, the same rule
+    # test_gardens.gd checks), so no bed sits on a lane or trail edge
+    from PIL import ImageFilter as _IF
+    near_bad = np.asarray(Image.fromarray((bad * 255).astype(np.uint8)).filter(_IF.MaxFilter(2 * PATH_NEAR + 1))) > 0
     placements = json.load(open(os.path.join(DIR, 'placements3d.json')))
     boxes = []
     for s in placements['sprites']:

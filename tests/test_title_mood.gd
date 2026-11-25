@@ -89,6 +89,13 @@ func run(t: Object) -> void:
 		var tp: float = float(i) / 24.0
 		t.ok(TitleMood.body(sky, _t_for(sky, tp)).is_equal_approx(TitleMood.arc_point(tp)), "body and arc agree at phase %.3f" % tp)
 	t.ok(TitleMood.arc_at(1.25, false).x > TitleMood.arc_at(1.1, false).x, "the moon's far end is on the right")
+	# The half is decided by phase range, so the boundary phases never flip halves between grab and draw.
+	t.ok(TitleMood.sun_half(0.25) and TitleMood.sun_half(0.75), "sunrise and sunset both belong to the sun's half")
+	t.ok(not TitleMood.sun_half(0.2499) and not TitleMood.sun_half(0.7501), "just outside sunrise and sunset is the moon's half")
+	for bp: float in [0.25, 0.75, 0.25 - 1e-9, 0.75 + 1e-9]:
+		var sun_side: bool = TitleMood.sun_half(bp)
+		var u_side: float = bp if (sun_side or fposmod(bp, 1.0) >= 0.75) else fposmod(bp, 1.0) + 1.0
+		t.near(TitleMood.arc_point(bp).x, TitleMood.arc_at(u_side, sun_side).x, 1e-6, "the drawn body at boundary phase %.10f is the body the grab uses" % bp)
 	t.ok(TitleMood.body(sky, noon_t).is_equal_approx(TitleMood.arc_point(0.5)), "the drawn body is the arc at its phase")
 
 	# The grab spring: held and released bodies move smoothly; the calm one never overshoots.

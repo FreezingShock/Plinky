@@ -242,8 +242,7 @@ func _build_stats() -> void:
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(icon)
 		var gap := Control.new()
-		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		gap.custom_minimum_size.x = 4
+		gap.custom_minimum_size.x = 5   # the value sits close to its icon; no blank run between them
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(gap)
 		var rate := Label.new()
@@ -257,14 +256,19 @@ func _build_stats() -> void:
 		rate.visible = false
 		add_child(rate)
 		var val := RollValue.new()
-		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		val.add_theme_color_override("font_color", StatStyle.color(sid))
+		val.add_theme_color_override("font_color", StatStyle.value_color(sid))
 		h.add_child(val)
 		_rows[sid] = [val, rate]
 		var gl := HudGainLabel.new()   # "+123" beside the row, outside the panel: one pooled node per row
 		add_child(gl)
 		_gain_labels[sid] = gl
+		var rule := StripRule.new()   # the dotted line under this row, placed in _place_rates
+		rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rule.visible = false
+		add_child(rule)
+		_rules[sid] = rule
 		Tip.bind_all(h, func() -> Variant:
 			if sim.reset_for_currency(sid) != null and not _edit_mode:
 				return _currency_spec(sid, sim.get_stat(sid).format(), true)
@@ -355,17 +359,28 @@ func _on_goal_reached(id: StringName) -> void:
 	if _goal_card == null:
 		return
 	var spec: Dictionary = _goal_card.goal_reached(id)
+	_sync_goal_card()
 	if not spec.is_empty():
 		Banner.announce(spec)
 
 
-## The Next Goal card, top left: the first mid-game goal not yet reached (ui/next_goal_card.gd). Gated like the stat strip.
+## The goals card shows only while a goal is still open, and only from the Dewdrops unlock (the stat strip's gate).
+## Once every goal is reached it hides for good, so it never sits over the stat strip.
+func _sync_goal_card() -> void:
+	if _goal_card == null:
+		return
+	var want: bool = GameState.onboarding.is_unlocked(Onboarding.F_DEWDROP) and NextGoalCard.shown_for(sim.goals)
+	if _goal_card.visible != want:
+		_goal_card.visible = want
+
+
+## The Next Goal ribbon, bottom right beside the Menu chip: the first mid-game goal not yet reached (ui/next_goal_card.gd).
+## Shown by _sync_goal_card, placed in _place.
 func _build_goal_card() -> void:
 	_goal_card = NextGoalCard.new()
-	_goal_card.position = Vector2(4.0, 4.0)
 	add_child(_goal_card)
 	_goal_card.bind(sim)
-	gate(_goal_card, Onboarding.F_DEWDROP)
+	_goal_card.visible = false
 
 
 func _build_clock() -> void:
@@ -398,6 +413,16 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 		cname, lines, "Hold to Strike", func(origin: Vector2) -> void:
 			BloomRitual.launch_global = origin
 			GameState.try_reset(rid))
+	_place_reset_confirm()   # centred now, so the first press in this frame hits the card where it is drawn
+
+
+## Centre the reset confirm on the frame while it is up.
+func _place_reset_confirm() -> void:
+	if _reset_confirm == null or not _reset_confirm.visible:
+		return
+	var rp: Vector2 = ((frame - _reset_confirm.size) * 0.5).floor()
+	if _reset_confirm.position != rp:
+		_reset_confirm.position = rp
 
 
 ## True while a zone reset confirm is up. MenuRouter refuses to open other menus meanwhile.
@@ -1082,16 +1107,9 @@ func _place() -> void:
 		mp0.y = minf(mp0.y, roundf(frame.y * 0.3))
 		if _modal.position != mp0:
 			_modal.position = mp0
-	if _reset_confirm != null and _reset_confirm.visible:
-		var rp: Vector2 = ((frame - _reset_confirm.size) * 0.5).floor()
-		if _reset_confirm.position != rp:
-			_reset_confirm.position = rp
+	_place_reset_confirm()
 	if _welcome != null and _welcome.visible:
 		_welcome.place(frame)
-	if _save_note != null and _menu_chip != null:
-		var sp: Vector2 = Vector2(_menu_chip.position.x - _save_note.size.x - 6.0, frame.y - _save_note.size.y - 6.0).floor()
-		if _save_note.position != sp:
-			_save_note.position = sp
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
@@ -1111,6 +1129,18 @@ func _place() -> void:
 		var mc: Vector2 = Vector2(frame.x - _menu_chip.size.x - 4.0, frame.y - _menu_chip.size.y - 4.0)
 		if _menu_chip.position != mc:
 			_menu_chip.position = mc
+	# The bottom right row, right to left: the Menu chip, then the goal ribbon (when open), then the save flash.
+	var row_x: float = _menu_chip.position.x if _menu_chip != null else frame.x - 4.0
+	if _goal_card != null and _goal_card.visible and _menu_chip != null:
+		var gsz: Vector2 = _goal_card.get_combined_minimum_size()
+		var gp: Vector2 = Vector2(row_x - gsz.x - 6.0, _menu_chip.position.y + floorf((_menu_chip.size.y - gsz.y) * 0.5)).floor()
+		if _goal_card.position != gp:
+			_goal_card.position = gp
+		row_x = gp.x
+	if _save_note != null and _menu_chip != null:
+		var sp: Vector2 = Vector2(row_x - _save_note.size.x - 6.0, frame.y - _save_note.size.y - 6.0).floor()
+		if _save_note.position != sp:
+			_save_note.position = sp
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:
@@ -1137,6 +1167,7 @@ func _refresh() -> void:
 	if rp_box != null:   # Rebirth Points show once you have rebirthed (or hold some)
 		_set_row_shown(rp_box, _layout_rows().has(&"rp") and GameState.onboarding.is_unlocked(Onboarding.F_UPGRADES) and (_edit_mode or sim.rebirth_count > 0 or not sim.rp_available().is_zero()), _gates_ready)
 	_apply_gates(_gates_ready)
+	_sync_goal_card()
 	_gates_ready = true
 	_poll_tips()
 	for sid: StringName in _rows:
@@ -1244,7 +1275,9 @@ func _sync_layout() -> void:
 			var b0: Control = _row_boxes[sid0] as Control
 			if b0.visible:
 				old_y[sid0] = b0.position.y
-	var idx: int = 0
+	var idx: int = 0   # the rows sit below the Stats header, which is the first child of the box
+	if _foot_normal != null and _foot_normal.get_parent() == _stats_box:
+		idx = _foot_normal.get_index() + 1
 	for sid: StringName in _cached_rows:
 		var b: Control = _row_boxes.get(sid) as Control
 		if b != null:
@@ -1286,6 +1319,7 @@ const GAIN_FLOAT_RISE: float = 6.0    ## pixels a gain label drifts up as it fad
 
 var _gain_tally: HudGainTally = HudGainTally.new()
 var _gain_labels: Dictionary = {}     ## stat id -> its HudGainLabel: one pooled node per row, never one per gain
+var _rules: Dictionary = {}           ## stat id -> the dotted rule under its row (StripRule), shown between rows only
 
 
 func _now_s() -> float:
@@ -1371,6 +1405,32 @@ func _place_rates() -> void:
 			extent += gl.size.x + 3.0
 		widest = maxf(widest, extent)
 	_rates_w = widest
+	_place_rules()
+
+
+## A dotted rule under each visible row except the last, across the panel. Rules fade with their row.
+func _place_rules() -> void:
+	var shown: Array = []
+	for sid: StringName in _row_boxes:
+		var box: Control = _row_boxes[sid] as Control
+		if box.visible:
+			shown.append([box.global_position.y, sid])
+	shown.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	for i: int in shown.size():
+		var sid: StringName = shown[i][1]
+		var box2: Control = _row_boxes[sid] as Control
+		var rule: StripRule = _rules.get(sid) as StripRule
+		if rule == null:
+			continue
+		var last: bool = i == shown.size() - 1
+		rule.visible = not last and _stats_panel != null
+		if not rule.visible:
+			continue
+		var y: float = box2.global_position.y - global_position.y + box2.size.y - 1.0
+		var at: Vector2 = Vector2(_stats_panel.position.x + 6.0, floorf(y))
+		rule.position = at
+		rule.size = Vector2(maxf(_stats_panel.size.x - 12.0, 1.0), 1.0)
+		rule.modulate.a = box2.modulate.a
 
 
 ## Rows glide to their new places after a reorder or a hide, instead of jumping.
@@ -1459,8 +1519,17 @@ func _build_row_controls(h: HBoxContainer, sid: StringName) -> void:
 
 ## The pencil (normal mode) and the edit footer: add chips, row count, Reset, Done.
 func _build_strip_footer(v: VBoxContainer) -> void:
+	# The header: a dim "Stats" title with the edit pencil at its right. It sits above the rows.
 	_foot_normal = HBoxContainer.new()
 	_foot_normal.custom_minimum_size.y = 14.0
+	_foot_normal.add_theme_constant_override("separation", 4)
+	var head := Label.new()
+	head.theme_type_variation = &"TitleLabel"
+	head.add_theme_font_size_override("font_size", STAT_RATE_SIZE)
+	head.add_theme_color_override("font_color", RelicStyle.dim)
+	head.text = "Stats"
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_foot_normal.add_child(head)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1471,6 +1540,7 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	Tip.bind(_edit_btn, {"title": "Edit Stat Strip", "body": "Show, hide and reorder the rows.", "hint": "Right-click a row to hide it."})
 	_foot_normal.add_child(_edit_btn)
 	v.add_child(_foot_normal)
+	v.move_child(_foot_normal, 0)
 	_foot_normal.visible = false   # _refresh shows it once the tutorial reaches Dewdrops (a bare Sunlight counter needs no editing)
 
 	_foot_clip = Control.new()
@@ -1834,3 +1904,16 @@ func _on_tip_closed(skipped: bool) -> void:
 	GameState.onboarding.tips_enabled = false
 	TipsSettings.set_enabled(false)
 	_apply_gates(false)  # skipping the tutorial shows every system at once
+
+
+## A dotted 1 px rule under a strip row (see _place_rules). Drawn here, so it is one node with no textures.
+class StripRule extends Control:
+	func _init() -> void:
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		var c: Color = RelicStyle.dim.darkened(0.2)
+		var x: float = 0.0
+		while x < size.x:
+			draw_rect(Rect2(x, 0.0, 1.0, 1.0), c)
+			x += 2.0

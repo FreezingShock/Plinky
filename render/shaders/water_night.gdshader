@@ -31,6 +31,8 @@ uniform vec3 moon_col : source_color = vec3(0.965, 0.937, 0.851);
 uniform vec3 glow_col : source_color = vec3(0.718, 0.851, 0.471);
 uniform float sway = 0.0;                       // stepped clock; 0 under Reduce Motion, so glints and beams hold still
 uniform float twinkle = 1.0;                    // 0 under Reduce Flashing: glints keep their places and stop changing
+uniform float lift = 0.0;                      // sky reflection on the water at every hour (T6), 0 = off
+uniform vec3 lift_col : source_color = vec3(0.965, 0.937, 0.851);
 uniform int quality = 2;                        // GraphicsQuality.Level: 0 low (no rings, no beams), 1 medium, 2 high
 
 varying vec2 wpos;
@@ -106,6 +108,14 @@ void fragment() {
 	float mist = clamp(far * 0.7 + near * 0.3 + w * 0.4, 0.0, 1.0);
 	col += moon_col * haze * mist * (0.45 + 0.55 * wide) * 0.09;                 // spill up the bank and above the shore
 	col += glow_col * body * w * (1.0 - far) * 0.40;       // the water's own light, brightest along the shore inside
+	// sky reflection: the water takes a little of the lit sky at dusk and night, so it reads as water, not a black hole.
+	// Brightest along the shore, where the sky shows in the shallows, and never more than a soft lift over the base colour.
+	// The lift is kept apart from the night amount, so it holds at dusk, noon and night alike.
+	vec3 lift_add = vec3(0.0);
+	if (lift > 0.0 && w > 0.5) {
+		float edge = 1.0 - ring_water(6.0, 0.0);
+		lift_add = lift_col * lift * w * (0.08 + 0.22 * edge);
+	}
 
 	// Glints: a 2x1 texel sparkle grid. Density rises under the moon path; foam sparkles more.
 	if (shimmer > 0.0 && w > 0.5) {
@@ -135,5 +145,5 @@ void fragment() {
 		col += moon_col * shaft * (0.45 + 0.35 * lit);
 	}
 
-	COLOR = vec4(col * amount, 1.0);
+	COLOR = vec4(col * amount + lift_add, 1.0);
 }
