@@ -602,6 +602,12 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Checked:** `tests/run.gd` passes (7962 checks, 0 failed), including a check that the icon cache returns the same texture.
 - **Not measured:** the rest of the first-open cost. The probe can't see GPU upload, glyph rasterising or first-use shaders, so the PC has to time the first open before and after this change.
 
+## 2026-11-24: HUD tags stay in the HUD z chain (sprint tag at night and in rain)
+- **Decision:** the sprint tag is a sibling on the Hud, not a `top_level` child of the Momentum panel, and the Upgrades fly-cost label (`UpgradeCard._fly_cost`) pins `z_as_relative = false` with `z_index = 100`. A `top_level` item leaves its parent's z chain and draws at z 0, under the world's light grade (z 11 overall, the night tint) and the rain layer.
+- **Why:** Nathan's screenshot showed the sprint tag darkened and blue-tinted at night and in rain, with rain streaks across it, while the Momentum panel below stayed clean. Reproduced headless under lavapipe at phase 0 with rain 1.0 before the change.
+- **Audit:** the achievement and relic toasts are HUD children at z 130, the Banner is a CanvasLayer at 100 and Tip at 120, so none of them are affected. `WindowFrame`'s title bar is still `top_level` at z 0 (windowed chrome, hidden by default). It is not changed here.
+- **Checked:** `tests/run.gd` passes (7968 checks, 0 failed). Night+rain and noon frames rendered before and after; the tag is bright and rain-free after the fix.
+- **Not run in-engine:** the Upgrades fly label (`-170` flying to the balance) at night. PC QA should buy an upgrade at night and check the label stays above the card.
 ## 2026-11-24: Relics panel uses the Window layout (Nathan picked B from three mockups)
 - **Decision:** the view control is two labelled segments, All and Owned, in place of the eye button. The active segment is filled. Active buffs are a three-column grid of icon-over-value cells, equal width, beside the slots. Rarity tabs carry a strip of how much of the tier is found. Cards drop the rarity letter and use a 20 px icon. Sealed Caches are two side-by-side cards with the price and pulls left on a second line. The footer "N of M slots used" is removed, since the slot row shows it.
 - **Why:** the eye read as a stamp, so its state needed a tooltip. The buffs wrapped raggedly. The cards were mostly empty space around a small icon, and the caches took a full row each. Mockups A, B and C were posted first. Nathan picked B.
