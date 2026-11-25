@@ -448,3 +448,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
+
+## Flower fields and pads, T4 (25 Nov)
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-25 | Flower fields keep today's flower shapes, sizes and density (mockup M1, Nathan's pick). Only the greens move, onto the meadow zone ramp: stems, shrubs and leaves use meadow base, deep and light steps 1 | Nathan likes the current density. Recolouring the leaves keeps the zone's hue family without redrawing a sprite. |
+| 2026-11-25 | Each field sits on one soft ground patch, drawn once by GardenLayer from the flower positions (blurred cells, four Bayer levels, meadow deep ramp at low alpha) | Gower rule 5: big organic ground patches. One texture for the layer, no per-field node, so the 1350 node ceiling is unaffected. |
+| 2026-11-25 | Each pad's field is checked against its row: every flower within 40 texels of a pad is that row's statistic (tools/art/gen_gardens.py GARDENS and the district names) | The mismatch check passed on the data. Nothing in the field generator changes. |
