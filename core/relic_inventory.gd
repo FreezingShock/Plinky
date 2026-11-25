@@ -38,10 +38,6 @@ func rarity_of(id: StringName) -> StringName:
 func is_equipped(id: StringName) -> bool:
 	return equipped.has(id)
 
-## Stacks that currently count (all owned stacks if equipped, else 0).
-func active_stacks(id: StringName) -> int:
-	return stacks_of(id) if is_equipped(id) else 0
-
 func add_relic(id: StringName, stacks: int = 1) -> void:
 	if not defs.has(id) or stacks <= 0:
 		return

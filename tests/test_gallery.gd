@@ -86,3 +86,8 @@ func run(t: Object) -> void:
 	t.eq(rows[1]["text"], "- Added the hamburger", "notes keep a dash")
 	t.eq(rows[3]["text"], "v0.4.0", "an entry with no date shows just the version")
 	t.ok(UpdateLogPanel.rows_from([] as Array[Dictionary]).is_empty(), "no entries gives no rows")
+	# The log is one text block: a note's "[" is escaped so it can never open a tag, and each line takes its colour.
+	var log_panel := UpdateLogPanel.new()
+	var block: String = log_panel._bbcode([{"kind": "b", "text": "- [fix]"}] as Array[Dictionary])
+	t.ok(block.begins_with("[color=#") and block.contains("- [lb]fix]") and block.contains("[/color]"), "the update log escapes brackets and colours each line")
+	log_panel.free()

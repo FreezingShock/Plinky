@@ -87,6 +87,19 @@ func run(t: Object) -> void:
 	sim.press_count = 100000
 	sim.check_achievements()
 	t.ok(LedgerPanel.signature_of(LedgerPanel.rows_for(sim)) != sig, "the rebuild signature changes when a row changes")
+	# The rows are freed on close and built again on open, so a closed Achievements panel holds no rows.
+	var ledger := LedgerPanel.new()
+	ledger.bind(sim)
+	ledger.visible = true
+	ledger.refresh()
+	t.ok(ledger._body.get_child_count() > 0, "the Achievements rows are built on open")
+	t.ok(not ledger._building, "off the tree the rows build in one pass")
+	var rows_built: int = ledger._body.get_child_count()
+	ledger.refresh()
+	t.eq(ledger._body.get_child_count(), rows_built, "a refresh with no change does not rebuild the rows")
+	ledger.visible = false
+	t.eq(ledger._body.get_child_count(), 0, "the Achievements rows are freed on close")
+	ledger.free()
 	t.eq(LedgerPanel.progress_text(3.0, 100.0), "3 / 100", "progress reads as count over target")
 	t.eq(LedgerPanel.progress_text(0.46, 1.0), "0.4 / 1", "fractions below a whole show one decimal")
 	t.eq(LedgerPanel.progress_text(1500.0, 10000.0), "1.5K / 10K", "large counts use the shared number format")

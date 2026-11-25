@@ -9,6 +9,7 @@ const SCROLL_H: float = 196.0
 const REFRESH: float = 0.5
 const ICON_SIZE: int = 16
 const NO_TITLE: String = "None Yet"
+const ROWS_PER_FRAME: int = 6   ## achievement rows built per frame on open and on change (about 3 ms)
 
 ## One colour per category, the same fixed section colours the gallery tiles use. Bases match tools/art/gen_ledger.py.
 const CATEGORY_COLORS: Dictionary = {
@@ -22,6 +23,8 @@ var _scroll: ScrollContainer
 var _count: Label
 var _clock: float = 0.0
 var _signature: int = 0
+var _gen: int = 0            ## bumped to cancel a build that is still spreading over frames
+var _building: bool = false
 
 
 func _init() -> void:
@@ -58,7 +61,9 @@ func _init() -> void:
 	visibility_changed.connect(func() -> void:
 		if visible:
 			_signature = 0
-			refresh())
+			refresh()
+		else:
+			_clear_rows())   # the rows are freed on close (node budget), and rebuilt on open
 
 
 func bind(p_sim: Sim) -> void:
@@ -113,7 +118,21 @@ static func signature_of(rows: Array[Dictionary]) -> int:
 
 static func icon_for(cat: StringName, locked: bool) -> Texture2D:
 	var path: String = "res://assets/icons/ledger/%s_%d.png" % ["locked" if locked else String(cat), ICON_SIZE]
-	return load(path) as Texture2D if ResourceLoader.exists(path) else null
+	return IconCache.texture(path)
+
+
+## Frees the rows. The header and the frame stay; the list is built again on the next open.
+func _clear_rows() -> void:
+	_gen += 1
+	_building = false
+	_free_body()
+	_signature = 0
+
+
+func _free_body() -> void:
+	for c in _body.get_children():
+		_body.remove_child(c)
+		c.queue_free()
 
 
 func refresh() -> void:
@@ -122,26 +141,42 @@ func refresh() -> void:
 	var rows: Array[Dictionary] = rows_for(sim)
 	_count.text = "%d / %d" % [sim.achievements.unlocked_count(), sim.achievements.total()]
 	var sig: int = signature_of(rows)
-	if sig == _signature and _body.get_child_count() > 0:
+	if sig == _signature and (_building or _body.get_child_count() > 0):
 		return
 	_signature = sig
+	_gen += 1
+	_building = true
 	var keep: int = _scroll.scroll_vertical
-	for c in _body.get_children():
-		_body.remove_child(c)
-		c.queue_free()
+	_free_body()
 	var title: String = sim.achievements.current_title()
 	_body.add_child(_pair("Title", title if title != "" else NO_TITLE, RelicStyle.text, RelicStyle.accent))
 	var overall := HistoryBar.new(WIDTH - 14.0)
 	overall.value = float(sim.achievements.unlocked_count()) / maxf(float(sim.achievements.total()), 1.0)
 	overall.fill = RelicStyle.accent
 	_body.add_child(overall)
+	_fill(_gen, rows, keep)
+
+
+## Adds the category heads and achievement rows, ROWS_PER_FRAME rows at a time while the panel is in the tree, so the
+## open never waits on the whole list. Off the tree (tests, or before it is shown) it all builds at once. A newer build
+## or a hide bumps _gen, and the older build stops at its next check.
+func _fill(gen: int, rows: Array[Dictionary], keep: int) -> void:
 	var cat: StringName = &""
+	var added: int = 0
 	for r: Dictionary in rows:
 		var d: AchievementDef = r["def"] as AchievementDef
 		if d.category != cat:
 			cat = d.category
 			_body.add_child(_category_head(cat))
 		_body.add_child(_row(r))
+		added += 1
+		if added % ROWS_PER_FRAME == 0 and is_inside_tree():
+			await get_tree().process_frame
+			if gen != _gen:
+				return
+	if gen != _gen:
+		return
+	_building = false
 	_scroll.set_deferred("scroll_vertical", keep)
 
 

@@ -35,9 +35,9 @@ func run(t: Object) -> void:
 	# Seed Pods pay more Seeds per Bloom.
 	sim.gates_open[&"larkmoor"] = true
 	sim.stats[&"starbloom"] = BigNum.from_float(sim.reset_ref(&"bloom") * 4.0)
-	t.eq(sim.reset_gain(&"bloom"), 4, "four times the petals pay 4 Seeds")
+	t.eq(sim.reset_gain(&"bloom").to_float(), 4, "four times the petals pay 4 Seeds")
 	sim.attr_levels[&"bloom_seed_pods"] = 10
-	t.eq(sim.reset_gain(&"bloom"), int(floorf(4.0 * (1.0 + 10.0 * pods.per_level))), "Seed Pods raise the payout")
+	t.eq(sim.reset_gain(&"bloom").to_float(), int(floorf(4.0 * (1.0 + 10.0 * pods.per_level))), "Seed Pods raise the payout")
 	sim.attr_levels.clear()
 
 	# Perennial Roots keep the lowest listed flowers through a Bloom, Starbloom never.
