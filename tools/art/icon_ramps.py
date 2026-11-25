@@ -110,3 +110,41 @@ def shade(grid: list[list], n: int, family: str, snap_literals: bool = False) ->
             step = 3 if (lit and not dark) else 1 if (dark and not lit) else 2
             out[y][x] = steps[step][c]
     return out
+
+
+def remodel_image(im, family: str = DEFAULT_FAMILY):
+    """A PIL RGBA drawing made from the 8 meadow anchors (or transparent) -> the same drawing on the family ramps.
+    Each anchor pixel is mapped back to its role, then shade() picks the ramp step. Off-anchor pixels snap to the
+    nearest anchor and are counted, so a drawing that strays from the palette is visible in the build log."""
+    from PIL import Image
+
+    n = im.width
+    anchors = [c[:3] for c in family_steps("meadow")[2]]
+    grid: list[list] = [[None] * n for _ in range(n)]
+    snapped = 0
+    for y in range(n):
+        for x in range(n):
+            r, g, b, a = im.getpixel((x, y))
+            if a == 0:
+                continue
+            rgb = (r, g, b)
+            if rgb in anchors:
+                grid[y][x] = anchors.index(rgb)
+            else:
+                snapped += 1
+                grid[y][x] = min(range(8), key=lambda i: sum((anchors[i][k] - rgb[k]) ** 2 for k in range(3)))
+    if snapped:
+        print("remodel_image: snapped %d off-anchor texels" % snapped)
+    return to_image(shade(grid, n, family), n)
+
+
+def to_image(rgba: list[list], n: int):
+    """RGBA grid from shade() -> PIL image."""
+    from PIL import Image
+
+    out = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    for y in range(n):
+        for x in range(n):
+            if rgba[y][x] is not None:
+                out.putpixel((x, y), rgba[y][x])
+    return out

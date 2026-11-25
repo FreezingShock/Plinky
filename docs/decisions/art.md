@@ -454,5 +454,7 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Decision:** every staged icon (`tools/art/staged/*.txt`, 48 icons at 8, 12, 16, 24 and 32 px) takes its role colours from one hue family's RAMP in `render/palettes.gd`. Families live in `tools/art/icon_ramps.py`: meadow for stats and nature, quarry for embers, cinder, slag, ore, ingot, alloy and emberheart, iris for rebirth, prestige and crowns, tidewater for clock, rest and offline.
 - **Shading:** texels on the upper-left lit edge take ramp step 3, texels on the lower-right shaded edge take step 1, and the rest take step 2 (the anchor). Ink stays ink.
 - **Kept:** the ink outline, the 8 role names, and literal material and relic colours (object identity). Rarity frames stay fixed hex, per CLAUDE.md.
-- **Not yet done:** the gallery menu icons (`menu_*`, from `gen_menu_icons.py`) and `gen_ledger.py` art still use the flat meadow anchors. `docs/img/icons_staged.png` still shows the unshaded set.
+- **Menu follow-up (same pick):** the `menu_*` gallery tiles were already in the staged set and shipped shaded. The hamburger (`menu_hamburger`, 16 px) was the only flat menu icon. `gen_menu_icons.py` and `gen_ledger.py` now run their drawings through `icon_ramps.remodel_image` and `shade`, so a rerun gives the same files.
+- **Ledger categories kept literal:** the nine ledger category icons keep their own colours. They match `LedgerPanel.CATEGORY_COLORS`, so changing them needs a code change, which is out of scope here.
+- **Not yet done:** `docs/img/icons_staged.png` still shows the unshaded set.
 - **Not verified in-engine:** the cloud has no Godot run for this change. Icon paths are unchanged, so no code path moves.
