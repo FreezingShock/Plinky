@@ -1,1 +1,0 @@
-Larkmoor paths and grass: warm and cool grass patches, ragged grass edges along the lanes and trails, and sparse pebbles, ruts, berries, leaves and mushrooms on the verge. The road is warm earth in the ground bake.
