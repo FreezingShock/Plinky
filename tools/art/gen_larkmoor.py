@@ -236,7 +236,8 @@ M_DARKF = 34   # dark pocket cut into a bush: the shadowed inside of the leaf sh
 # ---------------- prop models (local coords: x right, y toward camera, z up) ----------------
 def make_oak(rng):
     lx, ly = rng.uniform(-1.5, 1.5), rng.uniform(-1.5, 1.5)
-    balls = [(0, 0, 27, 9.5)] + [(rng.uniform(-9.5, 9.5), rng.uniform(-9.5, 9.5), rng.uniform(21, 33), rng.uniform(6.5, 9)) for _ in range(6)]
+    # round 3: eight lobes instead of six, so the crown has more clumps and a rounder, bumpier outline (v3 canopy shape)
+    balls = [(0, 0, 27, 9.5)] + [(rng.uniform(-10, 10), rng.uniform(-10, 10), rng.uniform(21, 33), rng.uniform(6.0, 8.5)) for _ in range(8)]
     roots = [(rng.uniform(0, 6.28)) for _ in range(3)]
     seed = rng.randint(0, 99)
     def f(x, y, z):
@@ -781,11 +782,14 @@ put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
 # trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
 TREE_GAP = dict(oak=6.0, pine=8.0)
-GROVE_MUL = float(os.environ.get('GROVE_MUL', '1.8'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
+# round 3 of the v3 remodel: oaks and pines grow toward the v3 size (about two walkers tall, ~60 texels). Scales the grove draw range.
+TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
+GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
+    if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL)
