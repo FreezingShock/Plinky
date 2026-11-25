@@ -242,8 +242,7 @@ func _build_stats() -> void:
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(icon)
 		var gap := Control.new()
-		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		gap.custom_minimum_size.x = 4
+		gap.custom_minimum_size.x = 5   # the value sits close to its icon; no blank run between them
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.add_child(gap)
 		var rate := Label.new()
@@ -257,14 +256,19 @@ func _build_stats() -> void:
 		rate.visible = false
 		add_child(rate)
 		var val := RollValue.new()
-		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		val.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		val.add_theme_color_override("font_color", StatStyle.color(sid))
+		val.add_theme_color_override("font_color", StatStyle.value_color(sid))
 		h.add_child(val)
 		_rows[sid] = [val, rate]
 		var gl := HudGainLabel.new()   # "+123" beside the row, outside the panel: one pooled node per row
 		add_child(gl)
 		_gain_labels[sid] = gl
+		var rule := StripRule.new()   # the dotted line under this row, placed in _place_rates
+		rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rule.visible = false
+		add_child(rule)
+		_rules[sid] = rule
 		Tip.bind_all(h, func() -> Variant:
 			if sim.reset_for_currency(sid) != null and not _edit_mode:
 				return _currency_spec(sid, sim.get_stat(sid).format(), true)
@@ -1271,7 +1275,9 @@ func _sync_layout() -> void:
 			var b0: Control = _row_boxes[sid0] as Control
 			if b0.visible:
 				old_y[sid0] = b0.position.y
-	var idx: int = 0
+	var idx: int = 0   # the rows sit below the Stats header, which is the first child of the box
+	if _foot_normal != null and _foot_normal.get_parent() == _stats_box:
+		idx = _foot_normal.get_index() + 1
 	for sid: StringName in _cached_rows:
 		var b: Control = _row_boxes.get(sid) as Control
 		if b != null:
@@ -1313,6 +1319,7 @@ const GAIN_FLOAT_RISE: float = 6.0    ## pixels a gain label drifts up as it fad
 
 var _gain_tally: HudGainTally = HudGainTally.new()
 var _gain_labels: Dictionary = {}     ## stat id -> its HudGainLabel: one pooled node per row, never one per gain
+var _rules: Dictionary = {}           ## stat id -> the dotted rule under its row (StripRule), shown between rows only
 
 
 func _now_s() -> float:
@@ -1398,6 +1405,32 @@ func _place_rates() -> void:
 			extent += gl.size.x + 3.0
 		widest = maxf(widest, extent)
 	_rates_w = widest
+	_place_rules()
+
+
+## A dotted rule under each visible row except the last, across the panel. Rules fade with their row.
+func _place_rules() -> void:
+	var shown: Array = []
+	for sid: StringName in _row_boxes:
+		var box: Control = _row_boxes[sid] as Control
+		if box.visible:
+			shown.append([box.global_position.y, sid])
+	shown.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	for i: int in shown.size():
+		var sid: StringName = shown[i][1]
+		var box2: Control = _row_boxes[sid] as Control
+		var rule: StripRule = _rules.get(sid) as StripRule
+		if rule == null:
+			continue
+		var last: bool = i == shown.size() - 1
+		rule.visible = not last and _stats_panel != null
+		if not rule.visible:
+			continue
+		var y: float = box2.global_position.y - global_position.y + box2.size.y - 1.0
+		var at: Vector2 = Vector2(_stats_panel.position.x + 6.0, floorf(y))
+		rule.position = at
+		rule.size = Vector2(maxf(_stats_panel.size.x - 12.0, 1.0), 1.0)
+		rule.modulate.a = box2.modulate.a
 
 
 ## Rows glide to their new places after a reorder or a hide, instead of jumping.
@@ -1486,8 +1519,17 @@ func _build_row_controls(h: HBoxContainer, sid: StringName) -> void:
 
 ## The pencil (normal mode) and the edit footer: add chips, row count, Reset, Done.
 func _build_strip_footer(v: VBoxContainer) -> void:
+	# The header: a dim "Stats" title with the edit pencil at its right. It sits above the rows.
 	_foot_normal = HBoxContainer.new()
 	_foot_normal.custom_minimum_size.y = 14.0
+	_foot_normal.add_theme_constant_override("separation", 4)
+	var head := Label.new()
+	head.theme_type_variation = &"TitleLabel"
+	head.add_theme_font_size_override("font_size", STAT_RATE_SIZE)
+	head.add_theme_color_override("font_color", RelicStyle.dim)
+	head.text = "Stats"
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_foot_normal.add_child(head)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1498,6 +1540,7 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	Tip.bind(_edit_btn, {"title": "Edit Stat Strip", "body": "Show, hide and reorder the rows.", "hint": "Right-click a row to hide it."})
 	_foot_normal.add_child(_edit_btn)
 	v.add_child(_foot_normal)
+	v.move_child(_foot_normal, 0)
 	_foot_normal.visible = false   # _refresh shows it once the tutorial reaches Dewdrops (a bare Sunlight counter needs no editing)
 
 	_foot_clip = Control.new()
@@ -1861,3 +1904,16 @@ func _on_tip_closed(skipped: bool) -> void:
 	GameState.onboarding.tips_enabled = false
 	TipsSettings.set_enabled(false)
 	_apply_gates(false)  # skipping the tutorial shows every system at once
+
+
+## A dotted 1 px rule under a strip row (see _place_rules). Drawn here, so it is one node with no textures.
+class StripRule extends Control:
+	func _init() -> void:
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		var c: Color = RelicStyle.dim.darkened(0.2)
+		var x: float = 0.0
+		while x < size.x:
+			draw_rect(Rect2(x, 0.0, 1.0, 1.0), c)
+			x += 2.0

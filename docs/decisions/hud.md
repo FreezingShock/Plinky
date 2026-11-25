@@ -691,3 +691,9 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** the stat strip keeps the top left alone, so nothing overlaps it. The bottom right row was empty apart from the Menu chip.
 - **Checked:** `tests/run.gd` passes (11841 checks, 0 failed). In engine, `tools/goals_shot.tscn -- fresh` shows the ribbon beside the Menu chip and the strip clear at the top left; `-- done` shows no ribbon.
 - **Not run in-engine on a PC:** the ribbon at zoom 1 and 3 and the save flash beside it. PC QA should check both.
+## 2026-11-25: Stats strip, S1 (tidy list)
+- **Decision:** Nathan picked S1. The edit pencil moves to a "Stats" header above the rows (the footer goes). Dotted rules sit between rows (`StripRule`, placed by `Hud._place_rules`, never under the last row). The value sits right after its icon with a 5 px gap and is left-aligned, so no blank run opens between them. Each number takes its icon's main colour (`StatStyle.ICON_TINT`, from the icon body, lifted to read on the panel), so the number matches the icon beside it.
+- **Why:** Nathan asked for less blank space between the gain and the icon, and for the values to match their icons. The "+x/s" rate and the "+123" gain still sit outside the panel's right edge, as before.
+- **Checked:** `tests/run.gd` passes. In engine, `tools/hud_shot.tscn -- late` shows the header, rules and icon-matched values.
+- **Not run on a PC:** the strip at zoom 1 and 3, and the colour-safe modes with `ICON_TINT` (the tint applies through AccessOptions). PC QA should check both.
+
