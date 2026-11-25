@@ -138,34 +138,44 @@ def bowl(H0, B, depth):
     return H0 * (1 - w) + hb * w * 1.0 + 0 * w, s
 H0, sl_ = bowl(H0, LAKE, 8.0); H0, sp_ = bowl(H0, POND, 5.0)
 LAKE_S, POND_S = sl_, sp_
+# feeder ponds (T6 layout B): a bowl like the mere, at the end of each feeder brook
+PONDS_S_LIST = []
+for _pd in LAY.PONDS:
+    _B = dict(c=s2uv(*_pd['c']), r=_pd['rx'] / 1.414 * .9)
+    H0, _s = bowl(H0, _B, 4.0); PONDS_S_LIST.append(_s)
 Hpre = H0.copy()
 GUp, GVp = np.gradient(Hpre)
 # stream: carve a channel; the water ribbon follows the (downhill-only) centreline height
-dstr = pl_dist(gu, gv, STREAM)
 RIVER_DEPTH = 3.0                              # the river bed sits this far below its surface: deep enough to read as water, not a dither strip
 sw = 7.0 + 1.0 * np.sin(gu * .13 + gv * .09)   # half-width: about 14 texels across, still an easy jump
-D = []
-for (x0, y0), (x1, y1) in zip(STREAM, STREAM[1:]):
-    n = int(math.hypot(x1 - x0, y1 - y0)); D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
-D = np.array(D); hD = samp(Hpre, D[:, 0], D[:, 1])
-k = 7; hD = np.convolve(np.pad(hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
-hL = np.maximum(np.minimum.accumulate(hD) - .8, LEVEL + .15)
-HLF = np.full((N, N), 99.0)                     # water height of the nearest stream point, around the channel
-_bu, _bv = np.nonzero(dstr < sw + 3)
-for c0 in range(0, len(_bu), 20000):
-    uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
-    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); HLF[_bu[c0:c0 + 20000], _bv[c0:c0 + 20000]] = hL[dd.argmin(1)]
+# the river and each feeder brook are carved the same way; a texel takes the water height of its nearest channel
+CHANNELS = [STREAM] + [[s2uv(*p) for p in f] for f in LAY.FEEDERS]
+dstr = np.full((N, N), 1e9); HLF = np.full((N, N), 99.0)
+for _poly in CHANNELS:
+    _dc = pl_dist(gu, gv, _poly)
+    _D = []
+    for (x0, y0), (x1, y1) in zip(_poly, _poly[1:]):
+        n = int(math.hypot(x1 - x0, y1 - y0)); _D += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
+    _D = np.array(_D); _hD = samp(Hpre, _D[:, 0], _D[:, 1])
+    k = 7; _hD = np.convolve(np.pad(_hD, (k, k), mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
+    _hL = np.maximum(np.minimum.accumulate(_hD) - .8, LEVEL + .15)
+    _bu, _bv = np.nonzero(_dc < sw + 3)
+    for c0 in range(0, len(_bu), 20000):
+        uu, vv = _bu[c0:c0 + 20000].astype(float), _bv[c0:c0 + 20000].astype(float)
+        dd = np.hypot(uu[:, None] - _D[None, :, 0], vv[:, None] - _D[None, :, 1]); am = dd.argmin(1)
+        ii, jj = _bu[c0:c0 + 20000], _bv[c0:c0 + 20000]
+        win = _dc[ii, jj] < dstr[ii, jj]
+        dstr[ii[win], jj[win]] = _dc[ii, jj][win]; HLF[ii[win], jj[win]] = _hL[am[win]]
 # the channel is carved all the way to the lake: inside the lake the bowl is already deeper, so nothing changes there, and the rim
 # gets a notch where the river leaves it (the old lake-rim exclusion left a dry gap between the lake and the river)
 wch = (1 - smooth(sw - 2.0, sw + 4.5, dstr))
 H0 = H0 * (1 - wch) + np.minimum(H0, HLF - RIVER_DEPTH) * wch       # bed always sits below the water ribbon
 WH = np.full((N, N), -99.0)
 mask_s = dstr < sw + 1
-iu, iv = np.nonzero(mask_s)
-for c0 in range(0, len(iu), 20000):
-    uu, vv = iu[c0:c0 + 20000].astype(float), iv[c0:c0 + 20000].astype(float)
-    dd = np.hypot(uu[:, None] - D[None, :, 0], vv[:, None] - D[None, :, 1]); WH[iu[c0:c0 + 20000], iv[c0:c0 + 20000]] = hL[dd.argmin(1)]
-inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25))
+WH[mask_s] = HLF[mask_s]
+_pond_in = np.zeros((N, N), bool)
+for _s in PONDS_S_LIST: _pond_in |= (_s < 1.25)
+inlake = (H0 < LEVEL) & ((sl_ < 1.25) | (sp_ < 1.25) | _pond_in)
 WH[inlake] = LEVEL
 smask = mask_s & (dstr < sw - .3) & (WH > H0 + .02) & ~inlake
 WH[~(smask | inlake)] = -99
@@ -704,12 +714,14 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, see
         TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
     if count: placed.append((u, v, rad * scale))
     return z0
-def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, **kw):
+def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, clump=.5, **kw):
+    # clump: the radius draw is r ** clump * rad. .5 is the even area spread; above .5 the draws gather toward the grove
+    # centre, so the groves read as clumps with open clearings at their edges. Same number of draws either way.
     got = 0
     r_fp = dict(oak=10, pine=7, bush=6, rock=7, stump=6.5, mush=6, crystals=9, sign=6, lantern=3, windmill=12, tower=11, lighthouse=11, obelisk=6, gateway=10, menhir=3, jetty=3, bridge=3, footbridge=3)[kind]
     for _ in range(n):
         for t in range(tries):
-            a_, rd = prng.uniform(0, 6.283), math.sqrt(prng.random()) * rad
+            a_, rd = prng.uniform(0, 6.283), (prng.random() ** clump) * rad
             u, v = cu_ + math.cos(a_) * rd, cv_ + math.sin(a_) * rd
             sc = prng.uniform(*scale_rng)
             if ok_spot(u, v, r_fp * sc, **{k: w for k, w in kw.items() if k in ('slope_max', 'shore', 'path', 'hmax', 'gap', 'path_clear')}):
@@ -786,6 +798,9 @@ put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=
 TREE_GAP = dict(oak=6.0, pine=8.0)
 # round 3 of the v3 remodel: oaks and pines grow toward the v3 size (about two walkers tall, ~60 texels). Scales the grove draw range.
 TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
+# round 4: groves clump toward their centre and open out at the edge (try_region's clump), like the v3 groves
+TREE_CLUMP = dict(oak=float(os.environ.get('OAK_CLUMP', '.75')), pine=float(os.environ.get('PINE_CLUMP', '.7')))
+TREE_MUL = dict(oak=float(os.environ.get('OAK_MUL', '1.3')), pine=float(os.environ.get('PINE_MUL', '1.3')))   # extra tree attempts per grove, for centre density
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
@@ -793,8 +808,10 @@ for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
+    if kind in TREE_CLUMP: kw['clump'] = TREE_CLUMP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
-    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL)
+    # round 4b: oaks and pines get extra attempts, so the clumped centres fill in (TREE_MUL); bushes keep GROVE_MUL alone
+    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL * TREE_MUL.get(kind, 1.0))
     try_region(kind, *SC(c_), rad * .72, n_ if not FAST else max(1, n_ // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
