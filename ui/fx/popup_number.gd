@@ -66,21 +66,6 @@ func _set_shown(on: bool) -> void:
 var is_running := false
 var _tier := 0
 
-static func spawn_running(parent: Node, pos: Vector2, amount: float) -> PopupNumber:
-	var p := PopupNumber.new()
-	p.is_running = true
-	p.text = "+" + NumberFormat.short(amount)
-	p.position = FxConfig.snap(pos)
-	p.z_index = 100
-	p.theme = ui_theme
-	p.theme_type_variation = &"PopupLabel"
-	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(p)
-	p.visible = not _covered(parent, p.position)
-	p.pivot_offset = p.size / 2.0
-	return p
-
 func bump(total: float) -> void:
 	text = "+" + NumberFormat.short(total)
 	_tier = clampi(int(floor(log(maxf(total, 1.0)) / log(10.0))) - 1, 0, 3) # 10, 100, 1000+

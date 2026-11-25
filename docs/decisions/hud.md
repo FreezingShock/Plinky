@@ -601,3 +601,47 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** PC batch 119 on a progressed save: the first Upgrades open at zoom 1 still cost about 36 ms more than later opens (the first frame after the call was 45 ms). Texture loads are not held by anything once their nodes are freed, so each open read them again. Headless probe: loading the 50 root icon PNGs cold takes 7.65 ms, and from the cache 0.12 ms.
 - **Checked:** `tests/run.gd` passes (7962 checks, 0 failed), including a check that the icon cache returns the same texture.
 - **Not measured:** the rest of the first-open cost. The probe can't see GPU upload, glyph rasterising or first-use shaders, so the PC has to time the first open before and after this change.
+
+## 2026-11-24: HUD tags stay in the HUD z chain (sprint tag at night and in rain)
+- **Decision:** the sprint tag is a sibling on the Hud, not a `top_level` child of the Momentum panel, and the Upgrades fly-cost label (`UpgradeCard._fly_cost`) pins `z_as_relative = false` with `z_index = 100`. A `top_level` item leaves its parent's z chain and draws at z 0, under the world's light grade (z 11 overall, the night tint) and the rain layer.
+- **Why:** Nathan's screenshot showed the sprint tag darkened and blue-tinted at night and in rain, with rain streaks across it, while the Momentum panel below stayed clean. Reproduced headless under lavapipe at phase 0 with rain 1.0 before the change.
+- **Audit:** the achievement and relic toasts are HUD children at z 130, the Banner is a CanvasLayer at 100 and Tip at 120, so none of them are affected. `WindowFrame`'s title bar is still `top_level` at z 0 (windowed chrome, hidden by default). It is not changed here.
+- **Checked:** `tests/run.gd` passes (7968 checks, 0 failed). Night+rain and noon frames rendered before and after; the tag is bright and rain-free after the fix.
+- **Not run in-engine:** the Upgrades fly label (`-170` flying to the balance) at night. PC QA should buy an upgrade at night and check the label stays above the card.
+## 2026-11-24: Relics panel uses the Window layout (Nathan picked B from three mockups)
+- **Decision:** the view control is two labelled segments, All and Owned, in place of the eye button. The active segment is filled. Active buffs are a three-column grid of icon-over-value cells, equal width, beside the slots. Rarity tabs carry a strip of how much of the tier is found. Cards drop the rarity letter and use a 20 px icon. Sealed Caches are two side-by-side cards with the price and pulls left on a second line. The footer "N of M slots used" is removed, since the slot row shows it.
+- **Why:** the eye read as a stamp, so its state needed a tooltip. The buffs wrapped raggedly. The cards were mostly empty space around a small icon, and the caches took a full row each. Mockups A, B and C were posted first. Nathan picked B.
+- **Deviation from the mock:** the tier rail in the B mock showed six tiers in one row with shortened names ("Uncomm", "Legend"). It is a 3x2 grid instead, so the full tier names stay. The strip under each tab carries the progress the rail was meant to show.
+- **Checked:** `tests/run.gd` passes (7967 checks, 0 failed). Headless capture with `--path . tools/relic_panel_shots.tscn` under Xvfb renders the panel with the real theme, in All and Owned modes.
+- **Not run in-engine:** the hover and click path on a PC, the keyboard focus order across the new view segments, and a long bonus list (more than six). Those need PC QA with screenshots at zoom 1 and 3.
+## 2026-11-24: Pre-game screens fill any window, the game stays letterboxed
+- **Decision:** `DisplaySettings.pregame_fill` switches the root's content scale to EXPAND while the loading and title screens are up. `main.gd` switches it back to KEEP, so the game keeps its 640x360 (or bleed) letterbox. The art stays centred on its 640x360 grid (`art_origin` in `title_background.gdshader`, `_origin` in `title_scenery.gd`), and the sky, hills, ground, pines, grass and birds are drawn past it, so there is no edge.
+- **Why:** Nathan asked for the loading and title screens to fill the display like the game. Measured headless, the game and the title both letterboxed on non-16:9 windows. Nathan then chose to fill the pre-game screens only (the decision card in the project thread), because the title art is procedural and the meadow art is baked. The game keeps the KEEP letterbox.
+- **Not verified in-engine:** the scene-swap cover when the game hands off to the title (the captured frame is at the old aspect). Headless captures at 800x600, 1024x768, 1600x1000, 2560x1080 and the loading screen were checked by eye. PC QA should check windowed and fullscreen at several sizes, and the title-to-game and game-to-title swaps.
+
+## 2026-11-24: Stats and Attributes header icon stops with its body (close error)
+- **Decision:** the header icon's frame tween is kept and killed when the body is freed. The frame setter does nothing when the icon is gone.
+- **Why:** closing Stats or Attributes during the icon's 0.6 s animation left the tween calling into a freed icon, which logged 9 script errors per open in the headless menu probe. The tween could also reach an icon that a later open had replaced.
+- **Checked:** `tests/run.gd` passes. The menu probe logs no script errors across open and close cycles.
+- **Not run in-engine:** a close during the icon animation on a PC.
+## 2026-11-24: Achievements rows build over a few frames, and their icons load once
+- **Decision:** `LedgerPanel.refresh` builds the title and the overall bar at once, then the category heads and achievement rows `ROWS_PER_FRAME` (6) at a time while the panel is in the tree. A newer build or a hide bumps `_gen`, which stops the older build at its next check. Off the tree (tests) it builds in one pass. Closing still frees every row. `LedgerPanel.icon_for` goes through `IconCache.texture`, a static path-keyed cache that loads each icon once (missing files are cached as null).
+- **Why:** the Achievements open built all rows in one call, 30–40 ms on the headless probe, and every open read the same icon PNGs again. Probe with 637 nodes at open and 677 with the History panel (both after close): open sync is now 3.6–6.2 ms and the worst frame 8–10 ms, against 19–24 ms before.
+- **Checked:** `tests/run.gd` passes (9047 checks, 0 failed). The new checks: rows are built in one pass off the tree, a refresh with no change does not rebuild them, and close frees them.
+- **Not run in-engine:** the spread build on a PC with a progressed save. PC QA should open Achievements and watch the rows fill in over a few frames, then switch the tab and scroll while it fills.
+## 2026-11-24: Update Log is one text block, not a label per line (menu cost)
+- **Decision:** the Update Log puts every version and note in one `RichTextLabel`, coloured per line (headings take the accent, notes the text colour). Brackets in a note are escaped. The rows still come from `rows_from`.
+- **Why:** the log built one `Label` per heading and note, about 1150 nodes. The menu probe measured 91 to 146 ms per open, and the nodes stayed after close. One text block cuts the node count by about 1150 and the open cost to a few milliseconds.
+- **Checked:** `tests/run.gd` passes. A new check covers the escaping and the colour tags.
+- **Not run in-engine:** how the log scrolls and wraps on a PC at zoom 1 and 3.
+
+## 2026-11-24: Stats and Attributes grid builds over a few frames
+- **Decision:** `IndexPanel._rebuild` builds the group heads, flows and cards through `_fill_cards`, `CARDS_PER_FRAME` (8) cards per frame after the first batch while the panel is in the tree. A rebuild or a teardown bumps `_gen`, which cancels the older build. While a build runs, `_refresh` skips the per-card `set_data` pass, and focus is wired once the grid is complete. Off the tree it builds in one pass.
+- **Why:** the probe showed the Stats open at 18–49 ms and Attributes at 9–20 ms, all synchronous. Headless after this change: Stats open sync 9.9–15 ms with worst frame 8–12 ms, Attributes 8.3–13 ms with worst frame about 8 ms.
+- **Checked:** `tests/run.gd` passes (11738 checks, 0 failed), including a check that the grid builds in one pass off the tree.
+- **Not run in-engine:** the spread grid on a PC. PC QA should open Stats and Attributes and check the cards fill in without a visible pop, then press Tab and the arrows while cards are still arriving, and that Back and a buy still work.
+## 2026-11-24: Gallery, Stats and Attributes icons load through IconCache
+- **Decision:** the Gallery tile icons, the index card icons (`IndexCard.icon_for`, big then small), the Stats and Attributes header and tab icons, and the index sheet textures all go through `IconCache.texture`. Each PNG loads once and is kept for the life of the game. `IconCache` is the same file as on `claude/ledger-lazy` (PR #497), so the two merge cleanly in either order.
+- **Why:** these menus loaded their PNGs again on every open, and a freed node drops its texture, so each open read the same files from disk. The gain is small: the headless probe with this change shows Gallery at 7–15 ms open, against 8–16 ms before, so the bulk of the cost is elsewhere (the card and tile nodes).
+- **Checked:** `tests/run.gd` passes (11737 checks, 0 failed) after `--import`.
+- **Not run in-engine:** the icons on a PC at zoom 1 and 3. PC QA should check that every Gallery tile and Stats card shows its icon.

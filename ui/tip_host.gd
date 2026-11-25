@@ -397,10 +397,6 @@ func _rich_line(segs: Array) -> HBoxContainer:
 	return row
 
 
-func set_extra_avoid(rects: Array[Rect2]) -> void:
-	avoid_extra = rects
-
-
 func _place() -> void:
 	reset_size()
 	var view: Vector2 = _view_size()

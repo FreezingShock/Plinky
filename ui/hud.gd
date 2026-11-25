@@ -109,10 +109,6 @@ func setup(p_sim: Sim) -> void:
 	_refresh()
 
 
-func upgrades_open() -> bool:
-	return _upgrades_panel.visible
-
-
 func upgrades_panel() -> Control:
 	return _upgrades_panel
 
@@ -185,10 +181,6 @@ func point_under_menu(pt: Vector2) -> bool:
 ## Keep `p` centred in the free area above the bottom bar (clamped to stay on screen).
 func keep_centered(p: Control) -> void:
 	_centered.append(p)
-
-
-func close_panels() -> void:
-	_upgrades_panel.visible = false
 
 
 func _panel(pos: Vector2) -> VBoxContainer:
@@ -371,7 +363,7 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 	var cname: String = (sim.stat_defs[r.currency] as StatDef).display_name
 	var lines: Array = [
 		[r.resets_text, StatStyle.PAPER],
-		["+%d %s" % [sim.reset_gain(rid), cname], StatStyle.color(r.currency)],
+		["+%s %s" % [sim.reset_gain(rid).whole_text(), cname], StatStyle.color(r.currency)],
 		["Every pad pays %d%% more, for good." % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()],
 	]
 	_modal.open("%s?" % r.display_name, lines, r.display_name, "Not yet", func() -> void: GameState.try_reset(rid))
@@ -849,7 +841,6 @@ func _apply_upgrade_tab() -> void:
 	_wire_upgrade_focus()
 
 
-
 ## Shows the tabs the player can see, and moves off a tab that has just been hidden. With no tab shown, every page is hidden.
 func _sync_upgrade_tabs() -> void:
 	for cur: StringName in _upg_tab_btns:
@@ -1123,7 +1114,7 @@ func _refresh() -> void:
 		rc.visible = mine and (sim.can_reset(rid) or sim.reset_count(rid) > 0)
 		rc.disabled = not sim.can_reset(rid)
 		var cn: String = (sim.stat_defs[rd.currency] as StatDef).display_name
-		rc.full_text = "%s (+%d %s)" % [rd.display_name, sim.reset_gain(rid), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
+		rc.full_text = "%s (+%s %s)" % [rd.display_name, sim.reset_gain(rid).whole_text(), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:
@@ -1486,10 +1477,6 @@ func _build_strip_footer(v: VBoxContainer) -> void:
 	done.pressed.connect(set_edit_mode.bind(false))
 	Tip.bind(done, {"title": "Done", "body": "Save the layout and leave edit mode."})
 	bar.add_child(done)
-
-
-func edit_mode() -> bool:
-	return _edit_mode
 
 
 ## Edit mode: every row of the layout shows with a grip and a hide mark, and the add chips open under the strip.

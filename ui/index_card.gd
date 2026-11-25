@@ -91,11 +91,10 @@ func _paint(col: Color) -> void:
 
 ## The 32 px icon when there is one, else the 16 px icon (shown at 2x, still crisp).
 static func icon_for(icon: String) -> Texture2D:
-	var big: String = "res://assets/icons/big/%s.png" % icon
-	if ResourceLoader.exists(big):
-		return load(big) as Texture2D
-	var small: String = "res://assets/icons/%s.png" % icon
-	return load(small) as Texture2D if ResourceLoader.exists(small) else null
+	var tex: Texture2D = IconCache.texture("res://assets/icons/big/%s.png" % icon)
+	if tex != null:
+		return tex
+	return IconCache.texture("res://assets/icons/%s.png" % icon)
 
 
 func _sync_lift() -> void:

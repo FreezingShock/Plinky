@@ -90,7 +90,7 @@ func _build() -> void:
 			tile.kind = e[0]
 			tile.label = e[1]
 			tile.accent = COLORS.get(e[0], Color(0, 0, 0, 0)) as Color
-			tile.big_icon = load("res://assets/icons/big/%s.png" % e[2]) as Texture2D
+			tile.big_icon = IconCache.texture("res://assets/icons/big/%s.png" % e[2])
 			# A lone tile in its row stretches to the full width of the menu (the Settings row).
 			if n == 1:
 				tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL

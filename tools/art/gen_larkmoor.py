@@ -590,16 +590,17 @@ RUIN_STYLES = ('tower', 'arch', 'wall')
 # lighthouse grove gets the broken curtain wall (Nathan picked B and C, mixed, on flat ground).
 RUIN_PLAN = {'gatehouse_tower': ('arch', 26.0, -.785), 'lighthouse': ('wall', 20.0, 0.0), 'ember_watchtower': ('arch', 24.0, 0.0)}
 def make_ruin(rng, style='tower', h=24.0):
-    """One ruin sprite. Footprint radius about 12 texels, so it blocks the walker like the tower it replaces."""
+    """One ruin sprite. Everything stands inside 12 texels of its foot, which is the walk block (BLOCK_R 'ruin'), so the walker's
+    front stop never lands inside the stone."""
     seed = rng.randint(0, 99)
     if style == 'tower':
-        parts = [_ruin_stump(seed, 0.0, 0.0, 8.5, h), _ruin_fallen(seed + 1, 9.0, -5.0, 10.0, 2.4, -.5)] + _ruin_rubble(rng, 5, 12.0, 3.2)
+        parts = [_ruin_stump(seed, 0.0, 0.0, 8.5, h), _ruin_fallen(seed + 1, 9.0, -5.0, 10.0, 2.4, -.5)] + _ruin_rubble(rng, 5, 8.5, 2.6)
     elif style == 'arch':
         span = 7.5
-        parts = [_ruin_piers(seed, span, h), _ruin_arc(seed + 2, span, h * .62, h * .38), _ruin_fallen(seed + 3, 2.0, -10.0, 13.0, 2.2, .2)] + _ruin_rubble(rng, 4, 12.0, 3.0)
+        parts = [_ruin_piers(seed, span, h), _ruin_arc(seed + 2, span, h * .62, h * .38), _ruin_fallen(seed + 3, 2.0, -10.0, 13.0, 2.2, .2)] + _ruin_rubble(rng, 4, 8.5, 2.6)
     elif style == 'wall':
         parts = [_ruin_wall(seed, 0.0, 0.0, 10.0, -2.6, 1.9, h), _ruin_pillar(seed + 5, -6.5, 6.0, 2.8, h * 1.5),
-                 _ruin_fallen(seed + 6, 4.0, 8.5, 8.0, 2.2, .9)] + _ruin_rubble(rng, 6, 12.5, 3.0)
+                 _ruin_fallen(seed + 6, 4.0, 8.5, 8.0, 2.2, .9)] + _ruin_rubble(rng, 6, 8.5, 2.6)
     else:
         raise ValueError('unknown ruin style %r' % (style,))
     return _ruin_union(parts), (15, 15), h + 8, 10
@@ -1236,7 +1237,7 @@ for t in TALL:
     sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1)))
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
-nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, ruin=9.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
+nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, ruin=12.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
 wk = (wd <= .04) & (DW[np.clip(FU.astype(int), 0, N - 1), np.clip(FV.astype(int), 0, N - 1)] >= 1.4) & (slope < .75) & (h < 14) & (mat != T_FROST) & (mat != T_ROCK)
 for t in TALL:
     r_ = BLOCK_R.get(t['kind'], 4.0)
@@ -1262,6 +1263,13 @@ for _ in range(3):
             r_ = np.roll(np.roll(wimg, dx, 1), dy, 0); ncnt += (r_ >= 0); nsum += (r_ == 1)
     fill = unk & (ncnt >= 3); wimg[fill] = (nsum[fill] * 2 > ncnt[fill]).astype(np.int8)
 wimg[wimg < 0] = 0
+# Ember Quarry entrance props (entrance/entrance.json, made by gen_ember_entrance.py) are solid. The walker may not stand in a
+# prop's drawn box: a walker there is hidden by the prop, which sorts in front of him. Canvas pixels are the sprite frame.
+_ember_doc = json.load(open(os.path.join(OUT, 'entrance', 'entrance.json')))
+for _es in _ember_doc.get('sprites', []):
+    if _es.get('kind') != 'ember_prop': continue
+    _x0, _y0 = int(_es['x']), int(_es['y'])
+    wimg[max(0, _y0):min(H, _y0 + int(_es['h'])), max(0, _x0):min(W, _x0 + int(_es['w']))] = 0
 # connected component from the spawn
 sp = [a for a in anchors if a['kind'] == 'player_spawn'][0]
 def _near(x, y):

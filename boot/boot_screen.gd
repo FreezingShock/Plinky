@@ -77,6 +77,9 @@ var _log: PanelOverlay
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The loading screen fills any window like the title does. Main turns this off again.
+	DisplaySettings.set_pregame_fill(get_window(), true)
+	GardenArt.prepare()   # the flower atlas is planned now and baked a slice a frame while the loading screen runs (_process)
 	_pal = Palettes.colors(Palettes.MEADOW)
 
 	_handoff = handoff
@@ -247,6 +250,13 @@ func _process(delta: float) -> void:
 	_animate_tips(delta)
 	if _phase == Phase.LOADING:
 		_update_loading(delta)
+	# The flower atlas bakes a slice a frame until it exists. Once the loader is done, a bigger slice finishes it, and the
+	# leave waits for it (below), so the game never bakes the rest on its first frame.
+	PerfStats.lap_begin()
+	PerfStats.lap_begin()
+	GardenArt.prepare_slice(GardenArt.BAKE_CATCHUP_MS if _loader.is_finished() else GardenArt.BAKE_SLICE_MS)
+	PerfStats.lap("boot: atlas slice")
+	PerfStats.lap("boot: atlas slice")
 
 
 func _update_loading(delta: float) -> void:
@@ -266,7 +276,7 @@ func _update_loading(delta: float) -> void:
 		_status.text = status_line("Opening the gate", _shown)
 	# Stays put while the Update Log is open, so reading it is never cut short.
 	# Also waits while a swap is still revealing this screen, so the leave is never dropped mid-reveal.
-	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= _min_show and not _log.is_open() and not SceneSwap.is_busy():
+	if _loader.is_finished() and _shown >= 0.999 and _elapsed >= _min_show and not _log.is_open() and not SceneSwap.is_busy() and GardenArt.is_ready():
 		_start_leave()
 
 

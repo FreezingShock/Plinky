@@ -5,7 +5,6 @@ extends Node2D
 ## tools/art/gen_gardens.py), sprites from GardenArt. Each flower leans a texel in a wind wave (and away from the walker), stepped
 ## at the sway rate. Reduce Motion holds every flower upright and stops the redraws.
 
-const STEP_DEFAULT: float = 1.0 / 6.0
 const WAVE_SPEED: float = 2.0          # radians per second the wind front travels
 const WAVE_PER_TEXEL: float = 0.04     # radians per texel along x
 const LEAN_AT: float = 0.5             # wave level that tips a flower one texel

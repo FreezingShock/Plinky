@@ -11,20 +11,24 @@ const SCENE_MANIFESTS: Dictionary = {
 }
 
 ## Larkmoor's ground maps are read by its _ready (the sky's normal and height maps): 3040x1840 each, so their load
-## on the main thread cost about 160 ms in the swap frame.
+## on the main thread cost about 160 ms in the swap frame. The colour maps and the backdrop are held here too (they were
+## preload() constants of the scene script, which kept about 60 MB of them resident after the zone was left).
 const SCENE_TEXTURES: Dictionary = {
 	"res://world/larkmoor_scene.tscn": [
 		"res://assets/art/zone1b/larkmoor/ground_n.png",
 		"res://assets/art/zone1b/larkmoor/ground_h.png",
+		"res://assets/art/zone1b/larkmoor/ground.png",
+		"res://assets/art/zone1b/larkmoor/ground_fg.png",
+		"res://assets/art/zone1b/larkmoor/backdrop_far.png",
+	],
+	"res://world/quarry_scene.tscn": [
+		"res://assets/art/zone2/quarry/ground.png",
 	],
 }
-## The backdrop whose pixels LifeAir reads (water sparkles). Decoded from its lossless source PNG on a worker thread.
-const SCENE_BACKDROPS: Dictionary = {
-	"res://world/larkmoor_scene.tscn": "res://assets/art/zone1b/larkmoor/ground_fg.png",
-}
-
+## Zone scenes that build the Foxglove Rise farm (world/farm/farm_props.gd): its wheat clumps are generated on workers
+## and its sprites prefetched, so the swap does not generate about 660 clumps or load 660 sheets on the swap frame.
+const FARM_SCENES: Array[String] = ["res://world/larkmoor_scene.tscn"]
 static var _cache: Dictionary = {}     ## path -> Texture2D, held while its zone is loaded
-static var _decodes: Dictionary = {}   ## source path -> Decode, a backdrop decoded on a worker thread
 static var _pending: Dictionary = {}   ## path -> true, a threaded load that has been requested and not yet taken
 
 
@@ -34,33 +38,14 @@ static func prefetch_scene(scene_path: String) -> void:
 	if manifest != "":
 		prefetch(paths_for_manifest(manifest))
 	prefetch(PackedStringArray(SCENE_TEXTURES.get(scene_path, []) as Array))
-	var backdrop: String = str(SCENE_BACKDROPS.get(scene_path, ""))
-	if backdrop != "" and not _decodes.has(backdrop):
-		var d := Decode.new()
-		d.task = WorkerThreadPool.add_task(_decode.bind(d, backdrop))
-		_decodes[backdrop] = d
+	if FARM_SCENES.has(scene_path):
+		prefetch(FarmProps.prepare())
 
 
-## A backdrop image decoded on a worker thread. `task` is its WorkerThreadPool task; `image` is set by the worker.
-class Decode extends RefCounted:
-	var task: int = -1
-	var image: Image = null
-
-
-static func _decode(d: Decode, path: String) -> void:
-	d.image = Image.load_from_file(path)
-
-
-## The pixels of a backdrop texture, as Texture2D.get_image() gives them. Uses the worker's decode when it was
-## prefetched and matches the texture; otherwise decodes it here.
+## The pixels of a backdrop texture, as Texture2D.get_image() gives them. The texture itself is prefetched on the loader
+## (SCENE_TEXTURES), so only the copy from GPU-side texture to Image runs here. Image.load_from_file on a res:// path was
+## dropped: exported builds do not ship the raw PNG, so it returned null and the decode silently ran here anyway.
 static func backdrop_image(tex: Texture2D) -> Image:
-	var path: String = tex.resource_path
-	if _decodes.has(path):
-		var d: Decode = _decodes[path] as Decode
-		_decodes.erase(path)
-		WorkerThreadPool.wait_for_task_completion(d.task)
-		if d.image != null and d.image.get_width() == tex.get_width() and d.image.get_height() == tex.get_height():
-			return d.image
 	return tex.get_image()
 
 
@@ -70,6 +55,14 @@ static func prefetch(paths: PackedStringArray) -> void:
 			continue
 		if ResourceLoader.load_threaded_request(p) == OK:
 			_pending[p] = true
+
+
+## The texture at `path`, handed to the caller and not kept: for a texture that is read once for its pixels (a walk
+## mask), so its GPU copy is freed as soon as the caller drops it. Same loading rules as texture().
+static func take(path: String) -> Texture2D:
+	var tex: Texture2D = texture(path)
+	_cache.erase(path)
+	return tex
 
 
 ## The texture at `path`: the cached one, else the prefetched one (waits for its worker if it is still running), else a
@@ -86,6 +79,15 @@ static func texture(path: String) -> Texture2D:
 	if tex != null:
 		_cache[path] = tex
 	return tex
+
+
+## True when `path` can be taken without waiting: cached, never requested, or its worker has finished (or failed, in which
+## case texture() falls back to a plain load). Lets a sliced build poll the prefetch instead of blocking on it.
+static func ready(path: String) -> bool:
+	if _cache.has(path) or not _pending.has(path):
+		return true
+	var st: ResourceLoader.ThreadLoadStatus = ResourceLoader.load_threaded_get_status(path)
+	return st != ResourceLoader.THREAD_LOAD_IN_PROGRESS
 
 
 ## Drops the textures of the zone that was left. Prefetches still in flight stay queued for the zone being entered.
