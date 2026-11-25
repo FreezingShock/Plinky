@@ -1,7 +1,7 @@
 extends SceneTree
 ## Larkmoor view-streaming probe: pans the camera away from the walker and checks that every chunk on screen is loaded.
 ## For each zoom and pan offset it reports the frames until the screen is fully covered (pop-in window), the chunks on
-## screen that are still missing once it settles (must be 0), the loaded prop count and the node count.
+## screen that are still missing in any frame of the pan (worst_missing, must be 0), the loaded prop count and the node count.
 ##
 ## godot --headless --path . --script tools/larkmoor_view_probe.gd
 ## Headless: node counts and chunk coverage are real, frame times are not (see larkmoor_stream_bench.gd).
