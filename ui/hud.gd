@@ -363,7 +363,7 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 	var cname: String = (sim.stat_defs[r.currency] as StatDef).display_name
 	var lines: Array = [
 		[r.resets_text, StatStyle.PAPER],
-		["+%d %s" % [sim.reset_gain(rid), cname], StatStyle.color(r.currency)],
+		["+%s %s" % [sim.reset_gain(rid).whole_text(), cname], StatStyle.color(r.currency)],
 		["Every pad pays %d%% more, for good." % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()],
 	]
 	_modal.open("%s?" % r.display_name, lines, r.display_name, "Not yet", func() -> void: GameState.try_reset(rid))
@@ -1114,7 +1114,7 @@ func _refresh() -> void:
 		rc.visible = mine and (sim.can_reset(rid) or sim.reset_count(rid) > 0)
 		rc.disabled = not sim.can_reset(rid)
 		var cn: String = (sim.stat_defs[rd.currency] as StatDef).display_name
-		rc.full_text = "%s (+%d %s)" % [rd.display_name, sim.reset_gain(rid), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
+		rc.full_text = "%s (+%s %s)" % [rd.display_name, sim.reset_gain(rid).whole_text(), cn] if sim.can_reset(rid) else "%s (need %s %s)" % [rd.display_name, BigNum.from_float(sim.reset_ref(rid)).format(), (sim.stat_defs[rd.source_stat] as StatDef).display_name]
 	_zone_panel.refresh()
 	if _upgrades_panel.visible:
 		for sid: StringName in _cur_vals:

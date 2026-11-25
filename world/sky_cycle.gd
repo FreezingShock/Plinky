@@ -499,7 +499,16 @@ func _each_prop_material(param: StringName, value: Variant) -> void:
 
 ## Copy of `tex` with SWAY_PAD transparent texels each side, so a leaning crown is not clipped by the sprite edge.
 static func padded(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
 	var img: Image = tex.get_image()
+	# get_image() has no pixels while the texture's threaded load is still in flight (a race with ZoneAssets'
+	# prefetch): decode the source file instead, on this thread, rather than dereferencing null.
+	if (img == null or img.is_empty()) and tex.resource_path.begins_with("res://"):
+		img = Image.load_from_file(tex.resource_path)
+	if img == null or img.is_empty():
+		push_warning("SkyCycle.padded: no pixels for %s, sprite left unpadded" % tex.resource_path)
+		return tex
 	if img.is_compressed():
 		img.decompress()
 	img.convert(Image.FORMAT_RGBA8)
