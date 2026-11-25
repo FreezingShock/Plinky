@@ -258,11 +258,13 @@ def make_oak(rng):
     balls = [(0, 0, 27, 9.5)] + [(rng.uniform(-10, 10), rng.uniform(-10, 10), rng.uniform(21, 33), rng.uniform(6.0, 8.5)) for _ in range(8)]
     roots = [(rng.uniform(0, 6.28)) for _ in range(3)]
     seed = rng.randint(0, 99)
+    # round 5: the crown is squashed or stretched a little per tree (k < 1 flatter, k > 1 taller), so no two oaks match
+    k_ = rng.uniform(.8, 1.22)
     def f(x, y, z):
         tr = sdf_capsule(x, y, z, (0, 0, -1), (lx, ly, 18), 3.0, 1.8)
         for a_ in roots: tr = np.minimum(tr, sdf_capsule(x, y, z, (0, 0, 2.5), (math.cos(a_) * 5, math.sin(a_) * 5, -.5), 1.3, .5))
         cd = np.full(x.shape, 99.0, np.float32)
-        for b in balls: cd = np.minimum(cd, sdf_sphere(x, y, z, b[:3], b[3]))
+        for b in balls: cd = np.minimum(cd, sdf_sphere(x, y, b[2] + (z - b[2]) / k_, b[:3], b[3]))   # stretched about each lobe's centre
         cd = cd + 2.2 * (vn3(x * .38, y * .38, z * .38, seed) - .5) + 1.0 * (vn3(x * .9, y * .9, z * .9, seed + 3) - .5)
         return np.minimum(tr, cd), np.where(tr < cd, M_BARK, M_FOL)
     return f, (24, 24), 44, 12.0
@@ -704,6 +706,17 @@ def ok_spot(u, v, r, slope_max=.55, shore=True, path=True, hmax=9.0, gap=1.5, pa
     for (pu, pv, pr) in placed:
         if math.hypot(u - pu, v - pv) < r + pr + gap: return False
     return True
+# round 5: a colour tint per broadleaf and conifer, applied by the scene as a sprite multiplier (no node cost). Neighbours
+# shift a little warm or cool (TINT_SHIFT), and a few oaks (ACCENT_RATE) take a rust accent. The multiplier sits on the
+# season's base colour, so the palette still comes from the season and the rust only tints the accent crowns.
+ACCENT_RATE = float(os.environ.get('ACCENT_RATE', '0.11'))
+TINT_SHIFT = float(os.environ.get('TINT_SHIFT', '0.10'))
+def tint_for(kind, sid):
+    if kind not in ('oak', 'pine'): return None
+    h_ = random.Random(sid * 9973 + 5)
+    if kind == 'oak' and h_.random() < ACCENT_RATE: return [1.10, 0.86, 0.70]
+    s_ = h_.uniform(-TINT_SHIFT, TINT_SHIFT)
+    return [round(1 + s_, 3), round(1 + .5 * s_, 3), round(1 - .5 * s_, 3)]
 def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, seed=None, **kw):
     rng = random.Random(prng.randint(0, 1 << 30) if seed is None else seed)   # seed: no draw from the shared stream
     rot = rng.uniform(0, 6.283) if rot is None else rot
@@ -715,7 +728,7 @@ def put(kind, u, v, scale=1.0, rot=None, sid='new', z_extra=0.0, count=True, see
     z0 = float(terrain_h(u, v)) + z_extra
     voxelize(f, half, top, u, v, z0, scale, rot, sid, bottom=kw.get('bottom', -1.0))
     if isinstance(sid, int) and sid >= 10 and (kind in ('oak', 'pine', 'bush', 'crystals', 'windmill', 'windmill_sails', 'tower', 'lighthouse', 'obelisk', 'ruin', 'gateway', 'menhir', 'lantern', 'sign', 'bridge', 'footbridge') or (kind == 'rock' and big)):
-        TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale))
+        TALL.append(dict(id=sid, kind=kind, u=u, v=v, z=z0, scale=scale, tint=tint_for(kind, sid)))
     if count: placed.append((u, v, rad * scale))
     return z0
 def try_region(kind, cu_, cv_, rad, n, scale_rng=(.9, 1.15), tries=60, clump=.5, **kw):
@@ -748,6 +761,19 @@ for d_ in LAY.DISTRICTS:
     for (sx, sy) in d_['pads']:
         for ox_, oy_ in ((0, 20), (-20, 12), (20, 12)):
             placed.append((*s2uv(sx + ox_, sy + oy_), 9))
+# sunny clearings: each pad row keeps an open band of PAD_CLEAR texels either side, so the groves thicken around the rows
+# and the pads read in sun. Footprints every 12 texels along the row, and one at each pad, so no tree crowds a plate.
+PAD_CLEAR = float(os.environ.get('PAD_CLEAR', '34'))
+for d_ in LAY.DISTRICTS:
+    _pts = d_['pads']
+    for (x0, y0), (x1, y1) in zip(_pts, _pts[1:]):
+        _uu0, _vv0 = s2uv(x0, y0); _uu1, _vv1 = s2uv(x1, y1)
+        _n_ = max(1, int(math.hypot(_uu1 - _uu0, _vv1 - _vv0) // 12))
+        for _k_ in range(_n_ + 1):
+            _t_ = _k_ / _n_
+            placed.append((_uu0 + (_uu1 - _uu0) * _t_, _vv0 + (_vv1 - _vv0) * _t_, PAD_CLEAR))
+    for (sx, sy) in _pts:
+        placed.append((*s2uv(sx, sy), PAD_CLEAR))
 # the two gateways (onboarding arch in the south, Emberwatch gate in the north), framing the walk-through
 for _g, _st in ((GATE, 'stone'), (GATE2, 'timber')): put('gateway', _g[0], _g[1], 1.0, rot=-.785, count=False, style=_st)
 # landmarks first so groves flow around them
@@ -808,8 +834,12 @@ TREE_MUL = dict(oak=float(os.environ.get('OAK_MUL', '1.3')), pine=float(os.envir
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
+# variety (round 5): broadleaf groves take conifers in among them (PINE_MIX of their trees), oaks spread wider in size, and
+# every grove gets understory bushes on its rim (EDGE_BUSH of its trees, clumped to the outer ring by clump .3)
+PINE_MIX = float(os.environ.get('PINE_MIX', '0.5'))
+EDGE_BUSH = float(os.environ.get('EDGE_BUSH', '0.9'))
 for kind, c_, rad, n in LAY.GROVES:
-    kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
+    kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.8, 1.28)) if kind == 'oak' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind in TREE_CLUMP: kw['clump'] = TREE_CLUMP[kind]
@@ -817,6 +847,11 @@ for kind, c_, rad, n in LAY.GROVES:
     # round 4b: oaks and pines get extra attempts, so the clumped centres fill in (TREE_MUL); bushes keep GROVE_MUL alone
     n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL * TREE_MUL.get(kind, 1.0))
     try_region(kind, *SC(c_), rad * .72, n_ if not FAST else max(1, n_ // 3), **kw)
+    if kind == 'oak':
+        pkw = dict(scale_rng=tuple(s_ * TREE_SIZE['pine'] for s_ in (.75, 1.4)), gap=TREE_GAP['pine'], clump=TREE_CLUMP['pine'])
+        try_region('pine', *SC(c_), rad * .72, max(1, round(n_ * PINE_MIX)) if not FAST else 1, **pkw)
+    if kind in ('oak', 'pine'):
+        try_region('bush', *SC(c_), rad * .72, max(1, round(n_ * EDGE_BUSH)) if not FAST else 1, clump=.3, scale_rng=(.9, 1.2))
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
 # lanterns: one size, one rhythm per path tier. A road gets a lamp about every LANTERN_STEP['road'] texels of its length
@@ -1363,7 +1398,9 @@ for t in TALL:
     depth_pass.write_relight_data(os.path.join(OUT, fn[:-4] + '_n.png'), AUXM, y0, y1, x0, x1, m_)
     # a bridge sorts 40 texels north of its centre, so the walker on the deck always draws over it (the picture stays put: offset = box - foot)
     _fy_sort = fy - 40.0 if t['kind'] in ('bridge', 'footbridge') else fy
-    sprites.append(dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1)))
+    _rec = dict(file=fn, nrm=fn[:-4] + '_n.png', kind=t['kind'], x=int(x0) - BLX, y=int(y0) - BLY, w=int(x1 - x0 + 1), h=int(y1 - y0 + 1), foot=[round(float(fx), 1), round(float(_fy_sort), 1)], sort_y=round(float(fy), 1))
+    if t.get('tint'): _rec['tint'] = t['tint']   # read by world/larkmoor_scene.gd as the sprite's modulate
+    sprites.append(_rec)
 
 # ---------------- walkable mask (terrain-only pass; tall props / rocks / bushes block by footprint) ----------------
 nT = len(T['u']); BLOCK_R = dict(bridge=0.0, footbridge=0.0, oak=4.0, pine=3.5, crystals=9.0, crystal=9.0, rock=8.0, bush=5.5, stump=3.0, windmill=10.0, tower=9.5, lighthouse=9.5, ruin=12.5, obelisk=5.5, gateway=0.0, menhir=3.2, lantern=1.6, sign=2.0)
