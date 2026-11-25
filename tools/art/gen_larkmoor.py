@@ -833,7 +833,9 @@ TREE_CLUMP = dict(oak=float(os.environ.get('OAK_CLUMP', '.75')), pine=float(os.e
 TREE_MUL = dict(oak=float(os.environ.get('OAK_MUL', '1.3')), pine=float(os.environ.get('PINE_MUL', '1.3')))   # extra tree attempts per grove, for centre density
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
-BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
+BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # extra random stones on the water banks (0: the ring below does the job)
+BANK_RING = int(os.environ.get('BANK_RING', '1'))           # stones ringing every water's edge, one every BANK_SPACING texels
+BANK_SPACING = float(os.environ.get('BANK_SPACING', '6.0'))
 # variety (round 5): broadleaf groves take conifers in among them (PINE_MIX of their trees), oaks spread wider in size, and
 # every grove gets understory bushes on its rim (EDGE_BUSH of its trees, clumped to the outer ring by clump .3)
 PINE_MIX = float(os.environ.get('PINE_MIX', '0.5'))
@@ -952,7 +954,7 @@ log('shore + lilies placed')
 # extra stones: ROAD_ROCKS just off the road and lane edges, BANK_ROCKS a few texels from the water (waits for the water
 # thread's layout). Baked with sid 1, so they add to the ground and its shadows, not to the node count. Own random stream,
 # so every placement above keeps its place.
-if ROAD_ROCKS or BANK_ROCKS:
+if ROAD_ROCKS or BANK_ROCKS or BANK_RING:
     _rr = random.Random(777)
     _stones = []
     def _stone_spot(bank):
@@ -962,6 +964,7 @@ if ROAD_ROCKS or BANK_ROCKS:
             if float(samp(WD, u, v)) > -.3: continue                              # land only
             if bank:
                 if not (.8 < float(samp(DW, u, v)) < 3.2): continue                # the bank: a few texels from open water
+                if float(samp(dedge, u, v)) < 2.5: continue                        # never on a path or its edge (path corridors)
             else:
                 if not (1.5 < float(samp(dedge, u, v)) < 6.0): continue            # just off a road or lane edge
                 if float(samp(DW, u, v)) < 4.0: continue                           # not a second bank
@@ -978,7 +981,29 @@ if ROAD_ROCKS or BANK_ROCKS:
         _f, _half, _top, _rad = make_rock(random.Random(_rr.randint(0, 1 << 30)), _rr.random() < .45)
         voxelize(_f, _half, _top, _u, _v, float(terrain_h(_u, _v)) - .4, _rr.uniform(.7, 1.05), _rr.uniform(0, 6.28), 1)
         _stones.append((_u, _v))
-    log('extra stones placed %d of %d (road %d, bank %d)' % (len(_stones), len(_kinds), ROAD_ROCKS, BANK_ROCKS))
+    # bank ring: stones all round the water's edge (the lake, the ponds and the river banks). Candidates are every land
+    # texel 0.8 to 2.6 texels from open water, off path edges and clear of the groves. A greedy pass in a fixed random order
+    # keeps a candidate only if no stone is within BANK_SPACING of it, so the ring spaces itself evenly. A path crossing the
+    # shore leaves its gap (dedge), and the trees and pads keep their footprints (placed). Baked, so no node cost.
+    _ring_n = 0
+    _ring_rec = []
+    if BANK_RING:
+        _rg = random.Random(778)
+        # adjacent to the water: DW is the distance in texels to open water, so 1 is the texel touching it. Land only (WD <= -.3).
+        _bm = (DW > .8) & (DW < 1.7) & (WD <= -.3) & INSIDE & (H0 <= 9.0) & (np.hypot(GU, GV) <= .6) & (dedge >= 2.5) & (dgrove >= GROVE_CLEAR)
+        _cand = np.argwhere(_bm).astype(float)
+        _order = list(range(len(_cand))); _rg.shuffle(_order)
+        for _k in _order:
+            _u, _v = float(_cand[_k][0]) + .5, float(_cand[_k][1]) + .5
+            if any(math.hypot(_u - pu, _v - pv) < pr + 3.0 for (pu, pv, pr) in placed): continue
+            if any(math.hypot(_u - su, _v - sv) < BANK_SPACING for (su, sv) in _stones): continue
+            _f, _half, _top, _rad = make_rock(random.Random(_rg.randint(0, 1 << 30)), _rg.random() < .45)
+            voxelize(_f, _half, _top, _u, _v, float(terrain_h(_u, _v)) - .4, _rg.uniform(.7, 1.05), _rg.uniform(0, 6.28), 1)
+            _stones.append((_u, _v)); _ring_n += 1
+            _ring_rec.append([_u, _v, round(float(WD[int(_u), int(_v)]), 3), round(float(DW[int(_u), int(_v)]), 3)])
+        # the test reads these: every ring stone is on land and touches the water (wd <= -0.3 land, dw 0.8 to 1.7)
+        with open(os.path.join(OUT, 'bank_stones.json'), 'w') as _bf: json.dump({'stones': _ring_rec}, _bf)
+    log('extra stones placed %d (road %d, bank %d, ring %d)' % (len(_stones), ROAD_ROCKS, BANK_ROCKS, _ring_n))
 # flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
 # texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
 # drifts are (about half the ground), so the flowers gather in patches with bare grass between them. Placed last, after
@@ -1089,7 +1114,7 @@ diff = np.clip(nrm @ L, 0, 1)
 if GRASS == 'old': lt = .13 + .87 * diff + (tone - .5) * .26 * (mat == T_GRASS) + (n2 - .5) * .06
 else: lt = .13 + .87 * diff + (tone - .5) * .10 * (mat == T_GRASS) + (n2 - .5) * .06 * (mat != T_GRASS)    # grass detail comes from grass_tex.py
 strata = (np.floor(h / 3.1 + vn2(FU / 18, FV / 18, 5) * 2.5) % 2)
-lt -= .07 * strata * (mat == T_ROCK)
+lt -= .02 * strata * (mat == T_ROCK)     # calm dirt cliff band: rock is the earth role, shaded by the relight steps
 lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .25, 0, .12)
 # worn path, one material: a soft tone shift that follows the noise, with no dark rim on the grass and no pebble speckle
 # (those read as a hard edging band). The trodden ground and the turf meet through the ragged edge above.
@@ -1193,7 +1218,7 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 6], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 6],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [6, 6, 6, 6, 6], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 6], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 6],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 6, 6, 7], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: DARKF_RAMP}

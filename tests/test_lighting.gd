@@ -152,6 +152,13 @@ func run(t: Object) -> void:
 	var ramp: Array = Palettes.ramp_colors(Palettes.MEADOW)
 	t.ok(sh.shade_tint.is_equal_approx((ramp[1] as PackedColorArray)[1]), "the shadow takes the zone's shade role at step 1")
 	t.ok(sh.shade_deep.is_equal_approx((ramp[0] as PackedColorArray)[1]), "the low-sun shadow takes step 0 of the same role")
+	# Ground critters: one oval per critter, moved every frame from the source; none when there is no source.
+	sh.mover_source = func() -> PackedVector2Array: return PackedVector2Array([Vector2(50.0, 50.0), Vector2(60.0, 52.0)])
+	sh._process(0.0)
+	t.eq(sh._movers_mm.multimesh.visible_instance_count, 2, "every ground critter gets one shadow oval")
+	sh.mover_source = func() -> PackedVector2Array: return PackedVector2Array([Vector2(70.0, 70.0)])
+	sh._process(0.0)
+	t.eq(sh._movers_mm.multimesh.visible_instance_count, 1, "the critter shadows follow the critters (one left)")
 	tree.free()
 	bush.free()
 	sh.free()
