@@ -570,3 +570,8 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Not shadowed:** butterflies and the wild flyers (dragonflies, owls), since they fly.
 - **Checked in the cloud:** the rabbit shadow shows at noon (`tools/shadow_audit_shots.tscn`, `mover=`, `mw=`, `mh=`, `mlen=`). At golden hour it is faint. The unit suite passes with 2 new checks.
 - **Not verified on the PC:** how the ducks on the lake and the chickens in the yard look with the oval, and the frame cost.
+## 2026-11-25: Ember Quarry denser rocks, option C (both) (T10 follow-up)
+- **Pick:** Nathan asked for options or a choice (his 08:47 UTC message). Mockups (`/mnt/project-files/gower-style/ember-quarry/dense_sheet_hub.png` and `dense_sheet_gate.png`): hub and gate, four variants (now, A +40 boulders, B 30 lava-ring rocks, C both). I chose C. Nathan has not seen the final pick yet.
+- **Decision:** `tools/art/gen_quarry.py` adds 40 `boulder` scatters in open ground (road clearance 12, away from the pads) and up to 30 `boulder` scatters on the rim of lava pools (3 to 9 texels out, lava gap 0). `QUARRY_DENSE` = `off | boulders | ring | both` (default `both`).
+- **Result:** 243 sprites (was 194), walkable fraction 0.201 (was 0.205), no unreachable cells. Only 13 of the 30 lava-ring rocks fit under the road and pad clearances.
+- **Not verified:** the node count against the 1350 ceiling in the engine, and how much the extra rocks read at 1x. In the mockups the change is small, so PC QA should judge it at noon and at night.
