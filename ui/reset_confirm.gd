@@ -151,8 +151,13 @@ func open(title: String, colour: Color, icon: Texture2D, count_text: String, cap
 	_ring_acc = 0.0
 	_rings.clear()
 	_refresh_fill()
-	reset_size()
+	# shown first: a container does not sort a hidden child. Nothing draws until this returns, so the card is laid out now.
 	visible = true
+	reset_size()
+	# lay the card and its box out now, outer first, so a press in the frame of the open hits the bar where it is drawn
+	notification(Container.NOTIFICATION_SORT_CHILDREN)
+	(get_child(0) as Container).notification(Container.NOTIFICATION_SORT_CHILDREN)
+	reset_size()
 
 
 ## Pure: how full the hold reads for `held` seconds, 0 to 1.
@@ -193,8 +198,9 @@ func _process(frame_delta: float) -> void:
 		_strike()
 
 
+## The same test as the ritual's, so the rings here and the flight there always agree.
 func _calm() -> bool:
-	return FxConfig.reduce_flashing or FxConfig.reduce_motion
+	return FxConfig.ascension_calm()
 
 
 func _refresh_fill() -> void:

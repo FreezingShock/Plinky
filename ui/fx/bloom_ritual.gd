@@ -108,7 +108,7 @@ func _label(font_size: int, y: float, h: float) -> Label:
 
 ## True when the gentle version should play.
 static func is_calm() -> bool:
-	return FxConfig.reduce_flashing or MeadowLife.reduce_motion or WorldCamera.calm
+	return FxConfig.ascension_calm()
 
 
 func playing() -> bool:
