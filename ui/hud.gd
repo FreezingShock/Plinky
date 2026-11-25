@@ -365,7 +365,7 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 		GameState.try_reset(rid)
 		return
 	var cname: String = (sim.stat_defs[r.currency] as StatDef).display_name
-	var gain: int = sim.reset_gain(rid)
+	var gain: BigNum = sim.reset_gain(rid)
 	var lines: Array = [
 		[r.resets_text, StatStyle.PAPER],
 		["Every pad pays %d%% more, for good." % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()],
@@ -373,7 +373,7 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 	var icon: Texture2D = load("res://assets/icons/big/%s.png" % String(r.currency)) as Texture2D
 	reset_confirm_opening.emit()
 	# The hold strikes the reset; the ritual flies out of the icon, so the origin goes to BloomRitual first.
-	_reset_confirm.open("%s?" % r.display_name, StatStyle.color(r.currency), icon, "+" + NumberFormat.exact(BigNum.from_float(float(gain))),
+	_reset_confirm.open("%s?" % r.display_name, StatStyle.color(r.currency), icon, "+" + NumberFormat.exact(gain),
 		cname, lines, "Hold to Strike", func(origin: Vector2) -> void:
 			BloomRitual.launch_global = origin
 			GameState.try_reset(rid))
