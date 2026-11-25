@@ -1017,6 +1017,7 @@ AUX_FULL = LAST_AUX
 RAMP.update({110: [1], 111: [2]})
 # the relight quantises through the 32-colour ramps (palette B, gen_palette_ramps.py); the bake above keeps the 8 anchors
 RAMP32 = {m: gpr.prop_ramp_steps(r) for m, r in RAMP.items()}
+RAMP32[70] = [6, 28, 28, 29]   # Larkmoor flagstones (gen_larkmoor T_STONE): grey stone, slate shade and paper steps 0 to 1
 depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP32, PAL,
                               ramp_pal=gpr.role_steps_32(PROP_PAL))
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))

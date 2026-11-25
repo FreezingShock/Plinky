@@ -1049,6 +1049,7 @@ dp = samp(dpath, FU, FV)
 tone = fbm2(FU / 14, FV / 14, 2, 11); n1 = vn2(FU / 5, FV / 5, 3); n2 = vn2(FU / 2.2, FV / 2.2, 8)
 # materials: 0 grass 1 rock 2 sand 3 wet 4 path 5 frost
 T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM, T_TRAIL = 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
+T_STONE = 70   # Larkmoor flagstones: their own grey-stone code, so the engine relight does not brown them with the dirt (gen_meadow3d.py RAMP32)
 mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
 mat[rockness > .5] = T_ROCK
@@ -1137,6 +1138,7 @@ lt -= .30 * mortar                                           # a soft drop to th
 # stones stand out as cream tiles in a brown dirt road, instead of a pale sand road with dirt joints.
 lt -= .62 * (mat == T_PATH)     # road and lanes alike drop to the dirt (earth) step; sand alone sits well above it
 lt += .62 * (road_m & fl_zone & ~mortar)   # the flagstones near the windmill and bridges lift back to the lit sand stones
+mat[road_m & fl_zone & ~mortar] = T_STONE   # the stones are grey stone; the joints stay dirt (T_PATH)
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -1184,6 +1186,7 @@ RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: DARKF_RAMP}
 RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
+RAMP[T_STONE] = [1, 7, 7, 7]   # grey stone (bake colours are anchors; the engine relight uses the grey ramp in gen_meadow3d RAMP32)
 # canopy shading (round 2 of the v3 remodel): leaves and pine boughs step through their shades with crisp edges
 CANOPY_MATS = (M_FOL, M_PINE)
 CANOPY_DBAND = (.44, .14)     # the dither spreads over the middle 14% of each step, so the Bayer edge stays but the steps read
@@ -1295,7 +1298,7 @@ def render_scene(keep):
     # sparse verge details (Nathan's reference): a few berries and fallen leaves (earth step), and mushroom caps (cream step),
     # on the grass just outside the trodden ground. Baked into the ground, so they cost no nodes.
     from PIL import ImageFilter as _IFd
-    _trod_g = ((img_mat == T_PATH) | (img_mat == T_TRAIL)).astype(np.uint8) * 255
+    _trod_g = ((img_mat == T_PATH) | (img_mat == T_TRAIL) | (img_mat == T_STONE)).astype(np.uint8) * 255
     _tg = Image.fromarray(_trod_g)
     _ring = np.asarray(_tg.filter(_IFd.MaxFilter(7))) > 0
     _inner = np.asarray(_tg.filter(_IFd.MaxFilter(3))) > 0
