@@ -1,1 +1,0 @@
-Larkmoor roads are dirt now, with flagstones only near the windmill and the bridges. Flower beds keep 4 texels clear of paths and the shore, grass tufts fan into three blades, and some of the flowers closest to paths are removed.
