@@ -798,7 +798,9 @@ TREE_GAP = dict(oak=6.0, pine=8.0)
 TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
-BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '40'))        # stones on the water banks (layout B, #565), baked into the ground: no node cost
+BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # extra random stones on the water banks (0: the ring below does the job)
+BANK_RING = int(os.environ.get('BANK_RING', '1'))           # stones ringing every water's edge, one every BANK_SPACING texels
+BANK_SPACING = float(os.environ.get('BANK_SPACING', '6.0'))
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
@@ -906,7 +908,7 @@ log('shore + lilies placed')
 # extra stones: ROAD_ROCKS just off the road and lane edges, BANK_ROCKS a few texels from the water (waits for the water
 # thread's layout). Baked with sid 1, so they add to the ground and its shadows, not to the node count. Own random stream,
 # so every placement above keeps its place.
-if ROAD_ROCKS or BANK_ROCKS:
+if ROAD_ROCKS or BANK_ROCKS or BANK_RING:
     _rr = random.Random(777)
     _stones = []
     def _stone_spot(bank):
@@ -933,7 +935,24 @@ if ROAD_ROCKS or BANK_ROCKS:
         _f, _half, _top, _rad = make_rock(random.Random(_rr.randint(0, 1 << 30)), _rr.random() < .45)
         voxelize(_f, _half, _top, _u, _v, float(terrain_h(_u, _v)) - .4, _rr.uniform(.7, 1.05), _rr.uniform(0, 6.28), 1)
         _stones.append((_u, _v))
-    log('extra stones placed %d of %d (road %d, bank %d)' % (len(_stones), len(_kinds), ROAD_ROCKS, BANK_ROCKS))
+    # bank ring: stones all round the water's edge (the lake, the ponds and the river banks). Candidates are every land
+    # texel 0.8 to 2.6 texels from open water, off path edges and clear of the groves. A greedy pass in a fixed random order
+    # keeps a candidate only if no stone is within BANK_SPACING of it, so the ring spaces itself evenly. A path crossing the
+    # shore leaves its gap (dedge), and the trees and pads keep their footprints (placed). Baked, so no node cost.
+    _ring_n = 0
+    if BANK_RING:
+        _rg = random.Random(778)
+        _bm = (DW > .8) & (DW < 2.6) & (WD <= -.3) & INSIDE & (H0 <= 9.0) & (np.hypot(GU, GV) <= .6) & (dedge >= 2.5) & (dgrove >= GROVE_CLEAR)
+        _cand = np.argwhere(_bm).astype(float)
+        _order = list(range(len(_cand))); _rg.shuffle(_order)
+        for _k in _order:
+            _u, _v = float(_cand[_k][0]) + .5, float(_cand[_k][1]) + .5
+            if any(math.hypot(_u - pu, _v - pv) < pr + 3.0 for (pu, pv, pr) in placed): continue
+            if any(math.hypot(_u - su, _v - sv) < BANK_SPACING for (su, sv) in _stones): continue
+            _f, _half, _top, _rad = make_rock(random.Random(_rg.randint(0, 1 << 30)), _rg.random() < .45)
+            voxelize(_f, _half, _top, _u, _v, float(terrain_h(_u, _v)) - .4, _rg.uniform(.7, 1.05), _rg.uniform(0, 6.28), 1)
+            _stones.append((_u, _v)); _ring_n += 1
+    log('extra stones placed %d (road %d, bank %d, ring %d)' % (len(_stones), ROAD_ROCKS, BANK_ROCKS, _ring_n))
 # flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
 # texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
 # drifts are (about half the ground), so the flowers gather in patches with bare grass between them. Placed last, after
