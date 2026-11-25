@@ -148,6 +148,43 @@ func run(t: Object) -> void:
 	t.ok(bg._grab_sun, "at sunrise the grab takes the sun, not the moon")
 	bg._end_grab()
 	bg.free()
+
+	# A flick released near sunset carries the sun no further than sunset, so its glide never hands the body to the
+	# moon's far end of the arc (a jump the length of the whole arc) while the flick is still moving it.
+	bg = TitleBackground.new()
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.7)
+	bg._begin_grab()
+	bg._u_vel = 1.0
+	bg._end_grab()
+	t.ok(bg._fling * TitleBackground.FLING_DECAY <= 0.75 - bg._u + 1e-6, "a flick near sunset carries no further than sunset")
+	var prev_x: float = bg.body_art().x
+	var worst_jump: float = 0.0
+	var stayed_sun: bool = true
+	for i in 30:
+		bg._step_free(1.0 / 60.0)
+		bg._step_lift(1.0 / 60.0)
+		var x: float = bg.body_art().x
+		worst_jump = maxf(worst_jump, absf(x - prev_x))
+		prev_x = x
+		stayed_sun = stayed_sun and TitleMood.sun_half(bg.phase())
+	t.ok(stayed_sun, "the sun stays on its half after a flick released near sunset")
+	t.ok(worst_jump < 2.5, "the body glides after a release with no jump (worst step %.2f px)" % worst_jump)
+	bg.free()
+
+	# Landing after a release: the lift settles with a small bounce, about 5% of its height, not a quarter.
+	bg = TitleBackground.new()
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.5)
+	bg._begin_grab()
+	bg._reach = -20.0
+	for i in 60:
+		bg._step_lift(1.0 / 60.0)
+	bg._end_grab()
+	var lowest: float = 1.0
+	for i in 120:
+		bg._step_lift(1.0 / 60.0)
+		lowest = minf(lowest, bg._lift)
+	t.ok(lowest > -0.06, "the lift lands with a small bounce (lowest %.3f)" % lowest)
+	bg.free()
 	var title := TitleScreen.new()
 	t.ok(title.has_method("_begin"), "the title screen compiles")
 	title.free()
