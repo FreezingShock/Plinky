@@ -1,0 +1,1 @@
+Ground patches are larger and calmer: ground steps follow soft patches of about 11 texels and average with their neighbours, so the dither stays on the seams. Flower colours lean a little toward the meadow's greens and creams, with the same hue for each stat.
