@@ -448,3 +448,12 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
+
+## 2026-11-25: Ember Quarry sprites take the quarry ramps by role (T10)
+- **Nathan's pick:** B Medium (mockups in `/mnt/project-files/gower-style/ember-quarry/`, sheets `sheet_hub_noon.png`, `sheet_hub_night.png`, `sheet_gate_noon.png`).
+- **Decision:** `tools/art/qs.py` `finish()` now maps each sprite texel to its role's ramp in `render/palettes.gd` `RAMP["quarry"]` (read from the file, so there is one palette source). Role is the same as before (the 8 anchors); the step is 2 (anchor) plus +1 on rims that face the upper-left light and -1 on rims facing away. Medium also drops the darkest band interior one step. Mode is set by `QUARRY_REMAP` (`off`, `subtle`, `medium`, `strong`), default `medium`.
+- **Kept:** 4x4 Bayer dither, the 1 px ink outline, every silhouette, footprint and placement, and the ground, walkable mask and `placements3d.json` (unchanged in git). The gate landmark is intact.
+- **Not changed:** the 6 ladder pad objects (per-tier rarity colours, fixed hex by CLAUDE.md), lava strips, the ground, and the normal maps' encoding (they are regenerated from alpha only).
+- **Cleanup:** the regenerate removes five unreferenced `tier_*_NNN.png` orphans that were committed but not listed in `placements3d.json`.
+- **Not done (next step):** denser rocks and rock-ring banks. That changes placement and the walkable mask, so it needs its own mockup pick.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb. Setting `QUARRY_REMAP=off` reproduces the committed sprites byte for byte. The test suite passes. Not verified on the PC: how the ramp steps look on a real monitor at night.
