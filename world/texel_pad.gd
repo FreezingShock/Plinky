@@ -61,7 +61,11 @@ var flower_row: StringName = &""
 var locked: bool = false
 ## Cost sign on each row's first pad only (button _1, from its first price, open or locked): a wooden plank on a post, the cost (currency icon and amount)
 ## over the reward (stat icon and gain). The plank is one child node, redrawn only when the cost is held or lost.
-const LOCK_FONT: Font = preload("res://fonts/spleen-5x8.fnt")
+static var _lock_font: Font = null   ## loaded on first use, not preloaded: a preload in a script compiled during a fresh first import fails ("no resource loaders")
+static func lock_font() -> Font:
+	if _lock_font == null:
+		_lock_font = load("res://fonts/spleen-5x8.fnt") as Font
+	return _lock_font
 const LOCK_SIZE: int = 8          # the font's native size: one glyph texel per screen texel (16 doubled it and filled the chip with ink)
 const LOCK_ICON: int = 8          # the stat icon's staged size, the same 8 px as the text
 const LOCK_DIGIT_GAP: int = 1     # texels between one digit and the next
@@ -575,8 +579,8 @@ func _draw_run(pos: Vector2, text: String, col: Color) -> void:
 	var x: float = pos.x
 	for i in text.length():
 		var ch: String = text.substr(i, 1)
-		_chip.draw_string(LOCK_FONT, Vector2(x, pos.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, col)
-		x += LOCK_FONT.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + gap
+		_chip.draw_string(lock_font(), Vector2(x, pos.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE, col)
+		x += lock_font().get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x + gap
 
 
 ## Shows or hides the sign node, and redraws it when it appears or when the cost is newly held or lost.
@@ -599,7 +603,7 @@ static func gets_sign(b: ButtonDef) -> bool:
 
 ## Whether a pad draws its cost sign: a row's first pad with a cost does, open or locked, and only when the font loaded.
 static func shows_cost_sign(cost: String) -> bool:
-	return cost != "" and LOCK_FONT != null
+	return cost != "" and lock_font() != null
 
 
 ## Width of the digits with one texel between each glyph (no gap after the last one).
@@ -611,7 +615,7 @@ static func chip_text_width(text: String) -> float:
 static func run_width(text: String, gap: float) -> float:
 	var w: float = 0.0
 	for i in text.length():
-		w += LOCK_FONT.get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
+		w += lock_font().get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x
 	return w + gap * float(maxi(text.length() - 1, 0))
 
 
@@ -658,7 +662,7 @@ func set_sign_neighbours(others: Array[Vector2]) -> void:
 ## Fits a cost or reward to the plank's text width. A value that is too wide drops its fraction first ("20.75B" becomes
 ## "20B"), then loses characters from the end. Spleen has no smaller size, so the text stays at its native 8 px.
 static func fit_sign_text(text: String) -> String:
-	if LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x <= SIGN_TEXT_CAP:
+	if lock_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x <= SIGN_TEXT_CAP:
 		return text
 	var dot: int = text.find(".")
 	if dot >= 0:
@@ -666,7 +670,7 @@ static func fit_sign_text(text: String) -> String:
 		while end < text.length() and text[end] >= "0" and text[end] <= "9":
 			end += 1
 		text = text.substr(0, dot) + text.substr(end)
-	while text.length() > 1 and LOCK_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x > SIGN_TEXT_CAP:
+	while text.length() > 1 and lock_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, LOCK_SIZE).x > SIGN_TEXT_CAP:
 		text = text.substr(0, text.length() - 1)
 	return text
 
