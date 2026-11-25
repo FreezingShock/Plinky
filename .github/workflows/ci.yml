@@ -66,6 +66,9 @@ jobs:
       - name: Version script tests
         run: python3 tests/test_bump_version.py
 
+      - name: Playtest verdict tests
+        run: python3 tests/test_check_playtest.py
+
       - name: Unit tests (tests/run.gd)
         run: |
           set -o pipefail
@@ -141,6 +144,34 @@ jobs:
         if: failure()
         run: python3 tools/ci_summary.py /tmp/bench.log
 
+  # A bot plays the first in-game hour of a fresh save in the real main scene (tools/playtest.gd, ~30 s). It only
+  # measures; tools/check_playtest.py holds the thresholds: no script or engine error, no stall in income, frames within
+  # budget (a frame under the zone wipe has its own, looser limit), and the first milestones on time.
+  playtest:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ env.GODOT_VERSION }}
+
+      # `timeout` turns a hang into a failure before the job's own limit. The bot also stops itself at 240 s of wall time.
+      - name: Playtest bot (tools/playtest.gd, first hour)
+        run: |
+          set -o pipefail
+          timeout 420 ~/godot/godot --headless --path . --script tools/playtest.gd 2>&1 | tee /tmp/playtest.log
+          ! grep -E "SCRIPT ERROR|Parse Error|SHADER ERROR|Error calling from signal" /tmp/playtest.log
+
+      - name: Playtest verdict (shots/playtest.json)
+        run: python3 tools/check_playtest.py shots/playtest.json
+
+      - name: Why it failed
+        if: failure()
+        run: python3 tools/ci_summary.py /tmp/playtest.log
+
   # PRs never edit the version files (the Release workflow stamps them) and game changes carry a changelog fragment.
   # Escape hatch: the `no-changelog` label. Docs/CI/test-only PRs need no fragment.
   changelog-guard:
@@ -192,7 +223,7 @@ jobs:
 
   # One stable check name for the whole pipeline ("test"). Skipped engine jobs (docs-only PRs) count as passing.
   test:
-    needs: [changes, unit, sim, play, changelog-guard, uid-guard]
+    needs: [changes, unit, sim, play, playtest, changelog-guard, uid-guard]
     # !cancelled(): when a newer push cancels this run, this job is skipped instead of reporting a false red.
     # A real failure in any needed job still runs this job and fails it.
     if: ${{ !cancelled() }}
