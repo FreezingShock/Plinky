@@ -1,1 +1,0 @@
-Dirt paths keep their brown at noon. The path ground used to draw the pale cream and accent steps of its ramp in full sun, so the Larkmoor road read sandy tan. Dirt now uses earth browns, the flagstones near the windmill and bridges have their own grey-stone code, and the grass is unchanged.
