@@ -519,3 +519,9 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Picked from:** three in-engine mockups on the real Larkmoor frame (Reedgate): A, a ring in each flower's own darkest step on every side (muddy); B, no ring with a shade rim on the lower right (lowest contrast on pale grass); C, the shadow-side rim.
 - **Not changed:** the walker, critters and props keep their ink. Small bushes come from the bush generators and belong to the bush thread.
 - **Not verified in-engine:** Heather, Thistle, Clover, Foxglove and Starbloom fields, and the winter and autumn states, beyond the summer tests.
+
+## 2026-11-25: Night flower glow at 75% saturation, not full neon (Nathan picked S1)
+- **Change:** `FlowerGlow.NEON_SAT` is 0.75 (was 1.0). Each field's glow keeps its own petal hue and the alpha stays at `NIGHT_ALPHA` 0.6. Day is unchanged (`DAY_ALPHA` 0).
+- **Why:** full neon made the Sprout field an electric blue-green patch, louder than the rest of the art. Nathan rejected the warm and muted variants because they drained the colour, so only the saturation came down.
+- **Picked from:** the shipped neon, then S1 (75%), S2 (60%), S3 (85% with a warm lift) at night in Reedgate. The warm, ochre and muted tints from the earlier round were rejected.
+- **Tooling:** `tools/flower_glow_shots.gd` has the mockup variants (`NEON_SAT`, `NEON_VAL`, `TINT_MIX`) for future looks.
