@@ -20,6 +20,19 @@ func run(t: SceneTree) -> void:
 	t.ok(loader.resource_for("res://world/meadow3d_scene.tscn") is PackedScene, "meadow scene is returned")
 	t.eq(loader.current_label(), "Ready", "label reads Ready when finished")
 
+	# A path that keeps failing is retried a bounded number of times, then reported; the retries never hide it.
+	var retry := BootLoader.new()
+	retry.add("res://does_not_exist/also_missing.tscn", 1.0, "missing")
+	retry.start()
+	guard = 0
+	while not retry.is_finished() and guard < 20000:
+		retry.poll()
+		OS.delay_msec(1)
+		guard += 1
+	t.ok(retry.is_finished(), "a failing path still finishes (retries are bounded)")
+	t.ok(retry.has_failures(), "a path that fails every retry is reported")
+	t.eq(BootLoader.MAX_RETRIES, 2, "retry budget is two re-requests")
+
 	# A missing file is reported as a failure, not hidden behind a full bar.
 	var bad := BootLoader.new()
 	bad.add("res://does_not_exist/missing.tscn", 1.0, "missing")
