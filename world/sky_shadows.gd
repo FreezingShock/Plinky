@@ -40,9 +40,11 @@ const DEFAULT_KIND: Dictionary = {"size": Vector2(0.6, 0.45), "strength": 0.4, "
 ## Ruins cast from one size, not their sprite size: a ruin's sprite depends on its walls, so a thin or low one would otherwise
 ## cast a faint shadow beside a big one. Strength 0.6 sits between flowers (0.35) and trees (1.0).
 const RUIN_SHADOW_SIZE: Vector2 = Vector2(22.0, 26.0)
-## Mauve at high sun: the Gower ground-shadow hue (mockup C, Nathan picked it 2026-11-25). SHADE_DEEP takes over at low sun.
+## Fallback shade for a scene that never calls set_palette: mauve, the Gower ground-shadow hue from mockup C. A zone's own
+## ramp replaces it (set_palette), so the shadow follows the ground and reads as the zone's colour, not a cast.
 const SHADE: Color = Color(0.306, 0.267, 0.439)
-const SHADE_DEEP: Color = Color(0.12, 0.18, 0.36)   # at low sun the ground is dark, so the shadow goes deeper to stay readable
+const SHADE_DEEP: Color = Color(0.12, 0.18, 0.36)   # the fallback at low sun, where the shadow goes deeper to stay readable
+const SHADE_ROLE: int = 1                           # the palette role the shadow takes (role 1 is the ramp's shade role, render/palettes.gd)
 const WALKER_SIZE: Vector2 = Vector2(11.0, 17.0)   # width of the walker's shadow and the height it stretches from
 ## Garden flowers (world/garden_layer.gd draws them; their foot positions come from the garden list). Each flower casts a
 ## small dithered oval, so a field reads as shade under the heads and never as a block.
@@ -60,7 +62,8 @@ var _walker_mm: MultiMeshInstance2D  # the walker's shadow: one instance, moved 
 var _flowers_mm: MultiMeshInstance2D # one faint oval per garden flower, laid with the sun (set_flowers)
 var _flower_feet: PackedVector2Array = PackedVector2Array()
 var flower_strength: float = FLOWER_STRENGTH   # per-scene knob (the flower shadow's strength, 0..1)
-var shade_tint: Color = SHADE                  # the shadow colour at high sun; SHADE_DEEP takes over as the sun drops
+var shade_tint: Color = SHADE                  # the shadow colour at high sun; shade_deep takes over as the sun drops
+var shade_deep: Color = SHADE_DEEP             # the colour at low sun (set_palette fills both from the zone's ramp)
 var _pads: Array[Vector2] = []
 const PAD_REACH: float = 220.0       # a caster farther than this from every pad cannot shade one
 var pad_reach: float = PAD_REACH     # per scene: a smaller reach means fewer casters get a pad copy (the quarry sets it lower)
@@ -155,6 +158,18 @@ func set_flowers(list: Array) -> void:
 		_flower_feet[i] = Vector2(float(f[0]), float(f[1]))
 		mm.set_instance_custom_data(i, data)
 	_lay_flowers()
+
+
+## Takes the shadow colour from the zone's palette ramp: role 1 (the shade role) at step 1 for high sun, step 0 for low.
+## The shadow then multiplies the ground into a darker step of the same family, not a fixed hue laid over it.
+func set_palette(id: StringName) -> void:
+	var rows: Array = Palettes.ramp_colors(id)
+	if rows.size() < 2:
+		return
+	var step_hi: PackedColorArray = rows[1] as PackedColorArray
+	var step_lo: PackedColorArray = rows[0] as PackedColorArray
+	shade_tint = step_hi[SHADE_ROLE]
+	shade_deep = step_lo[SHADE_ROLE]
 
 
 ## Lays every flower's shadow for the current sun.
@@ -263,7 +278,7 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 	mat.set_shader_parameter("strength", strength)
 	mat.set_shader_parameter("density_foot", float(p.foot))
 	mat.set_shader_parameter("density_tip", float(p.tip))
-	mat.set_shader_parameter("shade", shade_tint.lerp(SHADE_DEEP, clampf(float(p.get("low", 0.0)), 0.0, 1.0)))
+	mat.set_shader_parameter("shade", shade_tint.lerp(shade_deep, clampf(float(p.get("low", 0.0)), 0.0, 1.0)))
 	mat.set_shader_parameter("softness", clampf(float(p.get("soft", 0.5)), 0.0, 1.0))
 	for k: StringName in [&"strength", &"density_foot", &"density_tip", &"shade", &"softness"]:
 		_ov_mat.set_shader_parameter(k, mat.get_shader_parameter(k))

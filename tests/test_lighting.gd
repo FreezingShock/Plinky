@@ -147,6 +147,11 @@ func run(t: Object) -> void:
 	t.ok(fl_tip.x > 100.0 and fl_tip.x - 100.0 < 10.0, "a flower's shadow is small and falls with the sun (tip x %.1f)" % fl_tip.x)
 	sh.set_flowers([])
 	t.eq(sh._flowers_mm.multimesh.instance_count, 0, "an empty garden list clears the flower shadows")
+	# The shadow colour comes from the zone's ramp: role 1 at step 1 by day, step 0 at low sun. Not a fixed hue.
+	sh.set_palette(Palettes.MEADOW)
+	var ramp: Array = Palettes.ramp_colors(Palettes.MEADOW)
+	t.ok(sh.shade_tint.is_equal_approx((ramp[1] as PackedColorArray)[1]), "the shadow takes the zone's shade role at step 1")
+	t.ok(sh.shade_deep.is_equal_approx((ramp[0] as PackedColorArray)[1]), "the low-sun shadow takes step 0 of the same role")
 	tree.free()
 	bush.free()
 	sh.free()
