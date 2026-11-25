@@ -105,6 +105,7 @@ func _add_sky() -> void:
 	_shadows.name = "Shadows"
 	add_child(_shadows)   # z 0, after the ground and grass: above them, below every prop and the walker
 	_shadows.set_flowers(_garden_flowers)   # one faint shadow per garden flower (world/sky_shadows.gd)
+	_shadows.mover_source = _critter_source
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
 	_sky.area = world_rect.grow(10.0)
@@ -227,6 +228,7 @@ func _add_life(ground: Sprite2D) -> void:
 	add_child(air)
 	air.setup(life, ground)
 	_blades.critter_source = air.ground_pushers
+	_critter_source = air.ground_pushers   # the ground critters cast a small shadow (SkyShadows.mover_source)
 	react = LifeReact.new()  # bushes rustle, birds scatter, shore ripples, grass bends (world/life_react.gd)
 	react.name = "LifeReact"
 	react.z_index = 10
@@ -291,6 +293,7 @@ var _lamp_pts: Array[Vector2] = []    # the glow centre of each loaded lamp head
 var _lamps_dirty: bool = true
 var _lamp_scale: float = 1.0          # the rain bloom (SkyModel.lamp_bloom): the glow size, the same for every lamp
 var _gardens: GardenLayer                # the flower gardens (world/garden_layer.gd); season and night are pushed in by _process
+var _critter_source: Callable = Callable()   # LifeAir.ground_pushers: the ground critters' feet, for their shadows
 var _garden_flowers: Array = []          # the flower list the gardens were drawn from (world/larkmoor_gardens.json)
 var _flower_glow: FlowerGlow             # the night light on each field's flowers (world/flower_glow.gd)
 const PAD_STRENGTH: float = 0.9       # pool strength of a pad button; was 0.45, too faint to read as lit at night
