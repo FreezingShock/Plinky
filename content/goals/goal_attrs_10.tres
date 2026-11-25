@@ -9,5 +9,5 @@ display_name = "Tuned Up"
 description = "Buy 10 attribute levels."
 counter = &"attributes_bought"
 target = 10.0
-order = 8
+order = 10
 reward = 0.02

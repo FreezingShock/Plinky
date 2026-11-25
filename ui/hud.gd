@@ -1792,7 +1792,7 @@ func _build_tip_card() -> void:
 
 func _poll_tips() -> void:
 	var toast: bool = toast_showing.is_valid() and bool(toast_showing.call())
-	_tip_card.held = PadInput.menu_open or Tip.is_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a tooltip, a confirm card, a banner or an achievement toast
+	_tip_card.held = PadInput.menu_open or Tip.hud_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a HUD tooltip, a confirm card, a banner or an achievement toast. A world pad tooltip does not hold them (see Tip.hud_showing).
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():

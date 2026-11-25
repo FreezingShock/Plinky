@@ -15,7 +15,7 @@ func run(t: Object) -> void:
 	t.eq(BigNum.from_float(3.7).floor_big().to_float(), 3.0, "floor drops the fraction")
 	t.eq(BigNum.from_float(-0.5).floor_big().to_float(), -1.0, "floor of a negative fraction goes down")
 	t.eq(BigNum.make(2.5, 20).floor_big().e, 20, "a huge value is already whole")
-	t.eq(BigNum.from_float(1234.0).whole_text(), "1234", "whole text is exact digits below 1e15")
+	t.eq(BigNum.from_float(1234.0).whole_text(), "1,234", "whole text is exact digits below 1e15, grouped in threes")
 	t.eq(BigNum.zero().whole_text(), "0", "whole text of zero")
 	t.eq(BigNum.make(1.0, 20).whole_text(), BigNum.make(1.0, 20).format(), "huge whole text uses the short format")
 

@@ -9,5 +9,5 @@ display_name = "Lucky Strikes"
 description = "Land 250 crits."
 counter = &"crits"
 target = 250.0
-order = 3
+order = 9
 reward = 0.02

@@ -164,7 +164,7 @@ func _spec() -> Variant:
 	var c: GameConfig = _sim.config
 	var tier: int = _sim.momentum_tier()
 	var lines: Array[String] = []
-	lines.append("Charge %d%%, income x%.2f" % [roundi(_sim.momentum * 100.0), 1.0 + _sim.momentum_bonus()])
+	lines.append("Charge %d%%, income %s" % [roundi(_sim.momentum * 100.0), NumberFormat.mult_f(1.0 + _sim.momentum_bonus())])
 	if tier < c.momentum_tier_thresholds.size():
 		lines.append("Next: %s at %d%%" % [_sim.momentum_tier_name(tier + 1), roundi(c.momentum_tier_thresholds[tier] * 100.0)])
 	else:

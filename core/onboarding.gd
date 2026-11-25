@@ -206,7 +206,9 @@ func tip_text(tip: StringName) -> String:
 			return "Streak bonus: press a row's pads in order, 1 then 2 then 3, each within %d seconds of the last." % int(sim.config.streak_window)
 		&"clover_row":
 			var need: int = int(z.gate_threshold) if z != null else 0
-			return "Clover pads cost Dewdrops and pay Clover Leaves. Collect %d Clover Leaves to open the gate to the next zone." % need
+			var c1: ButtonDef = sim.button_defs.get(&"clover_1") as ButtonDef
+			var price: String = Formulas.button_cost(c1).format() if c1 != null else "some"
+			return "Clover pads cost Dewdrops and pay Clover Leaves. The first costs %s Dewdrops. Collect %d Clover Leaves to open the gate to the next zone." % [price, need]
 		&"relic":
 			return "A relic dropped! Open Relics [R] to equip it. Equipped relics boost your run."
 		&"critter":

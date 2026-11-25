@@ -75,7 +75,7 @@ static func rows_for(sim: Sim) -> Array[Dictionary]:
 	var rs: RunStats = sim.run_stats
 	var out: Array[Dictionary] = []
 	var tier_name: String = sim.momentum_tier_name(rs.best_tier)
-	out.append({"section": "Bests", "name": "Best income", "value": "%s /s" % rs.best_income.format()})
+	out.append({"section": "Bests", "name": "Best income", "value": "%s/s" % rs.best_income.format()})
 	out.append({"section": "Bests", "name": "Longest chain", "value": "%d pads" % rs.best_chain})
 	out.append({"section": "Bests", "name": "Highest Momentum", "value": tier_name})
 	out.append({"section": "Bests", "name": "Chains finished", "value": str(rs.streaks_done)})
