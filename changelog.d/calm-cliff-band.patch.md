@@ -1,0 +1,1 @@
+The south dirt cliff band in Larkmoor and the meadow rock no longer carry yellow highlight streaks or teal pits. Rock now uses the earth colour alone, shaded by light, so the band reads as one calm rim behind the walker.

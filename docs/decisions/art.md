@@ -512,3 +512,12 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept:** the forward carry, capped to the room left in the grabbed half. The lift drop onto the arc is unchanged: the sun dropping about 33 texels from a high release is that drop, not a fault.
 - **Pass metric for QA:** after release, the body's offset below its arc point at its current phase (`-lift * reach`, drawn straight down, in art texels) must stay at or under 0.37 texels. Travel along the arc is not the metric: it includes the flick carry and the natural clock.
 - **Not verified in-engine:** how a stop after a backward flick feels on the PC.
+
+## 2026-11-25: Calm dirt cliff band (rock is the earth role)
+- **Brief (Nathan, option A of three mockups on the real Larkmoor start frame):** the rust rim at the bottom of Larkmoor was the loudest, most textured area and pulled the eye from the walker. Keep the earth read and the Bayer texture, and drop the yellow streaks and the near-black pits.
+- **Cause:** the rock ramp (`T_ROCK`) used the light role 5 for its top step (the yellow streaks), and the shadow role 1 (dark teal) for its bottom step (the pits). The relight in `render/shaders/prop_ramps.gdshaderinc` read the same ramp.
+- **Change:** rock is the earth role (6) only. In `gen_meadow3d.py` and `gen_larkmoor.py` the ramp is `[6, 6, 6, 6, 6]` (meadow: nine entries), and strata drop from .04/.07 to .02. The relight picks the earth role's three light steps (`prop_ramp_steps`), so the shading still comes from light. Palette stays at 8 anchors.
+- **Generated include:** `prop_ramps.gdshaderinc` material 101 is `25, 25, 26, 26, 26, 26, 27, 27, 27`, which is what `gen_meadow3d.py` produces from the new ramp. It was patched by hand because re-running `gen_meadow3d.py` rewrites the meadow tools output.
+- **Scope:** every rock texel on the meadow and Larkmoor maps, not only the south rim. Mountains and cliff faces get the same earth shading.
+- **Checked:** in-engine with the cloud's software Vulkan render, `golden_shots.tscn` at noon and dusk, before and after. The baked ground was regenerated and the bake reproduced the committed ground before the change.
+- **Lesson:** a ramp that drops the highlight step gives a flat sheet in the bake. Shading must come from the relight steps of the same role, not from an extra ramp colour.
