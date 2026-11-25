@@ -31,6 +31,10 @@ CU, CV, R = LAY.CU, LAY.CV, LAY.R         # island centre / radius (uv)
 OXS0, OYS0 = LAY.OX, LAY.OY
 OXS, OYS = OXS0, OYS0
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
+# warm (8-11) and cool (12-15) grass variants, 4 steps dark to light, the same hexes as Palettes.grass_variant(&"warm"/&"cool")
+PAL += ['#7a7f45', '#919654', '#9ea35f', '#aab061', '#457b7f', '#549196', '#5f9ea3', '#61aab0']
+GRASS_WARM = [8, 9, 10, 10, 11]
+GRASS_COOL = [12, 13, 14, 14, 15]
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
 # Prop palette (Gower-style restyle, v3 mockup B): the sprites' albedo and the relit props' ramps. Ink stays put, and the
 # ground keeps PAL, so the backdrop, the flower and sway checks and the UI palette are unchanged.
@@ -1226,10 +1230,18 @@ def render_scene(keep):
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
     img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
+    # warm and cool grass patches (palette 8-11 and 12-15, the GRASS block in render/palettes.gd): two broad noise fields,
+    # thresholded, so the patches are big and soft-edged like the Gower mockup. Same grass_tex strength as the meadow grass.
+    WC_FIELD = vn2(XX / 40.0, YY / 40.0, 83) * .75 + vn2(XX / 13.0, YY / 13.0, 84) * .25
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
         # canopy and pine: a narrow dither band, so each shade step has a clear edge and the Bayer texture stays on the edges
         if sel_.any(): out[sel_] = dith(ramp, img_l, sel_, CANOPY_DBAND if m_ in CANOPY_MATS else (.30, .40))[sel_]
+        if m_ == T_GRASS and sel_.any():
+            # percentile cut-offs over the grass texels: the top fifth goes warm, the bottom fifth cool, the rest stays meadow
+            hi_, lo_ = np.percentile(WC_FIELD[sel_], [80, 20])
+            for ramp_v, pick in ((GRASS_WARM, sel_ & (WC_FIELD > hi_)), (GRASS_COOL, sel_ & (WC_FIELD < lo_))):
+                if pick.any(): out[pick] = dith(ramp_v, img_l, pick)[pick]
     # water: depth bands, stepped glints, foam, white water on slopes
     wsel = img_mat == T_WATER
     if wsel.any():
