@@ -214,11 +214,21 @@ void fragment() {
 					flat_g = false;
 				}
 			}
+			// The four diagonal neighbours too, so the average is over the 3x3 block: flat grass comes out even,
+			// with no texel-to-texel stipple left in its interior.
+			float ln_diag = 0.0;
+			vec2 offs_d[4] = vec2[4](vec2(1.0, 1.0), vec2(-1.0, 1.0), vec2(1.0, -1.0), vec2(-1.0, -1.0));
+			for (int j = 0; j < 4; j++) {
+				vec4 dn = texture(nrm_tex, UV + offs_d[j] * px);
+				vec3 nn = vec3(dn.rg * 2.0 - 1.0, 0.0);
+				nn.z = sqrt(max(1.0 - dot(nn.xy, nn.xy), 0.0));
+				ln_diag += dn.a * 1.8 - 0.4 + 1.05 * (max(dot(nn, normalize(sun_dir)), 0.0) - max(dot(nn, BASE_DIR), 0.0)) * relight;
+			}
 			// Patches, not texels: ground takes the average of its own light and its four neighbours', plus a slow noise
 			// nudge about 11 texels across, so the step changes wander in soft patches. The Bayer threshold stays for the
 			// seam band only (flat ground takes its step with no checker). Water (107) and foam (108) keep their own look.
 			if (code >= 100 && code <= 109 && code != 107 && code != 108) {
-				l = (l0 + ln_sum) * 0.2 + (vnoise(wpos / 11.0) - 0.5) * 0.12;
+				l = (l0 + ln_sum + ln_diag) / 9.0 + (vnoise(wpos / 11.0) - 0.5) * 0.12;
 			}
 			l -= sh * shadow_amt * relight + occ * ao_amt;
 			if (abs(l - lb) > 0.03) {
