@@ -230,7 +230,8 @@ func _process(_delta: float) -> void:
 
 ## Show the tooltip for the pad under the mouse, unless the mouse is over a HUD control.
 func _update_tooltip() -> void:
-	if FxConfig.bloom_running:   # nothing hovers over a ritual: no world tip while Bloom or Nucleus plays
+	# no world tip while Bloom or Nucleus plays, or while its confirm card is up (the card sits over the world)
+	if FxConfig.bloom_running or hud.reset_confirm_open():
 		tooltip.hide_tip()
 		return
 	var over: Control = get_viewport().gui_get_hovered_control()
@@ -858,6 +859,8 @@ func _wire_menus() -> void:
 	CloseX.attach(history_panel, func() -> void: menus.close(&"history"))
 	CloseX.attach(ledger_panel, func() -> void: menus.close(&"ledger"))
 	hud.menu_toggled.connect(menus.toggle)
+	hud.reset_confirm_opening.connect(menus.close_all)   # a reset confirm shuts every other menu first
+	menus.blocked = hud.reset_confirm_open   # and nothing opens while it is up
 	CloseX.attach(ups, func() -> void: menus.close(&"upgrades"))
 	CloseX.attach(relic_panel, func() -> void: menus.close(&"relics"))
 	CloseX.attach(index_panel, index_panel.close_panel)

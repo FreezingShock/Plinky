@@ -7,6 +7,7 @@ signal relic_panel_toggled(open: bool)
 signal settings_toggled(open: bool)
 ## The Upgrades chip or key was used. Main routes it through MenuRouter, so one menu is open at a time.
 signal menu_toggled(kind: StringName)
+signal reset_confirm_opening   ## a zone reset confirm is about to open: other menus close first
 signal index_requested(tab: int)   ## IndexPanel.Tab: the Stats or Attributes button or key
 
 ## The frame the HUD lays out in (Main size). The gate panel and bottom bar hug its right and bottom edges.
@@ -27,7 +28,8 @@ var _reset_chips: Dictionary = {}   # zone reset id -> its bottom-bar chip (gene
 var _upgrades_panel: PanelContainer
 var _upgrades_box: VBoxContainer
 var _prestige_label: Label
-var _modal: ModalCard            # rebirth confirm, centred
+var _modal: ModalCard            # offline-earnings summary, centred
+var _reset_confirm: ResetConfirm  # the Bloom and Nucleus confirm: a hold to strike, centred
 var _welcome: WelcomeCard        # the offline Welcome Back gallery, centred
 var _save_note: SaveIndicator    # "Saved" flash, left of the Menu chip
 var _clock: float = 0.0
@@ -96,6 +98,8 @@ func setup(p_sim: Sim) -> void:
 	Banner.avoid = _momentum   # a banner lifts clear of the meter rather than cover it
 	_modal = ModalCard.new()
 	add_child(_modal)
+	_reset_confirm = ResetConfirm.new()
+	add_child(_reset_confirm)
 	_welcome = WelcomeCard.new()
 	add_child(_welcome)
 	CloseX.attach(_welcome, _welcome.dismiss)   # the X sits beside the card, like the other menus
@@ -382,12 +386,23 @@ func _on_zone_reset_pressed(rid: StringName) -> void:
 		GameState.try_reset(rid)
 		return
 	var cname: String = (sim.stat_defs[r.currency] as StatDef).display_name
+	var gain: BigNum = sim.reset_gain(rid)
 	var lines: Array = [
 		[r.resets_text, StatStyle.PAPER],
-		["+%s %s" % [sim.reset_gain(rid).whole_text(), cname], StatStyle.color(r.currency)],
 		["Every pad pays %d%% more, for good." % int(roundf(r.bonus_per_use * 100.0)), StatStyle.gain()],
 	]
-	_modal.open("%s?" % r.display_name, lines, r.display_name, "Not yet", func() -> void: GameState.try_reset(rid))
+	var icon: Texture2D = load("res://assets/icons/big/%s.png" % String(r.currency)) as Texture2D
+	reset_confirm_opening.emit()
+	# The hold strikes the reset; the ritual flies out of the icon, so the origin goes to BloomRitual first.
+	_reset_confirm.open("%s?" % r.display_name, StatStyle.color(r.currency), icon, "+" + NumberFormat.exact(gain),
+		cname, lines, "Hold to Strike", func(origin: Vector2) -> void:
+			BloomRitual.launch_global = origin
+			GameState.try_reset(rid))
+
+
+## True while a zone reset confirm is up. MenuRouter refuses to open other menus meanwhile.
+func reset_confirm_open() -> bool:
+	return _reset_confirm != null and _reset_confirm.visible
 
 
 func _build_bottom() -> void:
@@ -1067,6 +1082,10 @@ func _place() -> void:
 		mp0.y = minf(mp0.y, roundf(frame.y * 0.3))
 		if _modal.position != mp0:
 			_modal.position = mp0
+	if _reset_confirm != null and _reset_confirm.visible:
+		var rp: Vector2 = ((frame - _reset_confirm.size) * 0.5).floor()
+		if _reset_confirm.position != rp:
+			_reset_confirm.position = rp
 	if _welcome != null and _welcome.visible:
 		_welcome.place(frame)
 	if _save_note != null and _menu_chip != null:
@@ -1792,7 +1811,7 @@ func _build_tip_card() -> void:
 
 func _poll_tips() -> void:
 	var toast: bool = toast_showing.is_valid() and bool(toast_showing.call())
-	_tip_card.held = PadInput.menu_open or Tip.hud_showing() or _modal.visible or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a HUD tooltip, a confirm card, a banner or an achievement toast. A world pad tooltip does not hold them (see Tip.hud_showing).
+	_tip_card.held = PadInput.menu_open or Tip.hud_showing() or _modal.visible or reset_confirm_open() or _welcome.visible or Banner.is_showing() or toast or FxConfig.bloom_running   # tips never cover an open menu, a HUD tooltip, a confirm card, a banner or an achievement toast. A world pad tooltip does not hold them (see Tip.hud_showing).
 	var ob: Onboarding = GameState.onboarding
 	if not ob.tips_enabled:
 		if _tip_card.is_showing():
