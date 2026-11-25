@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GoalDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/goal_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"goal_attrs_10"
+display_name = "Tuned Up"
+description = "Buy 10 attribute levels."
+counter = &"attributes_bought"
+target = 10.0
+order = 10
+reward = 0.02

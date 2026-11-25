@@ -173,8 +173,8 @@ docs/        SPEC.md  interfaces.md  decisions/  art-bible.md  theme.md  balance
 core/        bignum.gd  formulas.gd  sim.gd  tick.gd  save_codec.gd  mastery.gd ...  (pure logic)
              event_bus.gd  game_state.gd  save.gd  calendar_service.gd  (autoload shells)
 data/        stat_def.gd  button_def.gd  zone_def.gd  relic_def.gd  attribute_def.gd  tier_def.gd ...
-world/       player.gd  button_pad.gd  gate.gd  zone scenes, sky and light scripts
-render/      pixel_viewport.gd  iso_camera.gd  fx_driver.gd  toon_material.gd  shaders/  palettes/
+world/       texel_walker.gd  texel_pad.gd  gate.gd  zone scenes, sky and light scripts
+render/      pixel_viewport.gd  iso_camera.gd  fx_driver.gd  toon_material.gd  shaders/  palettes.gd
 ui/          hud, menus, panels, ui/fx/ (Juice: popups, transitions)
 boot/ audio/ theme/ fonts/ assets/
 content/     stats/ buttons/ tiers/ zones/ areas/ relics/ rarities/ attributes/ config/   (.tres files)
@@ -193,6 +193,7 @@ tools/       screenshot.gd  sim.gd  bench.gd  bump_version.py ...
 | `Calendar` | `core/calendar_service.gd` | Day, season and year clock |
 | `Juice` | `ui/fx/fx_bus.gd` | UI effects: popups, counters, banners |
 | `Audio` | `audio/audio.gd` | Music, SFX, subtitles |
+| `Banner` | `ui/banner.gd` | Centred popup banners |
 
 ### Interface contract
 
@@ -283,6 +284,8 @@ There are six builds. M1 and M2 run in parallel, and Nathan approves the look at
 ## 7. Parallel workstreams
 
 The work splits into five streams that each own separate folders, so several agents can build at once without editing the same files.
+
+> **Superseded:** the repo is flat now. The `src/` paths below are the original plan, not the current layout. For the current folders and who usually edits what, see [codebase-map.md](codebase-map.md).
 
 | Stream | Owns | Starts at | Needs first |
 | --- | --- | --- | --- |

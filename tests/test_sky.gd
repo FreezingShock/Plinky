@@ -111,3 +111,5 @@ func run(t: Object) -> void:
 	t.near(pi.get_pixel(SkyCycle.SWAY_PAD, 0).a, 1.0, 1e-6, "sprite pixels sit after the pad")
 	# A missing texture must not crash the sky (the 'texture has no image data' race): it comes back as it was.
 	t.ok(SkyCycle.padded(null) == null, "padding nothing gives nothing")
+	# A texture that has not loaded yet (no size, no pixels) must not be read: it comes back without a crash.
+	t.ok(SkyCycle.padded(CompressedTexture2D.new()) != null, "an unloaded texture is returned, not read")
