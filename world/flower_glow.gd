@@ -138,7 +138,7 @@ func _process(_delta: float) -> void:
 		_rain_seen = MeadowLife.rain
 		_apply_alpha()
 		return
-	if FxConfig.reduce_motion or FxConfig.reduce_flashing or not _breathes():
+	if FxConfig.still() or FxConfig.reduce_flashing or not _breathes():
 		return
 	_apply_alpha()
 
@@ -161,7 +161,7 @@ func set_winter(on: bool) -> void:
 func _apply_alpha() -> void:
 	var season_k: float = WINTER_SCALE if _winter else 1.0
 	var a: float = lerpf(DAY_ALPHA, NIGHT_ALPHA, _night) * season_k * (1.0 + RAIN_BLOOM * clampf(MeadowLife.rain, 0.0, 1.0))
-	if not (FxConfig.reduce_motion or FxConfig.reduce_flashing):
+	if not (FxConfig.still() or FxConfig.reduce_flashing):
 		var phase: float = fposmod(float(Time.get_ticks_msec()) / 1000.0 / BREATH_TIME, 1.0)
 		a *= 1.0 - BREATH_DEPTH * (0.5 - 0.5 * cos(TAU * phase))
 	modulate.a = a

@@ -45,7 +45,7 @@ func _draw() -> void:
 	for q in _p:
 		if q.age >= q.life:
 			continue
-		# Last 30% of life blinks, a pixel-art fade (no alpha blending).
-		if q.age > q.life * 0.7 and int(q.age * 40.0) % 2 == 0:
-			continue
+		# Last 30% of life blinks, a pixel-art fade (no alpha blending). Reduce flashing holds it solid instead.
+		if not FxConfig.reduce_flashing and q.age > q.life * 0.7 and int(q.age * 40.0) % 2 == 0:
+			continue   # Reduce flashing holds the particle solid to its end
 		draw_rect(Rect2(q.pos.round(), Vector2.ONE * q.size), q.col)

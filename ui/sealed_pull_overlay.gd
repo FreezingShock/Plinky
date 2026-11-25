@@ -137,7 +137,7 @@ func _ready() -> void:
 	_continue.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_continue.pressed.connect(_close)
 	_reveal.add_child(_continue)
-	if FxConfig.reduce_motion:
+	if FxConfig.still():
 		_enter(Phase.REVEAL)
 	else:
 		_enter(Phase.SHAKE)
@@ -178,14 +178,14 @@ func _enter(p: int) -> void:
 			_pouch.visible = false
 			_stage.visible = false   # the reveal takes the stage's room, so the card stays short
 			_reveal.visible = true
-			_reveal.modulate.a = 1.0 if FxConfig.reduce_motion else 0.0
+			_reveal.modulate.a = 1.0 if FxConfig.still() else 0.0
 			_continue.grab_focus()
 			_clamp_height.call_deferred()
 
 
 ## Sparks in the rarity colour, from the pouch's centre. Skipped under Reduce Motion.
 func _burst() -> void:
-	if FxConfig.reduce_motion or _relic == null:
+	if FxConfig.still() or _relic == null:
 		return
 	var sp := AchievementSparks.new()
 	sp.position = _pouch.get_global_rect().get_center() - get_global_rect().position

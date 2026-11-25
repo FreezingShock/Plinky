@@ -4,7 +4,8 @@ extends Node
 ## Stats and Attributes window has. Add it with MenuAnim.attach(panel); it lives as a child of the panel and routes
 ## open/close through the panel's `visible`, so MenuRouter can register `is_open`, `open` and `close` straight from it.
 ## Panels kept centred by the HUD pick the slide up from the "menu_slide" meta; others just get the wipe.
-## Reduce flashing, or no scene tree (tests), skips the animation.
+## Reduce Motion (FxConfig.still) and Reduce flashing both drop the slide: the stepped wipe stays, since it never flashes.
+## No scene tree (tests) skips the animation.
 
 const OPEN_TIME: float = 0.42
 const CLOSE_TIME: float = 0.28
@@ -81,7 +82,7 @@ func close() -> void:
 func _run(opening: bool) -> void:
 	if _tween != null:
 		_tween.kill()
-	if FxConfig.reduce_flashing or not is_inside_tree():
+	if not is_inside_tree():
 		_set_t(1.0 if opening else 0.0)
 		if not opening:
 			_finish()
@@ -103,7 +104,7 @@ func _finish() -> void:
 func _set_t(v: float) -> void:
 	t = v
 	var s: float = floorf(v * DitherReveal.STEPS) / DitherReveal.STEPS
-	panel.set_meta(&"menu_slide", roundf((1.0 - s) * SLIDE))
+	panel.set_meta(&"menu_slide", 0.0 if _no_slide() else roundf((1.0 - s) * SLIDE))
 	reveal.set_cover(1.0 - s)
 	_sync_reveal()
 
@@ -117,6 +118,11 @@ func _on_visibility() -> void:
 	t = 0.0
 	panel.set_meta(&"menu_slide", 0.0)
 	reveal.set_cover(0.0)
+
+
+## The slide is motion, so Reduce Motion and Reduce flashing both leave the panel where it sits.
+static func _no_slide() -> bool:
+	return FxConfig.still() or FxConfig.reduce_flashing
 
 
 func _sync_reveal() -> void:

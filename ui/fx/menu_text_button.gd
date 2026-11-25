@@ -85,7 +85,7 @@ static func underline_px(text_w: float, p: float) -> int:
 func _process(delta: float) -> void:
 	super._process(delta)
 	var want: float = 1.0 if ((is_hovered() or has_focus()) and not disabled) else 0.0
-	var n: float = want if (FxConfig.reduce_flashing or MeadowLife.reduce_motion) else move_toward(t, want, SPEED * delta)
+	var n: float = want if (FxConfig.reduce_flashing or FxConfig.still()) else move_toward(t, want, SPEED * delta)
 	if n != t:
 		t = n
 		queue_redraw()

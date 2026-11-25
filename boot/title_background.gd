@@ -85,7 +85,7 @@ func _exit_tree() -> void:
 
 ## True when motion is reduced: the clock holds, parallax stays put, skips are instant and the grab has no overshoot.
 static func still() -> bool:
-	return FxConfig.reduce_flashing or MeadowLife.reduce_motion
+	return FxConfig.reduce_flashing or FxConfig.still()
 
 
 ## Pure: mouse position in the title's rect -> target parallax in texels (-1..1 of PARALLAX_TEXELS on each axis,

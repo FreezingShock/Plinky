@@ -10,6 +10,8 @@ signal feedback_requested
 const TAB_WIDTH: float = 430.0
 const BODY_HEIGHT: float = 196.0
 const LABEL_WIDTH: float = 126.0
+## How far a sub row (an option under a master row, such as the two Reduce Motion options) is pushed in.
+const SUB_INDENT: float = 14.0
 ## One colour per tab, from the same fixed stat colours the gallery cards wear. New tabs fall back to PAPER.
 const TAB_COLORS: Dictionary = {
 	"Audio": Color("6fd6e8"), "Display": Color("55aaff"), "Gameplay": Color("f2c94c"),
@@ -223,11 +225,18 @@ func _make_row(def: Dictionary, col: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 	var kind: int = int(def["kind"])
+	# A "sub" row sits under its master row: indented, with its label narrower so the controls line up.
+	var indent: float = SUB_INDENT if bool(def.get("sub", false)) else 0.0
+	if indent > 0.0:
+		var gap := Control.new()
+		gap.custom_minimum_size.x = indent
+		row.add_child(gap)
 	if kind != SettingsRegistry.Kind.ACTION:
 		var l := Label.new()
 		l.text = title_case(String(def["label"]))
 		l.add_theme_color_override("font_color", col)
-		l.custom_minimum_size.x = LABEL_WIDTH
+		# The gap and its separator take the indent and 4 px, so the controls still line up with the rows above.
+		l.custom_minimum_size.x = LABEL_WIDTH - indent - 4.0 if indent > 0.0 else LABEL_WIDTH
 		row.add_child(l)
 	match kind:
 		SettingsRegistry.Kind.TOGGLE:

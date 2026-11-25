@@ -1,0 +1,1 @@
+Reduce Motion is one switch now: Access has a master "Reduce motion" row over "Still banners" and "Still meadow", and menus, presses, the title and the loading screen all honour it from the first frame.

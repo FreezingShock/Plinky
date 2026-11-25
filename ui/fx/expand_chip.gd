@@ -148,7 +148,7 @@ func bubble_text() -> String:
 
 
 func _calm() -> bool:
-	return MeadowLife.reduce_motion or FxConfig.reduce_flashing
+	return FxConfig.still() or FxConfig.reduce_flashing
 
 
 func _process(delta: float) -> void:

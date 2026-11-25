@@ -51,7 +51,7 @@ static func spec_for(sim: Sim, button_id: StringName) -> Dictionary:
 	var body: String = ""
 	if rar != null:
 		edge = rar.readable_color(RelicStyle.ink)
-		lines.append(TipText.rarity_tag(rar, "button", edge))
+		lines.append(TipText.rarity_tag(rar, "pad", edge))
 	lines.append(["Costs ", Tip.icon(String(b.cost_stat)), Tip.seg(cost.format(), StatStyle.buy(can)), " ", Tip.seg(cost_def.display_name, StatStyle.color(b.cost_stat))])
 	lines.append(["Gives ", Tip.icon(String(b.reward_stat)), Tip.seg("+%s" % sim.press_gain_preview(button_id).format(), StatStyle.gain()), " ", Tip.seg(reward_def.display_name, rc)])
 	var avg: BigNum = sim.press_gain_average(button_id)
