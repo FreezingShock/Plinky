@@ -140,6 +140,22 @@ jobs:
       - name: Frame budget (shots/bench.json)
         run: python3 tools/check_frame_budget.py shots/bench.json 150 300 250 1350
 
+      # Trend: this run's rows go to shots/bench_trend.csv and onto the run summary. Kept even when the budget fails.
+      - name: Bench trend
+        if: always()
+        run: python3 tools/bench_trend.py shots/bench.json shots/bench_trend.csv "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bench results (bench.json and bench_trend.csv)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ github.run_id }}
+          path: |
+            shots/bench.json
+            shots/bench_trend.csv
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Why it failed
         if: failure()
         run: python3 tools/ci_summary.py /tmp/bench.log

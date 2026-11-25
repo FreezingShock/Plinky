@@ -8,10 +8,6 @@ var main: Control
 var root: Window
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _measure(label: String, frames: int) -> void:
 	var times: PackedFloat64Array = PackedFloat64Array()
@@ -35,7 +31,7 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var anchors: Node = main.meadow.get_node("Anchors")
 	var m: Marker2D = anchors.get_node("District_green") as Marker2D
 	main.walker.position = m.position + Vector2(-60, 30)
@@ -43,7 +39,7 @@ func _ready() -> void:
 	while main.camera.zoom_level != 2:
 		main.camera.zoom_step(1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(60)
+	await ShotHelpers.wait(60)
 	var plan: Array = [
 		["day_clear", 0.0, 0.5],
 		["day_rain", 0.6, 0.5],
@@ -54,7 +50,7 @@ func _ready() -> void:
 		SkyCycle.debug_season = 2
 		SkyCycle.debug_rain = float(p[1])
 		SkyCycle.debug_phase = float(p[2])
-		await _wait(60)
+		await ShotHelpers.wait(60)
 		await _measure(String(p[0]), 240)
 	SkyCycle.debug_season = -1
 	SkyCycle.debug_rain = -1.0

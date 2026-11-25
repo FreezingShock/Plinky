@@ -40,9 +40,23 @@ const DEFAULT_KIND: Dictionary = {"size": Vector2(0.6, 0.45), "strength": 0.4, "
 ## Ruins cast from one size, not their sprite size: a ruin's sprite depends on its walls, so a thin or low one would otherwise
 ## cast a faint shadow beside a big one. Strength 0.6 sits between flowers (0.35) and trees (1.0).
 const RUIN_SHADOW_SIZE: Vector2 = Vector2(22.0, 26.0)
-const SHADE: Color = Color(0.28, 0.38, 0.56)
-const SHADE_DEEP: Color = Color(0.12, 0.18, 0.36)   # at low sun the ground is dark, so the shadow goes deeper to stay readable
+## Fallback shade for a scene that never calls set_palette: mauve, the Gower ground-shadow hue from mockup C. A zone's own
+## ramp replaces it (set_palette), so the shadow follows the ground and reads as the zone's colour, not a cast.
+const SHADE: Color = Color(0.306, 0.267, 0.439)
+const SHADE_DEEP: Color = Color(0.12, 0.18, 0.36)   # the fallback at low sun, where the shadow goes deeper to stay readable
+const SHADE_ROLE: int = 1                           # the palette role the shadow takes (role 1 is the ramp's shade role, render/palettes.gd)
 const WALKER_SIZE: Vector2 = Vector2(11.0, 17.0)   # width of the walker's shadow and the height it stretches from
+## Garden flowers (world/garden_layer.gd draws them; their foot positions come from the garden list). Each flower casts a
+## small dithered oval, so a field reads as shade under the heads and never as a block.
+const FLOWER_SIZE: Vector2 = Vector2(3.0, 2.0)      # width and height-stretch of one flower's shadow, in texels
+const FLOWER_LEN: float = 0.6                       # times the sun's length, as the props
+const FLOWER_STRENGTH: float = 0.75              # a bush is 0.35, a tree 1.0: a field reads as dots of shade
+const FLOWER_SOFT: float = 0.6
+## Moving critters on the ground (rabbits, chickens, frogs, ducks; world/life_critters.gd): a small oval under each one,
+## re-laid every frame from `mover_source`. Butterflies fly, so they cast nothing.
+const MOVER_SIZE: Vector2 = Vector2(6.0, 3.5)       # Nathan's option B (chosen 2026-11-25): reads under a rabbit at noon
+const MOVER_LEN: float = 0.7
+const MOVER_STRENGTH: float = 0.8
 const QUANT: float = 24.0                          # sun values are rounded to 1/QUANT so the shadows move in steps
 
 var mat: ShaderMaterial              # the main layer: every caster and pad slab
@@ -50,6 +64,16 @@ var _ov_mat: ShaderMaterial          # the same shader, clipped to the pad diamo
 var _caster_mm: MultiMeshInstance2D  # every shadow in the zone, one instance each (index = its slot in _items)
 var _overlay: MultiMeshInstance2D    # z 1: above the pad plates (z 0). Clipped copies of the casters near a pad
 var _walker_mm: MultiMeshInstance2D  # the walker's shadow: one instance, moved each frame
+var _flowers_mm: MultiMeshInstance2D # one faint oval per garden flower, laid with the sun (set_flowers)
+var _flower_feet: PackedVector2Array = PackedVector2Array()
+var flower_strength: float = FLOWER_STRENGTH   # per-scene knob (the flower shadow's strength, 0..1)
+var shade_tint: Color = SHADE                  # the shadow colour at high sun; shade_deep takes over as the sun drops
+var shade_deep: Color = SHADE_DEEP             # the colour at low sun (set_palette fills both from the zone's ramp)
+var mover_source: Callable = Callable()        # the ground points of the moving critters this frame (LifeAir.ground_pushers)
+var mover_strength: float = MOVER_STRENGTH     # per-scene knob, as flower_strength
+var mover_size: Vector2 = MOVER_SIZE           # per-scene knob: the critter oval's width and height-stretch
+var mover_len: float = MOVER_LEN               # per-scene knob: how far it stretches, times the sun's length
+var _movers_mm: MultiMeshInstance2D            # one oval per ground critter, moved each frame (see _update_movers)
 var _pads: Array[Vector2] = []
 const PAD_REACH: float = 220.0       # a caster farther than this from every pad cannot shade one
 var pad_reach: float = PAD_REACH     # per scene: a smaller reach means fewer casters get a pad copy (the quarry sets it lower)
@@ -89,6 +113,8 @@ func _ensure_layers() -> void:
 	_walker_mm.multimesh.instance_count = 1
 	_walker_mm.multimesh.set_instance_custom_data(0, Color(0.25, 1.0, 0.0, 0.0))   # the walker's shadow is a little softer than a tree's
 	_walker_mm.visible = false
+	_flowers_mm = _make_layer("FlowerShadows", mat, 0)
+	_movers_mm = _make_layer("CritterShadows", mat, 0)
 
 
 func _make_layer(nm: String, m: ShaderMaterial, z: int) -> MultiMeshInstance2D:
@@ -128,6 +154,53 @@ func remove_caster(src: Sprite2D) -> void:
 	for i: int in range(_items.size() - 1, -1, -1):
 		if _items[i].get("src") == src:
 			_drop(i)
+
+
+## The garden flowers, once per zone: `list` is the garden list ([x, y, stat, variant] per flower; x, y is the foot). Each
+## flower gets one instance in its own layer. The flowers are not casters in the list, so they cost one draw and no pad copies.
+func set_flowers(list: Array) -> void:
+	_ensure_layers()
+	_flower_feet.resize(list.size())
+	var mm: MultiMesh = _flowers_mm.multimesh
+	mm.instance_count = list.size()
+	var data := Color(FLOWER_SOFT, flower_strength, 0.0, 0.0)
+	for i: int in list.size():
+		var f: Array = list[i] as Array
+		_flower_feet[i] = Vector2(float(f[0]), float(f[1]))
+		mm.set_instance_custom_data(i, data)
+	_lay_flowers()
+
+
+## Takes the shadow colour from the zone's palette ramp: role 1 (the shade role) at step 1 for high sun, step 0 for low.
+## The shadow then multiplies the ground into a darker step of the same family, not a fixed hue laid over it.
+func set_palette(id: StringName) -> void:
+	var rows: Array = Palettes.ramp_colors(id)
+	if rows.size() < 2:
+		return
+	var step_hi: PackedColorArray = rows[1] as PackedColorArray
+	var step_lo: PackedColorArray = rows[0] as PackedColorArray
+	shade_tint = step_hi[SHADE_ROLE]
+	shade_deep = step_lo[SHADE_ROLE]
+## Moves one oval under each ground critter. Runs every frame: the critters walk, hop and swim, and the list is short.
+func _update_movers() -> void:
+	if not mover_source.is_valid() or not _layers_ready:
+		return
+	var pts: PackedVector2Array = mover_source.call() as PackedVector2Array
+	var mm: MultiMesh = _movers_mm.multimesh
+	if pts.size() > mm.instance_count:
+		mm.instance_count = maxi(pts.size() * 2, 16)
+	var data := Color(FLOWER_SOFT, mover_strength, 0.0, 0.0)
+	for i: int in pts.size():
+		mm.set_instance_transform_2d(i, _xf(pts[i], mover_size.x, mover_size.y, mover_len))
+		mm.set_instance_custom_data(i, data)
+	mm.visible_instance_count = pts.size()
+
+
+## Lays every flower's shadow for the current sun.
+func _lay_flowers() -> void:
+	var mm: MultiMesh = _flowers_mm.multimesh
+	for i: int in _flower_feet.size():
+		mm.set_instance_transform_2d(i, _xf(_flower_feet[i], FLOWER_SIZE.x, FLOWER_SIZE.y, FLOWER_LEN))
 
 
 ## A shadow for something that is not a prop sprite (a pad slab): foot position, width, and the height it stretches from.
@@ -229,7 +302,7 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 	mat.set_shader_parameter("strength", strength)
 	mat.set_shader_parameter("density_foot", float(p.foot))
 	mat.set_shader_parameter("density_tip", float(p.tip))
-	mat.set_shader_parameter("shade", SHADE.lerp(SHADE_DEEP, clampf(float(p.get("low", 0.0)), 0.0, 1.0)))
+	mat.set_shader_parameter("shade", shade_tint.lerp(shade_deep, clampf(float(p.get("low", 0.0)), 0.0, 1.0)))
 	mat.set_shader_parameter("softness", clampf(float(p.get("soft", 0.5)), 0.0, 1.0))
 	for k: StringName in [&"strength", &"density_foot", &"density_tip", &"shade", &"softness"]:
 		_ov_mat.set_shader_parameter(k, mat.get_shader_parameter(k))
@@ -244,6 +317,7 @@ func set_sun(azimuth: float, length: float, strength: float, p: Dictionary) -> v
 	_len = length
 	for it: Dictionary in _items:
 		_lay(it)
+	_lay_flowers()
 
 
 ## Lay one shadow: an oval from just behind the foot out along the shadow direction, in ground space.
@@ -262,6 +336,7 @@ func _xf(foot: Vector2, w: float, h: float, len_k: float) -> Transform2D:
 
 
 func _process(_delta: float) -> void:
+	_update_movers()
 	if _walker == null or not is_instance_valid(_walker):
 		_walker = _find_walker()
 		_walker_mm.visible = _walker != null

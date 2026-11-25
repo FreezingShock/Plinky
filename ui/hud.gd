@@ -767,25 +767,31 @@ func _start_cards() -> void:
 	_build_cards(_body_gen)
 
 
-## Builds the queued cards CARDS_PER_FRAME to a frame, while the open wipe plays. Stops if the body is freed meanwhile.
+## Builds the shown tab's queued cards CARDS_PER_FRAME to a frame, while the open wipe plays. The other tabs are built
+## when they are picked (see _build_tab_now), so an open builds one tab's gifts, not every tab's (node budget).
+## Stops if the body is freed meanwhile, or when the tab is left with nothing more queued.
 func _build_cards(gen: int) -> void:
-	var order: Array[StringName] = []
-	if _card_queue.has(_upg_tab):
-		order.append(_upg_tab)
-	for cur: StringName in _upg_order:
-		if cur != _upg_tab and _card_queue.has(cur):
-			order.append(cur)
 	var made: int = 0
-	for cur: StringName in order:
-		for item: Array in (_card_queue[cur] as Array).duplicate():
-			if gen != _body_gen or _upgrades_box == null:
-				return
-			_add_card(item[0] as AttributeDef, item[1] as GridContainer)
-			made += 1
-			if made % CARDS_PER_FRAME == 0:
-				await get_tree().process_frame
-	if gen == _body_gen:
-		_card_queue.clear()
+	while _card_queue.has(_upg_tab) and not (_card_queue[_upg_tab] as Array).is_empty():
+		if gen != _body_gen or _upgrades_box == null:
+			return
+		var item: Array = (_card_queue[_upg_tab] as Array).pop_front()
+		_add_card(item[0] as AttributeDef, item[1] as GridContainer)
+		made += 1
+		if made % CARDS_PER_FRAME == 0:
+			await get_tree().process_frame
+
+
+## Builds every queued card of one tab at once. A tab that is picked shows its gifts on that same frame, and a card
+## that is already built is never built twice.
+func _build_tab_now(cur: StringName) -> void:
+	if not _card_queue.has(cur):
+		return
+	var queue: Array = _card_queue[cur] as Array
+	while not queue.is_empty():
+		var item: Array = queue.pop_front()
+		_add_card(item[0] as AttributeDef, item[1] as GridContainer)
+	_card_queue.erase(cur)
 
 
 ## One gift card in its tier's grid, wired to buy and to its tooltip.
@@ -886,6 +892,7 @@ func _on_tab_focus(cur: StringName) -> void:
 ## A tab was pressed (mouse, keyboard or pad): the page and the highlight follow it together.
 func _select_upgrade_tab(cur: StringName) -> void:
 	_upg_tab = cur
+	_build_tab_now(cur)
 	_apply_upgrade_tab()
 
 
@@ -908,6 +915,8 @@ func _sync_upgrade_tabs() -> void:
 		(_upg_tab_btns[cur] as Control).visible = UpgradeText.tab_shown(sim, cur)
 	if _upg_tab == &"" or not UpgradeText.tab_shown(sim, _upg_tab):
 		_upg_tab = _first_shown_tab()
+	if _cards_started:
+		_build_tab_now(_upg_tab)   # a tab taken over by a refresh while the panel is open gets its gifts too
 	_apply_upgrade_tab()   # idempotent: keeps pages and highlight in step on every refresh
 
 
@@ -959,13 +968,13 @@ func _buy_upgrade(aid: StringName) -> void:
 			row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
 		# The header balance of that currency pops too, so the spend reads at the counter.
 		var badge: Control = _cur_badges.get((sim.attribute_defs[aid] as AttributeDef).currency) as Control
-		if badge != null and not (MeadowLife.reduce_motion or FxConfig.reduce_flashing):
+		if badge != null and not (FxConfig.still() or FxConfig.reduce_flashing):
 			badge.pivot_offset = badge.size * 0.5
 			badge.scale = Vector2(1.18, 1.18)
 			var bt := create_tween()
 			bt.tween_property(badge, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		# A tooltip already showing (the pointer is on the button) must pick up the new level.
-		for c: Node in [row] + row.get_children():
+		for c: Node in ([] if row == null else [row] + row.get_children()):   # a row is built on demand, so it may not exist yet
 			if c is Control:
 				Tip.set_spec(c as Control, _row_tips[aid])
 
@@ -1217,7 +1226,7 @@ var _slides: Dictionary = {}                # row box -> Tween (a row sliding to
 
 ## Reduced motion or flashing: the strip's animations snap instead.
 func _calm() -> bool:
-	return MeadowLife.reduce_motion or FxConfig.reduce_motion or FxConfig.reduce_flashing
+	return FxConfig.still() or FxConfig.reduce_flashing
 
 
 ## A true/false setting from the registry (Settings > Gameplay), or `fallback` when it is not registered.

@@ -458,8 +458,8 @@ func _draw() -> void:
 	for q: Dictionary in _parts:
 		var age: float = float(q["age"])
 		var life: float = float(q["life"])
-		if age > life * 0.7 and int(age * 40.0) % 2 == 0:
-			continue   # the last part of a particle's life blinks out, pixel-art style
+		if not FxConfig.reduce_flashing and age > life * 0.7 and int(age * 40.0) % 2 == 0:
+			continue   # the last part of a particle's life blinks out, pixel-art style (held solid under Reduce flashing)
 		if age < 0.0:
 			continue
 		var sz: float = float(q["size"])

@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = &"rebirth_5"
 display_name = "Fourth Slot"
-description = "Rebirth 5 times, which opens a fourth relic slot."
+description = "Reset a zone 5 times, which opens a fourth relic slot."
 category = &"rebirth"
 counter = &"rebirths"
 target = 5.0

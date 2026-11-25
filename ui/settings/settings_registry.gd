@@ -465,20 +465,36 @@ static func _register_access() -> void:
 		"apply": func(v: Variant) -> void: FxConfig.reduce_screen_fx = bool(v),
 	})
 	_add({
-		"id": &"reduce_text_motion", "tab": "Access", "label": "Still banners", "kind": Kind.TOGGLE, "default": false,
-		"hint": "Area and event banners appear and leave at once instead of typing in and out.",
+		"id": &"reduce_motion", "tab": "Access", "label": "Reduce motion", "kind": Kind.TOGGLE, "default": false,
+		"hint": "Stills the interface, the banners and the meadow: no slides, hitstop, squash, lifts, sways or drift. The two options under it set this for one part each.",
+		"get": _reduce_motion_get, "set": _reduce_motion_set,
+	})
+	_add({
+		"id": &"reduce_text_motion", "tab": "Access", "label": "Still banners", "kind": Kind.TOGGLE, "default": false, "sub": true,
+		"hint": "Banners appear and leave at once instead of typing in and out. The interface stops sliding and squashing too; the meadow keeps moving.",
 		"apply": func(v: Variant) -> void: FxConfig.reduce_motion = bool(v),
+	})
+	_add({
+		"id": &"reduce_meadow_motion", "tab": "Access", "label": "Still meadow", "kind": Kind.TOGGLE, "default": false, "sub": true,
+		"hint": "Freezes grass sway, pollen, butterflies and firefly drift. The interface and banners stop moving too.",
+		"apply": func(v: Variant) -> void: MeadowLife.reduce_motion = bool(v),
 	})
 	_add({
 		"id": &"calm_camera", "tab": "Access", "label": "Calm camera", "kind": Kind.TOGGLE, "default": false,
 		"hint": "No look-ahead, no crit punch, no idle drift. The camera still follows.",
 		"apply": func(v: Variant) -> void: WorldCamera.calm = bool(v),
 	})
-	_add({
-		"id": &"reduce_meadow_motion", "tab": "Access", "label": "Still meadow", "kind": Kind.TOGGLE, "default": false,
-		"hint": "Freezes grass sway, pollen, butterflies and firefly drift.",
-		"apply": func(v: Variant) -> void: MeadowLife.reduce_motion = bool(v),
-	})
+
+
+## The master row reads Reduce Motion as one switch: on when either option is on.
+static func _reduce_motion_get() -> bool:
+	return FxConfig.still()
+
+
+## The master row sets both options, and each one saves and applies itself.
+static func _reduce_motion_set(v: Variant) -> void:
+	set_value(&"reduce_text_motion", bool(v))
+	set_value(&"reduce_meadow_motion", bool(v))
 
 
 # ---- controls

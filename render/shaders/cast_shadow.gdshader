@@ -29,6 +29,7 @@ varying float v_soft;
 varying float v_strength;
 varying float v_overlay;
 
+const float CORE_CAP = 0.6;   // the densest cells of any shadow: below 1.0, so no caster is ever a solid plate
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
 varying vec2 wpos;
 
@@ -46,15 +47,18 @@ void vertex() {
 
 void fragment() {
 	vec2 q = (UV - vec2(0.5)) * 2.0;
-	// Solid inside, then a penumbra: the outer share of the radius fades out smoothly, and the Bayer threshold turns
-	// that fade into dither. Softer casters get a wider fade; the body never gets a hard line.
+	// No plateau: the body is a soft Gaussian that peaks at the centre and falls smoothly to nothing at the rim.
+	// Softness sets how fast it falls (a crisp rock versus a wide leaf canopy). A short smoothstep forces the very
+	// edge to zero, so there is no hard ring either.
 	float soft = clamp(softness + v_soft, 0.0, 1.0);
-	float feather = mix(0.22, 0.92, soft);
-	float body = 1.0 - smoothstep(1.0 - feather, 1.0, length(q));
+	float r2 = dot(q, q);
+	float k = mix(2.4, 0.7, soft);
+	float body = exp(-k * r2) * (1.0 - smoothstep(0.7, 1.0, sqrt(r2)));
 	float along = 1.0 - UV.y;                                  // 0 at the foot end, 1 at the tip
-	float dens = mix(density_foot, density_tip, along * along) * body * strength * v_strength;
-	// solid body, dithered rim and tip: anything above 0.6 is fully shadowed, the rest ramps through the Bayer matrix
-	dens = clamp(dens / 0.6, 0.0, 1.0);
+	float raw = clamp(mix(density_foot, density_tip, along * along) * body * strength * v_strength, 0.0, 1.0);
+	// Never solid: even the darkest point is only CORE_CAP of the Bayer cells, so the shadow reads as dither all the way
+	// in. The density is scaled, not clipped, so there is no flat top where the eye could find an edge.
+	float dens = raw * CORE_CAP;
 	float thr = bayer4(ivec2(floor(wpos)));
 	bool on_pad = !clip;
 	if (clip && v_overlay > 0.5) {   // only the pad copies are clipped; the other casters never paint above the plates
@@ -67,7 +71,7 @@ void fragment() {
 			}
 		}
 	}
-	if (!on_pad || (dens < 1.0 && thr >= dens)) {
+	if (!on_pad || thr >= dens) {
 		COLOR = vec4(1.0, 1.0, 1.0, 0.0);
 	} else {
 		COLOR = vec4(shade, 1.0);

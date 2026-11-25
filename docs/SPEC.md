@@ -84,7 +84,7 @@ Each zone's `boost_stat` sets which stat its pads feed. Each `StatDef` names the
 
 ### Idle, offline and events
 
-- Balance target: the idle profile (a player who does not walk or hold) takes about twice as long to open a gate as the active profile. It presses at 0.4 of the active rate in `content/config/sim_profiles.tres`.
+- Balance target: the idle profile (a player who does not walk or hold) takes about twice as long as the active profile to reach each gate. That is the rule: time to gate, not income. Idle presses at 0.5 of the active rate (2.0 and 4.0 presses a second in `content/config/sim_profiles.tres`).
 - Offline progress pays 0.5 of income. The base cap is 2 hours, and the Offline gain gift adds to it.
 - Seasonal events multiply income by day or season (`content/config/seasonal_events.tres`).
 

@@ -11,10 +11,6 @@ const PHASES: Dictionary = {"day": 0.5, "night": 0.9}
 var main: Control
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _goto(p: Vector2, zoom: int) -> void:
 	main.walker.position = p
@@ -22,7 +18,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(20)
+	await ShotHelpers.wait(20)
 
 
 func _ready() -> void:
@@ -35,17 +31,17 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var zoom: int = 2
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("zoom="):
 			zoom = int(a.substr(5))
 	for phase: String in PHASES:
 		SkyCycle.debug_phase = float(PHASES[phase])
-		await _wait(30)
+		await ShotHelpers.wait(30)
 		for spot: String in SPOTS:
 			await _goto(SPOTS[spot] as Vector2, zoom)
-			await _wait(10)
+			await ShotHelpers.wait(10)
 			get_tree().root.get_viewport().get_texture().get_image().save_png(
 				ProjectSettings.globalize_path("res://shots/farm_%s_%s.png" % [spot, phase]))
 			print("shot ", spot, " ", phase)

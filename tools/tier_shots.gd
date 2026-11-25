@@ -5,13 +5,9 @@ extends Node
 var main: Control
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _shot(name: String) -> void:
-	await _wait(3)
+	await ShotHelpers.wait(3)
 	get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/%s.png" % name))
 	print("shot ", name)
 
@@ -22,7 +18,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(20)
+	await ShotHelpers.wait(20)
 
 
 func _tour(zone: StringName, tag: String) -> void:
@@ -31,7 +27,7 @@ func _tour(zone: StringName, tag: String) -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var z: ZoneDef = sim.current_zone()
 	var ids: Array = z.pad_buttons
 	for i: int in [0, ids.size() / 2, ids.size() - 1]:
@@ -41,7 +37,7 @@ func _tour(zone: StringName, tag: String) -> void:
 		await _goto(pad.position + Vector2(34, 18), 4)
 		await _shot("%s_%d" % [tag, i])
 	main.queue_free()
-	await _wait(5)
+	await ShotHelpers.wait(5)
 
 
 func _ready() -> void:

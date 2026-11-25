@@ -152,6 +152,11 @@ def style_clumpblades(XX, YY, nz):
                                       (1, -3, LIGHT), (1, -2, LIGHT), (1, -1, LIGHT), (-1, 0, DARK * .5)]),
                        (~tall & core, [(0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, -2, LIGHT), (1, -1, LIGHT), (1, 0, DARK * .5), (-1, 0, DARK * .5)])):
         _stamp(T, px[sel], py[sel], shape)
+    # tall tufts (the B option picked for Larkmoor): a tall anchor also fans out two side blades, two texels either side,
+    # so a clump reads as three or more thin blades with light tips at game size
+    fan = [(0, -3, LIGHT), (0, -2, LIGHT), (0, -1, DARK * .5)]
+    for dx in (-2, 2):
+        _stamp(T, px[tall] + dx, py[tall], fan)
     return D + 1.35 * np.clip(T, DARK, LIGHT)   # style G stamps push 35% harder so tufts read at 1x
 
 

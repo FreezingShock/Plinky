@@ -7,13 +7,9 @@ extends Node
 var main: Control
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _shot(name: String) -> void:
-	await _wait(3)
+	await ShotHelpers.wait(3)
 	get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/%s.png" % name))
 	print("shot ", name)
 
@@ -24,7 +20,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(20)
+	await ShotHelpers.wait(20)
 
 
 func _ready() -> void:
@@ -45,14 +41,14 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var tag: String = "_locked" if locked else ""
 	if pinned >= 0.0:
 		var sky: SkyCycle = main.meadow.find_child("Sky", true, false) as SkyCycle
 		if sky != null:
 			sky.debug_phase = pinned
 		tag += "_p%s" % str(pinned).replace(".", "")
-		await _wait(30)
+		await ShotHelpers.wait(30)
 	var spawn: Vector2 = main.walker.position
 	await _goto(spawn, 1)
 	await _shot("q_hub" + tag)

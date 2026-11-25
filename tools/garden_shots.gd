@@ -15,10 +15,6 @@ const ROWS: Dictionary = {
 }
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 ## Drops the offline-earnings card (ui/welcome_card.gd, ui/welcome_tile.gd) so the shots show the garden.
 func _clear_overlays(n: Node) -> void:
@@ -32,7 +28,7 @@ func _clear_overlays(n: Node) -> void:
 
 func _shot(name: String) -> void:
 	_clear_overlays(main)
-	await _wait(3)
+	await ShotHelpers.wait(3)
 	root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/%s.png" % name))
 	print("shot ", name, "  nodes ", get_tree().get_node_count())
 
@@ -43,7 +39,7 @@ func _goto(p: Vector2, zoom: int) -> void:
 	while main.camera.zoom_level != zoom:
 		main.camera.zoom_step(1 if main.camera.zoom_level < zoom else -1, Vector2(320, 180))
 	main.camera.snap()
-	await _wait(40)
+	await ShotHelpers.wait(40)
 
 
 func _ready() -> void:
@@ -60,7 +56,7 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	for shot_name: String in ROWS:
 		var spec: Array = ROWS[shot_name] as Array
 		var tier: StringName = spec[0]

@@ -48,10 +48,14 @@ func show_text(t: String, col: Color) -> void:
 
 ## One frame of the label's state: `alpha` 0 to 1, and `rise`, the pop-in and float height in pixels.
 func set_state(alpha: float, rise: float, calm: bool) -> void:
+	var r: float = 0.0 if calm else rise
+	var shown: bool = alpha > 0.0
+	if calm == _calm and alpha == _alpha and r == _rise and shown == visible:
+		return   # the HUD sets this every frame; redraw only when the label actually moved or faded
 	_calm = calm
 	_alpha = alpha
-	_rise = 0.0 if calm else rise
-	visible = alpha > 0.0
+	_rise = r
+	visible = shown
 	queue_redraw()
 
 

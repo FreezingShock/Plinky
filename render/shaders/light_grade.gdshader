@@ -5,8 +5,8 @@ global uniform vec2 world_origin;
 global uniform float world_scale;
 // Full-frame light pass. Unlike the multiply overlays, this reads the finished picture underneath (ground, props,
 // walker, water) and re-lights EVERY texel from it: a sun-side lift and an away-side shade across the whole frame,
-// then a luminance split (highlights pick up the light colour, shadows go cool or magenta). Every change is stepped
-// through the 4x4 Bayer matrix in world texels, so the result is still dither, not a smooth blend (art bible 2, 4).
+// then a luminance split (highlights pick up the light colour, shadows go cool or magenta). Every change is a smooth
+// blend in one pass; the 4x4 Bayer dither lives in the ground, prop and post passes, not here (the pass has no dither).
 // Driven by SkyCycle: amounts are 0..1 and already scaled by time of day and weather.
 
 uniform sampler2D screen_tex : hint_screen_texture, filter_nearest, repeat_disable;

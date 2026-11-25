@@ -161,8 +161,8 @@ func _draw() -> void:
 	for s: Dictionary in _sparks:
 		var age: float = float(s["age"])
 		var u: float = age / float(s["life"])
-		if u > 0.7 and int(age * 40.0) % 2 == 0:
-			continue   # the last part of a spark blinks out, pixel-art style
+		if not FxConfig.reduce_flashing and u > 0.7 and int(age * 40.0) % 2 == 0:
+			continue   # the last part of a spark blinks out, pixel-art style (held solid under Reduce flashing)
 		var sz: float = 2.0 if u < 0.3 else 1.0
 		draw_rect(Rect2((s["pos"] as Vector2).round(), Vector2(sz, sz)), s["col"] as Color)
 	if has_focus():
@@ -279,7 +279,7 @@ func _set_delta_text(t: String) -> void:
 
 
 func _calm() -> bool:
-	return MeadowLife.reduce_motion or FxConfig.reduce_flashing
+	return FxConfig.still() or FxConfig.reduce_flashing
 
 
 ## Called by the menu right after a successful buy, with the state from after it.

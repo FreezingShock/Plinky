@@ -33,7 +33,7 @@ func set_level(p_level: int, p_cap: int, p_maxed: bool) -> void:
 
 ## Light up the newest pip. Quantised to four steps so it reads as pixel art, not a fade.
 func pop() -> void:
-	if MeadowLife.reduce_motion or FxConfig.reduce_flashing:
+	if FxConfig.still() or FxConfig.reduce_flashing:
 		return
 	if _tween != null and _tween.is_valid():
 		_tween.kill()

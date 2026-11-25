@@ -7,10 +7,6 @@ extends Node
 ## Writes <out_dir>/hud_<fixture>.png (full frame) and hud_<fixture>_panel_4x.png (panel crop, 4x).
 ## out_dir defaults to res://captures. Point APPDATA/user:// at a scratch folder so the real save is never touched.
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _ready() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
@@ -20,7 +16,7 @@ func _ready() -> void:
 	var main: Control = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	if fixture == "late" or fixture == "edit":
 		var sim: Sim = GameState.sim
 		GameState.onboarding.tips_enabled = false   # unlock every row and gate
@@ -29,13 +25,13 @@ func _ready() -> void:
 		for sid: StringName in sim.stat_defs:
 			sim.stats[sid] = BigNum.from_float(big)
 			big *= 37.0
-		await _wait(60)   # rolling counters settle
+		await ShotHelpers.wait(60)   # rolling counters settle
 	var hud: Hud = main.get("hud") as Hud
 	if fixture == "edit" and hud != null:
 		hud.call("_hide_row", &"clover")
 		hud.set_edit_mode(true)
-		await _wait(10)
-	await _wait(10)
+		await ShotHelpers.wait(10)
+	await ShotHelpers.wait(10)
 	var img: Image = get_tree().root.get_viewport().get_texture().get_image()
 	print("save ", out_dir.path_join("hud_%s.png" % fixture), " err=", img.save_png(out_dir.path_join("hud_%s.png" % fixture)))
 	var scale: float = float(img.get_width()) / 640.0

@@ -141,7 +141,7 @@ PC sim after the first retune put the Larkmoor far gate at 57.5 min (target abou
 - **Tests:** `t.make_sim()` pins `press_scale` to 1 on a private copy of the config, so mechanics suites test the raw formulas. `t.make_sim(true)` gives the shipped config, used by the greedy timeline and the press-scale tests in `test_pad_press.gd`.
 - **Not verified:** the balance gates from `tools/sim.gd` on the PC, and in-engine pace. The cloud can't run Godot.
 ## 2026-11-24: Sealed caches as the late-game sink
-Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late stock went unspent (gameplay audit 2026-11-24, 5.5). The caches roll Rare-or-better relics with a price that climbs 1.5x per pull and a cap of five a reset. Reason: the cost resets each reset, so a cache is a steady sink, not a one-off, and the cap keeps it from becoming the only spend. Numbers are in `content/sealed/*.tres` and are unverified in the sim.
+Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total (corrected 25 Nov: about 4,830, see the 2026-11-25 entry), so late stock went unspent (gameplay audit 2026-11-24, 5.5). The caches roll Rare-or-better relics with a price that climbs 1.5x per pull and a cap of five a reset. Reason: the cost resets each reset, so a cache is a steady sink, not a one-off, and the cap keeps it from becoming the only spend. Numbers are in `content/sealed/*.tres` and are unverified in the sim.
 ## 2026-11-24: Capstone gifts, the Bloom Crown and Nucleus Crown (minor)
 - **Why:** the gameplay audit (`plinky/audits/gameplay-loop-audit-2026-11-24.md`, section 5.5) found the largest gift per level was +2%, and Nathan said go on a capstone for each tree, with gifts that change the game.
 - **Chosen:** a sixth gift in each tree. `bloom_crown` (Seeds) and `nucleus_crown` (Core Shards): one level (cap 1), 150 of its currency, unlocked after 5 resets of its zone (the same gate scheme as the rest, so it heads its own tier). One level doubles every press on the zones its reset lists.
@@ -181,3 +181,10 @@ Seeds and Core Shards had only gift sinks, about 2,250 Seeds in total, so late s
 - **Curio Shelf:** 6 relic kinds at 9.5 min was nearly free, so the target is now 10 kinds (the pacing thread's suggestion). Not run in the sim past 81 min, so it is unverified that 10 kinds is reached in play.
 - **Ids unchanged:** `goal_relics_6` keeps its id so saves that already logged it still load. Only its target and order changed.
 - **Not checked:** the sim buys no attributes and equips no relics, so Tuned Up and Second Nature are unverified by the run.
+
+## 2026-11-25: Economy retune and away measurement (docs/balance.md section 16)
+- **Measured, not changed:** `tools/sim_away.gd` compares 2 hours offline with 2 hours active. Passive stats come out at about 0.5 of active, as the rule says. Offline tending pays the full reward per press on each tier's top pad (about 360 presses in 2 hours), so some Quarry stats come out far above active. Offline income is unchanged, pending Nathan's call on the away rule.
+- **Bloom Crown 150 to 40, Nucleus Crown 150 to 40.** At 150 a saver never affords the Bloom Crown in 40 Blooms. At 40 it is affordable by saving at Bloom 20 (about 56 min). The Nucleus number is set by symmetry and is not measured.
+- **Press gate kept on full price.** Gating on press cost moved the meadow gate from 10 to 37 min and Bloom 1 from 15 to 37 min. Nathan's locked pacing wins (coordinator, 25 Nov).
+- **Eleven attributes parked** in `content/parked/attributes/` (8 Prestige, 3 RP). Tests revive them via `PARKED_FOR_TESTS` in `tests/run.gd`. The quarry migration still refunds their saved levels.
+- **Corrections:** the sealed-cache note's "about 2,250 Seeds" should read about 4,830 Seeds for the full Bloom gift set. The idle rule is time to gate (SPEC and section 16 are aligned).

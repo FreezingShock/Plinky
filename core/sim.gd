@@ -59,9 +59,13 @@ var stats: Dictionary = {}           # StringName -> BigNum
 var prestige_spent: BigNum = BigNum.zero()
 var zone_id: StringName = &""
 var gates_open: Dictionary = {}      # zone id -> true (latched; survives rebirth)
+var _tiers_by_zone: Dictionary = {}   # zone id -> Array[TierDef] from tiers_in_zone (see there)
+var _tiers_src: Dictionary = {}       # the tier_defs the cache was built from
+var _tiers_src_size: int = -1
 var tiers_open: Dictionary = {}      # tier id -> true (latched; survives rebirth). A zone's first tier needs no entry.
 var zones_entered: Dictionary = {}   # zone id -> true once its entry grants were paid (latched)
 var attr_levels: Dictionary = {}     # StringName -> int
+var _retired_levels: Dictionary = {}  # parked attribute id -> level, from a save being loaded (for the quarry migration's refund)
 var play_seconds: float = 0.0
 var press_count: int = 0
 ## Every stat as it stood just before the last zone reset (stat id -> BigNum). The reset animation counts down from it.
@@ -304,13 +308,21 @@ func pad_rarity(button_id: StringName) -> StringName:
 	return b.rarity if b != null else &"common"
 
 
-## The tiers of a zone, lowest order first.
+## The tiers of a zone, lowest order first. Built once per zone and reused: the pad tick asks for it several times a frame
+## per pad. The array is shared, so callers read it and never change it.
 func tiers_in_zone(z_id: StringName) -> Array[TierDef]:
+	if not is_same(_tiers_src, tier_defs) or _tiers_src_size != tier_defs.size():
+		_tiers_by_zone.clear()   # tier_defs was replaced (content load, tests): the cached lists are stale
+		_tiers_src = tier_defs
+		_tiers_src_size = tier_defs.size()
+	if _tiers_by_zone.has(z_id):
+		return _tiers_by_zone[z_id] as Array[TierDef]
 	var out: Array[TierDef] = []
 	for t: TierDef in tier_defs.values():
 		if t.zone == z_id:
 			out.append(t)
 	out.sort_custom(func(a: TierDef, b: TierDef) -> bool: return a.order < b.order)
+	_tiers_by_zone[z_id] = out
 	return out
 
 
@@ -1538,6 +1550,7 @@ func from_dict(d_in: Dictionary) -> bool:
 			if zone_defs.has(StringName(str(k))):
 				zones_entered[StringName(str(k))] = true
 	_migrate_zones()
+	_retired_levels.clear()
 	var a: Variant = d.get("attributes", {})
 	if a is Dictionary:
 		for k: Variant in (a as Dictionary):
@@ -1545,6 +1558,8 @@ func from_dict(d_in: Dictionary) -> bool:
 			if attribute_defs.has(aid):
 				var cap: int = (attribute_defs[aid] as AttributeDef).cap
 				attr_levels[aid] = clampi(int((a as Dictionary)[k]), 0, cap)
+			elif ResourceLoader.exists("res://content/parked/attributes/%s.tres" % aid):
+				_retired_levels[aid] = maxi(0, int((a as Dictionary)[k]))   # parked: not live, but the migration refunds it
 	play_seconds = float(d.get("play_seconds", 0.0))
 	press_count = int(d.get("press_count", 0))
 	rebirth_count = int(d.get("rebirth_count", 0))
@@ -1585,6 +1600,7 @@ func from_dict(d_in: Dictionary) -> bool:
 		_migrate_to_quarry_ladder()
 	if save_ladder < 4:
 		_migrate_quarry_rebirth()
+	_retired_levels.clear()
 	_dirty.clear()
 	return true
 
@@ -1638,6 +1654,10 @@ func _migrate_quarry_rebirth() -> void:
 		if a.currency == config.prestige_stat or a.currency == config.rp_stat:
 			refund += attr_level(a.id)
 			attr_levels.erase(a.id)
+	# Parked Prestige and RP attributes (content/parked/attributes) are not live, so their saved levels were kept aside
+	# in from_dict. Every parked attribute was paid in Prestige or RP, so each level pays its refund.
+	for id: StringName in _retired_levels:
+		refund += int(_retired_levels[id])
 	var done: int = rebirth_count
 	if done <= 0 and refund <= 0 and get_stat(config.prestige_stat).is_zero():
 		return

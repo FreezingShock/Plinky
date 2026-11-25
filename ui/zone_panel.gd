@@ -310,7 +310,7 @@ func set_district(aid: StringName) -> void:
 
 ## A swap needs a built card on screen, and is skipped under Reduce Motion ("Still banners" in Access).
 func _can_swap() -> bool:
-	return is_inside_tree() and _card_area != &"" and _card.body() != null and not FxConfig.reduce_motion
+	return is_inside_tree() and _card_area != &"" and _card.body() != null and not FxConfig.still()
 
 
 ## Dithers the card out, rebuilds it for the new area, then dithers it back in. Alpha moves in quarters so it steps

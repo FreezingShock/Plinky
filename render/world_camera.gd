@@ -171,6 +171,15 @@ func is_free() -> bool:
 	return _free
 
 
+## Holds a free pan of `offset` texels from the walker, as a player holding a pan would. Tools that drive the view
+## (the Larkmoor view probe, the pan sweep) call this each frame: setting `pan` alone let the idle return pull the view
+## back to the walker after RETURN_DELAY, so the captures showed the walker instead of their target.
+func hold_pan(offset: Vector2) -> void:
+	pan = offset
+	_free = true
+	_idle = 0.0
+
+
 ## The world rect the view shows right now, in zone texels, rounded outward to whole texels.
 ## Streaming reads this to decide which chunks to keep loaded. It is a pure read of the camera's state.
 func view_rect() -> Rect2:

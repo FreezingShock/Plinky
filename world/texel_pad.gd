@@ -124,6 +124,7 @@ var _lock_icon: Texture2D = null  # the cost stat's 8 px icon, or null when the 
 var _reward_icon: Texture2D = null  # the reward stat's 8 px icon
 var _reward_text: String = ""      # the reward, e.g. "+1"
 var _sign_affordable: bool = false  # the state the sign was last drawn in: the band is green when the cost is held
+var _sign_locked: bool = false      # the lock state the sign was last drawn in: a locked pad's top slot shows a padlock
 ## Clover pads get a gold rim (not the grass green Sprout and Clover share), so the two rows read apart on the lake shore.
 const CLOVER_TRIM: Color = Color("f2c14e")
 var _trim: Color = Color(0.0, 0.0, 0.0, 0.0)
@@ -150,13 +151,18 @@ var _shake_t: float = 0.0   # 1 -> 0: the pad itself shakes sideways one texel (
 var _ring_tint: Color = Color(0.0, 0.0, 0.0, 0.0)   # streak tier colour for the ripple; alpha 0 = the plain palette ripple
 var _progress_t: float = 0.0
 var _sign_t: float = 0.0             # counts down to the next cost and reward text read (SIGN_REFRESH_S)
+var _state_t: float = 0.0            # counts down to the next affordable and locked read (STATE_REFRESH_S)
+const STATE_REFRESH_S: float = 0.1   # buy and unlock state is read ten times a second, not every frame: a pad's colour can trail by a tenth of a second
+var _gs_node: Node = null            # the GameState node, looked up once and kept (see _gs)
 const SIGN_REFRESH_S: float = 1.0    # the sign's text follows the live values once a second: a cost or gain change shows within that
 var _sig: int = -1          # what was last drawn; redraw only when it changes
 
 
 ## The GameState autoload, looked up by path so this script also compiles under --script (tests have no autoloads).
 func _gs() -> Node:
-	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameState")
+	if _gs_node == null or not is_instance_valid(_gs_node):
+		_gs_node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("GameState")
+	return _gs_node
 
 
 func _sim() -> Sim:
@@ -210,9 +216,12 @@ func _physics_process(delta: float) -> void:
 	if standing and not inside:
 		left.emit()
 	standing = inside
-	affordable = sim.can_afford(button_id)
-	locked = sim.is_pad_locked(button_id)
-	_sync_lock_chip()
+	_state_t -= delta
+	if _state_t <= 0.0:
+		_state_t = STATE_REFRESH_S
+		affordable = sim.can_afford(button_id)
+		locked = sim.is_pad_locked(button_id)
+		_sync_lock_chip()
 	_progress_t -= delta
 	if _progress_t <= 0.0:
 		_progress_t = 0.2
@@ -282,6 +291,8 @@ func hit(p: Vector2, slack: float = 1.3) -> bool:
 ## tint (alpha above 0) recolours the ripple with the press streak tier's colour.
 ## power (0 to 2) is how hard the press lands: 1 sinks one texel deeper, and any power shakes the pad itself.
 func punch(tint: Color = Color(0.0, 0.0, 0.0, 0.0), power: int = 0) -> void:
+	if FxConfig.still():
+		return   # Reduce Motion: no sink and no ring on a press. The popup and the burst still show it.
 	_punch_t = 1.0
 	_ring_t = 0.0
 	_ring_tint = tint
@@ -561,7 +572,9 @@ func _draw_cost_sign() -> void:
 	_chip.draw_rect(Rect2(x0 + 1.0, y0 + 1.0, iw, 2.0), band)
 	_chip.draw_rect(Rect2(x0 + 2.0, y0 + 4.0, 11.0, 10.0), wood_dk)
 	_chip.draw_rect(Rect2(x0 + 2.0, y0 + 14.0, 11.0, 10.0), wood_dk)
-	if _lock_icon != null:
+	if sign_top_slot(locked) == &"padlock":
+		_draw_padlock(_chip, Vector2(x0 + 3.0, y0 + 4.0), CHIP_CREAM.darkened(0.3))
+	elif _lock_icon != null:
 		_chip.draw_texture(_lock_icon, Vector2(x0 + 4.0, y0 + 5.0))
 	if _reward_icon != null:
 		_chip.draw_texture(_reward_icon, Vector2(x0 + 4.0, y0 + 15.0))
@@ -591,9 +604,23 @@ func _sync_lock_chip() -> void:
 	if _chip.visible != show_sign:
 		_chip.visible = show_sign
 		_chip.queue_redraw()
-	if show_sign and affordable != _sign_affordable:
+	if show_sign and (affordable != _sign_affordable or locked != _sign_locked):
 		_sign_affordable = affordable
+		_sign_locked = locked
 		_chip.queue_redraw()
+
+
+## What the sign's top slot shows: a padlock on a locked pad (the same convention as an upgrade row's padlock), else the cost icon.
+static func sign_top_slot(is_locked: bool) -> StringName:
+	return &"padlock" if is_locked else &"icon"
+
+
+## A 9x9 padlock drawn rect by rect from LockIcon's shapes, offset to `at` on the sign's texel grid.
+static func _draw_padlock(canvas: CanvasItem, at: Vector2, col: Color) -> void:
+	for r: Rect2 in LockIcon.SHACKLE:
+		canvas.draw_rect(Rect2(at + r.position, r.size), col)
+	canvas.draw_rect(Rect2(at + LockIcon.BODY.position, LockIcon.BODY.size), col)
+	canvas.draw_rect(Rect2(at + LockIcon.KEYHOLE.position, LockIcon.KEYHOLE.size), CHIP_CREAM.darkened(0.6))
 
 
 ## Whether a button gets a cost sign at all: only a row's first pad (button _1) does. The other pads show their price in the tooltip.
@@ -964,7 +991,7 @@ static func additive_material() -> CanvasItemMaterial:
 
 ## The gentle breath: the halo dims by up to GLOW_PULSE_DEPTH over GLOW_PULSE_TIME seconds. Still under Reduce Motion or Reduce Flashing.
 static func glow_pulse_alpha() -> float:
-	if FxConfig.reduce_flashing or FxConfig.reduce_motion:
+	if FxConfig.reduce_flashing or FxConfig.still():
 		return 1.0
 	var phase: float = fposmod(float(Time.get_ticks_msec()) / 1000.0 / GLOW_PULSE_TIME, 1.0)
 	return 1.0 - GLOW_PULSE_DEPTH * (0.5 - 0.5 * cos(TAU * phase))

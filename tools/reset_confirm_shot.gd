@@ -3,13 +3,9 @@ extends Node
 ## Run (windowed): godot --path . tools/reset_confirm_shot.tscn -- [out_dir] [reset: nucleus|bloom]
 ## Frames: the card open, a half hold, a full hold (the ritual launches), then the coin mid-flight.
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _shot(path: String) -> void:
-	await _wait(2)
+	await ShotHelpers.wait(2)
 	var img: Image = get_tree().root.get_viewport().get_texture().get_image()
 	print("save ", path, " err=", img.save_png(path))
 
@@ -31,7 +27,7 @@ func _ready() -> void:
 	var main: Control = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(60)
+	await ShotHelpers.wait(60)
 	GameState.onboarding.tips_enabled = false
 	var hud: Hud = main.get("hud") as Hud
 	var welcome: Control = hud.get("_welcome") as Control
@@ -51,7 +47,7 @@ func _ready() -> void:
 	confirm.set_process(true)
 	confirm._held = ResetConfirm.HOLD_TIME * 0.4
 	confirm._pressing = true
-	await _wait(5)
+	await ShotHelpers.wait(5)
 	await _shot(out_dir.path_join("%s_1b_rings.png" % reset_id))
 	confirm._pressing = false
 	confirm._held = ResetConfirm.HOLD_TIME * 0.5
@@ -63,8 +59,8 @@ func _ready() -> void:
 		guard += 1
 		await get_tree().process_frame
 	confirm._pressing = false
-	await _wait(2)
+	await ShotHelpers.wait(2)
 	await _shot(out_dir.path_join("%s_3_struck.png" % reset_id))
-	await _wait(18)
+	await ShotHelpers.wait(18)
 	await _shot(out_dir.path_join("%s_4_flight.png" % reset_id))
 	get_tree().quit(0)

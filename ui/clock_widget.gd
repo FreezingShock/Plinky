@@ -87,7 +87,8 @@ func _process(delta: float) -> void:
 	_acc += delta
 	if _flash > 0.0:
 		_flash = maxf(_flash - delta, 0.0)
-		_line.modulate = Color.WHITE.lerp(Color(1.7, 1.7, 1.7), absf(sin(_flash * 9.0)) * clampf(_flash, 0.0, 1.0))
+		# The season change brightens the month line. Reduce flashing keeps it at its normal brightness.
+		_line.modulate = Color.WHITE if FxConfig.reduce_flashing else Color.WHITE.lerp(Color(1.7, 1.7, 1.7), absf(sin(_flash * 9.0)) * clampf(_flash, 0.0, 1.0))
 	var step: int = int(_acc / DIAL_STEP)
 	if step != _beat:
 		_beat = step
@@ -234,7 +235,7 @@ func _draw_dial() -> void:
 	# the body on its arc, hidden once it is under the ground
 	if sy < ground - 1:
 		if is_day:
-			var pulse: bool = _beat % 2 == 0
+			var pulse: bool = _beat % 2 == 0 and not FxConfig.reduce_flashing   # the sun's pulse holds still under Reduce flashing
 			_disc(sx, sy, _palette[_sun])
 			_texel(sx - 1, sy - 1, _palette[7])
 			if pulse:

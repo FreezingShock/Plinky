@@ -120,6 +120,8 @@ func _add_sky() -> void:
 	_shadows = SkyShadows.new()
 	_shadows.name = "Shadows"
 	add_child(_shadows)   # at z 0, after the ground and grass: above them, below every prop and the walker
+	_shadows.set_flowers(_garden_flowers)   # one faint shadow per clearing flower (world/sky_shadows.gd)
+	_shadows.set_palette(Palettes.MEADOW)   # the shadow is the ground's own dark step, not a fixed hue
 	_sky = SkyCycle.new()
 	_sky.name = "Sky"
 	_sky.shadows = _shadows
@@ -131,6 +133,7 @@ func _add_sky() -> void:
 		if String(a.kind) == "water":
 			water.append(Vector4(float(a.sx), float(a.sy), float(a.rx), float(a.ry)))
 	_sky.ponds = water
+	_sky.shafts_on = true   # golden-hour canopy shafts, as Larkmoor (render/shaders/light_shafts.gdshader)
 	add_child(_sky)
 	_add_flower_glow()
 	var water_glow := WaterNightGlow.new()   # night glow on the pond and lake (world/water_night_glow.gd)

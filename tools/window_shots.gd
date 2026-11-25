@@ -9,17 +9,13 @@ func _shot(name: String) -> void:
 	print("shot ", name)
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
 	var main: Control = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(40)
+	await ShotHelpers.wait(40)
 	var tag: String = OS.get_cmdline_user_args()[0] if OS.get_cmdline_user_args().size() > 0 else ""
 	var win: Window = get_tree().root
 	print("size ", win.size, " final ", win.get_final_transform(), " bar inset ", (main.window_frame as WindowFrame).inset())
@@ -29,7 +25,7 @@ func _ready() -> void:
 		return
 	await _shot("w1_titlebar")
 	main.display_panel.open()
-	await _wait(6)
+	await ShotHelpers.wait(6)
 	await _shot("w2_settings")
 	main.display_panel.close()
 	var frame: WindowFrame = main.window_frame
@@ -39,6 +35,6 @@ func _ready() -> void:
 		await _shot("w3_wipe_%d" % i)
 	frame._wipe.visible = false
 	DisplaySettings.native_frame = true
-	await _wait(6)
+	await ShotHelpers.wait(6)
 	await _shot("w4_native_frame")
 	get_tree().quit()

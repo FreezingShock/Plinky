@@ -79,6 +79,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# The loading screen fills any window like the title does. Main turns this off again.
 	DisplaySettings.set_pregame_fill(get_window(), true)
+	# The stored Access options (Reduce motion, Reduce flashing, Still banners ...) must hold from the first frame, so the
+	# backdrop, motes and walker below are built already calm. Title and main apply them again, which is harmless.
+	SettingsRegistry.apply_all()
 	GardenArt.prepare()   # the flower atlas is planned now and baked a slice a frame while the loading screen runs (_process)
 	_pal = Palettes.colors(Palettes.MEADOW)
 
@@ -320,13 +323,15 @@ func _start_leave() -> void:
 	SceneSwap.go(get_tree(), next)
 
 
+## The press loop plays on its beat. Under Reduce Motion the walker stands on its first frame and only the bar moves it along.
 func _animate_walker(delta: float) -> void:
 	_walk_t += delta
-	var frame: int = int(_walk_t * WALKER_FPS) % WALKER_FRAME_COUNT
+	var frame: int = 0 if FxConfig.still() else int(_walk_t * WALKER_FPS) % WALKER_FRAME_COUNT
 	_walker_tex.region = Rect2(frame * WALKER_CELL, 0, WALKER_CELL, WALKER_CELL)
 
 
 ## Tips change on a pixel blink (hidden for a moment), not a soft alpha fade, to match the art bible.
+## Under Reduce Flashing the new tip swaps in at once, with no blank frame.
 func _animate_tips(delta: float) -> void:
 	if _tip_blank > 0.0:
 		_tip_blank -= delta
@@ -338,5 +343,8 @@ func _animate_tips(delta: float) -> void:
 	if _tip_timer >= TIP_SECONDS:
 		_tip_timer = 0.0
 		_tip_index = (_tip_index + 1) % TIPS.size()
+		if FxConfig.reduce_flashing:
+			_tip_label.text = TIPS[_tip_index]
+			return
 		_tip_label.visible = false
 		_tip_blank = TIP_BLANK_SECONDS

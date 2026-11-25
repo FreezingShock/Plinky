@@ -12,13 +12,9 @@ var out_dir: String = "res://shots/palette"
 var _cands: Array[CanvasItem] = []
 
 
-func _wait(n: int) -> void:
-	for i in n:
-		await get_tree().process_frame
-
 
 func _shot(name: String) -> void:
-	await _wait(2)
+	await ShotHelpers.wait(2)
 	root.get_texture().get_image().save_png(ProjectSettings.globalize_path("%s/%s.png" % [out_dir, name]))
 
 
@@ -77,11 +73,11 @@ func _ready() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	await _wait(60)
+	await ShotHelpers.wait(60)
 
 	if day_frac >= 0.0:
 		sim.calendar.set_day_fraction(day_frac)
-		await _wait(120)
+		await ShotHelpers.wait(120)
 	var pal: PackedColorArray = Palettes.colors(Palettes.MEADOW)
 	var hexes: PackedStringArray = []
 	for c in pal:
@@ -103,9 +99,9 @@ func _ready() -> void:
 	# World-only frame: hide every UI node (HUD, tutorial, arrival banner) so the counts cover the world alone.
 	_quiet_ui()
 	# Freeze the clock and the animations so each capture differs only by the node we hide.
-	await _wait(30)
+	await ShotHelpers.wait(30)
 	Engine.time_scale = 0.0
-	await _wait(10)
+	await ShotHelpers.wait(10)
 	await _shot("base")
 	if mode == "dump":
 		get_tree().quit(0)
