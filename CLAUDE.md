@@ -22,7 +22,7 @@ Godot 4.7 isometric incremental game. GDScript, Forward+, fixed isometric camera
 - Static typing everywhere.
 - Gameplay emits EventBus signals and never sets shader uniforms. Fx owns gameplay uniforms. Presentation scripts that own their material may set it.
 - Stats are BigNum, never float. Format numbers only through `core/number_format.gd`.
-- Theme: Pixelify Sans titles, Spleen 6x12 body, palette-indexed colours, 4x4 Bayer dither, nearest filtering, integer scale, no blur. Title Case for stat names and menu labels.
+- Theme: Pixelify Sans titles, Spleen 6x12 body, palette-indexed colours (8 roles, each a 4-step hue-shifted ramp, art-bible s.3), 4x4 Bayer dither, nearest filtering, integer scale, no blur. Title Case for stat names and menu labels.
 - No image textures on world geometry. Colour is vertex colour or palette index.
 - Don't copy assets, names or number tables from other games.
 - Never use "Plinko" in game text, store copy or file names. No literal "Button" in player-facing text.

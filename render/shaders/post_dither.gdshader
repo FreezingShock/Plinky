@@ -3,8 +3,8 @@ shader_type canvas_item;
 // outline -> light bands -> 4x4 Bayer dither -> palette -> zone shift / invert / ASCII.
 
 uniform sampler2D world : filter_nearest;
-uniform sampler2D palette_a : filter_nearest;   // current palette (1x8)
-uniform sampler2D palette_b : filter_nearest;   // palette being shifted to
+uniform sampler2D palette_a : filter_nearest;   // current palette, 8x4: x = role, y = ramp step (Palettes.texture)
+uniform sampler2D palette_b : filter_nearest;   // palette being shifted to, same layout
 uniform float shift : hint_range(0.0, 1.0) = 0.0;   // palette blend, dithered per texel
 uniform float invert : hint_range(0.0, 1.0) = 0.0;  // 1 = palette index 7 - i
 uniform float ascii : hint_range(0.0, 1.0) = 0.0;   // ASCII redraw wipe amount
@@ -38,23 +38,25 @@ int object_id(vec4 c) {
 	return int(round(c.b * 255.0));
 }
 
-vec3 palette_color(int idx, ivec2 t) {
+vec3 palette_color(int idx, int step, ivec2 t) {
 	idx = clamp(idx, 0, 7);
-	vec3 a = texelFetch(palette_a, ivec2(idx, 0), 0).rgb;
-	vec3 b = texelFetch(palette_b, ivec2(idx, 0), 0).rgb;
+	step = clamp(step, 0, 3);
+	vec3 a = texelFetch(palette_a, ivec2(idx, step), 0).rgb;
+	vec3 b = texelFetch(palette_b, ivec2(idx, step), 0).rgb;
 	return (shift > bayer4(t)) ? b : a;
 }
 
-int shade_index(ivec2 t) {
+// Returns (role, ramp step). Step 2 is the anchor colour; the light band picks 1 to 3, 0 is the deepest shade.
+ivec2 shade_index(ivec2 t) {
 	vec4 c = fetch(t);
 	int id = object_id(c);
 	if (id == 0) {
-		return bg_index;
+		return ivec2(bg_index, 2);
 	}
 	// 1. outline: this texel borders a different object (or empty)
 	if (object_id(fetch(t + ivec2(1, 0))) != id || object_id(fetch(t + ivec2(-1, 0))) != id
 			|| object_id(fetch(t + ivec2(0, 1))) != id || object_id(fetch(t + ivec2(0, -1))) != id) {
-		return 0;
+		return ivec2(0, 0);
 	}
 	int lit = int(floor(c.r * 8.0));
 	// 2. three light bands with dithered edges, plus shimmer
@@ -76,15 +78,18 @@ int shade_index(ivec2 t) {
 			}
 		}
 	}
-	return max(lit - (2 - level), min(lit, 1));
+	int role = max(lit - (2 - level), min(lit, 1));
+	// unlit texels take the deepest step; otherwise the light band sets the step (1 shade, 2 base, 3 lit)
+	int step = (lit == 0) ? 0 : level + 1;
+	return ivec2(role, step);
 }
 
 vec3 resolve(ivec2 t) {
-	int idx = shade_index(t);
+	ivec2 s = shade_index(t);
 	if (invert > 0.5) {
-		idx = 7 - idx;
+		s.x = 7 - s.x;
 	}
-	return palette_color(idx, t);
+	return palette_color(s.x, s.y, t);
 }
 
 void fragment() {
@@ -103,7 +108,7 @@ void fragment() {
 			uint row = (lp.y < 4) ? GLYPH_HI[g] : GLYPH_LO[g];
 			uint bits = (row >> uint((lp.y & 3) * 8)) & 255u;
 			bool on = ((bits >> uint(7 - lp.x)) & 1u) == 1u;
-			col = on ? avg : palette_color(0, t);
+			col = on ? avg : palette_color(0, 0, t);
 		}
 	}
 	COLOR = vec4(col, 1.0);

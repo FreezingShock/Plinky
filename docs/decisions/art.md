@@ -441,3 +441,10 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Decision:** `FlowerGlow.WINTER_SCALE` (0.42) scales the glow in winter only, via `set_winter`, pushed from `LarkmoorScene` with the garden season. At full night the core goes from 0.6 to about 0.25. The spill follows the same scale at runtime. Other seasons keep `NIGHT_ALPHA`.
 - **Not changed:** noon (the glow is 0 by day), the stalk sprites, and the summer and autumn glow.
 - **Not verified in-engine on PC:** the shipped change. The mockups were rendered in the cloud with the same values as a global glow change (v0.99.44 code, not the winter-only scale), so the PC check should confirm winter nights and that summer nights are unchanged.
+## 2026-11-25: Ramp palettes and the B dusk grade (T1)
+- **Nathan's pick:** Option B, warm lit and cool shade, at dusk (mockups in `/mnt/project-files/palette-grade/`).
+- **Decision:** each zone palette gets 4 hue-shifted steps per role (32 colours). The 8 anchors in `Palettes.DATA` are unchanged and are step 2 of each ramp, so UI and particles that call `colors()` see no change. The post palette is an 8x4 texture (x = role, y = step). The shader's light band sets the step (1 to 3), and unlit texels take step 0.
+- **Dusk:** `SkyConfig.dusk_tint` (1.12, 0.92, 0.80) and `dusk_sat` (1.15), weighted by `SkyModel.low_sun`, so dawn and dusk both get the warm grade and noon and night do not.
+- **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
+- **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.

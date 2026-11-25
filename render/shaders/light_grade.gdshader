@@ -22,6 +22,7 @@ uniform float sat = 1.0;                         // saturation about luminance, 
 uniform float contrast = 1.0;                    // about a dark-mid pivot, so shadows deepen and highlights open
 uniform vec3 noon_tint = vec3(1.0);              // pulls the green out of a bright high-sun frame
 uniform float exposure = 1.0;                    // below 1 at high noon, where the frame reads bleached
+uniform vec3 dusk_mul = vec3(1.0);               // warm multiply at the low sun (SkyCycle: dusk_tint, 1 = off)
 uniform float lift = 0.22;                       // how much brighter a lit texel gets
 
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
@@ -53,6 +54,7 @@ void fragment() {
 	c = c * mix(vec3(1.0), (1.0 + lift * 0.6) * mix(vec3(1.0), light_col * 1.2, 0.7), hi * 0.6);
 	c *= mix(vec3(1.0), shade_col * 0.9, lo * 0.6);
 	c *= exposure * noon_tint;
+	c *= dusk_mul;
 	float l2 = dot(c, vec3(0.299, 0.587, 0.114));
 	c = mix(vec3(l2), c, sat);
 	c = (c - 0.42) * contrast + 0.42;
