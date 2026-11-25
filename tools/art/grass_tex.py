@@ -131,7 +131,26 @@ def style_stalks(XX, YY, nz):
     return D + np.clip(T, DARK, LIGHT)
 
 
-STYLES = {'a': style_clusters, 'b': style_bands, 'c': style_strokes, 'd': style_clumps, 'e': style_blades, 'f': style_stalks}
+def style_clumpblades(XX, YY, nz):
+    """G (Fresh Meadow M2): big organic light patches, warm and cool, with dense 1-texel blade clumps standing in them
+    and bare lawn between the clumps. Patches move a texel along the grass ramp, the blades add the crown and base
+    contrast, so the grass reads as varied shading at 1x without a noise grid. Chosen from the M2 mockup (Nathan)."""
+    H, W = XX.shape; fbm2 = nz['fbm2']
+    D = (fbm2(XX / 56.0, YY * 2 / 56.0, 3, 101) - .5) * .42 + (fbm2(XX / 90.0, YY * 2 / 90.0, 2, 102) - .5) * .16
+    px, py, r = _anchors(W, H, 3, 3, 35)
+    dens = fbm2(px / 26.0, py * 2 / 26.0, 3, 103)
+    keep = r < np.clip((dens - .40) * 3.6, 0, .9)                      # clumps gather where the field is high
+    px, py, r2 = px[keep], py[keep], r[keep]
+    tall = (r2 * 7919 % 1.0) < .55
+    T = np.zeros((H, W))
+    for sel, shape in ((tall, [(0, -3, LIGHT), (0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, 0, DARK * .5)]),
+                       (~tall, [(0, -2, LIGHT), (0, -1, LIGHT), (0, 0, DARK), (1, 0, DARK * .5)])):
+        _stamp(T, px[sel], py[sel], shape)
+    return D + np.clip(T, DARK, LIGHT)
+
+
+STYLES = {'a': style_clusters, 'b': style_bands, 'c': style_strokes, 'd': style_clumps, 'e': style_blades, 'f': style_stalks,
+          'g': style_clumpblades}
 
 
 def apply(style, l, mask, XX, YY, nz):
