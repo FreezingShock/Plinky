@@ -490,3 +490,9 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Supersedes:** the family lists in the 2026-11-25 T11 entry above. The families in `tools/art/icon_ramps.py` are the source of truth.
 - **Checked:** `gen_icons_staged.py` changed exactly the 20 files for Cinder, Rebirth points, Rebirth and Prestige, and nothing else. The four icons were rendered side by side before the change (Pillow, not in-engine).
 - **Not verified in-engine:** the PC QA thread should check the HUD and the gallery after pulling.
+## 2026-11-25: Prop relight uses the 32-colour ramps (T1)
+- **Why:** the coordinator's note after #544: the prop relight (`render/shaders/prop_ramps.gdshaderinc`) still quantised through the old 8 colours, so trees and rocks did not show the restyle at non-baked sun times.
+- **Decision:** the include keeps `PAL[8]` (the anchors the bake uses) and adds `RAMP_PAL[32]` (role * 4 + step). Each material ramp is mapped to steps 1 to 3 from dark to light, so the relight draws the same bands as the post shader. `ground_light` and `wind_sway` read `RAMP_PAL`.
+- **Regeneration:** `gen_meadow3d.py` writes the include with `gen_palette_ramps.prop_ramp_steps` and `role_steps_32`. The include was regenerated from the existing one (decoded, round-trip checked byte for byte), so the full bake did not run.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb. Before and after at noon and dusk for both zones: `/mnt/project-files/palette-grade/prop_ramps_before_after.png`. The change is subtle at this zoom, and the Welcome Back dialog covers part of each frame. PC QA should re-check at zoom 1 with the dialog dismissed.
+
