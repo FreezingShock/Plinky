@@ -1,0 +1,1 @@
+- Trees, rocks and other props use the stepped ramp colours when the light changes away from the baked sun, so they match the new zone palettes.

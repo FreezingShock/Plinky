@@ -26,6 +26,7 @@ END = "# END RAMPS"
 
 
 def hex_to_rgb(h: str) -> tuple[float, float, float]:
+    h = h.lstrip("#")
     return tuple(int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))  # type: ignore[return-value]
 
 
@@ -38,7 +39,7 @@ def ramp(anchor: str) -> list[str]:
     out = []
     for k in range(4):
         if k == 2:
-            out.append(anchor)  # the anchor is exact
+            out.append(anchor.lstrip("#"))  # the anchor is exact
             continue
         target = STEP_HUE_TARGET[k]
         arc = ((target - h + 0.5) % 1.0) - 0.5 if target is not None else 0.0
@@ -47,6 +48,28 @@ def ramp(anchor: str) -> list[str]:
         vv = min(1.0, v * STEP_VALUE[k])
         out.append(rgb_to_hex(colorsys.hsv_to_rgb(hh, ss, vv)))
     return out
+
+
+def role_steps_32(anchors: list[str]) -> list[str]:
+    """32 hex colours with a leading '#', role-major: index role * 4 + step (0 darkest, 2 the anchor, 3 lit)."""
+    out: list[str] = []
+    for a in anchors:
+        out.extend("#" + h for h in ramp(a))
+    return out
+
+
+def prop_ramp_steps(roles: list[int]) -> list[int]:
+    """Map a material ramp of roles (dark to light) to RAMP_PAL indices, role * 4 + step.
+
+    Steps run 1 to 3 from dark to light, the same bands the post shader draws (step = light band + 1). A one-element
+    ramp takes the anchor step, 2.
+    """
+    n = len(roles)
+    if n == 1:
+        steps = [2]
+    else:
+        steps = [1 + int(2 * k / (n - 1) + 0.5) for k in range(n)]
+    return [r * 4 + s for r, s in zip(roles, steps)]
 
 
 def main() -> None:
