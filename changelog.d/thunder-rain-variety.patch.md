@@ -1,1 +1,0 @@
-Thunder has four rumbles that never repeat back to back, and rain no longer hitches the first time it starts. Thunder and relic or tier chimes dip the ambience a little, and chimes vary slightly in pitch.
