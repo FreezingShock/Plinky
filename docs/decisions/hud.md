@@ -674,3 +674,10 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Calm:** the card's rings use `FxConfig.ascension_calm()`, the same test as the ritual's flight (Reduce flashing, Still meadow or Calm camera). Still banners no longer changes the card.
 - **Checked:** `tests/run.gd` passes (11737 checks, 0 failed). A temporary probe injected a mouse press in the open's frame and on frames 1 and 3, with and without a motion event: the hold registered every time after the fix. With Reduce flashing and with Still meadow, the hold drew no rings and the ritual did not fly.
 - **Not run in-engine:** the PC repro after this change. QA batch 164 should re-run the first bar press at zoom 1 and 3.
+
+## 2026-11-25: The reset confirm reads its bar and icon presses from the input event (first press, defence)
+- **Decision:** `ResetConfirm._input` starts the hold on a left press that lands inside the bar's or the icon's own rect, and consumes it, before the GUI routes the event. The GUI handlers (`_on_hold_input`) stay as they were, and a release still ends the hold anywhere.
+- **Why:** QA batch 174 (v0.105.4, with the layout fix) still saw the first press after the card opens do nothing on the PC in 4 of 4 boots, and the second press worked. The cause is not confirmed. A press could be routed to a control other than the bar if the GUI's hover state is stale until the mouse moves.
+- **Cloud repro did not match:** real `InputEventMouseButton` events through `Input.parse_input_event` on the bar and the icon, with and without a motion event first, after a chip click, with a tooltip up, and after a gliding move onto the bar, all started the hold on the old and the new code alike. So this is a defence, not a proven fix. The PC logs (`C:\dev\_plinky\logs\batch174\`) are needed to confirm the cause.
+- **Not covered by a committed test:** `tests/run.gd` suites run from `SceneTree._init`, before the tree is live. There a card has no layout (its bar is 0 by 0) and `Viewport.push_input` is refused, so no suite can press the bar through the viewport.
+- **Checked:** `tests/run.gd` passes. Not run in-engine on the PC.
