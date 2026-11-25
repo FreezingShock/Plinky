@@ -24,8 +24,8 @@ func run(t: Object) -> void:
 	t.ok(str(TipText.rebirth(false, "1")["hint"]) != "", "rebirth explains when it is unavailable")
 
 	var rar: RarityDef = load("res://content/rarities/uncommon.tres") as RarityDef
-	var tag: Dictionary = TipText.rarity_tag(rar, "button", Color.WHITE)[0] as Dictionary
-	t.eq(tag["t"], "UNCOMMON BUTTON", "the rarity tag is rarity then type, all caps")
+	var tag: Dictionary = TipText.rarity_tag(rar, "pad", Color.WHITE)[0] as Dictionary
+	t.eq(tag["t"], "UNCOMMON PAD", "the rarity tag is rarity then type, all caps")
 	t.ok(bool(tag["tag"]), "the rarity tag is drawn in the bold tag face")
 	t.ok(StatStyle.tag_font().base_font.resource_path.ends_with("PixelifySans.ttf") and StatStyle.tag_font().variation_embolden > 0.0, "the tag face is emboldened Pixelify Sans")
 	var sim: Sim = t.make_sim()

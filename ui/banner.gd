@@ -7,7 +7,7 @@ extends CanvasLayer
 ## Keys: title (Pixelify), lines (Spleen), icon (AreaIcons id), color (Color, tints the border and title), fill (Color,
 ## the panel background; zone banners use their palette ink), duration (hold, seconds), key (same key = same banner,
 ## dropped as a duplicate), interrupt (replace what is showing).
-## Banners queue (max 4 waiting), skip() ends the current one early, and reduced motion (FxConfig.reduce_motion)
+## Banners queue (max 4 waiting), skip() ends the current one early, and reduced motion (FxConfig.still())
 ## shows each one whole with no typing. Logic lives in core/banner_queue.gd. main.gd calls attach(hud) so the panel
 ## sits inside the framed game view; until then it uses its own layer.
 
@@ -234,7 +234,7 @@ func _begin(spec: Dictionary) -> void:
 	_icon.set_meta("id", spec["icon"])
 	_icon.set_meta("color", title_col)
 	_icon.queue_redraw()
-	_tl = BannerQueue.timeline(longest, spec["duration"], FxConfig.reduce_motion)
+	_tl = BannerQueue.timeline(longest, spec["duration"], FxConfig.still())
 	_t = 0.0
 	_title.progress = 0.0 if _tl["in"] > 0.0 else 1.0
 	view.visible = true

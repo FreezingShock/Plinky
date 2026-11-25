@@ -959,7 +959,7 @@ func _buy_upgrade(aid: StringName) -> void:
 			row.play_buy(UpgradeText.state(sim, sim.attribute_defs[aid]))   # lighter while a held Buy repeats
 		# The header balance of that currency pops too, so the spend reads at the counter.
 		var badge: Control = _cur_badges.get((sim.attribute_defs[aid] as AttributeDef).currency) as Control
-		if badge != null and not (MeadowLife.reduce_motion or FxConfig.reduce_flashing):
+		if badge != null and not (FxConfig.still() or FxConfig.reduce_flashing):
 			badge.pivot_offset = badge.size * 0.5
 			badge.scale = Vector2(1.18, 1.18)
 			var bt := create_tween()
@@ -1217,7 +1217,7 @@ var _slides: Dictionary = {}                # row box -> Tween (a row sliding to
 
 ## Reduced motion or flashing: the strip's animations snap instead.
 func _calm() -> bool:
-	return MeadowLife.reduce_motion or FxConfig.reduce_motion or FxConfig.reduce_flashing
+	return FxConfig.still() or FxConfig.reduce_flashing
 
 
 ## A true/false setting from the registry (Settings > Gameplay), or `fallback` when it is not registered.

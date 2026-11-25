@@ -75,7 +75,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not (FxConfig.reduce_flashing or MeadowLife.reduce_motion):
+	if not (FxConfig.reduce_flashing or FxConfig.still()):
 		_t += delta
 	var origin: Vector2 = ((size - Vector2(W, H)) * 0.5).round()
 	if origin != _origin:

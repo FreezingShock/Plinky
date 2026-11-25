@@ -1,6 +1,7 @@
 class_name TipCard
 extends PanelContainer
 ## One tip at a time, in the dither-box style: title, a few lines, a draining timer bar, and two buttons.
+## The timer pauses while the pointer is over the card or focus is on one of its buttons.
 ## "Got it" closes this tip. "Skip tips" closes it and turns tips off for good (the Hud saves that).
 ## The Hud places the card above the bottom bar and feeds it real-time deltas.
 
@@ -70,6 +71,17 @@ func dismiss() -> void:
 	visible = false
 
 
+## The timer waits while the pointer is over the card or keyboard or pad focus is on one of its buttons, so a reader
+## who is still reading (or still choosing) is never timed out.
+func _attended() -> bool:
+	if not is_inside_tree():
+		return false
+	if get_global_rect().has_point(get_global_mouse_position()):
+		return true
+	var focus: Control = get_viewport().gui_get_focus_owner()
+	return focus != null and is_ancestor_of(focus)
+
+
 func _close(skipped: bool) -> void:
 	_active = false
 	visible = false
@@ -77,7 +89,7 @@ func _close(skipped: bool) -> void:
 
 
 func _process(delta: float) -> void:
-	if not visible:
+	if not visible or _attended():
 		return
 	_left -= delta
 	_bar.value = _left / _total

@@ -27,8 +27,10 @@ func _ready() -> void:
 		})
 
 
+## Under Reduce Motion the motes hang where they are: the clock stops, so they neither drift nor sway.
 func _process(delta: float) -> void:
-	_time += delta
+	if not FxConfig.still():
+		_time += delta
 	queue_redraw()
 
 
