@@ -140,7 +140,7 @@ void fragment() {
 	if (relight > 0.0 && c.a > 0.5) {
 		vec4 d = texture(nrm_tex, UV);
 		int code = int(d.b * 255.0 + 0.5);
-		if (code >= 10 && code < 110 && RAMP_LEN[code] > 0) {
+		if (code >= 10 && code < 112 && RAMP_LEN[code] > 0) {
 			vec3 n = vec3(d.rg * 2.0 - 1.0, 0.0);
 			n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
 			float lb = d.a * 1.8 - 0.4;
@@ -195,7 +195,7 @@ void fragment() {
 	// Water (material 107) and its foam (108) keep their own palette in every season: the water ramp's greens
 	// (47,107,85) pass the "green texel" test in season_recolor and were dyed orange like the grass.
 	int mat_code = int(texture(nrm_tex, UV).b * 255.0 + 0.5);
-	bool is_water = mat_code == 107 || mat_code == 108;
+	bool is_water = mat_code == 107 || mat_code == 108 || mat_code == 110 || mat_code == 111;
 	if (c.a > 0.5 && debug_view == 0 && !is_water && (season_amt > 0.0 || season_snow > 0.0)) {
 		c.rgb = season_recolor(c.rgb, wpos);
 	}

@@ -20,6 +20,14 @@ const TICK_STEPS: int = 8
 const FLY_SECONDS: float = 0.55
 ## Two across fit the menu at 640x360 with room to spare. Three lines inside: the name row, the values, the cost row.
 const CARD_SIZE: Vector2 = Vector2(150.0, 52.0)
+## Icon textures the Upgrades panel shows, kept here so a reopen (and the warm-up) never reads them from disk again.
+static var _icons: Dictionary = {}   # icon name -> Texture2D
+
+
+static func icon(name: String) -> Texture2D:
+	if not _icons.has(name):
+		_icons[name] = load("res://assets/icons/%s.png" % name) as Texture2D
+	return _icons[name] as Texture2D
 const BORDER: int = 2
 const PAD: float = 5.0
 const DIM_BODY: float = 0.55   ## how much the contents fade when you cannot pay (the frame stays bright)
@@ -92,7 +100,7 @@ func setup(a: AttributeDef) -> void:
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(slot)
 	_icon = TextureRect.new()
-	_icon.texture = load("res://assets/icons/%s.png" % StatIndex.attr_icon(a)) as Texture2D
+	_icon.texture = icon(StatIndex.attr_icon(a))
 	_icon.custom_minimum_size = Vector2(16, 16)
 	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -119,6 +127,7 @@ func setup(a: AttributeDef) -> void:
 	_delta.clip_contents = true
 	_delta.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_delta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_delta.focus_mode = Control.FOCUS_NONE   # the card is the focus stop; this line is only text, so Tab skips it
 	_delta.add_theme_color_override("default_color", RelicStyle.text)
 	_body.add_child(_delta)
 	# Line 3: pips, then the cost on the right.

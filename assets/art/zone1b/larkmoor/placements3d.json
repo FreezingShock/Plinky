@@ -301,7 +301,7 @@
   },
   {
    "kind": "district",
-   "name": "Gatehouse Green",
+   "name": "Thistledown Green",
    "id": "green",
    "u": 986.0,
    "v": 948.0,
@@ -319,7 +319,7 @@
   },
   {
    "kind": "district",
-   "name": "Old Oak Crossing",
+   "name": "Heather Hollow",
    "id": "oak",
    "u": 973.0,
    "v": 745.0,
@@ -328,7 +328,7 @@
   },
   {
    "kind": "district",
-   "name": "Thistle Rise",
+   "name": "Foxglove Rise",
    "id": "thistle",
    "u": 1223.0,
    "v": 923.0,
@@ -364,7 +364,7 @@
   },
   {
    "kind": "district",
-   "name": "Emberwatch",
+   "name": "Starbloom Terrace",
    "id": "emberwatch",
    "u": 637.0,
    "v": 599.0,
@@ -571,13 +571,13 @@
    "sort_y": 1253.1
   },
   {
-   "file": "sprites/tower_024.png",
-   "nrm": "sprites/tower_024_n.png",
-   "kind": "tower",
-   "x": 1444,
-   "y": 1327,
-   "w": 25,
-   "h": 62,
+   "file": "sprites/ruin_024.png",
+   "nrm": "sprites/ruin_024_n.png",
+   "kind": "ruin",
+   "x": 1441,
+   "y": 1358,
+   "w": 31,
+   "h": 31,
    "foot": [
     1456.0,
     1386.0
@@ -585,13 +585,13 @@
    "sort_y": 1386.0
   },
   {
-   "file": "sprites/lighthouse_025.png",
-   "nrm": "sprites/lighthouse_025_n.png",
-   "kind": "lighthouse",
-   "x": 1180,
-   "y": 1107,
-   "w": 25,
-   "h": 77,
+   "file": "sprites/ruin_025.png",
+   "nrm": "sprites/ruin_025_n.png",
+   "kind": "ruin",
+   "x": 1176,
+   "y": 1148,
+   "w": 32,
+   "h": 38,
    "foot": [
     1192.0,
     1177.4
@@ -627,18 +627,18 @@
    "sort_y": 749.2
   },
   {
-   "file": "sprites/tower_028.png",
-   "nrm": "sprites/tower_028_n.png",
-   "kind": "tower",
-   "x": 1588,
-   "y": 403,
-   "w": 25,
-   "h": 66,
+   "file": "sprites/ruin_028.png",
+   "nrm": "sprites/ruin_028_n.png",
+   "kind": "ruin",
+   "x": 1598,
+   "y": 490,
+   "w": 33,
+   "h": 41,
    "foot": [
-    1600.0,
-    462.1
+    1610.0,
+    520.6
    ],
-   "sort_y": 462.1
+   "sort_y": 520.6
   },
   {
    "file": "sprites/bridge_029.png",
@@ -703,7 +703,7 @@
    "x": 1161,
    "y": 1106,
    "w": 44,
-   "h": 43,
+   "h": 42,
    "foot": [
     1181.1,
     1145.8
@@ -1358,10 +1358,10 @@
    "file": "sprites/pine_080.png",
    "nrm": "sprites/pine_080_n.png",
    "kind": "pine",
-   "x": 1931,
+   "x": 1936,
    "y": 590,
-   "w": 50,
-   "h": 68,
+   "w": 45,
+   "h": 59,
    "foot": [
     1956.8,
     653.5
@@ -4531,6 +4531,118 @@
     1144.8
    ],
    "sort_y": 1144.8
+  },
+  {
+   "file": "sprites/ruin_313.png",
+   "nrm": "sprites/ruin_313_n.png",
+   "kind": "ruin",
+   "x": 2003,
+   "y": 934,
+   "w": 33,
+   "h": 33,
+   "foot": [
+    2020.0,
+    958.0
+   ],
+   "sort_y": 958.0
+  },
+  {
+   "file": "sprites/ruin_314.png",
+   "nrm": "sprites/ruin_314_n.png",
+   "kind": "ruin",
+   "x": 1932,
+   "y": 920,
+   "w": 43,
+   "h": 42,
+   "foot": [
+    1953.0,
+    953.8
+   ],
+   "sort_y": 953.8
+  },
+  {
+   "file": "sprites/ruin_315.png",
+   "nrm": "sprites/ruin_315_n.png",
+   "kind": "ruin",
+   "x": 1316,
+   "y": 661,
+   "w": 30,
+   "h": 39,
+   "foot": [
+    1330.3,
+    691.6
+   ],
+   "sort_y": 691.6
+  },
+  {
+   "file": "sprites/ruin_316.png",
+   "nrm": "sprites/ruin_316_n.png",
+   "kind": "ruin",
+   "x": 1340,
+   "y": 608,
+   "w": 39,
+   "h": 48,
+   "foot": [
+    1361.4,
+    645.3
+   ],
+   "sort_y": 645.3
+  },
+  {
+   "file": "sprites/ruin_317.png",
+   "nrm": "sprites/ruin_317_n.png",
+   "kind": "ruin",
+   "x": 1413,
+   "y": 940,
+   "w": 31,
+   "h": 29,
+   "foot": [
+    1427.6,
+    966.2
+   ],
+   "sort_y": 966.2
+  },
+  {
+   "file": "sprites/ruin_318.png",
+   "nrm": "sprites/ruin_318_n.png",
+   "kind": "ruin",
+   "x": 1423,
+   "y": 966,
+   "w": 34,
+   "h": 34,
+   "foot": [
+    1436.9,
+    992.2
+   ],
+   "sort_y": 992.2
+  },
+  {
+   "file": "sprites/ruin_319.png",
+   "nrm": "sprites/ruin_319_n.png",
+   "kind": "ruin",
+   "x": 1917,
+   "y": 638,
+   "w": 34,
+   "h": 37,
+   "foot": [
+    1933.8,
+    666.5
+   ],
+   "sort_y": 666.5
+  },
+  {
+   "file": "sprites/ruin_320.png",
+   "nrm": "sprites/ruin_320_n.png",
+   "kind": "ruin",
+   "x": 957,
+   "y": 806,
+   "w": 35,
+   "h": 32,
+   "foot": [
+    974.7,
+    831.6
+   ],
+   "sort_y": 831.6
   }
  ]
 }

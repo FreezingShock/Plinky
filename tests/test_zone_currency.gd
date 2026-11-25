@@ -19,6 +19,15 @@ func run(t: Object) -> void:
 		t.eq(UpgradeText.tier_head(sim, bloom_two), "Unlocks After 2 Blooms", "a Bloom tier head adds an s")
 	if bloom_one != null:
 		t.eq(UpgradeText.tier_head(sim, bloom_one), "Unlocks After 1 Bloom", "one Bloom stays singular")
+		# The tier rail's gate: what the tier requires, in the same plural rules.
+		t.eq(UpgradeText.tier_gate(sim, bloom_one), "Requires 1 Bloom", "a rail gate reads Requires 1 Bloom")
+	if bloom_two != null:
+		t.eq(UpgradeText.tier_gate(sim, bloom_two), "Requires 2 Blooms", "a rail gate pluralises Blooms")
+	if nuc_two != null:
+		t.eq(UpgradeText.tier_gate(sim, nuc_two), "Requires 2 Nuclei", "a rail gate uses the Nucleus plural")
+	var start: AttributeDef = _first_gate(sim, &"seeds", 0)
+	if start != null:
+		t.eq(UpgradeText.tier_gate(sim, start), "Open", "the start tier has no gate")
 
 	# Gift counts: every Seeds gift is counted, none bought at the start, and affordable ones show once Seeds arrive.
 	var seeds_total: int = 0

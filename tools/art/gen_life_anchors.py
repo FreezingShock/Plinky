@@ -166,7 +166,7 @@ EDGE_DENSE_MIN = 8
 EDGE_COUNT = 30
 EDGE_SPACING = 50.0
 EDGE_PAD_KEEP = 24.0        # a forest-edge spot keeps this far from every pad
-# Old Oak Crossing has no woods, only the elder oak (a lone tree, not a stand), so the forest-edge rule finds nothing
+# Heather Hollow has no woods, only the elder oak (a lone tree, not a stand), so the forest-edge rule finds nothing
 # there. Deer graze on a ring of grass tips around that trunk instead. Trunk in texels: the placements tree at (1580, 886).
 OAK_TRUNK = (1580.0, 886.4)
 OAK_RING = (20.0, 60.0)     # iso texels from the trunk
@@ -232,7 +232,7 @@ def forest_edge_points(trees, sway, pads):
 
 
 def oak_ring_points(sway, pads):
-    """Grass tips in a ring round the elder oak at Old Oak Crossing, where deer graze. Tips within EDGE_PAD_KEEP of a
+    """Grass tips in a ring round the elder oak at Heather Hollow, where deer graze. Tips within EDGE_PAD_KEEP of a
     pad are left out. Picks OAK_RING_COUNT tips, each as far as it can be from the ones already picked (the first is the
     tip nearest the trunk), so the deer spread round the tree."""
     cands = []

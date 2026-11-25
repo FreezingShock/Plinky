@@ -37,6 +37,12 @@ func run(t: Object) -> void:
 	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SUMMER, true).get_image().get_data(), "a closed head is smaller than an open one")
 	t.ok(GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_SPRING).get_image().get_data() != GardenArt.frame(&"clover", 0, 0, GardenArt.SEASON_AUTUMN).get_image().get_data(), "spring buds and autumn seed heads differ")
 	t.eq(GardenArt.frame(&"heather", 4, 1).get_size(), GardenArt.frame(&"heather", 4, 0).get_size(), "a shrub does not lean but keeps its size")
+	# winter field stalks show their variant: the tints differ in height and in seed heads or frost, not all one silhouette
+	var winter_a: Image = GardenArt.frame(&"thistle", GardenArt.FIELD_FIRST, 0, GardenArt.SEASON_WINTER).get_image()
+	var winter_b: Image = GardenArt.frame(&"thistle", GardenArt.FIELD_FIRST + 1, 0, GardenArt.SEASON_WINTER).get_image()
+	var winter_c: Image = GardenArt.frame(&"thistle", GardenArt.FIELD_FIRST + 2, 0, GardenArt.SEASON_WINTER).get_image()
+	t.ok(winter_a.get_height() != winter_b.get_height() and winter_a.get_data() != winter_b.get_data(), "winter field stalks differ by tint (a tall tint against a short one)")
+	t.ok(winter_b.get_data() != winter_c.get_data(), "a seed head tint differs from a frosted tint in winter")
 	# a shrub's ground shadow is the same oval: each row under the mound is narrower than the one above
 	for v in [4, 5]:
 		var shrub: Image = GardenArt.frame(&"heather", v, 0).get_image()

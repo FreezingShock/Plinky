@@ -25,6 +25,7 @@ uniform vec3 pool_tint : source_color = vec3(1.0, 0.86, 0.58);
 uniform vec4 lights[56];       // xy centre (world texels), z radius, w strength 0..1 (0 = unused). Must match SkyCycle.MAX_LIGHTS.
 uniform vec4 light_tint[56];   // rgb colour of each pool (a pad's buy colour); a = 0 keeps pool_tint, the warm default. Same order as lights.
 uniform float pool_strength = 0.9;
+uniform float reflect_amt = 0.0;   // 0..1 rain: each lamp is mirrored in the wet ground just below it (dithered, like puddles)
 
 const int BAYER[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
 varying vec2 wpos;
@@ -44,6 +45,7 @@ void fragment() {
 	float thr = bayer4(t);
 	// light pools: sum of falloffs on the 2:1 ground ellipse
 	float pool = 0.0;
+	float refl = 0.0;   // rain: the lamps' mirror below each light (see below)
 	vec3 tint_sum = vec3(0.0);   // falloff-weighted colour of the pools here, so overlapping pools blend
 	float tint_w = 0.0;
 	for (int i = 0; i < 56; i++) {
@@ -52,6 +54,10 @@ void fragment() {
 			float d = length((p - L.xy) * vec2(1.0, 2.0)) / max(L.z, 1.0);
 			float f = clamp(1.0 - d, 0.0, 1.0) * L.w;
 			pool += f;
+			if (reflect_amt > 0.0) {
+				float dr = length((p - vec2(0.0, 14.0) - L.xy) * vec2(1.0, 2.0)) / max(L.z, 1.0);
+				refl += clamp(1.0 - dr, 0.0, 1.0) * L.w;
+			}
 			vec4 c = light_tint[i];
 			tint_sum += f * (c.a > 0.0 ? c.rgb : pool_tint);
 			tint_w += f;
@@ -59,6 +65,11 @@ void fragment() {
 	}
 	vec3 pcol = tint_w > 0.0 ? tint_sum / tint_w : pool_tint;
 	pool = clamp(pool * pool_strength, 0.0, 1.0);
+	refl = clamp(refl * pool_strength * reflect_amt, 0.0, 1.0);
+	// rain: each lamp is mirrored in the wet ground just below it. The mirror sums in the same loop as the pools (one pass
+	// over the lights, not two). Only the Bayer cells under the wet mask take it, so the glints sit in the dither like
+	// puddles do, not as a smooth sheen. Skipped entirely in dry weather.
+	float rmask = refl > thr ? 1.0 : 0.0;
 	vec3 m = vec3(1.0);
 	// night: a smooth, solid cool multiply that thins toward the light pools. No dither at all: a pool edge or dusk
 	// is a soft gradient over many world texels, so it reads as light, never as a grid.
@@ -70,5 +81,6 @@ void fragment() {
 	// the time-of-day grade and rain are solid tints: a smooth change over hours, never a screen-wide pattern
 	m *= mix(vec3(1.0), grade_col, clamp(grade_amount, 0.0, 1.0));
 	m *= mix(vec3(1.0), rain_tint, clamp(rain * 0.5, 0.0, 1.0));
+	m *= mix(vec3(1.0), pcol * 1.25, 0.45 * rmask * clamp(night, 0.0, 1.0));   // the lamp's light in the puddles, by night
 	COLOR = vec4(m, 1.0);
 }
