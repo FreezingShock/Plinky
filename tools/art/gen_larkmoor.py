@@ -777,11 +777,15 @@ put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
 # trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
 TREE_GAP = dict(oak=6.0, pine=8.0)
+GROVE_MUL = float(os.environ.get('GROVE_MUL', '1.0'))      # density of the tree and bush groves (1.0 = shipped counts)
+ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
+BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_GAP: kw['gap'] = TREE_GAP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
-    try_region(kind, *SC(c_), rad * .72, n if not FAST else max(1, n // 3), **kw)
+    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL)
+    try_region(kind, *SC(c_), rad * .72, n_ if not FAST else max(1, n_ // 3), **kw)
 # rocks keep well back from the path (path_clear), so no chunky rock border frames it
 for _ in range(14): try_region('rock', prng.uniform(80, 740), prng.uniform(80, 740), 90, 1, scale_rng=(.8, 1.25), big=prng.random() < .6, path_clear=11.0)
 # lanterns: one size, one rhythm per path tier. A road gets a lamp about every LANTERN_STEP['road'] texels of its length
@@ -879,6 +883,36 @@ for B, nl, rmin in ((LAKE, 130, 2.2), (POND, 40, 2.0)):
                 voxelize(mk[0], mk[1], mk[2], u, v, LEVEL, 1.0, 0.0, 1, bottom=-.9); placed.append((u, v, r)); got += 1
         if got >= nl: break
 log('shore + lilies placed')
+# extra stones: ROAD_ROCKS just off the road and lane edges, BANK_ROCKS a few texels from the water (waits for the water
+# thread's layout). Baked with sid 1, so they add to the ground and its shadows, not to the node count. Own random stream,
+# so every placement above keeps its place.
+if ROAD_ROCKS or BANK_ROCKS:
+    _rr = random.Random(777)
+    _stones = []
+    def _stone_spot(bank):
+        for _ in range(6000):
+            u, v = _rr.uniform(20, N - 20), _rr.uniform(20, N - 20)
+            if not INSIDE[int(u), int(v)] or float(terrain_h(u, v)) > 9.0 or float(slope_at(u, v)) > .6: continue
+            if float(samp(WD, u, v)) > -.3: continue                              # land only
+            if bank:
+                if not (.8 < float(samp(DW, u, v)) < 3.2): continue                # the bank: a few texels from open water
+            else:
+                if not (1.5 < float(samp(dedge, u, v)) < 6.0): continue            # just off a road or lane edge
+                if float(samp(DW, u, v)) < 4.0: continue                           # not a second bank
+            if float(samp(dgrove, u, v)) < GROVE_CLEAR: continue
+            if any(math.hypot(u - pu, v - pv) < pr + 3.0 for (pu, pv, pr) in placed): continue
+            if any(math.hypot(u - su, v - sv) < 5.0 for (su, sv) in _stones): continue
+            return u, v
+        return None
+    _kinds = [False] * ROAD_ROCKS + [True] * BANK_ROCKS
+    for _bank in _kinds:
+        _p = _stone_spot(bank=_bank)
+        if _p is None: continue
+        _u, _v = _p
+        _f, _half, _top, _rad = make_rock(random.Random(_rr.randint(0, 1 << 30)), _rr.random() < .45)
+        voxelize(_f, _half, _top, _u, _v, float(terrain_h(_u, _v)) - .4, _rr.uniform(.7, 1.05), _rr.uniform(0, 6.28), 1)
+        _stones.append((_u, _v))
+    log('extra stones placed %d of %d (road %d, bank %d)' % (len(_stones), len(_kinds), ROAD_ROCKS, BANK_ROCKS))
 # flower drifts beside every path: patches in the open ground, never a ring along the edge. A candidate sits 9 to 30
 # texels from the path EDGE (dedge, so a road and a trail get the same clearance), and a slow noise field decides where the
 # drifts are (about half the ground), so the flowers gather in patches with bare grass between them. Placed last, after
