@@ -27,8 +27,8 @@ const CALM_STIFFNESS: float = 34.0
 ## The lift toward the pointer while held, and how far above or below the arc the body may go (texels).
 const LIFT_MAX: float = 36.0
 const LIFT_STIFFNESS: float = 60.0
-## Damping ratio 0.7 (critical is 15.5): the body lands on its arc with about 5% overshoot, not 27%.
-const LIFT_DAMPING: float = 10.8
+## Damping ratio 0.85 (critical is 15.5): the body lands on its arc with under 1% overshoot, about 0.2 texel at full reach.
+const LIFT_DAMPING: float = 13.2
 ## Release flick: the drag's speed in phase per second, capped, and how many seconds the flick takes to die away.
 const FLING_LIMIT: float = 0.8
 const FLING_DECAY: float = 0.45

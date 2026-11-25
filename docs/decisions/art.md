@@ -503,3 +503,4 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Lift:** `LIFT_DAMPING` 6 to 10.8 (damping ratio 0.7, about 5% overshoot instead of about 27%). The lift still drops onto the arc with a small bounce.
 - **Tests:** `tests/test_title_scene.gd` covers a flick released near sunset (carries no further than sunset, glides without a jump) and the lift landing (lowest value above -0.06; the old damping fails it at -0.10).
 - **Not verified in-engine:** the feel of the flick and the landing on the PC.
+- **Follow-up (PC QA batch 177):** the moon release with Reduce Motion off still overshot 1.73 texels. That is 5% of a 35 texel reach, the bounce at damping ratio 0.7. `LIFT_DAMPING` is now 13.2 (ratio 0.85): under 1% overshoot, about 0.2 texel at full reach. The drift after release is not the lift. It is the natural clock (about 0.07 texel per frame at this day length) plus the flick, which decays over about 0.45 s.

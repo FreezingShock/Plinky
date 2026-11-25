@@ -171,7 +171,7 @@ func run(t: Object) -> void:
 	t.ok(worst_jump < 2.5, "the body glides after a release with no jump (worst step %.2f px)" % worst_jump)
 	bg.free()
 
-	# Landing after a release: the lift settles with a small bounce, about 5% of its height, not a quarter.
+	# Landing after a release: under 2% overshoot of the lift, so at full reach the bounce stays under half a texel.
 	bg = TitleBackground.new()
 	bg.clock = TitleMood.seconds_for(bg.sky, 0.5)
 	bg._begin_grab()
@@ -183,7 +183,7 @@ func run(t: Object) -> void:
 	for i in 120:
 		bg._step_lift(1.0 / 60.0)
 		lowest = minf(lowest, bg._lift)
-	t.ok(lowest > -0.06, "the lift lands with a small bounce (lowest %.3f)" % lowest)
+	t.ok(lowest > -0.02, "the lift lands with under 2% overshoot (lowest %.3f)" % lowest)
 	bg.free()
 	var title := TitleScreen.new()
 	t.ok(title.has_method("_begin"), "the title screen compiles")
