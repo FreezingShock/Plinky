@@ -1019,6 +1019,16 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
+# under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
+# ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
+vb = .6 * vn2(FU / 26, FV / 26, 61) + .4 * vn2(FU / 11, FV / 11, 62)
+lt += np.where(vb < .36, -.13, np.where(vb > .64, .13, 0.)) * (mat == T_GRASS)
+lt += .10 * (mat == T_PATH)
+from PIL import ImageFilter as _IF
+_tall = ((HS - H0) > 2.5).astype(np.uint8) * 255
+_under = np.asarray(Image.fromarray(_tall).filter(_IF.MaxFilter(9)).filter(_IF.GaussianBlur(2.5))).astype(np.float32) / 255.0
+lt -= .16 * np.clip(samp(_under, FU, FV), 0, 1) * (mat == T_GRASS)
 # main road = flagstones: lit sand stones in staggered rows, with worn earth mortar between them. Lanes stay plain packed
 # sand and trails stay dark earth, so the three tiers read apart at 1x without a new material. The mortar is a light
 # drop only, so the palette and the ramp stay the same as the path's.
