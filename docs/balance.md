@@ -255,7 +255,7 @@ Profiles (`content/config/sim_profiles.tres`): idle 2.0 presses/s, active 4.0, h
 | Milestone | Active (loop) | Idle (loop) | Active (push, no resets) | Idle (push, no resets) |
 |---|---|---|---|---|
 | Meadow gate (Clover 9) | 10.3 | 15.2 | 10.3 | 15.2 |
-| Larkmoor gate (Starbloom 500) | 15.3 | 25.4 | 15.3 | 25.4 |
+| Larkmoor gate (Starbloom 500, opens the Ember Quarry) | 15.3 | 25.4 | 15.3 | 25.4 |
 | Bloom 1 | 15.3 | 25.4 | none | none |
 | Bloom 2 | 28.7 | 52.5 | none | none |
 | Bloom 3 | 37.4 | 69.6 | none | none |
@@ -274,6 +274,8 @@ Ranges across seeds are within about 2 min on the loop rows, except push, which 
 3. **Idle is about 1.9x active** on every loop milestone (Bloom 10: 113.9 vs 59.3; Quarry gate: 123.3 vs 64.7; Nucleus 10: 180.9 vs 94.5). The target is about 2x. The Larkmoor gate itself is 1.65x.
 4. **Dead time is small.** The longest stretch with nothing affordable is 2 min in the Meadow and under 0.2 min elsewhere on active. Nothing sits idle for long. The Quarry push wall is slow buying, not idle time.
 5. **Open question: the Larkmoor target.** Memory's target of about 60 min for Larkmoor is met by Bloom 10 (59 min), not by the Larkmoor gate (15 min). Which one is the target needs Nathan's call.
+
+**Ember Quarry income (checked 25 Nov).** Embers are the quarry's passive trickle: 0.25 per second, boosted by Cinder (`content/stats/embers.tres`). A headless check on main shows Embers rising in the Quarry with no Cinder. The income is small next to press gains, so a player may not see it on the HUD. The HUD rate row is not checked in-engine.
 
 **Not in this run.** Walking (slows presses), Bloom gifts and attributes (both speed the loop), relic equips, Nucleus gifts. Each is a reason to read these numbers as a floor.
 
