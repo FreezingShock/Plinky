@@ -26,10 +26,10 @@ const ZONE_MAP: Dictionary = {
 # BEGIN RAMPS
 const RAMP: Dictionary = {
 	&"meadow": [
-		["0f1116", "162e2b", "205345", "457f57", "78a956", "b2bd76", "977c34", "bec0a7"],
-		["12141a", "1b3631", "286250", "549664", "9bc86a", "dedf8f", "b27f42", "e2e0c6"],
+		["0f1116", "162e2b", "205345", "457f57", "78a956", "b2bd76", "975834", "bec0a7"],
+		["12141a", "1b3631", "286250", "549664", "9bc86a", "dedf8f", "b26b42", "e2e0c6"],
 		["14161c", "1f3b35", "2f6b55", "5fa36a", "b7d978", "f2e6a0", "c2784e", "f6efd9"],
-		["17151e", "1f402e", "2e7444", "66b061", "ceea79", "ffefa2", "d2834a", "fff7df"],
+		["17151e", "1f402e", "2e7444", "66b061", "ceea79", "ffefa2", "d27b4a", "fff7df"],
 	],
 	&"quarry": [
 		["140d13", "3a1529", "6c1d2d", "a2181f", "b6ad29", "8f5a6b", "422d48", "bcb889"],
@@ -51,6 +51,12 @@ const RAMP: Dictionary = {
 	],
 }
 # END RAMPS
+# BEGIN GRASS
+const GRASS: Dictionary = {
+	&"warm": ["7a7f45", "919654", "9ea35f", "aab061"],
+	&"cool": ["457b7f", "549196", "5f9ea3", "61aab0"],
+}
+# END GRASS
 const STEPS := 4
 static var _cache: Dictionary = {}
 
@@ -83,6 +89,13 @@ static func texture(id: StringName) -> ImageTexture:
 	var tex := ImageTexture.create_from_image(img)
 	_cache[id] = tex
 	return tex
+
+## Warm and cool grass variants (4 steps, dark to light), for warm and cool grass patches. Generated like RAMP.
+static func grass_variant(name: StringName) -> PackedColorArray:
+	var out := PackedColorArray()
+	for hex: String in GRASS.get(name, GRASS[&"warm"]):
+		out.append(Color.html("#" + hex))
+	return out
 
 static func for_zone(zone_id: StringName) -> StringName:
 	return ZONE_MAP.get(zone_id, MEADOW) as StringName
