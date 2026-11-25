@@ -171,6 +171,23 @@ func run(t: Object) -> void:
 	t.ok(worst_jump < 2.5, "the body glides after a release with no jump (worst step %.2f px)" % worst_jump)
 	bg.free()
 
+	# A flick backward from mid-arc never runs the day clock backward: the body stops and then moves on.
+	bg = TitleBackground.new()
+	bg.clock = TitleMood.seconds_for(bg.sky, 0.95)
+	bg._begin_grab()
+	bg._u_vel = -1.0
+	bg._end_grab()
+	var last_clock: float = bg.clock
+	var ran_back: bool = false
+	for i in 150:
+		bg._step_free(1.0 / 60.0)
+		bg._step_lift(1.0 / 60.0)
+		if bg.clock < last_clock - 1e-9:
+			ran_back = true
+		last_clock = bg.clock
+	t.ok(not ran_back, "a flick backward never runs the day clock backward")
+	bg.free()
+
 	# Landing after a release: under 2% overshoot of the lift, so at full reach the bounce stays under half a texel.
 	bg = TitleBackground.new()
 	bg.clock = TitleMood.seconds_for(bg.sky, 0.5)
