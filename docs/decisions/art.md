@@ -469,3 +469,11 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 | Date | Decision | Why |
 |---|---|---|
 | 2026-11-25 | Each open pad's plate top and sides take its statistic's hue (stat colour darkened and mixed 55% into the earth role), buy state inset, rim and the row's sign unchanged (T4, M1 Remap) | The M1 mockup's plate picks up the pad's own colour so each row's plates read as their field. The buy and can't-afford signals still come from the inset and rim, so gameplay reads the same. |
+
+## 2026-11-25: Separate Cinder from Embers, and Rebirth from Ingot (T11 follow-up)
+- **Why:** PC QA on #532 (batch 166) found two pairs too close. Embers and Cinder were both orange-red, and Rebirth and Ingot were both purple.
+- **Change:** Cinder moves to the meadow family (green stone with the orange seam), so it is no longer warm. Rebirth points, Rebirth and Prestige move to the tidewater family (teal and gold), so they are no longer purple. The bloom crown joins them. Clock, rest and offline stay on tidewater.
+- **Why not shift the iris accent:** Ingot's purple is a literal material colour (`staged/ingot.txt` has literal lines), so the iris ramp can't change it. Moving the Rebirth icons off iris separates them without touching the material.
+- **Supersedes:** the family lists in the 2026-11-25 T11 entry above. The families in `tools/art/icon_ramps.py` are the source of truth.
+- **Checked:** `gen_icons_staged.py` changed exactly the 20 files for Cinder, Rebirth points, Rebirth and Prestige, and nothing else. The four icons were rendered side by side before the change (Pillow, not in-engine).
+- **Not verified in-engine:** the PC QA thread should check the HUD and the gallery after pulling.
