@@ -4,15 +4,51 @@ A sprite is a stack of painted shapes. Every pixel keeps a ramp id and a tone va
 ramp index with a Bayer 4x4 threshold (a narrow one, so dither only shows at tone band edges), adds a lit top-left
 rim, a shaded bottom-right edge, and a 1 px ink outline. Light comes from the top left. numpy + Pillow only."""
 import math
+import os
+import pathlib
+import re
+
 import numpy as np
 from PIL import Image
 
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16.0
 QPAL = ['1a1116', '4a1f2a', '8a3a2e', 'd0602f', 'e9a845', 'b77a7a', '5b3d5c', 'f1d9b5']
+_PALETTES = pathlib.Path(__file__).resolve().parents[2] / 'render' / 'palettes.gd'
+# How sprite texels pick their ramp step from the Ember Quarry ramps (render/palettes.gd RAMP["quarry"]):
+#   off     keep the 8 anchor colours (the old look)
+#   subtle  lit rims one step up, shaded rims one step down, interiors on the anchor (step 2)
+#   medium  subtle, plus the darkest band interior one step down
+#   strong  medium, plus shaded rims two steps down and the brightest band on lit rims one step up
+REMAP = os.environ.get('QUARRY_REMAP', 'medium')
+
+
+def load_quarry_ramps() -> np.ndarray:
+    """(4, 8, 3) uint8: row = ramp step, column = role, read from render/palettes.gd so the palette has one source."""
+    src = _PALETTES.read_text(encoding='utf-8')
+    part = src.split('const RAMP', 1)[1].split('&"quarry": [', 1)[1].split('&"tidewater"', 1)[0]
+    rows = re.findall(r'\[([^\[\]]*)\]', part)[:4]
+    arr = np.array([[rgb(h) for h in re.findall(r'"([0-9a-f]{6})"', row)] for row in rows], np.uint8)
+    assert arr.shape == (4, 8, 3), arr.shape
+    return arr
+
+
+def remap_steps(ix, L, lit, dk, mode):
+    """Ramp step 0..3 for each texel. ix is the tone band (0..L), lit and dk mark rims facing the light and away."""
+    step = 2 + lit.astype(np.int64) - dk.astype(np.int64)
+    if mode in ('medium', 'strong'):
+        step = step - (ix == 0)
+    if mode == 'strong':
+        step = step - (dk & ~lit)
+        step = step + (lit & ~dk & (ix == L))
+    return np.clip(step, 0, 3)
 
 
 def rgb(h):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+QRAMP = load_quarry_ramps()
+ROLE_OF = {rgb(h): i for i, h in enumerate(QPAL)}
 
 
 def qramp(*ix):
@@ -137,6 +173,7 @@ class Spr:
                 continue
             L = len(cols) - 1
             v = self.V.copy()
+            lit = dk = np.zeros((self.h, self.w), bool)
             # rim light on the top-left edge, shade on the bottom-right edge of each object
             if rim:
                 up = np.roll(self.O, 1, 0); lf = np.roll(self.O, 1, 1)
@@ -146,13 +183,19 @@ class Spr:
                 v = v + 0.16 * lit - 0.12 * (dk & ~lit)
             pos = np.clip(v, 0, 0.999) * L + (bay - .5) * 0.34
             ix = np.clip(np.floor(pos + .5).astype(int), 0, L)
-            col = np.array(cols, np.uint8)[ix]
             fl = sel & self.G
             if fl.any():
                 # glow flicker: the ramp index steps up on a sparse moving lattice
                 bump = ((self.xx * 3 + self.yy * 5 + frame * 2) % 4 == 0) & (bay < .75)
                 ix2 = np.clip(ix + bump.astype(int), 0, L)
-                col = np.where(fl[..., None], np.array(cols, np.uint8)[ix2], col)
+                ix = np.where(fl, ix2, ix)
+            roles = [ROLE_OF.get(c) for c in cols]
+            if REMAP != 'off' and rim and None not in roles:
+                # remap by role: the ramp's role at this band, on the Ember Quarry ramp step the rims ask for
+                step = remap_steps(ix, L, lit, dk, REMAP)
+                col = QRAMP[step, np.array(roles, np.int64)[ix]]
+            else:
+                col = np.array(cols, np.uint8)[ix]
             out[sel, :3] = col[sel]
             out[sel, 3] = 255
         if outline:

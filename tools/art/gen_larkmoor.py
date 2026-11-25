@@ -31,6 +31,10 @@ CU, CV, R = LAY.CU, LAY.CV, LAY.R         # island centre / radius (uv)
 OXS0, OYS0 = LAY.OX, LAY.OY
 OXS, OYS = OXS0, OYS0
 PAL = ['#14161c', '#1f3b35', '#2f6b55', '#5fa36a', '#b7d978', '#f2e6a0', '#c2784e', '#f6efd9']
+# warm (8-11) and cool (12-15) grass variants, 4 steps dark to light, the same hexes as Palettes.grass_variant(&"warm"/&"cool")
+PAL += ['#7a7f45', '#919654', '#9ea35f', '#aab061', '#3c7a6a', '#4b8f7a', '#5ea88a', '#72bf9f']   # cool: blue-green grass, not teal
+GRASS_WARM = [8, 9, 10, 10, 11]
+GRASS_COOL = [12, 13, 14, 14, 15]
 COLS = np.array([[int(h[k:k + 2], 16) for k in (1, 3, 5)] for h in PAL], np.uint8)
 # Prop palette (Gower-style restyle, v3 mockup B): the sprites' albedo and the relit props' ramps. Ink stays put, and the
 # ground keeps PAL, so the backdrop, the flower and sway checks and the UI palette are unchanged.
@@ -1070,6 +1074,7 @@ dp = samp(dpath, FU, FV)
 tone = fbm2(FU / 14, FV / 14, 2, 11); n1 = vn2(FU / 5, FV / 5, 3); n2 = vn2(FU / 2.2, FV / 2.2, 8)
 # materials: 0 grass 1 rock 2 sand 3 wet 4 path 5 frost
 T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM, T_TRAIL = 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
+T_STONE = 70   # Larkmoor flagstones: their own grey-stone code, so the engine relight does not brown them with the dirt (gen_meadow3d.py RAMP32)
 mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
 mat[rockness > .5] = T_ROCK
@@ -1097,6 +1102,10 @@ for _t, _f in FEATHER.items():
     _chance = 1 - (dtr[_t] - _inner) / (_outer - _inner)
     _keep = _chance > vn2(FU / 1.6, FV / 1.6, 75 if _t == 'lane' else 76)
     mat[_band & ~_keep & (mat == FEATHER_MAT[_t])] = T_GRASS
+# grass tufts reach into the trodden edge: a ragged band of grass fingers overlaps the dirt, so the verge is not a clean line
+for _t in ('lane', 'trail'):
+    _fing = (dtr[_t] > HALF[_t] * .80) & (dtr[_t] < HALF[_t] * edge_noise * 1.05)
+    mat[_fing & (mat == FEATHER_MAT[_t]) & (vn2(FU / 1.1, FV / 1.1, 93 if _t == 'lane' else 94) > .58)] = T_GRASS
 # the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
 mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
@@ -1112,6 +1121,17 @@ lap = samp(LAP, FU, FV); lt -= np.clip(lap * .5, 0, .32); lt += np.clip(-lap * .
 on_trod = np.isin(mat, [T_PATH, T_TRAIL])
 lt += .06 * (vn2(FU / 2.4, FV / 2.4, 31) - .5) * on_trod
 lt -= .10 * smooth(5.25, 10.5, dn) * on_trod * (n2 > .45)
+# Nathan's reference: sparse flat pebbles on the trodden ground (dark dashes, in two sizes), worn wheel ruts along the road
+# and lane, and lighter dusty patches. All of it is lit ground, so the palette is unchanged.
+_peb_s = (vn2(FU / 1.6, FV / .8, 95) > .9) & (vn2(FU / 9, FV / 9, 96) > .3)
+_peb_l = (vn2(FU / 2.8, FV / 1.2, 97) > .95) & (vn2(FU / 9, FV / 9, 96) > .3)
+lt -= .30 * ((_peb_s | _peb_l) & on_trod)
+_rut = np.zeros(len(FU), bool)
+for _t in ('road', 'lane'):
+    _wob = (vn2(FU / 6, FV / 6, 98) - .5) * 1.4
+    _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.4) & on_path[_t]
+lt -= .24 * (_rut & (mat == T_PATH))
+lt += .07 * (on_trod & (vn2(FU / 9, FV / 9, 99) > .72))
 # value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
 # under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
 # ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
@@ -1131,8 +1151,31 @@ cu_ = (FU + 2.5 * (row_ % 2)) % 5.0
 cv_ = FV % 4.0
 joint_v = (cu_ < 1.0) & (vn2(FU / 3.0, FV / 3.0, 47) > .45)  # vertical joints: about half of them, so the road is not a grid
 joint_h = cv_ < 1.0                                          # horizontal joints: every row
-mortar = (joint_v | joint_h) & road_m
+# flagstones only near the windmill and the two bridges (Nathan's call): elsewhere the road is plain dirt with no joints
+_wm = [lm for lm in LAY.LANDMARKS if lm['kind'] == 'windmill'][0]
+_fl_pts = [(s2uv(*_wm['at']), 60.0), (s2uv(*LAY.BRIDGE), 36.0), (s2uv(*LAY.FOOT_CROSSING), 36.0)]
+fl_zone = np.zeros(FU.shape, bool)
+for (_pu, _pv), _rad in _fl_pts:
+    fl_zone |= np.hypot(FU - _pu, FV - _pv) < _rad
+mortar = (joint_v | joint_h) & road_m & fl_zone
 lt -= .30 * mortar                                           # a soft drop to the earth step, not a hard grid
+# v4 road (Nathan's pick): dirt first, with the flagstones inset. The whole road drops to the earth step, so the lit
+# stones stand out as cream tiles in a brown dirt road, instead of a pale sand road with dirt joints.
+lt -= .62 * (mat == T_PATH)     # road and lanes alike drop to the dirt (earth) step; sand alone sits well above it
+lt += .62 * (road_m & fl_zone & ~mortar)   # the flagstones near the windmill and bridges lift back to the lit sand stones
+mat[road_m & fl_zone & ~mortar] = T_STONE   # the stones are grey stone; the joints stay dirt (T_PATH)
+# road slabs (Nathan's reference): sparse flat grey stones about 6 by 4 texels on the dirt road, one per 11-texel cell in
+# some cells. The slab is stone code 70 and its joint ring stays dirt code 104 (T_PATH), so the engine relights the stone
+# grey and the joints brown. Cell offsets and picks are integer hashes, so the layout is the same every bake.
+_cs = 22   # FU samples run at about half the bake's texel scale, so the slab is 12 by 8 FU (about 6 by 4 bake texels)
+_cu = np.floor(FU / _cs).astype(np.int64); _cv = np.floor(FV / _cs).astype(np.int64)
+_sx = _cu * _cs + ((_cu * 31337 + _cv * 7919) % 12)
+_sy = _cv * _cs + ((_cu * 104729 + _cv * 1299709) % 12)
+_pick = ((_cu * 92821 + _cv * 68917 + 17) % 1009) / 1009.0 < .55
+_uu = np.floor(FU).astype(np.int64); _vv = np.floor(FV).astype(np.int64)
+_slab = _pick & (_uu >= _sx) & (_uu < _sx + 12) & (_vv >= _sy) & (_vv < _sy + 8)
+_joint = _slab & ((_uu == _sx) | (_uu == _sx + 11) | (_vv == _sy) | (_vv == _sy + 7))
+mat[_slab & ~_joint & (mat == T_PATH)] = T_STONE
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -1175,11 +1218,12 @@ for c0 in range(0, len(u_), 1500000):
     shadow[sl_] = s_
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
-RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
+RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 6], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 6],
         M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 6, 6, 7], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: DARKF_RAMP}
 RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
+RAMP[T_STONE] = [1, 7, 7, 7]   # grey stone (bake colours are anchors; the engine relight uses the grey ramp in gen_meadow3d RAMP32)
 # canopy shading (round 2 of the v3 remodel): leaves and pine boughs step through their shades with crisp edges
 CANOPY_MATS = (M_FOL, M_PINE)
 CANOPY_DBAND = (.44, .14)     # the dither spreads over the middle 14% of each step, so the Bayer edge stays but the steps read
@@ -1276,10 +1320,35 @@ def render_scene(keep):
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
     img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
+    # warm and cool grass patches (palette 8-11 and 12-15, the GRASS block in render/palettes.gd): two broad noise fields,
+    # thresholded, so the patches are big and soft-edged like the Gower mockup. Same grass_tex strength as the meadow grass.
+    WC_FIELD = vn2(XX / 40.0, YY / 40.0, 83) * .75 + vn2(XX / 13.0, YY / 13.0, 84) * .25
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
         # canopy and pine: a narrow dither band, so each shade step has a clear edge and the Bayer texture stays on the edges
         if sel_.any(): out[sel_] = dith(ramp, img_l, sel_, CANOPY_DBAND if m_ in CANOPY_MATS else (.30, .40))[sel_]
+        if m_ == T_GRASS and sel_.any():
+            # percentile cut-offs over the grass texels: the top fifth goes warm, the bottom fifth cool, the rest stays meadow
+            hi_, lo_ = np.percentile(WC_FIELD[sel_], [80, 20])
+            for ramp_v, pick in ((GRASS_WARM, sel_ & (WC_FIELD > hi_)), (GRASS_COOL, sel_ & (WC_FIELD < lo_))):
+                if pick.any(): out[pick] = dith(ramp_v, img_l, pick)[pick]
+    # sparse verge details (Nathan's reference): a few berries and fallen leaves (earth step), and mushroom caps (cream step),
+    # on the grass just outside the trodden ground. Baked into the ground, so they cost no nodes.
+    from PIL import ImageFilter as _IFd
+    _trod_g = ((img_mat == T_PATH) | (img_mat == T_TRAIL) | (img_mat == T_STONE)).astype(np.uint8) * 255
+    _tg = Image.fromarray(_trod_g)
+    _ring = np.asarray(_tg.filter(_IFd.MaxFilter(7))) > 0
+    _inner = np.asarray(_tg.filter(_IFd.MaxFilter(3))) > 0
+    _verge = _ring & ~_inner & (img_mat == T_GRASS)
+    _hh = ((XX * 92821 + YY * 68917) % 1009) / 1009.0
+    out[_verge & (_hh > .988)] = 6
+    out[_verge & (_hh < .006)] = 7
+    # stone interiors are solid (Nathan's reference, and Bayer on edges only): a stone texel whose whole 3x3 is stone takes the
+    # solid light step, and its outer ring keeps the dithered edge from RAMP[T_STONE]. Joints are dirt (T_PATH), so they stay brown.
+    from PIL import ImageFilter as _IFs
+    _stone = Image.fromarray(((img_mat == T_STONE) * 255).astype(np.uint8))
+    _stone_in = np.asarray(_stone.filter(_IFs.MinFilter(3))) > 0
+    out[_stone_in] = 7
     # water: depth bands, stepped glints, foam, white water on slopes
     wsel = img_mat == T_WATER
     if wsel.any():
