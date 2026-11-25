@@ -9,5 +9,5 @@ display_name = "Second Nature"
 description = "Reach Mastery 15 on one pad."
 counter = &"mastery_best"
 target = 15.0
-order = 12
+order = 11
 reward = 0.03

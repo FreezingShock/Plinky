@@ -9,5 +9,5 @@ display_name = "Round Again"
 description = "Reset a zone for the first time."
 counter = &"zone_resets"
 target = 1.0
-order = 5
+order = 4
 reward = 0.03

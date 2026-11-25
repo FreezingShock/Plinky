@@ -9,5 +9,5 @@ display_name = "Known Ground"
 description = "Reach Mastery 5 on one pad."
 counter = &"mastery_best"
 target = 5.0
-order = 4
+order = 2
 reward = 0.02
