@@ -51,7 +51,7 @@ void fragment() {
 	float lean = (0.25 + 0.75 * wind) * s * h * h * max_texels * size_k * enabled;
 	float off = floor(lean + 0.5);
 	vec2 uv = UV - vec2(off * TEXTURE_PIXEL_SIZE.x, 0.0);
-	vec4 c = texture(TEXTURE, uv);
+	vec4 c = texture(TEXTURE, uv) * COLOR;   // COLOR is the sprite's modulate (white unless a prop sets a tint)
 	if (uv.x < 0.0 || uv.x > 1.0) {
 		c = vec4(0.0);
 	}
