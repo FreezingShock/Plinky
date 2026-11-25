@@ -1,10 +1,11 @@
 extends Node
-## Captures the top-left HUD (Next Goal card over the stat strip) from main.tscn, then quits.
+## Captures the Next Goal ribbon (bottom right, beside the Menu chip) and the top-left stat strip from main.tscn, then quits.
 ## Run (windowed, not --headless): godot --path . tools/goals_shot.tscn -- [fresh|done|late] [out_dir]
 ##   fresh  Dewdrops unlocked, the first goal in progress
 ##   done   every mid-game goal reached (the card should be gone once the goals panel hides)
 ##   late   every stat row visible with big numbers, first goal in progress
-## Writes <out_dir>/goals_<fixture>.png (full frame) and goals_<fixture>_corner_4x.png (top-left crop, 4x).
+## Writes <out_dir>/goals_<fixture>.png (full frame), goals_<fixture>_corner_4x.png (top-left crop, 4x) and
+## goals_<fixture>_bottom_right_4x.png (the Menu chip row, 4x).
 ## out_dir defaults to res://captures. Point APPDATA/user:// at a scratch folder so the real save is never touched.
 
 func _wait(n: int) -> void:
@@ -44,4 +45,9 @@ func _ready() -> void:
 	var crop: Image = img.get_region(Rect2i(0, 0, int(200.0 * scale), int(h)))
 	crop.resize(crop.get_width() * 4, crop.get_height() * 4, Image.INTERPOLATE_NEAREST)
 	print("save ", out_dir.path_join("goals_%s_corner_4x.png" % fixture), " err=", crop.save_png(out_dir.path_join("goals_%s_corner_4x.png" % fixture)))
+	var bw: int = int(220.0 * scale)
+	var bh: int = int(44.0 * scale)
+	var br: Image = img.get_region(Rect2i(img.get_width() - bw, img.get_height() - bh, bw, bh))
+	br.resize(br.get_width() * 4, br.get_height() * 4, Image.INTERPOLATE_NEAREST)
+	print("save ", out_dir.path_join("goals_%s_bottom_right_4x.png" % fixture), " err=", br.save_png(out_dir.path_join("goals_%s_bottom_right_4x.png" % fixture)))
 	get_tree().quit(0)

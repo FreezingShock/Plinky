@@ -684,5 +684,10 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 ## 2026-11-25: Goals card hides once every goal is reached
 - **Decision:** `NextGoalCard.shown_for(goals)` is true only while a goal is open. `Hud._sync_goal_card` shows the card from the Dewdrops unlock and while that holds, and runs on each refresh and each goal reached.
 - **Why:** the card was anchored at (4, 4), the same corner as the stat strip, so once every goal was reached its "All Goals Reached" box covered the strip's top rows (Nathan's screenshot). The card is no longer a `gate()` node, so the gate cannot show it again.
-- **Not yet fixed:** while a goal is open the card still sits over the strip's top rows. The layout pick (one panel, ribbon or ring, see `tools/goals_shot.tscn` and `/mnt/project-files/plinky/goals-stats-overhaul/`) fixes that.
+- **Superseded (same day):** the card is now a ribbon at the bottom right, see the next entry. It no longer sits over the stat strip.
 - **Checked:** `tests/run.gd` passes (11841 checks, 0 failed). In engine, `tools/goals_shot.tscn -- done` shows the strip unobstructed and no card.
+## 2026-11-25: Goals ribbon moves to the bottom right, beside the Menu chip
+- **Decision:** Nathan picked a slim ribbon (option B of the mockups in `/mnt/project-files/plinky/goals-stats-overhaul/`) and asked for it bottom right, to the left of the hamburger. `NextGoalCard` is now one line: the goal's name, its reward, and a 2 px progress line. Hover shows the description and the progress. `Hud._place` puts it left of the Menu chip, on the chip's centre line. The save flash moves left of the ribbon while it shows.
+- **Why:** the stat strip keeps the top left alone, so nothing overlaps it. The bottom right row was empty apart from the Menu chip.
+- **Checked:** `tests/run.gd` passes (11841 checks, 0 failed). In engine, `tools/goals_shot.tscn -- fresh` shows the ribbon beside the Menu chip and the strip clear at the top left; `-- done` shows no ribbon.
+- **Not run in-engine on a PC:** the ribbon at zoom 1 and 3 and the save flash beside it. PC QA should check both.

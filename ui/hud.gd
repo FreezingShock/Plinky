@@ -370,10 +370,10 @@ func _sync_goal_card() -> void:
 		_goal_card.visible = want
 
 
-## The Next Goal card, top left: the first mid-game goal not yet reached (ui/next_goal_card.gd). Shown by _sync_goal_card.
+## The Next Goal ribbon, bottom right beside the Menu chip: the first mid-game goal not yet reached (ui/next_goal_card.gd).
+## Shown by _sync_goal_card, placed in _place.
 func _build_goal_card() -> void:
 	_goal_card = NextGoalCard.new()
-	_goal_card.position = Vector2(4.0, 4.0)
 	add_child(_goal_card)
 	_goal_card.bind(sim)
 	_goal_card.visible = false
@@ -1106,10 +1106,6 @@ func _place() -> void:
 	_place_reset_confirm()
 	if _welcome != null and _welcome.visible:
 		_welcome.place(frame)
-	if _save_note != null and _menu_chip != null:
-		var sp: Vector2 = Vector2(_menu_chip.position.x - _save_note.size.x - 6.0, frame.y - _save_note.size.y - 6.0).floor()
-		if _save_note.position != sp:
-			_save_note.position = sp
 	if _bottom != null and _momentum != null:
 		var mp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - _momentum.size.y - 8.0)
 		if _momentum.position != mp:
@@ -1129,6 +1125,18 @@ func _place() -> void:
 		var mc: Vector2 = Vector2(frame.x - _menu_chip.size.x - 4.0, frame.y - _menu_chip.size.y - 4.0)
 		if _menu_chip.position != mc:
 			_menu_chip.position = mc
+	# The bottom right row, right to left: the Menu chip, then the goal ribbon (when open), then the save flash.
+	var row_x: float = _menu_chip.position.x if _menu_chip != null else frame.x - 4.0
+	if _goal_card != null and _goal_card.visible and _menu_chip != null:
+		var gsz: Vector2 = _goal_card.get_combined_minimum_size()
+		var gp: Vector2 = Vector2(row_x - gsz.x - 6.0, _menu_chip.position.y + floorf((_menu_chip.size.y - gsz.y) * 0.5)).floor()
+		if _goal_card.position != gp:
+			_goal_card.position = gp
+		row_x = gp.x
+	if _save_note != null and _menu_chip != null:
+		var sp: Vector2 = Vector2(row_x - _save_note.size.x - 6.0, frame.y - _save_note.size.y - 6.0).floor()
+		if _save_note.position != sp:
+			_save_note.position = sp
 	if _bottom != null:
 		var bp: Vector2 = Vector2(4.0, frame.y - _bottom.size.y - 4.0)
 		if _bottom.position != bp:
