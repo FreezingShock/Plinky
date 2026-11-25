@@ -93,3 +93,15 @@ static func rain_gain(rain01: float, snow_w: float, area: StringName) -> float:
 	if area == AREA_QUARRY:
 		return 0.0
 	return clampf(rain01, 0.0, 1.0) * (1.0 - clampf(snow_w, 0.0, 1.0))
+
+
+## The next thunder variant, 0 to count-1, never the one just played (so a storm never repeats a rumble back to back).
+## roll01 is a random 0..1 from the caller. Pure, so the audio scape and its tests read the same rule.
+static func next_variant(last: int, count: int, roll01: float) -> int:
+	if count <= 1:
+		return 0
+	var r: float = clampf(roll01, 0.0, 0.999999)
+	if last < 0 or last >= count:
+		return clampi(int(floorf(r * float(count))), 0, count - 1)
+	var k: int = clampi(int(floorf(r * float(count - 1))), 0, count - 2)
+	return k if k < last else k + 1
