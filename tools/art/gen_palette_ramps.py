@@ -15,17 +15,18 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 TARGET = ROOT / "render" / "palettes.gd"
 
 # Recipe B ("warm lit, cool shade") from the palette mockup the art thread picked (Nathan, 2026-11-25).
-STEP_VALUE = [0.62, 0.84, 1.0, 1.12]      # value multiplier per step, clamped to 1.0
+STEP_VALUE = [0.78, 0.92, 1.0, 1.08]      # value multiplier per step, clamped to 1.0
 # Hue moves toward a target along the short way round the wheel: shade toward teal-blue, light toward yellow.
 STEP_HUE_TARGET = [0.56, 0.56, None, 0.12]
-STEP_HUE_AMOUNT = [0.22, 0.12, 0.0, 0.12]  # fraction of that arc travelled per step
-STEP_SAT = [0.20, 0.10, 0.0, 0.10]        # saturation lift per step; the anchor keeps its own saturation
+STEP_HUE_AMOUNT = [0.12, 0.06, 0.0, 0.16]  # fraction of that arc travelled per step
+STEP_SAT = [0.10, 0.05, 0.0, 0.08]        # saturation lift per step; the anchor keeps its own saturation
 
 BEGIN = "# BEGIN RAMPS"
 END = "# END RAMPS"
 
 
 def hex_to_rgb(h: str) -> tuple[float, float, float]:
+    h = h.lstrip("#")
     return tuple(int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))  # type: ignore[return-value]
 
 
@@ -38,7 +39,7 @@ def ramp(anchor: str) -> list[str]:
     out = []
     for k in range(4):
         if k == 2:
-            out.append(anchor)  # the anchor is exact
+            out.append(anchor.lstrip("#"))  # the anchor is exact
             continue
         target = STEP_HUE_TARGET[k]
         arc = ((target - h + 0.5) % 1.0) - 0.5 if target is not None else 0.0
@@ -47,6 +48,28 @@ def ramp(anchor: str) -> list[str]:
         vv = min(1.0, v * STEP_VALUE[k])
         out.append(rgb_to_hex(colorsys.hsv_to_rgb(hh, ss, vv)))
     return out
+
+
+def role_steps_32(anchors: list[str]) -> list[str]:
+    """32 hex colours with a leading '#', role-major: index role * 4 + step (0 darkest, 2 the anchor, 3 lit)."""
+    out: list[str] = []
+    for a in anchors:
+        out.extend("#" + h for h in ramp(a))
+    return out
+
+
+def prop_ramp_steps(roles: list[int]) -> list[int]:
+    """Map a material ramp of roles (dark to light) to RAMP_PAL indices, role * 4 + step.
+
+    Steps run 1 to 3 from dark to light, the same bands the post shader draws (step = light band + 1). A one-element
+    ramp takes the anchor step, 2.
+    """
+    n = len(roles)
+    if n == 1:
+        steps = [2]
+    else:
+        steps = [1 + int(2 * k / (n - 1) + 0.5) for k in range(n)]
+    return [r * 4 + s for r, s in zip(roles, steps)]
 
 
 def main() -> None:

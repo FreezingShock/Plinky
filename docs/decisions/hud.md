@@ -667,3 +667,10 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **What:** `ui/next_goal_card.gd` shows the first unreached goal, its name, a progress bar and `value / target  +x%`. Hover shows the goal's description and the total bonus. When the chain is done it reads "All Goals Reached".
 - **Why top left:** the zone panel holds the top right and the bottom bar holds the bottom, so the top left was the free corner. Gated on Dewdrops like the stat strip, so the tutorial is not crowded.
 - **Reached:** a banner, "Goal Reached", shows the goal and its bonus. Hud owns the `Banner` call, because the card cannot name the autoload and stay testable in `--script` mode.
+
+## 2026-11-25: The reset confirm is laid out on open (first press)
+- **Decision:** `ResetConfirm.open` shows the card first, then sorts the card and its box and takes the size again, and `HUD._on_zone_reset_pressed` centres it at once through `HUD._place_reset_confirm`. A press in the same frame as the open now hits the bar where it is drawn.
+- **Why:** QA batch 164 saw the first bar press after the card opens do nothing in 3 of 4 runs. A container does not sort a hidden child, and the card was positioned only in the HUD's next layout pass, so a press in the open's own frame landed on the old geometry (the bar was at the top-left).
+- **Calm:** the card's rings use `FxConfig.ascension_calm()`, the same test as the ritual's flight (Reduce flashing, Still meadow or Calm camera). Still banners no longer changes the card.
+- **Checked:** `tests/run.gd` passes (11737 checks, 0 failed). A temporary probe injected a mouse press in the open's frame and on frames 1 and 3, with and without a motion event: the hold registered every time after the fix. With Reduce flashing and with Still meadow, the hold drew no rings and the ritual did not fly.
+- **Not run in-engine:** the PC repro after this change. QA batch 164 should re-run the first bar press at zoom 1 and 3.

@@ -6,7 +6,7 @@ Run: python3 gen_meadow3d.py [--fast]  ->  meadow3d-1x.png (640x360), meadow3d.p
 import numpy as np, math, random, json, os, sys, time
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import depth_pass, grass_tex
+import depth_pass, grass_tex, gen_palette_ramps as gpr
 GRASS = os.environ.get('GRASS', 'g')    # grass texture style (tools/art/grass_tex.py): g = clump blades on patch shading (M2); 'old' = previous noise patches
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAST = '--fast' in sys.argv
@@ -1006,7 +1006,10 @@ rgb_full, id_full = render_scene(np.ones(len(u_), bool))
 AUX_FULL = LAST_AUX
 # the glowing sea (tools/art/water_sea_mask.py): flat deep and shallow sea colours, so the relight leaves them as painted
 RAMP.update({110: [1], 111: [2]})
-depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP, PAL)
+# the relight quantises through the 32-colour ramps (palette B, gen_palette_ramps.py); the bake above keeps the 8 anchors
+RAMP32 = {m: gpr.prop_ramp_steps(r) for m, r in RAMP.items()}
+depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP32, PAL,
+                              ramp_pal=gpr.role_steps_32(PAL))
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
 AUX_GND = LAST_AUX
 im = Image.fromarray(rgb_full); Image.fromarray(rgb_gnd).save(os.path.join(HERE, 'meadow3d-ground-1x.png'))

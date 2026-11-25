@@ -448,6 +448,8 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Kept, not changed:** 4x4 Bayer dither and the ink outline (the lead thread's rule list is on hold per Nathan's 2026-11-25 direction to keep the pixelated look). Rules C1 and C3 from the style guide are not in effect.
 - **Checked in the cloud:** Godot 4.7.2 under xvfb. The meadow, Ember Quarry hub and golden-hour and dusk frames render with the ramps and grade (before and after sheet: `/mnt/project-files/palette-grade/compare_B_dusk_before_after_v2.png`). The unit suite passes (11,813 checks).
 - **Not verified on the PC:** the feel of the ramps on each zone and the dusk grade on a real monitor.
+- **Tune after PC QA (2026-11-25):** the first ramps were too dark and too cool. Larkmoor golden hour read grey-green, and the grass dither was heavy, because the shade steps stacked on the role drop. The shade steps are now 0.78 and 0.92 of the anchor value (were 0.62 and 0.84), with less teal drift, and the lit step is 1.08 (was 1.12). Compare: `/mnt/project-files/palette-grade/qa531_larkmoor_v2.png`.
+
 ## 2026-11-25: Walker and critters on the ramp steps (T9)
 - **Nathan's pick:** look A, Terracotta (mockups in `/mnt/project-files/gower-style/t9-walker-critters/`, generator `t9_mock_walker_critters.py`).
 - **Walker:** `tools/art/gen_walker.py` now reads the meadow ramp from `render/palettes.gd`. The cloak, hood, scarf and boots each use four steps (earth for the cloak and hood, green for the scarf). The outline stays the ink anchor, and the face, satchel and details keep their anchor colours. Codes: a plain role number is the anchor, and `8 + role * 4 + step` is the same role at another step.
@@ -488,3 +490,9 @@ Nathan picked mockup A (mounds) from the three styles in `plinky/pad-stage-mocku
 - **Supersedes:** the family lists in the 2026-11-25 T11 entry above. The families in `tools/art/icon_ramps.py` are the source of truth.
 - **Checked:** `gen_icons_staged.py` changed exactly the 20 files for Cinder, Rebirth points, Rebirth and Prestige, and nothing else. The four icons were rendered side by side before the change (Pillow, not in-engine).
 - **Not verified in-engine:** the PC QA thread should check the HUD and the gallery after pulling.
+## 2026-11-25: Prop relight uses the 32-colour ramps (T1)
+- **Why:** the coordinator's note after #544: the prop relight (`render/shaders/prop_ramps.gdshaderinc`) still quantised through the old 8 colours, so trees and rocks did not show the restyle at non-baked sun times.
+- **Decision:** the include keeps `PAL[8]` (the anchors the bake uses) and adds `RAMP_PAL[32]` (role * 4 + step). Each material ramp is mapped to steps 1 to 3 from dark to light, so the relight draws the same bands as the post shader. `ground_light` and `wind_sway` read `RAMP_PAL`.
+- **Regeneration:** `gen_meadow3d.py` writes the include with `gen_palette_ramps.prop_ramp_steps` and `role_steps_32`. The include was regenerated from the existing one (decoded, round-trip checked byte for byte), so the full bake did not run.
+- **Checked in the cloud:** Godot 4.7.2 under xvfb. Before and after at noon and dusk for both zones: `/mnt/project-files/palette-grade/prop_ramps_before_after.png`. The change is subtle at this zoom, and the Welcome Back dialog covers part of each frame. PC QA should re-check at zoom 1 with the dialog dismissed.
+
