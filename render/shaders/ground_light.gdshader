@@ -40,6 +40,7 @@ uniform vec3 mist_col : source_color = vec3(0.82, 0.9, 0.88);
 // Fallen blossom (SkyCycle: spring outdoors, none under snow). Pale petals gather in soft drifts on the iso grid.
 uniform float blossom = 0.0;                    // 0..1: spring x outdoor
 uniform vec3 blossom_col : source_color = vec3(0.95, 0.72, 0.8);
+uniform vec3 water_floor = vec3(0.184, 0.420, 0.333);   // #2f6b55: water never drops below this mid tone, at any hour (T6)
 uniform float mist_drift = 1.0;                 // 0 under Reduce motion: the haze holds still
 const vec3 BASE_DIR = vec3(-0.3495, 0.3828, 0.8557);
 varying vec2 wpos;
@@ -222,6 +223,11 @@ void fragment() {
 	float far_k = pow(1.0 - UV.y, 1.6) * fog_amt;
 	if (c.a > 0.5) {
 		c.rgb = mix(c.rgb, fog_col, clamp(far_k, 0.0, 1.0) * 0.6);
+	}
+	// T6 water band floor: water texels (and foam) are lifted to at least the mid water tone, never below it, so the
+	// lake cannot fall to near-black at noon, dusk or night. Lift only, and water texels only.
+	if (is_water && c.a > 0.5 && debug_view == 0) {
+		c.rgb = max(c.rgb, water_floor);
 	}
 	if (debug_view == 1) {
 		c = base;
