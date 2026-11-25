@@ -437,6 +437,10 @@ func _draw() -> void:
 	# Top face.
 	var face: Color = palette[6]
 	var face_r: Color = palette[6]
+	if FLOWERS.has(flower_row) and not locked and st != PadState.FAR:
+		# T4 (M1 Remap): the plate takes its statistic's hue, deep, so each pad's plate matches its own field.
+		face = palette[6].lerp(stat_color.darkened(0.5), 0.55)
+		face_r = palette[6].lerp(stat_color.darkened(0.65), 0.55)
 	if st == PadState.FAR or locked:
 		face = ink.lerp(palette[1], 0.45) if locked else palette[2]
 		face_r = face
