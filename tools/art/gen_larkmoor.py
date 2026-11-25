@@ -1104,8 +1104,8 @@ for _t, _f in FEATHER.items():
     mat[_band & ~_keep & (mat == FEATHER_MAT[_t])] = T_GRASS
 # grass tufts reach into the trodden edge: a ragged band of grass fingers overlaps the dirt, so the verge is not a clean line
 for _t in ('lane', 'trail'):
-    _fing = (dtr[_t] > HALF[_t] * .80) & (dtr[_t] < HALF[_t] * edge_noise * 1.05)
-    mat[_fing & (mat == FEATHER_MAT[_t]) & (vn2(FU / 1.1, FV / 1.1, 93 if _t == 'lane' else 94) > .58)] = T_GRASS
+    _fing = (dtr[_t] > HALF[_t] * .72) & (dtr[_t] < HALF[_t] * edge_noise * 1.10)
+    mat[_fing & (mat == FEATHER_MAT[_t]) & (vn2(FU / 1.3, FV / 1.3, 93 if _t == 'lane' else 94) > .52)] = T_GRASS
 # the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
 mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
@@ -1132,6 +1132,14 @@ for _t in ('road', 'lane'):
     _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.4) & on_path[_t]
 lt -= .24 * (_rut & (mat == T_PATH))
 lt += .07 * (on_trod & (vn2(FU / 9, FV / 9, 99) > .72))
+# path tone (Nathan, 2026-11-25): the engine re-picks trodden ground from the path's 4-step ramp by light, so the tone lives
+# in the light. Most path light sits in the bottom step (the rust), so a pale worn centre and dusty mottles are lifted past
+# the step to the pale one, in patches, not as a flat wash.
+_centre = np.zeros(len(FU), bool)
+for _t in ('road', 'lane'):
+    _centre |= on_path[_t] & (dtr[_t] < HALF[_t] * .5)
+lt += .50 * (_centre & (mat == T_PATH) & (vn2(FU / 5.0, FV / 4.0, 73) > .52))
+lt += .48 * (on_trod & (vn2(FU / 2.5, FV / 2.0, 75) > .80))
 # value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
 # under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
 # ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
@@ -1167,15 +1175,25 @@ mat[road_m & fl_zone & ~mortar] = T_STONE   # the stones are grey stone; the joi
 # road slabs (Nathan's reference): sparse flat grey stones about 6 by 4 texels on the dirt road, one per 11-texel cell in
 # some cells. The slab is stone code 70 and its joint ring stays dirt code 104 (T_PATH), so the engine relights the stone
 # grey and the joints brown. Cell offsets and picks are integer hashes, so the layout is the same every bake.
-_cs = 22   # FU samples run at about half the bake's texel scale, so the slab is 12 by 8 FU (about 6 by 4 bake texels)
+_cs = 32   # FU samples run at about half the bake's texel scale; the slab is 16 by 10 FU (about 8 by 5 bake texels), readable at 1x
 _cu = np.floor(FU / _cs).astype(np.int64); _cv = np.floor(FV / _cs).astype(np.int64)
-_sx = _cu * _cs + ((_cu * 31337 + _cv * 7919) % 12)
-_sy = _cv * _cs + ((_cu * 104729 + _cv * 1299709) % 12)
+_sx = _cu * _cs + ((_cu * 31337 + _cv * 7919) % 16)
+_sy = _cv * _cs + ((_cu * 104729 + _cv * 1299709) % 22)
 _pick = ((_cu * 92821 + _cv * 68917 + 17) % 1009) / 1009.0 < .55
 _uu = np.floor(FU).astype(np.int64); _vv = np.floor(FV).astype(np.int64)
-_slab = _pick & (_uu >= _sx) & (_uu < _sx + 12) & (_vv >= _sy) & (_vv < _sy + 8)
-_joint = _slab & ((_uu == _sx) | (_uu == _sx + 11) | (_vv == _sy) | (_vv == _sy + 7))
+_slab = _pick & (_uu >= _sx) & (_uu < _sx + 16) & (_vv >= _sy) & (_vv < _sy + 10)
+_joint = _slab & ((_uu == _sx) | (_uu == _sx + 15) | (_vv == _sy) | (_vv == _sy + 9))
 mat[_slab & ~_joint & (mat == T_PATH)] = T_STONE
+# small rocks scattered in the middle of the path (Nathan's correction: no rocks along the roadsides): 2 by 2 stone texels in
+# sparse cells, only on the trodden centre of the road and lanes
+_rc = 9
+_ru = np.floor(FU / _rc).astype(np.int64); _rv = np.floor(FV / _rc).astype(np.int64)
+_rx = _ru * _rc + ((_ru * 4241 + _rv * 2309) % 7)
+_ry = _rv * _rc + ((_ru * 6007 + _rv * 3571) % 7)
+_rpick = ((_ru * 5399 + _rv * 2741 + 3) % 97) / 97.0 < .35
+_rock = _rpick & (_uu >= _rx) & (_uu < _rx + 2) & (_vv >= _ry) & (_vv < _ry + 2)
+_mid = ((dtr['lane'] < HALF['lane'] * .5) | (dtr['road'] < HALF['road'] * .5)) & (mat == T_PATH)
+mat[_rock & _mid] = T_STONE
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
