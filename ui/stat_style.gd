@@ -15,7 +15,7 @@ const COLORS: Dictionary = {
 }
 const PAPER: Color = Color("f6efd9")
 ## The main colour of each stat's icon (its body colour, lifted to read on the dark panel). The Stats strip's values use
-## these, so a number matches the icon beside it. Generated from assets/icons/<id>.png.
+## these, so a number matches the icon beside it. Generated from assets/icons/<id>.png. Not passed through AccessOptions.tint.
 const ICON_TINT: Dictionary = {
 	&"alloy": Color("e8b43a"), &"cinder": Color("5cd1a6"), &"clover": Color("35d15b"), &"dewdrop": Color("95afd1"),
 	&"emberheart": Color("ffd0e8"), &"embers": Color("d15846"), &"foxglove": Color("ffe68a"), &"heather": Color("efa8f6"),
@@ -31,10 +31,12 @@ static func color(id: StringName) -> Color:
 	return AccessOptions.tint(COLORS.get(EFFECT_STAT.get(id, id), PAPER) as Color)
 
 
-## The colour of a stat's own number on the Stats strip: its icon's main colour, else the stat colour.
+## The colour of a stat's own number on the Stats strip: its icon's main colour, else the stat colour. The icon art is
+## not recoloured in the colour-safe modes, so the number takes the icon's colour untouched in every mode. Number and
+## icon always match, and the swap table never has to know every icon colour.
 static func value_color(id: StringName) -> Color:
 	if ICON_TINT.has(id):
-		return AccessOptions.tint(ICON_TINT[id] as Color)
+		return ICON_TINT[id] as Color
 	return color(id)
 
 
