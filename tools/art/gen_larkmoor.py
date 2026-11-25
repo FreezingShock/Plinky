@@ -798,7 +798,7 @@ TREE_GAP = dict(oak=6.0, pine=8.0)
 TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
-BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # stones on the water banks: 0 until the water thread's layout is picked
+BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '40'))        # stones on the water banks (layout B, #565), baked into the ground: no node cost
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
@@ -916,6 +916,7 @@ if ROAD_ROCKS or BANK_ROCKS:
             if float(samp(WD, u, v)) > -.3: continue                              # land only
             if bank:
                 if not (.8 < float(samp(DW, u, v)) < 3.2): continue                # the bank: a few texels from open water
+                if float(samp(dedge, u, v)) < 2.5: continue                        # never on a path or its edge (path corridors)
             else:
                 if not (1.5 < float(samp(dedge, u, v)) < 6.0): continue            # just off a road or lane edge
                 if float(samp(DW, u, v)) < 4.0: continue                           # not a second bank
