@@ -719,6 +719,11 @@ A draggable, resizable window (not a full-width strip) so the game stays visible
 - **Why:** the 20 s tip closed whether or not someone was reading it. Dismissal on Esc is the WCAG 1.4.13 case for hover content.
 
 ## 2026-11-25: Copy sweep: no "Button" in player text, colour-safe table gets four stats
+- **Superseded (2026-11-25, same day):** Nathan said the word "button" is fine anywhere. The relic, settings, tip and rarity wording above is back to "button", and the CLAUDE.md rule against it is removed. The colour-safe additions still stand.
 - **Decision:** the relic text "presses the buttons next to it" now says pads (Pulse, Chipped Bead). The settings hints say icon, not button. The pad rarity tag reads "UNCOMMON PAD" instead of "UNCOMMON BUTTON" (`TipText.rarity_tag` takes "pad"). Clover, Iron Ore, Embers and Sunlight join the red-green swap table, and Clover and Iron Ore join blue-yellow.
 - **Open question:** Nathan's memory notes say he asked for "EPIC BUTTON" wording. CLAUDE.md says no literal "Button" in player text. This change follows CLAUDE.md. One line in `ui/pad_tooltip.gd` reverts it if he wants the word back.
 - **Deferred:** Large text beyond tooltips (audit item, effort L) waits for the Settings refresh, so it is not in this change.
+
+## 2026-11-25: "Button" is allowed in player text
+- **Decision:** Nathan said the word "button" is fine anywhere, including game text. The CLAUDE.md rule against a literal "Button" is removed, and the wording changed by the copy sweep is restored ("UNCOMMON BUTTON", "buttons next to it", "Menu button", "above the button").
+- **Why:** direct instruction from Nathan (project thread, 2026-11-25). The copy guard test added with #607 is removed with the rule.

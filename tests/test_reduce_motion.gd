@@ -1,6 +1,6 @@
 extends RefCounted
 ## One Reduce Motion switch: FxConfig.still() is on when either option is, the master row follows both and sets both,
-## the calm gates hold (menu slide, pad sink), and the player-facing copy has no "Button". Writes no settings.
+## the calm gates hold (menu slide, pad sink). Writes no settings.
 
 func run(t: Object) -> void:
 	SettingsFile.persist = false
@@ -63,16 +63,6 @@ func run(t: Object) -> void:
 	t.eq(AccessOptions.tint(Color("ffd95a")), Color("f0e442"), "rg: Sunlight is swapped")
 	t.eq(AccessOptions.tint(Color("ff8a3d")), Color("d55e00"), "rg: Embers is swapped")
 	AccessOptions.set_color_mode(keep_mode)
-
-	# Copy: no relic description says "button", and the rarity tag reads PAD.
-	var dir: DirAccess = DirAccess.open("res://content/relics")
-	var clean: bool = true
-	for f: String in dir.get_files():
-		if f.ends_with(".tres"):
-			var r: Resource = load("res://content/relics/" + f)
-			if r != null and "description" in r and String(r.get("description")).to_lower().contains("button"):
-				clean = false
-	t.ok(clean, "no relic description says button")
 
 	FxConfig.reduce_motion = keep_banner
 	MeadowLife.reduce_motion = keep_meadow

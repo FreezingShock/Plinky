@@ -416,7 +416,7 @@ static func _register_strip() -> void:
 static func _register_qol() -> void:
 	_add({
 		"id": &"save_indicator", "tab": "Gameplay", "label": "Save indicator", "kind": Kind.TOGGLE, "default": true,
-		"hint": "A small Saved note by the Menu icon after each save. A failed save always shows.",
+		"hint": "A small Saved note by the Menu button after each save. A failed save always shows.",
 		"apply": func(v: Variant) -> void: SaveIndicator.enabled = bool(v),
 	})
 	_add({
@@ -446,7 +446,7 @@ static func _register_access() -> void:
 	})
 	_add({
 		"id": &"chip_labels", "tab": "Access", "label": "Bottom bar labels", "kind": Kind.CHOICE, "default": "hover",
-		"hint": "On hover: a label floats above the icon. Always: labels sit under the icons. Never: icons only.",
+		"hint": "On hover: a label floats above the button. Always: labels sit in the buttons. Never: icons only.",
 		"options": func() -> Array: return [["hover", "On hover"], ["always", "Always"], ["never", "Never"]],
 		"apply": func(v: Variant) -> void: ExpandChip.label_mode = String(v),
 	})
