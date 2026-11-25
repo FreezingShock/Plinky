@@ -4,7 +4,7 @@ extends RefCounted
 ## the pattern shimmers across the ground while the camera pans.
 
 const SHADERS: Array[String] = [
-	"cast_shadow", "day_night", "god_rays", "ground_fog", "ground_light", "light_grade", "sky_haze", "wind_sway",
+	"cast_shadow", "day_night", "god_rays", "ground_fog", "ground_light", "light_grade", "light_shafts", "sky_haze", "wind_sway",
 ]
 
 func run(t: Object) -> void:

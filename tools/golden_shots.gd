@@ -12,6 +12,7 @@ const PHASES: Array = [
 ]
 
 var main: Control
+var tag: String = ""
 
 
 func _wait(n: int) -> void:
@@ -34,6 +35,12 @@ func _ready() -> void:
 			SkyCycle.debug_season = int(a.substr(7))
 		if a.begins_with("phases="):
 			only = a.substr(7).split(",")
+		# shafts=beam,ray pins the Larkmoor canopy shafts (0..1 each); tag=name prefixes the PNGs (A/B comparisons)
+		if a.begins_with("shafts="):
+			var mix: PackedStringArray = a.substr(7).split(",")
+			SkyCycle.debug_shafts = Vector2(float(mix[0]), float(mix[1]))
+		if a.begins_with("tag="):
+			tag = a.substr(4) + "_"
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -44,7 +51,7 @@ func _ready() -> void:
 		# The pin is a sun phase. SkyCycle moves the calendar clock to match it, so the HUD label agrees with the sky.
 		SkyCycle.debug_phase = float(ph[1])
 		await _wait(45)
-		get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/golden_%s.png" % String(ph[0])))
+		get_tree().root.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://shots/%sgolden_%s.png" % [tag, String(ph[0])]))
 		print("shot ", ph[0], " clock ", Calendar.now().get("clock_text", "?"))
 	get_tree().quit(0)
 

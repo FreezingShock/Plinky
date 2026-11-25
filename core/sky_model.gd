@@ -169,6 +169,13 @@ func rays(t: float, rain01: float = 0.0) -> float:
 	return maxf(low_sun(t), shafts * 0.85) * (1.0 - clampf(rain01, 0.0, 1.0))
 
 
+## Light shaft strength 0..1 (render/shaders/light_shafts.gdshader): the golden hour's light, squared so noon stays faint
+## (golden is 0.35 there), off at night, and off in rain.
+func shafts(t: float, rain01: float = 0.0) -> float:
+	var g: float = golden(t)
+	return g * g * (1.0 - clampf(rain01, 0.0, 1.0))
+
+
 ## Ground mist 0..1: thickest at dawn, thinner through the day, back up after dusk, and extra after rain.
 func mist(t: float, rain01: float = 0.0) -> float:
 	var s: float = sun_of(phase(t))
