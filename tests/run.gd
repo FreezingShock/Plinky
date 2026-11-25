@@ -133,6 +133,8 @@ func near(actual: float, expected: float, rel: float, msg: String) -> void:
 	ok(absf(actual - expected) <= tol, "%s (got %s, expected %s)" % [msg, str(actual), str(expected)])
 
 
+const PARKED_FOR_TESTS: Array[StringName] = [&"crit_chance", &"crit_power", &"luck", &"offline_gain", &"pad_yield", &"press_rate", &"quick_study", &"walk_speed", &"rp_fortune", &"rp_lore", &"rp_rest"]
+
 ## A fresh Sim with real content loaded.
 ## A fresh sim. By default a player press pays its full reward and cost (press_scale 1), so suites test the raw
 ## formulas. The copy is private: the shared game.tres keeps the shipped press_scale. Pass `shipped` true for the
@@ -140,6 +142,11 @@ func near(actual: float, expected: float, rel: float, msg: String) -> void:
 func make_sim(shipped: bool = false) -> Sim:
 	var sim := Sim.new()
 	ok(ContentLoader.load_into(sim), "content loads and validates")
+	# Parked attributes are not live content, but their mechanics (crit, luck, walk, press rate, RP perks) still have
+	# suites. Revive them here, for tests only, so those suites keep testing the formulas.
+	for id: StringName in PARKED_FOR_TESTS:
+		if not sim.attribute_defs.has(id):
+			sim.attribute_defs[id] = load("res://content/parked/attributes/%s.tres" % id) as AttributeDef
 	if not shipped:
 		sim.config = sim.config.duplicate() as GameConfig
 		sim.config.press_scale = 1.0

@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = &"rebirth_50"
 display_name = "Evergreen"
-description = "Rebirth 50 times."
+description = "Reset a zone 50 times."
 category = &"rebirth"
 counter = &"rebirths"
 target = 50.0
