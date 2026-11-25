@@ -1069,10 +1069,13 @@ for c0 in range(0, len(u_), 1500000):
 shadow[len(T['u']):len(T['u']) + len(Wd['u'])] = False
 log('shadows done')
 RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [1, 2, 6, 6, 5], T_SAND: [6, 6, 5, 7], T_WET: [1, 6, 6, 5], T_PATH: [6, 6, 5, 5], T_TRAIL: [6, 6, 6, 1], T_FROST: [6, 5, 7, 7], T_EARTH: [1, 6, 6, 5],
-        M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 2, 6, 5], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
+        M_FOL: [1, 2, 3, 4], M_BARK: [1, 6, 6, 5], M_PINE: [1, 2, 2, 3], M_ROCK: [1, 6, 6, 7], M_MOSS: [2, 3, 4, 4], M_CRYS: [2, 3, 4, 7], M_WOOD: [1, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: [0, 0, 1, 1]}
 RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
+# canopy shading (round 2 of the v3 remodel): leaves and pine boughs step through their shades with crisp edges
+CANOPY_MATS = (M_FOL, M_PINE)
+CANOPY_DBAND = (.44, .14)     # the dither spreads over the middle 14% of each step, so the Bayer edge stays but the steps read
 mat_ = allp['mat']; nz_ = allp['nz']; lraw = allp['wl'].copy()
 light = np.where(isprop | (np.arange(len(u_)) >= len(T['u'])) & False, 0, 0).astype(float)
 # lighting for props (terrain/plinth carried theirs in 'wl')
@@ -1160,14 +1163,16 @@ def render_scene(keep):
         img_l = img_l + np.where(own, -DEPTH[0] + DEPTH[1] + DEPTH[2], 0)
     YY, XX = np.mgrid[0:H, 0:W]
     bay = (BAYER[YY & 3, XX & 3] + .5) / 16
-    def dith(ramp, l, mask):
-        r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - .30) / .40, 0, 1)
+    def dith(ramp, l, mask, dband=(.30, .40)):
+        # dband: where the Bayer dither spreads between two ramp steps (start, width of the band inside each step)
+        r = np.array(ramp); n = len(r) - 1; l = np.clip(l, 0, .9999); vv = l * n; lo = np.floor(vv).astype(int); f = np.clip((vv - lo - dband[0]) / dband[1], 0, 1)
         hi = (f > bay) & (lo < n); return r[np.where(hi, lo + 1, lo)]
     img_l = grass_tex.apply(GRASS, img_l, img_mat == T_GRASS, XX, YY, dict(vn2=vn2, fbm2=fbm2))
     out = np.full((H, W), -1, np.int64)
     for m_, ramp in RAMP.items():
         sel_ = img_mat == m_
-        if sel_.any(): out[sel_] = dith(ramp, img_l, sel_)[sel_]
+        # canopy and pine: a narrow dither band, so each shade step has a clear edge and the Bayer texture stays on the edges
+        if sel_.any(): out[sel_] = dith(ramp, img_l, sel_, CANOPY_DBAND if m_ in CANOPY_MATS else (.30, .40))[sel_]
     # water: depth bands, stepped glints, foam, white water on slopes
     wsel = img_mat == T_WATER
     if wsel.any():
