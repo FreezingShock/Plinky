@@ -1,1 +1,0 @@
-- Dirt paths have a lighter worn centre. The trodden centre now relights to a greige step at its brightest, so it reads lighter than the brown edges and rims. Noon road colour is otherwise unchanged.
