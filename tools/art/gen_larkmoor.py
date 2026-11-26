@@ -1075,6 +1075,7 @@ dp = samp(dpath, FU, FV)
 tone = fbm2(FU / 14, FV / 14, 2, 11); n1 = vn2(FU / 5, FV / 5, 3); n2 = vn2(FU / 2.2, FV / 2.2, 8)
 # materials: 0 grass 1 rock 2 sand 3 wet 4 path 5 frost
 T_GRASS, T_ROCK, T_SAND, T_WET, T_PATH, T_FROST, T_EARTH, T_WATER, T_FOAM, T_TRAIL = 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
+T_RUT = 71     # dirt path rims (the outer part of a road) and ruts: a darker earth ramp, so a path is not one flat colour
 T_STONE = 70   # Larkmoor flagstones: their own grey-stone code, so the engine relight does not brown them with the dirt (gen_meadow3d.py RAMP32)
 mat = np.full(len(FU), T_GRASS, np.int16)
 rockness = smooth(.42, .85, slope + np.clip(h - 10, 0, 50) / 50 + (n1 - .5) * .25)
@@ -1105,8 +1106,8 @@ for _t, _f in FEATHER.items():
     mat[_band & ~_keep & (mat == FEATHER_MAT[_t])] = T_GRASS
 # grass tufts reach into the trodden edge: a ragged band of grass fingers overlaps the dirt, so the verge is not a clean line
 for _t in ('lane', 'trail'):
-    _fing = (dtr[_t] > HALF[_t] * .80) & (dtr[_t] < HALF[_t] * edge_noise * 1.05)
-    mat[_fing & (mat == FEATHER_MAT[_t]) & (vn2(FU / 1.1, FV / 1.1, 93 if _t == 'lane' else 94) > .58)] = T_GRASS
+    _fing = (dtr[_t] > HALF[_t] * .72) & (dtr[_t] < HALF[_t] * edge_noise * 1.10)
+    mat[_fing & (mat == FEATHER_MAT[_t]) & (vn2(FU / 1.3, FV / 1.3, 93 if _t == 'lane' else 94) > .52)] = T_GRASS
 # the plaza at the lighthouse foot: a small widened disc of the same worn earth, where the grove trail ends
 mat[(np.hypot(FU - LH_UV[0], FV - LH_UV[1]) < FOOT_R) & (rockness < .85) & ~(on_path['road'] | on_path['lane'])] = T_TRAIL
 dn = np.minimum.reduce([dtr[t] / HALF[t] for t in HALF]) * 10.5
@@ -1133,6 +1134,14 @@ for _t in ('road', 'lane'):
     _rut |= (np.abs(np.abs(dtr[_t]) - HALF[_t] * .38 + _wob) < 1.4) & on_path[_t]
 lt -= .24 * (_rut & (mat == T_PATH))
 lt += .07 * (on_trod & (vn2(FU / 9, FV / 9, 99) > .72))
+# path tone (Nathan, 2026-11-25): the engine re-picks trodden ground from the path's 4-step ramp by light, so the tone lives
+# in the light. Most path light sits in the bottom step (the rust), so a pale worn centre and dusty mottles are lifted past
+# the step to the pale one, in patches, not as a flat wash.
+_centre = np.zeros(len(FU), bool)
+for _t in ('road', 'lane'):
+    _centre |= on_path[_t] & (dtr[_t] < HALF[_t] * .5)
+lt += .50 * (_centre & (mat == T_PATH) & (vn2(FU / 5.0, FV / 4.0, 73) > .52))
+lt += .48 * (on_trod & (vn2(FU / 2.5, FV / 2.0, 75) > .80))
 # value structure (V3, picked by Nathan): three value bands per grass patch, a lighter trodden path, and a darker floor
 # under canopies. The bands follow smooth patch noise, not texel noise. The canopy floor uses the shadow height field:
 # ground that stands under props (trees, bushes, rocks) gets a soft dark falloff of about 4 texels around them.
@@ -1164,19 +1173,30 @@ lt -= .30 * mortar                                           # a soft drop to th
 # stones stand out as cream tiles in a brown dirt road, instead of a pale sand road with dirt joints.
 lt -= .62 * (mat == T_PATH)     # road and lanes alike drop to the dirt (earth) step; sand alone sits well above it
 lt += .62 * (road_m & fl_zone & ~mortar)   # the flagstones near the windmill and bridges lift back to the lit sand stones
+mat[(mat == T_PATH) & (_rut | (on_path['road'] & (dtr['road'] > HALF['road'] * 0.75)))] = T_RUT   # rims and ruts
 mat[road_m & fl_zone & ~mortar] = T_STONE   # the stones are grey stone; the joints stay dirt (T_PATH)
 # road slabs (Nathan's reference): sparse flat grey stones about 6 by 4 texels on the dirt road, one per 11-texel cell in
 # some cells. The slab is stone code 70 and its joint ring stays dirt code 104 (T_PATH), so the engine relights the stone
 # grey and the joints brown. Cell offsets and picks are integer hashes, so the layout is the same every bake.
-_cs = 22   # FU samples run at about half the bake's texel scale, so the slab is 12 by 8 FU (about 6 by 4 bake texels)
+_cs = 32   # FU samples run at about half the bake's texel scale; the slab is 16 by 10 FU (about 8 by 5 bake texels), readable at 1x
 _cu = np.floor(FU / _cs).astype(np.int64); _cv = np.floor(FV / _cs).astype(np.int64)
-_sx = _cu * _cs + ((_cu * 31337 + _cv * 7919) % 12)
-_sy = _cv * _cs + ((_cu * 104729 + _cv * 1299709) % 12)
+_sx = _cu * _cs + ((_cu * 31337 + _cv * 7919) % 16)
+_sy = _cv * _cs + ((_cu * 104729 + _cv * 1299709) % 22)
 _pick = ((_cu * 92821 + _cv * 68917 + 17) % 1009) / 1009.0 < .55
 _uu = np.floor(FU).astype(np.int64); _vv = np.floor(FV).astype(np.int64)
-_slab = _pick & (_uu >= _sx) & (_uu < _sx + 12) & (_vv >= _sy) & (_vv < _sy + 8)
-_joint = _slab & ((_uu == _sx) | (_uu == _sx + 11) | (_vv == _sy) | (_vv == _sy + 7))
+_slab = _pick & (_uu >= _sx) & (_uu < _sx + 16) & (_vv >= _sy) & (_vv < _sy + 10)
+_joint = _slab & ((_uu == _sx) | (_uu == _sx + 15) | (_vv == _sy) | (_vv == _sy + 9))
 mat[_slab & ~_joint & (mat == T_PATH)] = T_STONE
+# small rocks scattered in the middle of the path (Nathan's correction: no rocks along the roadsides): 2 by 2 stone texels in
+# sparse cells, only on the trodden centre of the road and lanes
+_rc = 9
+_ru = np.floor(FU / _rc).astype(np.int64); _rv = np.floor(FV / _rc).astype(np.int64)
+_rx = _ru * _rc + ((_ru * 4241 + _rv * 2309) % 7)
+_ry = _rv * _rc + ((_ru * 6007 + _rv * 3571) % 7)
+_rpick = ((_ru * 5399 + _rv * 2741 + 3) % 97) / 97.0 < .35
+_rock = _rpick & (_uu >= _rx) & (_uu < _rx + 2) & (_vv >= _ry) & (_vv < _ry + 2)
+_mid = ((dtr['lane'] < HALF['lane'] * .5) | (dtr['road'] < HALF['road'] * .5)) & (mat == T_PATH)
+mat[_rock & _mid] = T_STONE
 # water points
 isw = wd > .04
 mat = np.where(isw, T_WATER, mat)
@@ -1224,6 +1244,7 @@ RAMP = {T_GRASS: [1, 2, 3, 3, 4], T_ROCK: [6, 6, 6, 6, 6], T_SAND: [6, 6, 5, 7],
         M_PETA: [3, 5, 5, 7], M_PETB: [2, 6, 6, 5], M_STEM: [1, 2, 3, 3], M_LILY: [1, 2, 3, 4], M_REED: [1, 2, 3, 3], M_CAT: [1, 6, 6, 5], M_BERRY: [1, 6, 6, 5],
         M_CAP: [1, 6, 6, 5], M_CSTEM: [6, 5, 7, 7], M_PAPER: [5, 7, 7, 7], M_GRASS: [2, 3, 3, 4], M_BARKT: [6, 5, 7, 7], M_BARKT2: [1, 6, 5, 7], M_INK: [0, 0, 1, 1], M_PAPER + 20: [5, 7, 7, 7], M_DARKF: DARKF_RAMP}
 RAMP.update({M_BOARD: [1, 6, 6, 5], M_BOARDT: [6, 5, 5, 7], M_RAIL: [0, 1, 1, 6]})   # wooden bridges
+RAMP[T_RUT] = [1, 6, 6, 6]   # dirt rims and ruts: darker earth in the bake; the engine relight uses RAMP32[71] (gen_meadow3d.py)
 RAMP[T_STONE] = [1, 7, 7, 7]   # grey stone (bake colours are anchors; the engine relight uses the grey ramp in gen_meadow3d RAMP32)
 # canopy shading (round 2 of the v3 remodel): leaves and pine boughs step through their shades with crisp edges
 CANOPY_MATS = (M_FOL, M_PINE)
@@ -1344,6 +1365,21 @@ def render_scene(keep):
     _hh = ((XX * 92821 + YY * 68917) % 1009) / 1009.0
     out[_verge & (_hh > .988)] = 6
     out[_verge & (_hh < .006)] = 7
+    # path tones on flat ground: the engine keeps the bake colour where the light is flat, so the tone is baked as palette steps
+    # too. Dark rims and ruts (code 71) take palette 1 with a dithered edge, the trodden centre takes pale worn patches, and dusty
+    # mottles lighten the rest. Joints beside a flagstone keep the dirt colour.
+    from PIL import ImageFilter as _IFp
+    _R = img_mat == T_RUT
+    _P = img_mat == T_PATH
+    _stone_near = np.asarray(Image.fromarray(((img_mat == T_STONE) * 255).astype(np.uint8)).filter(_IFp.MaxFilter(3))) > 0
+    _free = ~_stone_near
+    out[_R & _free & (bay < .60)] = 1
+    if _P.any():
+        _core = np.asarray(Image.fromarray((_P * 255).astype(np.uint8)).filter(_IFp.MinFilter(5))) > 0
+        _worn = vn2(XX / 9.0, YY / 7.0, 73) + (bay - .5) * .30
+        out[_core & _free & (_worn > .46)] = 5
+        _dust = vn2(XX / 4.0, YY / 3.0, 75) + (bay - .5) * .20
+        out[_P & _free & ~_core & (_dust > .74)] = 5
     # stone interiors are solid (Nathan's reference, and Bayer on edges only): a stone texel whose whole 3x3 is stone takes the
     # solid light step, and its outer ring keeps the dithered edge from RAMP[T_STONE]. Joints are dirt (T_PATH), so they stay brown.
     from PIL import ImageFilter as _IFs

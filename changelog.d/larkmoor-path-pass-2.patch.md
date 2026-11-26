@@ -1,0 +1,1 @@
+- Larkmoor paths: larger flagstones on the road, softer grass spill at path edges, small stones in the trodden centre, and a pale worn centre with dusty mottles on the trodden ground.
