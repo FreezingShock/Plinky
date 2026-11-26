@@ -320,3 +320,24 @@ Reading: the passive stat a player is in (Embers in the Quarry) comes out at 0.4
 **Doc drift fixed.** Idle wording in SPEC and this file now says time to gate (idle presses at 0.5 of active in config). Sections 1 to 8 are marked as history. Section 15's Curio Shelf line now says 10 kinds. Rebirth achievement text now says "reset a zone", since the counter is every Bloom and Nucleus. `bloom_wide` uses the Sunlight icon, not the parked Cash icon. The 2,250 Seeds figure in the sealed-cache entry is corrected here: the Seed gift set is about 4,830.
 
 **Open for Nathan, not changed.** The away rule (offline income and whether tending pays the full press reward). Whether the Nucleus Crown should be measured before it ships at 40.
+
+**Away tending, measured again with a time-stepped walker (26 Nov, not shipped).** The walker's press rewards are snapshotted when the away window opens, so the gain-boost chain cannot feed on its own output during the window. It walks the 2 hours in 24 steps, top pad first, so a row's output can pay for the row above. It keeps `offline_tend_fraction` at 0.5 of the zone press rate in that test. Against the greedy active baseline (`tools/sim_away.gd`, 3 seeds, medians), away/active per stat:
+| After | Stat | Away / active |
+|---|---|---|
+| 5 min | Dewdrops | 0.051 |
+| 15 min | Cinder | 0.078 |
+| 30 min | Embers | 0.73 |
+| 30 min | Ironore | 71 |
+| 30 min | Slag | 43 |
+| 30 min | Cinder | 1,236 |
+| 60 min | Embers | 0.46 |
+| 60 min | Emberheart | 2.9 |
+| 60 min | Alloy | 14 |
+| 60 min | Slag | 28 |
+| 60 min | Ironore | 114 |
+| 60 min | Cinder | 812 |
+| 60 min | Ingot | 602 |
+
+The target, total away value near 0.5 of active with no stat above 1, is not met. The snapshot does not fix it. My reading, not confirmed in the engine: the greedy active player presses the top affordable pad almost every press, so it barely touches the cheap rows, while the walker's budget reaches those rows and their rewards carry the chain multipliers. Shipping this at 0.5 would overpay away by these factors, so the model was dropped and `offline_tend_fraction` stays 0.0125. The tried code is saved as a patch at `/mnt/project-files/economy-pr610/tend-freeze-24-step.patch` (not in the repo). The full test suite passed on it (12,687 checks, 0 failed), so only the balance is in question.
+
+**Spread player (pacing finding, no change).** Active play that spreads presses across the pads, not the greedy buyer, gains about 3e44 Embers in the 2 hours after 60 minutes (2.3e43 after 30, 4.9e42 after 15, 1.5e42 after 5). Cinder reaches about 2.7e25 in the same window. The greedy buyer gains 2.8e8 Embers over the same 2 hours at 60 minutes. The spread player's numbers are unaffected by the tending change, since the active branch never calls `apply_offline`. Cause: the gain-boost chain (`docs/decisions/quarry.md:29`, `docs/decisions/balance.md:60`), which is documented intent and was not changed here. This is a pacing question for Nathan, not a fix in this PR.
