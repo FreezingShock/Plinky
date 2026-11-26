@@ -1020,6 +1020,7 @@ RAMP.update({110: [1], 111: [2]})
 RAMP32 = {m: gpr.prop_ramp_steps(r) for m, r in RAMP.items()}
 RAMP32[70] = [6, 28, 28, 29]   # Larkmoor flagstones (gen_larkmoor T_STONE): grey stone, slate shade and paper steps 0 to 1
 RAMP32[71] = [24, 24, 25, 25]   # dirt path rims and ruts (gen_larkmoor T_RUT): the darker earth steps, so the centre stays the lighter 104 ramp
+RAMP32[104] = [25, 26, 26, 29]   # path centre (gen_larkmoor T_PATH): the last step is role 7 greige, so the worn centre reads lighter than the brown edges
 depth_pass.write_ramp_include(os.path.join(HERE, '..', '..', 'render', 'shaders', 'prop_ramps.gdshaderinc'), RAMP32, PAL,
                               ramp_pal=gpr.role_steps_32(PROP_PAL))
 rgb_gnd, id_gnd = render_scene(~np.isin(allp['id'], tall_ids))
