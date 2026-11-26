@@ -826,12 +826,12 @@ fu_, fv_ = s2uv(*LAY.FOOT_CROSSING); FOOT_ANG = _path_dir_uv(PATHS_UV[3], (fu_, 
 put('footbridge', fu_, fv_, 1.0, rot=FOOT_ANG, z_extra=3.2, count=False, bottom=-10.0)
 # groves: oaks, pines, bushes, rocks, crystals, never stacked
 # trees keep a real gap between crowns (the old gap of 1.5 texels packed them into walls). Pines are narrow, so they sit closer.
-TREE_GAP = dict(oak=6.0, pine=8.0)
+TREE_GAP = dict(oak=float(os.environ.get('OAK_GAP', '4.0')), pine=float(os.environ.get('PINE_GAP', '5.0')))   # round 6: tighter crown gaps, so the groves fill in
 # round 3 of the v3 remodel: oaks and pines grow toward the v3 size (about two walkers tall, ~60 texels). Scales the grove draw range.
 TREE_SIZE = dict(oak=float(os.environ.get('OAK_SIZE', '1.45')), pine=float(os.environ.get('PINE_SIZE', '1.25')))
 # round 4: groves clump toward their centre and open out at the edge (try_region's clump), like the v3 groves
 TREE_CLUMP = dict(oak=float(os.environ.get('OAK_CLUMP', '.75')), pine=float(os.environ.get('PINE_CLUMP', '.7')))
-TREE_MUL = dict(oak=float(os.environ.get('OAK_MUL', '1.3')), pine=float(os.environ.get('PINE_MUL', '1.3')))   # extra tree attempts per grove, for centre density
+TREE_MUL = dict(oak=float(os.environ.get('OAK_MUL', '1.8')), pine=float(os.environ.get('PINE_MUL', '1.8')))   # extra tree attempts per grove, for centre density
 GROVE_MUL = float(os.environ.get('GROVE_MUL', '2.2'))      # density of the tree and bush groves (1.0 = the counts before the denser pass)
 ROAD_ROCKS = int(os.environ.get('ROAD_ROCKS', '40'))       # stones just off the road and lane edges, baked into the ground (no node cost)
 BANK_ROCKS = int(os.environ.get('BANK_ROCKS', '0'))         # extra random stones on the water banks (0: the ring below does the job)
@@ -841,6 +841,8 @@ BANK_SPACING = float(os.environ.get('BANK_SPACING', '6.0'))
 # every grove gets understory bushes on its rim (EDGE_BUSH of its trees, clumped to the outer ring by clump .3)
 PINE_MIX = float(os.environ.get('PINE_MIX', '0.5'))
 EDGE_BUSH = float(os.environ.get('EDGE_BUSH', '0.9'))
+# round 6: bushes give up some node slots to trees. Bushes are about two thirds of the props, and each one is a node.
+BUSH_MUL = float(os.environ.get('BUSH_MUL', '0.6'))
 for kind, c_, rad, n in LAY.GROVES:
     kw = dict(scale_rng=(.75, 1.4)) if kind == 'pine' else dict(scale_rng=(.8, 1.28)) if kind == 'oak' else dict(scale_rng=(.9, 1.2))
     if kind in TREE_SIZE: kw['scale_rng'] = tuple(s_ * TREE_SIZE[kind] for s_ in kw['scale_rng'])
@@ -848,7 +850,7 @@ for kind, c_, rad, n in LAY.GROVES:
     if kind in TREE_CLUMP: kw['clump'] = TREE_CLUMP[kind]
     if kind == 'crystals': kw = dict(tries=120, slope_max=.7, hmax=14)
     # round 4b: oaks and pines get extra attempts, so the clumped centres fill in (TREE_MUL); bushes keep GROVE_MUL alone
-    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL * TREE_MUL.get(kind, 1.0))
+    n_ = n if kind in ('crystals', 'rock') else round(n * GROVE_MUL * TREE_MUL.get(kind, 1.0) * (BUSH_MUL if kind == 'bush' else 1.0))
     try_region(kind, *SC(c_), rad * .72, n_ if not FAST else max(1, n_ // 3), **kw)
     if kind == 'oak':
         pkw = dict(scale_rng=tuple(s_ * TREE_SIZE['pine'] for s_ in (.75, 1.4)), gap=TREE_GAP['pine'], clump=TREE_CLUMP['pine'])
